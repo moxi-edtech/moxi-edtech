@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { createServerClient } from "@supabase/ssr"
-import type { Database } from "@/types/supabase"
+import type { Database } from "~types/supabase"
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
@@ -37,7 +37,7 @@ export async function middleware(req: NextRequest) {
   }
 
   // 2) busca perfil no banco (com tipagem explícita)
-  const { data: profileData, error: profileError } = await supabase
+  const { data: profileData } = await supabase
     .from("profiles")
     .select("role, escola_id")
     .eq("user_id", user.id)

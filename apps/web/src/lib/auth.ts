@@ -1,6 +1,6 @@
 import { supabaseServer } from "./supabaseServer"
 import type { User } from "@supabase/supabase-js"
-import type { Database } from "@/types/supabase"
+import type { Database } from "~types/supabase" 
 
 export interface SessionUser {
   id: string

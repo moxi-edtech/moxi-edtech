@@ -46,7 +46,7 @@ const mockEscola: EscolaDetalhes = {
   ultimo_acesso: null,
 };
 
-export default function EscolaDetalhesPage() {
+export default function Page() {
   const params = useParams();
   const supabase = createClient();
 
@@ -61,29 +61,32 @@ export default function EscolaDetalhesPage() {
         // se params.id vier como string (Next.js retorna sempre string)
         const escolaId = Array.isArray(params.id) ? params.id[0] : params.id;
 
-        // Buscar dados básicos da escola diretamente da tabela
-        const { data, error } = await supabase
-          .from("escolas")
-          .select("id, nome, status, endereco")
-          .eq("id", String(escolaId))
-          .single();
+        let fetched: unknown = null
+        let error: unknown = null
 
-        if (!error && data && active) {
-          const e = data as { id: string; nome: string; status: string | null; endereco: string | null }
-          // Monta detalhes com placeholders
+        const { data, error: verror } = await supabase
+          .from('escolas_view' as unknown as never)
+          .select('id, nome, status, plano, cidade, estado, total_alunos, total_professores')
+          .eq('id', String(escolaId))
+          .maybeSingle()
+        if (!verror) fetched = data
+        else error = verror
+
+        if (!error && fetched && active) {
+          const e = fetched as Record<string, unknown>
           setEscola({
-            id: e.id,
-            nome: e.nome,
-            status: e.status ?? "ativa",
-            plano: "Básico",
-            cidade: e.endereco ?? "",
-            estado: "",
-            total_alunos: 0,
-            total_professores: 0,
+            id: String(e.id ?? ''),
+            nome: String(e.nome ?? ''),
+            status: (typeof e.status === 'string' ? e.status : 'ativa') as EscolaDetalhes['status'],
+            plano: typeof e.plano === 'string' ? e.plano : 'Básico',
+            cidade: (typeof e.cidade === 'string' ? e.cidade : (typeof e.endereco === 'string' ? e.endereco : '')),
+            estado: typeof e.estado === 'string' ? e.estado : '',
+            total_alunos: Number((e as unknown as { total_alunos?: unknown }).total_alunos ?? 0),
+            total_professores: Number((e as unknown as { total_professores?: unknown }).total_professores ?? 0),
             notas_lancadas: 0,
             pagamentos_em_dia: 0,
             ultimo_acesso: null,
-          });
+          })
         } else {
           console.warn("⚠️ Nenhuma escola encontrada, usando mock");
           setEscola(mockEscola);

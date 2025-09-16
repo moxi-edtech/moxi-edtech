@@ -2,6 +2,7 @@
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 
 import { OnboardingData } from "@/types/onboarding"
 
@@ -73,10 +74,13 @@ export default function OnboardingStep1({ onNext, data, updateData }: Props) {
           <div className="flex items-center space-x-4">
             <div className="relative">
               {logoPreview ? (
-                <img 
-                  src={logoPreview} 
-                  alt="Preview" 
+                <Image
+                  src={logoPreview}
+                  alt="Preview"
+                  width={64}
+                  height={64}
                   className="w-16 h-16 rounded-full object-cover border"
+                  unoptimized
                 />
               ) : (
                 <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">

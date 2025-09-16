@@ -2,18 +2,6 @@
 
 import { useState } from "react";
 
-interface SeedSuccess {
-  ok: true;
-  message: string;
-  userId: string;
-}
-
-interface SeedError {
-  ok: false;
-  message: string;
-  error?: string;
-}
-
 interface SeedResult {
   ok: boolean;
   message: string;

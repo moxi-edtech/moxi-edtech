@@ -1,9 +1,9 @@
 // apps/web/src/app/auth/redirect/page.tsx
 import { redirect } from "next/navigation"
 import { supabaseServer } from "@/lib/supabaseServer"
-import type { Database } from "@/types/supabase"
+import type { ProfileRow, UserRole } from "~types/aliases"
 
-export default async function RedirectPage() {
+export default async function Page() {
   const supabase = await supabaseServer()
 
   // 1) usuário autenticado (seguro)
@@ -17,10 +17,10 @@ export default async function RedirectPage() {
     .from("profiles") // nome da tabela
     .select("role, escola_id")
     .eq("user_id", user.id)
-    .maybeSingle<Database["public"]["Tables"]["profiles"]["Row"]>()
+    .maybeSingle<ProfileRow>()
 
   // 3) valores normalizados (sem vermelho)
-  const role: Database["public"]["Enums"]["user_role"] | "guest" = profile?.role ?? "guest"
+  const role: UserRole | "guest" = (profile?.role as UserRole | null) ?? "guest"
   const escola_id: string | null = profile?.escola_id ?? null
 
   // 4) redirect por role

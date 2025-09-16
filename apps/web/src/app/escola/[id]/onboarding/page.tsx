@@ -11,7 +11,7 @@ import OnboardingStep3 from "@/components/escola/OnboardingStep3"
 
 import { OnboardingData } from "@/types/onboarding"
 
-export default function OnboardingPage() {
+export default function Page() {
   const { id } = useParams<{ id: string }>() // ✅ pega o id da rota
   const router = useRouter()
   const supabase = createClient()

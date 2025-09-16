@@ -15,7 +15,7 @@ import {
   BanknotesIcon,
 } from "@heroicons/react/24/outline"
 
-export default async function SuperAdminDashboard() {
+export default async function Page() {
   try {
     const [data, charts] = await Promise.all([
       getDashboardData(),

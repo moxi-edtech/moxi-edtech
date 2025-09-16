@@ -1,6 +1,6 @@
 import PortalLayout from "@/components/layout/PortalLayout";
 
-export default function DashboardPage() {
+export default function Page() {
   return (
     <PortalLayout>
       <div className="grid md:grid-cols-3 gap-6">

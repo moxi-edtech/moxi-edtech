@@ -14,7 +14,6 @@ import {
   BoltIcon, // ⚡ item especial Seed
   XMarkIcon,
   Bars3Icon,
-  ChevronDownIcon,
   MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 import { useState } from "react";
@@ -51,7 +50,7 @@ const Logo = () => (
 export default function Sidebar() {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // removed unused collapsed state
 
   const isActive = (href: string) => {
     return pathname === href || pathname?.startsWith(href + "/");

@@ -67,18 +67,7 @@ function Card({ title, value, icon: Icon, trend, change }: KPI) {
   );
 }
 
-// Skeleton
-function CardSkeleton() {
-  return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-      <div className="animate-pulse">
-        <div className="h-4 bg-gray-200 rounded w-1/3 mb-2"></div>
-        <div className="h-8 bg-gray-200 rounded w-2/3 mb-2"></div>
-        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-      </div>
-    </div>
-  );
-}
+// Skeleton (unused) — remove or re-enable if needed
 
 // Placeholder de gráficos
 function ChartPlaceholder({ title }: { title: string }) {
@@ -122,7 +111,7 @@ function QuickActionButton({ label, route, icon: Icon }: QuickAction) {
 }
 
 // Página principal
-export default async function AdminDashboardPage() {
+export default async function Page() {
   const session = await getSession();
   if (!session || !['super_admin', 'admin'].includes(session.user.role)) {
     redirect('/login');

@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import RequireSuperAdmin from "@/app/(guards)/RequireSuperAdmin";
 import { createClient } from "@/lib/supabaseClient";
-import type { Database } from "@/types/supabase";
+import type { Database } from "~types/supabase";
 
-export default function NovoUsuarioPage() {
+export default function Page() {
   return (
     <RequireSuperAdmin>
       <CriarUsuarioForm />

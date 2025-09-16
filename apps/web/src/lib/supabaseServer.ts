@@ -1,7 +1,7 @@
 // apps/web/src/lib/supabaseServer.ts
 import { cookies } from "next/headers"
 import { createServerClient, type CookieOptions } from "@supabase/ssr"
-import type { Database } from "@/types/supabase"
+import type { Database } from "~types/supabase"
 
 // Função que devolve uma instância do supabase configurada para o lado servidor
 export async function supabaseServer() {
@@ -15,10 +15,12 @@ export async function supabaseServer() {
         get(name: string) {
           return cookieStore.get(name)?.value
         },
-        set(_name: string, _value: string, _options: CookieOptions) {
+        set(name: string, value: string, options: CookieOptions) {
+          void name; void value; void options
           // no server a gente não precisa setar cookies manualmente
         },
-        remove(_name: string, _options: CookieOptions) {
+        remove(name: string, options: CookieOptions) {
+          void name; void options
           // idem
         },
       },

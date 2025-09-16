@@ -7,7 +7,7 @@ import {
   ShieldExclamationIcon,
 } from "@heroicons/react/24/outline"
 import { createClient } from "@/lib/supabaseClient"
-import type { Database } from "@/types/supabase"
+import type { Database } from "~types/supabase"
 
 type Matricula = Pick<Database["public"]["Tables"]["matriculas"]["Row"], "id" | "created_at">
 

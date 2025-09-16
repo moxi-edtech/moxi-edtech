@@ -5,11 +5,11 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabaseClient";
 
-export default function EscolaDashboard() {
+export default function Page() {
   const { id } = useParams<{ id: string }>();
   const supabase = createClient();
 
-  type EscolaRow = import("@/types/supabase").Database["public"]["Tables"]["escolas"]["Row"]
+  type EscolaRow = import("~types/supabase").Database["public"]["Tables"]["escolas"]["Row"]
   const [escola, setEscola] = useState<EscolaRow | null>(null);
   const [loading, setLoading] = useState(true);
 

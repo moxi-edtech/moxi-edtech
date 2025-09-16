@@ -2,7 +2,7 @@
 
 // lib/supabaseClient.ts
 import { createBrowserClient } from "@supabase/ssr"
-import type { Database } from "@/types/supabase"
+import type { Database } from "~types/supabase"
 
 // usado no LoginPage ou qualquer coisa client-side
 export const createClient = () =>

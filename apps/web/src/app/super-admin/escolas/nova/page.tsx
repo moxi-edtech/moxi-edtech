@@ -5,9 +5,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import RequireSuperAdmin from "@/app/(guards)/RequireSuperAdmin";
 import { createClient } from "@/lib/supabaseClient";
-import type { Database } from "@/types/supabase";
+import type { Database } from "~types/supabase";
 
-export default function NovaEscolaPage() {
+export default function Page() {
   return (
     <RequireSuperAdmin>
       <CriarEscolaForm />
@@ -71,7 +71,6 @@ function CriarEscolaForm() {
             nif: cleanNif,
             endereco: endereco || null,
             status: "ativa",
-            cor_primaria: null,
             onboarding_finalizado: false, // 👈 força o fluxo de onboarding
           },
         ])
@@ -82,6 +81,11 @@ function CriarEscolaForm() {
         const dup = (escolaError as { code?: string })?.code === "23505";
         throw new Error(dup ? "Já existe uma escola com este NIF." : escolaError.message);
       }
+      if (!escola) {
+        throw new Error("Falha ao criar escola.");
+      }
+      const escolaId = escola.id
+      const escolaNome = escola.nome
 
       // 2) Vincular administrador (opcional)
       let mensagemAdmin = "";
@@ -90,7 +94,7 @@ function CriarEscolaForm() {
           // Busca usuário existente pelo email
           const { data: usuario, error: userError } = await supabase
             .from("profiles")
-            .select("user_id, email, telefone, nome, role, escola_id")
+            .select()
             .eq("email", adminEmail.trim().toLowerCase())
             .maybeSingle();
 
@@ -103,7 +107,7 @@ function CriarEscolaForm() {
             if (adminNome) updates.nome = adminNome.trim();
             // ⚠️ Define papel do usuário como admin escolar
             updates.role = "admin" as Database["public"]["Enums"]["user_role"];
-            if (!usuario.escola_id) updates.escola_id = escola.id;
+            if (!usuario.escola_id) updates.escola_id = escolaId;
 
             if (Object.keys(updates).length > 0) {
               const { error: updErr } = await supabase
@@ -118,26 +122,24 @@ function CriarEscolaForm() {
               .from("escola_administradores")
               .insert([
                 {
-                  escola_id: escola.id,
+                  escola_id: escolaId,
                   user_id: usuario.user_id,
                   cargo: "administrador_principal",
                 },
-              ]);
+              ])
 
             if (adminError) {
-  console.error("Erro ao vincular administrador:", JSON.stringify(adminError, null, 2));
-  mensagemAdmin = ` ⚠️ Administrador não vinculado (erro técnico).`;
-} else {
-  mensagemAdmin = ` ✅ Administrador vinculado: ${adminEmail}`;
-  if (adminTelefone) mensagemAdmin += ` | Tel: ${adminTelefone}`;
-  if (adminNome) mensagemAdmin += ` | Nome: ${adminNome}`;
-}
-
+              mensagemAdmin = ` ⚠️ Administrador não vinculado (erro técnico).`;
+            } else {
+              mensagemAdmin = ` ✅ Administrador vinculado: ${adminEmail}`;
+              if (adminTelefone) mensagemAdmin += ` | Tel: ${adminTelefone}`;
+              if (adminNome) mensagemAdmin += ` | Nome: ${adminNome}`;
+            }
+          } else {
             // Usuário não existe nos profiles
             mensagemAdmin = ` ⚠️ Usuário não encontrado. Vincule manualmente depois.`;
           }
-        } catch (adminErr) {
-          console.error("Erro no vínculo do admin:", JSON.stringify(adminErr, null, 2));
+        } catch {
           mensagemAdmin = ` ⚠️ Erro ao vincular administrador.`;
         }
       }
@@ -145,12 +147,12 @@ function CriarEscolaForm() {
       // 3) Mensagem de sucesso + redirecionamento para onboarding
       setMsg({
         type: "ok",
-        text: `Escola "${escola.nome}" criada com sucesso! Redirecionando para o onboarding...${mensagemAdmin}`,
+        text: `Escola "${escolaNome}" criada com sucesso! Redirecionando para o onboarding...${mensagemAdmin}`,
       });
 
       setTimeout(() => {
         // Leva direto ao fluxo de onboarding da escola recém-criada
-        router.push(`/escola/${escola.id}/onboarding`);
+        router.push(`/escola/${escolaId}/onboarding`);
       }, 2000);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)

@@ -9,7 +9,6 @@ import {
   Cog6ToothIcon,
   ChartBarIcon,
   LifebuoyIcon,
-  XMarkIcon,
   Bars3Icon,
   ChevronDownIcon,
   BellIcon,

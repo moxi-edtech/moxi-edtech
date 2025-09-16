@@ -759,7 +759,36 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      escolas_view: {
+        Row: {
+          id: string
+          nome: string
+          status: string | null
+          plano: string
+          last_access: string | null
+          total_alunos: number
+          total_professores: number
+          cidade: string | null
+          estado: string | null
+        }
+        Relationships: []
+      }
+      matriculas_por_ano: {
+        Row: {
+          escola_id: string
+          ano: string
+          total: number
+        }
+        Relationships: []
+      }
+      pagamentos_status: {
+        Row: {
+          escola_id: string
+          status: string
+          total: number
+        }
+        Relationships: []
+      }
     }
     Functions: {
       can_access: {

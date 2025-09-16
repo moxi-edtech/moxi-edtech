@@ -4,7 +4,6 @@
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabaseClient"
 import type { ChartsData } from "@/lib/charts"
-import type { Database } from "@/types/supabase"
 
 type Props = {
   escolaId?: string
@@ -38,36 +37,32 @@ export default function ChartsSection({ escolaId, data }: Props) {
 
     const fetchData = async () => {
       try {
-        // Matriculas: group by year (client-side)
-        const { data: matriculasRows } = await supabase
-          .from("matriculas")
-          .select("created_at")
-          .eq("escola_id", escolaId)
+        // Typed view queries (ensure migration + gen:types have run)
+        const { data: m } = await supabase
+          .from('matriculas_por_ano' as unknown as never)
+          .select('ano, total')
+          .eq('escola_id', escolaId)
 
-        const byYear: Record<string, number> = {}
-        ;(matriculasRows as Array<Pick<Database["public"]["Tables"]["matriculas"]["Row"], "created_at">> | null)?.forEach(r => {
-          const year = r?.created_at ? new Date(r.created_at).getFullYear().toString() : "desconhecido"
-          byYear[year] = (byYear[year] ?? 0) + 1
-        })
+        type MatriculasView = { ano: string | null; total: number | null }
+        const mList: ChartData[] = (m as MatriculasView[] | null)?.map((row) => ({
+          label: row.ano ?? 'desconhecido',
+          value: Number(row.total ?? 0),
+        })) ?? []
 
-        const matriculasData: ChartData[] = Object.entries(byYear).map(([label, value]) => ({ label, value }))
+        const { data: p } = await supabase
+          .from('pagamentos_status' as unknown as never)
+          .select('status, total')
+          .eq('escola_id', escolaId)
 
-        // Pagamentos: count by status
-        const { data: pagamentosRows } = await supabase
-          .from("pagamentos")
-          .select("status")
-          .eq("escola_id", escolaId)
-
-        const byStatus: Record<string, number> = {}
-        ;(pagamentosRows as Array<Pick<Database["public"]["Tables"]["pagamentos"]["Row"], "status">> | null)?.forEach(r => {
-          const key = r?.status ?? "desconhecido"
-          byStatus[key] = (byStatus[key] ?? 0) + 1
-        })
-        const pagamentosData: ChartData[] = Object.entries(byStatus).map(([label, value]) => ({ label, value }))
+        type PagamentosView = { status: string | null; total: number | null }
+        const pList: ChartData[] = (p as PagamentosView[] | null)?.map((row) => ({
+          label: row.status ?? 'desconhecido',
+          value: Number(row.total ?? 0),
+        })) ?? []
 
         if (active) {
-          setMatriculas(matriculasData)
-          setPagamentos(pagamentosData)
+          setMatriculas(mList)
+          setPagamentos(pList)
         }
       } catch (err) {
         console.error("Erro ao carregar dados de gráficos:", err)

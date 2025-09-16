@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import RequireSuperAdmin from "@/app/(guards)/RequireSuperAdmin";
 import { createClient } from "@/lib/supabaseClient";
-import type { Database } from "@/types/supabase";
+import type { Database } from "~types/supabase";
 
 type Usuario = {
   id: string;
@@ -17,7 +17,7 @@ type Usuario = {
   papel_escola: string | null;
 };
 
-export default function UsuariosPage() {
+export default function Page() {
   return (
     <RequireSuperAdmin>
       <ListaUsuarios />
@@ -41,7 +41,6 @@ function ListaUsuarios() {
         .order("nome", { ascending: true });
 
       if (!error && profiles) {
-        type RoleEnum = Database["public"]["Enums"]["user_role"]
         type ProfileRow = Pick<Database["public"]["Tables"]["profiles"]["Row"], "user_id" | "nome" | "email" | "telefone" | "role">
         const pRows = profiles as ProfileRow[]
 

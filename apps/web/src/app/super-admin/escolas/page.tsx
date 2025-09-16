@@ -4,7 +4,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabaseClient";
-import type { Database } from "@/types/supabase";
 import {
   MagnifyingGlassIcon,
   PlusCircleIcon,
@@ -33,7 +32,7 @@ const mockSchools: School[] = [
   { id: 5, name: "Escola Técnica Municipal", status: "pendente", plan: "Básico", lastAccess: null, students: 0, teachers: 0, city: "Salvador", state: "BA" },
 ];
 
-export default function SchoolsPage() {
+export default function Page() {
   const router = useRouter();
   const supabase = createClient();
 
@@ -55,28 +54,36 @@ export default function SchoolsPage() {
           return;
         }
 
-        // Busca básica da tabela escolas
-        const { data, error } = await supabase
-          .from("escolas")
-          .select("id, nome, status, endereco")
-          .order("nome", { ascending: true });
+        // Typed query using the escolas_view
+        const { data: vdata } = await supabase
+          .from('escolas_view' as unknown as never)
+          .select('id, nome, status, plano, last_access, total_alunos, total_professores, cidade, estado')
+          .order('nome', { ascending: true })
 
-        if (error) console.warn("⚠️ Falha ao buscar escolas:", error.message);
-
-        if (active && data && data.length) {
-          type EscolaRow = Pick<Database["public"]["Tables"]["escolas"]["Row"], "id" | "nome" | "status" | "endereco">;
-          const normalized: School[] = (data as EscolaRow[]).map((d) => ({
-            id: d.id,
-            name: d.nome ?? "Sem nome",
-            status: d.status ?? "ativa",
-            plan: "Básico",
-            lastAccess: null,
-            students: 0,
-            teachers: 0,
-            city: d.endereco ?? "",
-            state: "",
-          }));
-          setSchools(normalized);
+        if (active && vdata && vdata.length) {
+          type EscolaView = {
+            id: string | number
+            nome?: string | null
+            status?: string | null
+            plano?: string | null
+            last_access?: string | null
+            total_alunos?: number | null
+            total_professores?: number | null
+            cidade?: string | null
+            estado?: string | null
+          }
+          const normalized: School[] = (vdata as EscolaView[]).map((d) => ({
+            id: String(d.id),
+            name: d.nome ?? 'Sem nome',
+            status: (d.status ?? 'ativa') as School['status'],
+            plan: (d.plano ?? 'Básico') as School['plan'],
+            lastAccess: d.last_access ?? null,
+            students: Number(d.total_alunos ?? 0),
+            teachers: Number(d.total_professores ?? 0),
+            city: d.cidade ?? '',
+            state: d.estado ?? '',
+          }))
+          setSchools(normalized)
         }
       } catch (e) {
         console.error("Erro inesperado ao carregar escolas:", e);
