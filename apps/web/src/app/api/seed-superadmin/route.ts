@@ -13,9 +13,12 @@ const password = "12345678";
 const nome = "Super Admin";
 
 export async function GET() {
-  if (process.env.NODE_ENV === "production") {
+  const enabled =
+    process.env.NODE_ENV !== "production" ||
+    process.env.NEXT_PUBLIC_ENABLE_SEED === "1";
+  if (!enabled) {
     return NextResponse.json(
-      { error: "🚫 Rota desativada em produção" },
+      { error: "🚫 Rota desativada" },
       { status: 403 }
     );
   }
