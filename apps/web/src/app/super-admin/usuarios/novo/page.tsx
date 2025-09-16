@@ -44,7 +44,6 @@ function CriarUsuarioForm() {
 
       if (!error && data) setEscolas(data);
     };
-
     fetchEscolas();
   }, [supabase]);
 
@@ -69,49 +68,21 @@ function CriarUsuarioForm() {
     try {
       setLoading(true);
 
-      // 1. Criar usuário no Supabase Auth
-      const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-        email: email.trim().toLowerCase(),
-        password: Math.random().toString(36).slice(-10), // senha temporária
-        email_confirm: false,
-      });
-
-      if (authError) throw authError;
-      if (!authUser?.user) throw new Error("Falha ao criar usuário no Auth");
-
-      // 2. Criar perfil global
       const roleEnum = roleMap[papel];
-      const { error: profileError } = await supabase.from("profiles").insert([
-        {
-          user_id: authUser.user.id,
-          email: email.trim().toLowerCase(),
-          nome: nome.trim(),
-          telefone: telefone || null,
-          role: roleEnum, // mapped to enum
-        },
-      ]);
-
-      if (profileError) throw profileError;
-
-      // 3. Criar vínculo com escola
-      const { error: vinculoError } = await supabase.from("escola_usuarios").insert([
-        {
-          escola_id: escolaId,
-          user_id: authUser.user.id,
-          papel,
-        },
-      ]);
-
-      if (vinculoError) throw vinculoError;
+      const res = await fetch("/api/super-admin/users/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nome, email, telefone, papel, escolaId, roleEnum }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "Falha ao criar usuário");
 
       setMsg({
         type: "ok",
         text: `✅ Usuário criado com sucesso (${papel}) na escola selecionada.`,
       });
 
-      setTimeout(() => {
-        router.push("/super-admin/usuarios");
-      }, 2000);
+      setTimeout(() => { router.push("/super-admin/usuarios"); }, 1500);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       console.error("Erro ao criar usuário:", err);

@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@/lib/supabaseClient';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 
 export default function Page() {
-  const supabase = createClient();
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState('');
@@ -16,24 +16,21 @@ export default function Page() {
   setCarregando(true);
   setErro('');
 
-  console.log('🔐 Tentando login com:', { email, senha });
-
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password: senha,
-  });
-
-  console.log('📋 Resposta do Supabase:', { data, error });
-
-  if (error) {
-    console.log('❌ Erro de login:', error.message);
-    setErro('Credenciais inválidas. Verifique seus dados.');
-  } else {
-    console.log('✅ Login bem-sucedido! Redirecionando para /redirect...');
-    console.log('👤 Usuário:', data.user);
-    
-    // ⚠️ SOLUÇÃO: Força recarregamento completo para garantir cookies/sessão
-    window.location.href = '/redirect';
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: senha }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+      setErro(data.error || 'Credenciais inválidas. Verifique seus dados.');
+    } else {
+      router.push('/redirect');
+    }
+  } catch (err) {
+    console.error('❌ Erro de conexão:', err);
+    setErro('Erro de conexão com o servidor.');
   }
 
   setCarregando(false);

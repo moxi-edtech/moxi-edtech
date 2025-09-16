@@ -1,4 +1,4 @@
-import { Kpi, QuickAction } from @/app/components/definitions'
+import type { Kpi, QuickAction } from "@/components/super-admin/definitions"
 import {
   BuildingLibraryIcon,
   UsersIcon,

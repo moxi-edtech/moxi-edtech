@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import type { Database } from "~types/supabase";
 
@@ -6,16 +7,21 @@ import type { Database } from "~types/supabase";
 export const dynamic = "force-dynamic";
 
 export default async function RedirectPage() {
+  const cookieStore = await cookies();
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get() {
-          return undefined;
+        get(name: string) {
+          return cookieStore.get(name)?.value;
         },
-        set() {},
-        remove() {},
+        set(name: string, value: string, options: CookieOptions) {
+          void name; void value; void options; // no-op in RSC
+        },
+        remove(name: string, options: CookieOptions) {
+          void name; void options; // no-op in RSC
+        },
       },
     }
   );
