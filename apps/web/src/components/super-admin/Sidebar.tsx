@@ -27,9 +27,6 @@ const navigation = [
   { name: "Relatórios", icon: ChartBarIcon, href: "/super-admin/relatorios" },
   { name: "Configurações", icon: Cog6ToothIcon, href: "/super-admin/configuracoes" },
   { name: "Suporte", icon: LifebuoyIcon, href: "/super-admin/suporte" },
-
-  // 🚀 Item especial de Seed
-  { name: "Seed Super Admin", icon: BoltIcon, href: "/admin-seed" },
 ];
 
 // Componente de Logo
@@ -54,6 +51,13 @@ export default function Sidebar() {
 
   // Build navigation list, append Debug (dev-only)
   const items = [...navigation];
+  // Condicional: exibe o Seed somente em dev ou se explicitamente habilitado
+  if (
+    process.env.NODE_ENV !== "production" ||
+    process.env.NEXT_PUBLIC_ENABLE_SEED === "1"
+  ) {
+    items.push({ name: "Seed Super Admin", icon: BoltIcon, href: "/admin-seed" });
+  }
   if (process.env.NODE_ENV !== "production") {
     items.push({ name: "Debug", icon: BoltIcon, href: "/super-admin/debug" });
   }
