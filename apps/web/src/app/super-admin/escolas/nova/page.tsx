@@ -4,8 +4,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import RequireSuperAdmin from "@/app/(guards)/RequireSuperAdmin";
-import { createClient } from "@/lib/supabaseClient";
-import type { Database } from "~types/supabase";
+import type { } from "~types/supabase";
 
 export default function Page() {
   return (
@@ -17,7 +16,7 @@ export default function Page() {
 
 function CriarEscolaForm() {
   const router = useRouter();
-  const supabase = createClient();
+  // operações de banco agora acontecem no backend via API
 
   const [nome, setNome] = useState("");
   const [nif, setNif] = useState("");
@@ -62,96 +61,31 @@ function CriarEscolaForm() {
       const cleanNif = nif ? nif.replace(/\D/g, "") : null;
       const cleanTelefone = adminTelefone ? adminTelefone.replace(/\D/g, "") : null;
 
-      // 1) Criar a escola com onboarding_finalizado = false
-      const { data: escola, error: escolaError } = await supabase
-        .from("escolas")
-        .insert([
-          {
-            nome: nome.trim(),
-            nif: cleanNif,
-            endereco: endereco || null,
-            status: "ativa",
-            onboarding_finalizado: false, // 👈 força o fluxo de onboarding
-          },
-        ])
-        .select()
-        .single();
-
-      if (escolaError) {
-        const dup = (escolaError as { code?: string })?.code === "23505";
-        throw new Error(dup ? "Já existe uma escola com este NIF." : escolaError.message);
-      }
-      if (!escola) {
-        throw new Error("Falha ao criar escola.");
-      }
-      const escolaId = escola.id
-      const escolaNome = escola.nome
-
-      // 2) Vincular administrador (opcional)
-      let mensagemAdmin = "";
-      if (adminEmail.trim()) {
-        try {
-          // Busca usuário existente pelo email
-          const { data: usuario, error: userError } = await supabase
-            .from("profiles")
-            .select()
-            .eq("email", adminEmail.trim().toLowerCase())
-            .maybeSingle();
-
-          if (userError) throw userError;
-
-          if (usuario?.user_id) {
-            // Atualiza dados do profile (telefone/nome e, se desejar, role/escola_id)
-            const updates: Database["public"]["Tables"]["profiles"]["Update"] = {};
-            if (adminTelefone) updates.telefone = cleanTelefone;
-            if (adminNome) updates.nome = adminNome.trim();
-            // ⚠️ Define papel do usuário como admin escolar
-            updates.role = "admin" as Database["public"]["Enums"]["user_role"];
-            if (!usuario.escola_id) updates.escola_id = escolaId;
-
-            if (Object.keys(updates).length > 0) {
-              const { error: updErr } = await supabase
-                .from("profiles")
-                .update(updates)
-                .eq("user_id", usuario.user_id);
-              if (updErr) console.warn("Falha ao atualizar profile:", updErr.message);
-            }
-
-            // Registra vínculo na tabela de administradores da escola
-            const { error: adminError } = await supabase
-              .from("escola_administradores")
-              .insert([
-                {
-                  escola_id: escolaId,
-                  user_id: usuario.user_id,
-                  cargo: "administrador_principal",
-                },
-              ])
-
-            if (adminError) {
-              mensagemAdmin = ` ⚠️ Administrador não vinculado (erro técnico).`;
-            } else {
-              mensagemAdmin = ` ✅ Administrador vinculado: ${adminEmail}`;
-              if (adminTelefone) mensagemAdmin += ` | Tel: ${adminTelefone}`;
-              if (adminNome) mensagemAdmin += ` | Nome: ${adminNome}`;
-            }
-          } else {
-            // Usuário não existe nos profiles
-            mensagemAdmin = ` ⚠️ Usuário não encontrado. Vincule manualmente depois.`;
-          }
-        } catch {
-          mensagemAdmin = ` ⚠️ Erro ao vincular administrador.`;
-        }
-      }
-
-      // 3) Mensagem de sucesso + redirecionamento para onboarding
-      setMsg({
-        type: "ok",
-        text: `Escola "${escolaNome}" criada com sucesso! Redirecionando para o onboarding...${mensagemAdmin}`,
+      // Chamada ao backend para criação segura e vínculo opcional do admin
+      const res = await fetch("/api/escolas/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nome: nome.trim(),
+          nif: cleanNif,
+          endereco: endereco ? endereco.trim() : null,
+          admin: adminEmail.trim()
+            ? { email: adminEmail.trim(), telefone: cleanTelefone, nome: adminNome.trim() || null }
+            : null,
+        }),
       });
+      const json = await res.json();
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || "Falha ao criar escola");
+      }
+
+      const escolaId: string = json.escolaId;
+      const escolaNome: string = json.escolaNome;
+      const mensagemAdmin: string = json.mensagemAdmin || "";
+
+      setMsg({ type: "ok", text: `Escola "${escolaNome}" criada com sucesso! Redirecionando para o onboarding...${mensagemAdmin}` });
 
       setTimeout(() => {
-        // Leva direto ao fluxo de onboarding da escola recém-criada
         router.push(`/escola/${escolaId}/onboarding`);
       }, 2000);
     } catch (err) {
@@ -188,7 +122,7 @@ function CriarEscolaForm() {
             placeholder="9 dígitos (apenas números)"
             value={nif}
             onChange={(e) => setNif(e.target.value)}
-            maxLength={14}
+            maxLength={9}
             disabled={loading}
           />
           <p className="text-xs text-gray-500 mt-1">Se informado, deve ser único (9 dígitos).</p>

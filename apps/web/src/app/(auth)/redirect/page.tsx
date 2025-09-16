@@ -1,61 +1,57 @@
-// apps/web/src/app/auth/redirect/page.tsx
-import { redirect } from "next/navigation"
-import { supabaseServer } from "@/lib/supabaseServer"
-import type { ProfileRow, UserRole } from "~types/aliases"
+import { redirect } from "next/navigation";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import type { Database } from "~types/supabase";
 
-export default async function Page() {
-  const supabase = await supabaseServer()
+// ⚡ força execução dinâmica (pega cookies)
+export const dynamic = "force-dynamic";
 
-  // 1) usuário autenticado (seguro)
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
-  if (userError || !user) {
-    redirect("/login")
+export default async function RedirectPage() {
+  const supabase = createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get() {
+          return undefined;
+        },
+        set() {},
+        remove() {},
+      },
+    }
+  );
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  const user = session?.user;
+  if (!user) {
+    redirect("/login");
   }
 
-  // 2) perfil no banco — TIPADO
   const { data: profile } = await supabase
-    .from("profiles") // nome da tabela
+    .from("profiles")
     .select("role, escola_id")
-    .eq("user_id", user.id)
-    .maybeSingle<ProfileRow>()
+    .eq("user_id", user!.id)
+    .maybeSingle();
 
-  // 3) valores normalizados (sem vermelho)
-  const role: UserRole | "guest" = (profile?.role as UserRole | null) ?? "guest"
-  const escola_id: string | null = profile?.escola_id ?? null
+  const role: string = profile?.role ?? "guest";
+  const escola_id: string | null = profile?.escola_id ?? null;
 
-  // 4) redirect por role
   switch (role) {
     case "super_admin":
-      console.log("➡️ Redirecionando super_admin para /super-admin")
-      redirect("/super-admin")
-      break
-
+      redirect("/super-admin");
     case "admin":
-      if (escola_id) {
-        console.log(`➡️ Redirecionando admin para /admin/escolas/${escola_id}`)
-        redirect(`/admin/escolas/${escola_id}`)
-      } else {
-        redirect("/admin")
-      }
-      break
-
+      redirect(escola_id ? `/admin/escolas/${escola_id}` : "/admin");
     case "professor":
-      redirect("/professor")
-      break
-
+      redirect("/professor");
     case "aluno":
-      redirect("/aluno")
-      break
-
+      redirect("/aluno");
     case "secretaria":
-      redirect("/secretaria")
-      break
-
+      redirect("/secretaria");
     case "financeiro":
-      redirect("/financeiro")
-      break
-
+      redirect("/financeiro");
     default:
-      redirect("/")
+      redirect("/");
   }
-} // ← COLCHETE DE FECHAMENTO ADICIONADO AQUI
+}

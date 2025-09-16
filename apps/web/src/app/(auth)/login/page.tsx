@@ -2,11 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabaseClient';
 import Image from 'next/image';
 
 export default function Page() {
-  const supabase = createClient();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
@@ -18,31 +16,36 @@ export default function Page() {
     setCarregando(true);
     setErro('');
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password: senha,
-    });
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: senha }),
+      });
 
-    if (error) {
-      setErro('Credenciais inválidas. Verifique seus dados.');
-    } else {
-      router.push('/redirect');
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        setErro(data.error || 'Credenciais inválidas. Verifique seus dados.');
+      } else {
+        router.push('/redirect');
+      }
+    } catch {
+      setErro('Erro de conexão com o servidor.');
+    } finally {
+      setCarregando(false);
     }
-
-    setCarregando(false);
   };
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-teal-500 to-sky-600 px-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 space-y-6">
-        {/* Logo e título */}
         <div className="flex flex-col items-center gap-3">
           <Image src="/moxinexa-logo.svg" alt="Moxi Nexa" width={42} height={42} />
           <h1 className="text-3xl font-bold text-slate-900">Moxi Nexa</h1>
           <p className="text-sm text-slate-500">Sistema de Gestão Escolar</p>
         </div>
 
-        {/* Formulário */}
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-slate-700">
@@ -74,9 +77,7 @@ export default function Page() {
             />
           </div>
 
-          {erro && (
-            <p className="text-center text-sm text-red-500 font-medium">{erro}</p>
-          )}
+          {erro && <p className="text-center text-sm text-red-500 font-medium">{erro}</p>}
 
           <button
             type="submit"
@@ -87,7 +88,6 @@ export default function Page() {
           </button>
         </form>
 
-        {/* Rodapé */}
         <p className="text-center text-xs text-slate-400">
           &copy; {new Date().getFullYear()} Moxi Nexa. Criamos sistemas que escalam.
         </p>

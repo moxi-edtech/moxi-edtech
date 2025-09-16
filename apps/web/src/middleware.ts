@@ -1,11 +1,10 @@
-// apps/web/src/middleware.ts
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
-import { createServerClient } from "@supabase/ssr"
-import type { Database } from "~types/supabase"
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import type { Database } from "~types/supabase";
 
 export async function middleware(req: NextRequest) {
-  const res = NextResponse.next()
+  const res = NextResponse.next();
 
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,73 +12,59 @@ export async function middleware(req: NextRequest) {
     {
       cookies: {
         get(name: string) {
-          return req.cookies.get(name)?.value
+          return req.cookies.get(name)?.value;
         },
-        set(name: string, value: string, options) {
-          res.cookies.set(name, value, options)
+        set(name: string, value: string, options: CookieOptions) {
+          res.cookies.set(name, value, options);
         },
-        remove(name: string, options) {
-          res.cookies.set(name, "", { ...options, maxAge: 0 })
+        remove(name: string, options: CookieOptions) {
+          res.cookies.set(name, "", { ...options, maxAge: 0 });
         },
       },
     }
-  )
+  );
 
-  // 1) busca usuário autenticado
+  // 🔑 Busca sessão server-side
   const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser()
+    data: { session },
+  } = await supabase.auth.getSession();
 
-  if (error || !user) {
-    console.warn("⚠️ Middleware não achou sessão:", error?.message)
-    return NextResponse.redirect(new URL("/login", req.url))
+  const user = session?.user;
+  if (!user) {
+    return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  // 2) busca perfil no banco (com tipagem explícita)
-  const { data: profileData } = await supabase
+  // 🔎 Pega role do banco
+  const { data: profile } = await supabase
     .from("profiles")
     .select("role, escola_id")
     .eq("user_id", user.id)
-    .single()
+    .maybeSingle();
 
-  // 3) normaliza valores com tipagem segura
-  const role: string = (profileData as { role?: string } | null)?.role ?? "guest"
-  const escola_id: string | null = (profileData as { escola_id?: string } | null)?.escola_id ?? null
-  const pathname = req.nextUrl.pathname
+  const role: string = profile?.role ?? "guest";
+  const pathname = req.nextUrl.pathname;
 
-  console.log("DEBUG middleware user:", { role, escola_id, pathname })
-
-  // 4) regras de acesso
+  // 🚦 Regras de acesso
   if (pathname.startsWith("/super-admin") && role !== "super_admin") {
-    return NextResponse.redirect(new URL("/", req.url))
+    return NextResponse.redirect(new URL("/", req.url));
   }
-
-  if (
-    pathname.startsWith("/admin") &&
-    role !== "admin" &&
-    role !== "super_admin"
-  ) {
-    return NextResponse.redirect(new URL("/", req.url))
+  if (pathname.startsWith("/admin") && !["admin", "super_admin"].includes(role)) {
+    return NextResponse.redirect(new URL("/", req.url));
   }
-
   if (pathname.startsWith("/professor") && role !== "professor") {
-    return NextResponse.redirect(new URL("/", req.url))
+    return NextResponse.redirect(new URL("/", req.url));
   }
-
   if (pathname.startsWith("/aluno") && role !== "aluno") {
-    return NextResponse.redirect(new URL("/", req.url))
+    return NextResponse.redirect(new URL("/", req.url));
   }
-
   if (pathname.startsWith("/secretaria") && role !== "secretaria") {
-    return NextResponse.redirect(new URL("/", req.url))
+    return NextResponse.redirect(new URL("/", req.url));
+  }
+  if (pathname.startsWith("/financeiro") && role !== "financeiro") {
+    return NextResponse.redirect(new URL("/", req.url));
   }
 
-  if (pathname.startsWith("/financeiro") && role !== "financeiro" && role !== "super_admin") {
-    return NextResponse.redirect(new URL("/", req.url))
-  }
-
-  return res
+  return res;
 }
 
 export const config = {
@@ -91,4 +76,4 @@ export const config = {
     "/secretaria/:path*",
     "/financeiro/:path*",
   ],
-}
+};
