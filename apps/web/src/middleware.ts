@@ -75,7 +75,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/", req.url))
   }
 
-  if (pathname.startsWith("/financeiro") && role !== "financeiro") {
+  if (pathname.startsWith("/financeiro") && role !== "financeiro" && role !== "super_admin") {
     return NextResponse.redirect(new URL("/", req.url))
   }
 

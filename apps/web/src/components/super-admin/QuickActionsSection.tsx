@@ -47,7 +47,7 @@ const quickActions: QuickAction[] = [
   { 
     label: "Financeiro", 
     icon: BanknotesIcon, 
-    href: "/super-admin/financeiro", 
+    href: "/financeiro", 
     variant: 'secondary',
     description: "Acessar painel financeiro"
   },
