@@ -1,1 +1,24 @@
 node_modules
+
+# Logs e cache
+*.log
+.DS_Store
+*.cache
+
+# TypeScript build info
+*.tsbuildinfo
+apps/web/tsconfig.tsbuildinfo
+
+# Env files (nunca commitar segredos)
+.env
+.env.local
+.env.*.local
+
+# Ferramentas
+coverage/
+dist/
+build/
+
+# Supabase temp
+supabase/.temp/
+apps/web/supabase/.temp/
