@@ -52,6 +52,12 @@ export default function Sidebar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   // removed unused collapsed state
 
+  // Build navigation list, append Debug (dev-only)
+  const items = [...navigation];
+  if (process.env.NODE_ENV !== "production") {
+    items.push({ name: "Debug", icon: BoltIcon, href: "/super-admin/debug" });
+  }
+
   const isActive = (href: string) => {
     return pathname === href || pathname?.startsWith(href + "/");
   };
@@ -94,7 +100,7 @@ export default function Sidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1 px-3 py-4">
-          {navigation.map((item) => {
+          {items.map((item) => {
             const active = isActive(item.href);
             return (
               <a
@@ -111,6 +117,11 @@ export default function Sidebar() {
                 {item.name === "Seed Super Admin" && (
                   <span className="ml-auto px-2 py-0.5 bg-amber-400/20 text-amber-300 text-xs rounded-full border border-amber-400/30">
                     Novo
+                  </span>
+                )}
+                {item.name === "Debug" && (
+                  <span className="ml-auto px-2 py-0.5 bg-emerald-400/20 text-emerald-300 text-xs rounded-full border border-emerald-400/30">
+                    Dev
                   </span>
                 )}
               </a>

@@ -36,6 +36,15 @@ export default function Header() {
         <h1 className="text-lg font-semibold text-gray-700">
           Portal do Super Admin
         </h1>
+        {process.env.NODE_ENV !== "production" && (
+          <a
+            href="/super-admin/debug"
+            className="text-xs px-2 py-1 rounded bg-emerald-100 text-emerald-700 border border-emerald-200 hover:bg-emerald-200"
+            title="Página de debug (apenas desenvolvimento)"
+          >
+            Debug
+          </a>
+        )}
         {userEmail && (
           <span className="text-sm text-gray-500 hidden md:block">
             ({userEmail})
