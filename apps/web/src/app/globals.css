@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Fonte Poppins global */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+html, body {
+  font-family: 'Poppins', sans-serif;
+  background-color: #F9FAFB; /* moxinexa-light */
+  color: #1A2B3C; /* moxinexa-dark */
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
