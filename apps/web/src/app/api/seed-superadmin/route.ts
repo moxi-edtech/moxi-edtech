@@ -1,7 +1,7 @@
 // apps/web/src/app/api/seed-superadmin/route.ts
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { Database } from "~types/supabase";
+import { Database, TablesInsert } from "~types/supabase";
 
 const supabase = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -60,7 +60,7 @@ const { data: newUser, error: createError } =
       role: "super_admin",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    });
+    } as TablesInsert<"profiles">);
 
     if (profileError) throw profileError;
 

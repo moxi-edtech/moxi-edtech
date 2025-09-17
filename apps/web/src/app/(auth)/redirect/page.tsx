@@ -35,12 +35,14 @@ export default async function RedirectPage() {
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
+  const { data: rows } = await supabase
     .from("profiles")
-    .select("role, escola_id")
+    .select("role, escola_id, created_at")
     .eq("user_id", user!.id)
-    .maybeSingle();
+    .order("created_at", { ascending: false })
+    .limit(1);
 
+  const profile = rows?.[0] as { role?: string | null; escola_id?: string | null } | undefined;
   const role: string = profile?.role ?? "guest";
   const escola_id: string | null = profile?.escola_id ?? null;
 

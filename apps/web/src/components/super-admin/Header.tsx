@@ -11,14 +11,30 @@ export default function Header() {
   const [userEmail, setUserEmail] = useState<string>("")
 
   useEffect(() => {
-    // Buscar email do usuário logado
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUserEmail(user?.email || "")
+    // Buscar email do usuário logado e manter em tempo real
+    let mounted = true
+
+    const bootstrap = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!mounted) return
+      setUserEmail(session?.user?.email || "")
     }
-    
-    getUser()
-  }, [supabase.auth])
+
+    bootstrap()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUserEmail(session?.user?.email || "")
+      if (event === 'SIGNED_OUT') {
+        router.push('/login')
+        router.refresh()
+      }
+    })
+
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
+  }, [supabase, router])
 
   const handleLogout = async () => {
     try {

@@ -47,9 +47,9 @@ export default function Page() {
 
     (async () => {
       try {
-        // 🔒 (opcional) garantir que só super_admin acesse
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
+        // 🔒 (opcional) garantir que só super_admin acesse (sem rede)
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.user) {
           router.replace("/login");
           return;
         }

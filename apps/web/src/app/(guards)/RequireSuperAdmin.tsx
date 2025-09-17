@@ -4,69 +4,37 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabaseClient";
 
-// Definimos o tipo do perfil esperado
-type Profile = {
-  role: "super_admin" | "professor" | "aluno";
-};
+// Observação:
+// O middleware (src/middleware.ts) já garante o acesso apenas a super_admin
+// para qualquer rota em /super-admin. Para evitar chamadas de rede no cliente
+// (que estavam falhando com "TypeError: Failed to fetch"), este guard apenas
+// verifica se há sessão localmente e deixa o middleware cuidar de permissões.
 
 export default function RequireSuperAdmin({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const supabase = createClient();
-  const [ok, setOk] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     let active = true;
 
     (async () => {
-      try {
-        // 1. Verifica autenticação
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser();
+      const { data: { session }, error } = await supabase.auth.getSession();
 
-        if (userError || !user) {
-          router.replace("/login");
-          return;
-        }
-
-        // 2. Verifica role direto na tabela profiles, tipado corretamente
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("user_id", user.id)
-          .maybeSingle<Profile>();
-
-        if (profileError) {
-          console.error("Erro ao buscar perfil:", profileError);
-          router.replace("/");
-          return;
-        }
-
-        if (profile?.role === "super_admin") {
-          if (active) setOk(true);
-          return;
-        }
-
-        // 3. Se não for super_admin, redireciona
-        router.replace("/");
-      } catch (err) {
-        console.error("Erro inesperado:", err);
-        router.replace("/");
-      } finally {
-        if (active) setLoading(false);
+      if (error || !session?.user) {
+        router.replace("/login");
+        return;
       }
+
+      if (active) setReady(true);
     })();
 
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [router, supabase]);
 
-  if (loading) {
-    return <div className="p-6">🔒 Verificando permissões...</div>;
+  if (!ready) {
+    return <div className="p-6">🔒 Verificando sessão...</div>;
   }
 
-  return ok ? <>{children}</> : null;
+  return <>{children}</>;
 }

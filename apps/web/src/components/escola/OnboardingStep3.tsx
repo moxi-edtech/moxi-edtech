@@ -8,9 +8,10 @@ type Props = {
   onFinish: () => void
   data: OnboardingData
   updateData: (data: Partial<OnboardingData>) => void
+  loading?: boolean
 }
 
-export default function OnboardingStep3({ onBack, onFinish, data, updateData }: Props) {
+export default function OnboardingStep3({ onBack, onFinish, data, updateData, loading }: Props) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     onFinish()
@@ -55,9 +56,10 @@ export default function OnboardingStep3({ onBack, onFinish, data, updateData }: 
         </button>
         <button
           type="submit"
-          className="px-6 py-3 rounded-lg bg-moxinexa-teal text-white hover:bg-teal-600"
+          disabled={!!loading}
+          className={`px-6 py-3 rounded-lg text-white ${loading ? "bg-teal-400 cursor-not-allowed" : "bg-moxinexa-teal hover:bg-teal-600"}`}
         >
-          Finalizar
+          {loading ? "Finalizando…" : "Finalizar"}
         </button>
       </div>
     </form>

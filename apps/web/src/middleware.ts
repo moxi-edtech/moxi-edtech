@@ -34,13 +34,19 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  // 🔎 Pega role do banco
-  const { data: profile } = await supabase
+  // 🔎 Pega role do banco de forma resiliente (evita erros de maybeSingle)
+  const { data: rows, error: profileError } = await supabase
     .from("profiles")
-    .select("role, escola_id")
+    .select("role, escola_id, created_at")
     .eq("user_id", user.id)
-    .maybeSingle();
+    .order("created_at", { ascending: false })
+    .limit(1);
 
+  if (profileError) {
+    return NextResponse.redirect(new URL("/", req.url));
+  }
+
+  const profile = rows?.[0] as { role?: string | null; escola_id?: string | null } | undefined;
   const role: string = profile?.role ?? "guest";
   const pathname = req.nextUrl.pathname;
 

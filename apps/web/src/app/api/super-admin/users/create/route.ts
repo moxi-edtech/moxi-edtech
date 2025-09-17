@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
+import type { Database, TablesInsert } from "~types/supabase";
 
 // Creates a supabase client with service role for admin operations (server-only)
 const admin = createClient<Database>(
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
         telefone: telefone || null,
         role: roleEnum,
       },
-    ]);
+    ] as TablesInsert<"profiles">[]);
     if (profileError) {
       return NextResponse.json(
         { ok: false, error: profileError.message },
@@ -65,7 +65,7 @@ export async function POST(req: Request) {
         user_id: authUser.user.id,
         papel,
       },
-    ]);
+    ] as TablesInsert<"escola_usuarios">[]);
     if (vinculoError) {
       return NextResponse.json(
         { ok: false, error: vinculoError.message },
@@ -79,4 +79,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
-

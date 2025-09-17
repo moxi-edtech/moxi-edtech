@@ -1,9 +1,11 @@
 // /escola/[id]/onboarding/page.tsx
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { createClient } from "@/lib/supabaseClient"
+import type { TablesInsert, TablesUpdate } from "~types/supabase"
+import toast, { Toaster } from "react-hot-toast"
 
 import OnboardingStep1 from "@/components/escola/OnboardingStep1"
 import OnboardingStep2 from "@/components/escola/OnboardingStep2"
@@ -12,11 +14,14 @@ import OnboardingStep3 from "@/components/escola/OnboardingStep3"
 import { OnboardingData } from "@/types/onboarding"
 
 export default function Page() {
-  const { id } = useParams<{ id: string }>() // ✅ pega o id da rota
+  const params = useParams<{ id: string | string[] }>() // pega o id da rota
+  const id = Array.isArray(params.id) ? params.id[0] : params.id
   const router = useRouter()
-  const supabase = createClient()
+  // memoiza o client para estabilidade de referência entre renders
+  const supabase = useMemo(() => createClient(), [])
 
   const [step, setStep] = useState(1)
+  const [loading, setLoading] = useState(false)
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({
     schoolName: "",
     primaryColor: "#3b82f6",
@@ -27,53 +32,73 @@ export default function Page() {
     staffEmail: ""
   })
 
-  const nextStep = () => setStep((s) => s + 1)
-  const prevStep = () => setStep((s) => s - 1)
+  const nextStep = () => setStep((s) => Math.min(3, s + 1))
+  const prevStep = () => setStep((s) => Math.max(1, s - 1))
 
   const updateOnboardingData = (newData: Partial<OnboardingData>) => {
     setOnboardingData(prev => ({ ...prev, ...newData }))
   }
 
   const finishOnboarding = async () => {
+    if (!id) {
+      toast.error("ID da escola ausente")
+      return
+    }
+
+    setLoading(true)
     try {
-      if (!id) throw new Error("ID da escola ausente")
+      const escolaId = id as string
 
       // 1) Atualiza dados básicos da escola
+      const escolaUpdate = {
+        nome: onboardingData.schoolName,
+        cor_primaria: onboardingData.primaryColor,
+        onboarding_finalizado: true,
+      } satisfies TablesUpdate<"escolas">
+
       const { error: schoolError } = await supabase
         .from("escolas")
-        .update({
-          nome: onboardingData.schoolName,
-          cor_primaria: onboardingData.primaryColor,
-          onboarding_finalizado: true
-        })
-        .eq("id", id)
+        .update(escolaUpdate)
+        .eq("id", escolaId)
 
-      if (schoolError) throw schoolError
+      if (schoolError) throw new Error(schoolError.message || "Falha ao atualizar escola")
 
       // 2) Cria turma (se informada)
       if (onboardingData.className?.trim()) {
+        const turmasInsert = [
+          { nome: onboardingData.className.trim(), escola_id: escolaId },
+        ] satisfies TablesInsert<"turmas">[]
+
         const { error: classError } = await supabase
           .from("turmas")
-          .insert([{ nome: onboardingData.className.trim(), escola_id: id }])
+          .insert(turmasInsert)
 
-        if (classError) throw classError
+        if (classError) throw new Error(classError.message || "Falha ao criar turma")
       }
 
-   // 3) Criar disciplinas (se informadas)
-if (onboardingData.subjects?.trim()) {
-  const subjectsArray = onboardingData.subjects
-    .split(",")
-    .map(s => s.trim())
-    .filter(Boolean)
+      // 3) Criar disciplinas (se informadas)
+      if (onboardingData.subjects?.trim()) {
+        const subjectsArray = onboardingData.subjects
+          .split(",")
+          .map(s => s.trim())
+          .filter(Boolean)
 
-  if (subjectsArray.length) {
-    const { error: subjectsError } = await supabase
-      .from("disciplinas") // ❌ aqui quebra se a tabela não existe
-      .insert(subjectsArray.map(nome => ({ nome, escola_id: id })))
+        if (subjectsArray.length) {
+          const disciplinasInsert = subjectsArray.map((disciplinaNome) => ({
+            nome: disciplinaNome,
+            escola_id: escolaId,
+          })) satisfies TablesInsert<"disciplinas">[]
 
-    if (subjectsError) throw subjectsError
-  }
-}
+          const { error: subjectsError } = await supabase
+            .from("disciplinas")
+            .insert(disciplinasInsert)
+
+          // Em ambientes onde a tabela não exista, apenas loga e segue o fluxo
+          if (subjectsError) {
+            console.warn("⚠️ Falha ao criar disciplinas (continuando onboarding):", subjectsError)
+          }
+        }
+      }
 
 
       // 4) “Envio” de convites (simulação por enquanto)
@@ -84,11 +109,14 @@ if (onboardingData.subjects?.trim()) {
         console.log("Enviando convite para equipe:", onboardingData.staffEmail)
       }
 
-      router.push(`/escola/${id}/dashboard`)
+      toast.success("Onboarding concluído com sucesso! 🚀")
+      router.push(`/escola/${escolaId}/dashboard`)
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       console.error("❌ Erro detalhado no finishOnboarding:", error)
-      alert(message ? `Erro: ${message}` : "Erro desconhecido ao finalizar a configuração.")
+      toast.error(message || "Erro desconhecido ao finalizar a configuração.")
+    } finally {
+      setLoading(false)
     }
   } // ⬅️ ESTA CHAVE FALTAVA
 
@@ -96,14 +124,15 @@ if (onboardingData.subjects?.trim()) {
   useEffect(() => {
     const fetchSchoolName = async () => {
       if (!id) return
+      const escolaId = id as string
       const { data, error } = await supabase
         .from("escolas")
         .select("nome")
-        .eq("id", id)
-        .single()
+        .eq("id", escolaId)
+        .single<{ nome: string | null }>()
 
       if (!error && data) {
-        setOnboardingData(prev => ({ ...prev, schoolName: data.nome || "" }))
+        setOnboardingData(prev => ({ ...prev, schoolName: (data?.nome ?? "") }))
       }
     }
 
@@ -113,6 +142,7 @@ if (onboardingData.subjects?.trim()) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <div className="w-full max-w-2xl bg-white shadow-lg rounded-2xl p-8 space-y-6">
+        <Toaster />
         {/* Indicador de progresso */}
         <div className="flex justify-center mb-6">
           <div className="flex space-x-2">
@@ -147,6 +177,7 @@ if (onboardingData.subjects?.trim()) {
             onFinish={finishOnboarding}
             data={onboardingData}
             updateData={updateOnboardingData}
+            loading={loading}
           />
         )}
       </div>

@@ -21,12 +21,12 @@ export default function Page() {
         return;
       }
 
-      // 🔑 Verifica usuário logado
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError) {
-        console.error("❌ Erro ao buscar usuário:", userError.message);
+      // 🔑 Verifica usuário logado (sem chamada de rede)
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        console.error("❌ Erro ao obter sessão:", sessionError.message);
       } else {
-        console.log("🔑 Usuário logado:", user);
+        console.log("🔑 Usuário logado:", session?.user);
       }
 
       console.log("🔎 ID recebido no dashboard:", id);

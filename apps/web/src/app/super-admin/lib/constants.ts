@@ -6,8 +6,7 @@ import {
   BanknotesIcon,
   Cog6ToothIcon,
   ShieldExclamationIcon,
-  PlusIcon,
-  ChartBarIcon
+  
 } from "@heroicons/react/24/outline"
 
 // KPIs padrão (fallback)
