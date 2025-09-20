@@ -44,7 +44,21 @@ export type Database = {
             foreignKeyName: "alunos_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
+            referencedRelation: "auditoria_resumo_escolas"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "alunos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alunos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
           {
@@ -118,7 +132,77 @@ export type Database = {
             foreignKeyName: "disciplinas_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
+            referencedRelation: "auditoria_resumo_escolas"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "disciplinas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disciplinas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      disciplinas_auditoria: {
+        Row: {
+          acao: string
+          criado_em: string | null
+          dados: Json | null
+          disciplina_id: string
+          escola_id: string
+          id: string
+        }
+        Insert: {
+          acao: string
+          criado_em?: string | null
+          dados?: Json | null
+          disciplina_id: string
+          escola_id: string
+          id?: string
+        }
+        Update: {
+          acao?: string
+          criado_em?: string | null
+          dados?: Json | null
+          disciplina_id?: string
+          escola_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disciplinas_auditoria_disciplina_id_fkey"
+            columns: ["disciplina_id"]
+            isOneToOne: false
+            referencedRelation: "disciplinas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disciplinas_auditoria_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "auditoria_resumo_escolas"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "disciplinas_auditoria_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disciplinas_auditoria_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
         ]
@@ -153,8 +237,29 @@ export type Database = {
             foreignKeyName: "escola_administradores_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
+            referencedRelation: "auditoria_resumo_escolas"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "escola_administradores_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
             referencedRelation: "escolas"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escola_administradores_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_escola_admin_escola"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "auditoria_resumo_escolas"
+            referencedColumns: ["escola_id"]
           },
           {
             foreignKeyName: "fk_escola_admin_escola"
@@ -164,11 +269,67 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "fk_escola_admin_escola"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "fk_escola_admin_user"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      escola_auditoria: {
+        Row: {
+          acao: string
+          criado_em: string | null
+          dados: Json | null
+          escola_id: string
+          id: string
+          mensagem: string | null
+        }
+        Insert: {
+          acao: string
+          criado_em?: string | null
+          dados?: Json | null
+          escola_id: string
+          id?: string
+          mensagem?: string | null
+        }
+        Update: {
+          acao?: string
+          criado_em?: string | null
+          dados?: Json | null
+          escola_id?: string
+          id?: string
+          mensagem?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escola_auditoria_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "auditoria_resumo_escolas"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "escola_auditoria_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escola_auditoria_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -193,7 +354,21 @@ export type Database = {
             foreignKeyName: "escola_configuracoes_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: true
+            referencedRelation: "auditoria_resumo_escolas"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "escola_configuracoes_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: true
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escola_configuracoes_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: true
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
         ]
@@ -222,7 +397,21 @@ export type Database = {
             foreignKeyName: "escola_members_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
+            referencedRelation: "auditoria_resumo_escolas"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "escola_members_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escola_members_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
           {
@@ -268,7 +457,21 @@ export type Database = {
             foreignKeyName: "escola_usuarios_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
+            referencedRelation: "auditoria_resumo_escolas"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "escola_usuarios_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escola_usuarios_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
         ]
@@ -282,6 +485,7 @@ export type Database = {
           nif: string | null
           nome: string
           onboarding_finalizado: boolean | null
+          plano: string
           status: string | null
           updated_at: string | null
         }
@@ -293,6 +497,7 @@ export type Database = {
           nif?: string | null
           nome: string
           onboarding_finalizado?: boolean | null
+          plano?: string
           status?: string | null
           updated_at?: string | null
         }
@@ -304,6 +509,7 @@ export type Database = {
           nif?: string | null
           nome?: string
           onboarding_finalizado?: boolean | null
+          plano?: string
           status?: string | null
           updated_at?: string | null
         }
@@ -346,7 +552,21 @@ export type Database = {
             foreignKeyName: "matriculas_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
+            referencedRelation: "auditoria_resumo_escolas"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "matriculas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
           {
@@ -401,7 +621,21 @@ export type Database = {
             foreignKeyName: "notas_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
+            referencedRelation: "auditoria_resumo_escolas"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "notas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
           {
@@ -472,7 +706,21 @@ export type Database = {
             foreignKeyName: "pagamentos_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
+            referencedRelation: "auditoria_resumo_escolas"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "pagamentos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pagamentos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
         ]
@@ -528,7 +776,21 @@ export type Database = {
             foreignKeyName: "periodos_letivos_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
+            referencedRelation: "auditoria_resumo_escolas"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "periodos_letivos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "periodos_letivos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
         ]
@@ -602,7 +864,21 @@ export type Database = {
             foreignKeyName: "presencas_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
+            referencedRelation: "auditoria_resumo_escolas"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "presencas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "presencas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
           {
@@ -641,7 +917,21 @@ export type Database = {
             foreignKeyName: "professores_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
+            referencedRelation: "auditoria_resumo_escolas"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "professores_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professores_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
           {
@@ -695,7 +985,21 @@ export type Database = {
             foreignKeyName: "profiles_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
+            referencedRelation: "auditoria_resumo_escolas"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "profiles_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
         ]
@@ -745,7 +1049,21 @@ export type Database = {
             foreignKeyName: "turmas_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
+            referencedRelation: "auditoria_resumo_escolas"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "turmas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turmas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
           {
@@ -757,14 +1075,120 @@ export type Database = {
           },
         ]
       }
+      turmas_auditoria: {
+        Row: {
+          acao: string
+          criado_em: string | null
+          dados: Json | null
+          escola_id: string
+          id: string
+          turma_id: string
+        }
+        Insert: {
+          acao: string
+          criado_em?: string | null
+          dados?: Json | null
+          escola_id: string
+          id?: string
+          turma_id: string
+        }
+        Update: {
+          acao?: string
+          criado_em?: string | null
+          dados?: Json | null
+          escola_id?: string
+          id?: string
+          turma_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "turmas_auditoria_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "auditoria_resumo_escolas"
+            referencedColumns: ["escola_id"]
+          },
+          {
+            foreignKeyName: "turmas_auditoria_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turmas_auditoria_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turmas_auditoria_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
-      [_ in never]: never
+      auditoria_resumo_escolas: {
+        Row: {
+          escola_id: string | null
+          escola_nome: string | null
+          nif: string | null
+          primeira_acao: string | null
+          ultima_acao: string | null
+          ultimas_disciplinas: Json | null
+          ultimas_turmas: Json | null
+          vezes_criada: number | null
+          vezes_reutilizada: number | null
+        }
+        Relationships: []
+      }
+      auditoria_unificada: {
+        Row: {
+          acao: string | null
+          criado_em: string | null
+          dados: Json | null
+          entidade_nome: string | null
+          escola_id: string | null
+          log_id: string | null
+          tipo: string | null
+        }
+        Relationships: []
+      }
+      escolas_view: {
+        Row: {
+          cidade: string | null
+          estado: string | null
+          id: string | null
+          last_access: string | null
+          nome: string | null
+          plano: string | null
+          status: string | null
+          total_alunos: number | null
+          total_professores: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       can_access: {
         Args: { eid: string }
         Returns: boolean
+      }
+      create_escola_with_admin: {
+        Args: {
+          p_admin_email?: string
+          p_admin_nome?: string
+          p_admin_telefone?: string
+          p_endereco?: string
+          p_nif?: string
+          p_nome: string
+        }
+        Returns: Json
       }
       dashboard: {
         Args: Record<PropertyKey, never>

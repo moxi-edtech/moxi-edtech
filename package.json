@@ -12,7 +12,7 @@
     "start": "npm run start --workspace=web",
     "lint": "npm run lint --workspace=web",
     "typecheck": "npm run typecheck --workspace=web",
-    "clean": "rm -rf node_modules apps/*/node_modules",
+    "clean": "rm -rf .next node_modules/.cache",
     "gen:types": "mkdir -p types && supabase gen types typescript --project-id <project-ref> > types/supabase.ts"
   }
 ,
