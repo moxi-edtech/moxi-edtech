@@ -13,7 +13,7 @@ export async function getChartsData(): Promise<ChartsData> {
   const supabase = await supabaseServer()
 
   const results = (await Promise.all([
-    supabase.from("escolas").select("id, nome, status"),
+    supabase.from("escolas").select("id, nome, status").neq('status', 'excluida'),
     supabase.from("matriculas").select("id, escola_id"),
     supabase.from("pagamentos").select("status"),
     supabase.from("notas").select("id, nota"),

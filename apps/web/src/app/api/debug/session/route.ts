@@ -28,11 +28,7 @@ export async function GET(req: Request) {
     }
   );
 
-  const {
-    data: { session },
-    error: sessionError,
-  } = await supabase.auth.getSession();
-
+  // 🔑 Usa apenas getUser (mais seguro que getSession)
   const {
     data: { user },
     error: userError,
@@ -59,12 +55,6 @@ export async function GET(req: Request) {
     cookies: {
       names: cookieNames,
     },
-    session: session
-      ? {
-          expires_at: session.expires_at,
-          expires_in: session.expires_in,
-        }
-      : null,
     user: user
       ? {
           id: user.id,
@@ -74,7 +64,6 @@ export async function GET(req: Request) {
         }
       : null,
     errors: {
-      sessionError: sessionError?.message ?? null,
       userError: userError?.message ?? null,
     },
     ...(verbose
@@ -84,4 +73,3 @@ export async function GET(req: Request) {
       : {}),
   });
 }
-

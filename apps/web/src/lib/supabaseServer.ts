@@ -1,11 +1,12 @@
 // apps/web/src/lib/supabaseServer.ts
+import 'server-only'
 import { cookies } from "next/headers";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import type { Database } from "~types/supabase";
 
 // Função que devolve uma instância do supabase configurada para o lado servidor
 export async function supabaseServer() {
-  const cookieStore = await cookies(); // ✅ agora é ReadonlyRequestCookies
+  const cookieStore = await cookies(); // Next 15: async cookies()
 
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,10 +17,12 @@ export async function supabaseServer() {
           return cookieStore.get(name)?.value;
         },
         set(name: string, value: string, options: CookieOptions) {
-          void name; void value; void options;
+          const secure = process.env.NODE_ENV === 'production';
+          cookieStore.set(name, value, { ...options, secure });
         },
         remove(name: string, options: CookieOptions) {
-          void name; void options;
+          const secure = process.env.NODE_ENV === 'production';
+          cookieStore.set(name, "", { ...options, maxAge: 0, secure });
         },
       },
     }
@@ -39,10 +42,10 @@ export async function supabaseServerTyped<TDatabase = Database>() {
           return cookieStore.get(name)?.value;
         },
         set(name: string, value: string, options: CookieOptions) {
-          void name; void value; void options;
+          cookieStore.set(name, value, options);
         },
         remove(name: string, options: CookieOptions) {
-          void name; void options;
+          cookieStore.set(name, "", { ...options, maxAge: 0 });
         },
       },
     }

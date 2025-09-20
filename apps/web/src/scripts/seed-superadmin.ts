@@ -1,7 +1,9 @@
 // apps/web/src/app/api/seed-superadmin/route.ts
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { Database, TablesInsert } from "~types/supabase";
+import type { Database } from "~types/supabase"
+
+
 
 const supabase = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,7 +31,7 @@ export async function GET() {
     email,
     nome: "Super Admin",
     role: "super_admin",
-  } as TablesInsert<"profiles">);
+  });
 
   return NextResponse.json({ ok: true, userId });
 }

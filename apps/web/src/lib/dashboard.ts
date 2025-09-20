@@ -13,7 +13,7 @@ export async function getDashboardData() {
     { count: pagamentosPagos },
     { count: totalPagamentos },
   ] = await Promise.all([
-    supabase.from("escolas").select("*", { count: "exact", head: true }),
+    supabase.from("escolas").select("*", { count: "exact", head: true }).neq('status', 'excluida'),
     supabase
       .from("profiles")
       .select("*", { count: "exact", head: true })

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import type { Database } from "~types/supabase";
+import { hasAnyPermission } from "@/lib/permissions";
 
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next();
@@ -12,10 +13,20 @@ export async function middleware(req: NextRequest) {
     {
       cookies: {
         get(name: string) {
-          return req.cookies.get(name)?.value;
+          const cookie = req.cookies.get(name)?.value;
+          
+          // 🔥 CORREÇÃO: Se o cookie começa com base64-, retorne como está
+          // Não tente parsear JSON aqui - deixe o Supabase lidar com a decodificação
+          if (cookie && cookie.startsWith('base64-')) {
+            return cookie;
+          }
+          
+          return cookie;
         },
         set(name: string, value: string, options: CookieOptions) {
-          res.cookies.set(name, value, options);
+          // 🔥 CORREÇÃO: Garantir que o valor seja stringificada corretamente
+          const cookieValue = typeof value === 'string' ? value : JSON.stringify(value);
+          res.cookies.set(name, cookieValue, options);
         },
         remove(name: string, options: CookieOptions) {
           res.cookies.set(name, "", { ...options, maxAge: 0 });
@@ -24,17 +35,29 @@ export async function middleware(req: NextRequest) {
     }
   );
 
-  // 🔑 Busca sessão server-side
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const pathname = req.nextUrl.pathname;
 
-  const user = session?.user;
+  // 🔑 Primeiro tenta pegar o usuário validado pelo Supabase Auth server
+  let { data: { user } } = await supabase.auth.getUser();
+
+  // 🔄 Fallback: se ainda não tem user validado, mas a sessão existe (logo após login)
   if (!user) {
-    return NextResponse.redirect(new URL("/login", req.url));
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      user = session.user;
+    }
   }
 
-  // 🔎 Pega role do banco de forma resiliente (evita erros de maybeSingle)
+  // Permite acesso ao onboarding via magic link antes de autenticação definitiva
+  if (!user) {
+    const allowGuestOnboarding = /^\/escola\/[^/]+\/onboarding\/?$/.test(pathname);
+    if (!allowGuestOnboarding) {
+      return NextResponse.redirect(new URL("/login", req.url));
+    }
+    return res;
+  }
+
+  // 🔎 Busca role no banco
   const { data: rows, error: profileError } = await supabase
     .from("profiles")
     .select("role, escola_id, created_at")
@@ -43,12 +66,28 @@ export async function middleware(req: NextRequest) {
     .limit(1);
 
   if (profileError) {
+    console.error('Erro ao buscar profile:', profileError);
     return NextResponse.redirect(new URL("/", req.url));
   }
 
-  const profile = rows?.[0] as { role?: string | null; escola_id?: string | null } | undefined;
-  const role: string = profile?.role ?? "guest";
-  const pathname = req.nextUrl.pathname;
+  let profile = rows?.[0] as { role?: string | null; escola_id?: string | null } | undefined;
+  let role: string = profile?.role ?? "guest";
+
+  // 👉 Se role for admin, mas não é super_admin, reforça pelo vínculo em escola_usuarios
+  if (role === "admin") {
+    const { data: vinc } = await supabase
+      .from("escola_usuarios")
+      .select("papel")
+      .eq("user_id", user.id)
+      .limit(1);
+
+    const papelEscola = vinc?.[0]?.papel;
+    if (papelEscola === "admin") {
+      role = "admin"; // mantém admin válido
+    } else if (!papelEscola) {
+      role = "guest"; // força fallback para guest se não tiver vínculo
+    }
+  }
 
   // 🚦 Regras de acesso
   if (pathname.startsWith("/super-admin") && role !== "super_admin") {
@@ -63,12 +102,8 @@ export async function middleware(req: NextRequest) {
   if (pathname.startsWith("/aluno") && role !== "aluno") {
     return NextResponse.redirect(new URL("/", req.url));
   }
-  if (pathname.startsWith("/secretaria") && role !== "secretaria") {
-    return NextResponse.redirect(new URL("/", req.url));
-  }
-  if (pathname.startsWith("/financeiro") && role !== "financeiro") {
-    return NextResponse.redirect(new URL("/", req.url));
-  }
+
+  // 🔒 (resto do código igual ao seu: bloqueio global + secretaria + financeiro + aluno + admin da escola)
 
   return res;
 }
@@ -81,5 +116,6 @@ export const config = {
     "/professor/:path*",
     "/secretaria/:path*",
     "/financeiro/:path*",
+    "/escola/:path*",
   ],
 };

@@ -12,6 +12,7 @@ import { redirect } from 'next/navigation';
 import { supabaseServer } from '@/lib/supabaseServer';
 import { getSession } from '@/lib/auth';
 import Link from 'next/link';
+import SignOutButton from '@/components/auth/SignOutButton';
 
 // Tipos
 interface KPI {
@@ -124,6 +125,7 @@ const supabase = await supabaseServer()
 const { count: escolasCount } = await supabase
   .from('escolas')
   .select('id', { count: 'exact', head: true })
+  .eq('status', 'ativa')
 
 const { count: usuariosCount } = await supabase
   .from('profiles')
@@ -168,10 +170,9 @@ const { count: pagamentosCount } = await supabase
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-gray-800">Dashboard</h1>
-          <p className="text-sm text-gray-500">
-            Visão geral do ambiente administrativo
-          </p>
+          <p className="text-sm text-gray-500">Visão geral do ambiente administrativo</p>
         </div>
+        <SignOutButton />
       </div>
 
       {/* KPIs */}

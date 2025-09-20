@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabaseClient";
+import SignOutButton from "@/components/auth/SignOutButton";
+import BackButton from "@/components/navigation/BackButton";
 import {
   HomeIcon,
   UsersIcon,
@@ -40,12 +43,12 @@ const UserAvatar = ({ initials, name }: { initials: string; name: string }) => (
   <div className="flex items-center gap-3">
     <div className="relative">
       <div 
-        className="bg-gradient-to-r from-moxinexa-teal to-moxinexa-navy text-white w-10 h-10 rounded-full flex items-center justify-center font-bold shadow-lg"
+        className="bg-gradient-to-r from-teal-500 to-sky-600 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold shadow-lg"
         aria-label={`Avatar de ${name}`}
       >
         {initials}
       </div>
-      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white"></div>
+      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-teal-400 rounded-full border-2 border-white"></div>
     </div>
     <div className="hidden md:flex flex-col">
       <span className="font-medium text-sm">{name}</span>
@@ -58,12 +61,12 @@ const UserAvatar = ({ initials, name }: { initials: string; name: string }) => (
 // Componente de Logo
 const Logo = ({ collapsed = false }: { collapsed?: boolean }) => (
   <div className="px-6 py-4 flex items-center gap-3">
-    <div className="bg-gradient-to-r from-moxinexa-teal to-moxinexa-navy text-white rounded-xl w-10 h-10 flex items-center justify-center shadow-lg">
+    <div className="bg-gradient-to-r from-teal-500 to-sky-600 text-white rounded-xl w-10 h-10 flex items-center justify-center shadow-lg">
       <span className="text-lg">🎓</span>
     </div>
     {!collapsed && (
       <div>
-        <h1 className="text-xl font-bold bg-gradient-to-r from-moxinexa-navy to-moxinexa-teal bg-clip-text text-transparent">
+        <h1 className="text-xl font-bold bg-gradient-to-r from-teal-500 to-sky-600 bg-clip-text text-transparent">
           MoxiNexa
         </h1>
         <p className="text-xs text-moxinexa-light opacity-70">Sistema Educacional</p>
@@ -80,6 +83,24 @@ export default function PortalLayout({
   const [active, setActive] = useState<MenuItemName>("Dashboard");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [plan, setPlan] = useState<"basico"|"standard"|"premium"|null>(null)
+
+  useEffect(() => {
+    const supabase = createClient()
+    let mounted = true
+    ;(async () => {
+      try {
+        const { data: prof } = await supabase.from('profiles').select('escola_id').order('created_at', { ascending: false }).limit(1)
+        const escolaId = (prof?.[0] as any)?.escola_id as string | null
+        if (!mounted || !escolaId) return
+        const { data: esc } = await supabase.from('escolas').select('plano').eq('id', escolaId).maybeSingle()
+        if (!mounted) return
+        const p = ((esc as any)?.plano || null) as any
+        if (p && ['basico','standard','premium'].includes(p)) setPlan(p)
+      } catch {}
+    })()
+    return () => { mounted = false }
+  }, [])
 
   return (
     <div className="flex min-h-screen font-sans bg-gradient-to-br from-moxinexa-light/20 to-white text-moxinexa-dark">
@@ -129,7 +150,7 @@ export default function PortalLayout({
               className={`flex items-center w-full px-4 py-3 rounded-xl transition-all duration-200
                 focus:outline-none focus:ring-2 focus:ring-moxinexa-teal/30
                 ${active === item.name
-                  ? "bg-gradient-to-r from-moxinexa-teal/10 to-moxinexa-navy/10 text-moxinexa-teal border-l-4 border-moxinexa-teal shadow-sm"
+                  ? "bg-gradient-to-r from-teal-500/10 to-sky-600/10 text-moxinexa-teal border-l-4 border-moxinexa-teal shadow-sm"
                   : "hover:bg-moxinexa-light/30 text-moxinexa-gray hover:text-moxinexa-dark"
                 }`}
               aria-current={active === item.name ? "page" : undefined}
@@ -170,6 +191,9 @@ export default function PortalLayout({
             <h1 className="text-xl font-semibold text-moxinexa-dark">
               {active}
             </h1>
+            {plan && (
+              <span className="text-[10px] uppercase px-2 py-1 rounded-full bg-gray-100 border text-gray-600">Plano: {plan}</span>
+            )}
           </div>
           
           <div className="flex items-center gap-5">
@@ -183,11 +207,20 @@ export default function PortalLayout({
             <button className="flex items-center gap-2 bg-white rounded-full pl-1 pr-3 py-1 shadow-sm border border-moxinexa-light/50 hover:shadow-md transition-shadow">
               <UserAvatar initials="AD" name="Admin Escola" />
             </button>
+
+            <SignOutButton
+              label="Sair"
+              className="px-3 py-1.5 text-xs bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+              title="Sair"
+            />
           </div>
         </div>
 
         {/* Conteúdo dinâmico com card moderno */}
         <div className="bg-white rounded-2xl shadow-sm p-6 border border-moxinexa-light/30">
+          <div className="mb-3">
+            <BackButton />
+          </div>
           {children}
         </div>
 

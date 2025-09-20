@@ -10,6 +10,7 @@ import {
   Cog6ToothIcon,
   ArrowTopRightOnSquareIcon,
   BoltIcon,
+  EnvelopeIcon,
 } from "@heroicons/react/24/outline"
 import { useRouter } from "next/navigation"
 
@@ -72,6 +73,13 @@ const quickActions: QuickAction[] = [
     variant: 'accent',
     description: "Gerar dados de teste"
   },
+  { 
+    label: "Preview Email", 
+    icon: EnvelopeIcon, 
+    href: "/super-admin/debug/email-preview",
+    variant: 'accent',
+    description: "Pré-visualizar e-mail de onboarding"
+  },
 ]
 
 export default function QuickActionsSection() {
@@ -90,7 +98,7 @@ export default function QuickActionsSection() {
     
     switch (variant) {
       case 'primary':
-        return `${baseStyles} bg-gradient-to-r from-moxinexa-teal to-moxinexa-teal-dark text-white hover:from-moxinexa-teal-dark hover:to-moxinexa-navy focus:ring-moxinexa-teal shadow-md`
+        return `${baseStyles} bg-gradient-to-r from-teal-500 to-sky-600 text-white hover:from-teal-600 hover:to-sky-700 focus:ring-teal-500 shadow-md`
       case 'danger':
         return `${baseStyles} bg-gradient-to-r from-red-100 to-red-50 text-red-700 hover:from-red-200 hover:to-red-100 border border-red-200 focus:ring-red-400 shadow-sm`
       case 'accent':

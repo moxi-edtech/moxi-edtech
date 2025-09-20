@@ -20,7 +20,7 @@ export default function OnboardingStep2({ onNext, onBack, data, updateData }: Pr
     <form onSubmit={handleSubmit} className="space-y-6">
       <h2 className="text-2xl font-bold mb-2">📚 Estrutura Acadêmica</h2>
       <p className="text-sm text-gray-500 mb-6">
-        Configure sua primeira turma e disciplinas principais.
+        Configure sua primeira turma e cursos principais.
       </p>
 
       <div>
@@ -35,7 +35,7 @@ export default function OnboardingStep2({ onNext, onBack, data, updateData }: Pr
       </div>
 
       <div>
-        <label className="block text-sm font-medium mb-1">Disciplinas iniciais</label>
+        <label className="block text-sm font-medium mb-1">Cursos iniciais</label>
         <input
           type="text"
           value={data.subjects}

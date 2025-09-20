@@ -4,9 +4,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import RequireSuperAdmin from "@/app/(guards)/RequireSuperAdmin";
-import type { } from "~types/supabase";
 
-export default function Page() {
+export default function NovaEscolaPage() {
   return (
     <RequireSuperAdmin>
       <CriarEscolaForm />
@@ -16,7 +15,6 @@ export default function Page() {
 
 function CriarEscolaForm() {
   const router = useRouter();
-  // operações de banco agora acontecem no backend via API
 
   const [nome, setNome] = useState("");
   const [nif, setNif] = useState("");
@@ -28,69 +26,44 @@ function CriarEscolaForm() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<null | { type: "ok" | "err"; text: string }>(null);
 
-  const validar = () => {
-    if (!nome.trim()) return "Informe o nome da escola.";
-    if (nif) {
-      const onlyDigits = nif.replace(/\D/g, "");
-      if (!/^\d{9}$/.test(onlyDigits)) return "NIF inválido. Use 9 dígitos (apenas números).";
-    }
-    if (adminEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adminEmail))
-      return "Email do administrador inválido.";
-    if (adminTelefone) {
-      const onlyDigits = adminTelefone.replace(/\D/g, "");
-      // Angola: 9XXXXXXXX (9 dígitos iniciando com 9)
-      if (!/^9\d{8}$/.test(onlyDigits)) return "Telefone inválido. Use o formato 9XXXXXXXX (9 dígitos).";
-    }
-    return null;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMsg(null);
 
-    const erro = validar();
-    if (erro) {
-      setMsg({ type: "err", text: erro });
-      return;
-    }
-
     try {
       setLoading(true);
 
-      // Normaliza NIF e telefone (somente números)
-      const cleanNif = nif ? nif.replace(/\D/g, "") : null;
-      const cleanTelefone = adminTelefone ? adminTelefone.replace(/\D/g, "") : null;
-
-      // Chamada ao backend para criação segura e vínculo opcional do admin
+      // Chama a API com os dados normalizados
       const res = await fetch("/api/escolas/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nome: nome.trim(),
-          nif: cleanNif,
-          endereco: endereco ? endereco.trim() : null,
-          admin: adminEmail.trim()
-            ? { email: adminEmail.trim(), telefone: cleanTelefone, nome: adminNome.trim() || null }
-            : null,
+          nif: nif || null,
+          endereco: endereco || null,
+          admin: {
+            email: adminEmail || null,
+            telefone: adminTelefone || null,
+            nome: adminNome || null,
+          },
         }),
       });
-      const json = await res.json();
-      if (!res.ok || !json?.ok) {
-        throw new Error(json?.error || "Falha ao criar escola");
+
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "Erro desconhecido ao criar escola.");
       }
 
-      const escolaId: string = json.escolaId;
-      const escolaNome: string = json.escolaNome;
-      const mensagemAdmin: string = json.mensagemAdmin || "";
+      setMsg({
+        type: "ok",
+        text: `Escola "${nome}" criada com sucesso! Redirecionando para o onboarding...`,
+      });
 
-      setMsg({ type: "ok", text: `Escola "${escolaNome}" criada com sucesso! Redirecionando para o onboarding...${mensagemAdmin}` });
-
-      setTimeout(() => {
-        router.push(`/escola/${escolaId}/onboarding`);
-      }, 2000);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      setMsg({ type: "err", text: `Erro ao criar escola: ${message}` });
+      // Redireciona imediatamente para o onboarding
+      router.push(`/escola/${data.escolaId}/onboarding`);
+    } catch (err: any) {
+      setMsg({ type: "err", text: err.message || String(err) });
     } finally {
       setLoading(false);
     }
@@ -115,7 +88,7 @@ function CriarEscolaForm() {
 
         <div>
           <label className="block text-sm font-medium mb-1">
-            NIF <span className="text-gray-400">(opcional)</span>
+            NIF <span className="text-gray-400">(Obrigatório)</span>
           </label>
           <input
             className="border rounded-md w-full p-2 outline-none focus:ring-2 focus:ring-blue-500"
@@ -148,7 +121,7 @@ function CriarEscolaForm() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1">
-                Nome do Administrador <span className="text-gray-400">(opcional)</span>
+                Nome do Administrador <span className="text-gray-400">(Obrigatório)</span>
               </label>
               <input
                 className="border rounded-md w-full p-2 outline-none focus:ring-2 focus:ring-blue-500"
@@ -182,7 +155,7 @@ function CriarEscolaForm() {
                 placeholder="9XXXXXXXX (ex: 923456789)"
                 value={adminTelefone}
                 onChange={(e) => setAdminTelefone(e.target.value)}
-                maxLength={13}
+                maxLength={9}
                 disabled={loading}
               />
               <p className="text-xs text-gray-500 mt-1">

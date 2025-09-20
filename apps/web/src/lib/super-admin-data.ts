@@ -9,14 +9,31 @@ import {
 import { createClient } from "@/lib/supabaseClient"
 import type { Database } from "~types/supabase"
 
-type Matricula = Pick<Database["public"]["Tables"]["matriculas"]["Row"], "id" | "created_at">
+type CountResult = {
+  count: number
+}
+
+type Matricula = {
+  id: number
+  created_at: string
+  // adicione outras propriedades conforme sua tabela
+}
 
 export async function fetchDashboardData(): Promise<DashboardData> {
   try {
     const supabase = createClient()
     
     console.log('🔄 Buscando dados do dashboard...')
-    // Cria manualmente com as tabelas existentes
+    
+    // Tenta a RPC primeiro (caso exista no futuro)
+    const { data: rpcData, error: rpcError } = await (supabase as any).rpc('dashboard')
+    
+    if (!rpcError && rpcData) {
+      console.log('✅ Dashboard via RPC:', rpcData)
+      return processRpcData(rpcData)
+    }
+    
+    // Se RPC falhar, cria manualmente com as tabelas existentes
     console.log('📊 Criando dashboard manualmente...')
     return await createManualDashboard(supabase)
     
@@ -26,7 +43,7 @@ export async function fetchDashboardData(): Promise<DashboardData> {
   }
 }
 
-async function createManualDashboard(supabase: ReturnType<typeof createClient>): Promise<DashboardData> {
+async function createManualDashboard(supabase: any): Promise<DashboardData> {
   try {
     // Busca contagens das tabelas existentes - usando approach mais seguro
     const [
@@ -83,10 +100,9 @@ async function createManualDashboard(supabase: ReturnType<typeof createClient>):
       .order('created_at', { ascending: false })
       .limit(5)
 
-    const activities = ((recentActivities as Matricula[] | null) || []).map(m => {
-      const dateLabel = m.created_at ? new Date(m.created_at).toLocaleDateString('pt-BR') : 'sem data'
-      return `Nova matrícula #${m.id} - ${dateLabel}`
-    })
+    const activities = (recentActivities as Matricula[] || []).map(matricula => 
+      `Nova matrícula #${matricula.id} - ${new Date(matricula.created_at).toLocaleDateString('pt-BR')}`
+    )
 
     return {
       kpis,
@@ -113,4 +129,8 @@ function getEmptyDashboard(): DashboardData {
   }
 }
 
-// Função reservada para futura RPC (não usada no momento)
+// Caso precise processar dados da RPC no futuro
+function processRpcData(rpcData: any): DashboardData {
+  // Implemente conforme a estrutura da sua RPC
+  return getEmptyDashboard()
+}

@@ -15,6 +15,7 @@ import {
   XMarkIcon,
   Bars3Icon,
   MagnifyingGlassIcon,
+  EnvelopeIcon,
 } from "@heroicons/react/24/outline";
 import { useState } from "react";
 
@@ -32,7 +33,7 @@ const navigation = [
 // Componente de Logo
 const Logo = () => (
   <div className="px-6 py-5 flex items-center gap-3">
-    <div className="bg-gradient-to-r from-moxinexa-teal to-moxinexa-navy text-white rounded-xl w-10 h-10 flex items-center justify-center shadow-lg">
+    <div className="bg-gradient-to-r from-teal-500 to-sky-600 text-white rounded-xl w-10 h-10 flex items-center justify-center shadow-lg">
       <span className="text-lg">🎓</span>
     </div>
     <div>
@@ -60,6 +61,7 @@ export default function Sidebar() {
   }
   if (process.env.NODE_ENV !== "production") {
     items.push({ name: "Debug", icon: BoltIcon, href: "/super-admin/debug" });
+    items.push({ name: "Debug Email", icon: EnvelopeIcon, href: "/super-admin/debug/email-preview" });
   }
 
   const isActive = (href: string) => {
@@ -76,7 +78,7 @@ export default function Sidebar() {
         />
       )}
 
-      <aside className={`fixed lg:relative inset-y-0 left-0 z-50 w-80 lg:w-72 bg-gradient-to-b from-moxinexa-navy/95 to-moxinexa-teal/95 text-white flex flex-col shadow-xl backdrop-blur-sm
+      <aside className={`fixed lg:relative inset-y-0 left-0 z-50 w-80 lg:w-72 bg-gradient-to-b from-teal-500/95 to-sky-600/95 text-white flex flex-col shadow-xl backdrop-blur-sm
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} 
         lg:translate-x-0 transition-transform duration-300 h-full`}>
         
@@ -138,7 +140,7 @@ export default function Sidebar() {
           <div className="bg-white/5 p-3 rounded-xl mb-3">
             <h3 className="font-semibold text-sm text-white">Status do Sistema</h3>
             <div className="flex items-center mt-1">
-              <div className="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
+              <div className="w-2 h-2 bg-teal-400 rounded-full mr-2"></div>
               <p className="text-xs text-moxinexa-light/80">Todos os sistemas operacionais</p>
             </div>
           </div>
@@ -152,7 +154,7 @@ export default function Sidebar() {
 
       {/* Botão para abrir menu mobile */}
       <button 
-        className="fixed bottom-4 left-4 z-40 lg:hidden p-3 rounded-full bg-gradient-to-r from-moxinexa-teal to-moxinexa-navy text-white shadow-lg"
+        className="fixed bottom-4 left-4 z-40 lg:hidden p-3 rounded-full bg-gradient-to-r from-teal-500 to-sky-600 text-white shadow-lg"
         onClick={() => setIsMobileMenuOpen(true)}
         aria-label="Abrir menu"
       >

@@ -10,7 +10,7 @@ module.exports = {
       colors: {
         moxinexa: {
           navy: "#0B2C45",   // Azul escuro (Moxi)
-          teal: "#19A995",   // Verde água (Nexa)
+          teal: "#0D9488",   // Verde (alinhado ao teal-600 do login)
           dark: "#1A2B3C",   // Texto forte
           light: "#F9FAFB",  // Fundo claro
           gray: "#6C757D",   // Texto secundário

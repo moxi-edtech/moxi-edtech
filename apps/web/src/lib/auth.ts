@@ -1,34 +1,54 @@
 import { supabaseServer } from "./supabaseServer"
-import type { User } from "@supabase/supabase-js"
-import type { Database } from "~types/supabase" 
 
 export interface SessionUser {
   id: string
   email: string
-  role: Database["public"]["Enums"]["user_role"] | "guest"
+  role: string
   escola_id: string | null
 }
 
 export async function getSession(): Promise<{ user: SessionUser } | null> {
-  const supabase = await supabaseServer()
-  const { data, error } = await supabase.auth.getSession()
+  try {
+    const supabase = await supabaseServer()
+    
+    // USA getUser() EM VEZ DE getSession() - MAIS SEGURO
+    const { data: { user }, error } = await supabase.auth.getUser()
 
-  if (error) {
-    console.error("Erro ao buscar sessão:", error.message)
+    if (error || !user) {
+      console.error("Erro ao buscar usuário:", error?.message)
+      return null
+    }
+
+    // BUSCA O ROLE DA TABELA PROFILES
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role, escola_id')
+      .eq('user_id', user.id)
+      .single()
+
+    if (profileError) {
+      console.warn("Perfil não encontrado para user:", user.id)
+      return {
+        user: {
+          id: user.id,
+          email: user.email || "",
+          role: "guest",
+          escola_id: null,
+        }
+      }
+    }
+
+    // ✅ CORREÇÃO: Optional chaining e fallbacks
+    return {
+      user: {
+        id: user.id,
+        email: user.email || "",
+        role: profile?.role || "guest", // ✅ Optional chaining
+        escola_id: profile?.escola_id || null, // ✅ Optional chaining
+      }
+    }
+  } catch (error) {
+    console.error('Erro em getSession:', error)
     return null
-  }
-
-  const session = data.session
-  if (!session) return null
-
-  const user = session.user as User
-
-  return {
-    user: {
-      id: user.id,
-      email: user.email ?? "",
-      role: (user.app_metadata as { role?: Database["public"]["Enums"]["user_role"] } | undefined)?.role ?? "guest",
-      escola_id: (user.app_metadata as { escola_id?: string } | undefined)?.escola_id ?? null,
-    },
   }
 }

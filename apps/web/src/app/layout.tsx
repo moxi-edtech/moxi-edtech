@@ -1,6 +1,7 @@
 // src/app/layout.tsx
 import type { Metadata } from "next";
 import "./globals.css";
+import { Toaster } from "react-hot-toast";
 
 export const metadata: Metadata = {
   title: "MoxiNexa - Sistema de Gestão Escolar",
@@ -18,6 +19,7 @@ export default function RootLayout({
         <main className="min-h-screen">
           {children}
         </main>
+        <Toaster position="top-right" />
       </body>
     </html>
   );

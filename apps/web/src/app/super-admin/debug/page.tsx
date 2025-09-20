@@ -74,6 +74,12 @@ function SessionDebug() {
           >
             /api/health
           </a>
+          <a
+            href="/super-admin/debug/email-preview"
+            className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Preview de Email
+          </a>
         </div>
       </div>
 
@@ -121,4 +127,3 @@ export default function Page() {
     </RequireSuperAdmin>
   );
 }
-

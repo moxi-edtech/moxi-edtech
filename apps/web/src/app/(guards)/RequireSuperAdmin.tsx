@@ -4,12 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabaseClient";
 
-// Observação:
-// O middleware (src/middleware.ts) já garante o acesso apenas a super_admin
-// para qualquer rota em /super-admin. Para evitar chamadas de rede no cliente
-// (que estavam falhando com "TypeError: Failed to fetch"), este guard apenas
-// verifica se há sessão localmente e deixa o middleware cuidar de permissões.
-
 export default function RequireSuperAdmin({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const supabase = createClient();
@@ -19,9 +13,9 @@ export default function RequireSuperAdmin({ children }: { children: React.ReactN
     let active = true;
 
     (async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
+      const { data: { user }, error } = await supabase.auth.getUser();
 
-      if (error || !session?.user) {
+      if (error || !user) {
         router.replace("/login");
         return;
       }
@@ -29,7 +23,9 @@ export default function RequireSuperAdmin({ children }: { children: React.ReactN
       if (active) setReady(true);
     })();
 
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [router, supabase]);
 
   if (!ready) {

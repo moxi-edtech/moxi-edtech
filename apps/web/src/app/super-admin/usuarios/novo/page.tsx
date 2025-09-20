@@ -21,6 +21,7 @@ function CriarUsuarioForm() {
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [telefone, setTelefone] = useState("");
+  const [tempPassword, setTempPassword] = useState("");
   const [papel, setPapel] = useState("diretor");
   const roleMap: Record<string, Database["public"]["Enums"]["user_role"]> = {
     diretor: "admin",
@@ -52,6 +53,10 @@ function CriarUsuarioForm() {
     if (!email.trim()) return "Informe o email.";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return "Email inválido.";
     if (!escolaId) return "Selecione uma escola.";
+    if (tempPassword) {
+      const err = validatePassword(tempPassword)
+      if (err) return `Senha temporária: ${err}`
+    }
     return null;
   };
 
@@ -72,14 +77,14 @@ function CriarUsuarioForm() {
       const res = await fetch("/api/super-admin/users/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nome, email, telefone, papel, escolaId, roleEnum }),
+        body: JSON.stringify({ nome, email, telefone, papel, escolaId, roleEnum, tempPassword: tempPassword || null }),
       });
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "Falha ao criar usuário");
 
       setMsg({
         type: "ok",
-        text: `✅ Usuário criado com sucesso (${papel}) na escola selecionada.`,
+        text: `✅ Usuário criado. Senha temporária: ${json.tempPassword || '(gerada)'}`,
       });
 
       setTimeout(() => { router.push("/super-admin/usuarios"); }, 1500);
@@ -109,6 +114,35 @@ function CriarUsuarioForm() {
             disabled={loading}
             required
           />
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="block text-sm font-medium">Senha temporária (opcional)</label>
+            <span
+              className="text-xs text-gray-500 cursor-help"
+              title={
+                'Requisitos: mínimo 8 caracteres, com ao menos 1 letra maiúscula, 1 letra minúscula, 1 número e 1 caractere especial.'
+              }
+            >
+              ℹ️ Requisitos
+            </span>
+          </div>
+          <input
+            className="w-full border rounded-md p-2 focus:ring-2 focus:ring-moxinexa-teal"
+            value={tempPassword}
+            onChange={(e) => setTempPassword(e.target.value)}
+            disabled={loading}
+            placeholder="Deixe em branco para gerar automaticamente"
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            Mín. 8, com maiúscula, minúscula, número e caractere especial.
+          </p>
+          {tempPassword && (
+            <div className="mt-2">
+              <PasswordStrength pwd={tempPassword} />
+            </div>
+          )}
         </div>
 
         <div>
@@ -188,4 +222,51 @@ function CriarUsuarioForm() {
       </form>
     </div>
   );
+}
+
+function passwordRules(pwd: string) {
+  return [
+    { ok: pwd.length >= 8, msg: 'Pelo menos 8 caracteres' },
+    { ok: /[A-Z]/.test(pwd), msg: '1 letra maiúscula' },
+    { ok: /[a-z]/.test(pwd), msg: '1 letra minúscula' },
+    { ok: /\d/.test(pwd), msg: '1 número' },
+    { ok: /[^A-Za-z0-9]/.test(pwd), msg: '1 caractere especial' },
+  ]
+}
+
+function validatePassword(pwd: string) {
+  const fail = passwordRules(pwd).find(r => !r.ok)
+  return fail?.msg || null
+}
+
+function PasswordStrength({ pwd }: { pwd: string }) {
+  const rules = passwordRules(pwd)
+  const score = rules.filter(r => r.ok).length
+  let label = 'Muito fraca'
+  let color = 'bg-red-500'
+  if (score === 2) { label = 'Fraca'; color = 'bg-amber-500' }
+  if (score === 3) { label = 'Média'; color = 'bg-yellow-500' }
+  if (score === 4) { label = 'Forte'; color = 'bg-green-600' }
+  if (score >= 5) { label = 'Excelente'; color = 'bg-moxinexa-teal' }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between text-xs mb-1">
+        <span className="text-gray-600">Força da senha:</span>
+        <span className="font-medium text-gray-800">{label}</span>
+      </div>
+      <div className="flex gap-1" aria-hidden>
+        {[0,1,2,3,4].map((i) => (
+          <div key={i} className={`h-1.5 flex-1 rounded ${i < score ? color : 'bg-gray-200'}`}></div>
+        ))}
+      </div>
+      <ul className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs">
+        {rules.map((r, idx) => (
+          <li key={idx} className={r.ok ? 'text-green-600' : 'text-gray-500'}>
+            {r.ok ? '✓' : '•'} {r.msg}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
 }
