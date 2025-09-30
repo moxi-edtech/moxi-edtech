@@ -4,8 +4,8 @@ export const fluxoAcademico = `flowchart TD
 %% ADMIN CONFIGURAÇÕES INICIAIS
 %% =====================
 A1[Admin: Criar Ano Letivo (Session)] --> A2[Admin: Criar Semestres]
-A2 --> A3[Admin: Criar Turmas]
-A3 --> A4[Admin: Criar Períodos/Bimestres]
+A2 --> A3[Admin: Criar Períodos/Bimestres]
+A3 --> A4[Admin: Criar Turmas]
 A4 --> A5[Admin: Criar Cursos/Disciplinas]
 A5 --> A6[Admin: Criar Seções (A/B)]
 A6 --> A7[Admin: Definir Tipo de Frequência]
@@ -53,19 +53,20 @@ export const configAcademicasAdmin = `flowchart TD
   A[Admin da Escola] --> B[Configurações Acadêmicas]
 
   B --> C[Criar Ano Letivo]
-  B --> D[Criar Semestre/Bimestre]
-  B --> E[Definir Tipo de Frequência]
-  B --> F[Criar Turma/Classe]
-  B --> G[Criar Disciplina/Curso]
-  B --> H[Criar Seção/Subturma]
-  B --> I[Atribuir Professor]
+  C --> D[Criar Semestre/Bimestre]
+  D --> E[Definir Tipo de Frequência]
+  E --> F[Configurar Grade de Avaliação]
+  F --> G[Criar Turma/Classe]
+  G --> H[Criar Disciplina/Curso]
+  H --> I[Criar Seção/Subturma]
+  I --> J[Atribuir Professor]
 
-  I --> I1[Selecionar Professor]
-  I --> I2[Vincular à Turma]
-  I --> I3[Vincular à Disciplina]
-  I --> I4[Associar ao Semestre]
+  J --> J1[Selecionar Professor]
+  J --> J2[Vincular à Turma]
+  J --> J3[Vincular à Disciplina]
+  J --> J4[Associar ao Semestre]
 
-  B --> J[Controle de Fechamento de Notas]
+  J --> K[Controle de Fechamento de Notas]
 `
 
 export const fluxoCriacaoAdmin = `flowchart TD
