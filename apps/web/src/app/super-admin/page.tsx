@@ -1,10 +1,11 @@
 import { getDashboardData } from "@/lib/dashboard"
 import { getChartsData } from "@/lib/charts"
-import ChartsSection from "@/components/super-admin/ChartsSection"
-import Header from '@/components/super-admin/Header'
-import Sidebar from '@/components/super-admin/Sidebar' // ✅ Adicionei
-import ActivitiesSection from '@/components/super-admin/ActivitiesSection' // ✅ Adicionei  
-import QuickActionsSection from '@/components/super-admin/QuickActionsSection' // ✅ Adicionei
+import ChartsStaticSection from "@/components/super-admin/ChartsStaticSection"
+import HeaderServer from '@/components/super-admin/HeaderServer'
+import SidebarServer from '@/components/super-admin/SidebarServer'
+import ActivitiesSection from '@/components/super-admin/ActivitiesSection'
+import nextDynamic from 'next/dynamic'
+const QuickActionsSection = nextDynamic(() => import('@/components/super-admin/QuickActionsSection'))
 
 export const dynamic = 'force-dynamic'
 
@@ -38,10 +39,10 @@ export default async function Page() {
 
     return (
       <div className="flex h-screen bg-gray-100">
-        <Sidebar />
+        <SidebarServer />
         
         <div className="flex-1 flex flex-col">
-          <Header />
+          <HeaderServer />
           
           <main className="p-6 overflow-y-auto space-y-6">
             <h1 className="text-2xl font-bold">Dashboard Super Admin</h1>
@@ -62,8 +63,8 @@ export default async function Page() {
               ))}
             </div>
 
-            {/* Charts Section */}
-            <ChartsSection data={charts} />
+            {/* Charts Section (server-rendered, no client JS) */}
+            <ChartsStaticSection data={charts} />
 
             {/* Activities e QuickActions Sections */}
             <div className="grid gap-6 lg:grid-cols-3">
@@ -92,10 +93,10 @@ export default async function Page() {
 
     return (
       <div className="flex h-screen bg-gray-100">
-        <Sidebar />
+        <SidebarServer />
         
         <div className="flex-1 flex flex-col">
-          <Header />
+          <HeaderServer />
           
           <main className="p-6 overflow-y-auto space-y-6">
             <h1 className="text-2xl font-bold">Dashboard Super Admin</h1>

@@ -105,6 +105,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const email = body.email.trim().toLowerCase()
     const nome = body.nome.trim()
     const roleEnum = mapPapelToGlobalRole(body.papel as any)
+    const roleEnumDb = roleEnum as Database["public"]["Enums"]["user_role"]
     const papelBody = body.papel as 'admin'|'staff_admin'|'secretaria'|'financeiro'|'professor'|'aluno'
     const needsNumero = papelBody === 'aluno' || papelBody === 'secretaria'
     let numero: string | null = null
@@ -139,7 +140,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           email,
           nome,
           telefone: (body.telefone ?? null) || (numero ?? null),
-          role: roleEnum,
+          role: roleEnumDb,
           escola_id: escolaId,
         } as TablesInsert<'profiles'>]).select('*').single()
       } catch {}
@@ -148,7 +149,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       } catch {}
     } else {
       // Ensure profile role/escola updated
-      try { await admin.from('profiles').update({ role: roleEnum, escola_id: escolaId, telefone: (body.telefone ?? null) || (numero ?? null) }).eq('user_id', userId) } catch {}
+      try { await admin.from('profiles').update({ role: roleEnumDb, escola_id: escolaId, telefone: (body.telefone ?? null) || (numero ?? null) }).eq('user_id', userId) } catch {}
       // Ensure app_metadata role/escola_id updated
       try { await admin.auth.admin.updateUserById(userId, { app_metadata: { role: roleEnum, escola_id: escolaId, numero_usuario: numero || undefined } as any }) } catch {}
     }

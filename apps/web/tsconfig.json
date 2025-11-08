@@ -1,29 +1,17 @@
 {
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "preserve",
-    "incremental": true,
+    // Específicos do app web
     "plugins": [
-      {
-        "name": "next"
-      }
+      { "name": "next" }
     ],
-
-    // 👇 Aqui está o ajuste
     "baseUrl": "src",
     "paths": {
-      "@/*": ["*"],              // código local dentro de apps/web/src
-      "@types/*": ["../../types/*"] // tipos globais do monorepo (supabase.ts)
+      "@/*": ["*"],
+      "@/components/ui/*": [
+        "app/escola/[id]/admin/configuracoes/academico-completo/components/ui/*"
+      ],
+      "~types/*": ["../../../types/*"]
     }
   },
   "include": [
@@ -32,5 +20,13 @@
     "**/*.tsx",
     ".next/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "playwright.config.ts",
+    "tests",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "**/*.e2e.ts",
+    "**/*.e2e.tsx"
+  ]
 }

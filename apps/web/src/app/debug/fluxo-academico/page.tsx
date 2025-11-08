@@ -7,7 +7,7 @@ const chart = `flowchart TD
 %% =====================
 %% ADMIN CONFIGURAÇÕES INICIAIS
 %% =====================
-A1[Admin: Criar Ano Letivo (Session)] --> A2[Admin: Criar Semestres]
+A1[Admin: Criar Ano Letivo (Session)] --> A2[Admin: Criar Períodos]
 A2 --> A3[Admin: Criar Turmas]
 A3 --> A4[Admin: Criar Períodos/Bimestres]
 A4 --> A5[Admin: Criar Cursos/Disciplinas]

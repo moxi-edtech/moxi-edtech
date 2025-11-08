@@ -1,5 +1,14 @@
 This app is a Next.js project using Supabase Auth with SSR cookies.
 
+## Import Aliases
+
+- `@/*`: local code under `src` (configured in `apps/web/tsconfig.json`).
+- `~types/*`: shared types from monorepo `/<root>/types`.
+
+Notes:
+- `apps/web/tsconfig.json` extends the root `tsconfig.json`.
+- The root `tsconfig` does not define `@/*` to avoid leaking app-specific paths.
+
 ## Getting Started
 
 Install dependencies and start dev server:
@@ -78,3 +87,22 @@ Open http://localhost:3000 and try the login flow.
   - Requires super_admin session.
   - Builds the onboarding email (subject/html/text) without sending.
   - If `adminEmail` is omitted, tries to resolve the first admin of the escola.
+
+## DB migration: numero_login as TEXT
+
+- The login number (`profiles.numero_login`) accepts alphanumeric prefixes (first 3 chars of the escola UUID).
+- Ensure the column is `TEXT/VARCHAR` in Postgres. Run the SQL file:
+  - Open Supabase Dashboard → SQL Editor.
+  - Paste and run `docs/db/2025-09-26-numero_login-text.sql` (path is at repo root).
+- This migration:
+  - Adds the column if missing and sets its type to `TEXT`.
+  - Optionally adds a unique index on `(escola_id, numero_login)` to prevent duplicates.
+
+## DB migration: configuracoes_escola (onboarding preferences)
+
+- The onboarding preferences API expects `public.configuracoes_escola` to exist.
+- Run the SQL file at the repository root:
+  - Open Supabase Dashboard → SQL Editor.
+  - Paste and run `docs/db/2025-09-27-configuracoes_escola.sql`.
+  - After running, reload PostgREST cache (Settings → API → Reload) or restart the service.
+  - Ensure env vars are set in this app: `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.

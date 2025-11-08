@@ -38,13 +38,7 @@ const quickActions: QuickAction[] = [
     variant: 'primary',
     description: "Cadastrar nova escola no sistema"
   },
-  { 
-    label: "Gerenciar Matrículas", 
-    icon: AcademicCapIcon, 
-    href: "/super-admin/matriculas",
-    variant: 'secondary',
-    description: "Visualizar e gerenciar matrículas"
-  },
+
   { 
     label: "Financeiro", 
     icon: BanknotesIcon, 

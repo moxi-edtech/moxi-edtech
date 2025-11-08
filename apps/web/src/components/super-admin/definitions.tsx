@@ -39,7 +39,6 @@ export interface DashboardData {
 
 // Tipos para os gráficos
 export interface ChartsData {
-  matriculas?: Matricula[]
   pagamentos?: Pagamento[]
   notas?: Nota[]
   usuarios?: Usuario[]
@@ -96,7 +95,6 @@ export interface DashboardStats {
   total_escolas: number
   total_usuarios: number
   total_alunos: number
-  total_matriculas: number
   total_professores: number
   pagamentos_pendentes: number
   pagamentos_recebidos: number

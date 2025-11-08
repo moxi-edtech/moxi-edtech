@@ -14,10 +14,9 @@
     "jsx": "preserve",
     "incremental": true,
 
-    // 👇 Configuração de paths global do monorepo
+    // 👇 Configuração de paths global do monorepo (apenas compartilhados)
     "baseUrl": ".",
     "paths": {
-      "@/*": ["apps/web/src/*"],
       "~types/*": ["types/*"]
     }
   }

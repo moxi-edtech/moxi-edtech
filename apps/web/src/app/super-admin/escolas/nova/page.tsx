@@ -24,7 +24,9 @@ function CriarEscolaForm() {
   const [adminNome, setAdminNome] = useState("");
 
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState<null | { type: "ok" | "err"; text: string }>(null);
+  const [msg, setMsg] = useState<null | { type: "ok" | "err"; text: string }>(
+    null
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,7 +35,6 @@ function CriarEscolaForm() {
     try {
       setLoading(true);
 
-      // Chama a API com os dados normalizados
       const res = await fetch("/api/escolas/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -42,9 +43,9 @@ function CriarEscolaForm() {
           nif: nif || null,
           endereco: endereco || null,
           admin: {
-            email: adminEmail || null,
+            email: adminEmail.trim(),
             telefone: adminTelefone || null,
-            nome: adminNome || null,
+            nome: adminNome.trim(),
           },
         }),
       });
@@ -55,12 +56,13 @@ function CriarEscolaForm() {
         throw new Error(data.error || "Erro desconhecido ao criar escola.");
       }
 
+      const adminNumero = data.adminNumero ? ` Admin nº ${data.adminNumero}.` : "";
+      const extra = data.mensagemAdmin ? ` ${data.mensagemAdmin}` : "";
       setMsg({
         type: "ok",
-        text: `Escola "${nome}" criada com sucesso! Redirecionando para o onboarding...`,
+        text: `Escola "${nome}" criada com sucesso!${adminNumero} Redirecionando para o onboarding...${extra}`,
       });
 
-      // Redireciona imediatamente para o onboarding
       router.push(`/escola/${data.escolaId}/onboarding`);
     } catch (err: any) {
       setMsg({ type: "err", text: err.message || String(err) });
@@ -73,9 +75,14 @@ function CriarEscolaForm() {
     <div className="max-w-2xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-4">Criar Nova Escola</h1>
 
-      <form onSubmit={handleSubmit} className="space-y-4 bg-white rounded-lg shadow p-6">
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-4 bg-white rounded-lg shadow p-6"
+      >
         <div>
-          <label className="block text-sm font-medium mb-1">Nome da Escola *</label>
+          <label className="block text-sm font-medium mb-1">
+            Nome da Escola *
+          </label>
           <input
             className="border rounded-md w-full p-2 outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Ex.: Colégio Horizonte"
@@ -98,7 +105,9 @@ function CriarEscolaForm() {
             maxLength={9}
             disabled={loading}
           />
-          <p className="text-xs text-gray-500 mt-1">Se informado, deve ser único (9 dígitos).</p>
+          <p className="text-xs text-gray-500 mt-1">
+            Se informado, deve ser único (9 dígitos).
+          </p>
         </div>
 
         <div>
@@ -121,20 +130,21 @@ function CriarEscolaForm() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1">
-                Nome do Administrador <span className="text-gray-400">(Obrigatório)</span>
+                Nome do Administrador *
               </label>
               <input
                 className="border rounded-md w-full p-2 outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Nome completo"
                 value={adminNome}
                 onChange={(e) => setAdminNome(e.target.value)}
+                required
                 disabled={loading}
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium mb-1">
-                Email do Administrador <span className="text-gray-400">(opcional)</span>
+                Email do Administrador *
               </label>
               <input
                 className="border rounded-md w-full p-2 outline-none focus:ring-2 focus:ring-blue-500"
@@ -142,8 +152,12 @@ function CriarEscolaForm() {
                 type="email"
                 value={adminEmail}
                 onChange={(e) => setAdminEmail(e.target.value)}
+                required
                 disabled={loading}
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Necessário para login e redefinição de senha.
+              </p>
             </div>
 
             <div>
@@ -158,9 +172,6 @@ function CriarEscolaForm() {
                 maxLength={9}
                 disabled={loading}
               />
-              <p className="text-xs text-gray-500 mt-1">
-                Formato: 9XXXXXXXX (9 dígitos iniciando por 9).
-              </p>
             </div>
           </div>
         </div>
@@ -198,7 +209,7 @@ function CriarEscolaForm() {
       </form>
 
       <div className="mt-6 text-sm text-gray-600">
-        💡 Ao criar a escola, o fluxo de onboarding será iniciado para completar a configuração inicial.
+        💡 Ao criar a escola, o admin recebe um <strong>número de login</strong> gerado automaticamente, além do e-mail.
       </div>
     </div>
   );
