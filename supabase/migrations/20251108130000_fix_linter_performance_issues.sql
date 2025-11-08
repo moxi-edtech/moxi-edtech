@@ -13,7 +13,7 @@ DROP INDEX IF EXISTS public.uq_escola_usuarios_unique;
 -- Tabela: public.profiles
 -- Índices duplicados: profiles_pkey, profiles_user_id_unique
 -- Ação: Manter profiles_pkey e remover profiles_user_id_unique
-DROP INDEX IF EXISTS public.profiles_user_id_unique;
+ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_user_id_unique;
 
 
 -- 2. Otimizar políticas de RLS com `(select auth.<function>())`
@@ -21,8 +21,8 @@ DROP INDEX IF EXISTS public.profiles_user_id_unique;
 -- Tabela: public.profiles
 -- Política: user_can_update_own_profile
 ALTER POLICY user_can_update_own_profile ON public.profiles
-  USING (auth.uid() = id)
-  WITH CHECK ((select auth.uid()) = id);
+  USING (auth.uid() = user_id)
+  WITH CHECK ((select auth.uid()) = user_id);
 
 -- Política: super_admin_update_role
 ALTER POLICY super_admin_update_role ON public.profiles
@@ -60,13 +60,13 @@ ALTER POLICY super_admin_read_escola_administradores ON public.escola_administra
 -- Política: profiles_select_own
 ALTER POLICY profiles_select_own ON public.profiles
   FOR SELECT
-  USING (auth.uid() = id);
+  USING (auth.uid() = user_id);
 
 -- Política: profiles_update_own
 ALTER POLICY profiles_update_own ON public.profiles
   FOR UPDATE
-  USING (auth.uid() = id)
-  WITH CHECK ((select auth.uid()) = id);
+  USING (auth.uid() = user_id)
+  WITH CHECK ((select auth.uid()) = user_id);
 
 -- Política: super_admin_select_profiles
 ALTER POLICY super_admin_select_profiles ON public.profiles
@@ -266,11 +266,11 @@ CREATE POLICY unified_update_profiles ON public.profiles
   FOR UPDATE
   USING (
     (check_super_admin_role()) OR
-    ((select auth.uid()) = id)
+    ((select auth.uid()) = user_id)
   )
   WITH CHECK (
     (check_super_admin_role()) OR
-    ((select auth.uid()) = id)
+    ((select auth.uid()) = user_id)
   );
 
 
@@ -423,5 +423,5 @@ CREATE POLICY unified_select_profiles ON public.profiles
   FOR SELECT
   USING (
     (check_super_admin_role()) OR
-    ((select auth.uid()) = id)
+    ((select auth.uid()) = user_id)
   );
