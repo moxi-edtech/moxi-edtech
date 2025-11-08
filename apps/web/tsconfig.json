@@ -9,7 +9,7 @@
     "paths": {
       "@/*": ["*"],
       "@/components/ui/*": [
-        "app/escola/[id]/admin/configuracoes/academico-completo/components/ui/*"
+        "components/ui/*"
       ],
       "~types/*": ["../../../types/*"]
     }

@@ -13,7 +13,10 @@
     "lint": "npm run lint --workspace=web",
     "typecheck": "npm run typecheck --workspace=web",
     "clean": "rm -rf .next node_modules/.cache",
-    "gen:types": "mkdir -p types && supabase gen types typescript --project-id wjtifcpxxxotsbmvbgoq > types/supabase.ts"
+    "gen:types": "mkdir -p types && supabase gen types typescript --project-id wjtifcpxxxotsbmvbgoq > types/supabase.ts",
+    "db:push": "supabase db push --project-ref wjtifcpxxxotsbmvbgoq",
+    "db:reset": "supabase db reset",
+    "db:seed:remote": "sh -c 'cat supabase/seeds/*.sql > supabase/.tmp_seed.sql && supabase db execute --project-ref wjtifcpxxxotsbmvbgoq --file supabase/.tmp_seed.sql && rm -f supabase/.tmp_seed.sql'"
   }
 ,
   "devDependencies": {

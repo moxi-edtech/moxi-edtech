@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { type Discipline, type Course, type Class } from "@/types/academico.types";
-import { Button } from "./ui/Button";
-import { Input } from "./ui/Input";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 import { StepHeader } from "./StepHeader";
 
 type Props = {

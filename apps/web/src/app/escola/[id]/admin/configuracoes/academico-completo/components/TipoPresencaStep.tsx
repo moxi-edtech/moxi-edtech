@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Button } from './ui/Button';
-import { Select } from './ui/Select';
+import { Button } from '@/components/ui/Button';
+import { Select } from '@/components/ui/Select';
 import { StepHeader } from './StepHeader';
 
 type Props = {

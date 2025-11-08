@@ -129,6 +129,19 @@ export async function POST(
       return NextResponse.json({ ok: false, error: "As datas do período devem estar dentro do intervalo da sessão acadêmica ativa." }, { status: 400 });
     }
 
+    // Regra de negócio: Trimestre não pode exceder 3 meses de duração
+    if (tipo === 'TRIMESTRE') {
+      const start = new Date(data_inicio)
+      const end = new Date(data_fim)
+      const limit = new Date(start)
+      // Permite no máximo 3 meses a partir do início (inclusive)
+      limit.setMonth(limit.getMonth() + 3)
+      if (end > limit) {
+        console.error('[semestres.POST] trimestre exceeds 3 months', { data_inicio, data_fim, limit: limit.toISOString().split('T')[0] })
+        return NextResponse.json({ ok: false, error: "Trimestre deve ter no máximo 3 meses." }, { status: 400 })
+      }
+    }
+
     // 2) Cria o período (attendance_type exigido pela tabela; usamos 'secao' por padrão)
     // Tenta incluir a coluna opcional 'tipo' quando existir na tabela.
     const baseInsert: any = {

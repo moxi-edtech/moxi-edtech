@@ -12,6 +12,17 @@
   - `npm run typecheck` (TS only)
   - `npm run build` (Next.js production build)
 
+**Migrations unificadas (fonte única)**
+- Todas as migrations agora vivem em `supabase/migrations/` (via Supabase CLI).
+- Seeds em `supabase/seeds/` e testes SQL (ex.: RLS) em `supabase/tests/`.
+- O diretório antigo `db/` foi descontinuado (README aponta para `supabase/`).
+- Para aplicar no projeto remoto: `supabase db push --project-ref wjtifcpxxxotsbmvbgoq`.
+
+**Seeds & Resets**
+- Local: `supabase db reset` executa `supabase/seed.sql` (que inclui os arquivos de `supabase/seeds/`).
+- Remoto: `npm run db:seed:remote` concatena `supabase/seeds/*.sql` e executa via CLI.
+- Tabela de vínculo escola-usuário padronizada: `public.escola_usuarios` (coluna `papel` com check).
+
 **Views Tipadas**
 - `public.Views` inclui: `escolas_view`, `matriculas_por_ano`, `pagamentos_status`.
 - Definidas em `supabase/migrations/20250916_create_views.sql` (monorepo raiz).
