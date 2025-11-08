@@ -1,105 +1,79 @@
 "use client";
 
 import {
-  AcademicCapIcon,
-  ClipboardDocumentCheckIcon,
   UserGroupIcon,
+  AcademicCapIcon,
   UsersIcon,
+  ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
 
-export interface EscolaAdminStats {
-  turmas?: number | null;
-  professores?: number | null;
-  disciplinas?: number | null;
-  alunos?: number | null;
-  planosDeAulaPublicados?: number | null;
-}
-
-interface KpiSectionProps {
-  loading?: boolean;
-  stats?: EscolaAdminStats | null;
-}
-
-const NUMBER_FORMATTER = new Intl.NumberFormat("pt-BR");
-
-const toSafeNumber = (value: number | null | undefined): number => {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
-  }
-
-  return 0;
+export type KpiStats = {
+  turmas: number;
+  alunos: number;
+  professores: number;
+  avaliacoes: number;
 };
 
-const resolveStats = (stats?: EscolaAdminStats | null) => ({
-  turmas: toSafeNumber(stats?.turmas),
-  professores: toSafeNumber(stats?.professores),
-  disciplinas: toSafeNumber(stats?.disciplinas),
-  alunos: toSafeNumber(stats?.alunos),
-  planosDeAulaPublicados: toSafeNumber(stats?.planosDeAulaPublicados),
-});
-
-export default function KpiSection({ loading = false, stats }: KpiSectionProps) {
-  const safeStats = resolveStats(stats);
-
-  const cards = [
+export default function KpiSection({ stats, loading, error }: { stats: KpiStats; loading?: boolean; error?: string | null }) {
+  const kpis = [
     {
       title: "Turmas",
-      value: safeStats.turmas,
+      value: loading ? "—" : String(stats.turmas ?? 0),
       icon: UserGroupIcon,
       bg: "bg-emerald-50",
       color: "text-emerald-600",
-      caption: "Turmas criadas para o ano letivo em curso",
-    },
-    {
-      title: "Professores",
-      value: safeStats.professores,
-      icon: AcademicCapIcon,
-      bg: "bg-sky-50",
-      color: "text-sky-600",
-      caption: "Docentes associados às turmas",
-    },
-    {
-      title: "Disciplinas",
-      value: safeStats.disciplinas,
-      icon: ClipboardDocumentCheckIcon,
-      bg: "bg-violet-50",
-      color: "text-violet-600",
-      caption: "Componentes curriculares habilitados",
+      iconColor: "text-emerald-600",
     },
     {
       title: "Alunos",
-      value: safeStats.alunos,
+      value: loading ? "—" : String(stats.alunos ?? 0),
+      icon: AcademicCapIcon,
+      bg: "bg-blue-50",
+      color: "text-blue-600",
+      iconColor: "text-blue-600",
+    },
+    {
+      title: "Professores",
+      value: loading ? "—" : String(stats.professores ?? 0),
       icon: UsersIcon,
-      bg: "bg-amber-50",
-      color: "text-amber-600",
-      caption: "Matrículas ativas nas turmas",
+      bg: "bg-orange-50",
+      color: "text-orange-600",
+      iconColor: "text-orange-600",
+    },
+    {
+      title: "Provas / Notas",
+      value: loading ? "—" : String(stats.avaliacoes ?? 0),
+      icon: ClipboardDocumentListIcon,
+      bg: "bg-purple-50",
+      color: "text-purple-600",
+      iconColor: "text-purple-600",
     },
   ];
 
   return (
-    <section aria-label="Indicadores rápidos" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      {cards.map(({ title, value, icon: Icon, bg, color, caption }) => {
-        const displayValue = loading ? "—" : NUMBER_FORMATTER.format(value);
-        const iconBg = `${color.replace("text-", "bg-")}/10`;
-
-        return (
-          <article
-            key={title}
-            className={`${bg} rounded-2xl border border-black/5 p-6 shadow-sm transition hover:shadow-md`}
+    <div>
+      {error && (
+        <p className="text-xs text-red-500 mb-3">{error}</p>
+      )}
+      {loading && !error && (
+        <p className="text-xs text-gray-400 mb-3">Atualizando…</p>
+      )}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        {kpis.map((item) => (
+          <div
+            key={item.title}
+            className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition"
           >
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-medium text-slate-500">{title}</h3>
-                <p className={`mt-2 text-3xl font-semibold ${color}`}>{displayValue}</p>
-              </div>
-              <span className={`flex h-12 w-12 items-center justify-center rounded-xl ${iconBg}`}>
-                <Icon className={`h-6 w-6 ${color}`} aria-hidden />
-              </span>
+            <div className="text-sm text-gray-500 mb-2">{item.title}</div>
+            <div className="text-3xl font-semibold text-gray-800">{item.value}</div>
+            <div
+              className={`${item.bg} w-12 h-12 rounded-lg flex items-center justify-center mt-4`}
+            >
+              <item.icon className={`w-6 h-6 ${item.iconColor}`} />
             </div>
-            <p className="mt-4 text-sm text-slate-500">{caption}</p>
-          </article>
-        );
-      })}
-    </section>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

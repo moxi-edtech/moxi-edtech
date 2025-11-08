@@ -1,3 +1,4 @@
+"use client";
 // lib/supabaseClient.ts
 import { createBrowserClient } from "@supabase/ssr"
 import type { Database } from "~types/supabase"
@@ -9,52 +10,42 @@ export const createClient = () =>
     {
       cookies: {
         get(name: string) {
-          try {
-            const cookie = document.cookie
-              .split('; ')
-              .find(row => row.startsWith(`${name}=`))
-            
-            if (!cookie) return null
-            
-            const value = cookie.split('=')[1]
-            
-            // 🔥 CORREÇÃO: NÃO DECODIFICAR valores base64-
-            if (value && value.startsWith('base64-')) {
-              return value; // Retorna o valor ORIGINAL
-            }
-            
-            // Para outros cookies, decode normalmente
-            return decodeURIComponent(value)
-          } catch (error) {
-            console.error('Error getting cookie:', error)
-            return null
+          if (typeof document === 'undefined') return null;
+          const cookie = document.cookie
+            .split('; ')
+            .find((row) => row.startsWith(`${name}=`));
+
+          if (!cookie) return null;
+
+          const value = cookie.split('=')[1];
+
+          // Não decodificar valores base64-
+          if (value && value.startsWith('base64-')) {
+            return value;
           }
+
+          // Para outros cookies, decode normalmente
+          return decodeURIComponent(value);
         },
         set(name: string, value: string, options: any) {
-          try {
-            // Para valores base64-, não encode URI component
-            const cookieValue = value.startsWith('base64-') 
-              ? value 
-              : encodeURIComponent(value);
-              
-            document.cookie = `${name}=${cookieValue}; ${
-              options?.maxAge ? `max-age=${options.maxAge};` : ''
-            } ${options?.path ? `path=${options.path};` : ''} ${
-              options?.secure ? 'secure;' : ''
-            } ${options?.sameSite ? `sameSite=${options.sameSite};` : ''}`
-          } catch (error) {
-            console.error('Error setting cookie:', error)
-          }
+          if (typeof document === 'undefined') return;
+          // Para valores base64-, não encode URI component
+          const cookieValue = value.startsWith('base64-')
+            ? value
+            : encodeURIComponent(value);
+
+          document.cookie = `${name}=${cookieValue}; ${
+            options?.maxAge ? `max-age=${options.maxAge};` : ''
+          } ${options?.path ? `path=${options.path};` : ''} ${
+            options?.secure ? 'secure;' : ''
+          } ${options?.sameSite ? `sameSite=${options.sameSite};` : ''}`;
         },
         remove(name: string, options: any) {
-          try {
-            document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; ${
-              options?.path ? `path=${options.path};` : ''
-            }`
-          } catch (error) {
-            console.error('Error removing cookie:', error)
-          }
-        }
-      }
+          if (typeof document === 'undefined') return;
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; ${
+            options?.path ? `path=${options.path};` : ''
+          }`;
+        },
+      },
     }
   )

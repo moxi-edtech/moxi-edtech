@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type { Database, TablesInsert } from "~types/supabase";
 import { recordAuditServer } from "@/lib/audit";
+import { generateNumeroLogin } from "@/lib/generateNumeroLogin";
 
 // Creates a supabase client with service role for admin operations (server-only)
 const admin = createClient<Database>(
@@ -112,6 +113,20 @@ export async function POST(req: Request) {
       );
     }
 
+    // 4) Generate and persist numero_login for this user within the school context
+    let numeroLogin: string | null = null;
+    try {
+      numeroLogin = await generateNumeroLogin(escolaId, roleEnum, admin);
+      // Persist numero_login and ensure escola_id is set on profile
+      await admin
+        .from('profiles' as any)
+        .update({ numero_login: numeroLogin, escola_id: escolaId } as any)
+        .eq('user_id', authUser.user.id);
+    } catch (e) {
+      // Non-fatal: proceed but return without numero_login
+      console.warn('[users/create] Falha ao gerar numero_login:', e);
+    }
+
     // Auditoria: usuário criado pelo Super Admin
     recordAuditServer({
       escolaId,
@@ -122,7 +137,7 @@ export async function POST(req: Request) {
       details: { papel, roleEnum, email: email.trim().toLowerCase() }
     }).catch(() => null)
 
-    return NextResponse.json({ ok: true, userId: authUser.user.id, tempPassword: password });
+    return NextResponse.json({ ok: true, userId: authUser.user.id, tempPassword: password, numeroLogin });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

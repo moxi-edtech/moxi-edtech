@@ -23,7 +23,6 @@ const navigation = [
   { name: "Dashboard", icon: HomeIcon, href: "/super-admin" },
   { name: "Escolas", icon: BuildingLibraryIcon, href: "/super-admin/escolas" },
   { name: "Usuários Globais", icon: UsersIcon, href: "/super-admin/usuarios" },
-  { name: "Matrículas", icon: AcademicCapIcon, href: "/super-admin/matriculas" },
   { name: "Financeiro", icon: BanknotesIcon, href: "/financeiro" },
   { name: "Relatórios", icon: ChartBarIcon, href: "/super-admin/relatorios" },
   { name: "Configurações", icon: Cog6ToothIcon, href: "/super-admin/configuracoes" },

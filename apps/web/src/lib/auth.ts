@@ -1,4 +1,5 @@
 import { supabaseServer } from "./supabaseServer"
+import type { Papel } from "@/lib/permissions"
 
 export interface SessionUser {
   id: string
@@ -49,6 +50,35 @@ export async function getSession(): Promise<{ user: SessionUser } | null> {
     }
   } catch (error) {
     console.error('Erro em getSession:', error)
+    return null
+  }
+}
+
+// Retorna o papel do usuário logado para uma escola específica
+export async function getPapelForEscola(escolaId: string): Promise<Papel | null> {
+  try {
+    if (!escolaId) return null
+    const s = await supabaseServer()
+
+    const { data: { user }, error: userErr } = await s.auth.getUser()
+    if (userErr || !user) return null
+
+    const { data, error } = await s
+      .from('escola_usuarios')
+      .select('papel')
+      .eq('user_id', user.id)
+      .eq('escola_id', escolaId)
+      .limit(1)
+
+    if (error) {
+      console.error('Erro ao buscar papel na escola:', error.message)
+      return null
+    }
+
+    const papel = (data?.[0] as any)?.papel as Papel | undefined
+    return papel ?? null
+  } catch (e) {
+    console.error('getPapelForEscola failed:', e)
     return null
   }
 }

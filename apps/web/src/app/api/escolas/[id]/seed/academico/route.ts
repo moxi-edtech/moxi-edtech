@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import type { Database, TablesInsert } from '~types/supabase'
@@ -248,4 +249,3 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
 }
-

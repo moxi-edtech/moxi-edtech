@@ -1,0 +1,109 @@
+/**
+ * Utilitários para gerenciamento de cookies do Supabase
+ */
+
+/**
+ * Limpa cookies do Supabase que podem estar corrompidos
+ * Remove cookies que não estão no formato base64- mas são JSON válidos
+ */
+export function clearSupabaseCookies(): void {
+  if (typeof window === 'undefined') return;
+
+  const cookies = document.cookie.split('; ');
+  
+  cookies.forEach(cookie => {
+    const [name, value] = cookie.split('=');
+    
+    // Remove cookies do Supabase que não estão no formato base64-
+    if ((name.includes('supabase') || name.includes('sb-')) && value) {
+      try {
+        // Se não começa com base64- mas é JSON válido, está corrompido
+        if (!value.startsWith('base64-')) {
+          JSON.parse(decodeURIComponent(value));
+          // Se chegou aqui, o cookie está no formato errado - REMOVER
+          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
+          console.log('Cookie corrompido removido:', name);
+        }
+      } catch (e) {
+        // Cookie está no formato correto (não é JSON parseável) - MANTER
+      }
+    }
+  });
+}
+
+/**
+ * Limpa todos os cookies de autenticação (Supabase e NextAuth)
+ */
+export function clearAllAuthCookies(): void {
+  if (typeof window === 'undefined') return;
+
+  const cookies = document.cookie.split('; ');
+  
+  cookies.forEach(cookie => {
+    const [name] = cookie.split('=');
+    if (name.includes('supabase') || name.includes('sb-') || name.includes('next-auth')) {
+      document.cookie = `${name.trim()}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
+    }
+  });
+  
+  console.log('Todos os cookies de autenticação foram limpos');
+}
+
+/**
+ * Verifica se há cookies corrompidos do Supabase
+ */
+export function hasCorruptedCookies(): boolean {
+  if (typeof window === 'undefined') return false;
+
+  const cookies = document.cookie.split('; ');
+  
+  return cookies.some(cookie => {
+    const [name, value] = cookie.split('=');
+    if ((name.includes('supabase') || name.includes('sb-')) && value) {
+      try {
+        if (!value.startsWith('base64-')) {
+          JSON.parse(decodeURIComponent(value));
+          return true; // Cookie corrompido encontrado
+        }
+      } catch (e) {
+        // Cookie está no formato correto
+      }
+    }
+    return false;
+  });
+}
+
+/**
+ * Retorna todos os cookies atuais para debug
+ */
+export function getCookiesForDebug(): string {
+  if (typeof window === 'undefined') return '';
+
+  return document.cookie.split('; ').map(cookie => {
+    const [name, value] = cookie.split('=');
+    if (name.includes('supabase') || name.includes('sb-')) {
+      return `${name}=${value?.substring(0, 30)}...`; // Mostra apenas parte do valor
+    }
+    return cookie;
+  }).join('; ');
+}
+
+/**
+ * Limpa todo o storage local e session
+ */
+export function clearAllStorage(): void {
+  if (typeof window === 'undefined') return;
+
+  localStorage.clear();
+  sessionStorage.clear();
+  console.log('LocalStorage e SessionStorage limpos');
+}
+
+/**
+ * Limpa completamente todos os dados de autenticação
+ */
+export function clearAllAuthData(): void {
+  clearAllAuthCookies();
+  clearAllStorage();
+  console.log('Todos os dados de autenticação foram removidos');
+}

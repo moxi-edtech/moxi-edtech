@@ -1,14 +1,13 @@
-// apps/web/src/app/super-admin/usuarios/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import RequireSuperAdmin from "@/app/(guards)/RequireSuperAdmin";
-import { createClient } from "@/lib/supabaseClient";
-import type { Database } from "~types/supabase";
+// Supabase client not required here; data comes via API route
 
 type Usuario = {
   id: string;
+  numero_login: string | null;
   nome: string | null;
   email: string;
   telefone: string | null;
@@ -26,67 +25,30 @@ export default function Page() {
 }
 
 function ListaUsuarios() {
-  const supabase = createClient();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUsuarios = async () => {
-      setLoading(true);
-
-      // 1) Profiles básicos
-      const { data: profiles, error } = await supabase
-        .from("profiles")
-        .select("user_id, nome, email, telefone, role")
-        .order("nome", { ascending: true });
-
-      if (!error && profiles) {
-        type ProfileRow = Pick<Database["public"]["Tables"]["profiles"]["Row"], "user_id" | "nome" | "email" | "telefone" | "role">
-        const pRows = profiles as ProfileRow[]
-
-        // 2) Vínculos escola_usuarios para esses users
-        const userIds = pRows.map(p => p.user_id)
-        const { data: vincs } = await supabase
-          .from("escola_usuarios")
-          .select("user_id, escola_id, papel")
-          .in("user_id", userIds)
-
-        type VincRow = { user_id: string; escola_id: string; papel: string | null }
-        const vRows = (vincs ?? []) as VincRow[]
-
-        // 3) Nomes de escolas
-        const escolaIds = Array.from(new Set(vRows.map(v => v.escola_id)))
-        let escolasMap = new Map<string, string | null>()
-        if (escolaIds.length) {
-          const { data: escolas } = await supabase
-            .from("escolas")
-            .select("id, nome")
-            .in("id", escolaIds)
-          escolasMap = new Map((escolas ?? []).map((e: { id: string; nome: string | null }) => [e.id, e.nome]))
-        }
-
-        const normalizados: Usuario[] = pRows.map(u => {
-          const vinc = vRows.find(v => v.user_id === u.user_id)
-          const escolaNome = vinc ? escolasMap.get(vinc.escola_id) ?? null : null
-          const papelEscola = vinc?.papel ?? null
-          return {
-            id: u.user_id,
-            nome: u.nome ?? null,
-            email: u.email ?? "",
-            telefone: u.telefone ?? null,
-            role: (u.role as unknown as string) ?? "",
-            escola_nome: escolaNome,
-            papel_escola: papelEscola,
-          }
-        })
-        setUsuarios(normalizados)
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await fetch('/api/super-admin/users/list', { cache: 'no-store' });
+        const json = await res.json();
+        if (!res.ok || !json.ok) throw new Error(json.error || 'Falha ao carregar usuários');
+        setUsuarios(json.items as Usuario[]);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setError(msg);
+        setUsuarios([]);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     };
 
     fetchUsuarios();
-  }, [supabase]);
+  }, []);
 
   return (
     <div className="p-6">
@@ -104,6 +66,8 @@ function ListaUsuarios() {
         <table className="w-full text-sm">
           <thead className="bg-moxinexa-light/10">
             <tr>
+              <th className="py-3 px-4 text-left">ID</th>
+              <th className="py-3 px-4 text-left">Número Login</th>
               <th className="py-3 px-4 text-left">Nome</th>
               <th className="py-3 px-4 text-left">Email</th>
               <th className="py-3 px-4 text-left">Telefone</th>
@@ -115,19 +79,31 @@ function ListaUsuarios() {
           <tbody className="divide-y divide-moxinexa-light/20">
             {loading ? (
               <tr>
-                <td colSpan={6} className="py-6 text-center text-gray-500">
+                <td colSpan={8} className="py-6 text-center text-gray-500">
                   Carregando usuários...
+                </td>
+              </tr>
+            ) : error ? (
+              <tr>
+                <td colSpan={8} className="py-6 text-center text-red-600">
+                  Erro ao carregar: {error}
                 </td>
               </tr>
             ) : usuarios.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-6 text-center text-gray-500">
+                <td colSpan={8} className="py-6 text-center text-gray-500">
                   Nenhum usuário encontrado.
                 </td>
               </tr>
             ) : (
               usuarios.map((u) => (
                 <tr key={u.id} className="hover:bg-moxinexa-light/5">
+                  <td className="py-3 px-4 font-mono text-xs text-gray-600">
+                    {u.id}
+                  </td>
+                  <td className="py-3 px-4 font-mono text-xs text-blue-600">
+                    {u.numero_login ?? "—"}
+                  </td>
                   <td className="py-3 px-4">{u.nome ?? "—"}</td>
                   <td className="py-3 px-4">{u.email}</td>
                   <td className="py-3 px-4">{u.telefone ?? "—"}</td>
