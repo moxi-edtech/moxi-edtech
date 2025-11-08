@@ -12,10 +12,6 @@ yarn-error.log*
 .yarn/install-state.gz
 .yarn/build-state.yml
 
-# Ignore lockfiles se você não quiser commitar os dois
-yarn.lock
-package-lock.json
-
 # ========================================
 # Build outputs
 # ========================================
@@ -77,7 +73,13 @@ Thumbs.db
 /playwright-report/
 /test-results/
 /trace.zip
-node_modules
-node_modules
-node_modules
-node_modules
+
+# ========================================
+# Untracked files
+# ========================================
+/apps/web/src/app/api/escolas/[id]/academico/
+/apps/web/src/app/api/escolas/[id]/onboarding/session/[sessionId]/
+/apps/web/src/app/api/escolas/[id]/turmas/route.ts
+/apps/web/src/app/escola/[id]/dashboard/
+/apps/web/src/components/escola/
+/apps/web/src/components/ui/
