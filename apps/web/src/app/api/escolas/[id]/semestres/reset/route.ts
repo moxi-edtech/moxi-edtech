@@ -33,6 +33,12 @@ const splitRange = (startISO: string, endISO: string, parts: number): Array<{ in
   return segments
 }
 
+const addMonths = (d: Date, months: number) => {
+  const nd = new Date(d)
+  nd.setMonth(nd.getMonth() + months)
+  return nd
+}
+
 // POST /api/escolas/[id]/semestres/reset
 // Substitui todos os semestres da sessão por novos conforme periodo_tipo (2 ou 3)
 export async function POST(
@@ -186,18 +192,45 @@ export async function POST(
     }
 
     // Insere novos períodos
-    const qtd = periodo_tipo === 'semestre' ? 2 : 3
-    const label = periodo_tipo === 'semestre' ? 'Semestre' : 'Trimestre'
-    const parts = splitRange(sessionStart, sessionEnd, qtd)
-    const toInsert = parts.map((p, i) => ({
-      session_id: sessao_id,
-      nome: `${i + 1}º ${label}`,
-      data_inicio: p.inicio,
-      data_fim: p.fim,
-      // Mantém consistência com o seed: 'section'
-      attendance_type: 'section',
-      permitir_submissao_final: false,
-    }))
+    let toInsert: any[] = []
+    if (periodo_tipo === 'semestre') {
+      const qtd = 2
+      const label = 'Semestre'
+      const parts = splitRange(sessionStart, sessionEnd, qtd)
+      toInsert = parts.map((p, i) => ({
+        session_id: sessao_id,
+        nome: `${i + 1}º ${label}`,
+        data_inicio: p.inicio,
+        data_fim: p.fim,
+        attendance_type: 'section',
+        permitir_submissao_final: false,
+      }))
+    } else {
+      // Trimestre: garantir que cada período tenha no máximo 3 meses
+      const label = 'Trimestre'
+      const start = parseISO(sessionStart)
+      const endSession = parseISO(sessionEnd)
+      let currentStart = new Date(start)
+      for (let i = 0; i < 3; i++) {
+        const maxEnd = addMonths(currentStart, 3) // limite de 3 meses
+        const periodEnd = new Date(Math.min(maxEnd.getTime(), endSession.getTime()))
+        const inicioISO = dateToISO(currentStart)
+        const fimISO = dateToISO(periodEnd)
+        toInsert.push({
+          session_id: sessao_id,
+          nome: `${i + 1}º ${label}`,
+          data_inicio: inicioISO,
+          data_fim: fimISO,
+          attendance_type: 'section',
+          permitir_submissao_final: false,
+        })
+        // Próximo período começa no dia seguinte
+        const nextStart = new Date(periodEnd)
+        nextStart.setDate(nextStart.getDate() + 1)
+        currentStart = nextStart
+        if (currentStart > endSession) break
+      }
+    }
     const { error: insErr } = await (admin as any)
       .from('semestres')
       .insert(toInsert as any)
@@ -206,7 +239,7 @@ export async function POST(
       return NextResponse.json({ ok: false, error: insErr.message }, { status: 400 })
     }
 
-    return NextResponse.json({ ok: true, created: qtd })
+    return NextResponse.json({ ok: true, created: toInsert.length })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erro inesperado'
     return NextResponse.json({ ok: false, error: msg }, { status: 500 })

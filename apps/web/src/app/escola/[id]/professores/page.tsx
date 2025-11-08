@@ -61,14 +61,30 @@ export default function ProfessoresPage() {
           }))
         }
 
-        const [turmasRes, cursosRes] = await Promise.all([
-          supabase.from("turmas").select("id, nome").eq("escola_id", escolaId),
-          supabase.from("cursos").select("id, nome").eq("escola_id", escolaId),
-        ])
+        // Turmas agora via API com service role (evita RLS vazio)
+        let turmasLista: { id: string; nome: string }[] = []
+        try {
+          const res = await fetch(`/api/escolas/${escolaId}/turmas`, { cache: 'no-store' })
+          const json = await res.json().catch(() => null)
+          if (res.ok && Array.isArray(json?.data)) {
+            turmasLista = json.data as any
+          }
+        } catch {}
+
+        // Cursos agora via API com service role (evita RLS vazio)
+        let cursosLista: { id: string; nome: string }[] = []
+        try {
+          const res = await fetch(`/api/escolas/${escolaId}/cursos`, { cache: 'no-store' })
+          const json = await res.json().catch(() => null)
+          if (res.ok && Array.isArray(json?.data)) {
+            cursosLista = (json.data as any[]).map((c: any) => ({ id: c.id, nome: c.nome }))
+          }
+        } catch {}
+
         if (!cancelled) {
           setProfessores(profs)
-          setTurmas((turmasRes.data as any) || [])
-          setCursos((cursosRes.data as any) || [])
+          setTurmas(turmasLista)
+          setCursos(cursosLista)
         }
       } catch (e) {
         if (!cancelled)

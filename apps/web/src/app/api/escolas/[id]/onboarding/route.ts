@@ -144,24 +144,56 @@ export async function POST(
     // 4) Use service role to perform writes bypassing RLS
 
     // 3.1) Update escola basics
-    const escolaUpdate: any = {
+    // 3.1) Update escola basics + marcar conclusão de onboarding usando timestamp quando disponível
+    const escolaUpdateBase: any = {
       ...(schoolName ? { nome: schoolName } : {}),
       ...(primaryColor ? { cor_primaria: primaryColor } : {}),
       // Atualiza logo_url somente quando houver URL válida
       ...((typeof logoUrl === 'string' && logoUrl.length > 0) ? { logo_url: logoUrl } : {}),
-      onboarding_finalizado: true,
     }
 
-    const { error: schoolError } = await admin
-      .from("escolas")
-      .update(escolaUpdate)
-      .eq("id", escolaId)
+    // Helper: realiza update e, se falhar por coluna ausente, tenta novamente sem needs_academic_setup
+    const updateEscolaWithFallback = async (patch: any) => {
+      const { data, error } = await admin.from('escolas').update(patch).eq('id', escolaId)
+      if (error && Object.prototype.hasOwnProperty.call(patch, 'needs_academic_setup')) {
+        const msg = error.message || ''
+        if (
+          msg.includes('needs_academic_setup') ||
+          msg.toLowerCase().includes('schema cache') ||
+          msg.toLowerCase().includes('column')
+        ) {
+          const clone: any = { ...patch }
+          delete clone.needs_academic_setup
+          const { error: err2 } = await admin.from('escolas').update(clone).eq('id', escolaId)
+          return { error: err2 }
+        }
+      }
+      return { error }
+    }
 
-    if (schoolError) {
-      return NextResponse.json(
-        { ok: false, error: schoolError.message || "Falha ao atualizar escola" },
-        { status: 400 }
-      )
+    let finalizadoOk = false
+    // Tentativa 1: usar onboarding_completed_at (timestamp) e opcionalmente onboarding_completed_by
+    {
+      const escolaUpdate1 = {
+        ...escolaUpdateBase,
+        onboarding_completed_at: new Date().toISOString(),
+        onboarding_completed_by: user.id,
+        needs_academic_setup: false,
+      } as any
+      const { error: err1 } = await updateEscolaWithFallback(escolaUpdate1)
+      if (!err1) finalizadoOk = true
+    }
+
+    // Tentativa 2 (fallback): usar booleano antigo
+    if (!finalizadoOk) {
+      const patch = { ...escolaUpdateBase, onboarding_finalizado: true, needs_academic_setup: false } as any
+      const { error: err2 } = await updateEscolaWithFallback(patch)
+      if (err2) {
+        return NextResponse.json(
+          { ok: false, error: err2.message || 'Falha ao atualizar escola' },
+          { status: 400 }
+        )
+      }
     }
 
     // 3.2) Create turma if provided (idempotent by escola_id+nome)

@@ -4,10 +4,10 @@ import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { Calendar, RotateCcw, CheckCircle2, Save, Plus } from 'lucide-react';
 import { type AcademicSession } from '@/types/academico.types';
-import { Button } from './ui/Button';
-import { Input } from './ui/Input';
-import { Card } from './ui/Card';
-import { Badge } from './ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
 import { StepHeader } from './StepHeader';
 import { createClient } from '@/lib/supabaseClient';
 

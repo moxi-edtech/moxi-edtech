@@ -15,6 +15,7 @@ import {
   BanknotesIcon,
   UsersIcon,
   BookOpenIcon,
+  LockClosedIcon,
 } from "@heroicons/react/24/outline";
 
 import { createClient } from "@/lib/supabaseClient";
@@ -33,6 +34,12 @@ export default function Sidebar({
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const pathname = usePathname();
+  const [estrutura, setEstrutura] = useState<"classes" | "secoes" | "cursos" | null>(null);
+  const [periodoTipo, setPeriodoTipo] = useState<"semestre" | "trimestre" | null>(null);
+  const [tipoPresenca, setTipoPresenca] = useState<"secao" | "curso" | null>(null);
+  const [needsAcademicSetup, setNeedsAcademicSetup] = useState<boolean | null>(null);
+  const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
+  const [activeSession, setActiveSession] = useState<{ nome: string; ano: string } | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -45,6 +52,10 @@ export default function Sidebar({
           .maybeSingle();
         if (!mounted) return;
         setNomeEscola(data?.nome || "");
+        const done = false; // Assuming not done if columns are missing
+        const needs = true; // Assuming setup is needed if column is missing
+        setOnboardingDone(done);
+        setNeedsAcademicSetup(needs);
       } catch (e) {
         // noop
       }
@@ -55,22 +66,84 @@ export default function Sidebar({
     };
   }, [supabase, escolaId, initialNome]);
 
+  // Carrega preferências/configurações acadêmicas para adaptar o menu
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!escolaId) return;
+      try {
+        const res = await fetch(`/api/escolas/${escolaId}/onboarding/preferences`, { cache: "no-store" });
+        const json = await res.json().catch(() => null);
+        if (!mounted) return;
+        if (res.ok && json?.data) {
+          const estr = json.data.estrutura as string | undefined;
+          const per = json.data.periodo_tipo as string | undefined;
+          const pres = json.data.tipo_presenca as string | undefined;
+          if (estr === "classes" || estr === "secoes" || estr === "cursos") setEstrutura(estr);
+          if (per === "semestre" || per === "trimestre") setPeriodoTipo(per);
+          if (pres === "secao" || pres === "curso") setTipoPresenca(pres);
+        }
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [escolaId]);
+
+  // Sessão ativa (mostrar no topo do sidebar)
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!escolaId) return;
+      try {
+        const { data } = await supabase
+          .from("school_sessions")
+          .select("id, nome, data_inicio, data_fim, status")
+          .eq("escola_id", escolaId)
+          .order("data_inicio", { ascending: false });
+        if (!mounted) return;
+        const rows = (data as any[]) || [];
+        const ativa = rows.find((r) => String(r.status).toLowerCase() === "ativa") || rows[0];
+        if (ativa) {
+          const ano = `${String(ativa.data_inicio).slice(0, 4)}-${String(ativa.data_fim).slice(0, 4)}`;
+          setActiveSession({ nome: ativa.nome || "Sessão", ano });
+        } else {
+          setActiveSession(null);
+        }
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [supabase, escolaId]);
+
   // Itens principais (unificados, sem seções, como no Super Admin)
+  const setupReady = onboardingDone === true || needsAcademicSetup === false;
   const items = [
-    { label: "Dashboard", icon: HomeIcon, path: `/escola/${escolaId}` },
-    { label: "Turmas", icon: UserGroupIcon, path: `/escola/${escolaId}/turmas` },
-    { label: "Alunos", icon: AcademicCapIcon, path: `/escola/${escolaId}/alunos` },
-    { label: "Professores", icon: UsersIcon, path: `/escola/${escolaId}/professores` }, // 👈
-    { label: "Provas / Notas", icon: ClipboardDocumentListIcon, path: `/escola/${escolaId}/avaliacoes` },
-    { label: "Avisos", icon: MegaphoneIcon, path: `/escola/${escolaId}/avisos` },
-    { label: "Eventos", icon: CalendarIcon, path: `/escola/${escolaId}/eventos` },
-    { label: "Rotina", icon: ClockIcon, path: `/escola/${escolaId}/rotina` },
-    { label: "Configurações Acadêmicas", icon: Cog6ToothIcon, path: `/escola/${escolaId}/admin/configuracoes` },
-    { label: "Promoção", icon: ArrowTrendingUpIcon, path: `/escola/${escolaId}/promocao` },
-    { label: "Pagamentos", icon: BanknotesIcon, path: `/escola/${escolaId}/pagamentos` },
-    { label: "Funcionários", icon: UserGroupIcon, path: `/escola/${escolaId}/funcionarios` },
-    { label: "Biblioteca", icon: BookOpenIcon, path: `/escola/${escolaId}/biblioteca` },
-  ];
+    { label: "Dashboard", icon: HomeIcon, path: `/escola/${escolaId}`, requiresSetup: false },
+    {
+      label: estrutura === "secoes" ? "Seções" : "Turmas",
+      icon: UserGroupIcon,
+      path: `/escola/${escolaId}/turmas`,
+      requiresSetup: false,
+    },
+    { label: "Alunos", icon: AcademicCapIcon, path: `/escola/${escolaId}/alunos`, requiresSetup: true },
+    { label: "Professores", icon: UsersIcon, path: `/escola/${escolaId}/professores`, requiresSetup: true }, // 👈
+    { label: "Provas / Notas", icon: ClipboardDocumentListIcon, path: `/escola/${escolaId}/avaliacoes`, requiresSetup: true },
+    { label: "Avisos", icon: MegaphoneIcon, path: `/escola/${escolaId}/avisos`, requiresSetup: false },
+    { label: "Eventos", icon: CalendarIcon, path: `/escola/${escolaId}/eventos`, requiresSetup: false },
+    { label: tipoPresenca === "curso" ? "Rotina por Curso" : tipoPresenca === "secao" ? "Rotina por Seção" : "Rotina", icon: ClockIcon, path: `/escola/${escolaId}/rotina`, requiresSetup: true },
+    { label: "Configurações Acadêmicas", icon: Cog6ToothIcon, path: `/escola/${escolaId}/admin/configuracoes`, requiresSetup: false },
+    { label: "Promoção", icon: ArrowTrendingUpIcon, path: `/escola/${escolaId}/promocao`, requiresSetup: true },
+    { label: "Pagamentos", icon: BanknotesIcon, path: `/escola/${escolaId}/pagamentos`, requiresSetup: false },
+    { label: "Funcionários", icon: UserGroupIcon, path: `/escola/${escolaId}/funcionarios`, requiresSetup: false },
+    { label: "Biblioteca", icon: BookOpenIcon, path: `/escola/${escolaId}/biblioteca`, requiresSetup: false },
+  ] as const;
+  const blockedCount = !setupReady ? items.filter(i => i.requiresSetup).length : 0;
 
   const isActive = (href: string) => pathname === href || pathname?.startsWith(href + "/");
 
@@ -101,6 +174,18 @@ export default function Sidebar({
                 {nomeEscola || ""}
               </h1>
               <p className="text-xs text-moxinexa-light/80">Admin Escola</p>
+              <div className="mt-0.5 flex items-center gap-2 text-[11px] text-white/80">
+                {activeSession ? (
+                  <span title={`${activeSession.nome} • ${activeSession.ano}`} className="truncate">
+                    Sessão: {activeSession.nome} • {activeSession.ano}
+                  </span>
+                ) : (
+                  <span>Sessão não configurada</span>
+                )}
+                {periodoTipo && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-white/10 border border-white/20">{periodoTipo === 'trimestre' ? 'Trimestral' : 'Semestral'}</span>
+                )}
+              </div>
             </div>
           </div>
           <button
@@ -123,21 +208,62 @@ export default function Sidebar({
         </div>
 
         <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
+          {setupReady === false && (
+            <div className="mx-1 mb-2 rounded-lg border border-amber-300/40 bg-amber-400/10 text-amber-50 px-3 py-2 text-xs">
+              {blockedCount} {blockedCount === 1 ? 'item bloqueado' : 'itens bloqueados'} até concluir as Configurações Acadêmicas.
+              <a
+                href={`/escola/${escolaId}/admin/configuracoes`}
+                className="ml-2 underline hover:opacity-90"
+              >
+                Abrir configurações
+              </a>
+            </div>
+          )}
           {items.map((item) => {
             const active = isActive(item.path);
+            const gated = item.requiresSetup && !setupReady;
+            const href = gated ? `/escola/${escolaId}/admin/configuracoes` : item.path;
+            const title = gated ? "Finalize as Configurações Acadêmicas para acessar este recurso" : undefined;
             return (
               <a
                 key={item.label}
-                href={item.path}
+                href={href}
+                title={title}
+                aria-disabled={gated ? true : undefined}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group ${
-                  active
+                  gated
+                    ? "opacity-70 cursor-pointer bg-white/5 text-white/70 hover:bg-white/10"
+                    : active
                     ? "bg-white/20 text-white shadow-sm border-l-4 border-white"
                     : "text-white/70 hover:bg-white/10 hover:text-white"
                 }`}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                <item.icon className={`w-5 h-5 ${active ? "text-white" : "text-moxinexa-light/70 group-hover:text-white"}`} />
-                <span>{item.label}</span>
+                {gated ? (
+                  <LockClosedIcon className="w-5 h-5 text-amber-200/90" />
+                ) : (
+                  <item.icon className={`w-5 h-5 ${active ? "text-white" : "text-moxinexa-light/70 group-hover:text-white"}`} />
+                )}
+                <span className="truncate">{item.label}</span>
+                {item.label === "Configurações Acadêmicas" && (
+                  <span className="ml-auto flex items-center gap-1">
+                    {setupReady === false && (
+                      <span className="px-2 py-0.5 bg-amber-400/20 text-amber-200 text-[10px] rounded-full border border-amber-400/30">
+                        Pendente
+                      </span>
+                    )}
+                    {periodoTipo && (
+                      <span className="px-2 py-0.5 bg-white/10 text-white text-[10px] rounded-full border border-white/20">
+                        {periodoTipo === "trimestre" ? "Tri" : "Sem"}
+                      </span>
+                    )}
+                    {estrutura && (
+                      <span className="px-2 py-0.5 bg-white/10 text-white text-[10px] rounded-full border border-white/20">
+                        {estrutura === "secoes" ? "Seções" : estrutura === "cursos" ? "Cursos" : "Classes"}
+                      </span>
+                    )}
+                  </span>
+                )}
               </a>
             );
           })}

@@ -14,19 +14,50 @@ export async function POST(
   const { id: escolaId } = await context.params
 
   try {
-    const schema = z.object({
+    const body = await req.json()
+    const byYearSchema = z.object({
       nome: z.string().trim().min(1),
       startYear: z.string().regex(/^\d{4}$/),
       endYear: z.string().regex(/^\d{4}$/),
     })
-    const parse = schema.safeParse(await req.json())
-    if (!parse.success) {
-      const msg = parse.error.errors[0]?.message || "Dados inválidos"
-      return NextResponse.json({ ok: false, error: msg }, { status: 400 })
-    }
-    const { nome, startYear, endYear } = parse.data
-    if (Number(startYear) >= Number(endYear)) {
-      return NextResponse.json({ ok: false, error: 'Ano final deve ser maior que ano inicial' }, { status: 400 })
+    const byDateSchema = z.object({
+      nome: z.string().trim().min(1),
+      startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    })
+
+    let nome: string
+    let data_inicio: string
+    let data_fim: string
+    const tryYear = byYearSchema.safeParse(body)
+    const tryDate = byDateSchema.safeParse(body)
+    if (tryDate.success) {
+      nome = tryDate.data.nome
+      data_inicio = tryDate.data.startDate
+      data_fim = tryDate.data.endDate
+      // valida 1 ano - 1 dia
+      const sd = new Date(data_inicio)
+      const ed = new Date(data_fim)
+      const expected = new Date(sd)
+      expected.setFullYear(expected.getFullYear() + 1)
+      expected.setDate(expected.getDate() - 1)
+      const toISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+      if (toISO(expected) !== toISO(ed)) {
+        return NextResponse.json({ ok: false, error: 'A sessão deve durar 1 ano (fim = início + 1 ano - 1 dia)' }, { status: 400 })
+      }
+    } else if (tryYear.success) {
+      nome = tryYear.data.nome
+      const { startYear, endYear } = tryYear.data
+      if (Number(startYear) >= Number(endYear)) {
+        return NextResponse.json({ ok: false, error: 'Ano final deve ser maior que ano inicial' }, { status: 400 })
+      }
+      if (Number(endYear) - Number(startYear) !== 1) {
+        return NextResponse.json({ ok: false, error: 'A sessão deve ter exatamente 1 ano de duração' }, { status: 400 })
+      }
+      data_inicio = `${startYear}-01-01`
+      data_fim = `${endYear}-12-31`
+    } else {
+      return NextResponse.json({ ok: false, error: 'Payload inválido' }, { status: 400 })
     }
 
     const s = await supabaseServer()
@@ -92,27 +123,51 @@ export async function POST(
       .insert({
         escola_id: escolaId,
         nome,
-        data_inicio: `${startYear}-01-01`,
-        data_fim: `${endYear}-12-31`,
+        data_inicio,
+        data_fim,
         status: 'ativa',
       } as any)
     if (insErr) return NextResponse.json({ ok: false, error: insErr.message }, { status: 400 })
 
-    // Reset onboarding progress: clear drafts and mark as not finished
+    // Reset onboarding drafts; NÃO desmarca conclusão do onboarding.
     try {
       await (admin as any)
         .from('onboarding_drafts')
         .delete()
         .eq('escola_id', escolaId)
     } catch (_) {}
+
+    // Sinaliza que ajustes acadêmicos são necessários após rotacionar sessão
+    // Caso a coluna não exista neste schema, ignora silenciosamente
     try {
-      await (admin as any)
+      const { error: flagErr } = await (admin as any)
         .from('escolas')
-        .update({ onboarding_finalizado: false } as any)
+        .update({ needs_academic_setup: true } as any)
         .eq('id', escolaId)
+      if (flagErr) {
+        const msg = String(flagErr.message || '').toLowerCase()
+        if (msg.includes('needs_academic_setup') || msg.includes('schema cache') || msg.includes('column')) {
+          // Coluna ausente em alguns ambientes: apenas ignore
+        } else {
+          // Mantém comportamento original: não bloquear fluxo por esse aviso
+        }
+      }
     } catch (_) {}
 
-    return NextResponse.json({ ok: true })
+    // Carrega sessões após rotação para retornar nova sessão ativa e histórico
+    let active: any = null
+    let all: any[] = []
+    try {
+      const { data: sessList } = await (admin as any)
+        .from('school_sessions')
+        .select('id, nome, data_inicio, data_fim, status')
+        .eq('escola_id', escolaId)
+        .order('data_inicio', { ascending: false })
+      all = sessList || []
+      active = (all || []).find((s: any) => s.status === 'ativa') || null
+    } catch {}
+
+    return NextResponse.json({ ok: true, data: { novaSessao: active, todasSessoes: all } })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erro inesperado'
     return NextResponse.json({ ok: false, error: msg }, { status: 500 })

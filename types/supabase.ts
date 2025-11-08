@@ -26,7 +26,7 @@ export type Database = {
           responsavel_contato: string | null
           responsavel_nome: string | null
           sexo: string | null
-          tsv: unknown | null
+          tsv: unknown
         }
         Insert: {
           bi_numero?: string | null
@@ -39,7 +39,7 @@ export type Database = {
           responsavel_contato?: string | null
           responsavel_nome?: string | null
           sexo?: string | null
-          tsv?: unknown | null
+          tsv?: unknown
         }
         Update: {
           bi_numero?: string | null
@@ -52,7 +52,7 @@ export type Database = {
           responsavel_contato?: string | null
           responsavel_nome?: string | null
           sexo?: string | null
-          tsv?: unknown | null
+          tsv?: unknown
         }
         Relationships: [
           {
@@ -314,6 +314,7 @@ export type Database = {
       }
       configuracoes_escola: {
         Row: {
+          autogerar_periodos: boolean | null
           escola_id: string
           estrutura: string
           periodo_tipo: string | null
@@ -321,6 +322,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          autogerar_periodos?: boolean | null
           escola_id: string
           estrutura: string
           periodo_tipo?: string | null
@@ -328,6 +330,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          autogerar_periodos?: boolean | null
           escola_id?: string
           estrutura?: string
           periodo_tipo?: string | null
@@ -952,6 +955,66 @@ export type Database = {
         }
         Relationships: []
       }
+      frequencias_2025_11: {
+        Row: {
+          curso_oferta_id: string | null
+          data: string
+          escola_id: string
+          id: string
+          matricula_id: string
+          routine_id: string | null
+          status: string
+        }
+        Insert: {
+          curso_oferta_id?: string | null
+          data: string
+          escola_id: string
+          id: string
+          matricula_id: string
+          routine_id?: string | null
+          status: string
+        }
+        Update: {
+          curso_oferta_id?: string | null
+          data?: string
+          escola_id?: string
+          id?: string
+          matricula_id?: string
+          routine_id?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+      frequencias_2025_12: {
+        Row: {
+          curso_oferta_id: string | null
+          data: string
+          escola_id: string
+          id: string
+          matricula_id: string
+          routine_id: string | null
+          status: string
+        }
+        Insert: {
+          curso_oferta_id?: string | null
+          data: string
+          escola_id: string
+          id: string
+          matricula_id: string
+          routine_id?: string | null
+          status: string
+        }
+        Update: {
+          curso_oferta_id?: string | null
+          data?: string
+          escola_id?: string
+          id?: string
+          matricula_id?: string
+          routine_id?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       frequencias_default: {
         Row: {
           curso_oferta_id: string | null
@@ -1026,6 +1089,7 @@ export type Database = {
           final: boolean
           id: string
           matricula_id: string
+          tenant_id: string | null
           valor: number
         }
         Insert: {
@@ -1035,6 +1099,7 @@ export type Database = {
           final: boolean
           id: string
           matricula_id: string
+          tenant_id?: string | null
           valor: number
         }
         Update: {
@@ -1044,6 +1109,7 @@ export type Database = {
           final?: boolean
           id?: string
           matricula_id?: string
+          tenant_id?: string | null
           valor?: number
         }
         Relationships: []
@@ -1056,6 +1122,7 @@ export type Database = {
           final: boolean
           id: string
           matricula_id: string
+          tenant_id: string | null
           valor: number
         }
         Insert: {
@@ -1065,6 +1132,7 @@ export type Database = {
           final: boolean
           id: string
           matricula_id: string
+          tenant_id?: string | null
           valor: number
         }
         Update: {
@@ -1074,6 +1142,7 @@ export type Database = {
           final?: boolean
           id?: string
           matricula_id?: string
+          tenant_id?: string | null
           valor?: number
         }
         Relationships: []
@@ -1086,6 +1155,7 @@ export type Database = {
           final: boolean
           id: string
           matricula_id: string
+          tenant_id: string | null
           valor: number
         }
         Insert: {
@@ -1095,6 +1165,7 @@ export type Database = {
           final: boolean
           id: string
           matricula_id: string
+          tenant_id?: string | null
           valor: number
         }
         Update: {
@@ -1104,6 +1175,73 @@ export type Database = {
           final?: boolean
           id?: string
           matricula_id?: string
+          tenant_id?: string | null
+          valor?: number
+        }
+        Relationships: []
+      }
+      lancamentos_2025_11: {
+        Row: {
+          avaliacao_id: string
+          criado_em: string
+          escola_id: string
+          final: boolean
+          id: string
+          matricula_id: string
+          tenant_id: string | null
+          valor: number
+        }
+        Insert: {
+          avaliacao_id: string
+          criado_em: string
+          escola_id: string
+          final: boolean
+          id: string
+          matricula_id: string
+          tenant_id?: string | null
+          valor: number
+        }
+        Update: {
+          avaliacao_id?: string
+          criado_em?: string
+          escola_id?: string
+          final?: boolean
+          id?: string
+          matricula_id?: string
+          tenant_id?: string | null
+          valor?: number
+        }
+        Relationships: []
+      }
+      lancamentos_2025_12: {
+        Row: {
+          avaliacao_id: string
+          criado_em: string
+          escola_id: string
+          final: boolean
+          id: string
+          matricula_id: string
+          tenant_id: string | null
+          valor: number
+        }
+        Insert: {
+          avaliacao_id: string
+          criado_em: string
+          escola_id: string
+          final: boolean
+          id: string
+          matricula_id: string
+          tenant_id?: string | null
+          valor: number
+        }
+        Update: {
+          avaliacao_id?: string
+          criado_em?: string
+          escola_id?: string
+          final?: boolean
+          id?: string
+          matricula_id?: string
+          tenant_id?: string | null
           valor?: number
         }
         Relationships: []
@@ -1116,6 +1254,7 @@ export type Database = {
           final: boolean
           id: string
           matricula_id: string
+          tenant_id: string | null
           valor: number
         }
         Insert: {
@@ -1125,6 +1264,7 @@ export type Database = {
           final?: boolean
           id?: string
           matricula_id: string
+          tenant_id?: string | null
           valor: number
         }
         Update: {
@@ -1134,6 +1274,7 @@ export type Database = {
           final?: boolean
           id?: string
           matricula_id?: string
+          tenant_id?: string | null
           valor?: number
         }
         Relationships: [
@@ -2548,10 +2689,7 @@ export type Database = {
           month_start: string
         }[]
       }
-      can_access: {
-        Args: { eid: string }
-        Returns: boolean
-      }
+      can_access: { Args: { eid: string }; Returns: boolean }
       create_escola_with_admin: {
         Args: {
           p_admin_email?: string
@@ -2571,286 +2709,15 @@ export type Database = {
         Args: { month_start: string; tbl: string }
         Returns: undefined
       }
-      current_tenant_escola_id: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      current_user_role: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      dashboard: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      gbt_bit_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_bool_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_bool_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_bpchar_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_bytea_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_cash_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_cash_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_date_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_date_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_decompress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_enum_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_enum_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_float4_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_float4_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_float8_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_float8_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_inet_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_int2_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_int2_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_int4_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_int4_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_int8_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_int8_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_intv_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_intv_decompress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_intv_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_macad_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_macad_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_macad8_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_macad8_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_numeric_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_oid_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_oid_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_text_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_time_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_time_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_timetz_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_ts_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_ts_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_tstz_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_uuid_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_uuid_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_var_decompress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbt_var_fetch: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbtreekey_var_in: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbtreekey_var_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbtreekey16_in: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbtreekey16_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbtreekey2_in: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbtreekey2_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbtreekey32_in: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbtreekey32_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbtreekey4_in: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbtreekey4_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbtreekey8_in: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gbtreekey8_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gtrgm_compress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gtrgm_decompress: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gtrgm_in: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      gtrgm_options: {
-        Args: { "": unknown }
-        Returns: undefined
-      }
-      gtrgm_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      is_super_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      partitions_info: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      refresh_all_materialized_views: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      set_limit: {
-        Args: { "": number }
-        Returns: number
-      }
-      show_limit: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
-      show_trgm: {
-        Args: { "": string }
-        Returns: string[]
-      }
+      current_tenant_escola_id: { Args: never; Returns: string }
+      current_user_role: { Args: never; Returns: string }
+      dashboard: { Args: never; Returns: Json }
+      get_user_tenant: { Args: never; Returns: string }
+      is_super_admin: { Args: never; Returns: boolean }
+      partitions_info: { Args: never; Returns: Json }
+      refresh_all_materialized_views: { Args: never; Returns: undefined }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       user_role:

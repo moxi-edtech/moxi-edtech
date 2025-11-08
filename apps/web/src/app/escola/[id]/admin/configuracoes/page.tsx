@@ -1,19 +1,21 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabaseClient";
 import type { AcademicSession, Semester, Course, Teacher, Class, Discipline } from "@/types/academico.types";
 
 import AcademicSetupWizard from "@/components/escola/onboarding/AcademicSetupWizard";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 import { CheckCircle2, Settings, BookOpen, Users, Calendar, GraduationCap } from "lucide-react";
+import { toast } from "sonner";
 
 export default function ConfiguracoesAcademicasPage() {
   const p = useParams() as Record<string, string | string[] | undefined>;
   const escolaId = useMemo(() => (Array.isArray(p.id) ? p.id[0] : (p.id ?? "")), [p.id]);
   const supabase = useMemo(() => createClient(), []);
+  const router = useRouter();
 
   const [sessoes, setSessoes] = useState<AcademicSession[]>([]);
   const [sessaoAtiva, setSessaoAtiva] = useState<AcademicSession | null>(null);
@@ -28,12 +30,50 @@ export default function ConfiguracoesAcademicasPage() {
   const [showWizard, setShowWizard] = useState(false);
   const [setupComplete, setSetupComplete] = useState(false);
 
+  // Dados da escola e Danger Zone (wipe)
+  const [escolaNome, setEscolaNome] = useState<string>("");
+  const [wipeScope, setWipeScope] = useState<"session" | "config" | "all">("session");
+  const [wipeIncludes, setWipeIncludes] = useState<string[]>(["matriculas","turmas","semestres"]);
+  const [wipeSessionId, setWipeSessionId] = useState<string | undefined>(undefined);
+  const [wipeDryCounts, setWipeDryCounts] = useState<Record<string, number>>({});
+  const [wipeLoading, setWipeLoading] = useState<"simulate" | "execute" | null>(null);
+  const [wipeConfirm, setWipeConfirm] = useState<string>("");
+
   // SEU CÓDIGO DE CARREGAMENTO EXISTENTE (mantido igual)
   useEffect(() => {
     if (!escolaId) return;
     let mounted = true;
 
     const loadAll = async () => {
+      // Nome da escola (para confirmação)
+      try {
+        const { data: esc } = await supabase
+          .from("escolas")
+          .select("nome")
+          .eq("id", escolaId)
+          .maybeSingle();
+        setEscolaNome((esc as any)?.nome || "");
+      } catch {}
+      // Helper: safe select with fallback to minimal columns
+      const selectWithFallback = async <T,>(table: string, full: string, minimal: string, filter: { col: string; val: string }) => {
+        try {
+          const { data, error } = await (supabase as any)
+            .from(table)
+            .select(full)
+            .eq(filter.col, filter.val);
+          if (!error) return (data as T[]) || [];
+        } catch {}
+        try {
+          const { data } = await (supabase as any)
+            .from(table)
+            .select(minimal)
+            .eq(filter.col, filter.val);
+          return (data as T[]) || [];
+        } catch {
+          return [] as T[];
+        }
+      };
+
       // 1) Sessões
       const { data: s } = await supabase
         .from("school_sessions")
@@ -53,6 +93,7 @@ export default function ConfiguracoesAcademicasPage() {
       setSessoes(mapSessions);
       const ativa = mapSessions.find((x) => x.status === "ativa") || null;
       setSessaoAtiva(ativa);
+      setWipeSessionId(ativa?.id);
 
       // 2) Períodos
       if (ativa) {
@@ -77,28 +118,39 @@ export default function ConfiguracoesAcademicasPage() {
         setPeriodos([]);
       }
 
-      // 3) Cursos
-      const { data: cur } = await (supabase as any)
-        .from("cursos")
-        .select("id, nome, periodo_id, nivel")
-        .eq("escola_id", escolaId);
-      if (mounted) setCursos((cur as any) || []);
+      // 3) Cursos — usar API (service role) para evitar RLS retornar vazio
+      let cursosRows: Course[] = [] as any;
+      try {
+        const res = await fetch(`/api/escolas/${escolaId}/cursos`, { cache: 'no-store' });
+        const json = await res.json().catch(() => null);
+        if (res.ok) cursosRows = (json?.data as any) || [];
+        else if (json?.error) console.warn('Cursos GET error:', json.error);
+        if (mounted) setCursos(cursosRows as any);
+      } catch {}
 
-      // 4) Classes
-      const { data: cls } = await (supabase as any)
-        .from("classes")
-        .select("id, nome, descricao, ordem, nivel")
-        .eq("escola_id", escolaId)
-        .order("ordem", { ascending: true });
-      if (mounted) setClasses(cls || []);
+      // 4) Classes (fallback se colunas opcionais não existirem)
+      // 4) Classes — usar API para leitura consistente
+      let classesRows: Class[] = [] as any;
+      try {
+        const res = await fetch(`/api/escolas/${escolaId}/classes`, { cache: 'no-store' });
+        const json = await res.json().catch(() => null);
+        let rows: any[] = Array.isArray(json?.data) ? json.data : [];
+        rows = rows.sort((a: any, b: any) => (a?.ordem ?? 0) - (b?.ordem ?? 0));
+        classesRows = rows as any;
+        if (mounted && res.ok) setClasses(classesRows as any);
+        else if (mounted && json?.error) console.warn('Classes GET error:', json.error);
+      } catch {}
 
-      // 5) Disciplinas
-      const { data: disc } = await (supabase as any)
-        .from("disciplinas")
-        .select("id, nome, tipo, curso_id, classe_id, descricao")
-        .eq("escola_id", escolaId)
-        .order("nome", { ascending: true });
-      if (mounted) setDisciplinas(disc || []);
+      // 5) Disciplinas (fallback se colunas opcionais não existirem)
+      // 5) Disciplinas — usar API para leitura consistente
+      let disciplinasRows: Discipline[] = [] as any;
+      try {
+        const res = await fetch(`/api/escolas/${escolaId}/disciplinas`, { cache: 'no-store' });
+        const json = await res.json().catch(() => null);
+        if (res.ok) disciplinasRows = (json?.data as any) || [];
+        else if (json?.error) console.warn('Disciplinas GET error:', json.error);
+        if (mounted) setDisciplinas(disciplinasRows as any);
+      } catch {}
 
       // 6) Preferências
       try {
@@ -128,15 +180,17 @@ export default function ConfiguracoesAcademicasPage() {
         }
       } catch {}
 
-      // Verificar se configuração básica está completa
+      // Verificar se configuração básica está completa usando os dados carregados nesta execução
       if (mounted) {
-        const hasBasicConfig = ativa && periodos.length > 0 && classes.length > 0 && disciplinas.length > 0;
-        setSetupComplete(!!hasBasicConfig);
-        
-        // Se não tem configuração básica, mostrar wizard automaticamente
-        if (!hasBasicConfig) {
-          setShowWizard(true);
-        }
+        const hasBasicConfig = Boolean(
+          (ativa) &&
+          (Array.isArray(periodos) ? periodos.length > 0 : true) &&
+          (Array.isArray(classesRows) ? classesRows.length > 0 : false) &&
+          (Array.isArray(disciplinasRows) ? disciplinasRows.length > 0 : false)
+        );
+        setSetupComplete(hasBasicConfig);
+        // Não abrir automaticamente o assistente para manter a Zona de Perigo acessível
+        // O usuário pode abrir o assistente manualmente pelo botão
       }
     };
 
@@ -167,6 +221,8 @@ export default function ConfiguracoesAcademicasPage() {
           onComplete={() => {
             setSetupComplete(true);
             setShowWizard(false);
+            // Redireciona para o dashboard do portal admin da escola
+            if (escolaId) router.push(`/escola/${escolaId}/admin/dashboard`);
           }}
           onClose={() => setShowWizard(false)}
         />
@@ -179,25 +235,39 @@ export default function ConfiguracoesAcademicasPage() {
     <div className="p-6 max-w-6xl mx-auto space-y-8">
       <header className="text-center">
         <h1 className="text-3xl font-bold text-[#0B2C45]">Configurações Acadêmicas</h1>
-        <p className="text-gray-600">Sua estrutura acadêmica está configurada e pronta para uso</p>
+        <p className="text-gray-600">
+          {setupComplete
+            ? "Sua estrutura acadêmica está configurada e pronta para uso"
+            : "Configuração incompleta. Use o assistente para concluir a estrutura"}
+        </p>
       </header>
 
-    {/* Banner de sucesso */}
-      <Card className="bg-green-50 border-green-200">
-        <CardContent className="p-6">
-          <div className="flex items-center gap-3">
-            <CheckCircle2 className="w-8 h-8 text-green-600" />
-            <div>
-              <h3 className="font-semibold text-green-900">
-                Configuração Acadêmica Completa! 🎉
-              </h3>
-              <p className="text-green-700 text-sm">
-                Todos os componentes acadêmicos estão configurados e prontos para uso
-              </p>
+      {/* Banner de status */}
+      {setupComplete ? (
+        <Card className="bg-green-50 border-green-200">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <CheckCircle2 className="w-8 h-8 text-green-600" />
+              <div>
+                <h3 className="font-semibold text-green-900">Configuração Acadêmica Completa! 🎉</h3>
+                <p className="text-green-700 text-sm">Todos os componentes acadêmicos estão configurados e prontos para uso</p>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="bg-amber-50 border-amber-200">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4 justify-between">
+              <div className="text-amber-900">
+                <h3 className="font-semibold">Configuração incompleta</h3>
+                <p className="text-sm">Abra o assistente para criar a sessão acadêmica, períodos, classes e disciplinas.</p>
+              </div>
+              <Button onClick={() => setShowWizard(true)} variant="default">Abrir assistente</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Resumo da Configuração */}
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -260,7 +330,7 @@ export default function ConfiguracoesAcademicasPage() {
 
       {/* Configurações Avançadas */}
       <div className="space-y-6">
-     
+ 
         <div className="text-center">
           <Button 
             onClick={() => setShowWizard(true)}
@@ -271,6 +341,177 @@ export default function ConfiguracoesAcademicasPage() {
             Reconfigurar Estrutura Acadêmica
           </Button>
         </div>
+
+        {/* Zona de Perigo: Apagar Dados Acadêmicos */}
+        <Card className="border-red-300">
+          <CardHeader>
+            <CardTitle className="text-red-700">Zona de Perigo</CardTitle>
+            <CardDescription className="text-red-600">Apaga dados acadêmicos. Use com extremo cuidado.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="grid md:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Escopo</label>
+                  <select
+                    value={wipeScope}
+                    onChange={(e) => {
+                      const val = e.target.value as any;
+                      setWipeScope(val);
+                      if (val === 'session') setWipeIncludes(["matriculas","turmas","semestres"]);
+                      if (val === 'config') setWipeIncludes(["disciplinas","classes","cursos"]);
+                      if (val === 'all') setWipeIncludes(["matriculas","turmas","semestres","disciplinas","classes","cursos"]);
+                    }}
+                    className="w-full p-2 border rounded"
+                  >
+                    <option value="session">Sessão atual</option>
+                    <option value="config">Configuração acadêmica</option>
+                    <option value="all">Tudo acadêmico da escola</option>
+                  </select>
+                </div>
+
+                {(wipeScope === 'session' || wipeScope === 'all') && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Sessão</label>
+                    <select
+                      value={wipeSessionId || ''}
+                      onChange={(e) => setWipeSessionId(e.target.value || undefined)}
+                      className="w-full p-2 border rounded"
+                    >
+                      <option value="">Selecione uma sessão</option>
+                      {sessoes.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.nome} {s.status === 'ativa' ? '• ativa' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Itens a incluir</label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      {k:'semestres', l:'Períodos'},
+                      {k:'turmas', l:'Turmas'},
+                      {k:'matriculas', l:'Matrículas'},
+                      {k:'classes', l:'Classes'},
+                      {k:'disciplinas', l:'Disciplinas'},
+                      {k:'cursos', l:'Cursos'},
+                    ].map(({k,l}) => (
+                      <label key={k} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={wipeIncludes.includes(k)}
+                          onChange={(e) => {
+                            setWipeIncludes((prev) => e.target.checked ? Array.from(new Set([...prev, k])) : prev.filter(x => x !== k));
+                          }}
+                        />
+                        {l}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    if (!escolaId) return;
+                    if ((wipeScope === 'session' || wipeScope === 'all') && !wipeSessionId) {
+                      return toast.error('Selecione a sessão.');
+                    }
+                    setWipeLoading('simulate');
+                    try {
+                      const res = await fetch(`/api/escolas/${escolaId}/academico/wipe`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ scope: wipeScope, sessionId: wipeSessionId, include: wipeIncludes, dryRun: true })
+                      });
+                      const json = await res.json();
+                      if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao simular.');
+                      setWipeDryCounts(json.counts || {});
+                      // Se o nome da escola vier do backend (service role), aproveita para sincronizar
+                      if (typeof json?.escolaNome === 'string' && json.escolaNome.trim()) {
+                        setEscolaNome(json.escolaNome);
+                      }
+                      toast.success('Simulação pronta.');
+                    } catch (e:any) {
+                      toast.error(e.message || 'Erro ao simular.');
+                    } finally {
+                      setWipeLoading(null);
+                    }
+                  }}
+                >
+                  {wipeLoading === 'simulate' ? 'Simulando...' : 'Simular exclusão'}
+                </Button>
+
+                <div className="text-sm text-gray-700">
+                  {Object.keys(wipeDryCounts).length > 0 && (
+                    <span>
+                      Resultado: {Object.entries(wipeDryCounts).map(([k,v]) => `${k}: ${v}`).join(', ')}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="p-3 bg-red-50 border border-red-200 rounded">
+                <p className="text-sm text-red-700 mb-2">
+                  Para confirmar, digite o nome da escola: <strong>{escolaNome || '—'}</strong>
+                </p>
+                <input
+                  type="text"
+                  value={wipeConfirm}
+                  onChange={(e) => setWipeConfirm(e.target.value)}
+                  className="w-full p-2 border rounded"
+                  placeholder="Digite exatamente o nome da escola"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 justify-end">
+                <Button
+                  variant="danger"
+                  onClick={async () => {
+                    if (!escolaId) return;
+                    if ((wipeScope === 'session' || wipeScope === 'all') && !wipeSessionId) {
+                      return toast.error('Selecione a sessão.');
+                    }
+                    const expected = (escolaNome || '').trim();
+                    if (!wipeConfirm.trim()) {
+                      return toast.error('Digite a frase de confirmação.');
+                    }
+                    if (expected && wipeConfirm.trim() !== expected) {
+                      return toast.error('Frase de confirmação incorreta.');
+                    }
+                    setWipeLoading('execute');
+                    const id = toast.loading('Apagando dados...');
+                    try {
+                      const res = await fetch(`/api/escolas/${escolaId}/academico/wipe`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ scope: wipeScope, sessionId: wipeSessionId, include: wipeIncludes, dryRun: false, confirmPhrase: wipeConfirm })
+                      });
+                      const json = await res.json();
+                      if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao apagar dados');
+                      setWipeDryCounts({});
+                      setWipeConfirm("");
+                      toast.success('Dados apagados.', { id });
+                      // Recarregar dados básicos
+                      window.location.reload();
+                    } catch (e:any) {
+                      toast.error(e.message || 'Erro ao apagar.', { id });
+                    } finally {
+                      setWipeLoading(null);
+                    }
+                  }}
+                >
+                  {wipeLoading === 'execute' ? 'Apagando...' : 'Apagar definitivamente'}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
