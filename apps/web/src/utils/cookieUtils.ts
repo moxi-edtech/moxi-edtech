@@ -7,16 +7,22 @@
  * Remove cookies que não estão no formato base64- mas são JSON válidos
  */
 export function clearSupabaseCookies(): void {
-  if (typeof document === "undefined") return;
-  const known = ["sb-access-token","sb-refresh-token","sb-access-token-expires","sb-provider","sb-anon-key"];
-  const all = getCookiesForDebug();
+  if (typeof document === "undefined") return
+  const known = [
+    "sb-access-token",
+    "sb-refresh-token",
+    "sb-access-token-expires",
+    "sb-provider",
+    "sb-anon-key",
+  ]
+  const all = getCookiesForDebug()
   for (const c of all) {
-    const [name] = c.split("=");
-    if (!name) continue;
-    const n = name.trim();
-    if (known.includes(n) || /^sb-/.test(n) || /supabase/i.test(n)) expireCookie(n);
+    const [name] = c.split("=")
+    if (!name) continue
+    const n = name.trim()
+    if (known.includes(n) || /^sb-/.test(n) || /supabase/i.test(n)) expireCookie(n)
   }
-  for (const k of known) expireCookie(k);
+  for (const k of known) expireCookie(k)
 }
 
 /**
@@ -65,16 +71,21 @@ export function hasCorruptedCookies(): boolean {
  * Retorna todos os cookies atuais para debug
  */
 export function getCookiesForDebug(): string[] {
-  if (typeof document === "undefined") return [];
-  const raw = document.cookie || "";
-  if (!raw) return [];
-  return raw.split(";").map((s) => s.trim()).filter(Boolean);
+  if (typeof document === "undefined") return []
+  const raw = document.cookie || ""
+  if (!raw) return []
+  return raw.split(";").map((s) => s.trim()).filter(Boolean)
 }
 
 function expireCookie(name: string) {
-  if (typeof document === "undefined") return;
-  document.cookie = `${name}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax;`;
-  try { document.cookie = `${name}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Domain=${location.hostname}; SameSite=Lax;`; } catch {}
+  if (typeof document === "undefined") return
+  try {
+    // expire at root and current domain
+    document.cookie = `${name}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax;`
+    document.cookie = `${name}=; Path=/; Domain=${location.hostname}; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax;`
+  } catch {
+    // noop
+  }
 }
 
 /**
@@ -93,14 +104,22 @@ export function clearAllStorage(): void {
  */
 export function clearAllAuthData(): void {
   try {
-    clearSupabaseCookies();
+    clearSupabaseCookies()
     if (typeof window !== "undefined") {
-      for (const k of Object.keys(localStorage || {})) {
-        if (/^(supabase|sb-|sb:|moxi_)/i.test(k) || /auth/i.test(k)) try { localStorage.removeItem(k); } catch {}
+      const ls = window.localStorage
+      const ss = window.sessionStorage
+      for (const k of Object.keys(ls || {})) {
+        if (/^(supabase|sb-|sb:|moxi_)/i.test(k) || /auth/i.test(k)) {
+          try { ls.removeItem(k) } catch {}
+        }
       }
-      for (const k of Object.keys(sessionStorage || {})) {
-        if (/^(supabase|sb-|sb:|moxi_)/i.test(k) || /auth/i.test(k)) try { sessionStorage.removeItem(k); } catch {}
+      for (const k of Object.keys(ss || {})) {
+        if (/^(supabase|sb-|sb:|moxi_)/i.test(k) || /auth/i.test(k)) {
+          try { ss.removeItem(k) } catch {}
+        }
       }
     }
-  } catch {}
+  } catch {
+    // noop
+  }
 }
