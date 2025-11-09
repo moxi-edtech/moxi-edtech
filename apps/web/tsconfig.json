@@ -1,17 +1,15 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     // Específicos do app web
     "plugins": [
       { "name": "next" }
     ],
-    "baseUrl": "src",
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["*"],
-      "@/components/ui/*": [
-        "components/ui/*"
-      ],
-      "~types/*": ["../../../types/*"]
+      "~/*": ["src/*"],
+      "@/*": ["src/*"],
+      "~types/*": ["../../types/*"] // ajuste se suas types estiverem em outro lugar
     }
   },
   "include": [
