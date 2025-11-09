@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database, TablesInsert } from "~types/supabase";
 import { recordAuditServer } from "@/lib/audit";
 import { generateNumeroLogin } from "@/lib/generateNumeroLogin";
+import { getSupabaseServerClient } from "~/lib/supabase-server";
 
 // Creates a supabase client with service role for admin operations (server-only)
 const admin = createClient<Database>(
@@ -10,9 +11,14 @@ const admin = createClient<Database>(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export async function POST(req: Request) {
+export async function POST(request: Request) {
+  const supabase = getSupabaseServerClient()
+  if (!supabase) {
+    return new Response("Supabase not configured (SUPABASE_URL or key missing)", { status: 503 })
+  }
+
   try {
-    const body = await req.json();
+    const body = await request.json();
     const {
       nome,
       email,
