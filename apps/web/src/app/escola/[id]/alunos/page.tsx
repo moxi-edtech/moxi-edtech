@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Button from "@/components/ui/Button";
 
 export default function AlunosPage() {
   const router = useRouter();
@@ -398,36 +399,19 @@ export default function AlunosPage() {
 
             {/* Navegação entre passos */}
             <div className="flex justify-between pt-6 border-t">
-              <button
-                type="button"
-                onClick={prevStep}
-                disabled={currentStep === 1}
-                className={`px-6 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  currentStep === 1 
-                    ? "text-gray-400 cursor-not-allowed" 
-                    : "text-gray-600 hover:text-gray-800 hover:bg-gray-100"
-                }`}
-              >
+              <Button type="button" onClick={prevStep} disabled={currentStep === 1} variant="outline" tone="gray" size="sm">
                 ← Anterior
-              </button>
+              </Button>
 
               {currentStep < totalSteps ? (
-                <button
-                  type="button"
-                  onClick={nextStep}
-                  className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2"
-                >
+                <Button type="button" onClick={nextStep} tone="emerald" size="sm" className="gap-2">
                   Próximo
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
-                </button>
+                </Button>
               ) : (
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+                <Button type="submit" disabled={isSubmitting} tone="emerald" size="sm" className="gap-2">
                   {isSubmitting ? (
                     <>
                       <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
@@ -444,7 +428,7 @@ export default function AlunosPage() {
                       </svg>
                     </>
                   )}
-                </button>
+                </Button>
               )}
             </div>
           </form>

@@ -82,4 +82,3 @@ Thumbs.db
 /apps/web/src/app/api/escolas/[id]/turmas/route.ts
 /apps/web/src/app/escola/[id]/dashboard/
 /apps/web/src/components/escola/
-/apps/web/src/components/ui/

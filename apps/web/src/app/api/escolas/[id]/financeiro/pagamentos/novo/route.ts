@@ -68,7 +68,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
     if (error || !row) return NextResponse.json({ ok: false, error: error?.message || 'Falha ao registrar pagamento' }, { status: 400 })
 
-    recordAuditServer({ escolaId, portal: 'financeiro', action: 'PAGAMENTO_REGISTRADO', entity: 'pagamento', entityId: String(row.id), details: { valor: row.valor, metodo: row.metodo, status: row.status } }).catch(() => null)
+    recordAuditServer({ escolaId, portal: 'financeiro', acao: 'PAGAMENTO_REGISTRADO', entity: 'pagamento', entityId: String(row.id), details: { valor: row.valor, metodo: row.metodo, status: row.status } }).catch(() => null)
 
     return NextResponse.json({ ok: true, pagamento: row })
   } catch (err) {

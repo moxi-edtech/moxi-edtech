@@ -4,6 +4,8 @@ import { supabaseServer } from "@/lib/supabaseServer"
 import type { Database, TablesInsert, TablesUpdate } from "~types/supabase"
 import { mapPapelToGlobalRole } from "@/lib/permissions"
 import { recordAuditServer } from "@/lib/audit"
+import { generateNumeroLogin } from "@/lib/generateNumeroLogin"
+import { buildCredentialsEmail, buildOnboardingEmail, sendMail } from "@/lib/mailer"
 import { z } from 'zod'
 import { hasPermission } from "@/lib/permissions"
 
@@ -275,14 +277,49 @@ export async function POST(
           if (userId) invited = true
         }
         if (!userId) continue
+        // Generate temp password for newly invited users
+        let tempPassword: string | null = null
+        if (invited) {
+          try {
+            const generateStrongPassword = (len = 12) => {
+              const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+              const lower = 'abcdefghijklmnopqrstuvwxyz'
+              const nums = '0123456789'
+              const special = '!@#$%^&*()-_=+[]{};:,.?'
+              const all = upper + lower + nums + special
+              const pick = (set: string) => set[Math.floor(Math.random() * set.length)]
+              let pwd = pick(upper) + pick(lower) + pick(nums) + pick(special)
+              for (let i = pwd.length; i < len; i++) pwd += pick(all)
+              return pwd.split('').sort(() => Math.random() - 0.5).join('')
+            }
+            tempPassword = generateStrongPassword(12)
+            await (admin as any).auth.admin.updateUserById(userId, { password: tempPassword, user_metadata: { must_change_password: true } })
+          } catch (_) {
+            tempPassword = null
+          }
+        }
+        // numero_login para secretaria
+        let numeroLogin: string | null = null
+        if (inv.papel === 'secretaria') {
+          try { numeroLogin = await generateNumeroLogin(escolaId, 'secretaria' as any, admin as any) } catch {}
+        }
         // Ensure profile
-        try { await admin.from('profiles').upsert({ user_id: userId, email: inv.email, nome: inv.nome ?? inv.papel, role: roleEnum as any, escola_id: escolaId } as any) } catch {}
+        try { await admin.from('profiles').upsert({ user_id: userId, email: inv.email, nome: inv.nome ?? inv.papel, role: roleEnum as any, escola_id: escolaId, numero_login: numeroLogin ?? undefined } as any) } catch {}
         // Ensure app_metadata
-        try { await (admin as any).auth.admin.updateUserById(userId, { app_metadata: { role: roleEnum, escola_id: escolaId } }) } catch {}
+        try { await (admin as any).auth.admin.updateUserById(userId, { app_metadata: { role: roleEnum, escola_id: escolaId, numero_usuario: numeroLogin || undefined } }) } catch {}
         // Link papel
         try { await admin.from('escola_usuarios').upsert({ escola_id: escolaId, user_id: userId, papel: inv.papel } as any, { onConflict: 'escola_id,user_id' }) } catch {}
         // Audit
-        try { recordAuditServer({ escolaId, portal: 'admin_escola', action: 'USUARIO_CONVIDADO', entity: 'usuario', entityId: userId, details: { email: inv.email, papel: inv.papel, role: roleEnum, via: 'onboarding' } }) } catch {}
+        try { recordAuditServer({ escolaId, portal: 'admin_escola', acao: 'USUARIO_CONVIDADO', entity: 'usuario', entityId: userId, details: { email: inv.email, papel: inv.papel, role: roleEnum, via: 'onboarding', numero_login: numeroLogin } }) } catch {}
+
+        // Envia email de credenciais sempre (incluindo senha temporária quando houver)
+        try {
+          const { data: esc } = await admin.from('escolas' as any).select('nome').eq('id', escolaId).maybeSingle()
+          const escolaNome = (esc as any)?.nome ?? null
+          const loginUrl = process.env.NEXT_PUBLIC_BASE_URL ? `${process.env.NEXT_PUBLIC_BASE_URL}/login` : null
+          const mail = buildCredentialsEmail({ nome: inv.nome ?? inv.papel, email: inv.email, numero_login: numeroLogin ?? undefined, senha_temp: tempPassword ?? undefined, escolaNome, loginUrl })
+          await sendMail({ to: inv.email, subject: mail.subject, html: mail.html, text: mail.text })
+        } catch {}
         if (invited) inviteResult.sent.push(inv.email)
         else inviteResult.updated.push(inv.email)
       } catch (_) { inviteResult.failed.push(inv.email) }

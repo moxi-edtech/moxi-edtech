@@ -88,7 +88,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       else failures.push({ to: r.email, error: res.error })
     }
 
-    recordAuditServer({ escolaId, portal: 'super_admin', action: 'COBRANCA_ENVIADA', entity: 'escola', entityId: escolaId, details: { sentCount, valor, vencimento } }).catch(() => null)
+    recordAuditServer({ escolaId, portal: 'super_admin', acao: 'COBRANCA_ENVIADA', entity: 'escola', entityId: escolaId, details: { sentCount, valor, vencimento } }).catch(() => null)
 
     return NextResponse.json({ ok: sentCount > 0, sentCount, failures })
   } catch (err) {

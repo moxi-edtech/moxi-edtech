@@ -1,3 +1,56 @@
+CREATE OR REPLACE FUNCTION public.current_user_role() RETURNS TEXT
+LANGUAGE SQL STABLE AS $$
+  SELECT COALESCE(
+    (CURRENT_SETTING('request.jwt.claims', TRUE)::JSONB -> 'app_metadata' ->> 'role'),
+    ''
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.check_super_admin_role()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN (SELECT public.current_user_role() = 'super_admin');
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.is_escola_admin(p_escola_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1
+    FROM public.escola_usuarios
+    WHERE escola_id = p_escola_id
+      AND user_id = auth.uid()
+      AND papel IN ('admin', 'admin_escola')
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.is_escola_diretor(p_escola_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1
+    FROM public.escola_usuarios
+    WHERE escola_id = p_escola_id
+      AND user_id = auth.uid()
+      AND papel = 'staff_admin'
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.is_escola_member(p_escola_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1
+    FROM public.escola_usuarios
+    WHERE escola_id = p_escola_id
+      AND user_id = auth.uid()
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- 1. Corrigir índices duplicados
 
 -- Tabela: public.escola_administradores
@@ -16,187 +69,7 @@ DROP INDEX IF EXISTS public.uq_escola_usuarios_unique;
 ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_user_id_unique;
 
 
--- 2. Otimizar políticas de RLS com `(select auth.<function>())`
-
--- Tabela: public.profiles
--- Política: user_can_update_own_profile
-ALTER POLICY user_can_update_own_profile ON public.profiles
-  USING (auth.uid() = user_id)
-  WITH CHECK ((select auth.uid()) = user_id);
-
--- Política: super_admin_update_role
-ALTER POLICY super_admin_update_role ON public.profiles
-  USING (true)
-  WITH CHECK (check_super_admin_role());
-
--- Tabela: public.escola_usuarios
--- Política: admin_manage_own_school_users
-ALTER POLICY admin_manage_own_school_users ON public.escola_usuarios
-  USING (true)
-  WITH CHECK (is_escola_admin(escola_id));
-
--- Política: super_admin_full_access_escola_usuarios
-ALTER POLICY super_admin_full_access_escola_usuarios ON public.escola_usuarios
-  USING (true)
-  WITH CHECK (check_super_admin_role());
-
--- Política: user_can_view_own_school_links
-ALTER POLICY user_can_view_own_school_links ON public.escola_usuarios
-  USING (auth.uid() = user_id)
-  WITH CHECK ((select auth.uid()) = user_id);
-
--- Política: diretor_admin_manage_own_school
-ALTER POLICY diretor_admin_manage_own_school ON public.escola_usuarios
-  USING (true)
-  WITH CHECK (is_escola_diretor(escola_id));
-
--- Tabela: public.escola_administradores
--- Política: super_admin_read_escola_administradores
-ALTER POLICY super_admin_read_escola_administradores ON public.escola_administradores
-  FOR SELECT
-  USING (check_super_admin_role());
-
--- Tabela: public.profiles
--- Política: profiles_select_own
-ALTER POLICY profiles_select_own ON public.profiles
-  FOR SELECT
-  USING (auth.uid() = user_id);
-
--- Política: profiles_update_own
-ALTER POLICY profiles_update_own ON public.profiles
-  FOR UPDATE
-  USING (auth.uid() = user_id)
-  WITH CHECK ((select auth.uid()) = user_id);
-
--- Política: super_admin_select_profiles
-ALTER POLICY super_admin_select_profiles ON public.profiles
-  FOR SELECT
-  USING (check_super_admin_role());
-
--- Política: super_admin_update_profiles
-ALTER POLICY super_admin_update_profiles ON public.profiles
-  FOR UPDATE
-  USING (check_super_admin_role())
-  WITH CHECK (check_super_admin_role());
-
--- Tabela: public.escolas
--- Política: super_admin_select_escolas
-ALTER POLICY super_admin_select_escolas ON public.escolas
-  FOR SELECT
-  USING (check_super_admin_role());
-
--- Política: super_admin_insert_escolas
-ALTER POLICY super_admin_insert_escolas ON public.escolas
-  FOR INSERT
-  WITH CHECK (check_super_admin_role());
-
--- Política: super_admin_update_escolas
-ALTER POLICY super_admin_update_escolas ON public.escolas
-  FOR UPDATE
-  USING (check_super_admin_role())
-  WITH CHECK (check_super_admin_role());
-
--- Política: super_admin_delete_escolas
-ALTER POLICY super_admin_delete_escolas ON public.escolas
-  FOR DELETE
-  USING (check_super_admin_role());
-
--- Tabela: public.escola_administradores
--- Política: super_admin_select_escola_administradores
-ALTER POLICY super_admin_select_escola_administradores ON public.escola_administradores
-  FOR SELECT
-  USING (check_super_admin_role());
-
--- Política: super_admin_insert_escola_administradores
-ALTER POLICY super_admin_insert_escola_administradores ON public.escola_administradores
-  FOR INSERT
-  WITH CHECK (check_super_admin_role());
-
--- Política: super_admin_update_escola_administradores
-ALTER POLICY super_admin_update_escola_administradores ON public.escola_administradores
-  FOR UPDATE
-  USING (check_super_admin_role())
-  WITH CHECK (check_super_admin_role());
-
--- Política: super_admin_delete_escola_administradores
-ALTER POLICY super_admin_delete_escola_administradores ON public.escola_administradores
-  FOR DELETE
-  USING (check_super_admin_role());
-
--- Tabela: public.onboarding_drafts
--- Política: onboarding_drafts_upsert_own
-ALTER POLICY onboarding_drafts_upsert_own ON public.onboarding_drafts
-  USING (auth.uid() = user_id)
-  WITH CHECK ((select auth.uid()) = user_id);
-
--- Tabela: public.turmas
--- Política: select_own_turmas
-ALTER POLICY select_own_turmas ON public.turmas
-  FOR SELECT
-  USING (is_escola_member(escola_id));
-
--- Política: insert_own_turmas
-ALTER POLICY insert_own_turmas ON public.turmas
-  FOR INSERT
-  WITH CHECK (is_escola_admin(escola_id));
-
--- Política: update_own_turmas
-ALTER POLICY update_own_turmas ON public.turmas
-  FOR UPDATE
-  USING (is_escola_admin(escola_id))
-  WITH CHECK (is_escola_admin(escola_id));
-
--- Política: delete_own_turmas
-ALTER POLICY delete_own_turmas ON public.turmas
-  FOR DELETE
-  USING (is_escola_admin(escola_id));
-
--- Tabela: public.audit_logs
--- Política: audit_logs_insert_authenticated
-ALTER POLICY audit_logs_insert_authenticated ON public.audit_logs
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (auth.uid() IS NOT NULL);
-
--- Política: audit_logs_select_by_scope
-ALTER POLICY audit_logs_select_by_scope ON public.audit_logs
-  FOR SELECT
-  USING (
-    (check_super_admin_role()) OR
-    (escola_id IN (SELECT usuarios.escola_id FROM escola_usuarios usuarios WHERE usuarios.user_id = (select auth.uid())))
-  );
-
--- Tabela: public.onboarding_drafts
--- Política: onboarding_drafts_select_own
-ALTER POLICY onboarding_drafts_select_own ON public.onboarding_drafts
-  FOR SELECT
-  USING (auth.uid() = user_id);
-
--- Tabela: public.classes
--- Política: "classes select membros escola"
-ALTER POLICY "classes select membros escola" ON public.classes
-  FOR SELECT
-  USING (is_escola_member(escola_id));
-
--- Tabela: public.disciplinas
--- Política: "disciplinas select membros escola"
-ALTER POLICY "disciplinas select membros escola" ON public.disciplinas
-  FOR SELECT
-  USING (is_escola_member(escola_id));
-
--- Tabela: public.lancamentos_2025_09
--- Política: lancamentos_select_admin
-ALTER POLICY lancamentos_select_admin ON public.lancamentos_2025_09
-  FOR SELECT
-  USING (is_escola_admin(escola_id));
-
--- Política: lancamentos_write_admin
-ALTER POLICY lancamentos_write_admin ON public.lancamentos_2025_09
-  USING (is_escola_admin(escola_id))
-  WITH CHECK (is_escola_admin(escola_id));
-
-
--- 3. Consolidar políticas permissivas múltiplas
+-- 2. Consolidar políticas permissivas múltiplas
 
 -- Tabela: public.escola_usuarios
 -- Ação: Unificar políticas para SELECT, INSERT, UPDATE, DELETE

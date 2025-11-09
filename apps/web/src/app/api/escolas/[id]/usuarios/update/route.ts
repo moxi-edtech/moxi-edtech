@@ -73,7 +73,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
 
     const papelAfter = papel ?? papelBefore
     const roleAfter = roleEnum ?? roleBefore
-    recordAuditServer({ escolaId, portal: 'admin_escola', action: 'USUARIO_ATUALIZADO', entity: 'usuario', entityId: userId, details: { email: lower, papel_before: papelBefore, papel_after: papelAfter, role_before: roleBefore, role_after: roleAfter } }).catch(() => null)
+    recordAuditServer({ escolaId, portal: 'admin_escola', acao: 'USUARIO_ATUALIZADO', entity: 'usuario', entityId: userId, details: { email: lower, papel_before: papelBefore, papel_after: papelAfter, role_before: roleBefore, role_after: roleAfter } }).catch(() => null)
     return NextResponse.json({ ok: true })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

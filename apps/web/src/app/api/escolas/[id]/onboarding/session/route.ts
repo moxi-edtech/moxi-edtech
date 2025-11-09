@@ -171,9 +171,167 @@ export async function POST(
       active = (all || []).find((s: any) => s.status === 'ativa') || null
     } catch {}
 
+    // Autogerar períodos conforme preferências, se habilitado e ainda não existirem períodos
+    try {
+      if (active && active.id) {
+        // Lê preferências
+        const { data: cfg } = await (admin as any)
+          .from('configuracoes_escola')
+          .select('autogerar_periodos, periodo_tipo, tipo_presenca')
+          .eq('escola_id', escolaId)
+          .maybeSingle()
+
+        const auto = Boolean((cfg as any)?.autogerar_periodos)
+        const periodoTipo = (cfg as any)?.periodo_tipo as ('semestre' | 'trimestre' | undefined)
+        const tipoPresenca = (cfg as any)?.tipo_presenca as ('secao' | 'curso' | undefined)
+
+        if (auto) {
+          // Já existem períodos para esta sessão?
+          const { count } = await (admin as any)
+            .from('semestres')
+            .select('id', { count: 'exact', head: true })
+            .eq('session_id', active.id)
+
+          if (!count || count === 0) {
+            // Define quantidade e rótulo
+            const n = periodoTipo === 'semestre' ? 2 : 3
+            const label = periodoTipo === 'semestre' ? 'Semestre' : 'Trimestre'
+            const tipoUpper = periodoTipo === 'semestre' ? 'SEMESTRE' : 'TRIMESTRE'
+            const attendance = tipoPresenca === 'curso' ? 'course' : 'section'
+
+            // Utilitário para dividir o intervalo em N partes contíguas (inclusivo)
+            const splitRanges = (startISO: string, endISO: string, parts: number): Array<{ start: string; end: string }> => {
+              const toDate = (s: string) => new Date(`${s}T00:00:00Z`)
+              const toISO = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`
+              const start = toDate(String(startISO).slice(0,10))
+              const end = toDate(String(endISO).slice(0,10))
+              const totalDays = Math.floor((end.getTime() - start.getTime()) / (24*3600*1000)) + 1
+              const chunk = Math.floor(totalDays / parts)
+              const remainder = totalDays % parts
+              const ranges: Array<{ start: string; end: string }> = []
+              let cursor = new Date(start)
+              for (let i = 0; i < parts; i++) {
+                const len = chunk + (i < remainder ? 1 : 0)
+                const segStart = new Date(cursor)
+                const segEnd = new Date(cursor)
+                segEnd.setUTCDate(segEnd.getUTCDate() + (len - 1))
+                ranges.push({ start: toISO(segStart), end: toISO(segEnd) })
+                cursor.setUTCDate(cursor.getUTCDate() + len)
+              }
+              return ranges
+            }
+
+            const ranges = splitRanges(active.data_inicio, active.data_fim, n)
+            const rows = ranges.map((r, idx) => ({
+              escola_id: escolaId,
+              session_id: active.id,
+              nome: `${idx+1}º ${label}`,
+              data_inicio: r.start,
+              data_fim: r.end,
+              attendance_type: attendance,
+              permitir_submissao_final: false,
+              tipo: tipoUpper,
+            }))
+
+            // Tenta inserir com coluna opcional 'tipo'; se falhar por coluna ausente, remove e tenta novamente
+            let insErr: any | null = null
+            {
+              const { error } = await (admin as any)
+                .from('semestres')
+                .insert(rows)
+              insErr = error
+            }
+            if (insErr && String(insErr.message || '').toLowerCase().includes('column') && String(insErr.message || '').includes('tipo')) {
+              const rowsNoTipo = rows.map(({ tipo, ...rest }) => rest)
+              const { error: err2 } = await (admin as any)
+                .from('semestres')
+                .insert(rowsNoTipo)
+              if (err2) {
+                // não é fatal para salvar sessão; apenas segue
+              }
+            }
+          }
+        }
+      }
+    } catch {
+      // silencioso: não bloqueia salvar sessão
+    }
+
     return NextResponse.json({ ok: true, data: active, sessoes: all })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erro inesperado'
     return NextResponse.json({ ok: false, error: msg }, { status: 500 })
+  }
+}
+
+// GET /api/escolas/[id]/onboarding/session
+// Lists all sessions for the escola using service role (authorization enforced first)
+export async function GET(
+  _req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id: escolaId } = await context.params;
+
+  try {
+    const s = await supabaseServer();
+    const { data: auth } = await s.auth.getUser();
+    const user = auth?.user;
+    if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
+
+    // Authorization similar to POST: allow escola admins or users with configurar_escola vínculo; also allow profiles-based admin link
+    let allowed = false;
+    try {
+      const { data: vinc } = await s
+        .from('escola_usuarios')
+        .select('papel')
+        .eq('escola_id', escolaId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+      const papel = (vinc as any)?.papel as string | undefined;
+      if (!allowed) allowed = !!papel && hasPermission(papel as any, 'configurar_escola');
+    } catch {}
+    if (!allowed) {
+      try {
+        const { data: adminLink } = await s
+          .from('escola_administradores')
+          .select('user_id')
+          .eq('escola_id', escolaId)
+          .eq('user_id', user.id)
+          .limit(1);
+        allowed = Boolean(adminLink && (adminLink as any[]).length > 0);
+      } catch {}
+    }
+    if (!allowed) {
+      try {
+        const { data: prof } = await s
+          .from('profiles')
+          .select('role, escola_id')
+          .eq('user_id', user.id)
+          .eq('escola_id', escolaId)
+          .limit(1);
+        allowed = Boolean(prof && prof.length > 0 && (prof[0] as any).role === 'admin');
+      } catch {}
+    }
+    if (!allowed) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
+
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ ok: false, error: 'Configuração Supabase ausente.' }, { status: 500 });
+    }
+    const admin = createAdminClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    const { data, error } = await (admin as any)
+      .from('school_sessions')
+      .select('id, nome, data_inicio, data_fim, status')
+      .eq('escola_id', escolaId)
+      .order('data_inicio', { ascending: false });
+    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+
+    return NextResponse.json({ ok: true, data: data || [] });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Erro inesperado';
+    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
 }

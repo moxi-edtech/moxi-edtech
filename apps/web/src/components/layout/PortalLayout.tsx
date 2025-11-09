@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabaseClient";
 import SignOutButton from "@/components/auth/SignOutButton";
 import BackButton from "@/components/navigation/BackButton";
@@ -84,6 +84,8 @@ export default function PortalLayout({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [plan, setPlan] = useState<"basico"|"standard"|"premium"|null>(null)
+  const [userName, setUserName] = useState<string | null>(null)
+  const [escolaNome, setEscolaNome] = useState<string | null>(null)
 
   useEffect(() => {
     const supabase = createClient()
@@ -93,14 +95,51 @@ export default function PortalLayout({
         const { data: prof } = await supabase.from('profiles').select('escola_id').order('created_at', { ascending: false }).limit(1)
         const escolaId = (prof?.[0] as any)?.escola_id as string | null
         if (!mounted || !escolaId) return
-        const { data: esc } = await supabase.from('escolas').select('plano').eq('id', escolaId).maybeSingle()
+        const { data: esc } = await supabase.from('escolas').select('plano, nome').eq('id', escolaId).maybeSingle()
         if (!mounted) return
         const p = ((esc as any)?.plano || null) as any
         if (p && ['basico','standard','premium'].includes(p)) setPlan(p)
+        const nome = (esc as any)?.nome as string | undefined
+        if (nome) setEscolaNome(nome)
       } catch {}
     })()
     return () => { mounted = false }
   }, [])
+
+  // Carrega nome do usuário logado para o avatar
+  useEffect(() => {
+    const supabase = createClient()
+    let mounted = true
+    ;(async () => {
+      try {
+        const { data: auth } = await supabase.auth.getUser()
+        const userId = auth?.user?.id
+        if (!mounted || !userId) return
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('nome, email')
+          .eq('user_id', userId)
+          .maybeSingle()
+        if (!mounted) return
+        const nome = (prof as any)?.nome as string | undefined
+        const email = (prof as any)?.email as string | undefined
+        setUserName((nome && nome.trim()) || email || null)
+      } catch {
+        // noop
+      }
+    })()
+    return () => { mounted = false }
+  }, [])
+
+  const userInitials = useMemo(() => {
+    const src = userName || 'Administrador'
+    const parts = src.trim().replace(/\s+/g, ' ').split(' ').filter(Boolean)
+    if (parts.length === 0) return 'AD'
+    const first = parts[0]?.[0] ?? ''
+    const last = parts.length > 1 ? parts[parts.length - 1]?.[0] ?? '' : parts[0]?.[1] ?? ''
+    const calc = (first + last).toUpperCase()
+    return calc || 'AD'
+  }, [userName])
 
   return (
     <div className="flex min-h-screen font-sans bg-gradient-to-br from-moxinexa-light/20 to-white text-moxinexa-dark">
@@ -127,6 +166,14 @@ export default function PortalLayout({
             <Bars3Icon className="w-5 h-5" />
           </button>
         </div>
+        {escolaNome && (
+          <div className="px-6 -mt-2 mb-2">
+            <div className="text-[11px] uppercase tracking-wide text-moxinexa-gray">Escola</div>
+            <div className="text-sm font-semibold text-moxinexa-dark truncate" title={escolaNome}>
+              {escolaNome}
+            </div>
+          </div>
+        )}
         
         <div className="px-4 py-2">
           <div className="relative mb-4">
@@ -194,6 +241,11 @@ export default function PortalLayout({
             {plan && (
               <span className="text-[10px] uppercase px-2 py-1 rounded-full bg-gray-100 border text-gray-600">Plano: {plan}</span>
             )}
+            {escolaNome && (
+              <span className="text-[10px] px-2 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700" title={escolaNome}>
+                Escola: {escolaNome}
+              </span>
+            )}
           </div>
           
           <div className="flex items-center gap-5">
@@ -205,7 +257,7 @@ export default function PortalLayout({
             <div className="hidden md:flex h-6 w-px bg-moxinexa-light/50"></div>
             
             <button className="flex items-center gap-2 bg-white rounded-full pl-1 pr-3 py-1 shadow-sm border border-moxinexa-light/50 hover:shadow-md transition-shadow">
-              <UserAvatar initials="AD" name="Admin Escola" />
+              <UserAvatar initials={userInitials} name={userName || 'Administrador'} />
             </button>
 
             <SignOutButton

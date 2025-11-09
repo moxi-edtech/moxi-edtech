@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Button from "@/components/ui/Button";
 
 interface SeedResult {
   ok: boolean;
@@ -41,13 +42,9 @@ export default function AdminSeedClient() {
     <div className="max-w-lg mx-auto p-6 bg-white shadow rounded-lg">
       <h1 className="text-xl font-bold mb-4">🚀 Seed Super Admin</h1>
 
-      <button
-        onClick={handleSeed}
-        disabled={loading}
-        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-      >
+      <Button onClick={handleSeed} disabled={loading} tone="blue">
         {loading ? "Processando..." : "Criar/Resetar Super Admin"}
-      </button>
+      </Button>
 
       {result && (
         <div className="mt-4 p-3 border rounded bg-gray-50 text-sm">
@@ -64,4 +61,3 @@ export default function AdminSeedClient() {
     </div>
   );
 }
-

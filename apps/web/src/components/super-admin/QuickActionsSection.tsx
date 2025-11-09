@@ -116,7 +116,7 @@ export default function QuickActionsSection() {
   }
 
   return (
-    <div className="rounded-2xl border border-moxinexa-light/30 bg-white p-6 shadow-sm">
+    <div className="rounded-2xl border border-moxinexa-light/40 bg-white p-6 shadow-sm">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
         <div>
           <h3 className="text-lg font-semibold text-moxinexa-dark">

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Button from "@/components/ui/Button"
 
 type Props = {
   escolaId: string
@@ -39,17 +40,16 @@ export default function EscolaSettingsClient({ escolaId, initialAlunoPortalEnabl
         </div>
       </div>
       <div className="mt-4">
-        <button disabled={saving} onClick={async ()=>{
+        <Button disabled={saving} onClick={async ()=>{
           setSaving(true); setMsg('')
           try {
             const res = await fetch(`/api/super-admin/escolas/${escolaId}/update`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ aluno_portal_enabled: alunoPortalEnabled, plano }) })
             const data = await res.json(); if (!res.ok) throw new Error(data?.error || 'Falha ao salvar')
             setMsg('Configurações salvas com sucesso.')
           } catch (e: any) { setMsg(e?.message || 'Erro ao salvar') } finally { setSaving(false) }
-        }} className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50">{saving ? 'Salvando...' : 'Salvar alterações'}</button>
+        }} tone="blue">{saving ? 'Salvando...' : 'Salvar alterações'}</Button>
         {msg && <span className="ml-3 text-sm text-gray-600">{msg}</span>}
       </div>
     </section>
   )
 }
-

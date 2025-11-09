@@ -6,7 +6,7 @@ type Activity = {
 
 export default function ActivitiesSection({ activities }: { activities: Activity[] }) {
   return (
-    <section className="bg-white p-6 rounded-2xl shadow border border-moxinexa-light/50">
+    <section className="bg-white p-6 rounded-2xl shadow border border-moxinexa-light/40">
       <h2 className="text-lg font-semibold mb-4">Atividades Recentes</h2>
       <ul className="space-y-3 text-sm">
         {activities.length === 0 ? (

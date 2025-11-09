@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import { usePathname } from "next/navigation";
 import type { AcaoRapida } from "./definitions";
 import {
   PlusIcon,
@@ -21,9 +22,13 @@ export default function QuickActionsSection({
   acoes,
   onAcao,
 }: QuickActionsSectionProps) {
+  const pathname = usePathname();
+  const escolaIdMatch = pathname?.match(/\/escola\/([^/]+)/);
+  const escolaId = escolaIdMatch?.[1] ?? "";
+
   const defaults: AcaoRapida[] = [
     { id: "nova-turma", rotulo: "Nova Turma", icone: UserGroupIcon, iconeExtra: PlusIcon },
-    { id: "cadastrar-aluno", rotulo: "Cadastrar Aluno", icone: AcademicCapIcon, iconeExtra: PlusIcon },
+    { id: "cadastrar-funcionario", rotulo: "Cadastrar Funcionário", icone: AcademicCapIcon, iconeExtra: PlusIcon, href: escolaId ? `/escola/${escolaId}/funcionarios/novo` : undefined },
     { id: "cadastrar-professor", rotulo: "Cadastrar Professor", icone: UsersIcon, iconeExtra: PlusIcon },
     { id: "lancar-nota", rotulo: "Lançar Nota", icone: ClipboardDocumentListIcon },
     { id: "criar-aviso", rotulo: "Criar Aviso", icone: MegaphoneIcon },

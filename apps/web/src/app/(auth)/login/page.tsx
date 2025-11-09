@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { clearSupabaseCookies, clearAllAuthData, getCookiesForDebug } from '@/utils/cookieUtils';
+import Button from '@/components/ui/Button';
 
 export default function Page() {
   const router = useRouter();
@@ -98,7 +99,7 @@ export default function Page() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-teal-600 focus:ring-teal-600"
-              placeholder="seu@email.com ou 1234567"
+              placeholder="email ou número de usuário"
               disabled={carregando}
             />
           </div>
@@ -135,13 +136,9 @@ export default function Page() {
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={carregando}
-            className="w-full bg-teal-600 hover:bg-teal-700 text-white py-2 rounded-lg font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          <Button type="submit" disabled={carregando} tone="teal" fullWidth>
             {carregando ? 'Entrando...' : 'Entrar'}
-          </button>
+          </Button>
         </form>
 
         {/* Área de debug para testes manuais */}

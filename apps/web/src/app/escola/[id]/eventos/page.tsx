@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Button from "@/components/ui/Button";
 
 type Evento = {
   id: string;
@@ -233,31 +234,20 @@ export default function EventosPage() {
 
             {/* Navegação */}
             <div className="flex justify-between">
-              <button
-                disabled={step === 1}
-                onClick={() => setStep((s) => s - 1)}
-                className="px-3 py-2 text-sm rounded-md border border-gray-300 hover:bg-gray-50"
-              >
+              <Button disabled={step === 1} onClick={() => setStep((s) => s - 1)} variant="outline" tone="gray" size="sm">
                 Voltar
-              </button>
+              </Button>
               {step < 5 ? (
-                <button
-                  onClick={() => setStep((s) => s + 1)}
-                  className="px-3 py-2 text-sm rounded-md bg-[#0B2C45] text-white hover:bg-[#0D4C73]"
-                >
+                <Button onClick={() => setStep((s) => s + 1)} tone="navy" size="sm">
                   Próximo
-                </button>
+                </Button>
               ) : (
-                <button
-                  onClick={salvarEvento}
-                  disabled={loading}
-                  className="px-3 py-2 text-sm rounded-md bg-green-600 text-white hover:bg-green-700 flex items-center gap-2"
-                >
+                <Button onClick={salvarEvento} disabled={loading} tone="green" size="sm" className="flex items-center gap-2">
                   {loading && (
                     <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   )}
                   Salvar
-                </button>
+                </Button>
               )}
             </div>
           </div>

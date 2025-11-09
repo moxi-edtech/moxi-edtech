@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Button from "@/components/ui/Button"
 import { toast } from "react-hot-toast"
 
 type Props = {
@@ -33,8 +34,8 @@ export default function SchoolBillingModal({ escolaId, onClose }: Props) {
           />
         </div>
         <div className="mt-4 flex items-center justify-end gap-2">
-          <button onClick={onClose} className="px-3 py-2 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50">Cancelar</button>
-          <button
+          <Button onClick={onClose} variant="outline" tone="gray" size="sm">Cancelar</Button>
+          <Button
             disabled={sending}
             onClick={async ()=>{
               try {
@@ -51,11 +52,11 @@ export default function SchoolBillingModal({ escolaId, onClose }: Props) {
                 setSending(false)
               }
             }}
-            className="px-3 py-2 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-          >Enviar</button>
+            tone="blue"
+            size="sm"
+          >Enviar</Button>
         </div>
       </div>
     </div>
   )
 }
-

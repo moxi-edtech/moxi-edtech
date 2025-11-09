@@ -119,7 +119,8 @@ export default function ProfessoresPage() {
       })
       const json = await res.json()
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao convidar")
-      showToast("Convite enviado com sucesso!", "success")
+      const numero = json?.numero as string | undefined
+      showToast(numero ? `Convite enviado! Número de login: ${numero}` : "Convite enviado com sucesso!", "success")
     } catch (e) {
       showToast(
         e instanceof Error ? e.message : "Falha ao convidar professor",

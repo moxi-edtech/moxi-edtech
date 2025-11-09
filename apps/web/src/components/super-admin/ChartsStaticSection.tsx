@@ -17,7 +17,7 @@ export default function ChartsStaticSection({ data }: Props) {
 
   return (
     <section className="grid md:grid-cols-2 gap-6 mb-6">
-      <div className="bg-white p-6 rounded-2xl shadow border border-moxinexa-light/50">
+      <div className="bg-white p-6 rounded-2xl shadow border border-moxinexa-light/40">
         <h2 className="text-lg font-semibold mb-4 text-moxinexa-dark">Pagamentos por status</h2>
         {pagamentosList.length ? (
           <ul className="text-sm space-y-2">
@@ -32,4 +32,3 @@ export default function ChartsStaticSection({ data }: Props) {
     </section>
   )
 }
-
