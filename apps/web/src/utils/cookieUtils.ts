@@ -7,28 +7,16 @@
  * Remove cookies que não estão no formato base64- mas são JSON válidos
  */
 export function clearSupabaseCookies(): void {
-  if (typeof window === 'undefined') return;
-
-  const cookies = document.cookie.split('; ');
-  
-  cookies.forEach(cookie => {
-    const [name, value] = cookie.split('=');
-    
-    // Remove cookies do Supabase que não estão no formato base64-
-    if ((name.includes('supabase') || name.includes('sb-')) && value) {
-      try {
-        // Se não começa com base64- mas é JSON válido, está corrompido
-        if (!value.startsWith('base64-')) {
-          JSON.parse(decodeURIComponent(value));
-          // Se chegou aqui, o cookie está no formato errado - REMOVER
-          document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${window.location.hostname}`;
-          console.log('Cookie corrompido removido:', name);
-        }
-      } catch (e) {
-        // Cookie está no formato correto (não é JSON parseável) - MANTER
-      }
-    }
-  });
+  if (typeof document === "undefined") return;
+  const known = ["sb-access-token","sb-refresh-token","sb-access-token-expires","sb-provider","sb-anon-key"];
+  const all = getCookiesForDebug();
+  for (const c of all) {
+    const [name] = c.split("=");
+    if (!name) continue;
+    const n = name.trim();
+    if (known.includes(n) || /^sb-/.test(n) || /supabase/i.test(n)) expireCookie(n);
+  }
+  for (const k of known) expireCookie(k);
 }
 
 /**
@@ -76,16 +64,17 @@ export function hasCorruptedCookies(): boolean {
 /**
  * Retorna todos os cookies atuais para debug
  */
-export function getCookiesForDebug(): string {
-  if (typeof window === 'undefined') return '';
+export function getCookiesForDebug(): string[] {
+  if (typeof document === "undefined") return [];
+  const raw = document.cookie || "";
+  if (!raw) return [];
+  return raw.split(";").map((s) => s.trim()).filter(Boolean);
+}
 
-  return document.cookie.split('; ').map(cookie => {
-    const [name, value] = cookie.split('=');
-    if (name.includes('supabase') || name.includes('sb-')) {
-      return `${name}=${value?.substring(0, 30)}...`; // Mostra apenas parte do valor
-    }
-    return cookie;
-  }).join('; ');
+function expireCookie(name: string) {
+  if (typeof document === "undefined") return;
+  document.cookie = `${name}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax;`;
+  try { document.cookie = `${name}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; Domain=${location.hostname}; SameSite=Lax;`; } catch {}
 }
 
 /**
@@ -103,7 +92,15 @@ export function clearAllStorage(): void {
  * Limpa completamente todos os dados de autenticação
  */
 export function clearAllAuthData(): void {
-  clearAllAuthCookies();
-  clearAllStorage();
-  console.log('Todos os dados de autenticação foram removidos');
+  try {
+    clearSupabaseCookies();
+    if (typeof window !== "undefined") {
+      for (const k of Object.keys(localStorage || {})) {
+        if (/^(supabase|sb-|sb:|moxi_)/i.test(k) || /auth/i.test(k)) try { localStorage.removeItem(k); } catch {}
+      }
+      for (const k of Object.keys(sessionStorage || {})) {
+        if (/^(supabase|sb-|sb:|moxi_)/i.test(k) || /auth/i.test(k)) try { sessionStorage.removeItem(k); } catch {}
+      }
+    }
+  } catch {}
 }
