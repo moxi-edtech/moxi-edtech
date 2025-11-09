@@ -12,10 +12,11 @@ const admin = createClient<Database>(
 );
 
 export async function POST(request: Request) {
-  const supabase = getSupabaseServerClient()
-  if (!supabase) {
+  const admin = getSupabaseServerClient()
+  if (!admin) {
     return new Response("Supabase not configured (SUPABASE_URL or key missing)", { status: 503 })
   }
+  const supabase = admin
 
   try {
     const body = await request.json();
@@ -197,8 +198,8 @@ export async function POST(request: Request) {
     }).catch(() => null)
 
     return NextResponse.json({ ok: true, userId: authUser.user.id, tempPassword: createdNewAuthUser ? password : null, numeroLogin });
-  } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
-  }
+  } return NextResponse.json({ ok: false, error: message }, { status: 500 });
+} }
 }
