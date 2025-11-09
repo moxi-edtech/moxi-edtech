@@ -36,11 +36,11 @@ export default async function HeaderServer({ ctxEscolaId }: Props) {
         </h1>
         {ctxEscola && (
           <>
-            <span className="text-[10px] uppercase px-2 py-1 rounded-full bg-gray-100 border text-gray-600">
+            <span className="text-[10px] uppercase px-2 py-1 rounded-full bg-gray-100 border border-gray-200 text-gray-600">
               {ctxEscola.nome ? ctxEscola.nome : `Escola ${ctxEscola.id}`}
             </span>
             {ctxEscola.plano && (
-              <span className="text-[10px] uppercase px-2 py-1 rounded-full bg-gray-100 border text-gray-600">
+              <span className="text-[10px] uppercase px-2 py-1 rounded-full bg-gray-100 border border-gray-200 text-gray-600">
                 Plano: {ctxEscola.plano}
               </span>
             )}
@@ -75,4 +75,3 @@ export default async function HeaderServer({ ctxEscolaId }: Props) {
     </header>
   )
 }
-

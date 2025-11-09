@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabaseClient'
 import { recordAuditClient } from '@/lib/auditClient'
+import Button from '@/components/ui/Button'
 
 export default function Page() {
   const supabase = createClient()
@@ -81,7 +82,7 @@ export default function Page() {
 
       setOk('Senha alterada com sucesso.')
       // Auditoria (client): senha alterada
-      recordAuditClient({ portal: 'outro', action: 'SENHA_ALTERADA', entity: 'usuario' }).catch(() => null)
+      recordAuditClient({ portal: 'outro', acao: 'SENHA_ALTERADA', entity: 'usuario' }).catch(() => null)
       setTimeout(() => router.replace('/redirect'), 800)
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
@@ -127,9 +128,9 @@ export default function Page() {
           {error && <p className="text-center text-sm text-red-500 font-medium">{error}</p>}
           {ok && <p className="text-center text-sm text-green-600 font-medium">{ok}</p>}
 
-          <button type="submit" disabled={loading} className="w-full bg-moxinexa-teal hover:bg-moxinexa-teal-dark text-white py-2 rounded-lg font-semibold disabled:opacity-50">
+          <Button type="submit" disabled={loading} tone="teal" fullWidth>
             {loading ? 'Salvando...' : 'Salvar nova senha'}
-          </button>
+          </Button>
         </form>
       </div>
     </main>

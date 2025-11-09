@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import RequireSuperAdmin from "@/app/(guards)/RequireSuperAdmin";
+import Button from "@/components/ui/Button";
 
 type PreviewResponse = {
   ok: boolean
@@ -68,9 +69,9 @@ function EmailPreviewClient() {
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={load} disabled={!escolaId || loading} className="px-4 py-2 rounded text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50">
+          <Button onClick={load} disabled={!escolaId || loading} tone="blue">
             {loading ? 'Gerando…' : 'Gerar Preview'}
-          </button>
+          </Button>
           {meta?.actionLink && (
             <a href={meta.actionLink} target="_blank" rel="noreferrer" className="px-4 py-2 rounded border">
               Abrir Link de Ação
@@ -112,4 +113,3 @@ export default function Page() {
     </RequireSuperAdmin>
   )
 }
-

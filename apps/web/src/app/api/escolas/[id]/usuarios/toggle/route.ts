@@ -69,7 +69,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       const mapped = mapPapelToGlobalRole(((papel || 'secretaria') as any))
       try { await admin.from('profiles').update({ role: mapped as any }).eq('user_id', userId) } catch {}
       try { await admin.auth.admin.updateUserById(userId, { app_metadata: { role: mapped } as any }) } catch {}
-      recordAuditServer({ escolaId, portal: 'admin_escola', action: 'USUARIO_ATIVADO', entity: 'usuario', entityId: userId, details: { email, papel: papel || 'secretaria', ativo_before: ativoBefore, ativo_after: true, role_before: roleBefore } }).catch(() => null)
+      recordAuditServer({ escolaId, portal: 'admin_escola', acao: 'USUARIO_ATIVADO', entity: 'usuario', entityId: userId, details: { email, papel: papel || 'secretaria', ativo_before: ativoBefore, ativo_after: true, role_before: roleBefore } }).catch(() => null)
     } else {
       // remove link
       await admin.from('escola_usuarios').delete().eq('escola_id', escolaId).eq('user_id', userId)
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         await admin.auth.admin.updateUserById(userId, { app_metadata: { role: 'guest', escola_id: null } as any }).catch(() => null)
         roleAfter = 'guest'
       }
-      recordAuditServer({ escolaId, portal: 'admin_escola', action: 'USUARIO_DESATIVADO', entity: 'usuario', entityId: userId, details: { email, ativo_before: ativoBefore, ativo_after: false, role_before: roleBefore, role_after: roleAfter } }).catch(() => null)
+      recordAuditServer({ escolaId, portal: 'admin_escola', acao: 'USUARIO_DESATIVADO', entity: 'usuario', entityId: userId, details: { email, ativo_before: ativoBefore, ativo_after: false, role_before: roleBefore, role_after: roleAfter } }).catch(() => null)
     }
 
     return NextResponse.json({ ok: true })

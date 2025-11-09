@@ -1,4 +1,4 @@
-import SchoolsTableClient from "@/components/super-admin/SchoolsTableClient";
+import SchoolsTableClient from "@/components/super-admin/escolas/SchoolsTableClient";
 import SidebarServer from "@/components/super-admin/SidebarServer";
 import HeaderServer from "@/components/super-admin/HeaderServer";
 

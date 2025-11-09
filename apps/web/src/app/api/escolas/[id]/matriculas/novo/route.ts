@@ -59,7 +59,7 @@ export async function POST(
     recordAuditServer({
       escolaId,
       portal: 'secretaria',
-      action: 'MATRICULA_CRIADA',
+      acao: 'MATRICULA_CRIADA',
       entity: 'matricula',
       entityId: String(data.id),
       details: { aluno_id: data.aluno_id, turma_id: data.turma_id, status: data.status },

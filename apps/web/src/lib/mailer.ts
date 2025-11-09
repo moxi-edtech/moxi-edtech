@@ -129,6 +129,39 @@ export function buildBillingEmail(args: { escolaNome: string; destinatarioEmail:
   return { subject, html, text }
 }
 
+export function buildCredentialsEmail(args: { nome?: string | null; email: string; numero_login?: string | null; senha_temp?: string | null; escolaNome?: string | null; loginUrl?: string | null }) {
+  const { nome, email, numero_login, senha_temp, escolaNome, loginUrl } = args
+  const brand = getBranding()
+  const subject = `${brand.name} • Seus dados de acesso${escolaNome ? ` • ${escolaNome}` : ''}`
+  const text = [
+    nome ? `Olá, ${nome}.` : `Olá,`,
+    `Suas credenciais foram configuradas no ${brand.name}${escolaNome ? ` para a escola "${escolaNome}"` : ''}.`,
+    numero_login ? `Número de login: ${numero_login}` : '',
+    senha_temp ? `Senha temporária: ${senha_temp}` : '',
+    loginUrl ? `Acesse: ${loginUrl}` : '',
+    senha_temp ? `Por segurança, altere sua senha após o primeiro acesso.` : '',
+  ].filter(Boolean).join('\n')
+
+  const html = `
+  <div style="font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif; line-height:1.6; color:#0f172a;">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+      ${brand.logoUrl ? `<img src="${brand.logoUrl}" alt="${escapeHtml(brand.name)}" style="height:28px;" />` : ''}
+      <span style="font-size:18px; font-weight:700;">${escapeHtml(brand.name)}</span>
+    </div>
+    <h2 style="margin:0 0 12px 0; font-size:20px;">Seus dados de acesso</h2>
+    ${nome ? `<p style=\"margin:0 0 8px 0;\">Olá, <strong>${escapeHtml(nome)}</strong>.</p>` : ''}
+    <p style="margin:0 0 8px 0;">Suas credenciais foram configuradas${escolaNome ? ` para a escola <strong>${escapeHtml(escolaNome)}</strong>` : ''}.</p>
+    ${numero_login ? `<p style=\"margin:0 0 8px 0;\">Número de login: <strong>${escapeHtml(numero_login)}</strong></p>` : ''}
+    ${senha_temp ? `<p style=\"margin:0 0 8px 0;\">Senha temporária: <strong>${escapeHtml(senha_temp)}</strong></p>` : ''}
+    ${loginUrl ? `<p style=\"margin:0 0 8px 0;\"><a href=\"${loginUrl}\" style=\"display:inline-block; background:${brand.primaryColor}; color:#fff; text-decoration:none; padding:10px 16px; border-radius:8px; font-weight:600;\">Acessar o sistema</a></p>` : ''}
+    ${senha_temp ? `<p style=\"margin:16px 0 0 0; font-size:13px; color:#334155;\">Por segurança, altere sua senha após o primeiro acesso.</p>` : ''}
+    <p style="margin:24px 0 8px 0; font-size:12px; color:#64748b;">Este e-mail foi enviado para ${escapeHtml(email)}.</p>
+    ${brand.supportEmail ? `<p style=\"margin:8px 0 0 0; font-size:12px; color:#64748b;\">Suporte: <a href=\"mailto:${escapeHtml(brand.supportEmail)}\">${escapeHtml(brand.supportEmail)}</a></p>` : ''}
+  </div>
+  `
+  return { subject, html, text }
+}
+
 // SMTP support (optional)
 type SmtpConfig = {
   host: string

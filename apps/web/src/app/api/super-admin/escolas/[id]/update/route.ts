@@ -36,7 +36,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
 
     // Auditoria
-    recordAuditServer({ escolaId, portal: 'super_admin', action: 'ESCOLA_ATUALIZADA', entity: 'escola', entityId: escolaId, details: patch }).catch(() => null)
+    recordAuditServer({ escolaId, portal: 'super_admin', acao: 'ESCOLA_ATUALIZADA', entity: 'escola', entityId: escolaId, details: patch }).catch(() => null)
 
     return NextResponse.json({ ok: true })
   } catch (err) {

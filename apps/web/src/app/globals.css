@@ -3,10 +3,29 @@
 /* Fonte Poppins global */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
-html, body {
+/* Aplica a fonte para todos os elementos */
+* {
   font-family: 'Poppins', sans-serif;
+}
+
+/* Define a cor padrão das bordas para evitar bordas pretas quando usar apenas `border` */
+@layer base {
+  *, ::before, ::after {
+    --tw-border-opacity: 1;
+    border-color: rgb(229 231 235 / var(--tw-border-opacity));
+  }
+}
+
+html, body {
   background-color: #F9FAFB; /* moxinexa-light */
   color: #1A2B3C; /* moxinexa-dark */
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  margin: 0;
+  padding: 0;
+}
+
+/* Garante que elementos de input e button também usem Poppins */
+input, button, textarea, select {
+  font-family: 'Poppins', sans-serif;
 }

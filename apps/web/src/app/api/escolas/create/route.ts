@@ -231,7 +231,7 @@ export async function POST(req: Request) {
       recordAuditServer({
         escolaId: result.escolaId,
         portal: "super_admin",
-        action: "ESCOLA_CRIADA",
+        acao: "ESCOLA_CRIADA",
         entity: "escola",
         entityId: result.escolaId,
         details: { nome: result.escolaNome, plano, aluno_portal_enabled: alunoPortalEnabled },

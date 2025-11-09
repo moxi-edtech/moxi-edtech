@@ -10,7 +10,7 @@ export default function AuditPageView(props: AuditEvent) {
     sent.current = true
     recordAuditClient({
       ...props,
-      action: props.action || 'PAGE_VIEW',
+      acao: props.acao || 'PAGE_VIEW',
       entity: props.entity || 'page',
     })
   // props should be considered static per page load

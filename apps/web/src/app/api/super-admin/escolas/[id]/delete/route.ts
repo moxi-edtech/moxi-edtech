@@ -25,7 +25,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
     // Tenta exclusão definitiva
     const delRes = await admin.from('escolas').delete().eq('id', escolaId)
     if (!delRes.error) {
-      recordAuditServer({ escolaId, portal: 'super_admin', action: 'ESCOLA_DELETADA', entity: 'escola', entityId: escolaId }).catch(() => null)
+      recordAuditServer({ escolaId, portal: 'super_admin', acao: 'ESCOLA_DELETADA', entity: 'escola', entityId: escolaId }).catch(() => null)
       return NextResponse.json({ ok: true, mode: 'hard' })
     }
 
@@ -33,7 +33,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
     console.warn('[super-admin] Hard delete falhou, aplicando soft delete:', delRes.error.message)
     const upRes = await admin.from('escolas').update({ status: 'excluida' as any }).eq('id', escolaId)
     if (!upRes.error) {
-      recordAuditServer({ escolaId, portal: 'super_admin', action: 'ESCOLA_MARCADA_EXCLUSAO', entity: 'escola', entityId: escolaId, details: { reason: delRes.error.message } }).catch(() => null)
+      recordAuditServer({ escolaId, portal: 'super_admin', acao: 'ESCOLA_MARCADA_EXCLUSAO', entity: 'escola', entityId: escolaId, details: { reason: delRes.error.message } }).catch(() => null)
       return NextResponse.json({ ok: true, mode: 'soft' })
     }
 

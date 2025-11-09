@@ -5,6 +5,9 @@ import type { Database, TablesInsert } from '~types/supabase'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { recordAuditServer } from '@/lib/audit'
 import { hasPermission, mapPapelToGlobalRole } from '@/lib/permissions'
+import { generateNumeroLogin } from '@/lib/generateNumeroLogin'
+import { buildCredentialsEmail, sendMail } from '@/lib/mailer'
+import { sanitizeEmail } from '@/lib/sanitize'
 
 const BodySchema = z.object({
   email: z.string().email(),
@@ -102,36 +105,58 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     if (status === 'excluida') return NextResponse.json({ ok: false, error: 'Escola excluída não permite convites.' }, { status: 400 })
     if (status === 'suspensa') return NextResponse.json({ ok: false, error: 'Escola suspensa por pagamento. Regularize para convidar usuários.' }, { status: 400 })
 
-    const email = body.email.trim().toLowerCase()
+    // Normalize and sanitize email to avoid hidden unicode causing validation failures
+    const email = sanitizeEmail(body.email)
     const nome = body.nome.trim()
     const roleEnum = mapPapelToGlobalRole(body.papel as any)
     const roleEnumDb = roleEnum as Database["public"]["Enums"]["user_role"]
     const papelBody = body.papel as 'admin'|'staff_admin'|'secretaria'|'financeiro'|'professor'|'aluno'
-    const needsNumero = papelBody === 'aluno' || papelBody === 'secretaria'
-    let numero: string | null = null
-    if (needsNumero) {
-      // Para alunos e secretaria, sempre gerar número incremental por escola
-      const adminTmp = createAdminClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-      numero = await getNextNumero(adminTmp, escolaId)
-    } else {
-      // Outros papéis não recebem número automaticamente; mantém telefone se enviado
-      numero = (body.numero || null) as any
+    // Número de login amigável (prefix+4 dígitos) para alunos/secretaria
+    const needsNumeroLogin = papelBody === 'aluno' || papelBody === 'secretaria'
+    let numeroLogin: string | null = null
+    if (needsNumeroLogin) {
+      try { numeroLogin = await generateNumeroLogin(escolaId, roleEnum as any, admin as any) } catch { numeroLogin = null }
     }
 
     // 2) Check if user exists
     const { data: prof } = await admin.from('profiles').select('user_id').eq('email', email).limit(1)
     const existingUserId = prof?.[0]?.user_id as string | undefined
 
+    // util simples para senha forte
+    const generateStrongPassword = (len = 12) => {
+      const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+      const lower = 'abcdefghijklmnopqrstuvwxyz'
+      const nums = '0123456789'
+      const special = '!@#$%^&*()-_=+[]{};:,.?'
+      const all = upper + lower + nums + special
+      const pick = (set: string) => set[Math.floor(Math.random() * set.length)]
+      let pwd = pick(upper) + pick(lower) + pick(nums) + pick(special)
+      for (let i = pwd.length; i < len; i++) pwd += pick(all)
+      return pwd.split('').sort(() => Math.random() - 0.5).join('')
+    }
+
     let userId = existingUserId
+    let tempPassword: string | null = null
     if (!userId) {
       // Invite new user by email
       const { data: inviteRes, error: inviteErr } = await admin.auth.admin.inviteUserByEmail(email, {
-        data: { nome, role: roleEnum, must_change_password: true, numero_usuario: numero || undefined },
+        data: { nome, role: roleEnum, must_change_password: true, numero_usuario: numeroLogin || undefined },
       })
       if (inviteErr) return NextResponse.json({ ok: false, error: inviteErr.message }, { status: 400 })
 
       userId = inviteRes?.user?.id
       if (!userId) return NextResponse.json({ ok: false, error: 'Falha ao convidar usuário' }, { status: 400 })
+
+      // Define senha temporária e força troca no primeiro acesso
+      try {
+        tempPassword = generateStrongPassword(12)
+        await (admin as any).auth.admin.updateUserById(userId, {
+          password: tempPassword,
+          user_metadata: { must_change_password: true },
+        })
+      } catch (_) {
+        tempPassword = null
+      }
 
       // Create profile
       try {
@@ -139,19 +164,23 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           user_id: userId,
           email,
           nome,
-          telefone: (body.telefone ?? null) || (numero ?? null),
+          telefone: (body.telefone ?? null) || null,
+          numero_login: numeroLogin ?? null,
           role: roleEnumDb,
           escola_id: escolaId,
         } as TablesInsert<'profiles'>]).select('*').single()
       } catch {}
       try {
-        await admin.auth.admin.updateUserById(userId, { app_metadata: { role: roleEnum, escola_id: escolaId, numero_usuario: numero || undefined } as any })
+        await admin.auth.admin.updateUserById(userId, { app_metadata: { role: roleEnum, escola_id: escolaId, numero_usuario: numeroLogin || undefined } as any })
       } catch {}
     } else {
       // Ensure profile role/escola updated
-      try { await admin.from('profiles').update({ role: roleEnumDb, escola_id: escolaId, telefone: (body.telefone ?? null) || (numero ?? null) }).eq('user_id', userId) } catch {}
+      const profilePatch: any = { role: roleEnumDb, escola_id: escolaId }
+      if (body.telefone != null) profilePatch.telefone = body.telefone
+      if (numeroLogin) profilePatch.numero_login = numeroLogin
+      try { await admin.from('profiles').update(profilePatch).eq('user_id', userId) } catch {}
       // Ensure app_metadata role/escola_id updated
-      try { await admin.auth.admin.updateUserById(userId, { app_metadata: { role: roleEnum, escola_id: escolaId, numero_usuario: numero || undefined } as any }) } catch {}
+      try { await admin.auth.admin.updateUserById(userId, { app_metadata: { role: roleEnum, escola_id: escolaId, numero_usuario: numeroLogin || undefined } as any }) } catch {}
     }
 
     // 3) Link to escola_usuarios (idempotent)
@@ -165,9 +194,18 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       await admin.from('escola_usuarios').update({ papel: body.papel }).eq('escola_id', escolaId).eq('user_id', userId!)
     }
 
-    recordAuditServer({ escolaId, portal: 'admin_escola', action: 'USUARIO_CONVIDADO', entity: 'usuario', entityId: userId!, details: { email, papel: body.papel, role: roleEnum, existed_before: Boolean(existingUserId) } }).catch(() => null)
+    recordAuditServer({ escolaId, portal: 'admin_escola', acao: 'USUARIO_CONVIDADO', entity: 'usuario', entityId: userId!, details: { email, papel: body.papel, role: roleEnum, existed_before: Boolean(existingUserId), numero_login: numeroLogin } }).catch(() => null)
 
-    return NextResponse.json({ ok: true, userId, numero })
+    // Envia e-mail de credenciais com número de login (quando houver) e senha temporária (se definida)
+    try {
+      const { data: esc } = await admin.from('escolas' as any).select('nome').eq('id', escolaId).maybeSingle()
+      const escolaNome = (esc as any)?.nome ?? null
+      const loginUrl = process.env.NEXT_PUBLIC_BASE_URL ? `${process.env.NEXT_PUBLIC_BASE_URL}/login` : null
+      const mail = buildCredentialsEmail({ nome, email, numero_login: numeroLogin ?? undefined, senha_temp: tempPassword ?? undefined, escolaNome, loginUrl })
+      await sendMail({ to: email, subject: mail.subject, html: mail.html, text: mail.text })
+    } catch {}
+
+    return NextResponse.json({ ok: true, userId, numero_login: numeroLogin, senha_temp: tempPassword })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })

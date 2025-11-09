@@ -2,6 +2,7 @@
 "use client";
 
 import { useState } from "react";
+import Button from "@/components/ui/Button";
 
 export default function SeedSuperAdminCard() {
   const [loading, setLoading] = useState(false);
@@ -37,13 +38,9 @@ export default function SeedSuperAdminCard() {
         Cria/recria o usuário <b>superadmin@moxinexa.com</b> com senha <b>12345678</b>.
       </p>
 
-      <button
-        onClick={handleSeed}
-        disabled={loading}
-        className="px-4 py-2 rounded-md bg-red-600 hover:bg-red-700 text-white font-medium disabled:opacity-50"
-      >
+      <Button onClick={handleSeed} disabled={loading} tone="red" size="sm">
         {loading ? "⏳ Executando..." : "🚀 Rodar Seed"}
-      </button>
+      </Button>
 
       {result && (
         <pre className="mt-3 p-2 text-sm bg-gray-900 text-green-400 rounded-md whitespace-pre-wrap">

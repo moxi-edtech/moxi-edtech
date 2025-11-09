@@ -31,6 +31,25 @@ export async function POST(req: Request) {
       tempPassword?: string | null;
     } = body;
 
+    // Normalize and validate papel against DB constraint
+    const normalizePapel = (p: string): Database["public"]["Tables"]["escola_usuarios"]["Row"] extends { papel: infer T } ? T extends string ? T : string : string => {
+      const legacyMap: Record<string, string> = {
+        diretor: 'admin_escola',
+        administrador: 'admin',
+        secretario: 'secretaria',
+      }
+      const mapped = legacyMap[p] || p
+      return mapped as any
+    }
+    const allowedPapeis = new Set(['admin','staff_admin','financeiro','secretaria','aluno','professor','admin_escola'])
+    const papelDb = normalizePapel(String(papel || '').trim())
+    if (!allowedPapeis.has(papelDb)) {
+      return NextResponse.json(
+        { ok: false, error: `Papel inválido: ${papel}. Valores permitidos: ${Array.from(allowedPapeis).join(', ')}` },
+        { status: 400 }
+      )
+    }
+
     // 1) Create auth user
     const isStrongPassword = (pwd: string) => {
       return (
@@ -68,49 +87,83 @@ export async function POST(req: Request) {
     } else {
       password = generateStrongPassword(12)
     }
-    const { data: authUser, error: authError } = await admin.auth.admin.createUser({
-      email: email.trim().toLowerCase(),
-      password,
-      email_confirm: true,
-      user_metadata: { nome, role: roleEnum, must_change_password: true },
-    });
-    if (authError || !authUser?.user) {
-      return NextResponse.json(
-        { ok: false, error: authError?.message || "Falha ao criar usuário no Auth" },
-        { status: 400 }
-      );
+    let createdNewAuthUser = false
+    let authUser = null as null | { user: { id: string } }
+    {
+      const { data, error } = await admin.auth.admin.createUser({
+        email: email.trim().toLowerCase(),
+        password,
+        email_confirm: true,
+        user_metadata: { nome, role: roleEnum, must_change_password: true },
+      })
+      if (error || !data?.user) {
+        // Se já existe, tenta reaproveitar o usuário existente para tornar a operação idempotente
+        const msg = error?.message?.toLowerCase() || ''
+        const looksLikeExisting = /already been registered|already registered|user exists|email exists/.test(msg)
+        if (looksLikeExisting) {
+          try {
+            const { data: users } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
+            const found = users?.users?.find((u: any) => String(u.email).toLowerCase() === email.trim().toLowerCase())
+            if (found) {
+              authUser = { user: { id: String(found.id) } }
+            }
+          } catch (_) {
+            // ignore, will fall through and report original error
+          }
+        }
+        if (!authUser) {
+          return NextResponse.json(
+            { ok: false, error: error?.message || "Falha ao criar usuário no Auth" },
+            { status: 400 }
+          )
+        }
+      } else {
+        createdNewAuthUser = true
+        authUser = { user: { id: data.user.id } }
+      }
     }
 
     // 2) Create profile
-    const { error: profileError } = await admin.from("profiles").insert([
-      {
-        user_id: authUser.user.id,
-        email: email.trim().toLowerCase(),
-        nome: nome.trim(),
-        telefone: telefone || null,
-        role: roleEnum,
-      },
-    ] as TablesInsert<"profiles">[]);
+    const { error: profileError } = await admin
+      .from('profiles' as any)
+      .upsert([
+        {
+          user_id: authUser.user.id,
+          email: email.trim().toLowerCase(),
+          nome: nome.trim(),
+          telefone: telefone || null,
+          role: roleEnum,
+        },
+      ] as any, { onConflict: 'user_id' })
     if (profileError) {
+      // rollback se criamos usuário novo no Auth
+      if (createdNewAuthUser) {
+        try { await admin.auth.admin.deleteUser(authUser.user.id) } catch { /* ignore */ }
+      }
       return NextResponse.json(
         { ok: false, error: profileError.message },
         { status: 400 }
-      );
+      )
     }
 
     // 3) Link to school
-    const { error: vinculoError } = await admin.from("escola_usuarios").insert([
-      {
-        escola_id: escolaId,
-        user_id: authUser.user.id,
-        papel,
-      },
-    ] as TablesInsert<"escola_usuarios">[]);
+    const { error: vinculoError } = await admin
+      .from('escola_usuarios' as any)
+      .upsert([
+        { escola_id: escolaId, user_id: authUser.user.id, papel: papelDb },
+      ] as any, { onConflict: 'escola_id,user_id' })
     if (vinculoError) {
+      // rollback parcial se criamos novo usuário
+      if (createdNewAuthUser) {
+        try {
+          await admin.from('profiles' as any).delete().eq('user_id', authUser.user.id)
+          await admin.auth.admin.deleteUser(authUser.user.id)
+        } catch { /* ignore */ }
+      }
       return NextResponse.json(
         { ok: false, error: vinculoError.message },
         { status: 400 }
-      );
+      )
     }
 
     // 4) Generate and persist numero_login for this user within the school context
@@ -131,13 +184,13 @@ export async function POST(req: Request) {
     recordAuditServer({
       escolaId,
       portal: 'super_admin',
-      action: 'USUARIO_CRIADO',
+      acao: 'USUARIO_CRIADO',
       entity: 'usuario',
       entityId: authUser.user.id,
       details: { papel, roleEnum, email: email.trim().toLowerCase() }
     }).catch(() => null)
 
-    return NextResponse.json({ ok: true, userId: authUser.user.id, tempPassword: password, numeroLogin });
+    return NextResponse.json({ ok: true, userId: authUser.user.id, tempPassword: createdNewAuthUser ? password : null, numeroLogin });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

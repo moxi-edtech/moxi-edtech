@@ -42,7 +42,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       if (inviteErr) return NextResponse.json({ ok: false, error: inviteErr.message }, { status: 400 })
     }
 
-    recordAuditServer({ escolaId, portal: 'admin_escola', action: 'USUARIO_REINVITE', entity: 'usuario', entityId: user.id, details: { email: lower } }).catch(() => null)
+    recordAuditServer({ escolaId, portal: 'admin_escola', acao: 'USUARIO_REINVITE', entity: 'usuario', entityId: user.id, details: { email: lower } }).catch(() => null)
     return NextResponse.json({ ok: true })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

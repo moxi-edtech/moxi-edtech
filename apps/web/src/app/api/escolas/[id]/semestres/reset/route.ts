@@ -50,7 +50,7 @@ export async function POST(
   try {
     const schema = z.object({
       sessao_id: z.string().uuid(),
-      periodo_tipo: z.enum(['semestre', 'trimestre'])
+      periodo_tipo: z.enum(['semestre', 'trimestre']).optional()
     })
     const parse = schema.safeParse(await req.json())
     if (!parse.success) {
@@ -61,7 +61,7 @@ export async function POST(
       })
       return NextResponse.json({ ok: false, error: msg }, { status: 400 })
     }
-    const { sessao_id, periodo_tipo } = parse.data
+    const { sessao_id } = parse.data
 
     const s = await supabaseServer()
     const { data: auth } = await s.auth.getUser()
@@ -149,6 +149,22 @@ export async function POST(
     const sessionStart = String((sess as any).data_inicio)
     const sessionEnd = String((sess as any).data_fim)
 
+    // Descobre tipo de período efetivo: preferência salva ou fallback 'trimestre'
+    let periodo_tipo: 'semestre' | 'trimestre' = 'trimestre'
+    if (parse.data.periodo_tipo) {
+      periodo_tipo = parse.data.periodo_tipo
+    } else {
+      try {
+        const { data: cfg } = await (admin as any)
+          .from('configuracoes_escola')
+          .select('periodo_tipo')
+          .eq('escola_id', escolaId)
+          .maybeSingle()
+        const p = (cfg as any)?.periodo_tipo as string | undefined
+        if (p === 'semestre' || p === 'trimestre') periodo_tipo = p
+      } catch {}
+    }
+
     // Coleta ids de semestres atuais
     const { data: sems } = await (admin as any)
       .from('semestres')
@@ -199,11 +215,13 @@ export async function POST(
       const parts = splitRange(sessionStart, sessionEnd, qtd)
       toInsert = parts.map((p, i) => ({
         session_id: sessao_id,
+        escola_id: escolaId,
         nome: `${i + 1}º ${label}`,
         data_inicio: p.inicio,
         data_fim: p.fim,
         attendance_type: 'section',
         permitir_submissao_final: false,
+        tipo: 'SEMESTRE',
       }))
     } else {
       // Trimestre: garantir que cada período tenha no máximo 3 meses
@@ -218,11 +236,13 @@ export async function POST(
         const fimISO = dateToISO(periodEnd)
         toInsert.push({
           session_id: sessao_id,
+          escola_id: escolaId,
           nome: `${i + 1}º ${label}`,
           data_inicio: inicioISO,
           data_fim: fimISO,
           attendance_type: 'section',
           permitir_submissao_final: false,
+          tipo: 'TRIMESTRE',
         })
         // Próximo período começa no dia seguinte
         const nextStart = new Date(periodEnd)
@@ -231,9 +251,24 @@ export async function POST(
         if (currentStart > endSession) break
       }
     }
-    const { error: insErr } = await (admin as any)
-      .from('semestres')
-      .insert(toInsert as any)
+    // Tenta inserir incluindo 'tipo'; se a coluna não existir, tenta novamente sem ela
+    let insErr: any = null
+    {
+      const { error } = await (admin as any)
+        .from('semestres')
+        .insert(toInsert as any)
+      insErr = error
+    }
+    if (insErr && String(insErr.message || '').toLowerCase().includes('column') && String(insErr.message || '').includes('tipo')) {
+      const sanitized = toInsert.map((r) => {
+        const { tipo, ...rest } = r as any
+        return rest
+      })
+      const { error: retryErr } = await (admin as any)
+        .from('semestres')
+        .insert(sanitized as any)
+      insErr = retryErr
+    }
     if (insErr) {
       console.error('[semestres.reset.POST] insert error', { message: insErr.message, code: (insErr as any)?.code, details: (insErr as any)?.details })
       return NextResponse.json({ ok: false, error: insErr.message }, { status: 400 })

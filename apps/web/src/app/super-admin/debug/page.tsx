@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Button from "@/components/ui/Button";
 import RequireSuperAdmin from "@/app/(guards)/RequireSuperAdmin";
 
 type DebugPayload = {
@@ -61,12 +62,7 @@ function SessionDebug() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Debug de Sessão</h1>
         <div className="flex gap-2">
-          <button
-            onClick={load}
-            className="px-3 py-2 bg-teal-600 text-white rounded hover:bg-teal-700"
-          >
-            Recarregar
-          </button>
+          <Button onClick={load} tone="teal" size="sm">Recarregar</Button>
           <a
             href="/api/health"
             target="_blank"
@@ -74,12 +70,7 @@ function SessionDebug() {
           >
             /api/health
           </a>
-          <a
-            href="/super-admin/debug/email-preview"
-            className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Preview de Email
-          </a>
+          <a href="/super-admin/debug/email-preview" className="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Preview de Email</a>
         </div>
       </div>
 

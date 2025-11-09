@@ -19,7 +19,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     const { error } = await sAny.from('escolas').update({ status: 'ativa' }).eq('id', escolaId)
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
 
-    recordAuditServer({ escolaId, portal: 'super_admin', action: 'ESCOLA_REATIVADA', entity: 'escola', entityId: escolaId, details: { status: 'ativa' } }).catch(() => null)
+    recordAuditServer({ escolaId, portal: 'super_admin', acao: 'ESCOLA_REATIVADA', entity: 'escola', entityId: escolaId, details: { status: 'ativa' } }).catch(() => null)
 
     return NextResponse.json({ ok: true, status: 'ativa' })
   } catch (err) {

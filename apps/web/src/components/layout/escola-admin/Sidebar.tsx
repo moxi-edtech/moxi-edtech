@@ -39,25 +39,50 @@ export default function Sidebar({
   const [tipoPresenca, setTipoPresenca] = useState<"secao" | "curso" | null>(null);
   const [needsAcademicSetup, setNeedsAcademicSetup] = useState<boolean | null>(null);
   const [onboardingDone, setOnboardingDone] = useState<boolean | null>(null);
+  const [periodCount, setPeriodCount] = useState<number | null>(null);
   const [activeSession, setActiveSession] = useState<{ nome: string; ano: string } | null>(null);
 
   useEffect(() => {
     let mounted = true;
     const load = async () => {
       try {
-        const { data } = await supabase
+        const { data: escolaData, error } = await supabase
           .from("escolas")
-          .select("nome")
+          .select("nome, onboarding_finalizado, onboarding_completed_at")
           .eq("id", escolaId)
           .maybeSingle();
+
         if (!mounted) return;
-        setNomeEscola(data?.nome || "");
-        const done = false; // Assuming not done if columns are missing
-        const needs = true; // Assuming setup is needed if column is missing
-        setOnboardingDone(done);
-        setNeedsAcademicSetup(needs);
+
+        if (error) {
+          const msg = (error as any)?.message || (typeof error === 'string' ? error : JSON.stringify(error));
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn(`[Sidebar] Failed to fetch escola ${escolaId}:`, msg);
+          }
+          setNomeEscola(initialNome || "");
+          setOnboardingDone(null);
+          setNeedsAcademicSetup(null);
+          return;
+        }
+
+        if (escolaData) {
+          setNomeEscola((escolaData as any).nome || "");
+          // Determina conclusão do onboarding (compatível com colunas antigas e novas)
+          const done = Boolean((escolaData as any)?.onboarding_finalizado) || Boolean((escolaData as any)?.onboarding_completed_at);
+          // Se a coluna needs_academic_setup não existir, tratamos como null e deixamos outras checagens decidirem
+          setOnboardingDone(done);
+          setNeedsAcademicSetup(null); // Set to null as we are no longer fetching this column
+        } else {
+            // Handle case where no data is returned (e.g., escola not found)
+            setNomeEscola(initialNome || "");
+            setOnboardingDone(null);
+            setNeedsAcademicSetup(null);
+        }
       } catch (e) {
-        // noop
+        if (process.env.NODE_ENV !== 'production') {
+          const msg = e instanceof Error ? e.message : String(e);
+          console.warn(`[Sidebar] Exception fetching escola ${escolaId}:`, msg);
+        }
       }
     };
     if (escolaId && !initialNome) load();
@@ -109,8 +134,17 @@ export default function Sidebar({
         if (ativa) {
           const ano = `${String(ativa.data_inicio).slice(0, 4)}-${String(ativa.data_fim).slice(0, 4)}`;
           setActiveSession({ nome: ativa.nome || "Sessão", ano });
+          // Carrega quantidade de períodos da sessão ativa para compor o bloqueio
+          try {
+            const res = await fetch(`/api/escolas/${escolaId}/semestres?session_id=${encodeURIComponent(ativa.id)}`, { cache: 'no-store' });
+            const json = await res.json().catch(() => null);
+            if (mounted) setPeriodCount(res.ok && Array.isArray(json?.data) ? (json.data as any[]).length : 0);
+          } catch {
+            if (mounted) setPeriodCount(0);
+          }
         } else {
           setActiveSession(null);
+          setPeriodCount(0);
         }
       } catch {
         // ignore
@@ -122,7 +156,11 @@ export default function Sidebar({
   }, [supabase, escolaId]);
 
   // Itens principais (unificados, sem seções, como no Super Admin)
-  const setupReady = onboardingDone === true || needsAcademicSetup === false;
+  // Considera pronto se: onboarding marcado como concluído OU explicitamente não precisa de setup
+  // OU preferências acadêmicas preenchidas (estrutura, período, presença) OU heurística (sessão + períodos).
+  const prefsReady = Boolean(estrutura) && Boolean(periodoTipo) && Boolean(tipoPresenca);
+  const heuristicReady = Boolean(activeSession) && (typeof periodCount === 'number' ? periodCount > 0 : false);
+  const setupReady = onboardingDone === true || needsAcademicSetup === false || prefsReady || heuristicReady;
   const items = [
     { label: "Dashboard", icon: HomeIcon, path: `/escola/${escolaId}`, requiresSetup: false },
     {
@@ -131,19 +169,21 @@ export default function Sidebar({
       path: `/escola/${escolaId}/turmas`,
       requiresSetup: false,
     },
-    { label: "Alunos", icon: AcademicCapIcon, path: `/escola/${escolaId}/alunos`, requiresSetup: true },
-    { label: "Professores", icon: UsersIcon, path: `/escola/${escolaId}/professores`, requiresSetup: true }, // 👈
-    { label: "Provas / Notas", icon: ClipboardDocumentListIcon, path: `/escola/${escolaId}/avaliacoes`, requiresSetup: true },
+    { label: "Alunos", icon: AcademicCapIcon, path: `/escola/${escolaId}/alunos`, requiresSetup: false },
+    { label: "Professores", icon: UsersIcon, path: `/escola/${escolaId}/professores`, requiresSetup: false }, // acesso direto
+    { label: "Provas / Notas", icon: ClipboardDocumentListIcon, path: `/escola/${escolaId}/avaliacoes`, requiresSetup: false },
     { label: "Avisos", icon: MegaphoneIcon, path: `/escola/${escolaId}/avisos`, requiresSetup: false },
     { label: "Eventos", icon: CalendarIcon, path: `/escola/${escolaId}/eventos`, requiresSetup: false },
-    { label: tipoPresenca === "curso" ? "Rotina por Curso" : tipoPresenca === "secao" ? "Rotina por Seção" : "Rotina", icon: ClockIcon, path: `/escola/${escolaId}/rotina`, requiresSetup: true },
+    { label: tipoPresenca === "curso" ? "Rotina por Curso" : tipoPresenca === "secao" ? "Rotina por Seção" : "Rotina", icon: ClockIcon, path: `/escola/${escolaId}/rotina`, requiresSetup: false },
     { label: "Configurações Acadêmicas", icon: Cog6ToothIcon, path: `/escola/${escolaId}/admin/configuracoes`, requiresSetup: false },
-    { label: "Promoção", icon: ArrowTrendingUpIcon, path: `/escola/${escolaId}/promocao`, requiresSetup: true },
-    { label: "Pagamentos", icon: BanknotesIcon, path: `/escola/${escolaId}/pagamentos`, requiresSetup: false },
+    { label: "Promoção", icon: ArrowTrendingUpIcon, path: `/escola/${escolaId}/promocao`, requiresSetup: false },
+    { label: "Financeiro", icon: BanknotesIcon, path: `/escola/${escolaId}/financeiro`, requiresSetup: false },
     { label: "Funcionários", icon: UserGroupIcon, path: `/escola/${escolaId}/funcionarios`, requiresSetup: false },
     { label: "Biblioteca", icon: BookOpenIcon, path: `/escola/${escolaId}/biblioteca`, requiresSetup: false },
   ] as const;
-  const blockedCount = !setupReady ? items.filter(i => i.requiresSetup).length : 0;
+  // Itens realmente com gate habilitado (com base no requiresSetup)
+  const gatedItems = (items as readonly { requiresSetup: boolean }[]).filter((i) => i.requiresSetup && !setupReady);
+  const blockedCount = gatedItems.length;
 
   const isActive = (href: string) => pathname === href || pathname?.startsWith(href + "/");
 
@@ -208,7 +248,7 @@ export default function Sidebar({
         </div>
 
         <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
-          {setupReady === false && (
+          {blockedCount > 0 && (
             <div className="mx-1 mb-2 rounded-lg border border-amber-300/40 bg-amber-400/10 text-amber-50 px-3 py-2 text-xs">
               {blockedCount} {blockedCount === 1 ? 'item bloqueado' : 'itens bloqueados'} até concluir as Configurações Acadêmicas.
               <a

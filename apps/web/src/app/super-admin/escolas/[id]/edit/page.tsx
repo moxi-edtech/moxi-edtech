@@ -78,7 +78,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         <HeaderServer ctxEscolaId={String(fetched.id)} />
 
         <main className="p-6 overflow-y-auto space-y-6">
-          <AuditPageView portal="super_admin" action="PAGE_VIEW" entity="escola_edit" />
+          <AuditPageView portal="super_admin" acao="PAGE_VIEW" entity="escola_edit" />
           {fetched.status === 'suspensa' && (
             <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
               <p className="font-semibold">Escola suspensa por pagamento</p>

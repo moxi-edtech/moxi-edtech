@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { type Course, type AcademicSession } from "@/types/academico.types";
-import { Button } from "@/components/ui/Button";
+import Button from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { StepHeader } from "./StepHeader";
 

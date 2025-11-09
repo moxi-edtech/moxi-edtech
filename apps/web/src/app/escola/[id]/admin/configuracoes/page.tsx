@@ -7,7 +7,7 @@ import type { AcademicSession, Semester, Course, Teacher, Class, Discipline } fr
 
 import AcademicSetupWizard from "@/components/escola/onboarding/AcademicSetupWizard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import Button from "@/components/ui/Button";
 import { CheckCircle2, Settings, BookOpen, Users, Calendar, GraduationCap } from "lucide-react";
 import { toast } from "sonner";
 
@@ -74,48 +74,56 @@ export default function ConfiguracoesAcademicasPage() {
         }
       };
 
-      // 1) Sessões
-      const { data: s } = await supabase
-        .from("school_sessions")
-        .select("id, nome, data_inicio, data_fim, status")
-        .eq("escola_id", escolaId)
-        .order("data_inicio", { ascending: false });
+      // 1) Sessões — usar API (service role) para leitura consistente (ignora RLS do cliente)
+      let mapSessions: AcademicSession[] = [];
+      try {
+        const res = await fetch(`/api/escolas/${escolaId}/onboarding/session`, { cache: 'no-store' });
+        const json = await res.json().catch(() => null);
+        const rows = (res.ok && Array.isArray(json?.data)) ? json.data : [];
+        mapSessions = rows.map((row: any) => ({
+          id: row.id,
+          nome: row.nome,
+          ano_letivo: `${String(row.data_inicio).slice(0, 4)}-${String(row.data_fim).slice(0, 4)}`,
+          data_inicio: String(row.data_inicio),
+          data_fim: String(row.data_fim),
+          status: row.status,
+        }));
+      } catch {}
 
       if (!mounted) return;
-      const mapSessions: AcademicSession[] = (s || []).map((row: any) => ({
-        id: row.id,
-        nome: row.nome,
-        ano_letivo: `${String(row.data_inicio).slice(0, 4)}-${String(row.data_fim).slice(0, 4)}`,
-        data_inicio: String(row.data_inicio),
-        data_fim: String(row.data_fim),
-        status: row.status,
-      }));
       setSessoes(mapSessions);
       const ativa = mapSessions.find((x) => x.status === "ativa") || null;
       setSessaoAtiva(ativa);
       setWipeSessionId(ativa?.id);
 
-      // 2) Períodos
+      // 2) Períodos — usar API (service role) para leitura consistente
+      let periodosCountLoaded = 0;
       if (ativa) {
-        const { data: per } = await supabase
-          .from("semestres")
-          .select("id, nome, data_inicio, data_fim, session_id")
-          .eq("session_id", ativa.id)
-          .order("data_inicio", { ascending: true });
-
-        if (mounted) {
-          const mapped: Semester[] = (per || []).map((row: any, idx: number) => ({
-            id: row.id,
-            nome: row.nome,
-            numero: idx + 1,
-            data_inicio: String(row.data_inicio),
-            data_fim: String(row.data_fim),
-            sessao_id: row.session_id,
-          }));
-          setPeriodos(mapped);
+        try {
+          const res = await fetch(`/api/escolas/${escolaId}/semestres?session_id=${encodeURIComponent(ativa.id)}`, { cache: 'no-store' });
+          const json = await res.json().catch(() => null);
+          const rows: any[] = res.ok && Array.isArray(json?.data) ? json.data : [];
+          if (mounted) {
+            const mapped: Semester[] = rows.map((row: any, idx: number) => ({
+              id: row.id,
+              nome: row.nome,
+              numero: typeof row.numero === 'number' ? row.numero : idx + 1,
+              data_inicio: String(row.data_inicio),
+              data_fim: String(row.data_fim),
+              sessao_id: row.sessao_id ?? row.session_id,
+            }));
+            setPeriodos(mapped);
+            periodosCountLoaded = mapped.length;
+          }
+        } catch {
+          if (mounted) {
+            setPeriodos([]);
+            periodosCountLoaded = 0;
+          }
         }
       } else {
         setPeriodos([]);
+        periodosCountLoaded = 0;
       }
 
       // 3) Cursos — usar API (service role) para evitar RLS retornar vazio
@@ -184,7 +192,7 @@ export default function ConfiguracoesAcademicasPage() {
       if (mounted) {
         const hasBasicConfig = Boolean(
           (ativa) &&
-          (Array.isArray(periodos) ? periodos.length > 0 : true) &&
+          (periodosCountLoaded > 0) &&
           (Array.isArray(classesRows) ? classesRows.length > 0 : false) &&
           (Array.isArray(disciplinasRows) ? disciplinasRows.length > 0 : false)
         );

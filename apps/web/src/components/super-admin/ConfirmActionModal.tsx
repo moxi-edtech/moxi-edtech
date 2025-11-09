@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Button from "@/components/ui/Button"
 import { toast } from "react-hot-toast"
 
 type Props = {
@@ -46,8 +47,8 @@ export default function ConfirmActionModal({ action, escolaId, escolaNome, onClo
           </div>
         )}
         <div className="mt-5 flex items-center justify-end gap-2">
-          <button onClick={onClose} className="px-3 py-2 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50">Cancelar</button>
-          <button
+          <Button onClick={onClose} variant="outline" tone="gray" size="sm">Cancelar</Button>
+          <Button
             disabled={busy}
             onClick={async () => {
               try {
@@ -83,11 +84,11 @@ export default function ConfirmActionModal({ action, escolaId, escolaNome, onClo
                 setBusy(false)
               }
             }}
-            className={`px-3 py-2 text-sm rounded-md text-white ${action === 'delete' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'} disabled:opacity-50`}
-          >Confirmar</button>
+            tone={action === 'delete' ? 'red' : 'blue'}
+            size="sm"
+          >Confirmar</Button>
         </div>
       </div>
     </div>
   )
 }
-

@@ -56,7 +56,7 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
     const { error: delErr } = await admin.from('turmas').delete().eq('id', turmaId)
     if (delErr) return NextResponse.json({ ok: false, error: delErr.message }, { status: 400 })
 
-    recordAuditServer({ escolaId, portal: 'admin_escola', action: 'TURMA_EXCLUIDA_CASCADE', entity: 'turma', entityId: turmaId, details: { secIds, ofertaIds, matIds } }).catch(() => null)
+    recordAuditServer({ escolaId, portal: 'admin_escola', acao: 'TURMA_EXCLUIDA_CASCADE', entity: 'turma', entityId: turmaId, details: { secIds, ofertaIds, matIds } }).catch(() => null)
     return NextResponse.json({ ok: true })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
