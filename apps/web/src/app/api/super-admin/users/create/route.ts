@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database, TablesInsert } from "~types/supabase";
 import { recordAuditServer } from "@/lib/audit";
 import { generateNumeroLogin } from "@/lib/generateNumeroLogin";
-import { getSupabaseServerClient } from "~/lib/supabase-server";
+import { getSupabaseServerClient } from "../../../../../lib/supabase-server";
 
 // Creates a supabase client with service role for admin operations (server-only)
 const admin = createClient<Database>(
