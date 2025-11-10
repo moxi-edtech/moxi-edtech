@@ -197,9 +197,14 @@ export async function POST(request: Request) {
       details: { papel, roleEnum, email: email.trim().toLowerCase() }
     }).catch(() => null)
 
-    return NextResponse.json({ ok: true, userId: authUser.user.id, tempPassword: createdNewAuthUser ? password : null, numeroLogin });
+    return NextResponse.json({
+      ok: true,
+      userId: authUser.user.id,
+      tempPassword: createdNewAuthUser ? password : null,
+      numeroLogin,
+    });
+  } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
-  } return NextResponse.json({ ok: false, error: message }, { status: 500 });
-} }
+  }
 }
