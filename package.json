@@ -17,9 +17,9 @@
     "db:push": "supabase db push --project-ref wjtifcpxxxotsbmvbgoq",
     "db:reset": "supabase db reset",
     "db:seed:remote": "sh -c 'cat supabase/seeds/*.sql > supabase/.tmp_seed.sql && supabase db execute --project-ref wjtifcpxxxotsbmvbgoq --file supabase/.tmp_seed.sql && rm -f supabase/.tmp_seed.sql'"
-  }
-,
+  },
   "devDependencies": {
+    "autoprefixer": "^10.4.22"
   },
   "engines": {
     "node": ">=18.0.0"
