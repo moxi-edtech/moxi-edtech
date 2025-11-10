@@ -3,20 +3,15 @@ import { createClient } from "@supabase/supabase-js";
 import type { Database, TablesInsert } from "~types/supabase";
 import { recordAuditServer } from "@/lib/audit";
 import { generateNumeroLogin } from "@/lib/generateNumeroLogin";
-import { getSupabaseServerClient } from "../../../../../lib/supabase-server";
-
-// Creates a supabase client with service role for admin operations (server-only)
-const admin = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { getSupabaseServerClient } from "@/lib/supabase-server";
+// top-level não deve criar client
 
 export async function POST(request: Request) {
-  const admin = getSupabaseServerClient()
+  const admin = getSupabaseServerClient();
   if (!admin) {
-    return new Response("Supabase not configured (SUPABASE_URL or key missing)", { status: 503 })
+    return new Response("Supabase not configured (SUPABASE_URL or key missing)", { status: 503 });
   }
-  const supabase = admin
+  const supabase = admin;
 
   try {
     const body = await request.json();

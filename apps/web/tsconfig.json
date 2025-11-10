@@ -3,14 +3,25 @@
   "compilerOptions": {
     // Específicos do app web
     "plugins": [
-      { "name": "next" }
+      {
+        "name": "next"
+      }
     ],
     "baseUrl": ".",
     "paths": {
-      "~/*": ["src/*"],
-      "@/*": ["src/*"],
-      "~types/*": ["../../types/*"] // ajuste se suas types estiverem em outro lugar
-    }
+      "~/*": [
+        "src/*"
+      ],
+      "@/*": [
+        "src/*"
+      ],
+      "~types/*": [
+        "../../types/*"
+      ] // ajuste se suas types estiverem em outro lugar
+    },
+    "allowJs": true,
+    "noEmit": true,
+    "jsx": "preserve"
   },
   "include": [
     "next-env.d.ts",
