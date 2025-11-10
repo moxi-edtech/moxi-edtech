@@ -11,5 +11,14 @@
     "next": "15.5.6",
     "react": "19.1.0",
     "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@heroicons/react": "^2.2.0",
+    "@next/bundle-analyzer": "^16.0.1",
+    "chart.js": "^4.5.1",
+    "lucide-react": "^0.553.0",
+    "react-chartjs-2": "^5.3.1",
+    "react-hot-toast": "^2.6.0",
+    "sonner": "^2.0.7"
   }
 }
