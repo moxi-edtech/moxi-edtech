@@ -76,7 +76,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   try {
     const json = await req.json()
     const parse = BodySchema.safeParse(json)
-    if (!parse.success) return NextResponse.json({ ok: false, error: parse.error.errors[0]?.message || 'Dados inválidos' }, { status: 400 })
+    if (!parse.success) return NextResponse.json({ ok: false, error: parse.error.issues?.[0]?.message || 'Dados inválidos' }, { status: 400 })
     const body = parse.data
 
     // 1) Permission check via papel -> permission mapping

@@ -25,10 +25,10 @@ export async function POST(
     });
     const parse = schema.safeParse(await req.json());
     if (!parse.success) {
-      const msg = parse.error.errors[0]?.message || "Dados inválidos";
+      const msg = parse.error.issues?.[0]?.message || "Dados inválidos";
       console.error('[semestres.POST] invalid payload', {
         reason: msg,
-        issues: parse.error.errors?.map(e => ({ path: e.path, code: e.code, message: e.message }))
+        issues: parse.error.issues?.map(e => ({ path: e.path, code: e.code, message: e.message }))
       });
       return NextResponse.json({ ok: false, error: msg }, { status: 400 });
     }
@@ -290,7 +290,7 @@ export async function PATCH(
     })
     const parsed = schema.safeParse(await req.json())
     if (!parsed.success) {
-      const msg = parsed.error.errors[0]?.message || 'Dados inválidos'
+      const msg = parsed.error.issues?.[0]?.message || 'Dados inválidos'
       return NextResponse.json({ ok: false, error: msg }, { status: 400 })
     }
     const { id, nome, data_inicio, data_fim, tipo } = parsed.data
