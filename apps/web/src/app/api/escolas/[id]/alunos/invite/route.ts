@@ -20,7 +20,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
   const { id: escolaId } = await context.params
   try {
     const parse = BodySchema.safeParse(await req.json());
-    if (!parse.success) return NextResponse.json({ ok: false, error: parse.error.errors[0]?.message || 'Dados inválidos' }, { status: 400 });
+    if (!parse.success) return NextResponse.json({ ok: false, error: parse.error.issues[0]?.message || 'Dados inválidos' }, { status: 400 });
     const { email: rawEmail, nome, alunoId } = parse.data;
     const email = sanitizeEmail(rawEmail);
 

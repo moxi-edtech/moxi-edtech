@@ -22,7 +22,7 @@ export async function POST(
     });
     const parsed = schema.safeParse(raw);
     if (!parsed.success) {
-      const msg = parsed.error.errors[0]?.message || 'Dados inválidos';
+      const msg = parsed.error.issues[0]?.message || 'Dados inválidos';
       return NextResponse.json({ ok: false, error: msg }, { status: 400 });
     }
     const { nome, tipo, curso_id, classe_id, descricao } = parsed.data;

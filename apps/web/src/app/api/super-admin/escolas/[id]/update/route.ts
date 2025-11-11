@@ -13,7 +13,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
   try {
     const body = await req.json()
     const parse = BodySchema.safeParse(body)
-    if (!parse.success) return NextResponse.json({ ok: false, error: parse.error.errors[0]?.message || 'Dados inválidos' }, { status: 400 })
+    if (!parse.success) return NextResponse.json({ ok: false, error: parse.error.issues?.[0]?.message || 'Dados inválidos' }, { status: 400 })
     const updates = parse.data
 
     const s = await supabaseServer()

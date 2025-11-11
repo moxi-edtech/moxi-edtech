@@ -17,7 +17,7 @@ export async function PUT(
     const schema = z.object({ professor_id: z.string().uuid().nullable() });
     const parse = schema.safeParse(await req.json());
     if (!parse.success) {
-      const msg = parse.error.errors[0]?.message || "Dados inválidos";
+      const msg = parse.error.issues[0]?.message || "Dados inválidos";
       return NextResponse.json({ ok: false, error: msg }, { status: 400 });
     }
     const { professor_id } = parse.data;

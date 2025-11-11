@@ -19,6 +19,7 @@
     "db:seed:remote": "sh -c 'cat supabase/seeds/*.sql > supabase/.tmp_seed.sql && supabase db execute --project-ref wjtifcpxxxotsbmvbgoq --file supabase/.tmp_seed.sql && rm -f supabase/.tmp_seed.sql'"
   },
   "devDependencies": {
+    "@types/node": "^24.10.0",
     "autoprefixer": "^10.4.22"
   },
   "engines": {

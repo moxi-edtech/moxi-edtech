@@ -18,7 +18,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
   try {
     const json = await req.json()
     const parse = BodySchema.safeParse(json)
-    if (!parse.success) return NextResponse.json({ ok: false, error: parse.error.errors[0]?.message || 'Dados inválidos' }, { status: 400 })
+    if (!parse.success) return NextResponse.json({ ok: false, error: parse.error.issues?.[0]?.message || 'Dados inválidos' }, { status: 400 })
     const { email, papel, roleEnum } = parse.data
 
     // permission check via papel -> permission mapping

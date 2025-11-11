@@ -34,7 +34,7 @@ export async function POST(
   try {
     const parsed = schema.safeParse(await req.json());
     if (!parsed.success) {
-      const msg = parsed.error.errors[0]?.message || "Dados inválidos";
+      const msg = parsed.error.issues[0]?.message || "Dados inválidos";
       return NextResponse.json({ ok: false, error: msg }, { status: 400 });
     }
     const { scope, sessionId: sessionIdRaw, include, dryRun, force, confirmPhrase } = parsed.data;

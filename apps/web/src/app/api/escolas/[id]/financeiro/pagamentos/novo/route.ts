@@ -19,7 +19,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const json = await req.json().catch(() => null)
     const parse = BodySchema.safeParse(json)
     if (!parse.success) {
-      const msg = parse.error.errors[0]?.message || 'Dados inválidos'
+      const msg = parse.error.issues?.[0]?.message || 'Dados inválidos'
       return NextResponse.json({ ok: false, error: msg }, { status: 400 })
     }
     const body = parse.data

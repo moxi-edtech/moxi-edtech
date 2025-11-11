@@ -32,7 +32,7 @@ export async function POST(
     );
     const parse = extendIds.safeParse(raw);
     if (!parse.success) {
-      const msg = parse.error.errors[0]?.message || "Dados inválidos";
+      const msg = parse.error.issues[0]?.message || "Dados inválidos";
       return NextResponse.json({ ok: false, error: msg }, { status: 400 });
     }
     const { nome, tipo, descricao, nivel } = parse.data as any;
