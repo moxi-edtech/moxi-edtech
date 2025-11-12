@@ -1,44 +1,46 @@
- import 'server-only'
- import { createClient } from "@/lib/supabaseClient"
+import "server-only";
+import { supabaseServer } from "@/lib/supabaseServer";
 
 export type AuditEvent = {
-  escolaId?: string | null
-  portal: 'admin_escola' | 'secretaria' | 'financeiro' | 'aluno' | 'super_admin' | 'outro'
-  acao: string
-  entity: string
-  entityId?: string | null
-  details?: Record<string, any>
-}
+  escolaId?: string | null;
+  portal:
+    | "admin_escola"
+    | "secretaria"
+    | "financeiro"
+    | "aluno"
+    | "super_admin"
+    | "outro";
+  acao: string;
+  entity: string; // nome lógico/tabela (ex: "alunos", "escolas")
+  entityId?: string | null;
+  details?: Record<string, any>;
+};
 
 export async function recordAuditServer(evt: AuditEvent) {
-  const { supabaseServer } = await import("@/lib/supabaseServer")
-  const s = (await supabaseServer()) as any
-  const { error } = await s.from('audit_logs').insert({
-    escola_id: evt.escolaId ?? null,
-    portal: evt.portal,
-    acao: evt.acao,
-    entity: evt.entity,
-    entity_id: evt.entityId ?? null,
-    details: evt.details ?? {},
-  })
-  if (error) {
-    // Loga no server mas não explode a requisição consumidora
-    console.error('recordAuditServer error:', error.message)
-  }
-}
+  try {
+    // segurança: se alguém chamar sem entity, não quebra a request
+    if (!evt.entity) {
+      console.warn("recordAuditServer chamado sem entity; ignorando log.");
+      return;
+    }
 
-export async function recordAuditClient(evt: AuditEvent) {
-  const s = createClient() as any
-  const { error } = await s.from('audit_logs').insert({
-    escola_id: evt.escolaId ?? null,
-    portal: evt.portal,
-    acao: evt.acao,
-    entity: evt.entity,
-    entity_id: evt.entityId ?? null,
-    details: evt.details ?? {},
-  })
-  if (error) {
-    // Evita quebrar UX no client
-    console.warn('recordAuditClient error:', error.message)
+    const s = (await supabaseServer()) as any;
+
+    const payload = {
+      escola_id: evt.escolaId ?? null,
+      portal: evt.portal,
+      acao: evt.acao,
+      tabela: evt.entity, // 👈 preenche a coluna NOT NULL
+      entity: evt.entity, // se existir essa coluna, mantemos também
+      entity_id: evt.entityId ?? null,
+      details: evt.details ?? {},
+    };
+
+    const { error } = await s.from("audit_logs").insert(payload);
+    if (error) {
+      console.error("recordAuditServer error:", error.message);
+    }
+  } catch (err: any) {
+    console.error("recordAuditServer exception:", err?.message || err);
   }
 }

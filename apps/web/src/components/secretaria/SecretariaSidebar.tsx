@@ -24,7 +24,7 @@ export default function SecretariaSidebar() {
   const pathname = usePathname();
   return (
     <aside className={`fixed md:relative w-80 md:w-72 bg-white text-moxinexa-dark flex-col z-30
-      shadow-xl md:shadow-lg md:rounded-r-2xl transition-all duration-300 md:flex h-full`}>
+      shadow-xl md:shadow-lg md:rounded-r-2xl transition-all duration-300 md:flex h-screen`}>
       <div className="px-6 py-4 flex items-center gap-3">
         <div className="bg-gradient-to-r from-teal-500 to-sky-600 text-white rounded-xl w-10 h-10 flex items-center justify-center shadow-lg">🎓</div>
         <div>
