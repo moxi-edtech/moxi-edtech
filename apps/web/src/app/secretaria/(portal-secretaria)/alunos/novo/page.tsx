@@ -166,7 +166,7 @@ export default function Page() {
     <>
       <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="aluno_novo" />
       
-      <div className="min-h-screen bg-gray-50 p-6">
+      <div className="bg-gray-50 p-6">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
           <div className="flex items-center gap-3">
