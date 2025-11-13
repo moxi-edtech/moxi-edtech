@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabaseClient";
+import SignOutButton from "@/components/auth/SignOutButton";
 
 interface HeaderProps {
   title: string;
@@ -63,6 +64,12 @@ export default function Header({ title }: HeaderProps) {
           {initials}
         </div>
         <span className="text-sm font-medium text-gray-700">{displayName ?? "Administrador"}</span>
+        <SignOutButton
+          variant="ghost"
+          size="sm"
+          className="text-slate-600 hover:text-slate-900"
+          redirectTo="/login"
+        />
       </div>
     </header>
   );
