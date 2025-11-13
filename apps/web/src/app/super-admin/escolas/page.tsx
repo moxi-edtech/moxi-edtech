@@ -62,7 +62,7 @@ export default async function Page() {
   const { normalized, initialProgress, errorMsg, fallbackSource } = await fetchInitial()
   return (
     <div className="flex h-screen bg-gray-100">
-      <SidebarServer />
+      <SidebarServer collapsed={false} />
       <div className="flex-1 flex flex-col">
         <HeaderServer />
         <main className="p-6 overflow-y-auto">

@@ -72,7 +72,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
 
   return (
     <div className="flex h-screen bg-gray-100">
-      <SidebarServer />
+      <SidebarServer collapsed={false} />
 
       <div className="flex-1 flex flex-col">
         <HeaderServer ctxEscolaId={String(fetched.id)} />
