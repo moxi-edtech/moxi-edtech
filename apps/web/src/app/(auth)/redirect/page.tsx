@@ -69,7 +69,7 @@ export default function RedirectPage() {
               .limit(1);
             const e0 = (esc?.[0] as any) || {}
             const done = Boolean(e0.onboarding_finalizado) || Boolean(e0.onboarding_completed_at);
-            router.replace(done ? `/escola/${escola_id}/admin/dashboard` : `/escola/${escola_id}/onboarding`);
+            router.replace(done ? `/escola/${escola_id}/admin` : `/escola/${escola_id}/onboarding`);
             return;
           }
 
@@ -86,7 +86,7 @@ export default function RedirectPage() {
                   .limit(1);
                 const e0 = (esc?.[0] as any) || {}
                 const done = Boolean(e0.onboarding_finalizado) || Boolean(e0.onboarding_completed_at);
-                router.replace(done ? `/escola/${escola_id}/admin/dashboard` : `/escola/${escola_id}/onboarding`);
+                router.replace(done ? `/escola/${escola_id}/admin` : `/escola/${escola_id}/onboarding`);
               } else {
                 router.replace("/admin");
               }
