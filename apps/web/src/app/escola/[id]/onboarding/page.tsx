@@ -15,10 +15,10 @@ export default async function OnboardingPage({ params }: { params: Promise<{ id:
     const e0 = (data?.[0] as any) || {}
     const done = Boolean(e0.onboarding_finalizado) || Boolean(e0.onboarding_completed_at)
     if (done) {
-      redirect(`/escola/${id}/admin/dashboard`)
+      redirect(`/escola/${id}/admin`)
     }
   } catch {}
 
   // Caso contrário, vai para a página de configurações acadêmicas (wizard)
-  redirect(`/escola/${id}/admin/configuracoes`)
+  redirect(`/escola/${id}/admin`)
 }
