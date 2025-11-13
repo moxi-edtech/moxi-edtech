@@ -17,6 +17,7 @@ import {
   BellIcon,
   MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
+import clsx from "clsx";
 
 // Definir tipos específicos
 type MenuItemName = 
@@ -60,17 +61,14 @@ const UserAvatar = ({ initials, name }: { initials: string; name: string }) => (
 
 // Componente de Logo
 const Logo = ({ collapsed = false }: { collapsed?: boolean }) => (
-  <div className="px-6 py-4 flex items-center gap-3">
-    <div className="bg-gradient-to-r from-teal-500 to-sky-600 text-white rounded-xl w-10 h-10 flex items-center justify-center shadow-lg">
-      <span className="text-lg">🎓</span>
+  <div className="px-3 py-3 flex items-center gap-2 overflow-hidden">
+    <div className="h-9 w-9 rounded-lg bg-teal-600 text-white grid place-content-center font-bold">
+      MN
     </div>
     {!collapsed && (
-      <div>
-        <h1 className="text-xl font-bold bg-gradient-to-r from-teal-500 to-sky-600 bg-clip-text text-transparent">
-          MoxiNexa
-        </h1>
-        <p className="text-xs text-moxinexa-light opacity-70">Sistema Educacional</p>
-      </div>
+      <span className="truncate text-sm font-semibold text-slate-900">
+        Moxi Nexa
+      </span>
     )}
   </div>
 );
@@ -82,10 +80,24 @@ export default function PortalLayout({
 }) {
   const [active, setActive] = useState<MenuItemName>("Dashboard");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [plan, setPlan] = useState<"basico"|"standard"|"premium"|null>(null)
   const [userName, setUserName] = useState<string | null>(null)
   const [escolaNome, setEscolaNome] = useState<string | null>(null)
+
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("sidebar:collapsed");
+      if (saved != null) setCollapsed(saved === "1");
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("sidebar:collapsed", collapsed ? "1" : "0");
+    } catch {}
+  }, [collapsed]);
 
   useEffect(() => {
     const supabase = createClient()
@@ -141,100 +153,95 @@ export default function PortalLayout({
     return calc || 'AD'
   }, [userName])
 
-  return (
-    <div className="flex min-h-screen font-sans bg-gradient-to-br from-moxinexa-light/20 to-white text-moxinexa-dark">
-      {/* Overlay para mobile */}
-      {isMobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
+  const sidebarW = collapsed ? 64 : 256;
 
-      {/* Sidebar modernizada */}
-      <aside className={`fixed md:relative w-80 md:w-72 bg-white text-moxinexa-dark flex-col z-30
-        shadow-xl md:shadow-lg md:rounded-r-2xl transition-all duration-300
-        ${isMobileMenuOpen ? 'flex translate-x-0' : '-translate-x-full'} 
-        md:flex md:translate-x-0 h-full`}>
-        
-        <div className="flex justify-between items-center pr-4">
-          <Logo collapsed={sidebarCollapsed} />
-          <button 
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="hidden md:flex items-center justify-center w-8 h-8 rounded-full bg-moxinexa-light/30 text-moxinexa-teal hover:bg-moxinexa-light/50 transition-colors"
+  return (
+    <div className="min-h-screen w-full bg-slate-50">
+      {/* Sidebar */}
+      <aside
+        className={clsx(
+          "fixed top-0 left-0 z-40 h-screen border-r border-slate-200 bg-white transition-all duration-200 ease-in-out",
+        )}
+        style={{ width: sidebarW }}
+        aria-label="Navegação lateral"
+      >
+        {/* Topo com logo + botão de collapse */}
+        <div className="flex items-center justify-between gap-2 px-3 py-3">
+          <Logo collapsed={collapsed} />
+
+          <button
+            type="button"
+            onClick={() => setCollapsed((v) => !v)}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-600/60"
+            aria-pressed={collapsed}
+            aria-label={collapsed ? "Expandir sidebar" : "Recolher sidebar"}
+            title={collapsed ? "Expandir" : "Recolher"}
           >
-            <Bars3Icon className="w-5 h-5" />
+            <svg viewBox="0 0 24 24" className="h-4 w-4">
+              {collapsed ? (
+                <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round"/>
+              ) : (
+                <path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round"/>
+              )}
+            </svg>
           </button>
         </div>
-        {escolaNome && (
-          <div className="px-6 -mt-2 mb-2">
-            <div className="text-[11px] uppercase tracking-wide text-moxinexa-gray">Escola</div>
-            <div className="text-sm font-semibold text-moxinexa-dark truncate" title={escolaNome}>
-              {escolaNome}
+
+        {/* (opcional) busca / nome da escola */}
+        <div className={clsx("px-3", collapsed && "hidden")}>
+          {escolaNome && (
+            <div className="px-6 -mt-2 mb-2">
+              <div className="text-[11px] uppercase tracking-wide text-moxinexa-gray">Escola</div>
+              <div className="text-sm font-semibold text-moxinexa-dark truncate" title={escolaNome}>
+                {escolaNome}
+              </div>
+            </div>
+          )}
+          
+          <div className="px-4 py-2">
+            <div className="relative mb-4">
+              <MagnifyingGlassIcon className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-moxinexa-gray" />
+              <input 
+                type="text" 
+                placeholder="Buscar..." 
+                className="w-full pl-10 pr-4 py-2.5 bg-moxinexa-light/20 rounded-lg border border-moxinexa-light/30 focus:outline-none focus:ring-2 focus:ring-moxinexa-teal/30 focus:border-moxinexa-teal text-sm"
+              />
             </div>
           </div>
-        )}
-        
-        <div className="px-4 py-2">
-          <div className="relative mb-4">
-            <MagnifyingGlassIcon className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-moxinexa-gray" />
-            <input 
-              type="text" 
-              placeholder="Buscar..." 
-              className="w-full pl-10 pr-4 py-2.5 bg-moxinexa-light/20 rounded-lg border border-moxinexa-light/30 focus:outline-none focus:ring-2 focus:ring-moxinexa-teal/30 focus:border-moxinexa-teal text-sm"
-            />
-          </div>
         </div>
-        
-        <nav className="flex-1 space-y-1 px-4 py-4">
-          {menuItems.map((item) => (
-            <button
-              key={item.name}
-              onClick={() => {
-                setActive(item.name as MenuItemName);
-                setIsMobileMenuOpen(false);
-              }}
-              className={`flex items-center w-full px-4 py-3 rounded-xl transition-all duration-200
-                focus:outline-none focus:ring-2 focus:ring-moxinexa-teal/30
-                ${active === item.name
-                  ? "bg-gradient-to-r from-teal-500/10 to-sky-600/10 text-moxinexa-teal border-l-4 border-moxinexa-teal shadow-sm"
-                  : "hover:bg-moxinexa-light/30 text-moxinexa-gray hover:text-moxinexa-dark"
-                }`}
-              aria-current={active === item.name ? "page" : undefined}
-            >
-              <item.icon className="w-5 h-5 mr-3" aria-hidden="true" />
-              <span className="font-medium">{item.name}</span>
-            </button>
-          ))}
+
+        {/* Navegação */}
+        <nav className="mt-2">
+          <ul className="space-y-1 px-2">
+            {menuItems.map((item) => (
+              <li key={item.name}>
+                <button
+                  onClick={() => {
+                    setActive(item.name as MenuItemName);
+                  }}
+                  className={clsx(
+                    "group flex items-center gap-3 rounded-md px-2 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 w-full",
+                    { "bg-slate-100": active === item.name }
+                  )}
+                  title={item.name}
+                >
+                  <item.icon className="h-5 w-5 shrink-0" />
+                  {!collapsed && <span className="truncate">{item.name}</span>}
+                </button>
+              </li>
+            ))}
+          </ul>
         </nav>
-        
-        <div className="p-4 mt-auto border-t border-moxinexa-light/30">
-          <div className="bg-moxinexa-light/10 p-4 rounded-xl mb-4">
-            <h3 className="font-semibold text-sm text-moxinexa-dark">Precisa de ajuda?</h3>
-            <p className="text-xs text-moxinexa-gray mt-1">Acesse nossa central de suporte</p>
-            <button className="mt-2 w-full bg-moxinexa-teal/10 hover:bg-moxinexa-teal/20 text-moxinexa-teal text-xs font-medium py-2 rounded-lg transition-colors">
-              Contatar Suporte
-            </button>
-          </div>
-          
-          <div className="px-4 py-3 text-xs text-moxinexa-gray text-center">
-            © 2025 MoxiNexa · v2.1.0
-          </div>
-        </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 p-6 overflow-y-auto">
+      {/* Conteúdo principal: padding-left igual à largura da sidebar em telas md+ */}
+      <main
+        className="transition-[padding] duration-200 ease-in-out"
+        style={{ paddingLeft: sidebarW }}
+      >
         {/* Header modernizado */}
-        <div className="flex items-center justify-between bg-white rounded-2xl p-4 shadow-sm mb-6">
+        <div className="flex items-center justify-between bg-white rounded-2xl p-4 shadow-sm m-4">
           <div className="flex items-center gap-4">
-            <button 
-              className="md:hidden p-2 rounded-lg bg-moxinexa-light/30 hover:bg-moxinexa-light/50 transition-colors"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              aria-label="Abrir menu"
-            >
-              <Bars3Icon className="w-5 h-5 text-moxinexa-dark" />
-            </button>
             <h1 className="text-xl font-semibold text-moxinexa-dark">
               {active}
             </h1>
@@ -269,7 +276,7 @@ export default function PortalLayout({
         </div>
 
         {/* Conteúdo dinâmico com card moderno */}
-        <div className="bg-white rounded-2xl shadow-sm p-6 border border-moxinexa-light/30">
+        <div className="bg-white rounded-2xl shadow-sm p-6 border border-moxinexa-light/30 mx-4">
           <div className="mb-3">
             <BackButton />
           </div>
