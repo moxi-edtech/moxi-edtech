@@ -19,7 +19,7 @@ function cx(...classes: Array<string | false | null | undefined>): string {
 }
 
 const solidByTone: Record<Tone, { bg: string; hover: string; ring: string; text?: string }> = {
-  teal: { bg: "bg-moxinexa-teal", hover: "hover:bg-moxinexa-teal-dark", ring: "focus-visible:ring-moxinexa-teal/60" },
+  teal: { bg: "bg-teal-600", hover: "hover:bg-teal-700", ring: "focus-visible:ring-teal-600/60" },
   green: { bg: "bg-green-600", hover: "hover:bg-green-700", ring: "focus-visible:ring-green-600/60" },
   blue: { bg: "bg-blue-600", hover: "hover:bg-blue-700", ring: "focus-visible:ring-blue-600/60" },
   red: { bg: "bg-red-600", hover: "hover:bg-red-700", ring: "focus-visible:ring-red-600/60" },
