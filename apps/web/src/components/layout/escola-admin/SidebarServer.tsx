@@ -1,4 +1,3 @@
-"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
@@ -20,13 +19,16 @@ import {
 
 import { createClient } from "@/lib/supabaseClient";
 import { Bars3Icon, XMarkIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import clsx from "clsx";
 
-export default function Sidebar({
+export default function SidebarServer({
   escolaId,
   escolaNome: initialNome,
+  collapsed,
 }: {
   escolaId: string;
   escolaNome?: string;
+  collapsed: boolean;
 }) {
   // Active state follows the URL, matching Super Admin behavior
   const [nomeEscola, setNomeEscola] = useState<string>(initialNome || "");
@@ -197,16 +199,18 @@ export default function Sidebar({
       )}
 
       <aside
-        className={`fixed lg:fixed inset-y-0 left-0 z-50 w-80 lg:w-72 bg-gradient-to-b from-teal-500/95 to-sky-600/95 text-white flex flex-col shadow-xl backdrop-blur-sm ${
-          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-        } lg:translate-x-0 transition-transform duration-300 h-full`}
+        className={clsx(
+          "fixed md:relative z-40 h-full bg-gradient-to-b from-sky-700 to-teal-700 text-white shadow-xl transition-all",
+          collapsed ? "w-20" : "w-64"
+        )}
+        style={{ width: "var(--escola-admin-sidebar-w,256px)" }}
       >
         <div className="flex justify-between items-center pr-4">
           <div className="px-6 py-5 flex items-center gap-3">
             <div className="bg-gradient-to-r from-teal-500 to-sky-600 text-white rounded-xl w-10 h-10 flex items-center justify-center shadow-lg">
               <span className="text-lg">🎓</span>
             </div>
-            <div className="truncate">
+            <div className={clsx("truncate", { "hidden": collapsed })}>
               <h1
                 className="text-xl font-bold bg-gradient-to-r from-white to-moxinexa-light bg-clip-text text-transparent truncate"
                 title={nomeEscola || undefined}
@@ -236,7 +240,7 @@ export default function Sidebar({
           </button>
         </div>
 
-        <div className="px-4 py-3">
+        <div className={clsx("px-4 py-3", { "hidden": collapsed })}>
           <div className="relative">
             <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-moxinexa-light/70" />
             <input
@@ -249,7 +253,7 @@ export default function Sidebar({
 
         <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
           {blockedCount > 0 && (
-            <div className="mx-1 mb-2 rounded-lg border border-amber-300/40 bg-amber-400/10 text-amber-50 px-3 py-2 text-xs">
+            <div className={clsx("mx-1 mb-2 rounded-lg border border-amber-300/40 bg-amber-400/10 text-amber-50 px-3 py-2 text-xs", { "hidden": collapsed })}>
               {blockedCount} {blockedCount === 1 ? 'item bloqueado' : 'itens bloqueados'} até concluir as Configurações Acadêmicas.
               <a
                 href={`/escola/${escolaId}/admin/configuracoes`}
@@ -270,23 +274,28 @@ export default function Sidebar({
                 href={href}
                 title={title}
                 aria-disabled={gated ? true : undefined}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group ${
-                  gated
-                    ? "opacity-70 cursor-pointer bg-white/5 text-white/70 hover:bg-white/10"
-                    : active
-                    ? "bg-white/20 text-white shadow-sm border-l-4 border-white"
-                    : "text-white/70 hover:bg-white/10 hover:text-white"
-                }`}
+                className={clsx(
+                  "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group",
+                  {
+                    "justify-center": collapsed,
+                    "opacity-70 cursor-pointer bg-white/5 text-white/70 hover:bg-white/10": gated,
+                    "bg-white/20 text-white shadow-sm border-l-4 border-white": !gated && active,
+                    "text-white/70 hover:bg-white/10 hover:text-white": !gated && !active,
+                  }
+                )}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 {gated ? (
                   <LockClosedIcon className="w-5 h-5 text-amber-200/90" />
                 ) : (
-                  <item.icon className={`w-5 h-5 ${active ? "text-white" : "text-moxinexa-light/70 group-hover:text-white"}`} />
+                  <item.icon className={clsx("w-5 h-5", {
+                    "text-white": active,
+                    "text-moxinexa-light/70 group-hover:text-white": !active,
+                  })} />
                 )}
-                <span className="truncate">{item.label}</span>
+                <span className={clsx("truncate", { "hidden": collapsed })}>{item.label}</span>
                 {item.label === "Configurações Acadêmicas" && (
-                  <span className="ml-auto flex items-center gap-1">
+                  <span className={clsx("ml-auto flex items-center gap-1", { "hidden": collapsed })}>
                     {setupReady === false && (
                       <span className="px-2 py-0.5 bg-amber-400/20 text-amber-200 text-[10px] rounded-full border border-amber-400/30">
                         Pendente
@@ -309,7 +318,7 @@ export default function Sidebar({
           })}
         </nav>
 
-        <div className="p-4 border-t border-white/10">
+        <div className={clsx("p-4 border-t border-white/10", { "hidden": collapsed })}>
           <div className="bg-white/5 p-3 rounded-xl mb-3">
             <h3 className="font-semibold text-sm text-white">Status do Sistema</h3>
             <div className="flex items-center mt-1">

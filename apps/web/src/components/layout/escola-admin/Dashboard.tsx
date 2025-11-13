@@ -1,6 +1,6 @@
 "use client";
 
-import Sidebar from "./Sidebar";
+import SidebarClient from "./SidebarClient";
 import Header from "./Header";
 import KpiSection, { type KpiStats } from "./KpiSection";
 import NoticesSection from "./NoticesSection";
@@ -20,10 +20,10 @@ export default function EscolaAdminDashboard({ escolaId, escolaNome, stats, load
   return (
     <div className="flex min-h-screen bg-gray-50">
       {/* Sidebar */}
-      <Sidebar escolaId={escolaId} escolaNome={escolaNome} />
+      <SidebarClient escolaId={escolaId} escolaNome={escolaNome} />
 
       {/* Conteúdo */}
-      <div className="flex-1 ml-64 p-6">
+      <div className="[margin-left:var(--escola-admin-sidebar-w,256px)] flex-1 p-6">
         <Header title="Dashboard" />
 
         {/* Cards principais */}

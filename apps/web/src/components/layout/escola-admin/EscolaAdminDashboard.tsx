@@ -1,4 +1,4 @@
-import Sidebar from "./Sidebar";
+import SidebarClient from "./SidebarClient";
 import Header from "./Header";
 import KpiSection, { type KpiStats } from "./KpiSection";
 import NoticesSection from "./NoticesSection";
@@ -18,8 +18,8 @@ type Props = {
 export default function EscolaAdminDashboard({ escolaId, escolaNome, stats, loading, error }: Props) {
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar escolaId={escolaId} escolaNome={escolaNome} />
-      <main className="flex-1 ml-64 p-6">
+      <SidebarClient escolaId={escolaId} escolaNome={escolaNome} />
+      <main className="flex-1 [margin-left:var(--escola-admin-sidebar-w,256px)] p-6">
         <Header title="Dashboard" />
 
         <KpiSection
