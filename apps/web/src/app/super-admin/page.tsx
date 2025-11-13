@@ -1,8 +1,6 @@
 import { getDashboardData } from "@/lib/dashboard"
 import { getChartsData } from "@/lib/charts"
 import ChartsStaticSection from "@/components/super-admin/ChartsStaticSection"
-import HeaderServer from '@/components/super-admin/HeaderServer'
-import SidebarServer from '@/components/super-admin/SidebarServer'
 import ActivitiesSection from '@/components/super-admin/ActivitiesSection'
 import nextDynamic from 'next/dynamic'
 const QuickActionsSection = nextDynamic(() => import('@/components/super-admin/QuickActionsSection'))
@@ -38,46 +36,38 @@ export default async function Page() {
     ]
 
     return (
-      <div className="flex h-screen bg-gray-100">
-        <SidebarServer />
+      <>
+        <h1 className="text-2xl font-bold">Dashboard Super Admin</h1>
         
-        <div className="flex-1 flex flex-col">
-          <HeaderServer />
-          
-          <main className="p-6 overflow-y-auto space-y-6">
-            <h1 className="text-2xl font-bold">Dashboard Super Admin</h1>
-            
-            {/* KPIs */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {kpis.map((kpi) => (
-                <div
-                  key={kpi.title}
-                  className="bg-white shadow rounded-lg p-4 flex items-center"
-                >
-                  <kpi.icon className="w-10 h-10 text-blue-600 mr-4" />
-                  <div>
-                    <p className="text-sm text-gray-500">{kpi.title}</p>
-                    <p className="text-xl font-bold">{kpi.value}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Charts Section (server-rendered, no client JS) */}
-            <ChartsStaticSection data={charts} />
-
-            {/* Activities e QuickActions Sections */}
-            <div className="grid gap-6 lg:grid-cols-3">
-              <div className="lg:col-span-2">
-                <ActivitiesSection activities={[]} />
-              </div>
-              <div className="lg:col-span-1">
-                <QuickActionsSection />
+        {/* KPIs */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {kpis.map((kpi) => (
+            <div
+              key={kpi.title}
+              className="bg-white shadow rounded-lg p-4 flex items-center"
+            >
+              <kpi.icon className="w-10 h-10 text-blue-600 mr-4" />
+              <div>
+                <p className="text-sm text-gray-500">{kpi.title}</p>
+                <p className="text-xl font-bold">{kpi.value}</p>
               </div>
             </div>
-          </main>
+          ))}
         </div>
-      </div>
+
+        {/* Charts Section (server-rendered, no client JS) */}
+        <ChartsStaticSection data={charts} />
+
+        {/* Activities e QuickActions Sections */}
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <ActivitiesSection activities={[]} />
+          </div>
+          <div className="lg:col-span-1">
+            <QuickActionsSection />
+          </div>
+        </div>
+      </>
     )
 
   } catch (error) {
@@ -92,43 +82,35 @@ export default async function Page() {
     ]
 
     return (
-      <div className="flex h-screen bg-gray-100">
-        <SidebarServer />
+      <>
+        <h1 className="text-2xl font-bold">Dashboard Super Admin</h1>
+        <div className="text-red-500">Erro ao carregar dados</div>
         
-        <div className="flex-1 flex flex-col">
-          <HeaderServer />
-          
-          <main className="p-6 overflow-y-auto space-y-6">
-            <h1 className="text-2xl font-bold">Dashboard Super Admin</h1>
-            <div className="text-red-500">Erro ao carregar dados</div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {kpis.map((kpi) => (
-                <div
-                  key={kpi.title}
-                  className="bg-white shadow rounded-lg p-4 flex items-center"
-                >
-                  <kpi.icon className="w-10 h-10 text-blue-600 mr-4" />
-                  <div>
-                    <p className="text-sm text-gray-500">{kpi.title}</p>
-                    <p className="text-xl font-bold">{kpi.value}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Sections vazias em caso de erro */}
-            <div className="grid gap-6 lg:grid-cols-3">
-              <div className="lg:col-span-2">
-                <ActivitiesSection activities={[]} />
-              </div>
-              <div className="lg:col-span-1">
-                <QuickActionsSection />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {kpis.map((kpi) => (
+            <div
+              key={kpi.title}
+              className="bg-white shadow rounded-lg p-4 flex items-center"
+            >
+              <kpi.icon className="w-10 h-10 text-blue-600 mr-4" />
+              <div>
+                <p className="text-sm text-gray-500">{kpi.title}</p>
+                <p className="text-xl font-bold">{kpi.value}</p>
               </div>
             </div>
-          </main>
+          ))}
         </div>
-      </div>
+
+        {/* Sections vazias em caso de erro */}
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <ActivitiesSection activities={[]} />
+          </div>
+          <div className="lg:col-span-1">
+            <QuickActionsSection />
+          </div>
+        </div>
+      </>
     )
   }
 }
