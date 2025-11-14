@@ -1,11 +1,16 @@
 import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "../../types/supabase";
+import type { Database } from "../../../types/supabase";
 
-type TenantTables = {
-  [TableName in keyof Database["public"]["Tables"]]: "escola_id" extends keyof Database["public"]["Tables"][TableName]["Row"]
-    ? TableName
-    : never;
-}[keyof Database["public"]["Tables"]];
+type Tables = Database["public"]["Tables"];
+type TenantTableCandidates = {
+  [TableName in keyof Tables]: "escola_id" extends keyof Tables[TableName]["Row"] ? TableName : never;
+}[keyof Tables];
+
+type TenantTables = Extract<TenantTableCandidates, string>;
+type EscolaIdValue<TableName extends TenantTables> = NonNullable<
+  Tables[TableName]["Row"]["escola_id"]
+>;
+type FromReturn = ReturnType<SupabaseClient<Database>["from"]>;
 
 type TenantConfigRow = Database["public"]["Tables"]["escola_configuracoes"]["Row"];
 
@@ -42,12 +47,15 @@ export function createServiceRoleClient(): SupabaseClient<Database> {
 export function scopeToTenant<TableName extends TenantTables>(
   client: SupabaseClient<Database>,
   table: TableName,
-  escolaId: string
-) {
+  escolaId: EscolaIdValue<TableName>
+): FromReturn {
   if (!escolaId) {
     throw new Error("[tenant-sdk] Missing escolaId when scoping query to tenant");
   }
-  return client.from(table).eq("escola_id", escolaId);
+  const query = client.from(table);
+  return (query as unknown as {
+    eq: (column: string, value: EscolaIdValue<TableName>) => FromReturn;
+  }).eq("escola_id", escolaId);
 }
 
 type TenantConfigOptions = {
@@ -70,6 +78,7 @@ export async function getTenantConfig(
   const client = options.client ?? createServiceRoleClient();
   const { data, error } = await scopeToTenant(client, "escola_configuracoes", escolaId)
     .select("*")
+    .returns<TenantConfigRow[]>()
     .maybeSingle();
 
   if (error && error.code !== "PGRST116") {
