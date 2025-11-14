@@ -65,10 +65,14 @@ export default function SchoolsTableClient({
       // Normalize like server page.tsx does
       const prettyPlan = (p?: string | null): string => {
         switch ((p || '').toLowerCase()) {
-          case 'basico': return 'Básico';
-          case 'standard': return 'Premium';
-          case 'premium': return 'Enterprise';
-          default: return (p as any) || 'Básico';
+          case 'basico':
+            return 'Básico';
+          case 'standard':
+            return 'Standard';
+          case 'premium':
+            return 'Premium';
+          default:
+            return (p as any) || 'Básico';
         }
       }
 
@@ -214,10 +218,15 @@ export default function SchoolsTableClient({
 
       const unPrettyPlan = (p?: string | null): string => {
         switch ((p || '').toLowerCase()) {
-          case 'básico': return 'basico';
-          case 'premium': return 'standard';
-          case 'enterprise': return 'premium';
-          default: return (p as any) || 'basico';
+          case 'básico':
+          case 'basico':
+            return 'basico';
+          case 'standard':
+            return 'standard';
+          case 'premium':
+            return 'premium';
+          default:
+            return (p as any) || 'basico';
         }
       }
 

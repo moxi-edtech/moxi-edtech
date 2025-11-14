@@ -56,8 +56,8 @@ export function SchoolsFilters({
           >
             <option value="all">Todos planos</option>
             <option value="Básico">Básico</option>
+            <option value="Standard">Standard</option>
             <option value="Premium">Premium</option>
-            <option value="Enterprise">Enterprise</option>
           </select>
         </div>
         <div className="text-sm text-gray-600 flex gap-4">
