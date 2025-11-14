@@ -1,0 +1,18 @@
+{
+  "name": "@moxi/tenant-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "peerDependencies": {
+    "@supabase/supabase-js": "^2.81.0"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "^2.81.0"
+  }
+}
