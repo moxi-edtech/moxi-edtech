@@ -24,6 +24,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
 
     const { data: links, error } = await scopeToTenant(admin, 'escola_usuarios', escolaId)
       .select('user_id, papel')
+      .returns<{ user_id: string; papel: string | null }[]>()
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
 
     const ids = (links || []).map(l => l.user_id)

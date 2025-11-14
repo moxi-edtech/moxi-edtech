@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 
+const withGroup = (group: string) =>
+  ({ group } as unknown as { head?: boolean; count?: 'exact' | 'planned' | 'estimated' });
+
 export async function GET(req: Request) {
   try {
     const supabase = await supabaseServerTyped<any>();
@@ -63,7 +66,7 @@ export async function GET(req: Request) {
     if (turmaIds.length) {
       const { data } = await supabase
         .from('matriculas')
-        .select('turma_id, status, count:turma_id', { group: 'turma_id,status' })
+        .select('turma_id, status, count:turma_id', withGroup('turma_id,status'))
         .eq('escola_id', escolaId)
         .in('turma_id', turmaIds);
       matriculasResumo = data || [];
