@@ -8,6 +8,7 @@ export default function SecretariaSidebar() {
   const items: NavItem[] = [
     { href: "/secretaria", label: "Dashboard", icon: "HomeIcon" },
     { href: "/secretaria/alunos", label: "Alunos", icon: "UsersIcon" },
+    { href: "/secretaria/turmas", label: "Turmas", icon: "RectangleStackIcon" },
     { href: "/secretaria/matriculas", label: "Matrículas", icon: "AcademicCapIcon" },
     { href: "/secretaria/relatorios", label: "Relatórios", icon: "ChartBarIcon" },
     { href: "/secretaria/alertas", label: "Alertas", icon: "BellAlertIcon" },
