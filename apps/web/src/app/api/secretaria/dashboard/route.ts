@@ -12,6 +12,9 @@ type TurmaResumo = {
   count: number;
 };
 
+const withGroup = (group: string) =>
+  ({ group } as unknown as { head?: boolean; count?: 'exact' | 'planned' | 'estimated' });
+
 export async function GET() {
   try {
     const supabase = await supabaseServerTyped<any>();
@@ -43,11 +46,11 @@ export async function GET() {
       supabase.from('matriculas').select('*', { count: 'exact', head: true }).eq('escola_id', escolaId),
       supabase
         .from('matriculas')
-        .select('status, count:status', { group: 'status' })
+        .select('status, count:status', withGroup('status'))
         .eq('escola_id', escolaId),
       supabase
         .from('matriculas')
-        .select('turma_id, status, count:turma_id', { group: 'turma_id,status' })
+        .select('turma_id, status, count:turma_id', withGroup('turma_id,status'))
         .eq('escola_id', escolaId),
       supabase
         .from('avisos')

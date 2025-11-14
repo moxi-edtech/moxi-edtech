@@ -8,6 +8,7 @@
       }
     ],
     "baseUrl": ".",
+    "moduleResolution": "Bundler",
     "paths": {
       "~/*": [
         "src/*"
@@ -17,7 +18,19 @@
       ],
       "~types/*": [
         "../../types/*"
-      ] // ajuste se suas types estiverem em outro lugar
+      ], // ajuste se suas types estiverem em outro lugar
+      "@supabase/supabase-js": [
+        "./node_modules/@supabase/supabase-js"
+      ],
+      "@supabase/supabase-js/*": [
+        "./node_modules/@supabase/supabase-js/*"
+      ],
+      "@moxi/tenant-sdk": [
+        "../../packages/tenant-sdk/src/index.ts"
+      ],
+      "@moxi/tenant-sdk/*": [
+        "../../packages/tenant-sdk/src/*"
+      ]
     },
     "allowJs": true,
     "noEmit": true,
