@@ -97,6 +97,13 @@ export default function PortalLayout({
     try {
       localStorage.setItem("sidebar:collapsed", collapsed ? "1" : "0");
     } catch {}
+    // Atualiza a variável CSS global para manter largura reativa
+    try {
+      document.documentElement.style.setProperty(
+        "--sidebar-w",
+        collapsed ? "80px" : "256px"
+      );
+    } catch {}
   }, [collapsed]);
 
   useEffect(() => {
@@ -160,9 +167,9 @@ export default function PortalLayout({
       {/* Sidebar */}
       <aside
         className={clsx(
-          "fixed top-0 left-0 z-40 h-screen border-r border-slate-200 bg-white transition-all duration-200 ease-in-out",
+          "fixed top-0 left-0 z-40 h-screen border-r border-slate-200 bg-white transition-[width] duration-200 ease-in-out",
         )}
-        style={{ width: sidebarW }}
+        style={{ width: "var(--sidebar-w, 256px)" }}
         aria-label="Navegação lateral"
       >
         {/* Topo com logo + botão de collapse */}
@@ -237,7 +244,7 @@ export default function PortalLayout({
       {/* Conteúdo principal: padding-left igual à largura da sidebar em telas md+ */}
       <main
         className="transition-[padding] duration-200 ease-in-out"
-        style={{ paddingLeft: sidebarW }}
+        style={{ paddingLeft: "var(--sidebar-w, 256px)" }}
       >
         {/* Header modernizado */}
         <div className="flex items-center justify-between bg-white rounded-2xl p-4 shadow-sm m-4">

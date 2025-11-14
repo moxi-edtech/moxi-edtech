@@ -1,7 +1,9 @@
+/* Fonte Poppins global - deve vir antes de qualquer regra */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
 @import "tailwindcss";
 
-/* Fonte Poppins global */
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+:root { --sidebar-w: 256px; }
 
 /* Aplica a fonte para todos os elementos */
 * {
@@ -25,7 +27,13 @@ html, body {
   padding: 0;
 }
 
+/* Esconde textos das áreas do sidebar quando colapsado via data-attr */
+[data-collapsed='1'] .sidebar-text { display: none; }
+[data-collapsed='1'] .sidebar-footer { display: none; }
+
 /* Garante que elementos de input e button também usem Poppins */
 input, button, textarea, select {
   font-family: 'Poppins', sans-serif;
 }
+
+/* Mantemos utilitários padrão do Tailwind para gradientes e cores. */

@@ -4,18 +4,22 @@ import { cookies } from "next/headers";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import type { Database } from "~types/supabase";
 
-// Resolves env vars once with proper narrowing
-const rawUrl =
-  process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-const rawAnonKey =
-  process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+function getSupabaseEnv() {
+  const url = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey =
+    process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-if (!rawUrl || !rawAnonKey) {
-  throw new Error("Supabase env vars missing in supabaseServer");
+  if (!url || !anonKey) {
+    const missing: string[] = [];
+    if (!url) missing.push("NEXT_PUBLIC_SUPABASE_URL");
+    if (!anonKey) missing.push("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+    throw new Error(
+      `[Supabase] Missing env ${missing.join(", ")}. Set them in apps/web/.env.local or the deploy environment.`
+    );
+  }
+
+  return { url, anonKey };
 }
-
-const SUPABASE_URL = rawUrl as string;
-const SUPABASE_ANON_KEY = rawAnonKey as string;
 
 /**
  * Server-side Supabase client for Server Components / layouts / loaders.
@@ -26,9 +30,10 @@ const SUPABASE_ANON_KEY = rawAnonKey as string;
  *   const supabase = await supabaseServer();
  */
 export async function supabaseServer() {
+  const { url, anonKey } = getSupabaseEnv();
   const cookieStore = await cookies();
 
-  return createServerClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  return createServerClient<Database>(url, anonKey, {
     cookies: {
       get(name: string) {
         return cookieStore.get(name)?.value;
@@ -48,9 +53,10 @@ export async function supabaseServer() {
  *   const supabase = await supabaseServerTyped<DBWithRPC>();
  */
 export async function supabaseServerTyped<TDatabase = Database>() {
+  const { url, anonKey } = getSupabaseEnv();
   const cookieStore = await cookies();
 
-  return createServerClient<TDatabase>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  return createServerClient<TDatabase>(url, anonKey, {
     cookies: {
       get(name: string) {
         return cookieStore.get(name)?.value;

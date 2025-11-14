@@ -1,164 +1,40 @@
-// apps/web/src/components/super-admin/Sidebar.tsx
-"use client";
+import SidebarContainer from "@/components/layout/shared/SidebarContainer";
+import { SidebarHeader } from "@/components/layout/shared/SidebarHeader";
+import { SidebarNav, type NavItem } from "@/components/layout/shared/SidebarNav";
+import { SidebarFooter } from "@/components/layout/shared/SidebarFooter";
+// Icon components are selected client-side in SidebarNav by name.
 
-import { usePathname } from "next/navigation";
-import {
-  HomeIcon,
-  UsersIcon,
-  AcademicCapIcon,
-  BanknotesIcon,
-  ChartBarIcon,
-  Cog6ToothIcon,
-  LifebuoyIcon,
-  BuildingLibraryIcon,
-  BoltIcon, // ⚡ item especial Seed
-  XMarkIcon,
-  Bars3Icon,
-  MagnifyingGlassIcon,
-  EnvelopeIcon,
-} from "@heroicons/react/24/outline";
-import { useState } from "react";
+export default async function SuperAdminSidebar() {
+  const base: NavItem[] = [
+    { label: "Dashboard", href: "/super-admin", icon: "HomeIcon" },
+    { label: "Escolas", href: "/super-admin/escolas", icon: "BuildingLibraryIcon" },
+    { label: "Usuários Globais", href: "/super-admin/usuarios", icon: "UsersIcon" },
+    { label: "Financeiro", href: "/financeiro", icon: "BanknotesIcon" },
+    { label: "Relatórios", href: "/super-admin/relatorios", icon: "ChartBarIcon" },
+    { label: "Configurações", href: "/super-admin/configuracoes", icon: "Cog6ToothIcon" },
+    { label: "Suporte", href: "/super-admin/suporte", icon: "LifebuoyIcon" },
+  ];
 
-const navigation = [
-  { name: "Dashboard", icon: HomeIcon, href: "/super-admin" },
-  { name: "Escolas", icon: BuildingLibraryIcon, href: "/super-admin/escolas" },
-  { name: "Usuários Globais", icon: UsersIcon, href: "/super-admin/usuarios" },
-  { name: "Financeiro", icon: BanknotesIcon, href: "/financeiro" },
-  { name: "Relatórios", icon: ChartBarIcon, href: "/super-admin/relatorios" },
-  { name: "Configurações", icon: Cog6ToothIcon, href: "/super-admin/configuracoes" },
-  { name: "Suporte", icon: LifebuoyIcon, href: "/super-admin/suporte" },
-];
-
-// Componente de Logo
-const Logo = () => (
-  <div className="px-6 py-5 flex items-center gap-3">
-    <div className="bg-gradient-to-r from-teal-500 to-sky-600 text-white rounded-xl w-10 h-10 flex items-center justify-center shadow-lg">
-      <span className="text-lg">🎓</span>
-    </div>
-    <div>
-      <h1 className="text-xl font-bold bg-gradient-to-r from-white to-moxinexa-light bg-clip-text text-transparent">
-        MoxiNexa
-      </h1>
-      <p className="text-xs text-moxinexa-light/80">Super Admin</p>
-    </div>
-  </div>
-);
-
-export default function Sidebar() {
-  const pathname = usePathname();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  // removed unused collapsed state
-
-  // Build navigation list, append Debug (dev-only)
-  const items = [...navigation];
-  // Condicional: exibe o Seed somente em dev ou se explicitamente habilitado
-  if (
-    process.env.NODE_ENV !== "production" ||
-    process.env.NEXT_PUBLIC_ENABLE_SEED === "1"
-  ) {
-    items.push({ name: "Seed Super Admin", icon: BoltIcon, href: "/admin-seed" });
+  const items: NavItem[] = [...base];
+  if (process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_ENABLE_SEED === "1") {
+    items.push({ label: "Seed Super Admin", href: "/admin-seed", icon: "BoltIcon" });
   }
   if (process.env.NODE_ENV !== "production") {
-    items.push({ name: "Debug", icon: BoltIcon, href: "/super-admin/debug" });
-    items.push({ name: "Debug Email", icon: EnvelopeIcon, href: "/super-admin/debug/email-preview" });
+    items.push({ label: "Debug", href: "/super-admin/debug", icon: "BoltIcon" });
+    items.push({ label: "Debug Email", href: "/super-admin/debug/email-preview", icon: "EnvelopeIcon" });
   }
 
-  const isActive = (href: string) => {
-    return pathname === href || pathname?.startsWith(href + "/");
-  };
-
   return (
-    <>
-      {/* Overlay para mobile */}
-      {isMobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
-
-      <aside className={`fixed lg:relative inset-y-0 left-0 z-50 w-80 lg:w-72 bg-gradient-to-b from-teal-500/95 to-sky-600/95 text-white flex flex-col shadow-xl backdrop-blur-sm
-        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} 
-        lg:translate-x-0 transition-transform duration-300 h-full`}>
-        
-        <div className="flex justify-between items-center pr-4">
-          <Logo />
-          <button 
-            onClick={() => setIsMobileMenuOpen(false)}
-            className="lg:hidden flex items-center justify-center w-8 h-8 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
-          >
-            <XMarkIcon className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Barra de busca */}
-        <div className="px-4 py-3">
-          <div className="relative">
-            <MagnifyingGlassIcon className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-moxinexa-light/70" />
-            <input 
-              type="text" 
-              placeholder="Buscar..." 
-              className="w-full pl-10 pr-4 py-2.5 bg-white/10 backdrop-blur-sm rounded-lg border border-white/10 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/30 text-sm placeholder:text-moxinexa-light/70"
-            />
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 space-y-1 px-3 py-4">
-          {items.map((item) => {
-            const active = isActive(item.href);
-            return (
-              <a
-                key={item.name}
-                href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group
-                  ${active
-                    ? "bg-white/20 text-white shadow-sm border-l-4 border-white"
-                    : "text-white/70 hover:bg-white/10 hover:text-white"
-                  }`}
-              >
-                <item.icon className={`w-5 h-5 ${active ? "text-white" : "text-moxinexa-light/70 group-hover:text-white"}`} />
-                <span>{item.name}</span>
-                {item.name === "Seed Super Admin" && (
-                  <span className="ml-auto px-2 py-0.5 bg-amber-400/20 text-amber-300 text-xs rounded-full border border-amber-400/30">
-                    Novo
-                  </span>
-                )}
-                {item.name === "Debug" && (
-                  <span className="ml-auto px-2 py-0.5 bg-emerald-400/20 text-emerald-300 text-xs rounded-full border border-emerald-400/30">
-                    Dev
-                  </span>
-                )}
-              </a>
-            );
-          })}
-        </nav>
-
-        {/* Footer com informações do sistema */}
-        <div className="p-4 border-t border-white/10">
-          <div className="bg-white/5 p-3 rounded-xl mb-3">
-            <h3 className="font-semibold text-sm text-white">Status do Sistema</h3>
-            <div className="flex items-center mt-1">
-              <div className="w-2 h-2 bg-teal-400 rounded-full mr-2"></div>
-              <p className="text-xs text-moxinexa-light/80">Todos os sistemas operacionais</p>
-            </div>
-          </div>
-          
-          <div className="flex justify-between items-center text-xs text-moxinexa-light/70">
-            <span>v2.1.0 · Super Admin</span>
-            <span>© {new Date().getFullYear()}</span>
-          </div>
-        </div>
-      </aside>
-
-      {/* Botão para abrir menu mobile */}
-      <button 
-        className="fixed bottom-4 left-4 z-40 lg:hidden p-3 rounded-full bg-gradient-to-r from-teal-500 to-sky-600 text-white shadow-lg"
-        onClick={() => setIsMobileMenuOpen(true)}
-        aria-label="Abrir menu"
-      >
-        <Bars3Icon className="w-6 h-6" />
-      </button>
-    </>
+    <SidebarContainer storageKey="super-admin:sidebar" cssVar="--sidebar-w">
+      <div data-slot="header">
+        <SidebarHeader title="Super Admin" subtitle="Painel" />
+      </div>
+      <div className="px-2">
+        <SidebarNav items={items} />
+      </div>
+      <SidebarFooter>
+        <div className="text-xs text-white/80">v2.1 · Super Admin</div>
+      </SidebarFooter>
+    </SidebarContainer>
   );
 }
