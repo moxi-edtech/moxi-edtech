@@ -4,8 +4,8 @@ import { createBrowserClient } from "@supabase/ssr";
 import type { Database } from "~types/supabase";
 
 // Lê as envs uma vez
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
+const anonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
 
 // Log bem explícito no cliente se faltar algo (só em runtime do browser)
 if (!url || !anonKey) {

@@ -36,6 +36,20 @@ Open http://localhost:3000 and try the login flow.
   - `GET /api/debug/session` (add `?verbose=1` for extra note)
   - Returns env presence, cookie names, and basic session/user info (no tokens).
 
+## Supabase Health Check
+
+- Single source of truth for envs: use `apps/web/.env.local`. Avoid a root `.env.local` to prevent conflicts.
+- Required envs for auth:
+  - `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` (public)
+  - `SUPABASE_SERVICE_ROLE_KEY` (server-only)
+  - Recommended also set `SUPABASE_URL` and `SUPABASE_ANON_KEY` equal to the public ones for server routes.
+- Manual health endpoint:
+  - `GET /api/health/supabase` returns masked key info, project ref/role, and `/auth/v1/health` status.
+- Startup check (instrumentation):
+  - On server start, we log a one‑line Supabase auth health summary.
+  - Disable with `AUTH_HEALTH_ON_START=0` in `apps/web/.env.local`.
+  - For verbose login route logs, set `DEBUG_AUTH=1`.
+
 ### Production (Vercel)
 
 - In Project Settings → Environment Variables, add:
