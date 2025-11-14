@@ -17,7 +17,13 @@
       ],
       "~types/*": [
         "../../types/*"
-      ] // ajuste se suas types estiverem em outro lugar
+      ], // ajuste se suas types estiverem em outro lugar
+      "@moxi/tenant-sdk": [
+        "../../packages/tenant-sdk/src/index.ts"
+      ],
+      "@moxi/tenant-sdk/*": [
+        "../../packages/tenant-sdk/src/*"
+      ]
     },
     "allowJs": true,
     "noEmit": true,

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
-import type { Database } from '~types/supabase'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { hasPermission } from '@/lib/permissions'
+import { createServiceRoleClient, scopeToTenant } from '@moxi/tenant-sdk'
 
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id: escolaId } = await context.params
@@ -21,15 +20,10 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     const papelReq = vinc?.[0]?.papel as any
     if (!hasPermission(papelReq, 'editar_usuario')) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: 'Falta SUPABASE_SERVICE_ROLE_KEY.' }, { status: 500 })
-    }
-    const admin = createAdminClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
+    const admin = createServiceRoleClient()
 
-    const { data: links, error } = await admin
-      .from('escola_usuarios')
+    const { data: links, error } = await scopeToTenant(admin, 'escola_usuarios', escolaId)
       .select('user_id, papel')
-      .eq('escola_id', escolaId)
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
 
     const ids = (links || []).map(l => l.user_id)
