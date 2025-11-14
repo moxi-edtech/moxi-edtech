@@ -35,10 +35,14 @@ async function fetchInitial() {
   type RawSchool = { id: string; nome: string | null; status: string | null; plano: string | null; last_access: string | null; total_alunos: number; total_professores: number; cidade: string | null; estado: string | null }
   const prettyPlan = (p?: string | null): string => {
     switch ((p || '').toLowerCase()) {
-      case 'basico': return 'Básico'
-      case 'standard': return 'Premium'
-      case 'premium': return 'Enterprise'
-      default: return (p as any) || 'Básico'
+      case 'basico':
+        return 'Básico'
+      case 'standard':
+        return 'Standard'
+      case 'premium':
+        return 'Premium'
+      default:
+        return (p as any) || 'Básico'
     }
   }
   const normalized = (initialSchools as RawSchool[]).map(d => ({
