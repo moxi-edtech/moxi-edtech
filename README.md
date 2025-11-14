@@ -6,7 +6,7 @@
   - `apps/web/tsconfig.json`: `"~types/*": ["../../../types/*"]` (porque `baseUrl` é `src`)
   - App-specific alias `@/*` fica definido apenas em `apps/web/tsconfig.json`.
 - Regenerate DB types after migrations:
-  - Apply migrations: `supabase db push --project-ref wjtifcpxxxotsbmvbgoq`
+  - Apply migrations: `supabase db push`
   - Generate: `npm run gen:types`
 - Type checking and build:
   - `npm run typecheck` (TS only)
@@ -16,11 +16,11 @@
 - Todas as migrations agora vivem em `supabase/migrations/` (via Supabase CLI).
 - Seeds em `supabase/seeds/` e testes SQL (ex.: RLS) em `supabase/tests/`.
 - O diretório antigo `db/` foi descontinuado (README aponta para `supabase/`).
-- Para aplicar no projeto remoto: `supabase db push --project-ref wjtifcpxxxotsbmvbgoq`.
+- Para aplicar no projeto remoto: `supabase db push` (após `supabase link`).
 
 **Seeds & Resets**
 - Local: `supabase db reset` executa `supabase/seed.sql` (que inclui os arquivos de `supabase/seeds/`).
-- Remoto: `npm run db:seed:remote` concatena `supabase/seeds/*.sql` e executa via CLI.
+- Remoto: `npm run db:seed:remote` usa `supabase db push --include-seed`.
 - Tabela de vínculo escola-usuário padronizada: `public.escola_usuarios` (coluna `papel` com check).
 
 **Views Tipadas**

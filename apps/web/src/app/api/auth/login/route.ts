@@ -5,13 +5,49 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 // ---------- Helpers de env (deferidos para tempo de execução) ----------
 function getSupabaseEnv() {
-  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey =
-    process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const url = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
+  const anonKey = (
+    process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
+  ).trim();
   return { url, anonKey } as const;
+}
+
+// Safe helper to inspect anon key payload (no secret leakage)
+function parseAnonKeyInfo(key: string | undefined) {
+  try {
+    if (!key) return null;
+    const parts = key.split(".");
+    if (parts.length < 2) return null;
+    const payload = parts[1]
+      .replace(/-/g, "+")
+      .replace(/_/g, "/");
+    const json = JSON.parse(Buffer.from(payload, "base64").toString("utf8"));
+    return { ref: json?.ref as string | undefined, role: json?.role as string | undefined };
+  } catch {
+    return null;
+  }
+}
+
+// Map common auth errors to user-friendly messages/status
+function mapAuthError(err: any): { status: number; message: string } {
+  const message = (err?.message || "Credenciais inválidas.") as string;
+  const lower = message.toLowerCase();
+  const status = Number(err?.status) || 401;
+
+  if (lower.includes("confirm") || lower.includes("not confirmed")) {
+    return { status: 403, message: "E-mail não confirmado. Verifique sua caixa de entrada." };
+  }
+  if (lower.includes("invalid login") || lower.includes("invalid email") || lower.includes("invalid credentials")) {
+    return { status: 401, message: "Credenciais inválidas." };
+  }
+  if (status === 429 || lower.includes("too many") || lower.includes("rate")) {
+    return { status: 429, message: "Muitas tentativas. Tente novamente em alguns minutos." };
+  }
+  return { status: status >= 400 && status < 600 ? status : 401, message };
 }
 
 // ---------- Resolver identificador (numero_login / telefone → email) ----------
@@ -22,14 +58,13 @@ async function resolveIdentifierToEmail(
   // Se já parece email, não mexe
   if (identifier.includes("@")) return null;
 
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  const adminUrl = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
+  const serviceRole = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+  if (!adminUrl || !serviceRole) {
     return null;
   }
 
-  const admin = createAdminClient<Database>(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  );
+  const admin = createAdminClient<Database>(adminUrl, serviceRole);
 
   try {
     // 1) numero_login tipo C1D0001 (3 hex + 4 dígitos)
@@ -90,10 +125,24 @@ export async function POST(req: NextRequest) {
   try {
     const { url: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY } = getSupabaseEnv();
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-      return NextResponse.json(
-        { ok: false, error: "Server misconfigured: missing Supabase URL or ANON key." },
-        { status: 500 }
+      return new NextResponse(
+        JSON.stringify({ ok: false, error: "Server misconfigured: missing Supabase URL or ANON key." }),
+        { status: 500, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } }
       );
+    }
+
+    // Optional debug to verify envs at runtime without leaking secrets
+    if (process.env.DEBUG_AUTH === "1") {
+      const keyInfo = parseAnonKeyInfo(SUPABASE_ANON_KEY);
+      const masked = `${SUPABASE_ANON_KEY.slice(0, 6)}...${SUPABASE_ANON_KEY.slice(-6)}`;
+      console.log("[login] Using Supabase env:", {
+        urlHost: (() => {
+          try { return new URL(SUPABASE_URL).host; } catch { return SUPABASE_URL; }
+        })(),
+        anonKeyMasked: masked,
+        anonKeyRef: keyInfo?.ref,
+        anonKeyRole: keyInfo?.role,
+      });
     }
 
     const body = await req.json().catch(() => ({} as any));
@@ -101,14 +150,37 @@ export async function POST(req: NextRequest) {
     const password = String(body?.password ?? "");
 
     if (!rawIdentifier || !password) {
-      return NextResponse.json(
-        { ok: false, error: "Email/usuário e senha são obrigatórios." },
-        { status: 400 }
+      return new NextResponse(
+        JSON.stringify({ ok: false, error: "Email/usuário e senha são obrigatórios." }),
+        { status: 400, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } }
+      );
+    }
+
+    // Se o identificador não é email e não há service role, retorne um erro claro
+    const isEmail = rawIdentifier.includes("@");
+    const hasServiceRole = Boolean((process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim());
+    if (!isEmail && !hasServiceRole) {
+      if (process.env.DEBUG_AUTH === "1") {
+        console.warn("[login] Non-email identifier used but SUPABASE_SERVICE_ROLE_KEY is missing. Identifier:", rawIdentifier);
+      }
+      return new NextResponse(
+        JSON.stringify({
+          ok: false,
+          error: "Servidor sem chave de serviço para resolver usuário. Use seu e-mail para entrar ou configure SUPABASE_SERVICE_ROLE_KEY.",
+        }),
+        { status: 400, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } }
       );
     }
 
     // Tenta resolver identificador numérico / numero_login / telefone para email
-    const translatedEmail = await resolveIdentifierToEmail(rawIdentifier);
+    const translatedEmail = isEmail ? null : await resolveIdentifierToEmail(rawIdentifier);
+    if (!isEmail && !translatedEmail) {
+      // Não foi possível mapear numero_login/telefone → email
+      return new NextResponse(
+        JSON.stringify({ ok: false, error: "Credenciais inválidas." }),
+        { status: 401, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } }
+      );
+    }
     const email = (translatedEmail || rawIdentifier).toLowerCase();
 
     // Response "base" apenas para carregar Set-Cookie
@@ -142,13 +214,11 @@ export async function POST(req: NextRequest) {
     });
 
     if (error || !data?.user) {
-      console.error("[login] signIn error:", error);
-      return NextResponse.json(
-        {
-          ok: false,
-          error: error?.message || "Credenciais inválidas.",
-        },
-        { status: 401 }
+      const mapped = mapAuthError(error);
+      console.error("[login] signIn error:", { status: mapped.status, message: mapped.message, raw: String(error?.message || error) });
+      return new NextResponse(
+        JSON.stringify({ ok: false, error: mapped.message }),
+        { status: mapped.status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } }
       );
     }
 
@@ -187,15 +257,19 @@ export async function POST(req: NextRequest) {
       }),
       {
         status: 200,
-        headers: cookieCarrier.headers,
+        headers: new Headers({
+          "content-type": "application/json; charset=utf-8",
+          "cache-control": "no-store",
+          ...Object.fromEntries(cookieCarrier.headers),
+        }),
       }
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[login] 500 error:", err);
-    return NextResponse.json(
-      { ok: false, error: message || "Erro interno no servidor." },
-      { status: 500 }
+    return new NextResponse(
+      JSON.stringify({ ok: false, error: message || "Erro interno no servidor." }),
+      { status: 500, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } }
     );
   }
 }

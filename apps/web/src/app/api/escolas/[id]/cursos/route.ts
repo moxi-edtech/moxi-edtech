@@ -95,6 +95,16 @@ export async function POST(
 
     if (!allowed) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
 
+    // Hard check: perfil deve pertencer à escola
+    const { data: profCheck } = await s
+      .from('profiles' as any)
+      .select('escola_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (!profCheck || (profCheck as any).escola_id !== escolaId) {
+      return NextResponse.json({ ok: false, error: 'Perfil não vinculado à escola' }, { status: 403 });
+    }
+
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return NextResponse.json({ ok: false, error: "Configuração Supabase ausente." }, { status: 500 });
     }

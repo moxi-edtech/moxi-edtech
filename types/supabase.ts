@@ -19,8 +19,10 @@ export type Database = {
           bi_numero: string | null
           created_at: string | null
           data_nascimento: string | null
+          email: string | null
           escola_id: string
           id: string
+          nome: string | null
           nome_responsavel: string | null
           profile_id: string
           responsavel_contato: string | null
@@ -32,8 +34,10 @@ export type Database = {
           bi_numero?: string | null
           created_at?: string | null
           data_nascimento?: string | null
+          email?: string | null
           escola_id: string
           id?: string
+          nome?: string | null
           nome_responsavel?: string | null
           profile_id: string
           responsavel_contato?: string | null
@@ -45,8 +49,10 @@ export type Database = {
           bi_numero?: string | null
           created_at?: string | null
           data_nascimento?: string | null
+          email?: string | null
           escola_id?: string
           id?: string
+          nome?: string | null
           nome_responsavel?: string | null
           profile_id?: string
           responsavel_contato?: string | null
@@ -2118,24 +2124,41 @@ export type Database = {
       }
       secoes: {
         Row: {
+          escola_id: string
           id: string
           nome: string
           sala: string | null
           turma_id: string
         }
         Insert: {
+          escola_id: string
           id?: string
           nome: string
           sala?: string | null
           turma_id: string
         }
         Update: {
+          escola_id?: string
           id?: string
           nome?: string
           sala?: string | null
           turma_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "secoes_escola_fk_linter_fix"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "secoes_escola_fk_linter_fix"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "secoes_turma_id_fkey"
             columns: ["turma_id"]
@@ -2150,6 +2173,7 @@ export type Database = {
           attendance_type: string
           data_fim: string
           data_inicio: string
+          escola_id: string
           id: string
           nome: string
           permitir_submissao_final: boolean
@@ -2159,6 +2183,7 @@ export type Database = {
           attendance_type: string
           data_fim: string
           data_inicio: string
+          escola_id: string
           id?: string
           nome: string
           permitir_submissao_final?: boolean
@@ -2168,12 +2193,27 @@ export type Database = {
           attendance_type?: string
           data_fim?: string
           data_inicio?: string
+          escola_id?: string
           id?: string
           nome?: string
           permitir_submissao_final?: boolean
           session_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "semestres_escola_fk_linter_fix"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "semestres_escola_fk_linter_fix"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "semestres_session_id_fkey"
             columns: ["session_id"]
@@ -2690,6 +2730,7 @@ export type Database = {
         }[]
       }
       can_access: { Args: { eid: string }; Returns: boolean }
+      check_super_admin_role: { Args: never; Returns: boolean }
       create_escola_with_admin: {
         Args: {
           p_admin_email?: string
@@ -2713,11 +2754,12 @@ export type Database = {
       current_user_role: { Args: never; Returns: string }
       dashboard: { Args: never; Returns: Json }
       get_user_tenant: { Args: never; Returns: string }
+      is_escola_admin: { Args: { p_escola_id: string }; Returns: boolean }
+      is_escola_diretor: { Args: { p_escola_id: string }; Returns: boolean }
+      is_escola_member: { Args: { p_escola_id: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
       partitions_info: { Args: never; Returns: Json }
       refresh_all_materialized_views: { Args: never; Returns: undefined }
-      show_limit: { Args: never; Returns: number }
-      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       user_role:

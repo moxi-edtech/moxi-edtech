@@ -57,6 +57,18 @@ async function authorize(escolaId: string) {
     } catch {}
   }
   if (!allowed) return { ok: false as const, status: 403, error: 'Sem permissão' };
+
+  // Hard check: perfil deve pertencer à escola
+  try {
+    const { data: profCheck } = await s
+      .from('profiles' as any)
+      .select('escola_id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (!profCheck || (profCheck as any).escola_id !== escolaId) {
+      return { ok: false as const, status: 403, error: 'Perfil não vinculado à escola' };
+    }
+  } catch {}
   return { ok: true as const };
 }
 

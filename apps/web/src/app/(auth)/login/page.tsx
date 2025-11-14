@@ -40,23 +40,34 @@ export default function Page() {
 
       console.log('✅ Fetch completo. Status:', res.status, res.statusText);
 
-      const textResponse = await res.text();
-      console.log('Resposta bruta:', textResponse);
-
-      let data;
-      try {
-        data = textResponse ? JSON.parse(textResponse) : {};
-        console.log('✅ JSON parseado com sucesso:', data);
-      } catch (parseError) {
-        console.error('❌ Erro ao parsear JSON:', parseError);
-        console.error('Resposta que falhou:', textResponse);
-        setErro('Resposta inválida do servidor');
-        return;
+      // Tente interpretar JSON quando indicado; suporte a corpo vazio em 401
+      const contentType = res.headers.get('content-type') || '';
+      let data: any = {};
+      if (contentType.includes('application/json')) {
+        try {
+          data = await res.json();
+          console.log('✅ JSON parseado com sucesso:', data);
+        } catch (parseError) {
+          console.warn('⚠️ Resposta com content-type json mas sem corpo/JSON inválido');
+          data = {};
+        }
+      } else {
+        const textResponse = await res.text();
+        console.log('Resposta bruta:', textResponse);
+        try {
+          data = textResponse ? JSON.parse(textResponse) : {};
+        } catch {
+          data = { raw: textResponse };
+        }
       }
 
       if (!res.ok) {
+        // Muitos ambientes retornam 401 com corpo vazio; trate com mensagem padrão
+        const friendly = data?.error || data?.message || (res.status === 401
+          ? 'Credenciais inválidas. Verifique usuário e senha.'
+          : `Erro ${res.status}: ${res.statusText}`);
         console.error('❌ Erro HTTP:', res.status, data);
-        setErro(data.error || data.message || `Erro ${res.status}: ${res.statusText}`);
+        setErro(friendly);
       } else if (!data.ok) {
         console.error('❌ Erro na resposta:', data);
         setErro(data.error || 'Credenciais inválidas. Verifique seus dados.');

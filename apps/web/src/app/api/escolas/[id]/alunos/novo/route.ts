@@ -3,6 +3,8 @@ import { z } from 'zod'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { hasPermission } from '@/lib/permissions'
 import { recordAuditServer } from '@/lib/audit'
+import { createClient } from '@supabase/supabase-js'
+import type { Database } from '~types/supabase'
 
 const BodySchema = z.object({
   nome: z.string().trim().min(1, 'Informe o nome'),
@@ -61,6 +63,20 @@ export async function POST(
       )
     }
 
+    // Hard check: user profile must be linked to this escola
+    const { data: profCheck } = await s
+      .from('profiles' as any)
+      .select('escola_id')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (!profCheck || (profCheck as any).escola_id !== escolaId) {
+      return NextResponse.json(
+        { ok: false, error: 'Perfil não vinculado à escola' },
+        { status: 403 },
+      )
+    }
+
     // Payload mínimo + extras best-effort
     const insert: any = {
       escola_id: escolaId,
@@ -86,9 +102,18 @@ export async function POST(
     let created
 
     try {
-      const { data, error } = await s
+      if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        return NextResponse.json(
+          { ok: false, error: 'Falta SUPABASE_SERVICE_ROLE_KEY para criar alunos.' },
+          { status: 500 },
+        )
+      }
+
+      const admin = createClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
+
+      const { data, error } = await (admin as any)
         .from('alunos')
-        .insert([insert])
+        .insert([insert] as any)
         .select('id')
         .single()
 
@@ -96,15 +121,15 @@ export async function POST(
       created = data
     } catch (e: any) {
       // Fallback ultra-minimalista se alguma coluna opcional não existir
-      const { data, error } = await (s as any)
+      const admin = createClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+      const { data, error } = await (admin as any)
         .from('alunos')
         .insert([
           {
             escola_id: escolaId,
             nome: body.nome,
-            email: body.email ?? null,
           },
-        ])
+        ] as any)
         .select('id')
         .single()
 

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseServer } from '@/lib/supabaseServer'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
+import type { Database } from '~types/supabase'
 import { recordAuditServer } from '@/lib/audit'
 import { hasPermission } from '@/lib/permissions'
 
@@ -34,6 +36,9 @@ export async function POST(
     const { data: vinc } = await s.from('escola_usuarios').select('papel').eq('user_id', userId).eq('escola_id', escolaId).limit(1)
     const papel = vinc?.[0]?.papel as any
     if (!hasPermission(papel, 'criar_matricula')) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
+    // Hard check: profile.escola_id must match path escolaId
+    const { data: profCheck } = await s.from('profiles' as any).select('escola_id').eq('user_id', userId).maybeSingle()
+    if (!profCheck || (profCheck as any).escola_id !== escolaId) return NextResponse.json({ ok: false, error: 'Perfil não vinculado à escola' }, { status: 403 })
     // Bloqueia criação de matrícula para escola suspensa/excluída
     try {
       const { data: esc } = await s.from('escolas').select('status').eq('id', escolaId).limit(1)
@@ -41,7 +46,11 @@ export async function POST(
       if (status === 'excluida') return NextResponse.json({ ok: false, error: 'Escola excluída não permite criar matrículas.' }, { status: 400 })
       if (status === 'suspensa') return NextResponse.json({ ok: false, error: 'Escola suspensa por pagamento. Regularize para criar matrículas.' }, { status: 400 })
     } catch {}
-    const { data, error } = await s
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ ok: false, error: 'Configuração do Supabase ausente' }, { status: 500 })
+    }
+    const admin = createAdminClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!) as any
+    const { data, error } = await admin
       .from('matriculas')
       .insert({
         escola_id: escolaId,
