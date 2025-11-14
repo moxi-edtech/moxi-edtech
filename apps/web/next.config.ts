@@ -2,22 +2,27 @@
 const path = require("path");
 
 const REQUIRED_PUBLIC_ENV = ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"];
-const REQUIRED_SERVER_ENV = ["SUPABASE_SERVICE_ROLE_KEY"];
+const OPTIONAL_SERVER_ENV = ["SUPABASE_SERVICE_ROLE_KEY"];
 
 function ensureSupabaseEnv() {
   const missingPublic = REQUIRED_PUBLIC_ENV.filter((name) => !process.env[name]);
-  const missingServer = REQUIRED_SERVER_ENV.filter((name) => !process.env[name]);
-  const missing = [...missingPublic, ...missingServer];
+  const missingServer = OPTIONAL_SERVER_ENV.filter((name) => !process.env[name]);
 
   const isStrict = process.env.CI === "true" || process.env.NODE_ENV === "production";
 
-  if (missing.length > 0) {
-    const message = `Missing Supabase environment variables: ${missing.join(", ")}`;
+  if (missingPublic.length > 0) {
+    const message = `Missing required Supabase environment variables: ${missingPublic.join(", ")}`;
     if (isStrict) {
       throw new Error(`[next.config] ${message}`);
     }
     // eslint-disable-next-line no-console
     console.warn(`[next.config] ${message}`);
+  }
+
+  if (missingServer.length > 0) {
+    const message = `Missing optional Supabase server environment variables: ${missingServer.join(", ")}`;
+    // eslint-disable-next-line no-console
+    console.warn(`[next.config] ${message}. Server-side features that rely on these values may not function until they are configured.`);
   }
 }
 
