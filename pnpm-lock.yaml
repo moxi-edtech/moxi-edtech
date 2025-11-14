@@ -17,6 +17,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@moxi/tenant-sdk':
+        specifier: workspace:*
+        version: link:../../packages/tenant-sdk
       '@supabase/ssr':
         specifier: ^0.7.0
         version: 0.7.0(@supabase/supabase-js@2.81.0)
@@ -75,6 +78,12 @@ importers:
       typescript:
         specifier: 5.9.3
         version: 5.9.3
+
+  packages/tenant-sdk:
+    devDependencies:
+      '@supabase/supabase-js':
+        specifier: ^2.81.0
+        version: 2.81.0
 
 packages:
 
