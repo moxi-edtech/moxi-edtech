@@ -136,8 +136,8 @@ export function SchoolRow({
       <td className="py-3 px-4">
         <select className="border rounded-md px-2 py-1 text-sm" value={String(valueOrForm('plan', school.plan || 'Básico'))} onChange={(e) => onInputChange('plan', e.target.value)}>
           <option value="Básico">Básico</option>
+          <option value="Standard">Standard</option>
           <option value="Premium">Premium</option>
-          <option value="Enterprise">Enterprise</option>
         </select>
       </td>
       <td className="py-3 px-4 text-gray-700">{school.lastAccess || '—'}</td>

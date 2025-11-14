@@ -2,7 +2,7 @@ export type School = {
   id: string | number;
   name: string;
   status: "ativa" | "suspensa" | "pendente" | string;
-  plan: "Enterprise" | "Premium" | "Básico" | string;
+  plan: "Básico" | "Standard" | "Premium" | string;
   lastAccess: string | null;
   students: number;
   teachers: number;
