@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import RequireSuperAdmin from "@/app/(guards)/RequireSuperAdmin";
 import Button from "@/components/ui/Button";
@@ -39,6 +39,8 @@ function CriarUsuarioForm() {
   const [generatedNumeroLogin, setGeneratedNumeroLogin] = useState<string | null>(null);
   const [escolas, setEscolas] = useState<{ id: string; nome: string }[]>([]);
   const [loading, setLoading] = useState(false);
+  const [escolasLoading, setEscolasLoading] = useState(true);
+  const [escolasError, setEscolasError] = useState<string | null>(null);
   const [msg, setMsg] = useState<null | { type: "ok" | "err"; text: string }>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
@@ -56,23 +58,35 @@ function CriarUsuarioForm() {
   };
 
   // Fetch escolas
-  useEffect(() => {
-    const fetchEscolas = async () => {
-      try {
-        const res = await fetch('/api/super-admin/escolas/list', { method: 'GET' })
-        const json = await res.json()
-        if (!res.ok || !json?.ok) {
-          console.error('Falha ao carregar escolas:', json?.error || res.statusText)
-          return
-        }
-        const items = (json.items || []) as Array<{ id: string; nome: string | null }>
-        setEscolas(items.map((e) => ({ id: String(e.id), nome: e.nome ?? '' })))
-      } catch (e) {
-        console.error('Erro inesperado ao listar escolas:', e)
+  const fetchEscolas = useCallback(async () => {
+    setEscolasLoading(true)
+    setEscolasError(null)
+    try {
+      const res = await fetch('/api/super-admin/escolas/list', {
+        method: 'GET',
+        cache: 'no-store',
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+      })
+      const json = await res.json()
+      if (!res.ok || !json?.ok) {
+        console.error('Falha ao carregar escolas:', json?.error || res.statusText)
+        setEscolasError(json?.error || 'Falha ao carregar escolas')
+        return
       }
+      const items = (json.items || []) as Array<{ id: string; nome: string | null }>
+      setEscolas(items.map((e) => ({ id: String(e.id), nome: e.nome ?? 'Sem nome' })))
+    } catch (e) {
+      console.error('Erro inesperado ao listar escolas:', e)
+      setEscolasError('Erro inesperado ao listar escolas')
+    } finally {
+      setEscolasLoading(false)
     }
-    fetchEscolas()
   }, [])
+
+  useEffect(() => {
+    fetchEscolas()
+  }, [fetchEscolas])
 
   // Fetch generated login number
   useEffect(() => {
@@ -335,16 +349,37 @@ function CriarUsuarioForm() {
                     className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
                     value={formData.escolaId}
                     onChange={(e) => handleInputChange('escolaId', e.target.value)}
-                    disabled={loading}
+                    disabled={loading || escolasLoading || (!!escolasError && !escolas.length)}
                     required
                   >
-                    <option value="">Selecione uma escola...</option>
+                    <option value="">{escolasLoading ? 'Carregando escolas...' : 'Selecione uma escola...'}</option>
                     {escolas.map((e) => (
                       <option key={e.id} value={e.id}>
                         {e.nome}
                       </option>
                     ))}
                   </select>
+                  {!escolasLoading && !escolasError && escolas.length === 0 && (
+                    <p className="text-sm text-amber-600 mt-1 flex items-center gap-1">
+                      <InformationCircleIcon className="w-4 h-4" />
+                      Nenhuma escola encontrada. Cadastre uma escola antes de criar usuários.
+                    </p>
+                  )}
+                  {escolasError && (
+                    <div className="text-sm text-red-600 mt-1 flex items-center gap-2 flex-wrap">
+                      <span className="inline-flex items-center gap-1">
+                        <ExclamationTriangleIcon className="w-4 h-4" />
+                        {escolasError}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={fetchEscolas}
+                        className="text-red-600 underline decoration-dotted hover:text-red-700"
+                      >
+                        Tentar novamente
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
