@@ -1,5 +1,3 @@
-import SidebarServer from "@/components/super-admin/SidebarServer";
-import HeaderServer from "@/components/super-admin/HeaderServer";
 import ChartsStaticSectionForEscola from "@/components/super-admin/ChartsStaticSectionForEscola";
 import ActivitiesSection from "@/components/super-admin/ActivitiesSection";
 import QuickActionsSection from "@/components/super-admin/QuickActionsSection";
@@ -71,63 +69,55 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   ];
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      <SidebarServer collapsed={false} />
-
-      <div className="flex-1 flex flex-col">
-        <HeaderServer ctxEscolaId={String(fetched.id)} />
-
-        <main className="p-6 overflow-y-auto space-y-6">
-          <AuditPageView portal="super_admin" acao="PAGE_VIEW" entity="escola_edit" />
-          {fetched.status === 'suspensa' && (
-            <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
-              <p className="font-semibold">Escola suspensa por pagamento</p>
-              <p className="text-sm mt-1">A escola está com o acesso suspenso até regularização. Algumas ações ficam bloqueadas.</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {brand.financeEmail && (
-                  <a href={`mailto:${brand.financeEmail}`} className="px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 text-sm">Falar com Financeiro (e-mail)</a>
-                )}
-                {waHref && (
-                  <a href={waHref} target="_blank" rel="noreferrer" className="px-3 py-1.5 rounded-md bg-green-600 text-white hover:bg-green-700 text-sm">Falar no WhatsApp</a>
-                )}
-              </div>
-            </div>
-          )}
-          <h1 className="text-2xl font-bold">
-            {fetched.nome} ({fetched.cidade} - {fetched.estado ?? ''})
-          </h1>
-          <p className="text-gray-500">
-            Plano: {String(fetched.plano ?? '')} · Status: {String(fetched.status ?? '')}
-          </p>
-
-          <EscolaSettingsClient escolaId={String(fetched.id)} initialAlunoPortalEnabled={alunoPortalEnabled} initialPlano={plano} />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {kpis.map((kpi) => (
-              <div
-                key={kpi.title}
-                className="bg-white shadow rounded-lg p-4 flex items-center"
-              >
-                <kpi.icon className="w-10 h-10 text-blue-600 mr-4" />
-                <div>
-                  <p className="text-sm text-gray-500">{kpi.title}</p>
-                  <p className="text-xl font-bold">{kpi.value}</p>
-                </div>
-              </div>
-            ))}
+    <div className="space-y-6">
+      <AuditPageView portal="super_admin" acao="PAGE_VIEW" entity="escola_edit" />
+      {fetched.status === 'suspensa' && (
+        <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
+          <p className="font-semibold">Escola suspensa por pagamento</p>
+          <p className="text-sm mt-1">A escola está com o acesso suspenso até regularização. Algumas ações ficam bloqueadas.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {brand.financeEmail && (
+              <a href={`mailto:${brand.financeEmail}`} className="px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 text-sm">Falar com Financeiro (e-mail)</a>
+            )}
+            {waHref && (
+              <a href={waHref} target="_blank" rel="noreferrer" className="px-3 py-1.5 rounded-md bg-green-600 text-white hover:bg-green-700 text-sm">Falar no WhatsApp</a>
+            )}
           </div>
+        </div>
+      )}
+      <h1 className="text-2xl font-bold">
+        {fetched.nome} ({fetched.cidade} - {fetched.estado ?? ''})
+      </h1>
+      <p className="text-gray-500">
+        Plano: {String(fetched.plano ?? '')} · Status: {String(fetched.status ?? '')}
+      </p>
 
-          <ChartsStaticSectionForEscola escolaId={String(fetched.id)} />
+      <EscolaSettingsClient escolaId={String(fetched.id)} initialAlunoPortalEnabled={alunoPortalEnabled} initialPlano={plano} />
 
-          <div className="grid gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-2">
-              <ActivitiesSection activities={[]} />
-            </div>
-            <div className="lg:col-span-1">
-              <QuickActionsSection />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {kpis.map((kpi) => (
+          <div
+            key={kpi.title}
+            className="bg-white shadow rounded-lg p-4 flex items-center"
+          >
+            <kpi.icon className="w-10 h-10 text-blue-600 mr-4" />
+            <div>
+              <p className="text-sm text-gray-500">{kpi.title}</p>
+              <p className="text-xl font-bold">{kpi.value}</p>
             </div>
           </div>
-        </main>
+        ))}
+      </div>
+
+      <ChartsStaticSectionForEscola escolaId={String(fetched.id)} />
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <ActivitiesSection activities={[]} />
+        </div>
+        <div className="lg:col-span-1">
+          <QuickActionsSection />
+        </div>
       </div>
     </div>
   );

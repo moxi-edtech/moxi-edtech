@@ -6,19 +6,13 @@ import type { Database } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
 
-// ---------- Helpers de env (com narrowing explícito) ----------
-
-const rawUrl =
-  process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-const rawAnonKey =
-  process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-if (!rawUrl || !rawAnonKey) {
-  throw new Error("Supabase env vars missing in /api/auth/login");
+// ---------- Helpers de env (deferidos para tempo de execução) ----------
+function getSupabaseEnv() {
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey =
+    process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  return { url, anonKey } as const;
 }
-
-const SUPABASE_URL = rawUrl as string;
-const SUPABASE_ANON_KEY = rawAnonKey as string;
 
 // ---------- Resolver identificador (numero_login / telefone → email) ----------
 
@@ -94,6 +88,14 @@ async function resolveIdentifierToEmail(
 
 export async function POST(req: NextRequest) {
   try {
+    const { url: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY } = getSupabaseEnv();
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      return NextResponse.json(
+        { ok: false, error: "Server misconfigured: missing Supabase URL or ANON key." },
+        { status: 500 }
+      );
+    }
+
     const body = await req.json().catch(() => ({} as any));
     const rawIdentifier = String(body?.email ?? "").trim();
     const password = String(body?.password ?? "");

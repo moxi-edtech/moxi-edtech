@@ -1,6 +1,4 @@
 import SchoolsTableClient from "@/components/super-admin/escolas/SchoolsTableClient";
-import SidebarServer from "@/components/super-admin/SidebarServer";
-import HeaderServer from "@/components/super-admin/HeaderServer";
 
 export const dynamic = 'force-dynamic'
 
@@ -61,19 +59,11 @@ async function fetchInitial() {
 export default async function Page() {
   const { normalized, initialProgress, errorMsg, fallbackSource } = await fetchInitial()
   return (
-    <div className="flex h-screen bg-gray-100">
-      <SidebarServer collapsed={false} />
-      <div className="flex-1 flex flex-col">
-        <HeaderServer />
-        <main className="p-6 overflow-y-auto">
-          <SchoolsTableClient
-            initialSchools={normalized as any}
-            initialProgress={initialProgress}
-            initialErrorMsg={errorMsg}
-            fallbackSource={fallbackSource}
-          />
-        </main>
-      </div>
-    </div>
+    <SchoolsTableClient
+      initialSchools={normalized as any}
+      initialProgress={initialProgress}
+      initialErrorMsg={errorMsg}
+      fallbackSource={fallbackSource}
+    />
   );
 }

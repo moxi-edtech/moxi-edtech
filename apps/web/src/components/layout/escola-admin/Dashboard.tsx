@@ -1,7 +1,7 @@
 "use client";
 
-import SidebarClient from "./SidebarClient";
-import Header from "./Header";
+import EscolaAdminSidebar from "@/components/escola-admin/Sidebar";
+import AppHeader from "@/components/layout/shared/AppHeader";
 import KpiSection, { type KpiStats } from "./KpiSection";
 import NoticesSection from "./NoticesSection";
 import EventsSection from "./EventsSection";
@@ -19,12 +19,10 @@ type Props = {
 export default function EscolaAdminDashboard({ escolaId, escolaNome, stats, loading, error }: Props) {
   return (
     <div className="flex min-h-screen bg-gray-50">
-      {/* Sidebar */}
-      <SidebarClient escolaId={escolaId} escolaNome={escolaNome} />
+      <EscolaAdminSidebar escolaId={escolaId} />
 
-      {/* Conteúdo */}
-      <div className="[margin-left:var(--escola-admin-sidebar-w,256px)] flex-1 p-6">
-        <Header title="Dashboard" />
+      <div className="flex-1 p-6">
+        <AppHeader title="Dashboard" />
 
         {/* Cards principais */}
         <KpiSection

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabaseClient'
+import SidebarContainer from "@/components/layout/shared/SidebarContainer";
 import {
   HomeIcon,
   AcademicCapIcon,
@@ -49,7 +50,11 @@ export default function StudentPortalLayout({ children }: { children: React.Reac
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-moxinexa-light/20 to-white text-moxinexa-dark">
       {/* Sidebar */}
-      <aside className={`fixed md:relative w-72 bg-white z-20 shadow md:shadow-lg md:rounded-r-2xl transition-transform ${open ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+      <SidebarContainer
+        storageKey="aluno:portal:sidebar"
+        cssVar="--sidebar-w"
+        className={`bg-white md:rounded-r-2xl transition-transform ${open ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
+      >
         <div className="px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="bg-gradient-to-r from-teal-500 to-sky-600 text-white rounded-xl w-10 h-10 flex items-center justify-center shadow-lg">🎓</div>
@@ -72,7 +77,7 @@ export default function StudentPortalLayout({ children }: { children: React.Reac
         <div className="p-4 border-t border-moxinexa-light/30 mt-4">
           <div className="px-4 py-3 text-xs text-moxinexa-gray text-center">© 2025 MoxiNexa</div>
         </div>
-      </aside>
+      </SidebarContainer>
 
       {/* Main */}
       <main className="flex-1 p-6 overflow-y-auto">

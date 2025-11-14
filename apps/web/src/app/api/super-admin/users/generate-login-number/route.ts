@@ -3,22 +3,22 @@ import { generateNumeroLogin } from "@/lib/generateNumeroLogin";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+export async function GET(req: Request) {
+  const supabaseUrl = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !serviceRoleKey) {
-  if (process.env.NODE_ENV === "production") {
-    throw new Error(
-      "Missing Supabase env vars (NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY) for generate-login-number route."
+  if (!supabaseUrl || !serviceRoleKey) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error:
+          "Server misconfigured: missing SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) or SUPABASE_SERVICE_ROLE_KEY.",
+      },
+      { status: 500 }
     );
   }
-  console.warn(
-    "⚠️ Missing Supabase env vars for generate-login-number route. Requests will fail."
-  );
-}
 
-export async function GET(req: Request) {
-  const admin = createClient<Database>(supabaseUrl!, serviceRoleKey!);
+  const admin = createClient<Database>(supabaseUrl, serviceRoleKey);
 
   const { searchParams } = new URL(req.url);
   const escolaId = searchParams.get("escolaId");
