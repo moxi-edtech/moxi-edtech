@@ -21,7 +21,7 @@ using (
   or exists (
     select 1
     from public.profiles p
-    where p.id = alunos.profile_id
+    where p.user_id = alunos.profile_id
       and p.user_id = (select auth.uid())
   )
 );

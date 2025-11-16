@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/supabase";
+import type { Database } from "~types/supabase";
 
 export async function GET(req: Request) {
   try {
@@ -9,13 +9,14 @@ export async function GET(req: Request) {
     const sessionId = url.searchParams.get('session_id');
     const qsEscolaId = url.searchParams.get('escola_id') || undefined;
     const alunoId = url.searchParams.get('aluno_id') || undefined;
+    const include = url.searchParams.get('include');
 
     const supabase = await supabaseServerTyped<any>();
     const { data: userRes } = await supabase.auth.getUser();
     const user = userRes?.user;
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado', debug: { reason: 'missing_user' } }, { status: 401 });
 
-    // Resolver escolaId com diferentes origens para facilitar debug
+    // Resolver escolaId
     let escolaId = qsEscolaId as string | undefined;
     let escolaIdSource: 'query' | 'aluno' | 'profile' | 'vinculo' | 'none' = 'none';
     if (escolaId) escolaIdSource = 'query';
@@ -66,36 +67,164 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: 'Sem vínculo com a escola', debug: { escolaId, escolaIdSource, sessionId, vinculado } }, { status: 403 });
     }
 
-    // Preferir service role quando disponível
-    const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const useAdmin = Boolean(adminUrl && serviceRole);
-
-    if (!useAdmin) {
-      let query = supabase
-        .from('turmas')
-        .select('id, nome')
-        .eq('escola_id', escolaId)
-        .order('nome');
-      if (sessionId) query = query.eq('session_id', sessionId);
-      const { data, error } = await query;
-      if (error) return NextResponse.json({ ok: false, error: error.message, debug: { path: 'user', escolaId, escolaIdSource, sessionId } }, { status: 400 });
-      return NextResponse.json({ ok: true, items: data || [], debug: { path: 'user', escolaId, escolaIdSource, sessionId, count: (data || []).length } });
+    // ✅ CORREÇÃO: Usar apenas campos que existem na tabela turmas
+    let selectFields = 'id, nome, turno, sala, ano_letivo';
+    
+    // ✅ CORREÇÃO: Se sessionId foi fornecido, buscar o nome da sessão para filtrar
+    let anoLetivoFiltro: string | null = null;
+    if (sessionId) {
+      const { data: session } = await supabase
+        .from('school_sessions')
+        .select('nome')
+        .eq('id', sessionId)
+        .single();
+      
+      if (session) {
+        anoLetivoFiltro = session.nome;
+        console.log("🎯 Filtrando por ano letivo:", anoLetivoFiltro);
+      } else {
+        console.error("❌ Sessão não encontrada:", sessionId);
+      }
     }
 
+    // Preferir service role quando disponível. Se faltar, usa o client do usuário.
+    const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    // Se não houver service role configurado, usa o caminho do usuário
+    if (!(adminUrl && serviceRole)) {
+      let query = supabase
+        .from('turmas')
+        .select(selectFields)
+        .eq('escola_id', escolaId)
+        .order('nome');
+      
+      // ✅ CORREÇÃO: Filtrar por ano_letivo se sessionId foi fornecido
+      if (anoLetivoFiltro) {
+        query = query.eq('ano_letivo', anoLetivoFiltro);
+      }
+      
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error("❌ Erro ao buscar turmas:", error);
+        return NextResponse.json({ 
+          ok: false, 
+          error: error.message, 
+          debug: { path: 'user', escolaId, escolaIdSource, sessionId, anoLetivoFiltro } 
+        }, { status: 400 });
+      }
+      
+      let items = data || [];
+
+      // ✅ CORREÇÃO: Buscar dados de sessão se solicitado (usando ano_letivo)
+      if (include && include.includes('session') && items.length > 0) {
+        const anosLetivos = Array.from(new Set(items.map((t: any) => t.ano_letivo).filter(Boolean)));
+        if (anosLetivos.length > 0) {
+          const { data: sessions } = await supabase
+            .from('school_sessions')
+            .select('id, nome')
+            .in('nome', anosLetivos);
+          const sessionMap: Map<string, { id: string; nome: string }> = new Map(
+            (sessions || []).map((s: any) => [s.nome as string, { id: s.id as string, nome: s.nome as string }])
+          );
+          
+          items = items.map((turma: any) => {
+            const sess = turma?.ano_letivo ? sessionMap.get(turma.ano_letivo as string) : undefined;
+            return {
+              ...turma,
+              session_id: sess?.id ?? null,
+              session_nome: turma.ano_letivo, // Já temos o nome no ano_letivo
+            };
+          });
+        }
+      }
+
+      return NextResponse.json({ 
+        ok: true, 
+        items, 
+        debug: { 
+          path: 'user', 
+          escolaId, 
+          escolaIdSource, 
+          sessionId, 
+          anoLetivoFiltro,
+          count: items.length,
+          includes: include || 'none'
+        } 
+      });
+    }
+
+    // ✅ CORREÇÃO: Usar admin client com mesma lógica (tipos garantidos pelo if acima)
     const admin = createAdminClient<Database>(adminUrl, serviceRole);
     let query = (admin as any)
       .from('turmas')
-      .select('id, nome')
+      .select(selectFields)
       .eq('escola_id', escolaId)
       .order('nome');
-    if (sessionId) query = query.eq('session_id', sessionId);
+    
+    // ✅ CORREÇÃO: Filtrar por ano_letivo se sessionId foi fornecido
+    if (anoLetivoFiltro) {
+      query = query.eq('ano_letivo', anoLetivoFiltro);
+    }
+    
     const { data, error } = await query;
-    if (error) return NextResponse.json({ ok: false, error: error.message, debug: { path: 'admin', escolaId, escolaIdSource, sessionId } }, { status: 400 });
-    return NextResponse.json({ ok: true, items: data || [], debug: { path: 'admin', escolaId, escolaIdSource, sessionId, count: (data || []).length } });
+    
+    if (error) {
+      console.error("❌ Erro ao buscar turmas:", error);
+      return NextResponse.json({ 
+        ok: false, 
+        error: error.message, 
+        debug: { path: 'admin', escolaId, escolaIdSource, sessionId, anoLetivoFiltro } 
+      }, { status: 400 });
+    }
+    
+    let items = data || [];
+    
+    // ✅ CORREÇÃO: Processar dados relacionados também para admin
+    if (include && include.includes('session') && items.length > 0) {
+      const anosLetivos = Array.from(new Set(items.map((t: any) => t.ano_letivo).filter(Boolean)));
+      if (anosLetivos.length > 0) {
+        const { data: sessions } = await (admin as any)
+          .from('school_sessions')
+          .select('id, nome')
+          .in('nome', anosLetivos);
+        const sessionMap: Map<string, { id: string; nome: string }> = new Map(
+          (sessions || []).map((s: any) => [s.nome as string, { id: s.id as string, nome: s.nome as string }])
+        );
+        
+        items = items.map((turma: any) => {
+          const sess = turma?.ano_letivo ? sessionMap.get(turma.ano_letivo as string) : undefined;
+          return {
+            ...turma,
+            session_id: sess?.id ?? null,
+            session_nome: turma.ano_letivo,
+          };
+        });
+      }
+    }
+
+    return NextResponse.json({ 
+      ok: true, 
+      items, 
+      debug: { 
+        path: 'admin', 
+        escolaId, 
+        escolaIdSource, 
+        sessionId, 
+        anoLetivoFiltro,
+        count: items.length,
+        includes: include || 'none'
+      } 
+    });
 
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ ok: false, error: message, debug: { reason: 'exception' } }, { status: 500 });
+    console.error("💥 Erro geral:", e);
+    return NextResponse.json({ 
+      ok: false, 
+      error: message, 
+      debug: { reason: 'exception' } 
+    }, { status: 500 });
   }
 }
