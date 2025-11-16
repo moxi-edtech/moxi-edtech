@@ -3,9 +3,19 @@ import { supabaseServer } from "@/lib/supabaseServer";
 
 export default async function Page() {
   const s = await supabaseServer()
-  const { data: prof } = await s.from('profiles').select('escola_id, role').order('created_at', { ascending: false }).limit(1)
-  const escolaId = (prof?.[0] as any)?.escola_id as string | null
-  const isSuperAdmin = ((prof?.[0] as any)?.role) === 'super_admin'
+  const { data: sess } = await s.auth.getUser()
+  const user = sess?.user
+  let escolaId: string | null = null
+  let isSuperAdmin = false
+  if (user) {
+    const { data: prof } = await s
+      .from('profiles')
+      .select('escola_id, role')
+      .eq('user_id', user.id)
+      .maybeSingle()
+    escolaId = (prof as any)?.escola_id ?? null
+    isSuperAdmin = ((prof as any)?.role) === 'super_admin'
+  }
   if (!escolaId) {
     return (
       <>
@@ -40,4 +50,3 @@ export default async function Page() {
     </>
   )
 }
-

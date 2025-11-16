@@ -187,6 +187,16 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       try { await admin.auth.admin.updateUserById(userId, { app_metadata: { role: roleEnum, escola_id: escolaId, numero_usuario: numeroLogin || undefined } as any }) } catch {}
     }
 
+    // Em desenvolvimento, não exigir confirmação de e-mail para convites
+    // Confirma o e-mail automaticamente para evitar bloqueio no login durante o DEV
+    if (process.env.NODE_ENV !== 'production' && userId) {
+      try {
+        await (admin as any).auth.admin.updateUserById(userId, { email_confirm: true } as any)
+      } catch (_) {
+        // ignore
+      }
+    }
+
     // 3) Link to escola_usuarios (idempotent)
     try {
       await admin.from('escola_usuarios').insert([{

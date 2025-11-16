@@ -9,8 +9,13 @@ export async function GET(req: Request) {
     const q = url.searchParams.get('q') || ''
     const days = url.searchParams.get('days') || '30'
 
-    const { data: prof } = await s.from('profiles').select('escola_id').order('created_at', { ascending: false }).limit(1)
-    const escolaId = (prof?.[0]?.escola_id ?? null) as string | null
+    const { data: sess } = await s.auth.getUser()
+    const user = sess?.user
+    let escolaId: string | null = null
+    if (user) {
+      const { data: prof } = await s.from('profiles').select('escola_id').eq('user_id', user.id).maybeSingle()
+      escolaId = (prof as any)?.escola_id ?? null
+    }
     if (!escolaId) return NextResponse.json([])
 
     const since = (() => {

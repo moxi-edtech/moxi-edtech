@@ -9,8 +9,17 @@ type SearchParams = { q?: string; days?: string }
 export default async function Page(props: { searchParams?: Promise<SearchParams> }) {
   const searchParams = (await props.searchParams) ?? ({} as SearchParams)
   const s = await supabaseServer()
-  const { data: prof } = await s.from('profiles').select('escola_id').order('created_at', { ascending: false }).limit(1)
-  const escolaId = (prof?.[0] as any)?.escola_id as string | null
+  const { data: sess } = await s.auth.getUser()
+  const user = sess?.user
+  let escolaId: string | null = null
+  if (user) {
+    const { data: prof } = await s
+      .from('profiles')
+      .select('escola_id')
+      .eq('user_id', user.id)
+      .maybeSingle()
+    escolaId = (prof as any)?.escola_id ?? null
+  }
 
   if (!escolaId) {
     return (

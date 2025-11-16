@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
 
-export async function PATCH(_req: Request, { params }: any) {
+export async function PATCH(_req: Request, context: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = params;
+    const { id } = await context.params;
     const { supabase, ctx } = await getAlunoContext();
     if (!ctx) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     const { userId } = ctx;
@@ -20,4 +20,3 @@ export async function PATCH(_req: Request, { params }: any) {
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
-

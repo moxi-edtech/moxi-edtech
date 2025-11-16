@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
 
-export async function GET(_req: Request, { params }: any) {
+export async function GET(_req: Request, context: { params: Promise<{ disciplinaId: string }> }) {
   try {
-    const { disciplinaId } = params;
+    const { disciplinaId } = await context.params;
     const { supabase, ctx } = await getAlunoContext();
     if (!ctx) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     const { matriculaId } = ctx;
@@ -24,4 +24,3 @@ export async function GET(_req: Request, { params }: any) {
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
-

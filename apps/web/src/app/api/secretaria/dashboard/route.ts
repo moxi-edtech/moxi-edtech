@@ -22,13 +22,23 @@ export async function GET() {
     const user = userRes?.user;
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
 
-    // Resolve escola vinculada mais recente do profile
+    // Resolve escola do usuário: profiles.current_escola_id -> profiles.escola_id -> escola_usuarios.escola_id
     const { data: prof } = await supabase
       .from('profiles')
-      .select('escola_id')
+      .select('current_escola_id, escola_id, user_id')
       .order('created_at', { ascending: false })
       .limit(1);
-    const escolaId = (prof?.[0] as any)?.escola_id as string | undefined;
+    let escolaId = ((prof?.[0] as any)?.current_escola_id || (prof?.[0] as any)?.escola_id) as string | undefined;
+    if (!escolaId) {
+      try {
+        const { data: vinc } = await supabase
+          .from('escola_usuarios')
+          .select('escola_id')
+          .eq('user_id', user.id)
+          .limit(1);
+        escolaId = (vinc?.[0] as any)?.escola_id as string | undefined;
+      } catch {}
+    }
     if (!escolaId) {
       return NextResponse.json({
         ok: true,
@@ -187,4 +197,3 @@ function normalizeStatus(status: string) {
   if (["trancado", "suspenso", "desistente", "inativo"].includes(value)) return { label: "Irregular", context: "alert" as const };
   return { label: status || 'Indefinido', context: "neutral" as const };
 }
-

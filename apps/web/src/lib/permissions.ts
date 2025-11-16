@@ -53,7 +53,6 @@ const ROLE_PERMISSIONS: Record<Papel, ReadonlySet<Permission>> = {
     'editar_usuario',
     'remover_usuario',
     'configurar_escola',
-    'gerenciar_turmas',
     'gerenciar_disciplinas',
     'visualizar_relatorios_globais',
     'visualizar_financeiro',

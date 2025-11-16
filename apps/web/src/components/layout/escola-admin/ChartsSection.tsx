@@ -38,24 +38,10 @@ interface ChartsSectionProps {
   pagamentos?: PagamentosResumo; // dados do gráfico de barras
 }
 
-export default function ChartsSection({
-  meses,
-  alunosPorMes,
-  pagamentos,
-}: ChartsSectionProps) {
-  const labels = useMemo(() => meses ?? MESES_PT_CURTOS, [meses]);
-
-  const dadosAlunos = useMemo(
-    () =>
-      alunosPorMes ?? [12, 18, 22, 30, 28, 35, 40, 44, 50, 55, 58, 60],
-    [alunosPorMes]
-  );
-
-  const resumo = useMemo(
-    () =>
-      pagamentos ?? { pago: 120, pendente: 35, inadimplente: 8 },
-    [pagamentos]
-  );
+export default function ChartsSection({ meses, alunosPorMes, pagamentos }: ChartsSectionProps) {
+  const labels = useMemo(() => meses ?? [], [meses]);
+  const dadosAlunos = useMemo(() => alunosPorMes ?? [], [alunosPorMes]);
+  const resumo = useMemo(() => pagamentos ?? null, [pagamentos]);
 
   const lineData = useMemo(
     () => ({
@@ -90,19 +76,19 @@ export default function ChartsSection({
     []
   );
 
-  const barData = useMemo(
-    () => ({
+  const barData = useMemo(() => {
+    const r = resumo ?? { pago: 0, pendente: 0, inadimplente: 0 };
+    return {
       labels: ["Pago", "Pendente", "Inadimplente"],
       datasets: [
         {
           label: "Mensalidades",
-          data: [resumo.pago, resumo.pendente, resumo.inadimplente],
+          data: [r.pago, r.pendente, r.inadimplente],
           borderWidth: 1,
         },
       ],
-    }),
-    [resumo]
-  );
+    };
+  }, [resumo]);
 
   const barOptions = useMemo(
     () => ({
@@ -126,7 +112,11 @@ export default function ChartsSection({
           <h3 className="text-base font-semibold text-gray-800">Matrículas por mês</h3>
         </div>
         <div className="h-64">
-          <Line data={lineData} options={lineOptions} />
+          {labels.length && dadosAlunos.length ? (
+            <Line data={lineData} options={lineOptions} />
+          ) : (
+            <div className="flex h-full items-center justify-center text-sm text-gray-500">Sem dados.</div>
+          )}
         </div>
       </div>
 
@@ -135,7 +125,11 @@ export default function ChartsSection({
           <h3 className="text-base font-semibold text-gray-800">Mensalidades</h3>
         </div>
         <div className="h-64">
-          <Bar data={barData} options={barOptions} />
+          {resumo ? (
+            <Bar data={barData} options={barOptions} />
+          ) : (
+            <div className="flex h-full items-center justify-center text-sm text-gray-500">Sem dados.</div>
+          )}
         </div>
       </div>
     </div>

@@ -8,6 +8,7 @@ export async function GET(req: Request) {
     const days = url.searchParams.get('days') || '30';
     const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10) || 1);
     const pageSize = Math.min(100, Math.max(1, parseInt(url.searchParams.get('pageSize') || '20', 10) || 20));
+    const turmaIdFilter = url.searchParams.get('turma_id') || '';
     const offset = (page - 1) * pageSize;
 
     const supabase = await supabaseServerTyped<any>();
@@ -17,10 +18,21 @@ export async function GET(req: Request) {
 
     const { data: prof } = await supabase
       .from('profiles')
-      .select('escola_id')
+      .select('current_escola_id, escola_id, user_id')
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(1);
-    const escolaId = (prof?.[0] as any)?.escola_id as string | undefined;
+    let escolaId = ((prof?.[0] as any)?.current_escola_id || (prof?.[0] as any)?.escola_id) as string | undefined;
+    if (!escolaId) {
+      try {
+        const { data: vinc } = await supabase
+          .from('escola_usuarios')
+          .select('escola_id')
+          .eq('user_id', user.id)
+          .limit(1);
+        escolaId = (vinc?.[0] as any)?.escola_id as string | undefined;
+      } catch {}
+    }
     if (!escolaId) return NextResponse.json({ ok: true, items: [], total: 0, page, pageSize });
 
     const since = (() => {
@@ -35,6 +47,10 @@ export async function GET(req: Request) {
       .eq('escola_id', escolaId)
       .gte('created_at', since)
       .order('created_at', { ascending: false });
+
+    if (turmaIdFilter) {
+      query = query.eq('turma_id', turmaIdFilter);
+    }
 
     if (q) {
       const uuidRe = /^[0-9a-fA-F-]{36}$/;
@@ -55,3 +71,77 @@ export async function GET(req: Request) {
   }
 }
 
+export async function POST(req: Request) {
+  try {
+    const supabase = await supabaseServerTyped<any>();
+    const { data: userRes } = await supabase.auth.getUser();
+    const user = userRes?.user;
+    if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
+
+    const body = await req.json();
+    const { aluno_id, session_id, turma_id, numero_matricula, data_matricula } = body;
+
+    // Resolve escola a partir do aluno, com fallback ao perfil do usuário
+    let escolaId: string | undefined = undefined;
+    if (aluno_id) {
+      try {
+        const { data: aluno } = await supabase
+          .from('alunos')
+          .select('escola_id')
+          .eq('id', aluno_id)
+          .maybeSingle();
+        escolaId = (aluno as any)?.escola_id as string | undefined;
+      } catch {}
+    }
+    if (!escolaId) {
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('current_escola_id, escola_id, user_id')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      escolaId = ((prof?.[0] as any)?.current_escola_id || (prof?.[0] as any)?.escola_id) as string | undefined;
+      if (!escolaId) {
+        try {
+          const { data: vinc } = await supabase
+            .from('escola_usuarios')
+            .select('escola_id')
+            .eq('user_id', user.id)
+            .limit(1);
+          escolaId = (vinc?.[0] as any)?.escola_id as string | undefined;
+        } catch {}
+      }
+    }
+    if (!escolaId) {
+      return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 });
+    }
+
+    if (!aluno_id || !session_id || !turma_id) {
+      return NextResponse.json({ ok: false, error: 'Campos obrigatórios em falta' }, { status: 400 });
+    }
+
+    const { data: newMatricula, error } = await supabase
+      .from('matriculas')
+      .insert({
+        aluno_id,
+        session_id,
+        turma_id,
+        numero_matricula: numero_matricula || null,
+        data_matricula: data_matricula || null,
+        escola_id: escolaId,
+        status: 'ativo',
+      })
+      .select()
+      .single();
+
+    if (error) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+    }
+
+    return NextResponse.json({ ok: true, data: newMatricula });
+
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  }
+}
