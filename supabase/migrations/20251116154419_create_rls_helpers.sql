@@ -28,7 +28,7 @@ as $$
     from public.escola_usuarios eu
     where eu.user_id = (select auth.uid())
       and eu.escola_id = escola_uuid
-      and eu.papel in ('admin_escola', 'secretaria')
+      and eu.papel in ('admin_escola', 'secretaria', 'staff_admin')
   );
 $$;
 
