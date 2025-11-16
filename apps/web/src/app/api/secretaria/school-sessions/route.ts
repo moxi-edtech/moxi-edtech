@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/supabase";
+import type { Database } from "~types/supabase";
 
 export async function GET(req: Request) {
   try {

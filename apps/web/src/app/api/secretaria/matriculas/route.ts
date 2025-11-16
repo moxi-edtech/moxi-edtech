@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { generateNumeroLogin } from "@/lib/generateNumeroLogin";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
+import type { Database } from "~types/supabase";
 
 export async function GET(req: Request) {
   try {
@@ -120,13 +123,29 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Campos obrigatórios em falta' }, { status: 400 });
     }
 
+    // Gerar numero de matrícula a partir da função padronizada
+    let numeroGerado: string | null = null;
+    try {
+      if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        const admin = createAdminClient<Database>(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+        numeroGerado = await generateNumeroLogin(escolaId, 'aluno' as any, admin as any);
+      } else {
+        numeroGerado = await generateNumeroLogin(escolaId, 'aluno' as any, supabase as any);
+      }
+    } catch {
+      numeroGerado = null;
+    }
+
     const { data: newMatricula, error } = await supabase
       .from('matriculas')
       .insert({
         aluno_id,
         session_id,
         turma_id,
-        numero_matricula: numero_matricula || null,
+        numero_matricula: numeroGerado || numero_matricula || null,
         data_matricula: data_matricula || null,
         escola_id: escolaId,
         status: 'ativo',

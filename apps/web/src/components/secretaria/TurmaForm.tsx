@@ -11,106 +11,43 @@ interface AnoLetivo {
   nome: string;
 }
 
-interface Classe {
-  id: string;
-  nome: string;
-}
-
-interface Curso {
-  id: string;
-  nome: string;
-}
-
-interface Diretor {
-  id: string;
-  user_id: string;
-  nome: string;
-}
-
-interface Professor {
-  id: string;
-  user_id: string;
-  nome: string;
-}
-
 export default function TurmaForm({ onSuccess }: TurmaFormProps) {
+  // ✅ ESTADOS ESSENCIAIS - apenas dados que existem na tabela
   const [nome, setNome] = useState("");
-  const [classeId, setClasseId] = useState("");
-  const [cursoId, setCursoId] = useState("");
   const [turno, setTurno] = useState("");
-  const [anoLetivo, setAnoLetivo] = useState("");
-  const [diretorTurma, setDiretorTurma] = useState("");
-  const [coordenadorPedagogico, setCoordenadorPedagogico] = useState("");
-  const [capacidadeMaxima, setCapacidadeMaxima] = useState<number>(30);
+  const [anoLetivoId, setAnoLetivoId] = useState(""); // ✅ CORREÇÃO: usar ID da sessão
   const [sala, setSala] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // ✅ CORREÇÃO: Carregar anos letivos das sessões acadêmicas
   const [anosLetivos, setAnosLetivos] = useState<AnoLetivo[]>([]);
-  const [classes, setClasses] = useState<Classe[]>([]);
-  const [cursos, setCursos] = useState<Curso[]>([]);
-  const [diretores, setDiretores] = useState<Diretor[]>([]);
-  const [coordenadores, setCoordenadores] = useState<Professor[]>([]);
-  const [carregandoDados, setCarregandoDados] = useState(true);
+  const [carregandoAnos, setCarregandoAnos] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchAnosLetivos = async () => {
       try {
-        setCarregandoDados(true);
-        console.log("🔄 Carregando dados para formulário de turma...");
+        setCarregandoAnos(true);
+        console.log("🔄 Carregando anos letivos...");
 
-        const [anosRes, classesRes, cursosRes, diretoresRes, coordenadoresRes] = await Promise.all([
-          fetch("/api/secretaria/school-sessions"),
-          fetch("/api/secretaria/classes"),
-          fetch("/api/secretaria/cursos"),
-          fetch("/api/secretaria/professores?cargo=diretor&days=99999"),
-          fetch("/api/secretaria/professores?cargo=coordenador&days=99999"),
-        ]);
+        const res = await fetch("/api/secretaria/school-sessions");
+        const json = await res.json();
 
-        const [anosJson, classesJson, cursosJson, diretoresJson, coordenadoresJson] = await Promise.all([
-          anosRes.json(),
-          classesRes.json(),
-          cursosRes.json(),
-          diretoresRes.json(),
-          coordenadoresRes.json(),
-        ]);
+        console.log("📊 Resposta da API (school-sessions):", json);
 
-        console.log("📊 Respostas da API:", {
-          anos: anosJson,
-          classes: classesJson,
-          cursos: cursosJson,
-          diretores: diretoresJson,
-          coordenadores: coordenadoresJson,
-        });
-
-        if (anosJson.ok && anosJson.items) {
-          setAnosLetivos(anosJson.items);
+        if (json.ok && json.items) {
+          setAnosLetivos(json.items);
+        } else {
+          console.error("❌ Erro ao carregar anos letivos:", json.error);
         }
-
-        if (classesJson.ok && classesJson.items) {
-          setClasses(classesJson.items);
-        }
-
-        if (cursosJson.ok && cursosJson.items) {
-          setCursos(cursosJson.items);
-        }
-
-        if (diretoresJson.ok && diretoresJson.items) {
-          setDiretores(diretoresJson.items);
-        }
-
-        if (coordenadoresJson.ok && coordenadoresJson.items) {
-          setCoordenadores(coordenadoresJson.items);
-        }
-
       } catch (e) {
-        console.error("💥 Erro ao carregar dados:", e);
-        setError("Falha ao carregar dados para o formulário.");
+        console.error("💥 Erro ao carregar anos letivos:", e);
       } finally {
-        setCarregandoDados(false);
+        setCarregandoAnos(false);
       }
     };
-    fetchData();
+
+    fetchAnosLetivos();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -118,13 +55,10 @@ export default function TurmaForm({ onSuccess }: TurmaFormProps) {
     setLoading(true);
     setError(null);
 
-    // ✅ Validação dos campos obrigatórios
+    // ✅ VALIDAÇÃO MÍNIMA - apenas dados que existem
     const camposObrigatorios = [
       { campo: nome, nome: "Nome da Turma" },
-      { campo: classeId, nome: "Classe" },
-      { campo: cursoId, nome: "Curso" },
       { campo: turno, nome: "Turno" },
-      { campo: anoLetivo, nome: "Ano Letivo" },
     ];
 
     const camposFaltantes = camposObrigatorios.filter(item => !item.campo);
@@ -135,19 +69,18 @@ export default function TurmaForm({ onSuccess }: TurmaFormProps) {
     }
 
     try {
+      // ✅ CORREÇÃO: Enviar o nome do ano letivo em vez do ID
+      const anoLetivoSelecionado = anosLetivos.find(ano => ano.id === anoLetivoId);
+      const anoLetivoNome = anoLetivoSelecionado ? anoLetivoSelecionado.nome : null;
+
       const payload = {
         nome,
-        classe_id: classeId,
-        curso_id: cursoId,
         turno,
-        session_id: anoLetivo,
-        diretor_turma_id: diretorTurma || null,
-        coordenador_pedagogico_id: coordenadorPedagogico || null,
-        capacidade_maxima: capacidadeMaxima,
+        ano_letivo: anoLetivoNome, // ✅ CORREÇÃO: enviar o nome do ano letivo
         sala: sala || null,
       };
 
-      console.log("📤 Enviando payload:", payload);
+      console.log("📤 Enviando payload correto:", payload);
 
       const res = await fetch("/api/secretaria/turmas", {
         method: "POST",
@@ -165,133 +98,93 @@ export default function TurmaForm({ onSuccess }: TurmaFormProps) {
       onSuccess();
     } catch (e) {
       console.error("💥 Erro no submit:", e);
-      setError(e instanceof Error ? e.message : String(e));
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  if (carregandoDados) {
-    return (
-      <div className="flex justify-center items-center py-8">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-sm text-gray-600">Carregando dados do formulário...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {/* Informações Básicas da Turma */}
       <div className="border-b border-gray-200 pb-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Informações Básicas</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Identificação da Turma</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label htmlFor="nome" className="block text-sm font-medium text-gray-700">
-              Nome da Turma *
+              Nome/Identificação *
             </label>
             <input
               type="text"
               id="nome"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
-              placeholder="Ex: 10ª A, 11ª B, etc."
+              placeholder="Ex: Sala 101, Laboratório 2, Bloco A"
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
               required
             />
+            <p className="mt-1 text-xs text-gray-500">
+              Identificação única do agrupamento físico
+            </p>
           </div>
 
           <div>
             <label htmlFor="sala" className="block text-sm font-medium text-gray-700">
-              Sala/Ambiente
+              Local/Sala
             </label>
             <input
               type="text"
               id="sala"
               value={sala}
               onChange={(e) => setSala(e.target.value)}
-              placeholder="Ex: Sala 101, Laboratório 2"
+              placeholder="Ex: Sala 101, Laboratório de Ciências"
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
             />
+            <p className="mt-1 text-xs text-gray-500">
+              Espaço físico onde a turma se reúne
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Informações Acadêmicas */}
+      {/* Configurações de Horário e Período */}
       <div className="border-b border-gray-200 pb-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Informações Acadêmicas</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Horário e Período</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="anoLetivo" className="block text-sm font-medium text-gray-700">
-              Ano Letivo *
+            <label htmlFor="anoLetivoId" className="block text-sm font-medium text-gray-700">
+              Ano Letivo
             </label>
             <select
-              id="anoLetivo"
-              value={anoLetivo}
-              onChange={(e) => setAnoLetivo(e.target.value)}
+              id="anoLetivoId"
+              value={anoLetivoId}
+              onChange={(e) => setAnoLetivoId(e.target.value)}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
-              required
+              disabled={carregandoAnos}
             >
-              <option value="">Selecione o ano letivo</option>
+              <option value="">
+                {carregandoAnos ? "Carregando anos letivos..." : "Selecione o ano letivo"}
+              </option>
               {anosLetivos.map((ano) => (
                 <option key={ano.id} value={ano.id}>
                   {ano.nome}
                 </option>
               ))}
             </select>
-            {anosLetivos.length === 0 && (
-              <p className="mt-1 text-xs text-red-500">Nenhum ano letivo disponível</p>
+            {carregandoAnos && (
+              <p className="mt-1 text-xs text-gray-500">Carregando anos letivos...</p>
             )}
-          </div>
-
-          <div>
-            <label htmlFor="classe" className="block text-sm font-medium text-gray-700">
-              Classe *
-            </label>
-            <select
-              id="classe"
-              value={classeId}
-              onChange={(e) => setClasseId(e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
-              required
-            >
-              <option value="">Selecione a classe</option>
-              {classes.map((classe) => (
-                <option key={classe.id} value={classe.id}>
-                  {classe.nome}
-                </option>
-              ))}
-            </select>
-            {classes.length === 0 && (
-              <p className="mt-1 text-xs text-red-500">Nenhuma classe disponível</p>
+            {!carregandoAnos && anosLetivos.length === 0 && (
+              <p className="mt-1 text-xs text-amber-600">
+                Nenhum ano letivo cadastrado. Configure primeiro as sessões acadêmicas.
+              </p>
             )}
-          </div>
-
-          <div>
-            <label htmlFor="curso" className="block text-sm font-medium text-gray-700">
-              Curso *
-            </label>
-            <select
-              id="curso"
-              value={cursoId}
-              onChange={(e) => setCursoId(e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
-              required
-            >
-              <option value="">Selecione o curso</option>
-              {cursos.map((curso) => (
-                <option key={curso.id} value={curso.id}>
-                  {curso.nome}
-                </option>
-              ))}
-            </select>
-            {cursos.length === 0 && (
-              <p className="mt-1 text-xs text-red-500">Nenhum curso disponível</p>
-            )}
+            <p className="mt-1 text-xs text-gray-500">
+              Período letivo (opcional)
+            </p>
           </div>
 
           <div>
@@ -311,82 +204,24 @@ export default function TurmaForm({ onSuccess }: TurmaFormProps) {
               <option value="noite">Noite</option>
               <option value="integral">Integral</option>
             </select>
+            <p className="mt-1 text-xs text-gray-500">
+              Período de funcionamento da turma
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Equipe Pedagógica */}
-      <div className="border-b border-gray-200 pb-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Equipe Pedagógica</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="diretorTurma" className="block text-sm font-medium text-gray-700">
-              Diretor de Turma
-            </label>
-            <select
-              id="diretorTurma"
-              value={diretorTurma}
-              onChange={(e) => setDiretorTurma(e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
-            >
-              <option value="">Selecione um diretor de turma</option>
-              {diretores.map((diretor) => (
-                <option key={diretor.id} value={diretor.id}>
-                  {diretor.nome}
-                </option>
-              ))}
-            </select>
-            {diretores.length === 0 && (
-              <p className="mt-1 text-xs text-gray-500">Nenhum diretor disponível</p>
-            )}
-          </div>
-
-          <div>
-            <label htmlFor="coordenadorPedagogico" className="block text-sm font-medium text-gray-700">
-              Coordenador Pedagógico
-            </label>
-            <select
-              id="coordenadorPedagogico"
-              value={coordenadorPedagogico}
-              onChange={(e) => setCoordenadorPedagogico(e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
-            >
-              <option value="">Selecione um coordenador</option>
-              {coordenadores.map((coordenador) => (
-                <option key={coordenador.id} value={coordenador.id}>
-                  {coordenador.nome}
-                </option>
-              ))}
-            </select>
-            {coordenadores.length === 0 && (
-              <p className="mt-1 text-xs text-gray-500">Nenhum coordenador disponível</p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Configurações Adicionais */}
-      <div className="border-b border-gray-200 pb-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Configurações</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="capacidadeMaxima" className="block text-sm font-medium text-gray-700">
-              Capacidade Máxima de Alunos
-            </label>
-            <input
-              type="number"
-              id="capacidadeMaxima"
-              value={capacidadeMaxima}
-              onChange={(e) => setCapacidadeMaxima(Number(e.target.value))}
-              min="1"
-              max="100"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
-            />
-            <p className="mt-1 text-xs text-gray-500">Número máximo de alunos nesta turma</p>
-          </div>
-        </div>
+      {/* Informações sobre o conceito de turma */}
+      <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+        <h4 className="text-sm font-medium text-blue-900 mb-2">💡 Sobre Turmas</h4>
+        <p className="text-xs text-blue-700">
+          <strong>Turma</strong> = Agrupamento físico/horário<br/>
+          <strong>Classe/Curso</strong> = Contexto acadêmico (definido na matrícula)<br/>
+          <strong>Ano Letivo</strong> = Período acadêmico (definido nas sessões)<br/>
+          <br/>
+          Esta turma é um container onde alunos de diferentes classes e cursos 
+          podem compartilhar o mesmo espaço/tempo.
+        </p>
       </div>
 
       {error && (
@@ -405,7 +240,7 @@ export default function TurmaForm({ onSuccess }: TurmaFormProps) {
         </button>
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || carregandoAnos}
           className="px-6 py-3 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {loading ? (

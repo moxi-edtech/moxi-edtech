@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { createHash } from "crypto";
+import { generateNumeroLogin } from "@/lib/generateNumeroLogin";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
+import type { Database } from "~types/supabase";
 
 // Retorna uma sugestão de número de matrícula sem consumir a sequência real.
 // Estratégia: usa o mesmo prefixo do trigger (SUBSTRING(MD5(escola_id) FOR 3))
@@ -21,32 +23,26 @@ export async function GET() {
     const escolaId = (prof as any)?.escola_id as string | undefined;
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Perfil não vinculado à escola' }, { status: 403 });
 
-    // Prefixo conforme trigger: SUBSTRING(MD5(escola_id::text) FOR 3)
-    const prefix = createHash('md5').update(String(escolaId)).digest('hex').slice(0, 3);
-
-    // Busca maior numero_matricula desse prefixo na escola
-    const { data: last, error } = await supabase
-      .from('matriculas')
-      .select('numero_matricula')
-      .eq('escola_id', escolaId)
-      .like('numero_matricula', `${prefix}-%`)
-      .order('numero_matricula', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
-
-    let nextSuffix = 1;
-    if (last?.numero_matricula) {
-      const parts = String(last.numero_matricula).split('-');
-      const suffix = parseInt(parts[1] || '0', 10);
-      if (Number.isFinite(suffix)) nextSuffix = suffix + 1;
+    // Usa a mesma função de geração que a criação efetiva
+    let numero: string | null = null;
+    try {
+      if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        const admin = createAdminClient<Database>(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+        numero = await generateNumeroLogin(escolaId, 'aluno' as any, admin as any);
+      } else {
+        numero = await generateNumeroLogin(escolaId, 'aluno' as any, supabase as any);
+      }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      return NextResponse.json({ ok: false, error: message }, { status: 400 });
     }
 
-    const numero = `${prefix}-${String(nextSuffix).padStart(6, '0')}`;
     return NextResponse.json({ ok: true, numero });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
-

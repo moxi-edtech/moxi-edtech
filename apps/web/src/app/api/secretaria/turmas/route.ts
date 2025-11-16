@@ -39,38 +39,42 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const turnoFilter = url.searchParams.get('turno') || undefined;
 
+    // ✅ CORREÇÃO: Remover created_at da seleção
     const { data: turmas, error: turmasError } = await supabase
       .from('turmas')
-      .select('id, nome, turno, classe, ano_letivo, diretor_turma_id, created_at')
+      .select(`
+        id, 
+        nome, 
+        turno, 
+        ano_letivo,
+        sala
+      `)
       .eq('escola_id', escolaId)
       .order('nome');
-    if (turmasError) return NextResponse.json({ ok: false, error: turmasError.message }, { status: 400 });
+    
+    if (turmasError) {
+      console.error("❌ Erro ao buscar turmas:", turmasError);
+      return NextResponse.json({ ok: false, error: turmasError.message }, { status: 400 });
+    }
 
     const turmaIds = (turmas || []).map((t) => t.id);
-    const diretorIds = Array.from(new Set((turmas || []).map((t) => t.diretor_turma_id).filter((id): id is string => Boolean(id))));
 
-    let diretoresMap = new Map<string, { nome: string | null; email: string | null }>();
-    if (diretorIds.length) {
-      const { data: diretores } = await supabase
-        .from('profiles')
-        .select('user_id, nome, email')
-        .in('user_id', diretorIds);
+    // Buscar ocupação atual das turmas (número de alunos ativos)
+    let ocupacaoMap = new Map<string, number>();
+    if (turmaIds.length > 0) {
+      const { data: matriculasCount } = await supabase
+        .from('matriculas')
+        .select('turma_id, count')
+        .eq('escola_id', escolaId)
+        .in('turma_id', turmaIds)
+        .eq('status', 'ativa');
 
-      for (const diretor of diretores || []) {
-        diretoresMap.set(diretor.user_id, { nome: diretor.nome ?? null, email: diretor.email ?? null });
+      for (const row of matriculasCount || []) {
+        ocupacaoMap.set(row.turma_id, row.count || 0);
       }
     }
 
-    let matriculasResumo: any[] | null = [];
-    if (turmaIds.length) {
-      const { data } = await supabase
-        .from('matriculas')
-        .select('turma_id, status, count:turma_id', withGroup('turma_id,status'))
-        .eq('escola_id', escolaId)
-        .in('turma_id', turmaIds);
-      matriculasResumo = data || [];
-    }
-
+    // Buscar última matrícula
     const { data: matriculasRecency } = await supabase
       .from('matriculas')
       .select('turma_id, created_at')
@@ -85,9 +89,20 @@ export async function GET(req: Request) {
       }
     }
 
+    // Contar alunos por status
+    let matriculasResumo: any[] = [];
+    if (turmaIds.length > 0) {
+      const { data } = await supabase
+        .from('matriculas')
+        .select('turma_id, status, count:turma_id', withGroup('turma_id,status'))
+        .eq('escola_id', escolaId)
+        .in('turma_id', turmaIds);
+      matriculasResumo = data || [];
+    }
+
     const countsByTurma = new Map<string, Record<string, number>>();
     let totalAlunos = 0;
-    for (const row of matriculasResumo || []) {
+    for (const row of matriculasResumo) {
       const turmaId = (row as any)?.turma_id;
       if (!turmaId) continue;
       const status = ((row as any)?.status ?? 'indefinido').toString();
@@ -98,6 +113,7 @@ export async function GET(req: Request) {
       totalAlunos += count;
     }
 
+    // ✅ CORREÇÃO: Mapear dados sem created_at
     const items = (turmas || [])
       .filter((turma) => {
         if (!turnoFilter) return true;
@@ -106,22 +122,24 @@ export async function GET(req: Request) {
       .map((turma) => {
         const statusCounts = countsByTurma.get(turma.id) ?? {};
         const total = Object.values(statusCounts).reduce((acc, cur) => acc + Number(cur || 0), 0);
+        
         return {
           id: turma.id,
           nome: turma.nome,
-          classe: turma.classe,
-          turno: turma.turno ?? 'Sem turno',
+          turno: turma.turno ?? 'sem_turno',
           ano_letivo: turma.ano_letivo,
-          professor: turma.diretor_turma_id ? diretoresMap.get(turma.diretor_turma_id) ?? { nome: null, email: null } : { nome: null, email: null },
+          sala: turma.sala || null,
+          capacidade_maxima: 30, // Valor padrão
+          ocupacao_atual: ocupacaoMap.get(turma.id) || 0,
           status_counts: statusCounts,
           total_alunos: total,
-          ultima_matricula: lastByTurma.get(turma.id) ?? turma.created_at ?? null,
+          ultima_matricula: lastByTurma.get(turma.id) || null, // ✅ REMOVIDO: turma.created_at
         };
       });
 
     const porTurnoMap = new Map<string, number>();
     for (const turma of turmas || []) {
-      const key = turma.turno ?? 'Sem turno';
+      const key = turma.turno ?? 'sem_turno';
       porTurnoMap.set(key, (porTurnoMap.get(key) ?? 0) + 1);
     }
 
@@ -139,6 +157,7 @@ export async function GET(req: Request) {
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
+    console.error("💥 Erro geral:", e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
@@ -173,45 +192,44 @@ export async function POST(req: Request) {
     const body = await req.json();
     const {
       nome,
-      classe_id,
-      curso_id,
       turno,
-      session_id,
-      diretor_turma_id,
-      coordenador_pedagogico_id,
-      capacidade_maxima,
       sala,
+      ano_letivo,
     } = body;
 
-    if (!nome || !classe_id || !curso_id || !turno || !session_id) {
-      return NextResponse.json({ ok: false, error: 'Campos obrigatórios em falta' }, { status: 400 });
+    if (!nome || !turno) {
+      return NextResponse.json({ 
+        ok: false, 
+        error: 'Campos obrigatórios em falta: nome, turno' 
+      }, { status: 400 });
     }
 
     const { data: newTurma, error } = await supabase
       .from('turmas')
       .insert({
         nome,
-        classe_id,
-        curso_id,
         turno,
-        session_id,
-        diretor_turma_id: diretor_turma_id || null,
-        coordenador_pedagogico_id: coordenador_pedagogico_id || null,
-        capacidade_maxima,
-        sala,
+        sala: sala || null,
+        ano_letivo: ano_letivo || null,
         escola_id: escolaId,
       })
       .select()
       .single();
 
     if (error) {
+      console.error("❌ Erro ao criar turma:", error);
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
     }
 
-    return NextResponse.json({ ok: true, data: newTurma });
+    return NextResponse.json({ 
+      ok: true, 
+      data: newTurma,
+      message: 'Turma criada com sucesso' 
+    });
 
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
+    console.error("💥 Erro geral ao criar turma:", e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import type { Database, TablesInsert } from '~types/supabase'
 import { mapPapelToGlobalRole } from '@/lib/permissions'
+import { generateNumeroLogin } from '@/lib/generateNumeroLogin'
 
 type SeedOptions = {
   alunos?: number
@@ -202,7 +203,9 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         alunoId = (aIns as any).id
       }
       const sec = i % 2 === 0 ? secaoA : secaoB
-      const { data: mIns, error: mErr } = await admin.from('matriculas').insert({ aluno_id: alunoId!, turma_id: turmaId!, secao_id: sec, session_id: sessionId!, status: 'ativo', numero_matricula: `M${year}${String(i).padStart(3,'0')}`, data_matricula: `${year}-02-05`, escola_id: escolaId } as any).select('id').single()
+      let numeroMatricula: string | null = null
+      try { numeroMatricula = await generateNumeroLogin(escolaId, 'aluno' as any, admin as any) } catch { numeroMatricula = null }
+      const { data: mIns, error: mErr } = await admin.from('matriculas').insert({ aluno_id: alunoId!, turma_id: turmaId!, secao_id: sec, session_id: sessionId!, status: 'ativo', numero_matricula: numeroMatricula, data_matricula: `${year}-02-05`, escola_id: escolaId } as any).select('id').single()
       if (mErr) return NextResponse.json({ ok: false, error: mErr.message }, { status: 400 })
       alunos.push({ user_id: userId!, aluno_id: alunoId!, matricula_id: (mIns as any).id, secao_id: sec })
     }
