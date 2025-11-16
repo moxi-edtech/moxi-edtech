@@ -1,329 +1,361 @@
-"use client"
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import AuditPageView from "@/components/audit/AuditPageView"
-import Button from "@/components/ui/Button"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Button from "@/components/ui/Button";
+import {
+  UserPlusIcon,
+  CheckCircleIcon,
+  InformationCircleIcon,
+  ArrowLeftIcon,
+  AcademicCapIcon,
+} from "@heroicons/react/24/outline";
 
-export default function Page() {
-  const router = useRouter()
-  const [activeTab, setActiveTab] = useState<"add" | "list">("add")
-  const [currentStep, setCurrentStep] = useState(1)
-  const totalSteps = 4
-
-  // Estados do formulário
-  const [nome, setNome] = useState('')
-  const [email, setEmail] = useState('')
-  const [dataNascimento, setDataNascimento] = useState('')
-  const [sexo, setSexo] = useState<'M'|'F'|'O'|'N'|''>('')
-  const [biNumero, setBiNumero] = useState('')
-  const [telefone, setTelefone] = useState('')
-  const [endereco, setEndereco] = useState('')
-  const [responsavelNome, setResponsavelNome] = useState('')
-  const [responsavelContato, setResponsavelContato] = useState('')
-  const [responsavelEmail, setResponsavelEmail] = useState('')
-  const [turma, setTurma] = useState('')
-  const [secao, setSecao] = useState('')
-  const [numeroMatricula, setNumeroMatricula] = useState('')
+export default function AlunosPage() {
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<"add" | "list">("add");
+  const [fileName, setFileName] = useState<string>("Nenhum ficheiro selecionado");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  // Neste fluxo (cadastro), não geramos nem exibimos credenciais
+  const [currentStep, setCurrentStep] = useState(1);
   
-  const [loading, setLoading] = useState(false)
-  const [ok, setOk] = useState('')
-  const [numero, setNumero] = useState<string | null>(null)
-  const [err, setErr] = useState('')
-  const [criarAcesso, setCriarAcesso] = useState(false)
-  const [fileName, setFileName] = useState<string>("Nenhum ficheiro selecionado")
-  const [submitSuccess, setSubmitSuccess] = useState(false)
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    birthDate: "",
+    gender: "",
+    idNumber: "",
+    email: "",
+    phone: "",
+    address: "",
+    guardianName: "",
+    guardianPhone: "",
+    guardianEmail: "",
+  });
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setFileName(e.target.files[0].name)
-      const label = e.target.parentElement
-      if (label) {
-        label.classList.add("border-emerald-500", "bg-emerald-50")
-        setTimeout(() => {
-          label.classList.remove("border-emerald-500", "bg-emerald-50")
-        }, 1000)
-      }
+      setFileName(e.target.files[0].name);
     }
-  }
+  };
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setOk(''); setErr('')
+  const [createdAlunoId, setCreatedAlunoId] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setCreatedAlunoId(null);
+
     try {
-      setLoading(true)
-      const resProf = await fetch('/api/debug/session')
-      const prof = await resProf.json().catch(()=>({}))
-      const escolaId = prof?.user?.escola_id ?? prof?.profile?.escola_id
-      if (!escolaId) throw new Error('Sem escola vinculada')
+      const payload: any = {
+        nome: `${formData.firstName} ${formData.lastName}`.trim(),
+        email: formData.email.trim(),
+        data_nascimento: formData.birthDate || null,
+        sexo: (formData.gender as any) || null,
+        bi_numero: formData.idNumber || null,
+        responsavel_nome: formData.guardianName || null,
+        responsavel_contato: formData.guardianPhone || null,
+      };
 
-      const res = await fetch(`/api/escolas/${escolaId}/alunos/novo`, {
-        method: 'POST', 
+      const res = await fetch('/api/secretaria/alunos/novo', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nome,
-          email: email || undefined,
-          data_nascimento: dataNascimento || undefined,
-          sexo: sexo || undefined,
-          bi_numero: biNumero || undefined,
-          telefone: telefone || undefined,
-          endereco: endereco || undefined,
-          responsavel_nome: responsavelNome || undefined,
-          responsavel_contato: responsavelContato || undefined,
-          responsavel_email: responsavelEmail || undefined,
-          turma: turma || undefined,
-          secao: secao || undefined,
-          numero_matricula: numeroMatricula || undefined,
-        })
-      })
-      
-      const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || 'Falha ao criar aluno')
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao criar aluno');
 
-      if (criarAcesso) {
-        if (!email) throw new Error('Para criar acesso, informe o e-mail do aluno')
-        const resInvite = await fetch(`/api/escolas/${escolaId}/alunos/invite`, {
-          method: 'POST', 
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, nome })
-        })
-        const jsonInvite = await resInvite.json().catch(()=>({}))
-        if (!resInvite.ok || !jsonInvite?.ok) throw new Error(jsonInvite?.error || 'Falha ao convidar aluno')
-        const num = jsonInvite?.numero as string | undefined
-        setNumero(num || null)
-        setOk(`Aluno criado com sucesso.`)
-      } else {
-        setOk('Aluno criado com sucesso.')
-      }
+      // Fluxo de cadastro não deve exibir/retornar credenciais
+      if (json?.id) setCreatedAlunoId(String(json.id));
 
-      setSubmitSuccess(true)
-      setTimeout(() => {
-        setSubmitSuccess(false)
-        setCurrentStep(1)
-        resetForm()
-      }, 3000)
-
-    } catch (e: any) {
-      setErr(e?.message || 'Erro inesperado')
+      setSubmitSuccess(true);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : String(err));
     } finally {
-      setLoading(false)
+      setIsSubmitting(false);
     }
-  }
-
-  const resetForm = () => {
-    setNome('')
-    setEmail('')
-    setDataNascimento('')
-    setSexo('')
-    setBiNumero('')
-    setTelefone('')
-    setEndereco('')
-    setResponsavelNome('')
-    setResponsavelContato('')
-    setResponsavelEmail('')
-    setTurma('')
-    setSecao('')
-    setNumeroMatricula('')
-    setCriarAcesso(false)
-    setFileName("Nenhum ficheiro selecionado")
-  }
+  };
 
   const nextStep = () => {
-    if (currentStep < totalSteps) {
-      setCurrentStep(prev => prev + 1)
+    if (currentStep < 3) {
+      setCurrentStep(prev => prev + 1);
     }
-  }
+  };
 
   const prevStep = () => {
     if (currentStep > 1) {
-      setCurrentStep(prev => prev - 1)
+      setCurrentStep(prev => prev - 1);
     }
-  }
+  };
 
-  const ProgressBar = () => (
-    <div className="mb-6">
-      <div className="flex justify-between items-center mb-2">
-        <span className="text-sm font-medium text-gray-700">
-          Passo {currentStep} de {totalSteps}
-        </span>
-        <span className="text-xs text-emerald-600 font-medium">
-          {currentStep === 1 && "Informações Pessoais"}
-          {currentStep === 2 && "Contactos e Encarregado"}
-          {currentStep === 3 && "Informações Académicas"}
-          {currentStep === 4 && "Acesso"}
-        </span>
-      </div>
-      <div className="w-full bg-gray-200 rounded-full h-2">
-        <div 
-          className="bg-emerald-600 h-2 rounded-full transition-all duration-500 ease-in-out"
-          style={{ width: `${(currentStep / totalSteps) * 100}%` }}
-        ></div>
-      </div>
-    </div>
-  )
+  const canProceedToNextStep = () => {
+    switch (currentStep) {
+      case 1:
+        return formData.firstName.trim() && formData.lastName.trim() && formData.birthDate && formData.gender && formData.idNumber.trim();
+      case 2:
+        return formData.email.trim() && formData.phone.trim() && formData.address.trim();
+      case 3:
+        return formData.guardianName.trim() && formData.guardianPhone.trim();
+      default:
+        return false;
+    }
+  };
 
   return (
-    <>
-      <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="aluno_novo" />
-      
-      <div className="bg-gray-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-moxinexa-light to-blue-50 py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Back to Dashboard */}
+        <div className="mb-4">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-moxinexa-teal transition-colors"
+          >
+            <ArrowLeftIcon className="w-4 h-4" />
+            Voltar
+          </button>
+        </div>
+
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => router.back()}
-              className="flex items-center gap-2 text-sm text-gray-600 hover:text-emerald-600 transition-colors duration-200"
-            >
-              ← Voltar
-            </button>
-            <h1 className="text-2xl font-bold text-[#0B2C45]">
-              Gestão de Estudantes
-            </h1>
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-moxinexa-teal rounded-full mb-4">
+            <AcademicCapIcon className="w-8 h-8 text-white" />
           </div>
-          <div className="text-sm text-gray-500">
-            Início <span className="mx-1">/</span>{" "}
-            <span className="text-emerald-600 font-medium">Estudantes</span>
-          </div>
+          <h1 className="text-3xl font-bold text-moxinexa-dark mb-2">
+            Gestão de Estudantes
+          </h1>
+          <p className="text-moxinexa-gray text-lg">
+            Gerencie estudantes e suas informações acadêmicas
+          </p>
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-200 mb-6">
-          <button
-            className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${
-              activeTab === "add"
-                ? "text-emerald-600 border-b-2 border-emerald-600"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-            onClick={() => setActiveTab("add")}
-          >
-            Adicionar Estudante
-          </button>
-          <button
-            className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${
-              activeTab === "list"
-                ? "text-emerald-600 border-b-2 border-emerald-600"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-            onClick={() => setActiveTab("list")}
-          >
-            Lista de Estudantes
-          </button>
+        <div className="flex justify-center mb-8">
+          <div className="bg-white rounded-2xl shadow-sm p-2 border border-gray-200">
+            <div className="flex space-x-1">
+              <button
+                className={`px-6 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  activeTab === "add"
+                    ? "bg-moxinexa-teal text-white shadow-md"
+                    : "text-gray-600 hover:text-moxinexa-teal"
+                }`}
+                onClick={() => setActiveTab("add")}
+              >
+                Adicionar Estudante
+              </button>
+              <button
+                className={`px-6 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  activeTab === "list"
+                    ? "bg-moxinexa-teal text-white shadow-md"
+                    : "text-gray-600 hover:text-moxinexa-teal"
+                }`}
+                onClick={() => setActiveTab("list")}
+              >
+                Lista de Estudantes
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Conteúdo */}
         {activeTab === "add" && (
-          <div className="bg-white rounded-lg shadow p-6 transition-all duration-300">
-            <h2 className="text-lg font-semibold text-[#0B2C45] mb-4">
-              Adicionar Novo Estudante
-            </h2>
-            
-            {/* Alert de sucesso */}
-            {submitSuccess && (
-              <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-3 animate-fade-in">
-                <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
-                  <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
+          <div className="space-y-8">
+            {/* Progress Steps */}
+            <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+              <div className="mb-8">
+                <div className="flex items-center justify-between max-w-2xl mx-auto">
+                  {[1, 2, 3].map((step) => (
+                    <div key={step} className="flex flex-col items-center">
+                      <div
+                        className={`w-10 h-10 rounded-full flex items-center justify-center border-2 font-semibold ${
+                          step === currentStep
+                            ? "bg-moxinexa-teal text-white border-moxinexa-teal"
+                            : step < currentStep
+                            ? "bg-green-500 text-white border-green-500"
+                            : "bg-white text-gray-400 border-gray-300"
+                        }`}
+                      >
+                        {step < currentStep ? <CheckCircleIcon className="w-5 h-5" /> : step}
+                      </div>
+                      <span
+                        className={`text-xs mt-2 font-medium text-center ${
+                          step === currentStep ? "text-moxinexa-teal" : "text-gray-500"
+                        }`}
+                      >
+                        {step === 1 && "Pessoal"}
+                        {step === 2 && "Contactos"}
+                        {step === 3 && "Encarregado"}
+                        
+                      </span>
+                    </div>
+                  ))}
                 </div>
-                <div>
-                  <p className="font-medium text-emerald-800">Estudante adicionado com sucesso!</p>
-                  <p className="text-sm text-emerald-600">Os dados foram guardados no sistema.</p>
+                <div className="relative max-w-2xl mx-auto -mt-5">
+                  <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-200 -z-10">
+                    <div
+                      className="h-full bg-moxinexa-teal transition-all duration-300"
+                      style={{ width: `${((currentStep - 1) / 2) * 100}%` }}
+                    />
+                  </div>
                 </div>
               </div>
-            )}
 
-            <div className="bg-emerald-50 border-l-4 border-emerald-500 p-4 text-sm text-gray-700 mb-6 rounded">
-              <p className="font-medium">💡 Lembre-se</p>
-              <p>Crie a <strong>Turma</strong> e a <strong>Seção</strong> antes de cadastrar o estudante.</p>
-            </div>
-
-            <form onSubmit={submit} className="space-y-6">
-              <ProgressBar />
-
-              {/* Passo 1: Informações Pessoais */}
-              {currentStep === 1 && (
-                <div className="animate-fade-in">
-                  <h3 className="font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                    <span className="w-6 h-6 bg-emerald-100 text-emerald-600 rounded-full text-sm flex items-center justify-center">1</span>
-                    Informações Pessoais
-                  </h3>
-                  <div className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Alert de sucesso */}
+                {submitSuccess && (
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3 animate-fadeIn">
+                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                      <CheckCircleIcon className="w-5 h-5 text-green-600" />
+                    </div>
                     <div>
-                      <label className="block text-sm font-medium mb-2">Nome Completo*</label>
-                      <input
-                        value={nome}
-                        onChange={e => setNome(e.target.value)}
-                        type="text"
-                        placeholder="Manuel José"
-                        className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                        required
-                      />
+                      <p className="font-medium text-green-800">Estudante adicionado com sucesso!</p>
+                      <p className="text-sm text-green-600">Os dados foram guardados no sistema.</p>
+                      {/* Não exibir qualquer número de login ou senha temporária neste passo */}
+                      {createdAlunoId && (
+                        <div className="mt-3">
+                          <button
+                            type="button"
+                            onClick={() => router.push(`/secretaria/matriculas/nova?alunoId=${encodeURIComponent(createdAlunoId!)}`)}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 text-sm"
+                          >
+                            Matricular agora
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Lembrete */}
+                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg">
+                  <p className="text-sm text-blue-700 flex items-center gap-2">
+                    <InformationCircleIcon className="w-5 h-5" />
+                    <span>
+                      <strong>Fluxo:</strong> Cadastro rápido de dados pessoais agora, e <strong>Matrícula</strong> depois pelo botão "Matricular".
+                    </span>
+                  </p>
+                </div>
+
+                {/* Passo 1: Informações Pessoais */}
+                {currentStep === 1 && (
+                  <div className="space-y-6 animate-fadeIn">
+                    <div>
+                      <h2 className="text-xl font-semibold text-moxinexa-dark mb-2">
+                        Informações Pessoais
+                      </h2>
+                      <p className="text-moxinexa-gray text-sm">
+                        Dados fundamentais do estudante
+                      </p>
                     </div>
 
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Data de Nascimento*</label>
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-moxinexa-dark">
+                          Primeiro Nome *
+                        </label>
                         <input
-                          type="date"
-                          value={dataNascimento}
-                          onChange={e => setDataNascimento(e.target.value)}
-                          className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                          type="text"
+                          placeholder="Manuel"
+                          className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
+                          value={formData.firstName}
+                          onChange={(e) => handleInputChange('firstName', e.target.value)}
                           required
                         />
-                        {dataNascimento && (
-                          <p className="text-xs text-gray-500 mt-1">
-                            Idade: {(() => { 
-                              const d = new Date(dataNascimento)
-                              const t = new Date()
-                              let age = t.getFullYear() - d.getFullYear()
-                              const m = t.getMonth() - d.getMonth()
-                              if (m < 0 || (m === 0 && t.getDate() < d.getDate())) age--
-                              return isNaN(age) ? '-' : age
-                            })()} anos
-                          </p>
-                        )}
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Género*</label>
-                        <select 
-                          value={sexo}
-                          onChange={e => setSexo(e.target.value as any)}
-                          className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-moxinexa-dark">
+                          Sobrenome *
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="José"
+                          className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
+                          value={formData.lastName}
+                          onChange={(e) => handleInputChange('lastName', e.target.value)}
                           required
-                        >
-                          <option value="">Selecione...</option>
-                          <option value="M">Masculino</option>
-                          <option value="F">Feminino</option>
-                          <option value="O">Outro</option>
-                          <option value="N">Prefiro não informar</option>
-                        </select>
+                        />
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Nº do Bilhete de Identidade*</label>
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-moxinexa-dark">
+                          Data de Nascimento *
+                        </label>
+                        <input
+                          type="date"
+                          className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
+                          value={formData.birthDate}
+                          onChange={(e) => handleInputChange('birthDate', e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-moxinexa-dark">
+                          Género *
+                        </label>
+                        <div className="flex gap-6 mt-2">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input 
+                              type="radio" 
+                              name="gender" 
+                              value="M" 
+                              className="text-moxinexa-teal focus:ring-moxinexa-teal" 
+                              checked={formData.gender === 'M'}
+                              onChange={(e) => handleInputChange('gender', e.target.value)}
+                              required 
+                            />
+                            <span>Masculino</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input 
+                              type="radio" 
+                              name="gender" 
+                              value="F" 
+                              className="text-moxinexa-teal focus:ring-moxinexa-teal" 
+                              checked={formData.gender === 'F'}
+                              onChange={(e) => handleInputChange('gender', e.target.value)}
+                              required 
+                            />
+                            <span>Feminino</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-moxinexa-dark">
+                        Nº do Bilhete de Identidade *
+                      </label>
                       <input
-                        value={biNumero}
-                        onChange={e => setBiNumero(e.target.value)}
                         type="text"
                         placeholder="004568923LA049"
-                        className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
+                        value={formData.idNumber}
+                        onChange={(e) => handleInputChange('idNumber', e.target.value)}
                         required
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Foto</label>
-                      <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-8 cursor-pointer transition-all duration-200 hover:border-emerald-400 hover:bg-emerald-25">
-                        <svg className="w-8 h-8 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                        </svg>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-moxinexa-dark">
+                        Foto
+                      </label>
+                      <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-8 cursor-pointer transition-all duration-200 hover:border-moxinexa-teal hover:bg-blue-25">
+                        <AcademicCapIcon className="w-8 h-8 text-gray-400 mb-3" />
                         <p className="text-sm text-gray-600 text-center">
                           Clique para enviar ou arraste e solte
                           <br />
                           <span className="text-xs text-gray-500">PNG, JPG até 5MB</span>
                         </p>
-                        <p className="text-xs text-emerald-600 font-medium mt-2">{fileName}</p>
+                        <p className="text-xs text-moxinexa-teal font-medium mt-2">{fileName}</p>
                         <input
                           type="file"
                           accept="image/*"
@@ -333,293 +365,226 @@ export default function Page() {
                       </label>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Passo 2: Contactos e Encarregado */}
-              {currentStep === 2 && (
-                <div className="animate-fade-in">
-                  <h3 className="font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                    <span className="w-6 h-6 bg-emerald-100 text-emerald-600 rounded-full text-sm flex items-center justify-center">2</span>
-                    Contactos e Encarregado de Educação
-                  </h3>
-                  <div className="space-y-6">
+                {/* Passo 2: Contactos */}
+                {currentStep === 2 && (
+                  <div className="space-y-6 animate-fadeIn">
                     <div>
-                      <h4 className="text-sm font-medium text-gray-700 mb-3">Contactos do Estudante</h4>
-                      <div className="grid md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium mb-2">Email</label>
-                          <input
-                            type="email"
-                            value={email}
-                            onChange={e => setEmail(e.target.value)}
-                            placeholder="manuel.jose@escola.co.ao"
-                            className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-2">Telefone</label>
-                          <input
-                            type="tel"
-                            value={telefone}
-                            onChange={e => setTelefone(e.target.value)}
-                            placeholder="+244 923 456 789"
-                            className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                          />
-                        </div>
-                      </div>
-                      <div className="mt-4">
-                        <label className="block text-sm font-medium mb-2">Endereço</label>
-                        <input
-                          type="text"
-                          value={endereco}
-                          onChange={e => setEndereco(e.target.value)}
-                          placeholder="Rua da Independência, nº 45 - Cazenga, Luanda"
-                          className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                        />
-                      </div>
+                      <h2 className="text-xl font-semibold text-moxinexa-dark mb-2">
+                        Contactos
+                      </h2>
+                      <p className="text-moxinexa-gray text-sm">
+                        Informações de contacto do estudante
+                      </p>
                     </div>
 
-                    <div className="border-t pt-4">
-                      <h4 className="text-sm font-medium text-gray-700 mb-3">Encarregado de Educação</h4>
-                      <div className="grid md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium mb-2">Nome do Encarregado</label>
-                          <input
-                            type="text"
-                            value={responsavelNome}
-                            onChange={e => setResponsavelNome(e.target.value)}
-                            placeholder="António Manuel"
-                            className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium mb-2">Contacto do Encarregado</label>
-                          <input
-                            type="tel"
-                            value={responsavelContato}
-                            onChange={e => setResponsavelContato(e.target.value)}
-                            placeholder="+244 912 123 456"
-                            className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                          />
-                        </div>
-                      </div>
-                      <div className="mt-4">
-                        <label className="block text-sm font-medium mb-2">Email do Encarregado</label>
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-moxinexa-dark">
+                          Email *
+                        </label>
                         <input
                           type="email"
-                          value={responsavelEmail}
-                          onChange={e => setResponsavelEmail(e.target.value)}
-                          placeholder="encarregado@exemplo.co.ao"
-                          className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                          placeholder="manuel.jose@escola.co.ao"
+                          className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
+                          value={formData.email}
+                          onChange={(e) => handleInputChange('email', e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-moxinexa-dark">
+                          Telefone *
+                        </label>
+                        <input
+                          type="tel"
+                          placeholder="+244 923 456 789"
+                          className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
+                          value={formData.phone}
+                          onChange={(e) => handleInputChange('phone', e.target.value)}
+                          required
                         />
                       </div>
                     </div>
-                  </div>
-                </div>
-              )}
 
-              {/* Passo 3: Informações Académicas */}
-              {currentStep === 3 && (
-                <div className="animate-fade-in">
-                  <h3 className="font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                    <span className="w-6 h-6 bg-emerald-100 text-emerald-600 rounded-full text-sm flex items-center justify-center">3</span>
-                    Informações Académicas
-                  </h3>
-                  <div className="space-y-4">
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Atribuir à Turma</label>
-                        <select 
-                          value={turma}
-                          onChange={e => setTurma(e.target.value)}
-                          className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                        >
-                          <option value="">Selecione...</option>
-                          <option>10ª A</option>
-                          <option>11ª B</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-2">Atribuir à Seção</label>
-                        <select 
-                          value={secao}
-                          onChange={e => setSecao(e.target.value)}
-                          className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                        >
-                          <option value="">Selecione...</option>
-                          <option>Seção A</option>
-                          <option>Seção B</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Número de Matrícula</label>
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-moxinexa-dark">
+                        Endereço *
+                      </label>
                       <input
                         type="text"
-                        value={numeroMatricula}
-                        onChange={e => setNumeroMatricula(e.target.value)}
-                        placeholder="2025-000123"
-                        className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        placeholder="Rua da Independência, nº 45 - Cazenga, Luanda"
+                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
+                        value={formData.address}
+                        onChange={(e) => handleInputChange('address', e.target.value)}
+                        required
                       />
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Passo 4: Acesso */}
-              {currentStep === 4 && (
-                <div className="animate-fade-in">
-                  <h3 className="font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                    <span className="w-6 h-6 bg-emerald-100 text-emerald-600 rounded-full text-sm flex items-center justify-center">4</span>
-                    Acesso à Plataforma
-                  </h3>
-                  <div className="space-y-4">
-                    <label className="inline-flex items-center gap-2 text-sm">
-                      <input 
-                        type="checkbox" 
-                        className="h-4 w-4 text-emerald-600 focus:ring-emerald-500" 
-                        checked={criarAcesso} 
-                        onChange={(e) => setCriarAcesso(e.target.checked)} 
-                      />
-                      <span>Criar acesso para o aluno (enviar convite)</span>
-                    </label>
-                    
-                    {criarAcesso && (
-                      <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-                        <p className="text-sm text-blue-700">
-                          <strong>Informação:</strong> O aluno receberá um convite por email para definir a sua senha no primeiro acesso.
-                          {email && (
-                            <span className="block mt-1">
-                              Convite será enviado para: <strong>{email}</strong>
-                            </span>
-                          )}
-                        </p>
-                        {!email && (
-                          <p className="text-sm text-orange-700 mt-2">
-                            ⚠️ É necessário preencher o email do estudante no passo 2 para enviar o convite.
-                          </p>
-                        )}
+                {/* Passo 3: Encarregado */}
+                {currentStep === 3 && (
+                  <div className="space-y-6 animate-fadeIn">
+                    <div>
+                      <h2 className="text-xl font-semibold text-moxinexa-dark mb-2">
+                        Encarregado de Educação
+                      </h2>
+                      <p className="text-moxinexa-gray text-sm">
+                        Informações do responsável pelo estudante
+                      </p>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-moxinexa-dark">
+                          Nome do Encarregado *
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="António Manuel"
+                          className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
+                          value={formData.guardianName}
+                          onChange={(e) => handleInputChange('guardianName', e.target.value)}
+                          required
+                        />
                       </div>
-                    )}
-                  </div>
-                </div>
-              )}
 
-              {/* Mensagens de erro e sucesso */}
-              {err && (
-                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-sm text-red-600">{err}</p>
-                </div>
-              )}
-              
-              {ok && !submitSuccess && (
-                <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
-                  <div className="text-sm text-green-700">
-                    {ok}
-                    {numero && (
-                      <>
-                        <br />
-                        Número de login: <b>{numero}</b>
-                      </>
-                    )}
+                      <div className="space-y-2">
+                        <label className="block text-sm font-medium text-moxinexa-dark">
+                          Contacto do Encarregado *
+                        </label>
+                        <input
+                          type="tel"
+                          placeholder="+244 912 123 456"
+                          className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
+                          value={formData.guardianPhone}
+                          onChange={(e) => handleInputChange('guardianPhone', e.target.value)}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-moxinexa-dark">
+                        Email do Encarregado
+                      </label>
+                      <input
+                        type="email"
+                        placeholder="encarregado@exemplo.co.ao"
+                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
+                        value={formData.guardianEmail}
+                        onChange={(e) => handleInputChange('guardianEmail', e.target.value)}
+                      />
+                    </div>
                   </div>
-                  {numero && (
-                    <button 
-                      type="button" 
-                      className="ml-4 px-3 py-1 border border-green-300 rounded text-xs text-green-700 hover:bg-green-100"
-                      onClick={() => navigator.clipboard.writeText(numero!)}
+                )}
+
+                {/* Passos Acadêmicos e Acesso removidos deste fluxo (fazem parte da Matrícula) */}
+
+                {/* Navigation Buttons */}
+                <div className="flex justify-between pt-6 border-t border-gray-200">
+                  <Button
+                    type="button"
+                    onClick={prevStep}
+                    disabled={currentStep === 1 || isSubmitting}
+                    variant="outline"
+                    tone="gray"
+                  >
+                    Voltar
+                  </Button>
+
+                  {currentStep < 3 ? (
+                    <Button
+                      type="button"
+                      onClick={nextStep}
+                      disabled={!canProceedToNextStep() || isSubmitting}
+                      tone="teal"
                     >
-                      Copiar
-                    </button>
+                      Continuar
+                    </Button>
+                  ) : (
+                    <Button
+                      type="submit"
+                      disabled={isSubmitting || !canProceedToNextStep()}
+                      tone="green"
+                      size="lg"
+                      className="px-8"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Adicionando Estudante...
+                        </>
+                      ) : (
+                        <>
+                          <UserPlusIcon className="w-5 h-5" />
+                          Adicionar Estudante
+                        </>
+                      )}
+                    </Button>
                   )}
                 </div>
-              )}
+              </form>
+            </div>
 
-              {/* Navegação entre passos */}
-              <div className="flex justify-between pt-6 border-t">
-                <Button 
-                  type="button" 
-                  onClick={prevStep} 
-                  disabled={currentStep === 1} 
-                  variant="outline" 
-                  tone="gray" 
-                  size="sm"
-                >
-                  ← Anterior
-                </Button>
-
-                {currentStep < totalSteps ? (
-                  <Button 
-                    type="button" 
-                    onClick={nextStep} 
-                    tone="emerald" 
-                    size="sm" 
-                    className="gap-2"
-                  >
-                    Próximo
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </Button>
-                ) : (
-                  <Button 
-                    type="submit" 
-                    disabled={loading} 
-                    tone="emerald" 
-                    size="sm" 
-                    className="gap-2"
-                  >
-                    {loading ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        A processar...
-                      </>
-                    ) : (
-                      <>
-                        Adicionar Estudante
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </>
-                    )}
-                  </Button>
-                )}
-              </div>
-            </form>
+            {/* Quick Tips */}
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
+              <h3 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                <InformationCircleIcon className="w-5 h-5" />
+                Dicas Rápidas
+              </h3>
+              <ul className="text-blue-800 text-sm space-y-2">
+                <li>• Certifique-se que todas as informações estão correctas antes de submeter</li>
+                <li>• Dados pessoais e do encarregado são permanentes</li>
+                <li>• A matrícula é feita depois, com número gerado automaticamente</li>
+                <li>• O estudante receberá as credenciais de acesso por email após a matrícula</li>
+              </ul>
+            </div>
           </div>
         )}
 
         {activeTab === "list" && (
-          <div className="bg-white rounded-lg shadow p-6 transition-all duration-300">
-            <h2 className="text-lg font-semibold text-[#0B2C45] mb-4">
-              Lista de Estudantes
-            </h2>
+          <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-semibold text-moxinexa-dark">
+                  Lista de Estudantes
+                </h2>
+                <p className="text-moxinexa-gray text-sm">
+                  Todos os estudantes cadastrados no sistema
+                </p>
+              </div>
+              <Button tone="teal" size="sm">
+                <UserPlusIcon className="w-4 h-4" />
+                Exportar Lista
+              </Button>
+            </div>
+
             <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
+              <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-gray-100 text-[#0B2C45]">
-                    <th className="px-4 py-3 text-left font-semibold">Nº Documento</th>
+                  <tr className="bg-gray-50 text-moxinexa-dark">
+                    <th className="px-4 py-3 text-left font-semibold rounded-l-lg">Nº Documento</th>
                     <th className="px-4 py-3 text-left font-semibold">Nome</th>
                     <th className="px-4 py-3 text-left font-semibold">Email</th>
-                    <th className="px-4 py-3 text-left font-semibold">Telefone</th>
+                    <th className="px-4 py-3 text-left font-semibold rounded-r-lg">Telefone</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-gray-200">
                   <tr className="hover:bg-gray-50 transition-colors duration-150">
-                    <td className="px-4 py-3 border-t">004568923LA049</td>
-                    <td className="px-4 py-3 border-t">Manuel José</td>
-                    <td className="px-4 py-3 border-t">manuel.jose@escola.co.ao</td>
-                    <td className="px-4 py-3 border-t">+244 923 456 789</td>
+                    <td className="px-4 py-3">004568923LA049</td>
+                    <td className="px-4 py-3 font-medium">Manuel José</td>
+                    <td className="px-4 py-3">manuel.jose@escola.co.ao</td>
+                    <td className="px-4 py-3">+244 923 456 789</td>
                   </tr>
                   <tr className="hover:bg-gray-50 transition-colors duration-150">
-                    <td className="px-4 py-3 border-t">004568923LA050</td>
-                    <td className="px-4 py-3 border-t">Maria António</td>
-                    <td className="px-4 py-3 border-t">maria.antonio@escola.co.ao</td>
-                    <td className="px-4 py-3 border-t">+244 912 123 456</td>
+                    <td className="px-4 py-3">004568923LA050</td>
+                    <td className="px-4 py-3 font-medium">Maria António</td>
+                    <td className="px-4 py-3">maria.antonio@escola.co.ao</td>
+                    <td className="px-4 py-3">+244 912 123 456</td>
                   </tr>
                 </tbody>
               </table>
@@ -628,23 +593,23 @@ export default function Page() {
         )}
 
         {/* Footer */}
-        <div className="text-center text-gray-500 text-xs mt-10 border-t pt-4">
+        <div className="text-center text-gray-500 text-xs mt-10 pt-4 border-t border-gray-200">
           Moxi Nexa • Criamos sistemas que escalam • © 2025
         </div>
-
-        <style jsx global>{`
-          @keyframes fade-in {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          .animate-fade-in {
-            animation: fade-in 0.3s ease-out;
-          }
-          .hover\:bg-emerald-25:hover {
-            background-color: rgb(240 253 250);
-          }
-        `}</style>
       </div>
-    </>
-  )
+
+      <style jsx global>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out;
+        }
+        .hover\:bg-blue-25:hover {
+          background-color: rgb(240 249 255);
+        }
+      `}</style>
+    </div>
+  );
 }

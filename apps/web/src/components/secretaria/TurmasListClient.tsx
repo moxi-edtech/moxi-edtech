@@ -1,10 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import TurmaForm from "./TurmaForm";
+import DiretorForm from "./DiretorForm";
+import Link from "next/link";
 
 interface TurmaItem {
   id: string;
   nome: string;
+  classe: string | null;
   turno: string;
   ano_letivo: string | null;
   professor: { nome: string | null; email: string | null };
@@ -40,27 +44,39 @@ export default function TurmasListClient() {
   const [data, setData] = useState<TurmasResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showDiretorForm, setShowDiretorForm] = useState(false);
+  const [selectedTurma, setSelectedTurma] = useState<TurmaItem | null>(null);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const params = new URLSearchParams();
+      if (turno !== "todos") params.set("turno", turno);
+      const res = await fetch(`/api/secretaria/turmas?${params.toString()}`, { cache: 'no-store' });
+      const json = (await res.json()) as TurmasResponse;
+      if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao carregar turmas');
+      setData(json);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
-    (async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const params = new URLSearchParams();
-        if (turno !== "todos") params.set("turno", turno);
-        const res = await fetch(`/api/secretaria/turmas?${params.toString()}`, { cache: 'no-store' });
-        const json = (await res.json()) as TurmasResponse;
-        if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao carregar turmas');
-        if (mounted) setData(json);
-      } catch (e) {
-        if (mounted) setError(e instanceof Error ? e.message : String(e));
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
+    if (mounted) {
+      fetchData();
+    }
     return () => { mounted = false };
   }, [turno]);
+
+  const handleOpenDiretorForm = (turma: TurmaItem) => {
+    setSelectedTurma(turma);
+    setShowDiretorForm(true);
+  };
 
   const filtrosTurno = useMemo(() => {
     const porTurno = data?.stats?.porTurno ?? [];
@@ -80,13 +96,14 @@ export default function TurmasListClient() {
       if (!lowerBusca) return true;
       return (
         item.nome.toLowerCase().includes(lowerBusca) ||
+        (item.classe || '').toLowerCase().includes(lowerBusca) ||
         (item.professor?.nome || '').toLowerCase().includes(lowerBusca) ||
         (item.professor?.email || '').toLowerCase().includes(lowerBusca)
       );
     });
   }, [data?.items, turno, busca]);
 
-  if (loading) {
+  if (loading && !data) {
     return <div className="p-6">Carregando turmas…</div>;
   }
 
@@ -102,10 +119,48 @@ export default function TurmasListClient() {
           <p className="text-sm text-moxinexa-gray">Acompanhe distribuição, diretoria de turma e progresso acadêmico.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button className="rounded-full border border-emerald-500/60 px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50 transition">+ Nova turma</button>
+          <button 
+            onClick={() => setShowCreateForm(true)}
+            className="rounded-full border border-emerald-500/60 px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50 transition"
+          >
+            + Nova turma
+          </button>
           <button className="rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 transition">Importar lista</button>
         </div>
       </header>
+
+      {/* Aviso de responsabilidade */}
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
+        A criação e edição de turmas é responsabilidade da Secretaria. Administradores da escola definem curso → classe → ano letivo → turno → sala, mas não criam turmas aqui.
+      </div>
+
+      {showCreateForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            <h2 className="text-xl font-semibold">Nova Turma</h2>
+            <div className="mt-4">
+              <TurmaForm onSuccess={() => {
+                setShowCreateForm(false);
+                fetchData();
+              }} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDiretorForm && selectedTurma && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            <h2 className="text-xl font-semibold">Definir Diretor para {selectedTurma.nome}</h2>
+            <div className="mt-4">
+              <DiretorForm turmaId={selectedTurma.id} onSuccess={() => {
+                setShowDiretorForm(false);
+                fetchData();
+              }} />
+            </div>
+          </div>
+        </div>
+      )}
 
       <section className="grid gap-4 md:grid-cols-3">
         <HighlightCard title="Turmas ativas" value={data?.stats?.totalTurmas ?? 0} description="Estruturas prontas para alocação de estudantes." icon="🏫" />
@@ -156,7 +211,7 @@ export default function TurmasListClient() {
               type="search"
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
-              placeholder="Pesquisar turma, diretor ou e-mail"
+              placeholder="Pesquisar turma, classe, diretor ou e-mail"
               className="w-full rounded-full border border-slate-200 px-4 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 lg:w-72"
             />
           </div>
@@ -167,6 +222,7 @@ export default function TurmasListClient() {
             <thead className="text-left text-slate-500">
               <tr>
                 <th className="py-3 pr-4">Turma</th>
+                <th className="py-3 pr-4">Classe</th>
                 <th className="py-3 pr-4">Diretor</th>
                 <th className="py-3 pr-4">Turno</th>
                 <th className="py-3 pr-4">Alunos</th>
@@ -181,6 +237,7 @@ export default function TurmasListClient() {
                     <p className="font-semibold text-slate-800">{item.nome}</p>
                     <p className="text-xs text-slate-500">{item.ano_letivo ?? 'Ano letivo não informado'}</p>
                   </td>
+                  <td className="py-3 pr-4 text-sm text-slate-700">{item.classe ?? 'N/A'}</td>
                   <td className="py-3 pr-4 text-sm text-slate-700">
                     {item.professor?.nome ? (
                       <div>
@@ -213,15 +270,22 @@ export default function TurmasListClient() {
                   </td>
                   <td className="py-3 pr-4">
                     <div className="flex flex-col gap-2 text-xs">
-                      <button className="rounded-full border border-slate-200 px-3 py-1 text-slate-600 hover:border-emerald-500 hover:text-emerald-600 transition">Gerir alunos</button>
-                      <button className="rounded-full border border-slate-200 px-3 py-1 text-slate-600 hover:border-emerald-500 hover:text-emerald-600 transition">Definir diretor</button>
+                      <Link href={`/secretaria/matriculas?turma_id=${item.id}`} className="rounded-full border border-slate-200 px-3 py-1 text-slate-600 hover:border-emerald-500 hover:text-emerald-600 transition text-center">
+                        Gerir alunos
+                      </Link>
+                      <button 
+                        onClick={() => handleOpenDiretorForm(item)}
+                        className="rounded-full border border-slate-200 px-3 py-1 text-slate-600 hover:border-emerald-500 hover:text-emerald-600 transition"
+                      >
+                        Definir diretor
+                      </button>
                     </div>
                   </td>
                 </tr>
               ))}
               {itensFiltrados.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-sm text-slate-500">Nenhuma turma corresponde aos filtros atuais.</td>
+                  <td colSpan={7} className="py-8 text-center text-sm text-slate-500">Nenhuma turma corresponde aos filtros atuais.</td>
                 </tr>
               )}
             </tbody>

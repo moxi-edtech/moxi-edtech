@@ -44,9 +44,20 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
 
     const admin = createClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-    // Generate numero_login for aluno
+    // Prefer existing numero_login if profile already exists, otherwise generate
     let numeroLogin: string | null = null;
-    try { numeroLogin = await generateNumeroLogin(escolaId, 'aluno' as any, admin as any) } catch {}
+    try {
+      const { data: existing } = await admin
+        .from('profiles' as any)
+        .select('numero_login')
+        .eq('email', email)
+        .eq('escola_id', escolaId)
+        .limit(1);
+      numeroLogin = (existing?.[0] as any)?.numero_login ?? null;
+    } catch {}
+    if (!numeroLogin) {
+      try { numeroLogin = await generateNumeroLogin(escolaId, 'aluno' as any, admin as any) } catch {}
+    }
 
     // Existing user?
     const { data: prof } = await admin.from('profiles').select('user_id').eq('email', email).limit(1);

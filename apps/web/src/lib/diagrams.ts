@@ -5,9 +5,9 @@ export const fluxoAcademico = `flowchart TD
 %% =====================
 A1[Admin: Criar Ano Letivo (Session)] --> A2[Admin: Criar Semestres]
 A2 --> A3[Admin: Criar Períodos/Bimestres]
-A3 --> A4[Admin: Criar Turmas]
+A3 --> A4[Secretaria: Criar Turmas]
 A4 --> A5[Admin: Criar Cursos/Disciplinas]
-A5 --> A6[Admin: Criar Seções (A/B)]
+A5 --> A6[Secretaria: Criar Seções (A/B)]
 A6 --> A7[Admin: Definir Tipo de Frequência]
 A7 --> A8[Admin: Criar Grade de Avaliação]
 
@@ -56,13 +56,12 @@ export const configAcademicasAdmin = `flowchart TD
   C --> D[Criar Semestre/Bimestre]
   D --> E[Definir Tipo de Frequência]
   E --> F[Configurar Grade de Avaliação]
-  F --> G[Criar Turma/Classe]
+  F --> G[Criar Classe]
   G --> H[Criar Disciplina/Curso]
-  H --> I[Criar Seção/Subturma]
-  I --> J[Atribuir Professor]
+  H --> J[Atribuir Professor]
 
   J --> J1[Selecionar Professor]
-  J --> J2[Vincular à Turma]
+  J --> J2[Vincular à Classe]
   J --> J3[Vincular à Disciplina]
   J --> J4[Associar ao Semestre]
 

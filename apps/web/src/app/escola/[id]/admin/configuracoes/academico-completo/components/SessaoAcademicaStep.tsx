@@ -212,7 +212,7 @@ export default function SessaoAcademicaStep({
       <StepHeader
         icone={<Calendar className="w-8 h-8" />}
         titulo="Sessão Acadêmica"
-        descricao="Configure o ano letivo atual para organizar períodos, turmas e matrículas."
+        descricao="Configure o ano letivo atual para organizar períodos e matrículas."
       />
       
       <div className="grid lg:grid-cols-2 gap-8">

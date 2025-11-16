@@ -2,7 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type Item = { id: string; nome: string; email: string | null; created_at: string };
+type Item = {
+  id: string;
+  nome: string;
+  email: string | null;
+  created_at: string;
+  // Supabase may return one-to-one as object or array; type as any to be safe
+  profiles?: { numero_login?: string } | Array<{ numero_login?: string }>;
+};
 
 export default function AlunosListClient() {
   const [q, setQ] = useState("");
@@ -60,19 +67,32 @@ export default function AlunosListClient() {
           <table className="min-w-full text-sm">
             <thead>
               <tr className="text-left text-gray-500 border-b">
-                <th className="py-2 pr-4">ID</th>
+                <th className="py-2 pr-4">Matrícula</th>
                 <th className="py-2 pr-4">Nome</th>
                 <th className="py-2 pr-4">E-mail</th>
                 <th className="py-2 pr-4">Criado em</th>
+                <th className="py-2 pr-4">Ações</th>
               </tr>
             </thead>
             <tbody>
               {items.map((a) => (
                 <tr key={a.id} className="border-b last:border-b-0">
-                  <td className="py-2 pr-4">{a.id}</td>
+                  <td className="py-2 pr-4">{
+                    Array.isArray(a.profiles)
+                      ? (a.profiles?.[0]?.numero_login ?? '—')
+                      : (a.profiles as any)?.numero_login ?? '—'
+                  }</td>
                   <td className="py-2 pr-4">{a.nome}</td>
                   <td className="py-2 pr-4">{a.email ?? '—'}</td>
                   <td className="py-2 pr-4">{new Date(a.created_at).toLocaleString()}</td>
+                  <td className="py-2 pr-4">
+                    <a
+                      href={`/secretaria/matriculas/nova?alunoId=${encodeURIComponent(a.id)}`}
+                      className="inline-flex items-center px-2.5 py-1 border border-emerald-600 text-emerald-700 rounded hover:bg-emerald-50 text-xs"
+                    >
+                      Matricular
+                    </a>
+                  </td>
                 </tr>
               ))}
               {items.length === 0 && (
@@ -93,4 +113,3 @@ export default function AlunosListClient() {
     </div>
   );
 }
-

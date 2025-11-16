@@ -13,10 +13,20 @@ export async function GET(req: Request) {
 
     const { data: prof } = await supabase
       .from('profiles')
-      .select('escola_id')
+      .select('current_escola_id, escola_id')
       .order('created_at', { ascending: false })
       .limit(1);
-    const escolaId = (prof?.[0] as any)?.escola_id as string | undefined;
+    let escolaId = ((prof?.[0] as any)?.current_escola_id || (prof?.[0] as any)?.escola_id) as string | undefined;
+    if (!escolaId) {
+      try {
+        const { data: vinc } = await supabase
+          .from('escola_usuarios')
+          .select('escola_id')
+          .eq('user_id', user.id)
+          .limit(1);
+        escolaId = (vinc?.[0] as any)?.escola_id as string | undefined;
+      } catch {}
+    }
     if (!escolaId) {
       return NextResponse.json({
         ok: true,
@@ -31,34 +41,23 @@ export async function GET(req: Request) {
 
     const { data: turmas, error: turmasError } = await supabase
       .from('turmas')
-      .select('id, nome, turno, ano_letivo, professor_id, created_at')
+      .select('id, nome, turno, classe, ano_letivo, diretor_turma_id, created_at')
       .eq('escola_id', escolaId)
       .order('nome');
     if (turmasError) return NextResponse.json({ ok: false, error: turmasError.message }, { status: 400 });
 
     const turmaIds = (turmas || []).map((t) => t.id);
-    let professoresMap = new Map<string, { nome: string | null; email: string | null }>();
-    const professorIds = Array.from(new Set((turmas || []).map((t) => t.professor_id).filter((id): id is string => Boolean(id))));
-    if (professorIds.length) {
-      const { data: professores } = await supabase
-        .from('professores')
-        .select('id, profile_id')
-        .in('id', professorIds);
-      const profileIds = Array.from(new Set((professores || []).map((p) => p.profile_id).filter((id): id is string => Boolean(id))));
-      if (profileIds.length) {
-        const { data: perfis } = await supabase
-          .from('profiles')
-          .select('user_id, nome, email')
-          .in('user_id', profileIds);
-        const profilesMap = new Map<string, { nome: string | null; email: string | null }>();
-        for (const perfil of perfis || []) {
-          profilesMap.set(perfil.user_id, { nome: perfil.nome ?? null, email: perfil.email ?? null });
-        }
-        for (const profItem of professores || []) {
-          if (!profItem?.id) continue;
-          const perfil = profItem.profile_id ? profilesMap.get(profItem.profile_id) : undefined;
-          professoresMap.set(profItem.id, { nome: perfil?.nome ?? null, email: perfil?.email ?? null });
-        }
+    const diretorIds = Array.from(new Set((turmas || []).map((t) => t.diretor_turma_id).filter((id): id is string => Boolean(id))));
+
+    let diretoresMap = new Map<string, { nome: string | null; email: string | null }>();
+    if (diretorIds.length) {
+      const { data: diretores } = await supabase
+        .from('profiles')
+        .select('user_id, nome, email')
+        .in('user_id', diretorIds);
+
+      for (const diretor of diretores || []) {
+        diretoresMap.set(diretor.user_id, { nome: diretor.nome ?? null, email: diretor.email ?? null });
       }
     }
 
@@ -110,9 +109,10 @@ export async function GET(req: Request) {
         return {
           id: turma.id,
           nome: turma.nome,
+          classe: turma.classe,
           turno: turma.turno ?? 'Sem turno',
           ano_letivo: turma.ano_letivo,
-          professor: turma.professor_id ? professoresMap.get(turma.professor_id) ?? { nome: null, email: null } : { nome: null, email: null },
+          professor: turma.diretor_turma_id ? diretoresMap.get(turma.diretor_turma_id) ?? { nome: null, email: null } : { nome: null, email: null },
           status_counts: statusCounts,
           total_alunos: total,
           ultima_matricula: lastByTurma.get(turma.id) ?? turma.created_at ?? null,
@@ -137,6 +137,79 @@ export async function GET(req: Request) {
         porTurno,
       },
     });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const supabase = await supabaseServerTyped<any>();
+    const { data: userRes } = await supabase.auth.getUser();
+    const user = userRes?.user;
+    if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
+
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('current_escola_id, escola_id')
+      .order('created_at', { ascending: false })
+      .limit(1);
+    let escolaId = ((prof?.[0] as any)?.current_escola_id || (prof?.[0] as any)?.escola_id) as string | undefined;
+    if (!escolaId) {
+      try {
+        const { data: vinc } = await supabase
+          .from('escola_usuarios')
+          .select('escola_id')
+          .eq('user_id', user.id)
+          .limit(1);
+        escolaId = (vinc?.[0] as any)?.escola_id as string | undefined;
+      } catch {}
+    }
+    if (!escolaId) {
+      return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 });
+    }
+
+    const body = await req.json();
+    const {
+      nome,
+      classe_id,
+      curso_id,
+      turno,
+      session_id,
+      diretor_turma_id,
+      coordenador_pedagogico_id,
+      capacidade_maxima,
+      sala,
+    } = body;
+
+    if (!nome || !classe_id || !curso_id || !turno || !session_id) {
+      return NextResponse.json({ ok: false, error: 'Campos obrigatórios em falta' }, { status: 400 });
+    }
+
+    const { data: newTurma, error } = await supabase
+      .from('turmas')
+      .insert({
+        nome,
+        classe_id,
+        curso_id,
+        turno,
+        session_id,
+        diretor_turma_id: diretor_turma_id || null,
+        coordenador_pedagogico_id: coordenador_pedagogico_id || null,
+        capacidade_maxima,
+        sala,
+        escola_id: escolaId,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+    }
+
+    return NextResponse.json({ ok: true, data: newTurma });
+
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

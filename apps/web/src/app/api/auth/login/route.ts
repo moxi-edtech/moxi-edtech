@@ -208,18 +208,49 @@ export async function POST(req: NextRequest) {
       }
     );
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    let { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error || !data?.user) {
       const mapped = mapAuthError(error);
-      console.error("[login] signIn error:", { status: mapped.status, message: mapped.message, raw: String(error?.message || error) });
-      return new NextResponse(
-        JSON.stringify({ ok: false, error: mapped.message }),
-        { status: mapped.status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } }
-      );
+
+      // Em desenvolvimento, se o erro for de e-mail não confirmado,
+      // tente confirmar automaticamente e refazer o login.
+      const isDev = process.env.NODE_ENV !== "production";
+      const adminUrl = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
+      const serviceRole = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+      const canAdmin = Boolean(isDev && adminUrl && serviceRole);
+
+      if (canAdmin && (mapped.message?.toLowerCase?.() || "").includes("e-mail não confirmado")) {
+        try {
+          const admin = createAdminClient<Database>(adminUrl, serviceRole);
+          const { data: prof } = await admin
+            .from("profiles")
+            .select("user_id")
+            .eq("email", email)
+            .limit(1);
+          const uid = (prof?.[0] as any)?.user_id as string | undefined;
+          if (uid) {
+            try { await (admin as any).auth.admin.updateUserById(uid, { email_confirm: true } as any) } catch {}
+            // Retry sign in after confirming
+            const retry = await supabase.auth.signInWithPassword({ email, password });
+            data = retry.data as any;
+            error = retry.error as any;
+          }
+        } catch (e) {
+          // ignore and fall through to error response
+        }
+      }
+
+      if (error || !data?.user) {
+        console.error("[login] signIn error:", { status: mapped.status, message: mapped.message, raw: String(error?.message || error) });
+        return new NextResponse(
+          JSON.stringify({ ok: false, error: mapped.message }),
+          { status: mapped.status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } }
+        );
+      }
     }
 
     // Carregar dados de perfil básicos
@@ -242,6 +273,22 @@ export async function POST(req: NextRequest) {
     }
 
     // Monta resposta final reaproveitando Set-Cookie do cookieCarrier
+    // Copia apenas os headers de Set-Cookie do cookieCarrier
+    const headers = new Headers({
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+    })
+    try {
+      const cc: any = cookieCarrier.headers as any;
+      const iter = typeof cc?.entries === 'function' ? cc.entries() : [];
+      for (const pair of iter as Iterable<[string, string]>) {
+        const [key, value] = pair;
+        if (typeof key === 'string' && key.toLowerCase() === 'set-cookie') {
+          headers.append(key, value);
+        }
+      }
+    } catch {}
+
     return new NextResponse(
       JSON.stringify({
         ok: true,
@@ -255,14 +302,7 @@ export async function POST(req: NextRequest) {
           ),
         },
       }),
-      {
-        status: 200,
-        headers: new Headers({
-          "content-type": "application/json; charset=utf-8",
-          "cache-control": "no-store",
-          ...Object.fromEntries(cookieCarrier.headers),
-        }),
-      }
+      { status: 200, headers }
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
