@@ -30,9 +30,9 @@ function getSupabaseEnv() {
  * Use:
  *   const supabase = await supabaseServer();
  */
-export function supabaseServer() {
+export async function supabaseServer() {
   const { url, anonKey } = getSupabaseEnv();
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
 
   return createServerClient<Database>(url, anonKey, {
     cookies: {
@@ -53,9 +53,9 @@ export function supabaseServer() {
  * Example (como no /api/escolas/create):
  *   const supabase = await supabaseServerTyped<DBWithRPC>();
  */
-export function supabaseServerTyped<TDatabase = Database>() {
+export async function supabaseServerTyped<TDatabase = Database>() {
   const { url, anonKey } = getSupabaseEnv();
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
 
   return createServerClient<TDatabase>(url, anonKey, {
     cookies: {
