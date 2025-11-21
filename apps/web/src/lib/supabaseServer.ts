@@ -35,14 +35,7 @@ export async function supabaseServer() {
   const cookieStore = await cookies();
 
   return createServerClient<Database>(url, anonKey, {
-    cookies: {
-      get(name: string) {
-        return cookieStore.get(name)?.value;
-      },
-      // No-op: writing cookies here causaria "Cookies can only be modified..."
-      set(_name: string, _value: string, _options: CookieOptions) {},
-      remove(_name: string, _options: CookieOptions) {},
-    },
+    cookies: buildCookieAdapter(cookieStore),
   });
 }
 
@@ -58,12 +51,16 @@ export async function supabaseServerTyped<TDatabase = Database>() {
   const cookieStore = await cookies();
 
   return createServerClient<TDatabase>(url, anonKey, {
-    cookies: {
-      get(name: string) {
-        return cookieStore.get(name)?.value;
-      },
-      set(_name: string, _value: string, _options: CookieOptions) {},
-      remove(_name: string, _options: CookieOptions) {},
-    },
+    cookies: buildCookieAdapter(cookieStore),
   });
+}
+
+function buildCookieAdapter(cookieStore: Awaited<ReturnType<typeof cookies>>) {
+  return {
+    getAll() {
+      return cookieStore.getAll().map(({ name, value }) => ({ name, value }));
+    },
+    // No-op: writing cookies here causaria "Cookies can only be modified..."
+    setAll(_cookies: { name: string; value: string; options: CookieOptions }[]) {},
+  } satisfies Parameters<typeof createServerClient>[2]["cookies"];
 }
