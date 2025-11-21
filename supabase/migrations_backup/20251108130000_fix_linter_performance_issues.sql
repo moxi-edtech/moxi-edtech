@@ -80,6 +80,19 @@ DROP POLICY IF EXISTS diretor_admin_manage_own_school ON public.escola_usuarios;
 DROP POLICY IF EXISTS super_admin_full_access_escola_usuarios ON public.escola_usuarios;
 DROP POLICY IF EXISTS user_can_view_own_school_links ON public.escola_usuarios;
 
+DROP POLICY IF EXISTS unified_select_escola_usuarios ON public.escola_usuarios;
+
+-- Tabela: public.escola_usuarios
+-- Ação: Unificar políticas para SELECT, INSERT, UPDATE, DELETE
+
+-- SELECT
+DROP POLICY IF EXISTS admin_manage_own_school_users ON public.escola_usuarios;
+DROP POLICY IF EXISTS diretor_admin_manage_own_school ON public.escola_usuarios;
+DROP POLICY IF EXISTS super_admin_full_access_escola_usuarios ON public.escola_usuarios;
+DROP POLICY IF EXISTS user_can_view_own_school_links ON public.escola_usuarios;
+
+DROP POLICY IF EXISTS unified_select_escola_usuarios ON public.escola_usuarios;
+
 CREATE POLICY unified_select_escola_usuarios ON public.escola_usuarios
   FOR SELECT
   USING (
@@ -93,6 +106,8 @@ CREATE POLICY unified_select_escola_usuarios ON public.escola_usuarios
 DROP POLICY IF EXISTS admin_manage_own_school_users ON public.escola_usuarios;
 DROP POLICY IF EXISTS super_admin_full_access_escola_usuarios ON public.escola_usuarios;
 
+DROP POLICY IF EXISTS unified_insert_escola_usuarios ON public.escola_usuarios;
+
 CREATE POLICY unified_insert_escola_usuarios ON public.escola_usuarios
   FOR INSERT
   WITH CHECK (
@@ -103,6 +118,8 @@ CREATE POLICY unified_insert_escola_usuarios ON public.escola_usuarios
 -- UPDATE
 DROP POLICY IF EXISTS admin_manage_own_school_users ON public.escola_usuarios;
 DROP POLICY IF EXISTS super_admin_full_access_escola_usuarios ON public.escola_usuarios;
+
+DROP POLICY IF EXISTS unified_update_escola_usuarios ON public.escola_usuarios;
 
 CREATE POLICY unified_update_escola_usuarios ON public.escola_usuarios
   FOR UPDATE
@@ -119,13 +136,14 @@ CREATE POLICY unified_update_escola_usuarios ON public.escola_usuarios
 DROP POLICY IF EXISTS admin_manage_own_school_users ON public.escola_usuarios;
 DROP POLICY IF EXISTS super_admin_full_access_escola_usuarios ON public.escola_usuarios;
 
+DROP POLICY IF EXISTS unified_delete_escola_usuarios ON public.escola_usuarios;
+
 CREATE POLICY unified_delete_escola_usuarios ON public.escola_usuarios
   FOR DELETE
   USING (
     (check_super_admin_role()) OR
     (is_escola_admin(escola_id))
   );
-
 
 -- Tabela: public.profiles
 -- Ação: Unificar políticas para UPDATE
