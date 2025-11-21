@@ -2057,9 +2057,68 @@ export type Database = {
           },
         ]
       }
+      tabelas_mensalidade: {
+        Row: {
+          ativo: boolean
+          classe_id: string | null
+          created_at: string
+          curso_id: string | null
+          dia_vencimento: number | null
+          escola_id: string
+          id: string
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          ativo?: boolean
+          classe_id?: string | null
+          created_at?: string
+          curso_id?: string | null
+          dia_vencimento?: number | null
+          escola_id: string
+          id?: string
+          updated_at?: string
+          valor: number
+        }
+        Update: {
+          ativo?: boolean
+          classe_id?: string | null
+          created_at?: string
+          curso_id?: string | null
+          dia_vencimento?: number | null
+          escola_id?: string
+          id?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tabelas_mensalidade_classe_id_fkey"
+            columns: ["classe_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tabelas_mensalidade_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "cursos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tabelas_mensalidade_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       turmas: {
         Row: {
           ano_letivo: string | null
+          classe_id: string | null
           escola_id: string
           id: string
           nome: string
@@ -2069,6 +2128,7 @@ export type Database = {
         }
         Insert: {
           ano_letivo?: string | null
+          classe_id?: string | null
           escola_id: string
           id?: string
           nome: string
@@ -2078,6 +2138,7 @@ export type Database = {
         }
         Update: {
           ano_letivo?: string | null
+          classe_id?: string | null
           escola_id?: string
           id?: string
           nome?: string
@@ -2086,6 +2147,13 @@ export type Database = {
           turno?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "turmas_classe_id_fkey"
+            columns: ["classe_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "turmas_escola_id_fkey"
             columns: ["escola_id"]
