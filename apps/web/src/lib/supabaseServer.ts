@@ -30,19 +30,12 @@ function getSupabaseEnv() {
  * Use:
  *   const supabase = await supabaseServer();
  */
-export function supabaseServer() {
+export async function supabaseServer() {
   const { url, anonKey } = getSupabaseEnv();
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
 
   return createServerClient<Database>(url, anonKey, {
-    cookies: {
-      get(name: string) {
-        return cookieStore.get(name)?.value;
-      },
-      // No-op: writing cookies here causaria "Cookies can only be modified..."
-      set(_name: string, _value: string, _options: CookieOptions) {},
-      remove(_name: string, _options: CookieOptions) {},
-    },
+    cookies: buildCookieAdapter(cookieStore),
   });
 }
 
@@ -53,17 +46,21 @@ export function supabaseServer() {
  * Example (como no /api/escolas/create):
  *   const supabase = await supabaseServerTyped<DBWithRPC>();
  */
-export function supabaseServerTyped<TDatabase = Database>() {
+export async function supabaseServerTyped<TDatabase = Database>() {
   const { url, anonKey } = getSupabaseEnv();
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
 
   return createServerClient<TDatabase>(url, anonKey, {
-    cookies: {
-      get(name: string) {
-        return cookieStore.get(name)?.value;
-      },
-      set(_name: string, _value: string, _options: CookieOptions) {},
-      remove(_name: string, _options: CookieOptions) {},
-    },
+    cookies: buildCookieAdapter(cookieStore),
   });
+}
+
+function buildCookieAdapter(cookieStore: Awaited<ReturnType<typeof cookies>>) {
+  return {
+    getAll() {
+      return cookieStore.getAll().map(({ name, value }) => ({ name, value }));
+    },
+    // No-op: writing cookies here causaria "Cookies can only be modified..."
+    setAll(_cookies: { name: string; value: string; options: CookieOptions }[]) {},
+  } satisfies Parameters<typeof createServerClient>[2]["cookies"];
 }

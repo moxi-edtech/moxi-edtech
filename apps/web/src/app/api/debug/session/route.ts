@@ -9,7 +9,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const verbose = url.searchParams.get("verbose") === "1";
 
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
