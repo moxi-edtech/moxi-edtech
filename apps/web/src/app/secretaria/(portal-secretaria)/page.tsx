@@ -36,7 +36,7 @@ export default async function Page() {
   // Papel & permissions for UI gating
   const papel = await getPapelForEscola(escolaId)
   const canCriarMatricula = hasPermission(papel as any, 'criar_matricula')
-  const canGerenciarProfessores = hasPermission(papel as any, 'gerenciar_professores')
+  const canGerenciarProfessores = hasPermission(papel as any, 'criar_usuario')
 
   return (
     <>
@@ -59,7 +59,7 @@ export default async function Page() {
             {canGerenciarProfessores ? (
               <Link href="/secretaria/professores/novo" className="px-3 py-1.5 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded">Novo professor</Link>
             ) : (
-              <span className="px-3 py-1.5 text-xs bg-gray-50 text-gray-400 border rounded cursor-not-allowed" title="Sem permissão (requer: gerenciar_professores)">Novo professor</span>
+              <span className="px-3 py-1.5 text-xs bg-gray-50 text-gray-400 border rounded cursor-not-allowed" title="Sem permissão (requer: criar_usuario)">Novo professor</span>
             )}
             <Link href="/secretaria/turmas" className="px-3 py-1.5 text-xs bg-gray-100 border rounded">Ver turmas</Link>
             <Link href="/secretaria/relatorios" className="px-3 py-1.5 text-xs bg-gray-100 border rounded">Relatórios</Link>

@@ -6,7 +6,16 @@ import StatusForm from "./StatusForm";
 import TransferForm from "./TransferForm";
 import Link from "next/link";
 
-type Item = { id: string; aluno_id: string; turma_id: string; status: string; created_at: string };
+type Item = {
+  id: string;
+  numero_matricula?: string | null;
+  aluno_id: string;
+  turma_id: string;
+  aluno_nome?: string | null;
+  turma_nome?: string | null;
+  status: string;
+  created_at: string;
+};
 
 export default function MatriculasListClient() {
   const searchParams = useSearchParams();
@@ -133,9 +142,9 @@ export default function MatriculasListClient() {
             <tbody>
               {items.map((m) => (
                 <tr key={m.id} className="border-b last:border-b-0">
-                  <td className="py-2 pr-4">{m.id}</td>
-                  <td className="py-2 pr-4">{m.aluno_id}</td>
-                  <td className="py-2 pr-4">{m.turma_id}</td>
+                  <td className="py-2 pr-4">{m.numero_matricula || m.id}</td>
+                  <td className="py-2 pr-4">{m.aluno_nome || m.aluno_id}</td>
+                  <td className="py-2 pr-4">{m.turma_nome || m.turma_id}</td>
                   <td className="py-2 pr-4">{m.status}</td>
                   <td className="py-2 pr-4">{new Date(m.created_at).toLocaleString()}</td>
                   <td className="py-2 pr-4 space-x-2">

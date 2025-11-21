@@ -44,9 +44,10 @@ export async function GET(req: Request) {
       const dt = new Date(); dt.setDate(dt.getDate() - d); return dt.toISOString();
     })();
 
+    // Busca matrículas incluindo dados úteis para exibição: número, aluno.nome e turma.nome
     let query = supabase
       .from('matriculas')
-      .select('id, aluno_id, turma_id, status, created_at', { count: 'exact' })
+      .select('id, numero_matricula, aluno_id, turma_id, status, created_at, alunos ( nome ), turmas ( nome )', { count: 'exact' })
       .eq('escola_id', escolaId)
       .gte('created_at', since)
       .order('created_at', { ascending: false });
@@ -67,7 +68,19 @@ export async function GET(req: Request) {
     const { data, error, count } = await query.range(offset, offset + pageSize - 1);
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
 
-    return NextResponse.json({ ok: true, items: data || [], total: count ?? 0, page, pageSize });
+    // Normaliza/achata os dados para o cliente
+    const items = (data || []).map((row: any) => ({
+      id: row.id,
+      numero_matricula: row.numero_matricula ?? null,
+      aluno_id: row.aluno_id,
+      turma_id: row.turma_id,
+      aluno_nome: row.alunos?.nome ?? null,
+      turma_nome: row.turmas?.nome ?? null,
+      status: row.status,
+      created_at: row.created_at,
+    }));
+
+    return NextResponse.json({ ok: true, items, total: count ?? 0, page, pageSize });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

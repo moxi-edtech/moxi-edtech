@@ -66,7 +66,7 @@ Open http://localhost:3000 and try the login flow.
 
 ### Notes
 
-- In server files, `await cookies()` before passing to `createServerClient`.
+- In server files, call `cookies()` before passing to `createServerClient`.
 - Implement `cookies.get/set/remove` with correct signatures for `@supabase/ssr`.
 - Do not call `auth.admin` from the browser; use server routes.
 

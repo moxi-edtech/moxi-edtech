@@ -15,6 +15,9 @@ type Usuario = {
   escola_nome: string | null;
   papel_escola: string | null;
   escola_id: string | null;
+  // 👇 campos opcionais para suportar soft delete / arquivamento
+  ativo?: boolean | null;
+  status?: string | null;
 };
 
 type Escola = {
@@ -44,23 +47,46 @@ function ListaUsuarios() {
       try {
         setLoading(true);
         setError(null);
-        
+
         const [usersRes, escolasRes] = await Promise.all([
-          fetch('/api/super-admin/users/list', { cache: 'no-store' }),
-          // Usa a nova rota simplificada que retorna { escolas }
-          fetch('/api/super-admin/escolas', { cache: 'no-store' })
+          fetch("/api/super-admin/users/list", { cache: "no-store" }),
+          fetch("/api/super-admin/escolas/list", { cache: "no-store" }),
         ]);
 
-        if (!usersRes.ok) throw new Error('Falha ao carregar usuários');
-        if (!escolasRes.ok) throw new Error('Falha ao carregar escolas');
+        if (!usersRes.ok) throw new Error("Falha ao carregar usuários");
+        if (!escolasRes.ok) throw new Error("Falha ao carregar escolas");
 
         const usersJson = await usersRes.json();
         const escolasJson = await escolasRes.json();
 
-        setUsuarios(usersJson.items as Usuario[]);
-        // Resposta do endpoint /api/super-admin/escolas é { escolas }
-        const escolasArr = (escolasJson.escolas || []) as Array<{ id: string; nome: string | null }>
-        setEscolas(escolasArr.map(e => ({ id: String(e.id), nome: e.nome ?? '' })) as Escola[]);
+        const allUsers = (usersJson.items || []) as Usuario[];
+
+        // 1) remove alunos
+        // 2) remove usuários inativos/arquivados/excluídos (soft delete)
+        const filteredUsers = allUsers
+          .filter((u) => u.papel_escola !== "aluno")
+          .filter((u) => {
+            // Se tiver campo ativo, só mostra se não for false
+            if (u.ativo === false) return false;
+            // Se tiver status, esconde arquivados/excluídos
+            if (u.status === "arquivado" || u.status === "excluido") return false;
+            return true;
+          });
+
+        setUsuarios(filteredUsers);
+
+        const escolasArr =
+          (escolasJson.items || []) as Array<{ id: string; nome: string | null }>;
+
+        setEscolas(
+          escolasArr.map(
+            (e) =>
+              ({
+                id: String(e.id),
+                nome: e.nome ?? "",
+              }) as Escola
+          )
+        );
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         setError(msg);
@@ -92,10 +118,10 @@ function ListaUsuarios() {
       setSaving(usuarioId);
       setError(null);
 
-      const res = await fetch('/api/super-admin/users/update', {
-        method: 'POST',
+      const res = await fetch("/api/super-admin/users/update", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           userId: usuarioId,
@@ -106,13 +132,12 @@ function ListaUsuarios() {
       const result = await res.json();
 
       if (!res.ok || !result.ok) {
-        throw new Error(result.error || 'Falha ao atualizar usuário');
+        throw new Error(result.error || "Falha ao atualizar usuário");
       }
 
-      // Atualiza a lista local
-      setUsuarios(prev => prev.map(u => 
-        u.id === usuarioId ? { ...u, ...editForm } : u
-      ));
+      setUsuarios((prev) =>
+        prev.map((u) => (u.id === usuarioId ? { ...u, ...editForm } : u))
+      );
 
       setEditingId(null);
       setEditForm({});
@@ -131,7 +156,11 @@ function ListaUsuarios() {
   };
 
   const handleDelete = async (usuarioId: string, usuarioEmail: string) => {
-    if (!confirm(`Tem certeza que deseja excluir o usuário ${usuarioEmail}? Esta ação não pode ser desfeita.`)) {
+    if (
+      !confirm(
+        `Tem certeza que deseja excluir/arquivar o usuário ${usuarioEmail}? Ele perderá acesso, mas o histórico poderá ser mantido.`
+      )
+    ) {
       return;
     }
 
@@ -139,10 +168,10 @@ function ListaUsuarios() {
       setSaving(usuarioId);
       setError(null);
 
-      const res = await fetch('/api/super-admin/users/delete', {
-        method: 'POST',
+      const res = await fetch("/api/super-admin/users/delete", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ userId: usuarioId }),
       });
@@ -150,11 +179,19 @@ function ListaUsuarios() {
       const result = await res.json();
 
       if (!res.ok || !result.ok) {
-        throw new Error(result.error || 'Falha ao excluir usuário');
+        throw new Error(result.error || "Falha ao excluir usuário");
       }
 
-      // Remove da lista local
-      setUsuarios(prev => prev.filter(u => u.id !== usuarioId));
+      // Some imediatamente da lista atual (estado local)
+      setUsuarios((prev) => prev.filter((u) => u.id !== usuarioId));
+
+      // Se o Auth não foi excluído de fato, mas foi marcado como deleted, loga um aviso
+      if (result.authDeleted === false) {
+        console.warn(
+          "[Super Admin] Usuário removido da aplicação, mas houve alerta no Auth:",
+          result.authMessage
+        );
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setError(msg);
@@ -164,9 +201,9 @@ function ListaUsuarios() {
   };
 
   const handleInputChange = (field: keyof Usuario, value: string) => {
-    setEditForm(prev => ({
+    setEditForm((prev) => ({
       ...prev,
-      [field]: value === "" ? null : value
+      [field]: value === "" ? null : value,
     }));
   };
 
@@ -192,7 +229,7 @@ function ListaUsuarios() {
         <table className="w-full text-sm">
           <thead className="bg-slate-50">
             <tr>
-              <th className="py-3 px-4 text-left">ID</th>
+              <th className="py-3 px-4 text-left w-12">#</th>
               <th className="py-3 px-4 text-left">Número Login</th>
               <th className="py-3 px-4 text-left">Nome</th>
               <th className="py-3 px-4 text-left">Email</th>
@@ -223,19 +260,22 @@ function ListaUsuarios() {
                 </td>
               </tr>
             ) : (
-              usuarios.map((u) => (
+              usuarios.map((u, index) => (
                 <tr key={u.id} className="hover:bg-slate-50">
-                  <td className="py-3 px-4 font-mono text-xs text-gray-600">
-                    {u.id}
+                  {/* Número Sequencial */}
+                  <td className="py-3 px-4 text-center font-medium text-gray-600">
+                    {index + 1}
                   </td>
-                  
+
                   {/* Número Login */}
                   <td className="py-3 px-4">
                     {editingId === u.id ? (
                       <input
                         type="text"
                         value={editForm.numero_login || ""}
-                        onChange={(e) => handleInputChange('numero_login', e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange("numero_login", e.target.value)
+                        }
                         className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
                         placeholder="Número de login"
                       />
@@ -252,7 +292,9 @@ function ListaUsuarios() {
                       <input
                         type="text"
                         value={editForm.nome || ""}
-                        onChange={(e) => handleInputChange('nome', e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange("nome", e.target.value)
+                        }
                         className="w-full px-2 py-1 border border-gray-300 rounded"
                         placeholder="Nome completo"
                       />
@@ -267,7 +309,9 @@ function ListaUsuarios() {
                       <input
                         type="email"
                         value={editForm.email || ""}
-                        onChange={(e) => handleInputChange('email', e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange("email", e.target.value)
+                        }
                         className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
                         placeholder="Email"
                       />
@@ -282,7 +326,9 @@ function ListaUsuarios() {
                       <input
                         type="tel"
                         value={editForm.telefone || ""}
-                        onChange={(e) => handleInputChange('telefone', e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange("telefone", e.target.value)
+                        }
                         className="w-full px-2 py-1 border border-gray-300 rounded"
                         placeholder="Telefone"
                       />
@@ -296,7 +342,9 @@ function ListaUsuarios() {
                     {editingId === u.id ? (
                       <select
                         value={editForm.role || ""}
-                        onChange={(e) => handleInputChange('role', e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange("role", e.target.value)
+                        }
                         className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
                       >
                         <option value="user">User</option>
@@ -313,11 +361,13 @@ function ListaUsuarios() {
                     {editingId === u.id ? (
                       <select
                         value={editForm.escola_id || ""}
-                        onChange={(e) => handleInputChange('escola_id', e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange("escola_id", e.target.value)
+                        }
                         className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
                       >
                         <option value="">— Sem escola —</option>
-                        {escolas.map(escola => (
+                        {escolas.map((escola) => (
                           <option key={escola.id} value={escola.id}>
                             {escola.nome}
                           </option>
@@ -333,18 +383,18 @@ function ListaUsuarios() {
                     {editingId === u.id ? (
                       <select
                         value={editForm.papel_escola || ""}
-                        onChange={(e) => handleInputChange('papel_escola', e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange("papel_escola", e.target.value)
+                        }
                         className="w-full px-2 py-1 border border-gray-300 rounded text-xs"
                       >
                         <option value="">— Sem função —</option>
-                        {/* Values must match DB check constraint for public.escola_usuarios.papel */}
-                        <option value="admin_escola">Diretor</option>
-                        <option value="admin">Administrador</option>
-                        <option value="staff_admin">Staff Admin</option>
+                        <option value="admin_escola">Diretor(a)</option>
+                        <option value="admin">Administrador(a)</option>
+                        <option value="staff_admin">Coordenador(a)</option>
                         <option value="financeiro">Financeiro</option>
-                        <option value="secretaria">Secretário</option>
-                        <option value="professor">Professor</option>
-                        <option value="aluno">Aluno</option>
+                        <option value="secretaria">Secretário(a)</option>
+                        <option value="professor">Professor(a)</option>
                       </select>
                     ) : (
                       u.papel_escola ?? "—"
@@ -355,18 +405,43 @@ function ListaUsuarios() {
                   <td className="py-3 px-4">
                     {editingId === u.id ? (
                       <div className="flex gap-2">
-                        <Button onClick={() => handleSave(u.id)} disabled={saving === u.id} tone="green" size="sm" className="px-3">
-                          {saving === u.id ? 'Salvando...' : 'Salvar'}
+                        <Button
+                          onClick={() => handleSave(u.id)}
+                          disabled={saving === u.id}
+                          tone="green"
+                          size="sm"
+                          className="px-3"
+                        >
+                          {saving === u.id ? "Salvando..." : "Salvar"}
                         </Button>
-                        <Button onClick={handleCancel} disabled={saving === u.id} tone="gray" size="sm" className="px-3">
+                        <Button
+                          onClick={handleCancel}
+                          disabled={saving === u.id}
+                          tone="gray"
+                          size="sm"
+                          className="px-3"
+                        >
                           Cancelar
                         </Button>
                       </div>
                     ) : (
                       <div className="flex gap-2">
-                        <Button onClick={() => handleEdit(u)} tone="blue" size="sm" className="px-3">Editar</Button>
-                        <Button onClick={() => handleDelete(u.id, u.email)} disabled={saving === u.id} tone="red" size="sm" className="px-3">
-                          {saving === u.id ? 'Excluindo...' : 'Excluir'}
+                        <Button
+                          onClick={() => handleEdit(u)}
+                          tone="blue"
+                          size="sm"
+                          className="px-3"
+                        >
+                          Editar
+                        </Button>
+                        <Button
+                          onClick={() => handleDelete(u.id, u.email)}
+                          disabled={saving === u.id}
+                          tone="red"
+                          size="sm"
+                          className="px-3"
+                        >
+                          {saving === u.id ? "Excluindo..." : "Excluir"}
                         </Button>
                       </div>
                     )}

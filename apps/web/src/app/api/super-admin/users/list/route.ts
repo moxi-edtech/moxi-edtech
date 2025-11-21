@@ -45,6 +45,7 @@ export async function GET() {
       const { data, error: pErr } = await admin
         .from('profiles' as any)
         .select('user_id, nome, email, telefone, role, numero_login')
+        .is('deleted_at', null)
         .order('nome', { ascending: true })
         .limit(5000)
       if (pErr) {
@@ -56,6 +57,7 @@ export async function GET() {
           const { data: data2, error: pErr2 } = await admin
             .from('profiles' as any)
             .select('user_id, nome, email, telefone, role')
+            .is('deleted_at', null)
             .order('nome', { ascending: true })
             .limit(5000)
           if (pErr2) {

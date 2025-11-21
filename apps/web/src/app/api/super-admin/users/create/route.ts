@@ -171,7 +171,7 @@ export async function POST(request: Request) {
     // 4) Generate and persist numero_login for this user within the school context
     let numeroLogin: string | null = null;
     try {
-      numeroLogin = await generateNumeroLogin(escolaId, roleEnum, admin);
+      numeroLogin = await generateNumeroLogin(escolaId, roleEnum, { client: admin });
       // Persist numero_login and ensure escola_id is set on profile
       await admin
         .from('profiles' as any)
