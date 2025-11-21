@@ -58,6 +58,11 @@ export default function NovaMatriculaPage() {
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [alunoSelecionado, setAlunoSelecionado] = useState<Aluno | null>(null);
 
+  // Financeiro: campos de mensalidade
+  const [valorMensalidade, setValorMensalidade] = useState<string>("");
+  const [diaVencimento, setDiaVencimento] = useState<string>("");
+  const [gerarMensalidadesTodas, setGerarMensalidadesTodas] = useState<boolean>(true);
+
   // ✅ NOVO: Estados de carregamento para debug
   const [carregandoAlunos, setCarregandoAlunos] = useState(true);
   const [carregandoSessions, setCarregandoSessions] = useState(true);
@@ -219,6 +224,25 @@ export default function NovaMatriculaPage() {
     fetchTurmas();
   }, [sessionId, alunoId]);
 
+  // Auto-preencher valor/dia conforme curso/classe selecionados, se ainda não preenchidos
+  useEffect(() => {
+    const run = async () => {
+      try {
+        if (!classeId && !cursoId) return;
+        const params = new URLSearchParams();
+        if (classeId) params.set('classe_id', classeId);
+        if (cursoId) params.set('curso_id', cursoId);
+        const res = await fetch(`/api/financeiro/tabelas-mensalidade/resolve?${params.toString()}`, { cache: 'no-store' });
+        const json = await res.json();
+        if (json?.ok) {
+          if (!valorMensalidade && typeof json.valor === 'number') setValorMensalidade(String(json.valor));
+          if (!diaVencimento && json.dia_vencimento) setDiaVencimento(String(json.dia_vencimento));
+        }
+      } catch {}
+    };
+    run();
+  }, [classeId, cursoId]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -254,6 +278,10 @@ export default function NovaMatriculaPage() {
         curso_id: cursoId,
         numero_matricula: null,
         data_matricula: null,
+        // financeiro (opcional)
+        valor_mensalidade: valorMensalidade ? Number(valorMensalidade) : undefined,
+        dia_vencimento: diaVencimento ? Number(diaVencimento) : undefined,
+        gerar_mensalidades_todas: gerarMensalidadesTodas,
       };
 
       console.log("📤 Enviando payload:", payload);
@@ -556,6 +584,56 @@ export default function NovaMatriculaPage() {
                   Ambos os campos serão gerados automaticamente pelo sistema ao confirmar a matrícula.
                 </p>
               </div>
+            </div>
+
+            {/* Financeiro */}
+            <div className="border-b pb-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Mensalidade (opcional)</h2>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Valor da mensalidade (KZ)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={valorMensalidade}
+                    onChange={(e) => setValorMensalidade(e.target.value)}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+                    placeholder="ex.: 15000.00"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Se informado, criaremos a primeira mensalidade.</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Dia de vencimento</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="31"
+                    value={diaVencimento}
+                    onChange={(e) => setDiaVencimento(e.target.value)}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+                    placeholder="ex.: 5"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Aceita 1–31. O sistema ajusta automaticamente para o último dia do mês.</p>
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-center gap-2">
+                <input
+                  id="gerar-todas"
+                  type="checkbox"
+                  checked={gerarMensalidadesTodas}
+                  onChange={(e) => setGerarMensalidadesTodas(e.target.checked)}
+                  className="h-4 w-4 text-emerald-600 border-gray-300 rounded"
+                />
+                <label htmlFor="gerar-todas" className="text-sm text-gray-700">
+                  Gerar mensalidades para todo o ano letivo
+                </label>
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Se desmarcado, criaremos apenas a mensalidade do mês da matrícula. Caso a matrícula ocorra após o dia de vencimento, aplicamos pró-rata no primeiro mês.
+              </p>
             </div>
 
             {error && (
