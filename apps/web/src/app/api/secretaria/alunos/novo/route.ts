@@ -109,7 +109,7 @@ export async function POST(req: Request) {
     }
 
     // 3) Inserir aluno
-    const insert: any = { escola_id: escolaId, profile_id: newUserId, nome: body.nome, email: body.email }
+    const insert: Database['public']['Tables']['alunos']['Insert'] = { profile_id: newUserId, nome: body.nome, escola_id: escolaId }
     for (const k of ['data_nascimento','sexo','bi_numero','naturalidade','provincia','responsavel_nome','responsavel_contato','encarregado_relacao'] as const) {
       if (body[k] != null) insert[k] = body[k] as any
     }
