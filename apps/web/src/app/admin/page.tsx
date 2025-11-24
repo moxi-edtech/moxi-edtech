@@ -1,4 +1,5 @@
 // Dashboard do Admin — versão finalizada (Next.js + Supabase + boas práticas)
+import React from "react";
 
 import {
   BanknotesIcon,

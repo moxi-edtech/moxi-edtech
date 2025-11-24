@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { clearSupabaseCookies, clearAllAuthData, getCookiesForDebug } from '@/utils/cookieUtils';
 import Button from '@/components/ui/Button';
