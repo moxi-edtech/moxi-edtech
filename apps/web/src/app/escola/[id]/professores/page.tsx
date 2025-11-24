@@ -27,7 +27,14 @@ export default function ProfessoresPage() {
   const [loading, setLoading] = useState(true)
   const [professores, setProfessores] = useState<Professor[]>([])
   const [turmas, setTurmas] = useState<{ id: string; nome: string }[]>([])
+  // cursos aqui representam as Disciplinas (mantendo nomenclatura da página)
   const [cursos, setCursos] = useState<{ id: string; nome: string }[]>([])
+  // Estado para formulário de atribuição
+  const [atribTurmaId, setAtribTurmaId] = useState<string>("")
+  const [atribProfessorUserId, setAtribProfessorUserId] = useState<string>("")
+  const [atribDisciplinaId, setAtribDisciplinaId] = useState<string>("")
+  const [atribuindo, setAtribuindo] = useState(false)
+  const [turmaAssignments, setTurmaAssignments] = useState<any[] | null>(null)
 
   const ativos = professores.filter((p) => !!p.last_login).length
   const pendentes = Math.max(0, professores.length - ativos)
@@ -71,7 +78,7 @@ export default function ProfessoresPage() {
           }
         } catch {}
 
-        // Cursos agora via API com service role (evita RLS vazio)
+        // Disciplinas (apelidadas de Cursos na UI) agora via API com service role (evita RLS vazio)
         let cursosLista: { id: string; nome: string }[] = []
         try {
           const res = await fetch(`/api/escolas/${escolaId}/cursos`, { cache: 'no-store' })
@@ -105,6 +112,42 @@ export default function ProfessoresPage() {
   const showToast = (message: string, type: "success" | "error") => {
     setToast({ type, message })
     setTimeout(() => setToast(null), 3000)
+  }
+
+  // Carrega atribuições da turma selecionada (Professor–Turma–Disciplina)
+  const loadTurmaAssignments = async (turmaId: string) => {
+    if (!turmaId) { setTurmaAssignments(null); return }
+    try {
+      const res = await fetch(`/api/secretaria/turmas/${turmaId}/disciplinas`, { cache: 'no-store' })
+      const json = await res.json().catch(() => null)
+      if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao carregar atribuições')
+      setTurmaAssignments(json.items || [])
+    } catch (e) {
+      setTurmaAssignments([])
+    }
+  }
+
+  const handleSubmitAtribuir = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!atribTurmaId || !atribProfessorUserId || !atribDisciplinaId) {
+      return showToast('Selecione professor, turma e disciplina', 'error')
+    }
+    setAtribuindo(true)
+    try {
+      const res = await fetch(`/api/secretaria/turmas/${atribTurmaId}/atribuir-professor`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ disciplina_id: atribDisciplinaId, professor_user_id: atribProfessorUserId }),
+      })
+      const json = await res.json().catch(() => null)
+      if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao atribuir')
+      showToast('Atribuição salva', 'success')
+      await loadTurmaAssignments(atribTurmaId)
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Erro ao atribuir', 'error')
+    } finally {
+      setAtribuindo(false)
+    }
   }
 
   const handleInviteProfessor = async (form: FormData) => {
@@ -290,14 +333,8 @@ export default function ProfessoresPage() {
             <ClipboardDocumentListIcon className="w-6 h-6 text-[#0D9488] mr-2" />
             <h2 className="text-lg font-semibold text-[#0B2C45]">Atribuir Professor</h2>
           </div>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              showToast("Em breve: salvar atribuição", "success")
-            }}
-            className="space-y-4"
-          >
-            <select className="w-full border border-gray-200 rounded-md p-2" required>
+          <form onSubmit={handleSubmitAtribuir} className="space-y-4">
+            <select className="w-full border border-gray-200 rounded-md p-2" required value={atribProfessorUserId} onChange={(e)=>setAtribProfessorUserId(e.target.value)}>
               <option value="">Selecione um professor</option>
               {professores.map((p) => (
                 <option key={p.user_id} value={p.user_id}>
@@ -305,7 +342,7 @@ export default function ProfessoresPage() {
                 </option>
               ))}
             </select>
-            <select className="w-full border border-gray-200 rounded-md p-2" required>
+            <select className="w-full border border-gray-200 rounded-md p-2" required value={atribTurmaId} onChange={(e)=>{setAtribTurmaId(e.target.value); loadTurmaAssignments(e.target.value)}}>
               <option value="">Selecione uma turma</option>
               {turmas.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -313,7 +350,7 @@ export default function ProfessoresPage() {
                 </option>
               ))}
             </select>
-            <select className="w-full border border-gray-200 rounded-md p-2" required>
+            <select className="w-full border border-gray-200 rounded-md p-2" required value={atribDisciplinaId} onChange={(e)=>setAtribDisciplinaId(e.target.value)}>
               <option value="">Selecione uma disciplina</option>
               {cursos.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -321,13 +358,65 @@ export default function ProfessoresPage() {
                 </option>
               ))}
             </select>
-            <button
-              type="submit"
-              className="bg-[#0D9488] text-white px-4 py-2 rounded-md hover:bg-[#0c7c71]"
-            >
-              Confirmar Atribuição
+            <button type="submit" disabled={atribuindo} className="bg-[#0D9488] text-white px-4 py-2 rounded-md hover:bg-[#0c7c71] disabled:opacity-50">
+              {atribuindo ? 'Salvando...' : 'Confirmar Atribuição'}
             </button>
           </form>
+
+          {/* Lista de atribuições da turma selecionada */}
+          {atribTurmaId && (
+            <div className="mt-8">
+              <h3 className="font-semibold text-[#0B2C45] mb-3">Atribuições da Turma</h3>
+              {turmaAssignments === null ? (
+                <div className="text-sm text-gray-500">Selecione uma turma para visualizar.</div>
+              ) : turmaAssignments.length === 0 ? (
+                <div className="text-sm text-gray-500">Nenhuma atribuição encontrada.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm border">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="p-2 text-left border">Disciplina</th>
+                        <th className="p-2 text-left border">Professor</th>
+                        <th className="p-2 text-left border">Vínculos</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {turmaAssignments.map((a: any) => (
+                        <tr key={a.id} className="border-t">
+                          <td className="p-2 border">{a.disciplina?.nome || a.disciplina?.id}</td>
+                          <td className="p-2 border">{a.professor?.nome || a.professor?.email || a.professor?.id}</td>
+                          <td className="p-2 border">
+                            <span className={`mr-2 inline-block px-2 py-0.5 rounded-full text-xs ${a.vinculos.horarios ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>Horários</span>
+                            <span className={`mr-2 inline-block px-2 py-0.5 rounded-full text-xs ${a.vinculos.notas ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>Notas</span>
+                            <span className={`mr-2 inline-block px-2 py-0.5 rounded-full text-xs ${a.vinculos.presencas ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>Presenças</span>
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs ${a.vinculos.planejamento ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>Planejamento</span>
+                            <button
+                              onClick={async () => {
+                                if (!confirm('Remover esta atribuição?')) return
+                                try {
+                                  const res = await fetch(`/api/secretaria/turmas/${atribTurmaId}/disciplinas/${a.disciplina?.id}`, { method: 'DELETE' })
+                                  const json = await res.json().catch(() => null)
+                                  if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao remover')
+                                  showToast('Atribuição removida', 'success')
+                                  loadTurmaAssignments(atribTurmaId)
+                                } catch (e) {
+                                  showToast(e instanceof Error ? e.message : 'Erro ao remover', 'error')
+                                }
+                              }}
+                              className="ml-2 inline-flex items-center px-2 py-0.5 rounded border border-red-200 text-red-600 hover:bg-red-50"
+                            >
+                              Remover
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

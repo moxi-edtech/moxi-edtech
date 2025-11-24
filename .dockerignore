@@ -1,0 +1,24 @@
+# General
+.git
+.gitignore
+.DS_Store
+.vscode
+*.log
+node_modules
+
+# App builds
+apps/web/.next
+apps/web/test-results
+apps/web/next
+**/.turbo
+
+# Supabase local artifacts / archives
+supabase/.branches
+supabase_*.tar.gz
+supabase_temp*
+
+# OS / tooling
+dist
+coverage
+*.swp
+*.tmp

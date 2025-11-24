@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 
+const withGroup = (group: string) =>
+  ({ group } as unknown as { head?: boolean; count?: 'exact' | 'planned' | 'estimated' });
+
 function last12MonthsLabels(): string[] {
   const months = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
   const now = new Date();
@@ -17,8 +20,14 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     const { id: escolaId } = await context.params;
     const supabase = await supabaseServer();
 
-    const [alunosCount, turmasCount, professoresCount, avisosRes, pagamentosRes, matsIdsRes] = await Promise.all([
-      supabase.from('alunos').select('*', { count: 'exact', head: true }).eq('escola_id', escolaId),
+    const [alunosAtivosRes, turmasCount, professoresCount, avisosRes, pagamentosRes, matsIdsRes] = await Promise.all([
+      // Número de alunos com matrícula ativa (distinto por aluno_id)
+      supabase
+        .from('matriculas')
+        .select('aluno_id, count:aluno_id', withGroup('aluno_id'))
+        .eq('escola_id', escolaId)
+        .in('status', ['ativa', 'ativo', 'active'])
+        .not('aluno_id', 'is', null),
       supabase.from('turmas').select('id', { count: 'exact', head: true }).eq('escola_id', escolaId),
       supabase.from('escola_usuarios').select('user_id', { count: 'exact', head: true }).eq('escola_id', escolaId).eq('papel', 'professor'),
       (supabase as any).from('avisos').select('id, titulo, created_at').eq('escola_id', escolaId).order('created_at', { ascending: false }).limit(5),
@@ -41,7 +50,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     } catch {}
 
     const kpis = {
-      alunos: alunosCount.count ?? 0,
+      alunos: (alunosAtivosRes.data?.length ?? 0),
       turmas: turmasCount.count ?? 0,
       professores: professoresCount.count ?? 0,
       avaliacoes: notasLancadas,

@@ -17,6 +17,8 @@ export default async function EscolaAdminSidebar({ escolaId }: { escolaId: strin
   const items: NavItem[] = [
     { label: "Dashboard", href: `/escola/${escolaId}/admin`, icon: "AcademicCapIcon" },
     { label: "Alunos", href: `/escola/${escolaId}/admin/alunos`, icon: "UsersIcon" },
+    { label: "Professores", href: `/escola/${escolaId}/admin/professores`, icon: "UsersIcon" },
+    { label: "Turmas", href: `/escola/${escolaId}/admin/turmas`, icon: "UserGroupIcon" },
     { label: "Avisos", href: `/escola/${escolaId}/admin/avisos`, icon: "MegaphoneIcon" },
     {
       label: "Configurações",

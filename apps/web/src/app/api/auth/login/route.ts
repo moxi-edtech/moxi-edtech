@@ -172,8 +172,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    console.log('[login] rawIdentifier:', rawIdentifier);
     // Tenta resolver identificador numérico / numero_login / telefone para email
     const translatedEmail = isEmail ? null : await resolveIdentifierToEmail(rawIdentifier);
+    console.log('[login] translatedEmail:', translatedEmail);
+
     if (!isEmail && !translatedEmail) {
       // Não foi possível mapear numero_login/telefone → email
       return new NextResponse(
@@ -182,9 +185,11 @@ export async function POST(req: NextRequest) {
       );
     }
     const email = (translatedEmail || rawIdentifier).toLowerCase();
+    console.log('[login] email:', email);
 
     // Response "base" apenas para carregar Set-Cookie
     const cookieCarrier = NextResponse.json({ ok: true });
+
 
     // Supabase server-side com bridge completo de cookies
     const supabase = createServerClient<Database>(
@@ -212,6 +217,8 @@ export async function POST(req: NextRequest) {
       email,
       password,
     });
+    console.log('[login] signInWithPassword data:', data);
+    console.log('[login] signInWithPassword error:', error);
 
     if (error || !data?.user) {
       const mapped = mapAuthError(error);
@@ -263,6 +270,9 @@ export async function POST(req: NextRequest) {
         .select("role, escola_id")
         .eq("user_id", data.user.id)
         .maybeSingle();
+
+      console.log('[login] profile lookup profile:', profile);
+      console.log('[login] profile lookup error:', profileError);
 
       if (!profileError && profile) {
         role = (profile as any)?.role ?? null;

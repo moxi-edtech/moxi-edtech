@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 
 type DashboardData = {
   ok: boolean;
@@ -58,11 +59,26 @@ export default function SecretariaDashboardLoader() {
 
   const statusChips: StatusChip[] = useMemo(() => {
     if (!data?.resumo_status) return [];
-    return data.resumo_status.map((item) => {
-      const norm = normalizeStatus(item.status);
-      return { label: norm.label, status: item.status, total: item.total, variant: norm.context };
-    });
+    const agg = new Map<string, { label: string; total: number; variant: StatusChip["variant"] }>();
+    for (const item of data.resumo_status) {
+      const norm = normalizeStatus((item.status ?? '').trim());
+      const key = canonicalStatusKey((item.status ?? '').trim());
+      const prev = agg.get(key);
+      const total = (prev?.total ?? 0) + (item.total ?? 0);
+      agg.set(key, { label: norm.label, total, variant: norm.context });
+    }
+    return Array.from(agg.entries()).map(([key, v]) => ({ status: key, label: v.label, total: v.total, variant: v.variant }));
   }, [data?.resumo_status]);
+
+  function canonicalStatusKey(status: string) {
+    const v = (status || '').trim().toLowerCase();
+    if (["ativa", "ativo", "active"].includes(v)) return "ativo";
+    if (["concluida", "concluido", "graduado"].includes(v)) return "concluido";
+    if (["transferido", "transferida"].includes(v)) return "transferido";
+    if (["pendente", "aguardando"].includes(v)) return "pendente";
+    if (["trancado", "suspenso", "desistente", "inativo"].includes(v)) return "inativo";
+    return v || 'indefinido';
+  }
 
   if (loading) return <div>Carregando painel…</div>;
   if (error) return <div className="text-red-600">Erro: {error}</div>;
@@ -72,10 +88,39 @@ export default function SecretariaDashboardLoader() {
       <section>
         <h2 className="text-sm font-semibold text-moxinexa-gray uppercase tracking-wide mb-3">Visão geral</h2>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <SummaryCard title="Alunos ativos" value={data?.counts.alunos ?? 0} hint="Perfis cadastrados" accent="from-sky-500/10 to-sky-200/40" icon="👩‍🎓" />
-          <SummaryCard title="Matrículas" value={data?.counts.matriculas ?? 0} hint="Histórico e vigentes" accent="from-indigo-500/10 to-indigo-200/40" icon="📚" />
-          <SummaryCard title="Turmas" value={data?.counts.turmas ?? 0} hint="Turmas disponíveis" accent="from-emerald-500/10 to-emerald-200/40" icon="🏫" />
-          <SummaryCard title="Pendências" value={data?.counts.pendencias ?? 0} hint="Status a acompanhar" accent="from-amber-500/10 to-amber-200/40" icon="⚠️" emphasize />
+          <SummaryCard
+            title="Alunos ativos"
+            value={data?.counts.alunos ?? 0}
+            hint="Com matrícula ativa"
+            accent="from-sky-500/10 to-sky-200/40"
+            icon="👩‍🎓"
+            href="/secretaria/matriculas?status_in=ativa,ativo,active"
+          />
+          <SummaryCard
+            title="Matrículas"
+            value={data?.counts.matriculas ?? 0}
+            hint="Histórico e vigentes"
+            accent="from-indigo-500/10 to-indigo-200/40"
+            icon="📚"
+            href="/secretaria/matriculas"
+          />
+          <SummaryCard
+            title="Turmas"
+            value={data?.counts.turmas ?? 0}
+            hint="Turmas disponíveis"
+            accent="from-emerald-500/10 to-emerald-200/40"
+            icon="🏫"
+            href="/secretaria/turmas"
+          />
+          <SummaryCard
+            title="Pendências"
+            value={data?.counts.pendencias ?? 0}
+            hint="Status a acompanhar"
+            accent="from-amber-500/10 to-amber-200/40"
+            icon="⚠️"
+            emphasize
+            href="/secretaria/matriculas?status_in=pendente,transferido,trancado,suspenso,desistente,inativo"
+        />
         </div>
       </section>
 
@@ -173,8 +218,8 @@ export default function SecretariaDashboardLoader() {
   );
 }
 
-function SummaryCard({ title, value, hint, accent, icon, emphasize }: { title: string; value: number; hint: string; accent: string; icon: string; emphasize?: boolean }) {
-  return (
+function SummaryCard({ title, value, hint, accent, icon, emphasize, href }: { title: string; value: number; hint: string; accent: string; icon: string; emphasize?: boolean; href?: string }) {
+  const content = (
     <div className={`relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ${emphasize ? 'ring-1 ring-amber-100' : ''}`}>
       <div className={`absolute inset-0 bg-gradient-to-br ${accent}`} aria-hidden />
       <div className="relative flex flex-col gap-2">
@@ -185,6 +230,11 @@ function SummaryCard({ title, value, hint, accent, icon, emphasize }: { title: s
       </div>
     </div>
   );
+  return href ? (
+    <Link href={href} className="block focus:outline-none focus:ring-2 focus:ring-emerald-500 rounded-2xl hover:shadow-md transition">
+      {content}
+    </Link>
+  ) : content;
 }
 
 function StatusBadge({ label, value, variant }: { label: string; value: number; variant: StatusChip["variant"] }) {
@@ -275,4 +325,3 @@ function calcPercentage(value: number, total: number) {
 function formatStatus(status: string) {
   return normalizeStatus(status).label;
 }
-

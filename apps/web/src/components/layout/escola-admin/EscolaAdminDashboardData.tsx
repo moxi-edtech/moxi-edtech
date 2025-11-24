@@ -45,6 +45,7 @@ export default function EscolaAdminDashboardData({ escolaId }: { escolaId: strin
 
   return (
     <EscolaAdminDashboardContent
+      escolaId={escolaId}
       stats={stats}
       loading={loading}
       error={error}
@@ -54,4 +55,3 @@ export default function EscolaAdminDashboardData({ escolaId }: { escolaId: strin
     />
   );
 }
-

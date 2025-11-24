@@ -9,6 +9,7 @@ import ChartsSection from "./ChartsSection";
 import type { PagamentosResumo } from "./definitions";
 
 type Props = {
+  escolaId?: string;
   stats?: KpiStats;
   loading?: boolean;
   error?: string | null;
@@ -17,10 +18,11 @@ type Props = {
   charts?: { meses: string[]; alunosPorMes: number[]; pagamentos: PagamentosResumo };
 };
 
-export default function EscolaAdminDashboardContent({ stats, loading, error, notices, events, charts }: Props) {
+export default function EscolaAdminDashboardContent({ escolaId, stats, loading, error, notices, events, charts }: Props) {
   return (
     <>
       <KpiSection
+        escolaId={escolaId}
         stats={stats ?? { turmas: 0, alunos: 0, professores: 0, avaliacoes: 0 }}
         loading={loading}
         error={error}
@@ -41,4 +43,3 @@ export default function EscolaAdminDashboardContent({ stats, loading, error, not
     </>
   );
 }
-

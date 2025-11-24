@@ -43,6 +43,7 @@ export async function GET(req: Request) {
 
     const url = new URL(req.url);
     const q = url.searchParams.get("q")?.trim() || "";
+    const status = (url.searchParams.get("status") || 'active').toLowerCase();
     const daysParam = url.searchParams.get("days") || "";
     const page = Math.max(
       1,
@@ -65,6 +66,56 @@ export async function GET(req: Request) {
       }
     }
 
+
+
+    // Descobrir sessão ativa da escola (para filtrar alunos já matriculados)
+    let activeSessionId: string | undefined = undefined;
+    if (escolaId) {
+      try {
+        const { data: sess } = await supabase
+          .from('school_sessions')
+          .select('id, status')
+          .eq('escola_id', escolaId)
+          .eq('status', 'ativa')
+          .order('data_inicio', { ascending: false })
+          .limit(1);
+        activeSessionId = (sess?.[0] as any)?.id as string | undefined;
+      } catch {
+        // silencioso
+      }
+    }
+
+    // Se existe sessão ativa, coletar alunos com matrícula nesta sessão para excluí-los do resultado
+    let alunosComMatriculaAtual: string[] = [];
+    if (escolaId && activeSessionId) {
+      try {
+        const { data: mats } = await supabase
+          .from('matriculas')
+          .select('aluno_id')
+          .eq('escola_id', escolaId)
+          .eq('session_id', activeSessionId);
+        alunosComMatriculaAtual = (mats ?? [])
+          .map((m: any) => m.aluno_id)
+          .filter((v: any) => !!v);
+      } catch {
+        // silencioso
+      }
+    } else if (escolaId && !activeSessionId) {
+      // Fallback: excluir alunos com matrícula ativa na escola, sem filtrar por sessão
+      try {
+        const { data: mats } = await supabase
+          .from('matriculas')
+          .select('aluno_id, status')
+          .eq('escola_id', escolaId)
+          .eq('status', 'ativo');
+        alunosComMatriculaAtual = (mats ?? [])
+          .map((m: any) => m.aluno_id)
+          .filter((v: any) => !!v);
+      } catch {
+        // silencioso
+      }
+    }
+
     // Agora com relacionamento para profiles(numero_login)
     let query = supabase
       .from("alunos")
@@ -79,8 +130,21 @@ export async function GET(req: Request) {
       query = query.eq("escola_id", escolaId);
     }
 
-    // Apenas alunos não removidos (soft delete)
-    query = query.is('deleted_at', null)
+    // Status: ativos (deleted_at null) ou arquivados (deleted_at not null)
+    if (status === 'archived') {
+      query = query.not('deleted_at', 'is', null as any)
+    } else {
+      query = query.is('deleted_at', null)
+    }
+
+    // Excluir alunos já matriculados na sessão ativa
+    if (alunosComMatriculaAtual.length > 0) {
+      const list = alunosComMatriculaAtual.join(',');
+      // NOT IN ( ... ) via supabase-js
+      query = query.not('id', 'in', `(${list})`);
+    }
+
+
 
     // Aplica filtro de período, se definido
     if (since) {

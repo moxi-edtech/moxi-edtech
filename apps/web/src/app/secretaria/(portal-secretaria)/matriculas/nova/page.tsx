@@ -159,25 +159,38 @@ export default function NovaMatriculaPage() {
     fetchData();
   }, []);
 
-  // Prefill alunoId from query string if provided
   useEffect(() => {
-    const aid = searchParams?.get('alunoId');
-    if (aid) {
-      console.log("🎯 AlunoId da URL:", aid);
-      setAlunoId(aid);
-    }
-  }, [searchParams]);
+    const fetchAndSetAluno = async () => {
+      const alunoIdFromUrl = searchParams?.get("alunoId");
+      if (alunoIdFromUrl) {
+        setAlunoId(alunoIdFromUrl);
+        
+        const aluno = alunos.find((a) => a.id === alunoIdFromUrl);
+        if(aluno) {
+          setAlunoSelecionado(aluno);
+        } else {
+          // Se o aluno não estiver na lista, busque-o individualmente
+          try {
+            const res = await fetch(
+              `/api/secretaria/alunos/${alunoIdFromUrl}`,
+            );
+            if (res.ok) {
+              const alunoData = await res.json();
+              if (alunoData) {
+                // Adicione o aluno à lista e defina-o como selecionado
+                setAlunos((prevAlunos) => [...prevAlunos, alunoData]);
+                setAlunoSelecionado(alunoData);
+              }
+            }
+          } catch (error) {
+            console.error("Erro ao buscar aluno individualmente:", error);
+          }
+        }
+      }
+    };
 
-  // Carregar dados do aluno selecionado
-  useEffect(() => {
-    if (alunoId && alunos.length > 0) {
-      const aluno = alunos.find(a => a.id === alunoId);
-      console.log("👤 Aluno selecionado:", aluno);
-      setAlunoSelecionado(aluno || null);
-    } else {
-      setAlunoSelecionado(null);
-    }
-  }, [alunoId, alunos]);
+    fetchAndSetAluno();
+  }, [searchParams, alunos]);
 
   // ✅ CORREÇÃO: Carregar turmas quando sessionId mudar
   useEffect(() => {
