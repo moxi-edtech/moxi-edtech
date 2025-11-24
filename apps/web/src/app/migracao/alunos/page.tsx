@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createClient } from "@/lib/supabaseClient";
+import type { Session } from "@supabase/supabase-js";
 
 import Button from "~/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/Card";
@@ -19,8 +21,27 @@ export default function AlunoMigrationWizard() {
   const [preview, setPreview] = useState<AlunoStagingRecord[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [apiErrors, setApiErrors] = useState<string[]>([]);
+  const [session, setSession] = useState<Session | null>(null);
+  const [importId, setImportId] = useState<string | null>(null);
 
   const totalSteps = 4;
+  const supabase = useMemo(() => createClient(), []);
+
+  const userIdReal = session?.user?.id;
+  const escolaIdReal = (session?.user?.app_metadata as { escola_id?: string } | undefined)?.escola_id;
+
+  useEffect(() => {
+    let active = true;
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (active) setSession(data.session ?? null);
+      })
+      .catch(() => setSession(null));
+    return () => {
+      active = false;
+    };
+  }, [supabase]);
 
   const extractHeaders = async () => {
     if (!file) return;
@@ -32,31 +53,29 @@ export default function AlunoMigrationWizard() {
 
   const handleValidateLocal = async () => {
     setErrors([]);
-    if (!file) {
-      setErrors(["Selecione um arquivo para continuar"]);
+    setApiErrors([]);
+    if (!importId || !escolaIdReal) {
+      setApiErrors(["Importação ainda não iniciada. Faça o upload primeiro."]);
       return;
     }
-    await extractHeaders();
-    const text = await file.text();
-    const lines = text.split(/\r?\n/).filter(Boolean);
-    if (lines.length <= 1) {
-      setErrors(["Arquivo sem registros"]);
+    const response = await fetch("/api/migracao/alunos/validar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        importId,
+        escolaId: escolaIdReal,
+        columnMap: mapping,
+      }),
+    });
+
+    const payload = await response.json();
+
+    if (!response.ok) {
+      setApiErrors([payload.error]);
       return;
     }
-    const delimiter = headers.length && headers[0].includes(";") && !headers[0].includes(",") ? ";" : ",";
-    const rows = lines.slice(1).map((line) => line.split(delimiter));
-    const mapped: AlunoStagingRecord[] = rows.slice(0, 20).map((cols, idx) => ({
-      import_id: "preview",
-      escola_id: "preview",
-      nome: mapping.nome ? cols[headers.indexOf(mapping.nome)] : undefined,
-      data_nascimento: mapping.data_nascimento ? cols[headers.indexOf(mapping.data_nascimento)] : undefined,
-      telefone: mapping.telefone ? cols[headers.indexOf(mapping.telefone)] : undefined,
-      bi: mapping.bi ? cols[headers.indexOf(mapping.bi)] : undefined,
-      email: mapping.email ? cols[headers.indexOf(mapping.email)] : undefined,
-      profile_id: mapping.profile_id ? cols[headers.indexOf(mapping.profile_id)] : undefined,
-      raw_data: { row: idx },
-    }));
-    setPreview(mapped);
+
+    setPreview(payload.preview);
     setStep(3);
   };
 
@@ -66,26 +85,42 @@ export default function AlunoMigrationWizard() {
       setApiErrors(["Selecione um arquivo para subir"]);
       return;
     }
+    if (!userIdReal || !escolaIdReal) {
+      setApiErrors(["Usuário sem contexto de escola. Faça login novamente."]);
+      return;
+    }
+
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("escolaId", "pending-escola");
+    formData.append("escolaId", escolaIdReal);
+    formData.append("userId", userIdReal);
 
     const response = await fetch("/api/migracao/upload", { method: "POST", body: formData });
+    const payload = await response.json();
+
     if (!response.ok) {
-      const payload = await response.json();
       setApiErrors([payload.error || "Erro ao enviar arquivo"]);
       return;
     }
+
+    setImportId(payload.importId);
     setStep(2);
     await extractHeaders();
   };
 
   const handleImport = async () => {
     setApiErrors([]);
+    if (!importId || !escolaIdReal) {
+      setApiErrors(["Importação inválida. Realize o upload novamente."]);
+      return;
+    }
     const response = await fetch("/api/migracao/alunos/importar", {
       method: "POST",
-      body: JSON.stringify({ importId: "preview", escolaId: "pending-escola" }),
       headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        importId,
+        escolaId: escolaIdReal,
+      }),
     });
     if (!response.ok) {
       const payload = await response.json();
