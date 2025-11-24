@@ -1,6 +1,6 @@
-import React from 'react';
+import type { HTMLAttributes, ReactNode } from 'react';
 
-type DivProps = React.HTMLAttributes<HTMLDivElement> & { children: React.ReactNode };
+type DivProps = HTMLAttributes<HTMLDivElement> & { children: ReactNode };
 
 export function Card({ children, className = '', ...rest }: DivProps) {
   return (

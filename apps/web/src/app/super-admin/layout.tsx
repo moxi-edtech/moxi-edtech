@@ -1,5 +1,6 @@
 import SuperAdminSidebar from "@/components/super-admin/Sidebar";
 import AppHeader from "@/components/layout/shared/AppHeader";
+import React from "react";
 
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
   return (

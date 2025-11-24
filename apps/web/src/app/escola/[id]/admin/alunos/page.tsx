@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useMemo, useState, useTransition } from "react";
+import React, { use, useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { Loader2, Search, Filter, UserPlus, Archive, RotateCcw, Trash2, Edit } from "lucide-react";
 

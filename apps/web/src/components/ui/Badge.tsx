@@ -1,9 +1,9 @@
-import React from 'react';
+import type { HTMLAttributes, ReactNode } from 'react';
 
 type Variant = 'success' | 'neutral' | 'outline' | 'error' | 'default';
 
-type Props = React.HTMLAttributes<HTMLSpanElement> & {
-  children: React.ReactNode;
+type Props = HTMLAttributes<HTMLSpanElement> & {
+  children: ReactNode;
   variant?: Variant;
 };
 

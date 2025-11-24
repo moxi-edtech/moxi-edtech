@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { BookOpen, Calendar, Plus, Zap } from 'lucide-react';
+import { Calendar, Plus, Zap, BookOpen } from 'lucide-react';
 import { type AcademicPeriod, type AcademicSession } from '@/types/academico.types';
 import Button from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';

@@ -1,11 +1,11 @@
 // app/.../components/ui/Button.tsx
-import React from 'react';
+import type { ButtonHTMLAttributes } from 'react';
 import { Spinner } from './Spinner';
 
 type Variant = 'primary' | 'secondary' | 'danger' | 'outline' | 'ghost';
 type Size = 'sm' | 'md' | 'lg';
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   loading?: boolean;
   variant?: Variant;
   size?: Size;

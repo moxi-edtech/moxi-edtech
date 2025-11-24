@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { toast } from 'sonner';
 import { Calendar, RotateCcw, CheckCircle2, Save, Plus, AlertCircle, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { type AcademicSession } from '@/types/academico.types';
 import Button from "@/components/ui/Button";
 import { Input } from '@/components/ui/Input';

@@ -3,17 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
-        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-        SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
     environment:
-      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
-      # Optional server-side vars (mirrors public for convenience)
-      SUPABASE_URL: ${SUPABASE_URL:-${NEXT_PUBLIC_SUPABASE_URL}}
-      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-${NEXT_PUBLIC_SUPABASE_ANON_KEY}}
+      # Only set non-secret runtime vars here; Supabase envs will come from env_file below.
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: 0.0.0.0
@@ -26,7 +17,7 @@ services:
   web-dev:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: apps/web/Dockerfile
       target: base
     user: node
     working_dir: /workspace
@@ -39,11 +30,6 @@ services:
       WATCHPACK_POLLING: "true"
       PORT: 3000
       HOSTNAME: 0.0.0.0
-      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
-      SUPABASE_URL: ${SUPABASE_URL:-${NEXT_PUBLIC_SUPABASE_URL}}
-      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-${NEXT_PUBLIC_SUPABASE_ANON_KEY}}
     env_file:
       - apps/web/.env.local
     volumes:

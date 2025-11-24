@@ -1,8 +1,8 @@
 // app/.../components/StepHeader.tsx
-import React from 'react';
+import type { ReactNode } from 'react';
 
 type StepHeaderProps = {
-  icone: React.ReactNode;
+  icone: ReactNode;
   titulo: string;
   descricao: string;
 };
@@ -18,4 +18,3 @@ export function StepHeader({ icone, titulo, descricao }: StepHeaderProps) {
     </div>
   );
 }
-

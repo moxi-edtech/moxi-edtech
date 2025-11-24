@@ -1,8 +1,9 @@
 "use client";
 
-import React from 'react';
+import { useId } from 'react';
+import type { InputHTMLAttributes } from 'react';
 
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
   error?: string;
 }
@@ -11,7 +12,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
  * Componente de input com label e tratamento de erro.
  */
 export function Input({ label, id, error, className, ...props }: InputProps) {
-  const inputId = id || React.useId();
+  const inputId = id || useId();
   return (
     <div className="w-full">
       <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -31,4 +32,3 @@ export function Input({ label, id, error, className, ...props }: InputProps) {
     </div>
   );
 }
-

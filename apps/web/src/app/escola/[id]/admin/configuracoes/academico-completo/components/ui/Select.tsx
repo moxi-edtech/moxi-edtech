@@ -1,14 +1,15 @@
-import React from 'react';
+import { useId } from 'react';
+import type { SelectHTMLAttributes } from 'react';
 
 type Option = { value: string; label: string };
-type Props = React.SelectHTMLAttributes<HTMLSelectElement> & {
+type Props = SelectHTMLAttributes<HTMLSelectElement> & {
   label?: string;
   error?: string;
   options?: Option[];
 };
 
 export function Select({ label, id, error, className = '', options, children, ...props }: Props) {
-  const selectId = id || React.useId();
+  const selectId = id || useId();
   const selectEl = (
     <select
       id={selectId}

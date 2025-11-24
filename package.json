@@ -8,7 +8,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "pnpm -w --filter web dev",
+    "dev": "NPM_CONFIG_WORKSPACES=false pnpm -w --filter web dev",
     "build": "pnpm -w --filter web build",
     "start": "pnpm -w --filter web start",
     "lint": "pnpm -w --filter web lint",

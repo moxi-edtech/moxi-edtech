@@ -2,7 +2,7 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
-import React from "react";
+ 
 
 export default function BackButton() {
   const router = useRouter();
@@ -36,4 +36,3 @@ export default function BackButton() {
     </button>
   );
 }
-

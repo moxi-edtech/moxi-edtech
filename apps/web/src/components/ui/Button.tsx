@@ -1,12 +1,12 @@
 "use client";
 
-import React from "react";
+import type { ButtonHTMLAttributes } from 'react';
 
 type Tone = "teal" | "green" | "blue" | "red" | "gray" | "emerald" | "navy";
 type Variant = "solid" | "outline" | "default" | "danger" | "ghost" | "secondary";
 type Size = "sm" | "md" | "lg";
 
-export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   tone?: Tone;
   variant?: Variant;
   size?: Size;
