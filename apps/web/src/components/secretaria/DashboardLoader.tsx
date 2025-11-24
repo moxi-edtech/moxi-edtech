@@ -2,6 +2,20 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { 
+  Loader2, 
+  Users, 
+  BookOpen, 
+  Building, 
+  AlertTriangle,
+  Calendar,
+  Mail,
+  UserCheck,
+  BarChart3,
+  ArrowRight,
+  Eye,
+  Settings
+} from "lucide-react";
 
 type DashboardData = {
   ok: boolean;
@@ -80,56 +94,110 @@ export default function SecretariaDashboardLoader() {
     return v || 'indefinido';
   }
 
-  if (loading) return <div>Carregando painel…</div>;
-  if (error) return <div className="text-red-600">Erro: {error}</div>;
+  if (loading) {
+    return (
+      <div className="w-full max-w-6xl mx-auto space-y-6 p-6 bg-slate-50 rounded-xl">
+        <div className="bg-white p-8 rounded-xl border border-slate-200 shadow-sm text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-moxinexa-teal" />
+          <div className="text-slate-600">Carregando painel da secretaria...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="w-full max-w-6xl mx-auto space-y-6 p-6 bg-slate-50 rounded-xl">
+        <div className="bg-red-50 p-6 rounded-xl border border-red-200 shadow-sm">
+          <h3 className="text-red-800 font-medium text-lg mb-2">Erro ao carregar dashboard</h3>
+          <p className="text-red-600 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all"
+          >
+            <Loader2 className="h-4 w-4" />
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-8">
-      <section>
-        <h2 className="text-sm font-semibold text-moxinexa-gray uppercase tracking-wide mb-3">Visão geral</h2>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <SummaryCard
-            title="Alunos ativos"
-            value={data?.counts.alunos ?? 0}
-            hint="Com matrícula ativa"
-            accent="from-sky-500/10 to-sky-200/40"
-            icon="👩‍🎓"
-            href="/secretaria/matriculas?status_in=ativa,ativo,active"
-          />
-          <SummaryCard
-            title="Matrículas"
-            value={data?.counts.matriculas ?? 0}
-            hint="Histórico e vigentes"
-            accent="from-indigo-500/10 to-indigo-200/40"
-            icon="📚"
-            href="/secretaria/matriculas"
-          />
-          <SummaryCard
-            title="Turmas"
-            value={data?.counts.turmas ?? 0}
-            hint="Turmas disponíveis"
-            accent="from-emerald-500/10 to-emerald-200/40"
-            icon="🏫"
-            href="/secretaria/turmas"
-          />
-          <SummaryCard
-            title="Pendências"
-            value={data?.counts.pendencias ?? 0}
-            hint="Status a acompanhar"
-            accent="from-amber-500/10 to-amber-200/40"
-            icon="⚠️"
-            emphasize
-            href="/secretaria/matriculas?status_in=pendente,transferido,trancado,suspenso,desistente,inativo"
-        />
+    <div className="w-full max-w-6xl mx-auto space-y-6 p-6 bg-slate-50 rounded-xl">
+      {/* --- HEADER DE AÇÃO --- */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <div>
+          <h1 className="text-2xl font-bold text-moxinexa-navy flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
+            Painel da Secretaria
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Visão geral dos alunos, turmas e atividades recentes
+          </p>
         </div>
-      </section>
 
+        <div className="flex items-center gap-3">
+          <button className="inline-flex items-center gap-2 rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200 transition-all">
+            <BarChart3 className="h-4 w-4" />
+            Relatório
+          </button>
+        </div>
+      </div>
+
+      {/* --- CARDS PRINCIPAIS --- */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <SummaryCard
+          title="Alunos Ativos"
+          value={data?.counts.alunos ?? 0}
+          hint="Com matrícula ativa"
+          icon={<Users className="h-6 w-6" />}
+          color="text-moxinexa-navy"
+          bgColor="bg-blue-50"
+          href="/secretaria/matriculas?status_in=ativa,ativo,active"
+        />
+        <SummaryCard
+          title="Total de Matrículas"
+          value={data?.counts.matriculas ?? 0}
+          hint="Histórico e vigentes"
+          icon={<BookOpen className="h-6 w-6" />}
+          color="text-orange-600"
+          bgColor="bg-orange-50"
+          href="/secretaria/matriculas"
+        />
+        <SummaryCard
+          title="Turmas Ativas"
+          value={data?.counts.turmas ?? 0}
+          hint="Turmas disponíveis"
+          icon={<Building className="h-6 w-6" />}
+          color="text-moxinexa-teal"
+          bgColor="bg-teal-50"
+          href="/secretaria/turmas"
+        />
+        <SummaryCard
+          title="Pendências"
+          value={data?.counts.pendencias ?? 0}
+          hint="Status a acompanhar"
+          icon={<AlertTriangle className="h-6 w-6" />}
+          color="text-red-600"
+          bgColor="bg-red-50"
+          emphasize
+          href="/secretaria/matriculas?status_in=pendente,transferido,trancado,suspenso,desistente,inativo"
+        />
+      </div>
+
+      {/* --- SITUAÇÃO DAS MATRÍCULAS --- */}
       {statusChips.length > 0 && (
-        <section className="bg-gradient-to-br from-white to-slate-50 border border-slate-200 rounded-2xl p-6 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
             <div>
-              <h3 className="text-lg font-semibold text-moxinexa-dark">Situação das matrículas</h3>
-              <p className="text-sm text-moxinexa-gray">Acompanhe o estado académico dos estudantes.</p>
+              <h3 className="text-lg font-bold text-moxinexa-navy flex items-center gap-2">
+                <UserCheck className="h-5 w-5" />
+                Situação das Matrículas
+              </h3>
+              <p className="text-sm text-slate-500 mt-1">
+                Distribuição dos estudantes por status acadêmico
+              </p>
             </div>
             <div className="flex flex-wrap gap-2">
               {statusChips.map((chip) => (
@@ -138,100 +206,174 @@ export default function SecretariaDashboardLoader() {
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {statusChips.map((chip) => (
-              <div key={chip.status} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <p className="text-xs uppercase font-semibold text-slate-500">{chip.label}</p>
-                <p className="text-2xl font-bold text-slate-900 mt-1">{chip.total}</p>
+              <div key={chip.status} className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-semibold text-slate-700">{chip.label}</p>
+                  <span className="text-lg font-bold text-slate-900">{chip.total}</span>
+                </div>
                 <ProgressBar progress={calcPercentage(chip.total, data?.counts.matriculas ?? 0)} variant={chip.variant} />
+                <div className="text-xs text-slate-500 mt-2">
+                  {calcPercentage(chip.total, data?.counts.matriculas ?? 0)}% do total
+                </div>
               </div>
             ))}
           </div>
-        </section>
+        </div>
       )}
 
-      <section className="grid gap-6 xl:grid-cols-5">
-        <div className="xl:col-span-3 space-y-4">
+      {/* --- CONTEÚDO PRINCIPAL --- */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* TURMAS EM DESTAQUE */}
+        <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-moxinexa-dark">Turmas em destaque</h3>
-            <a href="/secretaria/turmas" className="text-sm text-emerald-600 hover:text-emerald-700">Ver todas as turmas</a>
+            <h3 className="text-lg font-bold text-moxinexa-navy flex items-center gap-2">
+              <Building className="h-5 w-5" />
+              Turmas em Destaque
+            </h3>
+            <Link href="/secretaria/turmas" className="inline-flex items-center gap-2 text-sm text-moxinexa-teal hover:text-teal-600 transition-all">
+              Ver todas
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {(data?.turmas_destaque ?? []).map((turma) => (
               <TurmaCard key={turma.id} turma={turma} />
             ))}
             {data?.turmas_destaque?.length === 0 && (
-              <div className="col-span-full text-sm text-moxinexa-gray border border-dashed border-slate-300 rounded-xl p-6 bg-white">
-                Nenhuma turma encontrada para esta escola.
+              <div className="col-span-full bg-white p-6 rounded-xl border border-slate-200 shadow-sm text-center">
+                <Building className="h-12 w-12 mx-auto mb-3 text-slate-300" />
+                <div className="text-slate-600">Nenhuma turma encontrada para esta escola.</div>
               </div>
             )}
           </div>
         </div>
 
-        <div className="xl:col-span-2 space-y-4">
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-moxinexa-dark">Últimas matrículas</h3>
-              <a href="/secretaria/matriculas" className="text-xs text-emerald-600 hover:text-emerald-700">Ver lista completa</a>
+        {/* SIDEBAR - ATIVIDADES RECENTES */}
+        <div className="space-y-6">
+          {/* ÚLTIMAS MATRÍCULAS */}
+          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-moxinexa-navy flex items-center gap-2">
+                <UserCheck className="h-5 w-5" />
+                Últimas Matrículas
+              </h3>
+              <Link href="/secretaria/matriculas" className="text-sm text-moxinexa-teal hover:text-teal-600">
+                Ver todas
+              </Link>
             </div>
-            <ul className="space-y-3">
+            
+            <div className="space-y-3">
               {(data?.novas_matriculas ?? []).map((item) => (
-                <li key={item.id} className="rounded-lg border border-slate-200 p-3 bg-slate-50">
-                  <div className="flex justify-between text-sm">
-                    <div>
-                      <p className="font-semibold text-slate-800">{item.aluno.nome}</p>
-                      <p className="text-xs text-slate-500">{item.turma.nome}</p>
+                <div key={item.id} className="p-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-colors">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex-1">
+                      <div className="font-semibold text-slate-800 text-sm">{item.aluno.nome}</div>
+                      <div className="text-xs text-slate-600">{item.turma.nome}</div>
                     </div>
-                    <span className="text-xs text-slate-500">{new Date(item.created_at).toLocaleDateString()}</span>
+                    <span className="text-xs text-slate-500 whitespace-nowrap">
+                      {new Date(item.created_at).toLocaleDateString('pt-AO')}
+                    </span>
                   </div>
-                  <div className="mt-2 flex items-center justify-between text-xs text-slate-600">
-                    <span>{formatStatus(item.status)}</span>
-                    {item.aluno.email && <span className="truncate max-w-[150px]">{item.aluno.email}</span>}
+                  <div className="flex items-center justify-between text-xs">
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-bold ${
+                      getStatusColor(item.status)
+                    }`}>
+                      {formatStatus(item.status)}
+                    </span>
+                    {item.aluno.email && (
+                      <div className="flex items-center gap-1 text-slate-500">
+                        <Mail className="h-3 w-3" />
+                        <span className="truncate max-w-[120px]">{item.aluno.email}</span>
+                      </div>
+                    )}
                   </div>
-                </li>
+                </div>
               ))}
               {data?.novas_matriculas?.length === 0 && (
-                <li className="text-sm text-slate-500">Nenhuma movimentação recente.</li>
+                <div className="text-center text-slate-500 text-sm py-4">
+                  Nenhuma movimentação recente.
+                </div>
               )}
-            </ul>
-          </section>
+            </div>
+          </div>
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h3 className="text-sm font-semibold text-moxinexa-dark mb-3">Avisos recentes</h3>
+          {/* AVISOS RECENTES */}
+          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <h3 className="text-lg font-bold text-moxinexa-navy flex items-center gap-2 mb-4">
+              <AlertTriangle className="h-5 w-5" />
+              Avisos Recentes
+            </h3>
+            
             {data?.avisos_recentes?.length ? (
-              <ul className="space-y-3">
-                {data!.avisos_recentes.map((a) => (
-                  <li key={a.id} className="border-l-4 border-emerald-500/70 bg-emerald-50/50 p-3 rounded">
-                    <p className="text-xs text-emerald-700">{new Date(a.data).toLocaleDateString()}</p>
-                    <p className="text-sm font-semibold text-emerald-900">{a.titulo}</p>
-                    {a.resumo && <p className="text-xs text-emerald-800/70 mt-1">{a.resumo}</p>}
-                  </li>
+              <div className="space-y-3">
+                {data.avisos_recentes.map((a) => (
+                  <div key={a.id} className="p-3 rounded-lg border-l-4 border-emerald-500 bg-emerald-50">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-semibold text-emerald-700">{a.origem}</span>
+                      <span className="text-xs text-emerald-600">
+                        {new Date(a.data).toLocaleDateString('pt-AO')}
+                      </span>
+                    </div>
+                    <div className="font-semibold text-emerald-900 text-sm mb-1">{a.titulo}</div>
+                    {a.resumo && (
+                      <div className="text-xs text-emerald-800/80">{a.resumo}</div>
+                    )}
+                  </div>
                 ))}
-              </ul>
+              </div>
             ) : (
-              <div className="text-sm text-slate-500">Nenhum aviso.</div>
+              <div className="text-center text-slate-500 text-sm py-4">
+                Nenhum aviso recente.
+              </div>
             )}
-          </section>
+          </div>
         </div>
-      </section>
+      </div>
     </div>
   );
 }
 
-function SummaryCard({ title, value, hint, accent, icon, emphasize, href }: { title: string; value: number; hint: string; accent: string; icon: string; emphasize?: boolean; href?: string }) {
+function SummaryCard({ 
+  title, 
+  value, 
+  hint, 
+  icon, 
+  color, 
+  bgColor, 
+  emphasize, 
+  href 
+}: { 
+  title: string; 
+  value: number; 
+  hint: string; 
+  icon: React.ReactNode;
+  color: string;
+  bgColor: string;
+  emphasize?: boolean; 
+  href?: string; 
+}) {
   const content = (
-    <div className={`relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm ${emphasize ? 'ring-1 ring-amber-100' : ''}`}>
-      <div className={`absolute inset-0 bg-gradient-to-br ${accent}`} aria-hidden />
-      <div className="relative flex flex-col gap-2">
-        <span className="text-2xl" aria-hidden>{icon}</span>
-        <span className="text-sm font-semibold text-slate-600 uppercase tracking-wide">{title}</span>
-        <span className="text-3xl font-bold text-slate-900">{value}</span>
-        <span className="text-xs text-slate-500">{hint}</span>
+    <div className={`relative overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md ${
+      emphasize ? 'ring-2 ring-red-200' : ''
+    }`}>
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <div className="text-sm font-semibold text-slate-600 mb-1">{title}</div>
+          <div className="text-2xl font-bold text-slate-900 mb-1">{value}</div>
+          <div className="text-xs text-slate-500">{hint}</div>
+        </div>
+        <div className={`p-3 rounded-lg ${bgColor} ${color}`}>
+          {icon}
+        </div>
       </div>
     </div>
   );
+
   return href ? (
-    <Link href={href} className="block focus:outline-none focus:ring-2 focus:ring-emerald-500 rounded-2xl hover:shadow-md transition">
+    <Link href={href} className="block focus:outline-none focus:ring-2 focus:ring-moxinexa-teal rounded-xl">
       {content}
     </Link>
   ) : content;
@@ -242,12 +384,12 @@ function StatusBadge({ label, value, variant }: { label: string; value: number; 
     success: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
     alert: 'bg-amber-100 text-amber-700 border border-amber-200',
     muted: 'bg-slate-100 text-slate-600 border border-slate-200',
-    neutral: 'bg-slate-50 text-slate-600 border border-slate-200',
+    neutral: 'bg-blue-100 text-blue-700 border border-blue-200',
   };
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium ${palette[variant]}`}>
+    <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${palette[variant]}`}>
       {label}
-      <span className="font-semibold">{value}</span>
+      <span className="bg-white/50 rounded-full px-1.5 py-0.5">{value}</span>
     </span>
   );
 }
@@ -257,11 +399,14 @@ function ProgressBar({ progress, variant }: { progress: number; variant: StatusC
     success: 'bg-emerald-500',
     alert: 'bg-amber-500',
     muted: 'bg-slate-400',
-    neutral: 'bg-slate-300',
+    neutral: 'bg-blue-500',
   };
   return (
-    <div className="mt-3 h-2 rounded-full bg-slate-100">
-      <div className={`h-2 rounded-full transition-all ${color[variant]}`} style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} />
+    <div className="w-full bg-slate-200 rounded-full h-2">
+      <div 
+        className={`h-2 rounded-full transition-all duration-500 ${color[variant]}`} 
+        style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} 
+      />
     </div>
   );
 }
@@ -271,38 +416,54 @@ function TurmaCard({ turma }: { turma: NonNullable<DashboardData["turmas_destaqu
   const statusEntries = Object.entries(turma.status_counts || {});
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col gap-3">
-      <div>
-        <h4 className="text-lg font-semibold text-slate-800">{turma.nome}</h4>
-        <p className="text-xs text-slate-500">{turma.turno ? `${turma.turno} • ` : ''}{turma.ano_letivo ?? 'Ano letivo não definido'}</p>
+    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex-1">
+          <h4 className="font-bold text-moxinexa-navy text-sm">{turma.nome}</h4>
+          <p className="text-xs text-slate-500 mt-1">
+            {turma.turno ? `${turma.turno} • ` : ''}{turma.ano_letivo ?? 'Ano letivo não definido'}
+          </p>
+        </div>
+        <span className="text-lg font-bold text-moxinexa-teal">{turma.total_alunos}</span>
       </div>
-      <div className="flex items-center gap-2 text-xs text-slate-500">
-        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">👩‍🏫</span>
-        <div>
-          <p className="font-medium text-slate-700">{professorNome}</p>
-          {turma.professor?.email && <p className="text-[11px] text-slate-500">{turma.professor.email}</p>}
+
+      <div className="flex items-center gap-2 mb-3">
+        <div className="w-6 h-6 bg-emerald-100 rounded-full flex items-center justify-center">
+          <UserCheck className="h-3 w-3 text-emerald-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-xs font-medium text-slate-700 truncate">{professorNome}</div>
+          {turma.professor?.email && (
+            <div className="text-xs text-slate-500 truncate">{turma.professor.email}</div>
+          )}
         </div>
       </div>
-      <div className="text-sm text-slate-600">Total de alunos: <span className="font-semibold">{turma.total_alunos}</span></div>
+
       {statusEntries.length > 0 ? (
-        <div className="grid grid-cols-2 gap-2 text-xs text-slate-600">
-          {statusEntries.map(([status, total]) => {
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          {statusEntries.slice(0, 4).map(([status, total]) => {
             const norm = normalizeStatus(status);
             return (
-              <div key={status} className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-1">
-                <span>{norm.label}</span>
-                <span className="font-semibold">{total}</span>
+              <div key={status} className="flex items-center justify-between text-xs">
+                <span className="text-slate-600">{norm.label}</span>
+                <span className="font-semibold text-slate-800">{total}</span>
               </div>
             );
           })}
         </div>
       ) : (
-        <p className="text-xs text-slate-500">Sem matrículas associadas.</p>
+        <div className="text-xs text-slate-500 text-center py-2">
+          Sem matrículas associadas
+        </div>
       )}
-      <div className="flex items-center justify-between pt-2 text-xs text-emerald-600">
-        <a href="/secretaria/turmas" className="hover:underline">Gerir turma</a>
-        <span className="text-slate-400">Atualizado em tempo real</span>
-      </div>
+
+      <Link 
+        href={`/secretaria/turmas/${turma.id}`}
+        className="inline-flex items-center gap-1 text-xs text-moxinexa-teal hover:text-teal-600 font-medium"
+      >
+        <Settings className="h-3 w-3" />
+        Gerir turma
+      </Link>
     </div>
   );
 }
@@ -324,4 +485,15 @@ function calcPercentage(value: number, total: number) {
 
 function formatStatus(status: string) {
   return normalizeStatus(status).label;
+}
+
+function getStatusColor(status: string) {
+  const norm = normalizeStatus(status);
+  const colors = {
+    success: 'bg-emerald-100 text-emerald-700',
+    alert: 'bg-amber-100 text-amber-700',
+    muted: 'bg-slate-100 text-slate-700',
+    neutral: 'bg-blue-100 text-blue-700',
+  };
+  return colors[norm.context];
 }
