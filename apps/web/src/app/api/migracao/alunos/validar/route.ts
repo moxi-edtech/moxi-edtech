@@ -68,7 +68,7 @@ export async function POST(request: Request) {
 
   await supabase
     .from("import_migrations")
-    .update({ status: "validado", total_rows: staged.length })
+    .update({ status: "validado", total_rows: staged.length, column_map: columnMap })
     .eq("id", importId);
 
   return NextResponse.json({ preview: summarizePreview(staged), total: staged.length });

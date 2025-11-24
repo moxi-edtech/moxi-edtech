@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createClient } from "@/lib/supabaseClient";
 
 import Button from "~/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/Card";
@@ -9,7 +10,7 @@ import { ErrorList } from "~/components/migracao/ErrorList";
 import { PreviewTable } from "~/components/migracao/PreviewTable";
 import { ProgressInfo } from "~/components/migracao/ProgressInfo";
 import { UploadField } from "~/components/migracao/UploadField";
-import type { AlunoStagingRecord, MappedColumns } from "~types/migracao";
+import type { AlunoStagingRecord, ErroImportacao, ImportResult, MappedColumns } from "~types/migracao";
 
 export default function AlunoMigrationWizard() {
   const [step, setStep] = useState(1);
@@ -17,10 +18,38 @@ export default function AlunoMigrationWizard() {
   const [headers, setHeaders] = useState<string[]>([]);
   const [mapping, setMapping] = useState<MappedColumns>({});
   const [preview, setPreview] = useState<AlunoStagingRecord[]>([]);
-  const [errors, setErrors] = useState<string[]>([]);
   const [apiErrors, setApiErrors] = useState<string[]>([]);
+  const [importId, setImportId] = useState<string | null>(null);
+  const [escolaId, setEscolaId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [importErrors, setImportErrors] = useState<ErroImportacao[]>([]);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
 
   const totalSteps = 4;
+  const supabase = useMemo(() => createClient(), []);
+
+  useEffect(() => {
+    let active = true;
+
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!active) return;
+        const session = data.session ?? null;
+        setUserId(session?.user?.id ?? null);
+        const escola = (session?.user?.app_metadata as { escola_id?: string } | undefined)?.escola_id ?? null;
+        setEscolaId(escola ?? null);
+      })
+      .catch(() => {
+        if (!active) return;
+        setUserId(null);
+        setEscolaId(null);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [supabase]);
 
   const extractHeaders = async () => {
     if (!file) return;
@@ -30,33 +59,30 @@ export default function AlunoMigrationWizard() {
     setHeaders(firstLine.split(delimiter).map((h) => h.trim()));
   };
 
-  const handleValidateLocal = async () => {
-    setErrors([]);
-    if (!file) {
-      setErrors(["Selecione um arquivo para continuar"]);
+  const handleValidate = async () => {
+    setApiErrors([]);
+    if (!importId || !escolaId) {
+      setApiErrors(["Importação ainda não iniciada. Faça o upload primeiro."]);
       return;
     }
-    await extractHeaders();
-    const text = await file.text();
-    const lines = text.split(/\r?\n/).filter(Boolean);
-    if (lines.length <= 1) {
-      setErrors(["Arquivo sem registros"]);
+    const response = await fetch("/api/migracao/alunos/validar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        importId,
+        escolaId,
+        columnMap: mapping,
+      }),
+    });
+
+    const payload = await response.json();
+
+    if (!response.ok) {
+      setApiErrors([payload.error || "Erro ao validar dados"]);
       return;
     }
-    const delimiter = headers.length && headers[0].includes(";") && !headers[0].includes(",") ? ";" : ",";
-    const rows = lines.slice(1).map((line) => line.split(delimiter));
-    const mapped: AlunoStagingRecord[] = rows.slice(0, 20).map((cols, idx) => ({
-      import_id: "preview",
-      escola_id: "preview",
-      nome: mapping.nome ? cols[headers.indexOf(mapping.nome)] : undefined,
-      data_nascimento: mapping.data_nascimento ? cols[headers.indexOf(mapping.data_nascimento)] : undefined,
-      telefone: mapping.telefone ? cols[headers.indexOf(mapping.telefone)] : undefined,
-      bi: mapping.bi ? cols[headers.indexOf(mapping.bi)] : undefined,
-      email: mapping.email ? cols[headers.indexOf(mapping.email)] : undefined,
-      profile_id: mapping.profile_id ? cols[headers.indexOf(mapping.profile_id)] : undefined,
-      raw_data: { row: idx },
-    }));
-    setPreview(mapped);
+
+    setPreview(payload.preview);
     setStep(3);
   };
 
@@ -66,33 +92,58 @@ export default function AlunoMigrationWizard() {
       setApiErrors(["Selecione um arquivo para subir"]);
       return;
     }
+    if (!escolaId) {
+      setApiErrors(["Não foi possível identificar a escola. Faça login novamente."]);
+      return;
+    }
+
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("escolaId", "pending-escola");
+    formData.append("escolaId", escolaId);
+    if (userId) formData.append("userId", userId);
 
     const response = await fetch("/api/migracao/upload", { method: "POST", body: formData });
+    const payload = await response.json();
+
     if (!response.ok) {
-      const payload = await response.json();
       setApiErrors([payload.error || "Erro ao enviar arquivo"]);
       return;
     }
+
+    setImportId(payload.importId);
+    setImportErrors([]);
+    setImportResult(null);
     setStep(2);
     await extractHeaders();
   };
 
   const handleImport = async () => {
     setApiErrors([]);
+    if (!importId || !escolaId) {
+      setApiErrors(["Importação inválida. Realize o upload novamente."]);
+      return;
+    }
     const response = await fetch("/api/migracao/alunos/importar", {
       method: "POST",
-      body: JSON.stringify({ importId: "preview", escolaId: "pending-escola" }),
       headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        importId,
+        escolaId,
+      }),
     });
+    const payload = await response.json();
     if (!response.ok) {
-      const payload = await response.json();
       setApiErrors([payload.error || "Falha ao importar"]);
       return;
     }
+    setImportResult(payload.result ?? null);
     setStep(4);
+
+    const errorsResponse = await fetch(`/api/migracao/${importId}/erros`);
+    const errorsPayload = await errorsResponse.json();
+    if (errorsResponse.ok) {
+      setImportErrors(errorsPayload.errors ?? []);
+    }
   };
 
   return (
@@ -115,9 +166,6 @@ export default function AlunoMigrationWizard() {
             <Button onClick={handleUpload} disabled={!file}>
               Enviar arquivo
             </Button>
-            {errors.map((err) => (
-              <p key={err} className="text-sm text-destructive">{err}</p>
-            ))}
             {apiErrors.map((err) => (
               <p key={err} className="text-sm text-destructive">{err}</p>
             ))}
@@ -130,8 +178,8 @@ export default function AlunoMigrationWizard() {
           </CardHeader>
           <CardContent className="space-y-4">
             <ColumnMapper headers={headers} mapping={mapping} onChange={setMapping} />
-            <Button variant="secondary" onClick={handleValidateLocal} disabled={!file}>
-              Pré-visualizar
+            <Button variant="secondary" onClick={handleValidate} disabled={!file}>
+              Validar e pré-visualizar
             </Button>
           </CardContent>
         </Card>
@@ -154,12 +202,15 @@ export default function AlunoMigrationWizard() {
           <CardTitle>4) Finalização</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Acompanhe o status da importação. Erros aparecerão abaixo e podem ser baixados pelo time técnico.
-          </p>
-          <ErrorList
-            errors={apiErrors.map((message, idx) => ({ message, row_number: idx + 1, column_name: "api" }))}
-          />
+          <div className="space-y-1 text-sm text-muted-foreground">
+            <p>Acompanhe o status da importação. Erros aparecerão abaixo e podem ser baixados pelo time técnico.</p>
+            {importResult && (
+              <p className="text-foreground">
+                Resumo: {importResult.imported} importados, {importResult.skipped} ignorados, {importResult.errors} erros.
+              </p>
+            )}
+          </div>
+          <ErrorList errors={[...importErrors, ...apiErrors.map((message) => ({ message }))]} />
         </CardContent>
       </Card>
     </main>
