@@ -11,7 +11,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 
 export default function FinanceiroDashboardPage() {
   const [loading, setLoading] = useState(true);

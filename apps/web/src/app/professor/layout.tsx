@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import ProfessorSidebar from "@/components/professor/ProfessorSidebar";
 
 export default function ProfessorLayout({ children }: { children: React.ReactNode }) {
