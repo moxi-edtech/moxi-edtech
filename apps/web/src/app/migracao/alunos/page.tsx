@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabaseClient";
-import type { Session } from "@supabase/supabase-js";
 
 import Button from "~/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/Card";
@@ -11,7 +10,7 @@ import { ErrorList } from "~/components/migracao/ErrorList";
 import { PreviewTable } from "~/components/migracao/PreviewTable";
 import { ProgressInfo } from "~/components/migracao/ProgressInfo";
 import { UploadField } from "~/components/migracao/UploadField";
-import type { AlunoStagingRecord, MappedColumns } from "~types/migracao";
+import type { AlunoStagingRecord, ErroImportacao, ImportResult, MappedColumns } from "~types/migracao";
 
 export default function AlunoMigrationWizard() {
   const [step, setStep] = useState(1);
@@ -19,25 +18,34 @@ export default function AlunoMigrationWizard() {
   const [headers, setHeaders] = useState<string[]>([]);
   const [mapping, setMapping] = useState<MappedColumns>({});
   const [preview, setPreview] = useState<AlunoStagingRecord[]>([]);
-  const [errors, setErrors] = useState<string[]>([]);
   const [apiErrors, setApiErrors] = useState<string[]>([]);
-  const [session, setSession] = useState<Session | null>(null);
   const [importId, setImportId] = useState<string | null>(null);
+  const [escolaId, setEscolaId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [importErrors, setImportErrors] = useState<ErroImportacao[]>([]);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
 
   const totalSteps = 4;
   const supabase = useMemo(() => createClient(), []);
 
-  const userIdReal = session?.user?.id;
-  const escolaIdReal = (session?.user?.app_metadata as { escola_id?: string } | undefined)?.escola_id;
-
   useEffect(() => {
     let active = true;
+
     supabase.auth
       .getSession()
       .then(({ data }) => {
-        if (active) setSession(data.session ?? null);
+        if (!active) return;
+        const session = data.session ?? null;
+        setUserId(session?.user?.id ?? null);
+        const escola = (session?.user?.app_metadata as { escola_id?: string } | undefined)?.escola_id ?? null;
+        setEscolaId(escola ?? null);
       })
-      .catch(() => setSession(null));
+      .catch(() => {
+        if (!active) return;
+        setUserId(null);
+        setEscolaId(null);
+      });
+
     return () => {
       active = false;
     };
@@ -51,10 +59,9 @@ export default function AlunoMigrationWizard() {
     setHeaders(firstLine.split(delimiter).map((h) => h.trim()));
   };
 
-  const handleValidateLocal = async () => {
-    setErrors([]);
+  const handleValidate = async () => {
     setApiErrors([]);
-    if (!importId || !escolaIdReal) {
+    if (!importId || !escolaId) {
       setApiErrors(["Importação ainda não iniciada. Faça o upload primeiro."]);
       return;
     }
@@ -63,7 +70,7 @@ export default function AlunoMigrationWizard() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         importId,
-        escolaId: escolaIdReal,
+        escolaId,
         columnMap: mapping,
       }),
     });
@@ -71,7 +78,7 @@ export default function AlunoMigrationWizard() {
     const payload = await response.json();
 
     if (!response.ok) {
-      setApiErrors([payload.error]);
+      setApiErrors([payload.error || "Erro ao validar dados"]);
       return;
     }
 
@@ -85,15 +92,15 @@ export default function AlunoMigrationWizard() {
       setApiErrors(["Selecione um arquivo para subir"]);
       return;
     }
-    if (!userIdReal || !escolaIdReal) {
-      setApiErrors(["Usuário sem contexto de escola. Faça login novamente."]);
+    if (!escolaId) {
+      setApiErrors(["Não foi possível identificar a escola. Faça login novamente."]);
       return;
     }
 
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("escolaId", escolaIdReal);
-    formData.append("userId", userIdReal);
+    formData.append("escolaId", escolaId);
+    if (userId) formData.append("userId", userId);
 
     const response = await fetch("/api/migracao/upload", { method: "POST", body: formData });
     const payload = await response.json();
@@ -104,13 +111,15 @@ export default function AlunoMigrationWizard() {
     }
 
     setImportId(payload.importId);
+    setImportErrors([]);
+    setImportResult(null);
     setStep(2);
     await extractHeaders();
   };
 
   const handleImport = async () => {
     setApiErrors([]);
-    if (!importId || !escolaIdReal) {
+    if (!importId || !escolaId) {
       setApiErrors(["Importação inválida. Realize o upload novamente."]);
       return;
     }
@@ -119,15 +128,22 @@ export default function AlunoMigrationWizard() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         importId,
-        escolaId: escolaIdReal,
+        escolaId,
       }),
     });
+    const payload = await response.json();
     if (!response.ok) {
-      const payload = await response.json();
       setApiErrors([payload.error || "Falha ao importar"]);
       return;
     }
+    setImportResult(payload.result ?? null);
     setStep(4);
+
+    const errorsResponse = await fetch(`/api/migracao/${importId}/erros`);
+    const errorsPayload = await errorsResponse.json();
+    if (errorsResponse.ok) {
+      setImportErrors(errorsPayload.errors ?? []);
+    }
   };
 
   return (
@@ -150,9 +166,6 @@ export default function AlunoMigrationWizard() {
             <Button onClick={handleUpload} disabled={!file}>
               Enviar arquivo
             </Button>
-            {errors.map((err) => (
-              <p key={err} className="text-sm text-destructive">{err}</p>
-            ))}
             {apiErrors.map((err) => (
               <p key={err} className="text-sm text-destructive">{err}</p>
             ))}
@@ -165,8 +178,8 @@ export default function AlunoMigrationWizard() {
           </CardHeader>
           <CardContent className="space-y-4">
             <ColumnMapper headers={headers} mapping={mapping} onChange={setMapping} />
-            <Button variant="secondary" onClick={handleValidateLocal} disabled={!file}>
-              Pré-visualizar
+            <Button variant="secondary" onClick={handleValidate} disabled={!file}>
+              Validar e pré-visualizar
             </Button>
           </CardContent>
         </Card>
@@ -189,12 +202,15 @@ export default function AlunoMigrationWizard() {
           <CardTitle>4) Finalização</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Acompanhe o status da importação. Erros aparecerão abaixo e podem ser baixados pelo time técnico.
-          </p>
-          <ErrorList
-            errors={apiErrors.map((message, idx) => ({ message, row_number: idx + 1, column_name: "api" }))}
-          />
+          <div className="space-y-1 text-sm text-muted-foreground">
+            <p>Acompanhe o status da importação. Erros aparecerão abaixo e podem ser baixados pelo time técnico.</p>
+            {importResult && (
+              <p className="text-foreground">
+                Resumo: {importResult.imported} importados, {importResult.skipped} ignorados, {importResult.errors} erros.
+              </p>
+            )}
+          </div>
+          <ErrorList errors={[...importErrors, ...apiErrors.map((message) => ({ message }))]} />
         </CardContent>
       </Card>
     </main>
