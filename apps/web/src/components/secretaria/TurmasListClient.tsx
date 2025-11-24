@@ -1,8 +1,24 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Fragment } from "react";
 import TurmaForm from "./TurmaForm";
 import Link from "next/link";
+import { 
+  Loader2, 
+  Search, 
+  Filter, 
+  UserPlus, 
+  ArrowLeft,
+  Users, 
+  BookOpen, 
+  BarChart3,
+  Building,
+  Calendar,
+  Gauge,
+  Edit,
+  Link as LinkIcon,
+  Trash2
+} from "lucide-react";
 
 interface TurmaItem {
   id: string;
@@ -49,7 +65,6 @@ export default function TurmasListClient() {
       setLoading(true);
       setError(null);
       
-      // ✅ DEBUG: Vamos ver exatamente o que está sendo enviado
       const params = new URLSearchParams();
       if (turno !== "todos") {
         params.set('turno', turno);
@@ -65,7 +80,6 @@ export default function TurmasListClient() {
       console.log("📊 Response status:", res.status, res.statusText);
       
       if (!res.ok) {
-        // ✅ Tenta obter mais detalhes do erro
         let errorDetails = `Erro ${res.status}: ${res.statusText}`;
         try {
           const errorJson = await res.json();
@@ -159,84 +173,203 @@ export default function TurmasListClient() {
     return 'bg-green-500';
   };
 
-  // ✅ Tela de loading melhorada
+  const getStatusColor = (percentual: number) => {
+    if (percentual >= 90) return 'text-red-600';
+    if (percentual >= 70) return 'text-amber-600';
+    return 'text-green-600';
+  };
+
+  // Gerir atribuições por turma
+  const [manageTurmaId, setManageTurmaId] = useState<string | null>(null);
+  const [assignments, setAssignments] = useState<any[] | null>(null);
+  const [loadingAssignments, setLoadingAssignments] = useState(false);
+  const loadAssignments = async (turmaId: string) => {
+    setLoadingAssignments(true);
+    setAssignments(null);
+    try {
+      const res = await fetch(`/api/secretaria/turmas/${turmaId}/disciplinas`, { cache: 'no-store' });
+      const json = await res.json();
+      if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao carregar atribuições');
+      setAssignments(json.items || []);
+    } catch (e) {
+      setAssignments([]);
+    } finally {
+      setLoadingAssignments(false);
+    }
+  };
+
+  // ✅ Loading state
   if (loading && !data) {
     return (
-      <div className="flex justify-center items-center py-12">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-sm text-gray-600">Carregando turmas...</p>
+      <div className="w-full max-w-6xl mx-auto space-y-6 p-6 bg-slate-50 rounded-xl">
+        <div className="bg-white p-8 rounded-xl border border-slate-200 shadow-sm text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-moxinexa-teal" />
+          <div className="text-slate-600">Carregando turmas...</div>
         </div>
       </div>
     );
   }
 
-  // ✅ Tela de erro melhorada com opções
+  // ✅ Error state
   if (error && !data) {
     return (
-      <div className="p-6 space-y-4">
-        <div className="rounded-lg bg-red-50 border border-red-200 p-4">
-          <h3 className="text-red-800 font-medium">Erro ao carregar turmas</h3>
-          <p className="text-red-600 text-sm mt-1">{error}</p>
-          <div className="mt-3 flex gap-2">
+      <div className="w-full max-w-6xl mx-auto space-y-6 p-6 bg-slate-50 rounded-xl">
+        <div className="bg-white p-6 rounded-xl border border-red-200 shadow-sm">
+          <h3 className="text-red-800 font-medium text-lg mb-2">Erro ao carregar turmas</h3>
+          <p className="text-red-600 mb-4">{error}</p>
+          <div className="flex gap-3">
             <button 
               onClick={fetchData}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all"
             >
+              <Loader2 className="h-4 w-4" />
               Tentar novamente
             </button>
             <button 
               onClick={() => setShowCreateForm(true)}
-              className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-moxinexa-teal text-white rounded-lg hover:bg-teal-600 transition-all"
             >
+              <UserPlus className="h-4 w-4" />
               Criar primeira turma
             </button>
           </div>
-        </div>
-        
-        {/* ✅ Debug info para desenvolvedor */}
-        <div className="rounded-lg bg-gray-50 border border-gray-200 p-4">
-          <h4 className="text-gray-800 font-medium text-sm">Informações para debug:</h4>
-          <p className="text-gray-600 text-xs mt-1">
-            URL da API: <code>/api/secretaria/turmas</code>
-            <br/>
-            Filtro atual: <code>{turno}</code>
-          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div className="w-full max-w-6xl mx-auto space-y-6 p-6 bg-slate-50 rounded-xl">
+      {/* --- BOTÃO VOLTAR --- */}
+      <div className="flex items-center gap-3">
+        <button 
+          onClick={() => window.history.back()}
+          className="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 border border-slate-200 transition-all"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Voltar
+        </button>
+      </div>
+
+      {/* --- HEADER COM MÉTRICAS --- */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <div className="text-2xl font-bold text-moxinexa-navy">{data?.stats?.totalTurmas || 0}</div>
+          <div className="text-sm text-slate-500 flex items-center gap-2">
+            <Building className="h-4 w-4" />
+            Total de Turmas
+          </div>
+        </div>
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <div className="text-2xl font-bold text-orange-600">
+            {data?.stats?.totalAlunos || 0}
+          </div>
+          <div className="text-sm text-slate-500 flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Alunos Alocados
+          </div>
+        </div>
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <div className="text-2xl font-bold text-moxinexa-teal">
+            {filtrosTurno.length - 1}
+          </div>
+          <div className="text-sm text-slate-500 flex items-center gap-2">
+            <Calendar className="h-4 w-4" />
+            Turnos Diferentes
+          </div>
+        </div>
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+          <div className="text-2xl font-bold text-green-600">
+            {Math.round((data?.stats?.totalAlunos || 0) / Math.max(data?.stats?.totalTurmas || 1, 1))}
+          </div>
+          <div className="text-sm text-slate-500 flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            Média por Turma
+          </div>
+        </div>
+      </div>
+
+      {/* --- HEADER DE AÇÃO --- */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Gestão de Turmas</h1>
-          <p className="text-sm text-gray-600 mt-1">
-            Gerencie os agrupamentos físicos e horários para alocação de estudantes.
+          <h1 className="text-2xl font-bold text-moxinexa-navy flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-blue-500" />
+            Gestão de Turmas
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            {data?.stats?.totalTurmas || 0} turmas ativas • {data?.stats?.totalAlunos || 0} alunos alocados • {filtrosTurno.length - 1} turnos
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+
+        <div className="flex items-center gap-3">
           <button 
             onClick={() => setShowCreateForm(true)}
-            className="rounded-full bg-emerald-600 px-4 py-2 text-sm text-white hover:bg-emerald-700 transition-colors flex items-center gap-2"
+            className="inline-flex items-center gap-2 rounded-lg bg-moxinexa-teal px-5 py-3 text-sm font-bold text-white hover:bg-teal-600 shadow-lg shadow-teal-900/20 transition-all active:scale-95 transform hover:-translate-y-0.5"
           >
-            <span>+</span>
-            <span>Nova Turma</span>
+            <UserPlus className="h-4 w-4" />
+            Nova Turma
           </button>
         </div>
-      </header>
+      </div>
 
-      {/* Aviso atualizado */}
-      <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-blue-800">
-        <p className="text-sm">
+      {/* --- CARTA INFORMATIVA --- */}
+      <div className="bg-blue-50 p-6 rounded-xl border border-blue-200 shadow-sm">
+        <h3 className="text-lg font-bold text-blue-800 mb-2 flex items-center gap-2">
+          <BookOpen className="h-5 w-5" />
+          Sobre as Turmas
+        </h3>
+        <p className="text-blue-700 text-sm">
           <strong>Turmas = Agrupamentos Físicos/Horários</strong><br/>
           Cada turma é um container onde alunos de diferentes classes e cursos podem compartilhar o mesmo espaço/tempo.
           O contexto acadêmico (classe, curso, equipe pedagógica) é definido na matrícula.
         </p>
       </div>
 
-      {/* Modal de criação */}
+      {/* --- FILTROS E PESQUISA --- */}
+      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+        <div className="flex gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input 
+              type="search"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Pesquisar turma, sala, ano letivo..."
+              className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-moxinexa-teal"
+            />
+          </div>
+          <button className="inline-flex items-center gap-2 px-4 py-3 bg-white border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 text-sm font-medium">
+            <Filter className="h-4 w-4" />
+            Filtros
+          </button>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {filtrosTurno.map((item) => {
+            const isActive = turno === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setTurno(item.id)}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border transition-all ${
+                  isActive
+                    ? 'bg-moxinexa-teal text-white border-moxinexa-teal shadow-lg shadow-teal-900/20'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <span className="text-sm">{item.label}</span>
+                <span className={`rounded-full px-2 py-1 text-xs font-medium ${
+                  isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                }`}>
+                  {item.total}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* --- MODAL DE CRIAÇÃO --- */}
       {showCreateForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
@@ -254,229 +387,228 @@ export default function TurmasListClient() {
         </div>
       )}
 
-      {/* ✅ Estado vazio - quando não há turmas */}
+      {/* --- ESTADO VAZIO --- */}
       {data?.items?.length === 0 && !loading && (
-        <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center">
-          <div className="text-4xl mb-4">🏫</div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma turma cadastrada</h3>
-          <p className="text-gray-600 mb-4">Comece criando a primeira turma para organizar os espaços físicos e horários.</p>
+        <div className="bg-white p-8 rounded-xl border border-slate-200 shadow-sm text-center">
+          <Building className="h-16 w-16 mx-auto mb-4 text-slate-300" />
+          <h3 className="text-lg font-semibold text-slate-800 mb-2">Nenhuma turma cadastrada</h3>
+          <p className="text-slate-600 mb-6">Comece criando a primeira turma para organizar os espaços físicos e horários.</p>
           <button 
             onClick={() => setShowCreateForm(true)}
-            className="rounded-full bg-emerald-600 px-6 py-3 text-sm text-white hover:bg-emerald-700 transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg bg-moxinexa-teal px-6 py-3 text-sm font-bold text-white hover:bg-teal-600 shadow-lg shadow-teal-900/20 transition-all"
           >
+            <UserPlus className="h-4 w-4" />
             Criar Primeira Turma
           </button>
         </div>
       )}
 
-      {/* Cards de estatísticas - só mostra se tiver dados */}
+      {/* --- TABELA DE TURMAS --- */}
       {data && data.items && data.items.length > 0 && (
-        <>
-          <section className="grid gap-4 md:grid-cols-3">
-            <HighlightCard 
-              title="Turmas ativas" 
-              value={data?.stats?.totalTurmas ?? 0} 
-              description="Containers físicos disponíveis" 
-              icon="🏫" 
-            />
-            <HighlightCard 
-              title="Alunos alocados" 
-              value={data?.stats?.totalAlunos ?? 0} 
-              description="Estudantes distribuídos nas turmas" 
-              icon="👩‍🎓" 
-            />
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-semibold uppercase text-gray-500 mb-3">
-                Distribuição por turno
-              </p>
-              <ul className="space-y-2">
-                {filtrosTurno.slice(1).map((item) => (
-                  <li key={item.id} className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">{item.label}</span>
-                    <span className="font-semibold text-gray-900">{item.total}</span>
-                  </li>
-                ))}
-                {filtrosTurno.length <= 1 && (
-                  <li className="text-sm text-gray-500">Sem turnos cadastrados</li>
-                )}
-              </ul>
-            </div>
-          </section>
+        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200 text-sm">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Turma
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Local / Turno
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Capacidade
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Ocupação
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Última Movimentação
+                  </th>
+                  <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wide text-slate-500">
+                    Ações
+                  </th>
+                </tr>
+              </thead>
 
-          {/* Filtros e tabela */}
-          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-6">
-              <div className="flex flex-wrap gap-2">
-                {filtrosTurno.map((item) => {
-                  const isActive = turno === item.id;
+              <tbody className="divide-y divide-slate-100">
+                {itensFiltrados.map((item) => {
+                  const ocupacaoPercentual = getOcupacaoPercentual(item);
+                  const ocupacaoColor = getOcupacaoColor(ocupacaoPercentual);
+                  const statusColor = getStatusColor(ocupacaoPercentual);
+                  
                   return (
-                    <button
-                      key={item.id}
-                      onClick={() => setTurno(item.id)}
-                      className={`rounded-full px-4 py-2 text-sm transition-colors flex items-center gap-2 ${
-                        isActive
-                          ? 'bg-emerald-600 text-white shadow-sm'
-                          : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      <span>{item.label}</span>
-                      <span
-                        className={`rounded-full px-2 py-1 text-xs font-medium ${
-                          isActive ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'
-                        }`}
-                      >
-                        {item.total}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="search"
-                  value={busca}
-                  onChange={(e) => setBusca(e.target.value)}
-                  placeholder="Pesquisar turma, sala, ano letivo..."
-                  className="w-full rounded-full border border-gray-300 px-4 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 lg:w-80"
-                />
-              </div>
-            </div>
-
-            {/* Tabela */}
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Turma
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Local/Turno
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Capacidade
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Ocupação
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Última movimentação
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Ações
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {itensFiltrados.map((item) => {
-                    const ocupacaoPercentual = getOcupacaoPercentual(item);
-                    const ocupacaoColor = getOcupacaoColor(ocupacaoPercentual);
-                    
-                    return (
-                      <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-4">
-                          <div>
-                            <p className="font-medium text-gray-900">{item.nome}</p>
-                            <p className="text-xs text-gray-500 mt-1">
-                              {item.ano_letivo || 'Ano letivo não informado'}
-                            </p>
+                    <Fragment key={item.id}>
+                      <tr className="hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-4 text-slate-900">
+                          <div className="font-bold text-moxinexa-navy">
+                            {item.nome}
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            {item.ano_letivo || 'Ano letivo não informado'}
                           </div>
                         </td>
-                        <td className="px-4 py-4">
-                          <div>
-                            <p className="text-sm text-gray-900">
+                        <td className="px-4 py-3">
+                          <div className="space-y-1">
+                            <div className="text-slate-700">
                               {item.sala || 'Sem local definido'}
-                            </p>
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mt-1">
+                            </div>
+                            <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-700">
+                              <Calendar className="w-3 h-3 mr-1" />
                               {TURNO_LABELS[item.turno] || item.turno}
                             </span>
                           </div>
                         </td>
-                        <td className="px-4 py-4 text-sm text-gray-900">
-                          <div>
-                            <p>
-                              {item.ocupacao_atual || 0} / {item.capacidade_maxima || 'N/A'}
-                            </p>
-                            <p className="text-xs text-gray-500">alunos</p>
+                        <td className="px-4 py-3">
+                          <div className="text-slate-700 font-medium">
+                            {item.ocupacao_atual || 0} / {item.capacidade_maxima || 'N/A'}
                           </div>
+                          <div className="text-xs text-slate-500">alunos</div>
                         </td>
-                        <td className="px-4 py-4">
-                          <div className="flex items-center gap-2">
-                            <div className="w-16 bg-gray-200 rounded-full h-2">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-20 bg-slate-200 rounded-full h-2">
                               <div 
                                 className={`h-2 rounded-full ${ocupacaoColor} transition-all`}
                                 style={{ width: `${Math.min(ocupacaoPercentual, 100)}%` }}
                               ></div>
                             </div>
-                            <span className="text-xs text-gray-600 whitespace-nowrap">
+                            <span className={`text-sm font-bold ${statusColor}`}>
                               {ocupacaoPercentual}%
                             </span>
                           </div>
                         </td>
-                        <td className="px-4 py-4 text-sm text-gray-500">
+                        <td className="px-4 py-3 text-slate-600">
                           {item.ultima_matricula 
                             ? new Date(item.ultima_matricula).toLocaleDateString('pt-BR')
                             : 'Sem registros'
                           }
                         </td>
-                        <td className="px-4 py-4">
-                          <div className="flex flex-col gap-2">
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex justify-center gap-1">
                             <Link 
                               href={`/secretaria/matriculas?turma_id=${item.id}`}
-                              className="rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-700 hover:border-emerald-500 hover:text-emerald-600 transition-colors text-center"
+                              className="text-blue-600 hover:text-white hover:bg-blue-600 p-2 rounded-lg transition-all"
+                              title="Ver matrículas"
                             >
-                              Ver matrículas
+                              <Users className="w-4 h-4" />
                             </Link>
                             <Link
                               href={`/secretaria/turmas/${item.id}/editar`}
-                              className="rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-700 hover:border-blue-500 hover:text-blue-600 transition-colors text-center"
+                              className="text-green-600 hover:text-white hover:bg-green-600 p-2 rounded-lg transition-all"
+                              title="Editar turma"
                             >
-                              Editar turma
+                              <Edit className="w-4 h-4" />
                             </Link>
+                            <button
+                              onClick={() => { setManageTurmaId(item.id); loadAssignments(item.id); }}
+                              className="text-purple-600 hover:text-white hover:bg-purple-600 p-2 rounded-lg transition-all"
+                              title="Gerir disciplinas"
+                            >
+                              <LinkIcon className="w-4 h-4" />
+                            </button>
                           </div>
                         </td>
                       </tr>
-                    );
-                  })}
-                  {itensFiltrados.length === 0 && data.items.length > 0 && (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center">
-                        <div className="text-gray-500">
-                          <p className="text-sm">Nenhuma turma encontrada com os filtros atuais</p>
-                          <p className="text-xs mt-1">Tente ajustar a busca ou filtros</p>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        </>
-      )}
-    </div>
-  );
-}
 
-function HighlightCard({ 
-  title, 
-  value, 
-  description, 
-  icon 
-}: { 
-  title: string; 
-  value: number; 
-  description: string; 
-  icon: string; 
-}) {
-  return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-      <div className="text-2xl mb-3" aria-hidden="true">{icon}</div>
-      <p className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-1">
-        {title}
-      </p>
-      <p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
-      <p className="text-sm text-gray-600">{description}</p>
+                      {/* EXPANSÃO DE ATRIBUIÇÕES */}
+                      {manageTurmaId === item.id && (
+                        <tr className="bg-slate-50">
+                          <td colSpan={6} className="px-4 pb-4">
+                            <div className="rounded-lg border border-slate-200 p-4 bg-white">
+                              <div className="flex items-center justify-between mb-3">
+                                <h4 className="font-semibold text-slate-800 flex items-center gap-2">
+                                  <LinkIcon className="h-4 w-4" />
+                                  Atribuições de {item.nome}
+                                </h4>
+                                <button 
+                                  onClick={() => { setManageTurmaId(null); setAssignments(null); }} 
+                                  className="text-slate-500 hover:text-slate-700"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                              {loadingAssignments ? (
+                                <div className="flex items-center gap-2 text-slate-500">
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  Carregando atribuições...
+                                </div>
+                              ) : !assignments || assignments.length === 0 ? (
+                                <div className="text-slate-500 text-sm">Nenhuma atribuição cadastrada.</div>
+                              ) : (
+                                <div className="overflow-x-auto">
+                                  <table className="min-w-full text-sm border border-slate-200">
+                                    <thead className="bg-slate-50">
+                                      <tr>
+                                        <th className="p-2 text-left border border-slate-200">Disciplina</th>
+                                        <th className="p-2 text-left border border-slate-200">Professor</th>
+                                        <th className="p-2 text-left border border-slate-200">Vínculos</th>
+                                        <th className="p-2 text-left border border-slate-200">Ações</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {assignments.map((a) => (
+                                        <tr key={a.id} className="border-t border-slate-200">
+                                          <td className="p-2 border border-slate-200">{a.disciplina?.nome || a.disciplina?.id}</td>
+                                          <td className="p-2 border border-slate-200">{a.professor?.nome || a.professor?.email || a.professor?.id}</td>
+                                          <td className="p-2 border border-slate-200">
+                                            <div className="flex flex-wrap gap-1">
+                                              <span className={`inline-block px-2 py-0.5 rounded-full text-xs ${a.vinculos.horarios ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>Horários</span>
+                                              <span className={`inline-block px-2 py-0.5 rounded-full text-xs ${a.vinculos.notas ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>Notas</span>
+                                              <span className={`inline-block px-2 py-0.5 rounded-full text-xs ${a.vinculos.presencas ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>Presenças</span>
+                                              <span className={`inline-block px-2 py-0.5 rounded-full text-xs ${a.vinculos.planejamento ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>Planejamento</span>
+                                            </div>
+                                          </td>
+                                          <td className="p-2 border border-slate-200">
+                                            <button
+                                              onClick={async () => {
+                                                if (!confirm('Remover esta atribuição?')) return;
+                                                try {
+                                                  const res = await fetch(`/api/secretaria/turmas/${item.id}/disciplinas/${a.disciplina?.id}`, { method: 'DELETE' });
+                                                  const json = await res.json().catch(()=>null);
+                                                  if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao remover');
+                                                  await loadAssignments(item.id);
+                                                } catch (e) {
+                                                  console.error(e);
+                                                  alert(e instanceof Error ? e.message : String(e));
+                                                }
+                                              }}
+                                              className="inline-flex items-center gap-1 px-2 py-1 rounded border border-red-200 text-red-600 hover:bg-red-50 text-xs"
+                                            >
+                                              <Trash2 className="h-3 w-3" />
+                                              Remover
+                                            </button>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+                
+                {itensFiltrados.length === 0 && data.items.length > 0 && (
+                  <tr>
+                    <td colSpan={6} className="p-8 text-center text-slate-500">
+                      <Search className="h-12 w-12 mx-auto mb-3 text-slate-300" />
+                      Nenhuma turma encontrada com os filtros atuais.
+                      <div className="mt-2 text-sm">
+                        Tente ajustar a busca ou filtros.
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

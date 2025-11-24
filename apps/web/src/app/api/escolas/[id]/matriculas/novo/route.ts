@@ -4,6 +4,7 @@ import { supabaseServer } from '@/lib/supabaseServer'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import type { Database } from '~types/supabase'
 import { recordAuditServer } from '@/lib/audit'
+import { generateNumeroLogin } from '@/lib/generateNumeroLogin'
 import { hasPermission } from '@/lib/permissions'
 
 const BodySchema = z.object({
@@ -50,6 +51,32 @@ export async function POST(
       return NextResponse.json({ ok: false, error: 'Configuração do Supabase ausente' }, { status: 500 })
     }
     const admin = createAdminClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!) as any
+    // Garante numero_matricula: usa numero_login do aluno; se inexistente, gera agora
+    let numeroMatriculaFinal: string | null = null
+    try {
+      const { data: alunoFull } = await s
+        .from('alunos')
+        .select('id, escola_id, profile_id, profiles!alunos_profile_id_fkey ( user_id, numero_login, email )')
+        .eq('id', body.aluno_id)
+        .maybeSingle()
+
+      const profJoin = (alunoFull as any)?.profiles
+      const profileUserId = Array.isArray(profJoin) ? profJoin?.[0]?.user_id : profJoin?.user_id
+      const existingNumeroLogin = Array.isArray(profJoin) ? profJoin?.[0]?.numero_login : profJoin?.numero_login
+
+      if (existingNumeroLogin) {
+        numeroMatriculaFinal = existingNumeroLogin
+      } else if (profileUserId) {
+        try {
+          const novoNumero = await generateNumeroLogin(escolaId, 'aluno' as any, { client: admin as any })
+          await admin.from('profiles').update({ numero_login: novoNumero } as any).eq('user_id', profileUserId)
+          numeroMatriculaFinal = novoNumero
+        } catch (e) {
+          console.warn('[matriculas.novo] Falha ao gerar/atribuir numero_login:', e)
+        }
+      }
+    } catch {}
+
     const { data, error } = await admin
       .from('matriculas')
       .insert({
@@ -57,6 +84,7 @@ export async function POST(
         aluno_id: body.aluno_id,
         turma_id: body.turma_id,
         status: body.status,
+        numero_matricula: numeroMatriculaFinal,
       })
       .select('id, escola_id, aluno_id, turma_id, status, created_at')
       .single()

@@ -175,3 +175,102 @@ Fim.
   - Snapshot salvo em `supabase/.branches/remote/schema.sql`.
   - Observação: `supabase db pull` apresentou erro do stack Realtime; foi utilizado `pg_dump` do Postgres 17 via Docker para extrair somente o schema.
   - Types atualizados com `pnpm gen:types` em `types/supabase.ts`.
+
+---
+
+# 🧰 **12. Remoto → Local com dados (pg_dump/psql)**
+
+Em casos onde você precisa espelhar o banco remoto no local com dados (e não apenas schema), use `pg_dump` (Postgres 17) e restaure no Postgres local do Supabase.
+
+Pré‑requisitos
+- Supabase CLI instalado e login feito: `supabase login`
+- Docker Desktop (apenas para rodar o Supabase local) OU Postgres local
+- Cliente Postgres 17 disponível (duas opções):
+  - Homebrew: `brew install postgresql@17 && export PATH="/usr/local/opt/postgresql@17/bin:$PATH"`, ou
+  - Docker (alternativa ao cliente local): usar imagem `postgres:17` só para o dump.
+
+1) Exportar a URL do pooler remoto
+```bash
+export DB_URL="postgresql://postgres.wjtifcpxxxotsbmvbgoq:MoxinexaDB2025@aws-1-eu-north-1.pooler.supabase.com:5432/postgres?sslmode=require"
+```
+
+2) Gerar o dump somente de `public` e `graphql_public`
+- Com cliente local 17:
+```bash
+mkdir -p tmp
+pg_dump "$DB_URL" \
+  --no-owner --no-privileges \
+  --schema=public --schema=graphql_public \
+  -f tmp/remote_public.sql
+```
+
+- Alternativa via Docker (sem instalar cliente):
+```bash
+docker run --rm -v "$PWD:/work" postgres:17 \
+  pg_dump "$DB_URL" \
+    --no-owner --no-privileges \
+    --schema=public --schema=graphql_public \
+    -f /work/tmp/remote_public.sql
+```
+
+- Atalho via NPM scripts:
+```bash
+npm run db:dump:remote    # usa scripts/db-dump-remote.sh (usa DB_URL e SCHEMAS)
+npm run db:dump:remote:schema-only   # dump apenas do schema (sem dados)
+npm run db:dump:remote:public        # dump só do schema 'public'
+npm run db:dump:remote:all           # dump de todos os schemas (evite em Supabase)
+```
+
+3) Subir o Supabase local (Postgres na porta 54322)
+```bash
+supabase start
+```
+
+4) Restaurar no banco local
+```bash
+export LOCAL_URL="postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+
+# Opcional: recriar apenas o schema public
+psql "$LOCAL_URL" -v ON_ERROR_STOP=1 -c "DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;"
+
+# Importar o dump (se aparecer aviso de 'graphql_public already exists', pode ignorar)
+psql "$LOCAL_URL" -v ON_ERROR_STOP=1 -f tmp/remote_public.sql
+```
+
+- Atalho via NPM scripts:
+```bash
+npm run db:restore:local  # usa scripts/db-restore-local.sh [dump.sql]
+```
+
+5) Regenerar tipos TypeScript
+```bash
+pnpm gen:types
+```
+
+Observações
+- Preferimos copiar apenas `public` e `graphql_public`. Evite sobrescrever schemas internos do Supabase.
+- O erro `schema "graphql_public" already exists` durante a restauração é esperado no ambiente local; a importação prossegue normalmente.
+- Se precisar copiar somente o schema (sem dados), acrescente `--schema-only` ao `pg_dump`.
+- Os scripts aceitam `SCHEMAS` (ex.: `SCHEMAS=public,graphql_public`) e `SCHEMA_ONLY=1` como variáveis de ambiente.
+
+---
+
+# 🔁 **13. Resumo – Pull vs Push**
+
+- Pull (remoto → repo/local, apenas schema)
+  - `export DB_URL="...pooler..."`
+  - `supabase db pull --db-url "$DB_URL"`
+  - `supabase start && supabase db reset --yes`
+  - `pnpm gen:types`
+
+- Pull com dados (remoto → local, schema + dados)
+  - `npm run db:dump:remote` (gera tmp/remote_public_YYYYmmdd_HHMMSS.sql)
+  - `supabase start`
+  - `npm run db:restore:local` (ou passe o caminho do dump)
+  - `pnpm gen:types`
+
+- Push (repo/local → remoto, via migrations)
+  - Faça as alterações (DDL) localmente
+  - `supabase db diff --db-url "$DB_URL" -f nome_da_migration`
+  - `supabase db push --db-url "$DB_URL"`
+  - `pnpm gen:types`

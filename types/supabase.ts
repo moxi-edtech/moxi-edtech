@@ -17,29 +17,132 @@ export type Database = {
       alunos: {
         Row: {
           created_at: string
+          deleted_at: string | null
+          deleted_by: string | null
+          deletion_reason: string | null
+          escola_id: string | null
           id: string
           nome: string
+          profile_id: string | null
           responsavel: string | null
           status: string | null
           telefone_responsavel: string | null
+          updated_at: string | null
         }
         Insert: {
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason?: string | null
+          escola_id?: string | null
           id?: string
           nome: string
+          profile_id?: string | null
           responsavel?: string | null
           status?: string | null
           telefone_responsavel?: string | null
+          updated_at?: string | null
         }
         Update: {
           created_at?: string
+          deleted_at?: string | null
+          deleted_by?: string | null
+          deletion_reason?: string | null
+          escola_id?: string | null
           id?: string
           nome?: string
+          profile_id?: string | null
           responsavel?: string | null
           status?: string | null
           telefone_responsavel?: string | null
+          updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "alunos_deleted_by_fkey"
+            columns: ["deleted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "alunos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alunos_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      alunos_excluidos: {
+        Row: {
+          aluno_created_at: string | null
+          aluno_deleted_at: string | null
+          aluno_id: string | null
+          anonimizacao_data: string | null
+          dados_anonimizados: boolean
+          escola_id: string
+          excluido_por: string | null
+          exclusao_motivo: string | null
+          id: string
+          nome: string | null
+          numero_login: string | null
+          profile_id: string | null
+          snapshot: Json | null
+        }
+        Insert: {
+          aluno_created_at?: string | null
+          aluno_deleted_at?: string | null
+          aluno_id?: string | null
+          anonimizacao_data?: string | null
+          dados_anonimizados?: boolean
+          escola_id: string
+          excluido_por?: string | null
+          exclusao_motivo?: string | null
+          id?: string
+          nome?: string | null
+          numero_login?: string | null
+          profile_id?: string | null
+          snapshot?: Json | null
+        }
+        Update: {
+          aluno_created_at?: string | null
+          aluno_deleted_at?: string | null
+          aluno_id?: string | null
+          anonimizacao_data?: string | null
+          dados_anonimizados?: boolean
+          escola_id?: string
+          excluido_por?: string | null
+          exclusao_motivo?: string | null
+          id?: string
+          nome?: string | null
+          numero_login?: string | null
+          profile_id?: string | null
+          snapshot?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alunos_excluidos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alunos_excluidos_excluido_por_fkey"
+            columns: ["excluido_por"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       atribuicoes_prof: {
         Row: {
@@ -96,7 +199,7 @@ export type Database = {
       }
       audit_logs: {
         Row: {
-          acao: string
+          acao: string | null
           action: string | null
           created_at: string | null
           details: Json | null
@@ -107,11 +210,11 @@ export type Database = {
           meta: Json | null
           portal: string | null
           registro_id: string | null
-          tabela: string
+          tabela: string | null
           user_id: string | null
         }
         Insert: {
-          acao: string
+          acao?: string | null
           action?: string | null
           created_at?: string | null
           details?: Json | null
@@ -122,11 +225,11 @@ export type Database = {
           meta?: Json | null
           portal?: string | null
           registro_id?: string | null
-          tabela: string
+          tabela?: string | null
           user_id?: string | null
         }
         Update: {
-          acao?: string
+          acao?: string | null
           action?: string | null
           created_at?: string | null
           details?: Json | null
@@ -137,7 +240,7 @@ export type Database = {
           meta?: Json | null
           portal?: string | null
           registro_id?: string | null
-          tabela?: string
+          tabela?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -1139,6 +1242,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "matriculas_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "alunos"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "matriculas_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
@@ -1214,27 +1324,57 @@ export type Database = {
       mensalidades: {
         Row: {
           aluno_id: string
+          ano_letivo: string | null
+          ano_referencia: number | null
           created_at: string
+          data_pagamento_efetiva: string | null
           data_vencimento: string
+          escola_id: string | null
           id: string
+          mes_referencia: number | null
+          observacoes: string | null
           status: string | null
+          turma_id: string | null
+          updated_at: string
           valor: number
+          valor_pago_total: number | null
+          valor_previsto: number | null
         }
         Insert: {
           aluno_id: string
+          ano_letivo?: string | null
+          ano_referencia?: number | null
           created_at?: string
+          data_pagamento_efetiva?: string | null
           data_vencimento: string
+          escola_id?: string | null
           id?: string
+          mes_referencia?: number | null
+          observacoes?: string | null
           status?: string | null
+          turma_id?: string | null
+          updated_at?: string
           valor: number
+          valor_pago_total?: number | null
+          valor_previsto?: number | null
         }
         Update: {
           aluno_id?: string
+          ano_letivo?: string | null
+          ano_referencia?: number | null
           created_at?: string
+          data_pagamento_efetiva?: string | null
           data_vencimento?: string
+          escola_id?: string | null
           id?: string
+          mes_referencia?: number | null
+          observacoes?: string | null
           status?: string | null
+          turma_id?: string | null
+          updated_at?: string
           valor?: number
+          valor_pago_total?: number | null
+          valor_previsto?: number | null
         }
         Relationships: [
           {
@@ -1582,48 +1722,66 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          bi_numero: string | null
           created_at: string | null
           current_escola_id: string | null
+          data_nascimento: string | null
           deleted_at: string | null
           email: string | null
+          encarregado_relacao: string | null
           escola_id: string | null
           global_role: string | null
+          naturalidade: string | null
           nome: string
           numero_login: string | null
           onboarding_finalizado: boolean | null
+          provincia: string | null
           role: Database["public"]["Enums"]["user_role"]
+          sexo: string | null
           telefone: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
           avatar_url?: string | null
+          bi_numero?: string | null
           created_at?: string | null
           current_escola_id?: string | null
+          data_nascimento?: string | null
           deleted_at?: string | null
           email?: string | null
+          encarregado_relacao?: string | null
           escola_id?: string | null
           global_role?: string | null
+          naturalidade?: string | null
           nome: string
           numero_login?: string | null
           onboarding_finalizado?: boolean | null
+          provincia?: string | null
           role?: Database["public"]["Enums"]["user_role"]
+          sexo?: string | null
           telefone?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
           avatar_url?: string | null
+          bi_numero?: string | null
           created_at?: string | null
           current_escola_id?: string | null
+          data_nascimento?: string | null
           deleted_at?: string | null
           email?: string | null
+          encarregado_relacao?: string | null
           escola_id?: string | null
           global_role?: string | null
+          naturalidade?: string | null
           nome?: string
           numero_login?: string | null
           onboarding_finalizado?: boolean | null
+          provincia?: string | null
           role?: Database["public"]["Enums"]["user_role"]
+          sexo?: string | null
           telefone?: string | null
           updated_at?: string | null
           user_id?: string
@@ -2366,6 +2524,15 @@ export type Database = {
           },
         ]
       }
+      v_total_em_aberto_por_mes: {
+        Row: {
+          ano: number | null
+          escola_id: string | null
+          mes: number | null
+          total_aberto: number | null
+        }
+        Relationships: []
+      }
       vw_radar_inadimplencia: {
         Row: {
           aluno_id: string | null
@@ -2402,6 +2569,10 @@ export type Database = {
         }[]
       }
       can_access: { Args: { eid: string }; Returns: boolean }
+      canonicalize_matricula_status_text: {
+        Args: { input: string }
+        Returns: string
+      }
       check_super_admin_role: { Args: never; Returns: boolean }
       create_escola_with_admin: {
         Args: {
@@ -2481,6 +2652,12 @@ export type Database = {
       }
     }
     Enums: {
+      mensalidade_status:
+        | "pendente"
+        | "pago_parcial"
+        | "pago"
+        | "isento"
+        | "cancelado"
       user_role:
         | "super_admin"
         | "global_admin"
@@ -2616,6 +2793,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      mensalidade_status: [
+        "pendente",
+        "pago_parcial",
+        "pago",
+        "isento",
+        "cancelado",
+      ],
       user_role: [
         "super_admin",
         "global_admin",

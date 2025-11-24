@@ -1,0 +1,62 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+    environment:
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      # Optional server-side vars (mirrors public for convenience)
+      SUPABASE_URL: ${SUPABASE_URL:-${NEXT_PUBLIC_SUPABASE_URL}}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-${NEXT_PUBLIC_SUPABASE_ANON_KEY}}
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    env_file:
+      - apps/web/.env.local
+
+  web-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: base
+    user: node
+    working_dir: /workspace
+    command: >-
+      sh -lc "pnpm install && pnpm --filter web dev"
+    environment:
+      NODE_ENV: development
+      NEXT_TELEMETRY_DISABLED: 1
+      CHOKIDAR_USEPOLLING: "1"
+      WATCHPACK_POLLING: "true"
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      SUPABASE_URL: ${SUPABASE_URL:-${NEXT_PUBLIC_SUPABASE_URL}}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-${NEXT_PUBLIC_SUPABASE_ANON_KEY}}
+    env_file:
+      - apps/web/.env.local
+    volumes:
+      - .:/workspace:delegated
+      - pnpm-store:/home/node/.local/share/pnpm
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+volumes:
+  pnpm-store:
+
+# Compose automatically reads variables from a ".env" file in the project root.
+# You can also point to an explicit env file by adding:
+# env_file:
+#   - apps/web/.env.docker

@@ -5,21 +5,41 @@ export async function GET() {
   try {
     const { supabase, ctx } = await getAlunoContext();
     if (!ctx) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
-    const { matriculaId } = ctx;
+    const { alunoId } = ctx;
 
-    if (!matriculaId) return NextResponse.json({ ok: true, mensalidades: [] });
+    if (!alunoId) return NextResponse.json({ ok: true, mensalidades: [] });
 
+    // Busca mensalidades por aluno, no formato do frontend do aluno
     const { data, error } = await supabase
       .from('mensalidades')
-      .select('id, competencia, valor, vencimento, status, pago_em')
-      .eq('matricula_id', matriculaId)
-      .order('competencia', { ascending: true });
+      .select('id, ano_referencia, mes_referencia, valor_previsto, data_vencimento, status, data_pagamento_efetiva')
+      .eq('aluno_id', alunoId)
+      .order('ano_referencia', { ascending: true })
+      .order('mes_referencia', { ascending: true });
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
 
-    return NextResponse.json({ ok: true, mensalidades: data || [] });
+    const hoje = new Date().toISOString().slice(0, 10);
+    const rows = (data || []).map((m: any) => {
+      const competencia = `${m.ano_referencia}-${String(m.mes_referencia).padStart(2, '0')}`;
+      const vencimento = m.data_vencimento as string;
+      const pago_em = m.data_pagamento_efetiva as string | null;
+      let status: 'pago' | 'pendente' | 'atrasado' = 'pendente';
+      if ((m.status as string) === 'pago') status = 'pago';
+      else if (vencimento && vencimento < hoje) status = 'atrasado';
+      else status = 'pendente';
+      return {
+        id: m.id,
+        competencia,
+        valor: Number(m.valor_previsto ?? 0),
+        vencimento,
+        status,
+        pago_em,
+      };
+    });
+
+    return NextResponse.json({ ok: true, mensalidades: rows });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
-

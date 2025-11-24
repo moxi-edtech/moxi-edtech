@@ -50,8 +50,14 @@ export async function GET() {
       });
     }
 
-    const [alunosRes, turmasRes, matsRes, matsStatusRes, matsTurmaStatusRes, avisosRes, ultimasMatriculasRes] = await Promise.all([
-      supabase.from('alunos').select('*', { count: 'exact', head: true }).eq('escola_id', escolaId),
+    const [alunosAtivosRes, turmasRes, matsRes, matsStatusRes, matsTurmaStatusRes, avisosRes, ultimasMatriculasRes] = await Promise.all([
+      // Número de alunos com matrícula ativa (distinto por aluno_id)
+      supabase
+        .from('matriculas')
+        .select('aluno_id, count:aluno_id', withGroup('aluno_id'))
+        .eq('escola_id', escolaId)
+        .in('status', ['ativa', 'ativo', 'active'])
+        .not('aluno_id', 'is', null),
       supabase.from('turmas').select('id, nome, turno, ano_letivo, professor_id').eq('escola_id', escolaId).order('nome'),
       supabase.from('matriculas').select('*', { count: 'exact', head: true }).eq('escola_id', escolaId),
       supabase
@@ -76,19 +82,23 @@ export async function GET() {
         .limit(6),
     ]);
 
-    const resumoStatus = (matsStatusRes.data || []).map((row: MatriculaResumo) => ({
-      status: row.status ?? 'indefinido',
-      total: Number((row as any)?.count ?? row.count ?? 0),
-    }));
+    // Aggregate and normalize status to avoid duplicates from DB inconsistencies
+    const resumoAgg = new Map<string, number>();
+    for (const row of (matsStatusRes.data || [])) {
+      const key = canonicalStatus((row as MatriculaResumo).status);
+      const total = Number((row as any)?.count ?? (row as MatriculaResumo).count ?? 0);
+      resumoAgg.set(key, (resumoAgg.get(key) ?? 0) + total);
+    }
+    const resumoStatus = Array.from(resumoAgg.entries()).map(([status, total]) => ({ status, total }));
 
     const turmaStatus = new Map<string, Record<string, number>>();
     for (const row of matsTurmaStatusRes.data || []) {
       const turmaId = (row as TurmaResumo).turma_id;
       if (!turmaId) continue;
-      const status = ((row as TurmaResumo).status ?? 'indefinido').toString();
+      const statusKey = canonicalStatus((row as TurmaResumo).status);
       const total = Number((row as any)?.count ?? (row as TurmaResumo).count ?? 0);
       if (!turmaStatus.has(turmaId)) turmaStatus.set(turmaId, {});
-      turmaStatus.get(turmaId)![status] = (turmaStatus.get(turmaId)![status] ?? 0) + total;
+      turmaStatus.get(turmaId)![statusKey] = (turmaStatus.get(turmaId)![statusKey] ?? 0) + total;
     }
 
     const professorIds = Array.from(
@@ -172,7 +182,7 @@ export async function GET() {
     return NextResponse.json({
       ok: true,
       counts: {
-        alunos: alunosRes.count ?? 0,
+        alunos: (alunosAtivosRes.data?.length ?? 0),
         matriculas: matsRes.count ?? 0,
         turmas: turmasRes.data?.length ?? 0,
         pendencias,
@@ -196,4 +206,15 @@ function normalizeStatus(status: string) {
   if (["pendente", "aguardando"].includes(value)) return { label: "Pendente", context: "alert" as const };
   if (["trancado", "suspenso", "desistente", "inativo"].includes(value)) return { label: "Irregular", context: "alert" as const };
   return { label: status || 'Indefinido', context: "neutral" as const };
+}
+
+// Canonical status key used to aggregate duplicates and synonyms
+function canonicalStatus(status: string | null | undefined): string {
+  const v = (status ?? '').trim().toLowerCase();
+  if (["ativa", "ativo", "active"].includes(v)) return "ativo";
+  if (["concluida", "concluido", "graduado"].includes(v)) return "concluido";
+  if (["transferido", "transferida"].includes(v)) return "transferido";
+  if (["pendente", "aguardando"].includes(v)) return "pendente";
+  if (["trancado", "suspenso", "desistente", "inativo"].includes(v)) return "inativo"; // grouped as Irregular
+  return v || "indefinido";
 }

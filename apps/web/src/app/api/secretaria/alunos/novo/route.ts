@@ -3,9 +3,8 @@ import { z } from 'zod'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '~types/supabase'
-import { generateNumeroLogin } from '@/lib/generateNumeroLogin'
 import { recordAuditServer } from '@/lib/audit'
-import { buildCredentialsEmail, sendMail } from '@/lib/mailer'
+import { buildCredentialsEmail, sendMail } from '@/lib/mailer' // vamos desligar o uso aqui
 
 const BodySchema = z.object({
   nome: z.string().trim().min(1, 'Informe o nome'),
@@ -32,27 +31,35 @@ export async function POST(req: Request) {
     }
     const body = parsed.data
 
-    // Resolve escola_id do usuário logado (contexto da Secretaria)
+    // 1) escola_id do usuário logado (secretaria/admin/...)
     const s = await supabaseServer()
     const { data: userRes } = await s.auth.getUser()
     const user = userRes?.user
-    if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
+    if (!user) {
+      return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
+    }
 
     const { data: prof } = await s
       .from('profiles' as any)
       .select('escola_id')
       .eq('user_id', user.id)
       .maybeSingle()
-    const escolaId = (prof as any)?.escola_id as string | undefined
-    if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não vinculada ao perfil' }, { status: 403 })
 
-    // Admin client para criar usuário e ignorar RLS quando necessário
+    const escolaId = (prof as any)?.escola_id as string | undefined
+    if (!escolaId) {
+      return NextResponse.json(
+        { ok: false, error: 'Escola não vinculada ao perfil' },
+        { status: 403 },
+      )
+    }
+
+    // 2) Admin client (service_role) pra ignorar RLS onde precisar
     const admin = createClient<Database>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
     )
 
-    // Gera senha temporária forte
+    // 3) Cria usuário no Auth com senha temporária (ainda não mandamos as credenciais)
     const generateStrongPassword = (len = 12) => {
       const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
       const lower = 'abcdefghijklmnopqrstuvwxyz'
@@ -66,7 +73,6 @@ export async function POST(req: Request) {
     }
     const tempPassword = generateStrongPassword(12)
 
-    // 1) Criar usuário no Auth com senha temporária
     const { data: createdUser, error: userErr } = await (admin as any).auth.admin.createUser({
       email: body.email,
       password: tempPassword,
@@ -74,44 +80,120 @@ export async function POST(req: Request) {
       user_metadata: { nome: body.nome, role: 'aluno', must_change_password: true },
       app_metadata: { role: 'aluno' },
     })
+
     if (userErr) {
-      return NextResponse.json({ ok: false, error: userErr.message || 'Falha ao criar usuário do aluno' }, { status: 400 })
+      return NextResponse.json(
+        { ok: false, error: userErr.message || 'Falha ao criar usuário do aluno' },
+        { status: 400 },
+      )
     }
+
     const newUserId = createdUser?.user?.id as string | undefined
-    if (!newUserId) return NextResponse.json({ ok: false, error: 'Falha ao criar usuário do aluno' }, { status: 400 })
-
-    // 2) Gerar numero_login e persistir no profile
-    let numeroLogin: string | null = null
-    try {
-      numeroLogin = await generateNumeroLogin(escolaId, 'aluno' as any, admin as any)
-      // Garante profile e atualiza campos
-      const { data: profExists } = await (admin as any)
-        .from('profiles')
-        .select('user_id')
-        .eq('user_id', newUserId)
-        .maybeSingle()
-      if (profExists) {
-        await (admin as any)
-          .from('profiles')
-          .update({ numero_login: numeroLogin, escola_id: escolaId, email: body.email, nome: body.nome, role: 'aluno' })
-          .eq('user_id', newUserId)
-      } else {
-        await (admin as any)
-          .from('profiles')
-          .insert({ user_id: newUserId, email: body.email, nome: body.nome, numero_login: numeroLogin, role: 'aluno', escola_id: escolaId } as any)
-      }
-      // Vincula na escola_usuarios como aluno (best-effort)
-      try { await (admin as any).from('escola_usuarios').upsert({ escola_id: escolaId, user_id: newUserId, papel: 'aluno' } as any, { onConflict: 'escola_id,user_id' }) } catch {}
-      // Reflete em app_metadata (best-effort)
-      try { await (admin as any).auth.admin.updateUserById(newUserId, { app_metadata: { role: 'aluno', escola_id: escolaId, numero_usuario: numeroLogin }, user_metadata: { must_change_password: true } }) } catch {}
-    } catch (_) {
-      // não-fatal
+    if (!newUserId) {
+      return NextResponse.json(
+        { ok: false, error: 'Falha ao criar usuário do aluno' },
+        { status: 400 },
+      )
     }
 
-    // 3) Inserir aluno
-    const insert: Database['public']['Tables']['alunos']['Insert'] = { profile_id: newUserId, nome: body.nome, escola_id: escolaId }
-    for (const k of ['data_nascimento','sexo','bi_numero','naturalidade','provincia','responsavel_nome','responsavel_contato','encarregado_relacao'] as const) {
-      if (body[k] != null) insert[k] = body[k] as any
+    // 4) Criar/atualizar PROFILE (sem numero_login)
+    const { data: profExists, error: profExistsErr } = await (admin as any)
+      .from('profiles')
+      .select('user_id')
+      .eq('user_id', newUserId)
+      .maybeSingle()
+
+    if (profExistsErr) {
+      return NextResponse.json(
+        { ok: false, error: profExistsErr.message || 'Falha ao verificar perfil do aluno' },
+        { status: 500 },
+      )
+    }
+
+    const profileData: Database['public']['Tables']['profiles']['Insert'] = {
+      user_id: newUserId,
+      email: body.email,
+      nome: body.nome,
+      role: 'aluno',
+      escola_id: escolaId,
+      data_nascimento: body.data_nascimento ?? null,
+      sexo: body.sexo ?? null,
+      bi_numero: body.bi_numero ?? null,
+      naturalidade: body.naturalidade ?? null,
+      provincia: body.provincia ?? null,
+      encarregado_relacao: body.encarregado_relacao ?? null,
+      // numero_login fica NULL aqui – só vai ser preenchido na matrícula
+    }
+
+    let upsertProfileErr: any = null
+    if (profExists) {
+      const { error } = await (admin as any)
+        .from('profiles')
+        .update(profileData)
+        .eq('user_id', newUserId)
+      upsertProfileErr = error
+    } else {
+      const { error } = await (admin as any)
+        .from('profiles')
+        .insert(profileData as any)
+      upsertProfileErr = error
+    }
+
+    if (upsertProfileErr) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            upsertProfileErr.message ||
+            'Falha ao salvar perfil do aluno (profiles). Cadastro abortado.',
+        },
+        { status: 400 },
+      )
+    }
+
+    // 4.1) sanity check
+    const { data: profCheck, error: profCheckErr } = await (admin as any)
+      .from('profiles')
+      .select('user_id')
+      .eq('user_id', newUserId)
+      .maybeSingle()
+
+    if (profCheckErr || !profCheck) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            'Perfil do aluno não encontrado após criação. Cadastro abortado para evitar dados órfãos.',
+        },
+        { status: 500 },
+      )
+    }
+
+    // 5) Vínculos "best effort": escola_usuarios, app_metadata
+    try {
+      await (admin as any)
+        .from('escola_usuarios')
+        .upsert(
+          { escola_id: escolaId, user_id: newUserId, papel: 'aluno' } as any,
+          { onConflict: 'escola_id,user_id' },
+        )
+
+      // aqui não colocamos numero_usuario ainda
+      await (admin as any).auth.admin.updateUserById(newUserId, {
+        app_metadata: { role: 'aluno', escola_id: escolaId },
+        user_metadata: { must_change_password: true },
+      })
+    } catch {
+      // ignora – não impede cadastro
+    }
+
+    // 6) Inserir ALUNO (apenas vínculo + responsável)
+    const insert: Database['public']['Tables']['alunos']['Insert'] = {
+      profile_id: newUserId,
+      nome: body.nome,
+      escola_id: escolaId,
+      responsavel: body.responsavel_nome ?? null,
+      telefone_responsavel: body.responsavel_contato ?? null,
     }
 
     const { data: alunoIns, error: alunoErr } = await (admin as any)
@@ -119,23 +201,36 @@ export async function POST(req: Request) {
       .insert([insert] as any)
       .select('id')
       .single()
-    if (alunoErr) return NextResponse.json({ ok: false, error: alunoErr.message || 'Falha ao criar aluno' }, { status: 400 })
 
-    // Auditoria
-    recordAuditServer({ escolaId, portal: 'secretaria', acao: 'ALUNO_CRIADO', entity: 'aluno', entityId: String(alunoIns.id), details: { email: body.email, numero_login: numeroLogin } }).catch(() => null)
-
-    // Envia e-mail de credenciais ao aluno (best-effort)
-    try {
-      const { data: esc } = await (admin as any).from('escolas').select('nome').eq('id', escolaId).maybeSingle();
-      const escolaNome = (esc as any)?.nome ?? null;
-      const loginUrl = process.env.NEXT_PUBLIC_BASE_URL ? `${process.env.NEXT_PUBLIC_BASE_URL}/login` : null;
-      const mail = buildCredentialsEmail({ nome: body.nome, email: body.email, numero_login: numeroLogin ?? undefined, senha_temp: tempPassword ?? undefined, escolaNome, loginUrl });
-      await sendMail({ to: body.email, subject: mail.subject, html: mail.html, text: mail.text });
-    } catch (_) {
-      // ignora erro de e-mail
+    if (alunoErr) {
+      return NextResponse.json(
+        { ok: false, error: alunoErr.message || 'Falha ao criar aluno' },
+        { status: 400 },
+      )
     }
 
-    return NextResponse.json({ ok: true, id: alunoIns.id, numero_login: numeroLogin, senha_temp: tempPassword })
+    // 7) Auditoria — sem numero_login ainda
+    recordAuditServer({
+      escolaId,
+      portal: 'secretaria',
+      acao: 'ALUNO_CRIADO',
+      entity: 'aluno',
+      entityId: String(alunoIns.id),
+      details: { email: body.email },
+    }).catch(() => null)
+
+    // 8) Não enviar e-mail de credenciais aqui.
+    // Esse envio vai ser responsabilidade da rota de MATRÍCULA.
+
+    return NextResponse.json(
+      {
+        ok: true,
+        id: alunoIns.id,
+        // numero_login: null,
+        // senha_temp: tempPassword, // se quiser até esconder isso desse fluxo
+      },
+      { status: 201 },
+    )
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })

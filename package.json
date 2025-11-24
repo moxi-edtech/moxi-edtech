@@ -8,10 +8,10 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "npm run dev --workspace=web",
-    "build": "npm run build --workspace=web",
-    "start": "npm run start --workspace=web",
-    "lint": "npm run lint --workspace=web",
+    "dev": "pnpm -w --filter web dev",
+    "build": "pnpm -w --filter web build",
+    "start": "pnpm -w --filter web start",
+    "lint": "pnpm -w --filter web lint",
     "typecheck": "pnpm -r typecheck",
     "clean": "rm -rf .next node_modules/.cache",
     "gen:types": "mkdir -p types && supabase gen types typescript --project-id wjtifcpxxxotsbmvbgoq > types/supabase.ts",
@@ -20,6 +20,12 @@
     "db:reset": "supabase db reset",
     "db:push:seed": "supabase db push --include-seed",
     "db:seed:remote": "supabase db push --include-seed",
+    "db:pull:remote": "bash scripts/supabase-pull-remote.sh",
+    "db:dump:remote": "bash scripts/db-dump-remote.sh",
+    "db:dump:remote:schema-only": "SCHEMA_ONLY=1 bash scripts/db-dump-remote.sh",
+    "db:dump:remote:public": "SCHEMAS=public bash scripts/db-dump-remote.sh",
+    "db:dump:remote:all": "SCHEMAS='*' bash scripts/db-dump-remote.sh",
+    "db:restore:local": "bash scripts/db-restore-local.sh",
     "test:rls": "psql -f supabase/tests/assert_tenant_rls.sql"
   },
   "devDependencies": {
