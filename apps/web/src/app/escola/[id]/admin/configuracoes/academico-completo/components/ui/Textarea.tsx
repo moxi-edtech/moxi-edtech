@@ -1,14 +1,15 @@
 "use client";
 
-import React from 'react';
+import { useId } from 'react';
+import type { TextareaHTMLAttributes } from 'react';
 
-interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
   error?: string;
 }
 
 export function Textarea({ label, id, error, className = '', ...props }: TextareaProps) {
-  const textareaId = id || React.useId();
+  const textareaId = id || useId();
 
   const textareaEl = (
     <textarea
@@ -34,4 +35,3 @@ export function Textarea({ label, id, error, className = '', ...props }: Textare
     </div>
   );
 }
-

@@ -1,9 +1,9 @@
-import React from 'react';
+import type { ReactNode } from 'react';
 
 type Variant = 'success' | 'neutral' | 'outline' | 'error';
 
 type Props = {
-  children: React.ReactNode;
+  children: ReactNode;
   variant?: Variant;
   className?: string;
 };

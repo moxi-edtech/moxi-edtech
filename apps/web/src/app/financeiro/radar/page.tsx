@@ -1,4 +1,4 @@
-import React from 'react';
+ 
 import RadarInadimplenciaActive from '../_components/RadarInadimplenciaActive';
 
 // This is a server component, so we can't use hooks like useParams here directly.

@@ -1,3 +1,5 @@
+import React from "react";
+
 // Tipos de dados (AcademicSession, AcademicPeriod, etc.)
 export type AcademicSession = {
   id: string;

@@ -1,4 +1,4 @@
-import React from 'react';
+ 
 
 type Props = {
   className?: string;
@@ -22,4 +22,3 @@ export function Spinner({ className = '', size = 16 }: Props) {
     </svg>
   );
 }
-
