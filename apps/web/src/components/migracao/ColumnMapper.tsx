@@ -21,6 +21,12 @@ const FIELD_OPTIONS: { key: keyof MappedColumns; label: string }[] = [
   { key: "bi", label: "BI" },
   { key: "email", label: "Email" },
   { key: "profile_id", label: "Profile ID" },
+
+  // novos campos para matrícula em massa
+  { key: "classe", label: "Classe (ex.: 7ª, 10ª)" },
+  { key: "turma", label: "Turma (ex.: A, B, Noite)" },
+  { key: "ano_letivo", label: "Ano letivo (ex.: 2025)" },
+  { key: "numero_matricula", label: "Número de matrícula" },
 ];
 
 export function ColumnMapper({ headers, mapping, onChange }: ColumnMapperProps) {

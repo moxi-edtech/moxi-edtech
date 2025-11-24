@@ -82,6 +82,22 @@ export function mapAlunoFromCsv(entry: AlunoCSV, columnMap: MappedColumns, impor
   const profileKey = columnMap.profile_id;
   if (profileKey) mapped.profile_id = entry[profileKey]?.trim();
 
+  const classeKey = columnMap.classe;
+  if (classeKey) mapped.classe_label = normalizeText(entry[classeKey]);
+
+  const turmaKey = columnMap.turma;
+  if (turmaKey) mapped.turma_label = normalizeText(entry[turmaKey]);
+
+  const anoLetivoKey = columnMap.ano_letivo;
+  if (anoLetivoKey) {
+    const raw = entry[anoLetivoKey]?.trim();
+    const n = raw ? Number(raw) : undefined;
+    if (!Number.isNaN(n as number) && n) mapped.ano_letivo = n;
+  }
+
+  const numMatKey = columnMap.numero_matricula;
+  if (numMatKey) mapped.numero_matricula = entry[numMatKey]?.trim();
+
   return mapped;
 }
 

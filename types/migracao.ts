@@ -7,6 +7,13 @@ export interface AlunoCSV {
   bi?: string;
   email?: string;
   profile_id?: string;
+
+  // novos para matrícula em massa
+  classe?: string;
+  turma?: string;
+  ano_letivo?: string;
+  numero_matricula?: string;
+
   [key: string]: string | undefined;
 }
 
@@ -19,6 +26,13 @@ export interface AlunoStagingRecord {
   telefone?: string;
   bi?: string;
   email?: string;
+
+  // novos campos de matrícula
+  classe_label?: string;
+  turma_label?: string;
+  ano_letivo?: number;
+  numero_matricula?: string;
+
   raw_data?: Record<string, unknown>;
 }
 
@@ -35,4 +49,19 @@ export interface ImportResult {
   errors: number;
 }
 
-export type MappedColumns = Record<string, string>;
+export type MappedColumns = {
+  nome?: string;
+  data_nascimento?: string;
+  telefone?: string;
+  bi?: string;
+  email?: string;
+  profile_id?: string;
+
+  // mapeamento CSV ↔ campos de matrícula
+  classe?: string;
+  turma?: string;
+  ano_letivo?: string;
+  numero_matricula?: string;
+
+  [key: string]: string | undefined;
+};
