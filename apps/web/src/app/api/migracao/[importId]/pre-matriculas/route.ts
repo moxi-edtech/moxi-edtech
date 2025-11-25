@@ -1,28 +1,17 @@
-import { NextResponse } from "next/server";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-
-import type { Database } from "~types/supabase";
+import { NextRequest, NextResponse } from "next/server";
+import { createRouteClient } from "@/lib/supabase/route-client";
 import type { GrupoMatricula } from "~types/matricula";
 
 export async function GET(
-  _req: Request,
+  req: NextRequest,
   { params }: { params: { importId: string } }
 ) {
-  const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabase = createRouteClient();
 
-  if (!adminUrl || !serviceKey) {
-    return NextResponse.json(
-      { error: "SUPABASE configuration missing" },
-      { status: 500 }
-    );
-  }
-
-  const supabase = createAdminClient<Database>(adminUrl, serviceKey);
+  // opcional: validar user/escola via sessão aqui se quiser
   const importId = params.importId;
 
-  // Carrega registros do staging com dimensões de matrícula preenchidas
-  const { data: rows, error } = await supabase
+  const { data, error } = await supabase
     .from("staging_alunos")
     .select(
       `
@@ -31,6 +20,7 @@ export async function GET(
       escola_id,
       nome,
       data_nascimento,
+      profile_id,
       numero_matricula,
       curso_codigo,
       classe_numero,
@@ -40,13 +30,15 @@ export async function GET(
     `
     )
     .eq("import_id", importId)
-    .not("ano_letivo", "is", null)
+    .not("curso_codigo", "is", null)
     .not("classe_numero", "is", null)
+    .not("turno_codigo", "is", null)
+    .not("turma_letra", "is", null)
+    .not("ano_letivo", "is", null)
     .order("ano_letivo", { ascending: false })
-    .order("curso_codigo")
-    .order("classe_numero")
-    .order("turno_codigo")
-    .order("turma_letra");
+    .order("curso_codigo", { ascending: true })
+    .order("classe_numero", { ascending: true })
+    .order("turma_letra", { ascending: true });
 
   if (error) {
     return NextResponse.json(
@@ -55,45 +47,43 @@ export async function GET(
     );
   }
 
-  const groupsMap = new Map<string, GrupoMatricula>();
+  const gruposMap = new Map<string, GrupoMatricula>();
 
-  for (const row of rows ?? []) {
+  for (const row of data ?? []) {
     const key = [
-      row.curso_codigo ?? "SEM_CURSO",
-      row.classe_numero ?? "SEM_CLASSE",
-      row.turno_codigo ?? "SEM_TURNO",
-      row.turma_letra ?? "SEM_TURMA",
-      row.ano_letivo ?? "SEM_ANO",
+      row.curso_codigo ?? "",
+      row.classe_numero ?? "",
+      row.turno_codigo ?? "",
+      row.turma_letra ?? "",
+      row.ano_letivo ?? "",
     ].join("|");
 
-    if (!groupsMap.has(key)) {
-      groupsMap.set(key, {
+    if (!gruposMap.has(key)) {
+      gruposMap.set(key, {
         import_id: row.import_id,
         escola_id: row.escola_id,
-        curso_codigo: row.curso_codigo ?? undefined,
-        classe_numero: row.classe_numero ?? undefined,
-        turno_codigo: row.turno_codigo ?? undefined,
-        turma_letra: row.turma_letra ?? undefined,
-        ano_letivo: row.ano_letivo ?? undefined,
+        curso_codigo: row.curso_codigo,
+        classe_numero: row.classe_numero,
+        turno_codigo: row.turno_codigo,
+        turma_letra: row.turma_letra,
+        ano_letivo: row.ano_letivo,
         count: 0,
         alunos: [],
       });
     }
 
-    const group = groupsMap.get(key)!;
-    group.count += 1;
-
-    if (group.alunos.length < 20) {
-      group.alunos.push({
-        id: row.id, // Changed from staging_id to id
-        nome: row.nome ?? undefined,
-        data_nascimento: row.data_nascimento ?? undefined,
-        numero_matricula: row.numero_matricula ?? undefined,
-      });
-    }
+    const grupo = gruposMap.get(key)!;
+    grupo.count += 1;
+    grupo.alunos.push({
+      id: row.id,
+      nome: row.nome ?? undefined,
+      data_nascimento: row.data_nascimento ?? undefined,
+      profile_id: row.profile_id ?? undefined,
+      numero_matricula: row.numero_matricula ?? undefined,
+    });
   }
 
   return NextResponse.json({
-    grupos: Array.from(groupsMap.values()),
+    grupos: Array.from(gruposMap.values()),
   });
 }

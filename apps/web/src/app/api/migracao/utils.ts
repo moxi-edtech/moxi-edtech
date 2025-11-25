@@ -145,19 +145,18 @@ export function mapAlunoFromCsv(
   const profileKey = columnMap.profile_id;
   if (profileKey) mapped.profile_id = entry[profileKey]?.trim();
 
-  // --- MATRÍCULA EM MASSA ---
-
+  // NOVOS CAMPOS MATRÍCULA
   const cursoKey = columnMap.curso_codigo;
-  if (cursoKey) mapped.curso_codigo = entry[cursoKey]?.trim();
+  if (cursoKey) mapped.curso_codigo = entry[cursoKey]?.trim().toUpperCase();
 
-  const classeKey = columnMap.classe_label;
-  if (classeKey) mapped.classe_label = entry[classeKey]?.trim();
+  const classeKey = columnMap.classe_numero;
+  if (classeKey) mapped.classe_numero = normalizeClasseNumero(entry[classeKey]);
 
   const turnoKey = columnMap.turno_codigo;
   if (turnoKey) mapped.turno_codigo = normalizeTurnoCodigo(entry[turnoKey]);
 
-  const turmaKey = columnMap.turma_label;
-  if (turmaKey) mapped.turma_label = entry[turmaKey]?.trim();
+  const turmaKey = columnMap.turma_letra;
+  if (turmaKey) mapped.turma_letra = normalizeTurmaLetra(entry[turmaKey]);
 
   const anoLetivoKey = columnMap.ano_letivo;
   if (anoLetivoKey) mapped.ano_letivo = normalizeAnoLetivo(entry[anoLetivoKey]);
