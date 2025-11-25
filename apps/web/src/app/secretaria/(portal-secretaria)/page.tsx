@@ -16,7 +16,9 @@ import {
   Zap,
   Shield,
   Crown,
-  ArrowRight
+  ArrowRight,
+  Upload,
+  RefreshCcw
 } from "lucide-react";
 
 export default async function Page() {
@@ -212,6 +214,34 @@ export default async function Page() {
               <Download className="w-6 h-6 text-slate-600 group-hover:text-moxinexa-teal mx-auto mb-2 transition-colors" />
               <div className="text-xs font-semibold text-slate-700 group-hover:text-slate-900">Exportações</div>
             </Link>
+
+            {/* Migração de Alunos */}
+            <Link 
+              href="/migracao/alunos" 
+              className="group p-4 rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 hover:border-indigo-300 hover:shadow-md transition-all text-center"
+            >
+              <Upload className="w-6 h-6 text-indigo-600 group-hover:text-indigo-700 mx-auto mb-2 transition-colors" />
+              <div className="text-xs font-semibold text-indigo-700 group-hover:text-indigo-900">Migrar Alunos</div>
+            </Link>
+
+            {/* Rematrícula em Massa */}
+            {canCriarMatricula ? (
+              <Link 
+                href="/secretaria/rematricula" 
+                className="group p-4 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 hover:border-emerald-300 hover:shadow-md transition-all text-center"
+              >
+                <RefreshCcw className="w-6 h-6 text-emerald-600 group-hover:text-emerald-700 mx-auto mb-2 transition-colors" />
+                <div className="text-xs font-semibold text-emerald-700 group-hover:text-emerald-900">Rematrícula em Massa</div>
+              </Link>
+            ) : (
+              <div 
+                className="group p-4 rounded-lg border border-slate-200 bg-slate-50 opacity-50 cursor-not-allowed text-center"
+                title="Sem permissão (requer: criar_matricula)"
+              >
+                <RefreshCcw className="w-6 h-6 text-slate-400 mx-auto mb-2" />
+                <div className="text-xs font-semibold text-slate-500">Rematrícula em Massa</div>
+              </div>
+            )}
           </div>
 
           {/* --- RECURSOS DO PLANO --- */}

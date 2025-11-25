@@ -51,8 +51,19 @@ ALTER TABLE public.alunos
 ALTER TABLE public.alunos
   ADD COLUMN IF NOT EXISTS telefone text;
 
--- Required indexes
-CREATE UNIQUE INDEX IF NOT EXISTS alunos_bi_key ON public.alunos(bi_numero);
+-- Ensure BI column exists on alunos (used by import and index below)
+ALTER TABLE public.alunos
+  ADD COLUMN IF NOT EXISTS bi_numero text;
+
+-- Ensure birth date exists for indexing and import writes
+ALTER TABLE public.alunos
+  ADD COLUMN IF NOT EXISTS data_nascimento date;
+
+-- Unique BI per escola; ignore NULL values
+DROP INDEX IF EXISTS public.alunos_bi_key;
+CREATE UNIQUE INDEX IF NOT EXISTS alunos_bi_key
+  ON public.alunos(escola_id, bi_numero)
+  WHERE bi_numero IS NOT NULL;
 CREATE INDEX IF NOT EXISTS alunos_tel_idx ON public.alunos(telefone);
 CREATE INDEX IF NOT EXISTS alunos_nome_data_idx ON public.alunos(nome, data_nascimento);
 
@@ -117,6 +128,7 @@ DECLARE
   v_imported integer := 0;
   v_skipped integer := 0;
   v_errors integer := 0;
+  v_record record;
 BEGIN
   -- Basic guard: ensure migration exists
   PERFORM 1 FROM public.import_migrations m WHERE m.id = p_import_id AND m.escola_id = p_escola_id;
