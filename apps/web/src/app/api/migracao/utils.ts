@@ -1,5 +1,3 @@
-import crypto from "node:crypto";
-
 import type { AlunoCSV, AlunoStagingRecord, MappedColumns } from "~types/migracao";
 
 export const MAX_UPLOAD_SIZE = 12 * 1024 * 1024; // 12 MB
@@ -57,30 +55,41 @@ export function csvToJsonLines(csv: string): AlunoCSV[] {
   });
 }
 
-export function mapAlunoFromCsv(entry: AlunoCSV, columnMap: MappedColumns, importId: string, escolaId: string): AlunoStagingRecord {
+export function mapAlunoFromCsv(
+  entry: AlunoCSV,
+  columnMap: MappedColumns,
+  importId: string,
+  escolaId: string
+): AlunoStagingRecord {
   const mapped: AlunoStagingRecord = {
     import_id: importId,
     escola_id: escolaId,
     raw_data: entry,
   };
 
-  const nomeKey = columnMap.nome;
-  if (nomeKey) mapped.nome = normalizeText(entry[nomeKey]);
+  // Dados pessoais
+  if (columnMap.nome) mapped.nome = normalizeText(entry[columnMap.nome]);
+  if (columnMap.data_nascimento) mapped.data_nascimento = normalizeDateString(entry[columnMap.data_nascimento]);
+  if (columnMap.telefone) mapped.telefone = entry[columnMap.telefone]?.replace(/[^\d+]/g, "");
+  if (columnMap.bi) mapped.bi = entry[columnMap.bi]?.trim();
+  if (columnMap.email) mapped.email = entry[columnMap.email]?.trim().toLowerCase();
 
-  const dataKey = columnMap.data_nascimento;
-  if (dataKey) mapped.data_nascimento = normalizeDateString(entry[dataKey]);
-
-  const telKey = columnMap.telefone;
-  if (telKey) mapped.telefone = entry[telKey]?.replace(/[^\d+]/g, "");
-
-  const biKey = columnMap.bi;
-  if (biKey) mapped.bi = entry[biKey]?.trim();
-
-  const emailKey = columnMap.email;
-  if (emailKey) mapped.email = entry[emailKey]?.trim().toLowerCase();
-
-  const profileKey = columnMap.profile_id;
-  if (profileKey) mapped.profile_id = entry[profileKey]?.trim();
+  // Matrícula flexível
+  if (columnMap.curso_codigo) {
+    mapped.curso_codigo = entry[columnMap.curso_codigo]?.trim().toUpperCase();
+  }
+  if (columnMap.classe_label) {
+    mapped.classe_label = entry[columnMap.classe_label]?.trim();
+  }
+  if (columnMap.turno_codigo) {
+    mapped.turno_codigo = entry[columnMap.turno_codigo]?.trim().toUpperCase();
+  }
+  if (columnMap.turma_label) {
+    mapped.turma_label = entry[columnMap.turma_label]?.trim();
+  }
+  if (columnMap.ano_letivo) {
+    mapped.ano_letivo = entry[columnMap.ano_letivo]?.trim();
+  }
 
   return mapped;
 }
