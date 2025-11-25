@@ -16,44 +16,56 @@ export type Database = {
     Tables: {
       alunos: {
         Row: {
+          bi_numero: string | null
           created_at: string
+          data_nascimento: string | null
           deleted_at: string | null
           deleted_by: string | null
           deletion_reason: string | null
           escola_id: string | null
           id: string
+          import_id: string | null
           nome: string
           profile_id: string | null
           responsavel: string | null
           status: string | null
+          telefone: string | null
           telefone_responsavel: string | null
           updated_at: string | null
         }
         Insert: {
+          bi_numero?: string | null
           created_at?: string
+          data_nascimento?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
           deletion_reason?: string | null
           escola_id?: string | null
           id?: string
+          import_id?: string | null
           nome: string
           profile_id?: string | null
           responsavel?: string | null
           status?: string | null
+          telefone?: string | null
           telefone_responsavel?: string | null
           updated_at?: string | null
         }
         Update: {
+          bi_numero?: string | null
           created_at?: string
+          data_nascimento?: string | null
           deleted_at?: string | null
           deleted_by?: string | null
           deletion_reason?: string | null
           escola_id?: string | null
           id?: string
+          import_id?: string | null
           nome?: string
           profile_id?: string | null
           responsavel?: string | null
           status?: string | null
+          telefone?: string | null
           telefone_responsavel?: string | null
           updated_at?: string | null
         }
@@ -320,6 +332,7 @@ export type Database = {
           id: string
           nivel: string | null
           nome: string
+          numero: number | null
           ordem: number | null
         }
         Insert: {
@@ -329,6 +342,7 @@ export type Database = {
           id?: string
           nivel?: string | null
           nome: string
+          numero?: number | null
           ordem?: number | null
         }
         Update: {
@@ -338,6 +352,7 @@ export type Database = {
           id?: string
           nivel?: string | null
           nome?: string
+          numero?: number | null
           ordem?: number | null
         }
         Relationships: [
@@ -980,6 +995,100 @@ export type Database = {
           },
         ]
       }
+      import_errors: {
+        Row: {
+          column_name: string | null
+          created_at: string | null
+          id: number
+          import_id: string
+          message: string
+          raw_value: string | null
+          row_number: number | null
+        }
+        Insert: {
+          column_name?: string | null
+          created_at?: string | null
+          id?: number
+          import_id: string
+          message: string
+          raw_value?: string | null
+          row_number?: number | null
+        }
+        Update: {
+          column_name?: string | null
+          created_at?: string | null
+          id?: number
+          import_id?: string
+          message?: string
+          raw_value?: string | null
+          row_number?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "import_errors_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "import_migrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      import_migrations: {
+        Row: {
+          column_map: Json | null
+          created_at: string | null
+          created_by: string | null
+          error_rows: number | null
+          escola_id: string
+          file_hash: string | null
+          file_name: string | null
+          id: string
+          imported_rows: number | null
+          processed_at: string | null
+          status: string
+          storage_path: string | null
+          total_rows: number | null
+        }
+        Insert: {
+          column_map?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          error_rows?: number | null
+          escola_id: string
+          file_hash?: string | null
+          file_name?: string | null
+          id?: string
+          imported_rows?: number | null
+          processed_at?: string | null
+          status?: string
+          storage_path?: string | null
+          total_rows?: number | null
+        }
+        Update: {
+          column_map?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          error_rows?: number | null
+          escola_id?: string
+          file_hash?: string | null
+          file_name?: string | null
+          id?: string
+          imported_rows?: number | null
+          processed_at?: string | null
+          status?: string
+          storage_path?: string | null
+          total_rows?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "import_migrations_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lancamentos: {
         Row: {
           avaliacao_id: string
@@ -1391,6 +1500,7 @@ export type Database = {
           aluno_id: string
           created_at: string | null
           disciplina: string
+          disciplina_id: string | null
           escola_id: string
           id: string
           nota: number
@@ -1401,6 +1511,7 @@ export type Database = {
           aluno_id: string
           created_at?: string | null
           disciplina: string
+          disciplina_id?: string | null
           escola_id: string
           id?: string
           nota: number
@@ -1411,6 +1522,7 @@ export type Database = {
           aluno_id?: string
           created_at?: string | null
           disciplina?: string
+          disciplina_id?: string | null
           escola_id?: string
           id?: string
           nota?: number
@@ -1637,6 +1749,7 @@ export type Database = {
           aluno_id: string
           created_at: string | null
           data: string
+          disciplina_id: string | null
           escola_id: string
           id: string
           status: string
@@ -1646,6 +1759,7 @@ export type Database = {
           aluno_id: string
           created_at?: string | null
           data: string
+          disciplina_id?: string | null
           escola_id: string
           id?: string
           status: string
@@ -1655,6 +1769,7 @@ export type Database = {
           aluno_id?: string
           created_at?: string | null
           data?: string
+          disciplina_id?: string | null
           escola_id?: string
           id?: string
           status?: string
@@ -2173,6 +2288,74 @@ export type Database = {
           },
         ]
       }
+      staging_alunos: {
+        Row: {
+          ano_letivo: number | null
+          bi: string | null
+          classe_numero: number | null
+          created_at: string | null
+          curso_codigo: string | null
+          data_nascimento: string | null
+          email: string | null
+          escola_id: string
+          id: number
+          import_id: string
+          nome: string | null
+          numero_matricula: string | null
+          profile_id: string | null
+          raw_data: Json | null
+          telefone: string | null
+          turma_letra: string | null
+          turno_codigo: string | null
+        }
+        Insert: {
+          ano_letivo?: number | null
+          bi?: string | null
+          classe_numero?: number | null
+          created_at?: string | null
+          curso_codigo?: string | null
+          data_nascimento?: string | null
+          email?: string | null
+          escola_id: string
+          id?: number
+          import_id: string
+          nome?: string | null
+          numero_matricula?: string | null
+          profile_id?: string | null
+          raw_data?: Json | null
+          telefone?: string | null
+          turma_letra?: string | null
+          turno_codigo?: string | null
+        }
+        Update: {
+          ano_letivo?: number | null
+          bi?: string | null
+          classe_numero?: number | null
+          created_at?: string | null
+          curso_codigo?: string | null
+          data_nascimento?: string | null
+          email?: string | null
+          escola_id?: string
+          id?: number
+          import_id?: string
+          nome?: string | null
+          numero_matricula?: string | null
+          profile_id?: string | null
+          raw_data?: Json | null
+          telefone?: string | null
+          turma_letra?: string | null
+          turno_codigo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staging_alunos_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "import_migrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       syllabi: {
         Row: {
           arquivo_url: string
@@ -2269,6 +2452,74 @@ export type Database = {
             columns: ["escola_id"]
             isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      turma_disciplinas_professores: {
+        Row: {
+          created_at: string | null
+          disciplina_id: string
+          escola_id: string
+          horarios: Json | null
+          id: string
+          planejamento: Json | null
+          professor_id: string
+          syllabus_id: string | null
+          turma_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          disciplina_id: string
+          escola_id: string
+          horarios?: Json | null
+          id?: string
+          planejamento?: Json | null
+          professor_id: string
+          syllabus_id?: string | null
+          turma_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          disciplina_id?: string
+          escola_id?: string
+          horarios?: Json | null
+          id?: string
+          planejamento?: Json | null
+          professor_id?: string
+          syllabus_id?: string | null
+          turma_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "turma_disciplinas_professores_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turma_disciplinas_professores_professor_id_fkey"
+            columns: ["professor_id"]
+            isOneToOne: false
+            referencedRelation: "professores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turma_disciplinas_professores_syllabus_id_fkey"
+            columns: ["syllabus_id"]
+            isOneToOne: false
+            referencedRelation: "syllabi"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turma_disciplinas_professores_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
             referencedColumns: ["id"]
           },
         ]
@@ -2617,16 +2868,43 @@ export type Database = {
         | { Args: never; Returns: string }
       get_user_export_json: { Args: { p_user_id: string }; Returns: Json }
       get_user_tenant: { Args: never; Returns: string }
+      importar_alunos: {
+        Args: { p_escola_id: string; p_import_id: string }
+        Returns: {
+          errors: number
+          imported: number
+          skipped: number
+        }[]
+      }
       is_escola_admin: { Args: { p_escola_id: string }; Returns: boolean }
       is_escola_diretor: { Args: { p_escola_id: string }; Returns: boolean }
       is_escola_member: { Args: { p_escola_id: string }; Returns: boolean }
       is_membro_escola: { Args: { escola_uuid: string }; Returns: boolean }
       is_staff_escola: { Args: { escola_uuid: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
+      matricular_em_massa: {
+        Args: {
+          p_ano_letivo: number
+          p_classe_numero: number
+          p_curso_codigo: string
+          p_escola_id: string
+          p_import_id: string
+          p_turma_id: string
+          p_turma_letra: string
+          p_turno_codigo: string
+        }
+        Returns: {
+          error_count: number
+          errors: Json
+          success_count: number
+        }[]
+      }
       move_profile_to_archive: {
         Args: { p_performed_by: string; p_user_id: string }
         Returns: undefined
       }
+      normalize_date: { Args: { input_text: string }; Returns: string }
+      normalize_text: { Args: { input_text: string }; Returns: string }
       partitions_info: { Args: never; Returns: Json }
       refresh_all_materialized_views: { Args: never; Returns: undefined }
       secretaria_audit_by_aluno_matricula: {
@@ -2650,6 +2928,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      unaccent: { Args: { "": string }; Returns: string }
     }
     Enums: {
       mensalidade_status:
