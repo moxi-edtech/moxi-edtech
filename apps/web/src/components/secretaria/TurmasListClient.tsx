@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, Fragment } from "react";
 import TurmaForm from "./TurmaForm";
+import AtribuirProfessorForm from "./AtribuirProfessorForm";
 import Link from "next/link";
 import { 
   Loader2, 
@@ -17,7 +18,8 @@ import {
   Gauge,
   Edit,
   Link as LinkIcon,
-  Trash2
+  Trash2,
+  Eye
 } from "lucide-react";
 
 interface TurmaItem {
@@ -183,6 +185,7 @@ export default function TurmasListClient() {
   const [manageTurmaId, setManageTurmaId] = useState<string | null>(null);
   const [assignments, setAssignments] = useState<any[] | null>(null);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
+  const [showAtribuirForm, setShowAtribuirForm] = useState(false);
   const loadAssignments = async (turmaId: string) => {
     setLoadingAssignments(true);
     setAssignments(null);
@@ -486,6 +489,13 @@ export default function TurmasListClient() {
                         </td>
                         <td className="px-4 py-3 text-center">
                           <div className="flex justify-center gap-1">
+                            <Link
+                                href={`/secretaria/turmas/${item.id}`}
+                                className="text-blue-600 hover:text-white hover:bg-blue-600 p-2 rounded-lg transition-all"
+                                title="Ver detalhes da turma"
+                            >
+                                <Eye className="w-4 h-4" />
+                            </Link>
                             <Link 
                               href={`/secretaria/matriculas?turma_id=${item.id}`}
                               className="text-blue-600 hover:text-white hover:bg-blue-600 p-2 rounded-lg transition-all"
@@ -521,13 +531,29 @@ export default function TurmasListClient() {
                                   <LinkIcon className="h-4 w-4" />
                                   Atribuições de {item.nome}
                                 </h4>
-                                <button 
-                                  onClick={() => { setManageTurmaId(null); setAssignments(null); }} 
-                                  className="text-slate-500 hover:text-slate-700"
-                                >
-                                  ✕
-                                </button>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setShowAtribuirForm(true)}
+                                        className="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 text-xs"
+                                    >
+                                        Adicionar Atribuição
+                                    </button>
+                                    <button 
+                                      onClick={() => { setManageTurmaId(null); setAssignments(null); }} 
+                                      className="text-slate-500 hover:text-slate-700"
+                                    >
+                                      ✕
+                                    </button>
+                                </div>
                               </div>
+                              {showAtribuirForm && (
+                                <div className="my-4">
+                                  <AtribuirProfessorForm turmaId={item.id} onSuccess={() => {
+                                    setShowAtribuirForm(false);
+                                    loadAssignments(item.id);
+                                  }} />
+                                </div>
+                              )}
                               {loadingAssignments ? (
                                 <div className="flex items-center gap-2 text-slate-500">
                                   <Loader2 className="h-4 w-4 animate-spin" />

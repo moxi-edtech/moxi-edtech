@@ -12,6 +12,8 @@ export default function FinanceiroSidebar() {
     { href: "/financeiro/cobrancas", label: "Cobranças", icon: "CreditCardIcon" },
     { href: "/financeiro/conciliacao", label: "Conciliação", icon: "ArrowsRightLeftIcon" },
     { href: "/financeiro/relatorios", label: "Relatórios", icon: "ChartBarIcon" },
+    { href: "/financeiro/relatorios/propinas", label: "Rel. Propinas", icon: "ChartBarIcon" },
+    { href: "/financeiro/relatorios/detalhados", label: "Relatórios Detalhados", icon: "ChartBarIcon" },
     { href: "/financeiro/tabelas-mensalidade", label: "Tabelas de Mensalidade", icon: "BanknotesIcon" },
   ];
 

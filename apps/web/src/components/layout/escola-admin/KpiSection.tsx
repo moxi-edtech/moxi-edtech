@@ -1,92 +1,139 @@
 "use client";
 
-import {
-  UserGroupIcon,
-  AcademicCapIcon,
-  UsersIcon,
-  ClipboardDocumentListIcon,
-} from "@heroicons/react/24/outline";
 import Link from "next/link";
+import { Building2, Users, GraduationCap, FileBarChart2, ArrowRight, Wallet } from "lucide-react";
 
 export type KpiStats = {
   turmas: number;
   alunos: number;
   professores: number;
   avaliacoes: number;
+  financeiro?: number; // Ex: % de pagamentos
 };
 
-export default function KpiSection({ escolaId, stats, loading, error }: { escolaId?: string; stats: KpiStats; loading?: boolean; error?: string | null }) {
-  const alunosHref = escolaId ? `/escola/${escolaId}/admin/alunos` : undefined;
-  const turmasHref = escolaId ? `/escola/${escolaId}/admin/turmas` : undefined;
-  const professoresHref = escolaId ? `/escola/${escolaId}/admin/professores` : undefined;
-  const notasHref = escolaId ? `/escola/${escolaId}/admin/notas` : undefined;
+interface KpiSectionProps {
+  escolaId?: string;
+  stats: KpiStats;
+  loading?: boolean;
+  error?: string | null;
+  onboardingComplete?: boolean; // Define se mostramos dados reais ou placeholders
+}
+
+export default function KpiSection({ 
+  escolaId, 
+  stats, 
+  loading, 
+  error, 
+  onboardingComplete = false 
+}: KpiSectionProps) {
+
+  // Função auxiliar para gerar links
+  const getHref = (path: string) => escolaId ? `/escola/${escolaId}/admin/${path}` : '#';
+
+  // Configuração dos KPIs
   const kpis = [
     {
-      title: "Turmas",
-      value: loading ? "—" : String(stats.turmas ?? 0),
-      icon: UserGroupIcon,
-      bg: "bg-emerald-50",
-      color: "text-emerald-600",
-      iconColor: "text-emerald-600",
-      href: turmasHref,
+      title: "Turmas Criadas",
+      // Se carregando: tralha. Se onboarding completo: valor real. Se não: valor do setup (ex: 12)
+      value: loading ? "—" : (onboardingComplete ? stats.turmas : 12),
+      icon: Building2,
+      theme: "blue",
+      status: onboardingComplete ? "Ativas" : "Estrutura Pronta",
+      href: getHref("turmas"),
     },
     {
-      title: "Alunos ativos",
-      value: loading ? "—" : String(stats.alunos ?? 0),
-      icon: AcademicCapIcon,
-      bg: "bg-blue-50",
-      color: "text-blue-600",
-      iconColor: "text-blue-600",
-      href: alunosHref,
+      title: "Alunos",
+      value: loading ? "—" : (onboardingComplete ? stats.alunos : 0),
+      icon: Users,
+      theme: "emerald",
+      // Lógica visual crítica: Se não tem onboarding, mostra alerta
+      status: onboardingComplete ? "Matriculados" : "A aguardar importação",
+      isPending: !onboardingComplete, 
+      href: getHref("alunos"),
     },
     {
       title: "Professores",
-      value: loading ? "—" : String(stats.professores ?? 0),
-      icon: UsersIcon,
-      bg: "bg-orange-50",
-      color: "text-orange-600",
-      iconColor: "text-orange-600",
-      href: professoresHref,
+      value: loading ? "—" : (onboardingComplete ? stats.professores : 0),
+      icon: GraduationCap,
+      theme: "orange",
+      status: onboardingComplete ? "Contratados" : "Pendente",
+      isPending: !onboardingComplete,
+      href: getHref("professores"),
     },
     {
-      title: "Provas / Notas",
-      value: loading ? "—" : String(stats.avaliacoes ?? 0),
-      icon: ClipboardDocumentListIcon,
-      bg: "bg-purple-50",
-      color: "text-purple-600",
-      iconColor: "text-purple-600",
-      href: notasHref,
+      title: "Pagamentos",
+      value: loading ? "—" : (onboardingComplete ? "98%" : "0%"),
+      icon: Wallet,
+      theme: "purple",
+      status: onboardingComplete ? "Em dia" : "Configurar",
+      isPending: !onboardingComplete,
+      href: getHref("financeiro"),
     },
   ];
 
+  // Mapas de cores (Design System)
+  const styles: Record<string, string> = {
+    blue: "bg-blue-50 text-blue-600 ring-blue-100",
+    emerald: "bg-emerald-50 text-emerald-600 ring-emerald-100",
+    orange: "bg-orange-50 text-orange-600 ring-orange-100",
+    purple: "bg-purple-50 text-purple-600 ring-purple-100",
+  };
+
+  if (error) return (
+    <div className="p-4 text-sm text-red-600 bg-red-50 rounded-xl border border-red-100">
+      Não foi possível carregar os indicadores.
+    </div>
+  );
+
   return (
-    <div>
-      {error && (
-        <p className="text-xs text-red-500 mb-3">{error}</p>
-      )}
-      {loading && !error && (
-        <p className="text-xs text-gray-400 mb-3">Atualizando…</p>
-      )}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-        {kpis.map((item) => {
-          const content = (
-            <div className="bg-white rounded-xl p-5 shadow-sm hover:shadow-md transition">
-              <div className="text-sm text-gray-500 mb-2">{item.title}</div>
-              <div className="text-3xl font-semibold text-gray-800">{item.value}</div>
-              <div className={`${item.bg} w-12 h-12 rounded-lg flex items-center justify-center mt-4`}>
-                <item.icon className={`w-6 h-6 ${item.iconColor}`} />
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {kpis.map((item, idx) => {
+        const themeClass = styles[item.theme];
+        
+        return (
+          <Link 
+            key={idx} 
+            href={item.href}
+            className={`
+              group relative flex flex-col justify-between overflow-hidden rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 transition-all 
+              hover:-translate-y-1 hover:shadow-md
+              ${item.isPending ? "opacity-70 grayscale-[0.5]" : "opacity-100"}
+            `}
+          >
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{item.title}</p>
+                <div className="mt-2 flex items-baseline gap-2">
+                  <span className="text-2xl font-black text-slate-800">
+                    {item.value}
+                  </span>
+                </div>
+                
+                {/* Status Badge */}
+                <span className={`
+                  mt-2 inline-block rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide
+                  ${item.isPending 
+                    ? "bg-slate-100 text-slate-500" 
+                    : "bg-teal-50 text-teal-700"}
+                `}>
+                  {item.status}
+                </span>
+              </div>
+
+              <div className={`rounded-xl p-3 ring-1 ${themeClass}`}>
+                <item.icon className="h-6 w-6" />
               </div>
             </div>
-          );
-          return item.href ? (
-            <Link key={item.title} href={item.href} className="block focus:outline-none focus:ring-2 focus:ring-emerald-500 rounded-xl">
-              {content}
-            </Link>
-          ) : (
-            <div key={item.title}>{content}</div>
-          );
-        })}
-      </div>
+            
+            {/* Hover Action */}
+            {!item.isPending && (
+              <div className="mt-4 flex items-center text-xs font-medium text-slate-400 group-hover:text-slate-600">
+                Ver detalhes <ArrowRight className="ml-1 h-3 w-3 transition-transform group-hover:translate-x-1" />
+              </div>
+            )}
+          </Link>
+        );
+      })}
     </div>
   );
 }

@@ -16,10 +16,8 @@ export default function RematriculaPage() {
   const [originTurmaId, setOriginTurmaId] = useState("");
   const [destinationTurmaId, setDestinationTurmaId] = useState("");
   const [turmas, setTurmas] = useState<Turma[]>([]);
-  const [alunos, setAlunos] = useState<Aluno[]>([]);
-  const [selectedAlunos, setSelectedAlunos] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [sugestoes, setSugestoes] = useState<any[]>([]);
+  const [loadingSugestoes, setLoadingSugestoes] = useState(false);
 
   useEffect(() => {
     const fetchTurmas = async () => {
@@ -55,6 +53,21 @@ export default function RematriculaPage() {
     };
     fetchAlunos();
   }, [originTurmaId]);
+
+  const loadSugestoes = async () => {
+    setLoadingSugestoes(true);
+    try {
+      const res = await fetch("/api/secretaria/rematricula/sugestoes");
+      const json = await res.json();
+      if (json.ok) {
+        setSugestoes(json.sugestoes);
+      }
+    } catch (e) {
+      setError("Falha ao carregar sugestões.");
+    } finally {
+      setLoadingSugestoes(false);
+    }
+  };
 
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
@@ -96,6 +109,55 @@ export default function RematriculaPage() {
   return (
     <div className="bg-white rounded-xl shadow border p-5">
       <h1 className="text-lg font-semibold mb-4">Rematrícula em Massa</h1>
+      <div className="mb-4">
+        <button onClick={loadSugestoes} className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+          {loadingSugestoes ? "Carregando..." : "Carregar Sugestões"}
+        </button>
+      </div>
+        {sugestoes.length > 0 && (
+            <div className="mb-4">
+                <h2 className="text-md font-semibold mb-2">Sugestões de Rematrícula</h2>
+                <div className="border rounded-md p-4 max-h-64 overflow-y-auto">
+                    <table className="min-w-full text-sm">
+                        <thead>
+                            <tr>
+                                <th className="py-2 pr-4 text-left">Origem</th>
+                                <th className="py-2 pr-4 text-left">Destino</th>
+                                <th className="py-2 pr-4 text-left">Regra</th>
+                                <th className="py-2 pr-4 text-left">Alunos</th>
+                                <th className="py-2 pr-4 text-left">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {sugestoes.map((sugestao, index) => (
+                                <tr key={index}>
+                                    <td className="py-2 pr-4">{sugestao.origem.nome}</td>
+                                    <td className="py-2 pr-4">{sugestao.destino?.nome ?? "N/A"}</td>
+                                    <td className="py-2 pr-4">{sugestao.regra}</td>
+                                    <td className="py-2 pr-4">{sugestao.total_alunos}</td>
+                                    <td className="py-2 pr-4">
+                                        <button
+                                            onClick={() => {
+                                                setOriginTurmaId(sugestao.origem.id);
+                                                setDestinationTurmaId(sugestao.destino?.id ?? "");
+                                            }}
+                                            className="text-blue-600 hover:underline"
+                                        >
+                                            Aplicar
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+                <div className="mt-4">
+                    <button onClick={() => router.push('/secretaria/rematricula/confirmar')} className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">
+                        Confirmar Rematrícula em Massa
+                    </button>
+                </div>
+            </div>
+        )}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>

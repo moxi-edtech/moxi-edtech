@@ -26,26 +26,41 @@ const schema = z.object({
 
 type Counts = Partial<Record<z.infer<typeof IncludeEnum>, number>>;
 
+// 🔹 Ajuste 1: params NÃO é Promise em route handlers.
 export async function POST(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
-  const { id: escolaId } = await context.params;
+  const { id: escolaId } = params;
+
   try {
     const parsed = schema.safeParse(await req.json());
     if (!parsed.success) {
       const msg = parsed.error.issues[0]?.message || "Dados inválidos";
       return NextResponse.json({ ok: false, error: msg }, { status: 400 });
     }
-    const { scope, sessionId: sessionIdRaw, include, dryRun, force, confirmPhrase } = parsed.data;
+
+    const {
+      scope,
+      sessionId: sessionIdRaw,
+      include,
+      dryRun,
+      force, // 🔹 ainda não usado, deixei aqui se quiser dar semântica depois
+      confirmPhrase,
+    } = parsed.data;
 
     const s = await supabaseServer();
     const { data: auth } = await s.auth.getUser();
     const user = auth?.user;
-    if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+    if (!user)
+      return NextResponse.json(
+        { ok: false, error: "Não autenticado" },
+        { status: 401 }
+      );
 
     // Autorização: mesmo padrão das rotas de configuração
     let allowed = false;
+
     // super_admin
     try {
       const { data: prof } = await s
@@ -57,6 +72,7 @@ export async function POST(
       const role = (prof?.[0] as any)?.role as string | undefined;
       if (role === "super_admin") allowed = true;
     } catch {}
+
     // vinculado com permissão
     try {
       const { data: vinc } = await s
@@ -68,6 +84,7 @@ export async function POST(
       const papel = (vinc as any)?.papel as any | undefined;
       if (!allowed) allowed = !!papel && hasPermission(papel, "configurar_escola");
     } catch {}
+
     // fallback admin explícito
     if (!allowed) {
       try {
@@ -80,6 +97,7 @@ export async function POST(
         allowed = Boolean(adminLink && (adminLink as any[]).length > 0);
       } catch {}
     }
+
     // fallback profiles admin vinculado à escola
     if (!allowed) {
       try {
@@ -89,18 +107,31 @@ export async function POST(
           .eq("user_id", user.id)
           .eq("escola_id", escolaId)
           .limit(1);
-        allowed = Boolean(prof && prof.length > 0 && (prof[0] as any).role === "admin");
+        allowed = Boolean(
+          prof && prof.length > 0 && (prof[0] as any).role === "admin"
+        );
       } catch {}
     }
-    if (!allowed) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: "Configuração Supabase ausente." }, { status: 500 });
+    if (!allowed)
+      return NextResponse.json(
+        { ok: false, error: "Sem permissão" },
+        { status: 403 }
+      );
+
+    // 🔹 Ajuste 2: usar SUPABASE_URL se existir (server-side), senão NEXT_PUBLIC como fallback
+    const supabaseUrl =
+      process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      return NextResponse.json(
+        { ok: false, error: "Configuração Supabase ausente." },
+        { status: 500 }
+      );
     }
-    const admin = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
+
+    const admin = createAdminClient<Database>(supabaseUrl, serviceRoleKey);
 
     // Buscar nome da escola para confirmação e utilidades
     let escolaNome: string | null = null;
@@ -118,6 +149,7 @@ export async function POST(
     const needsSession = scope === "session" || scope === "all";
     if (needsSession && !sessionId) {
       try {
+        // aqui você está usando school_sessions, que bate com o resto das tuas rotas
         const { data } = await (admin as any)
           .from("school_sessions")
           .select("id")
@@ -129,7 +161,13 @@ export async function POST(
       } catch {}
     }
     if (needsSession && !sessionId) {
-      return NextResponse.json({ ok: false, error: "Sessão ativa não encontrada. Informe sessionId." }, { status: 400 });
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Sessão ativa não encontrada. Informe sessionId.",
+        },
+        { status: 400 }
+      );
     }
 
     // Normaliza includes por escopo
@@ -147,7 +185,8 @@ export async function POST(
       const set = new Set<z.infer<typeof IncludeEnum>>();
       if (!include || include.length === 0) {
         if (scope === "session") defaultSessionIncludes.forEach((i) => set.add(i));
-        else if (scope === "config") defaultConfigIncludes.forEach((i) => set.add(i));
+        else if (scope === "config")
+          defaultConfigIncludes.forEach((i) => set.add(i));
         else {
           defaultSessionIncludes.forEach((i) => set.add(i));
           defaultConfigIncludes.forEach((i) => set.add(i));
@@ -164,7 +203,9 @@ export async function POST(
       filters: Array<[string, string | number]>
     ): Promise<number> => {
       try {
-        let q: any = (admin as any).from(table).select("id", { count: "exact", head: true });
+        let q: any = (admin as any)
+          .from(table)
+          .select("id", { count: "exact", head: true });
         for (const [col, val] of filters) q = q.eq(col, val as any);
         const res = await q;
         return res?.count ?? 0;
@@ -190,9 +231,12 @@ export async function POST(
       }
     };
 
-    // Compute counts
     const counts: Counts = {};
-    const addCount = async (key: z.infer<typeof IncludeEnum>, table: string, filters: Array<[string, string | number]>) => {
+    const addCount = async (
+      key: z.infer<typeof IncludeEnum>,
+      table: string,
+      filters: Array<[string, string | number]>
+    ) => {
       if (!normalizedIncludes.includes(key)) return;
       counts[key] = await safeCount(table, filters);
     };
@@ -203,11 +247,13 @@ export async function POST(
       await addCount("turmas", "turmas", [["session_id", sessionId]]);
       await addCount("semestres", "semestres", [["session_id", sessionId]]);
     }
+
     // Config-scoped (school wide)
     if (scope === "config" || scope === "all") {
       await addCount("disciplinas", "disciplinas", [["escola_id", escolaId]]);
       await addCount("classes", "classes", [["escola_id", escolaId]]);
-      await addCount("cursos", "cursos", [["escola_id", escolaId]]);
+      // 🔹 Ajuste 3: aqui o físico costuma ser `cursos_oferta`, mas mantemos a key "cursos" para o payload
+      await addCount("cursos", "cursos_oferta", [["escola_id", escolaId]]);
     }
 
     if (dryRun) {
@@ -215,8 +261,16 @@ export async function POST(
     }
 
     // Execução: confirmar frase
-    if (escolaNome && (confirmPhrase || "").trim() !== String(escolaNome).trim()) {
-      return NextResponse.json({ ok: false, error: "Frase de confirmação incorreta." }, { status: 400 });
+    // 🔹 Se um dia você quiser usar `force` (ex: super_admin pode ignorar confirmação),
+    //   daria pra colocar a condição aqui com base em role + force.
+    if (
+      escolaNome &&
+      (confirmPhrase || "").trim() !== String(escolaNome).trim()
+    ) {
+      return NextResponse.json(
+        { ok: false, error: "Frase de confirmação incorreta." },
+        { status: 400 }
+      );
     }
 
     // Execução em ordem segura
@@ -227,38 +281,54 @@ export async function POST(
     if ((scope === "session" || scope === "all") && sessionId) {
       if (normalizedIncludes.includes("matriculas")) {
         const res = await safeDelete("matriculas", [["session_id", sessionId]]);
-        if (!res.ok) warnings.push(`matriculas: ${res.error}`); else deleted.matriculas = res.deleted || 0;
+        if (!res.ok) warnings.push(`matriculas: ${res.error}`);
+        else deleted.matriculas = res.deleted || 0;
       }
       if (normalizedIncludes.includes("turmas")) {
         const res = await safeDelete("turmas", [["session_id", sessionId]]);
-        if (!res.ok) warnings.push(`turmas: ${res.error}`); else deleted.turmas = res.deleted || 0;
+        if (!res.ok) warnings.push(`turmas: ${res.error}`);
+        else deleted.turmas = res.deleted || 0;
       }
       if (normalizedIncludes.includes("semestres")) {
         const res = await safeDelete("semestres", [["session_id", sessionId]]);
-        if (!res.ok) warnings.push(`semestres: ${res.error}`); else deleted.semestres = res.deleted || 0;
+        if (!res.ok) warnings.push(`semestres: ${res.error}`);
+        else deleted.semestres = res.deleted || 0;
       }
     }
 
     // Config portion: disciplinas -> classes -> cursos (disciplinas primeiro devido a FKs)
     if (scope === "config" || scope === "all") {
       if (normalizedIncludes.includes("disciplinas")) {
-        const res = await safeDelete("disciplinas", [["escola_id", escolaId]]);
-        if (!res.ok) warnings.push(`disciplinas: ${res.error}`); else deleted.disciplinas = res.deleted || 0;
+        const res = await safeDelete("disciplinas", [
+          ["escola_id", escolaId],
+        ]);
+        if (!res.ok) warnings.push(`disciplinas: ${res.error}`);
+        else deleted.disciplinas = res.deleted || 0;
       }
       if (normalizedIncludes.includes("classes")) {
         const res = await safeDelete("classes", [["escola_id", escolaId]]);
-        if (!res.ok) warnings.push(`classes: ${res.error}`); else deleted.classes = res.deleted || 0;
+        if (!res.ok) warnings.push(`classes: ${res.error}`);
+        else deleted.classes = res.deleted || 0;
       }
       if (normalizedIncludes.includes("cursos")) {
-        const res = await safeDelete("cursos", [["escola_id", escolaId]]);
-        if (!res.ok) warnings.push(`cursos: ${res.error}`); else deleted.cursos = res.deleted || 0;
+        // 🔹 Mesma coisa aqui: apagar de cursos_oferta
+        const res = await safeDelete("cursos_oferta", [
+          ["escola_id", escolaId],
+        ]);
+        if (!res.ok) warnings.push(`cursos: ${res.error}`);
+        else deleted.cursos = res.deleted || 0;
       }
     }
 
-    return NextResponse.json({ ok: true, deleted, warnings, escolaNome, sessionId });
+    return NextResponse.json({
+      ok: true,
+      deleted,
+      warnings,
+      escolaNome,
+      sessionId,
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Erro inesperado";
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
 }
-

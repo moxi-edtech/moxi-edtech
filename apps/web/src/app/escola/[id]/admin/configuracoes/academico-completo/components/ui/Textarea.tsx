@@ -9,7 +9,8 @@ interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
 }
 
 export function Textarea({ label, id, error, className = '', ...props }: TextareaProps) {
-  const textareaId = id || useId();
+  const fallbackId = useId();
+  const textareaId = id || fallbackId;
 
   const textareaEl = (
     <textarea

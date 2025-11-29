@@ -42,6 +42,7 @@ export type PagamentosResumo = {
   pago: number;
   pendente: number;
   inadimplente: number;
+  ajuste: number;
 };
 
 export const CORES_MOXI = {

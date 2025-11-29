@@ -1,20 +1,17 @@
-ALTER TABLE public.staging_alunos
-  ADD COLUMN IF NOT EXISTS curso_codigo   text,
-  ADD COLUMN IF NOT EXISTS classe_label   text,
-  ADD COLUMN IF NOT EXISTS turno_codigo   text,
-  ADD COLUMN IF NOT EXISTS turma_label    text,
-  ADD COLUMN IF NOT EXISTS ano_letivo_raw text;
+-- Adiciona campos de pré-classificação para matrícula em massa
 
 ALTER TABLE public.staging_alunos
-  ADD COLUMN IF NOT EXISTS ano_letivo_inicio integer;
+  ADD COLUMN IF NOT EXISTS classe_label     text,
+  ADD COLUMN IF NOT EXISTS turma_label      text,
+  ADD COLUMN IF NOT EXISTS ano_letivo      integer,
+  ADD COLUMN IF NOT EXISTS numero_matricula text,
+  ADD COLUMN IF NOT EXISTS processed_at    timestamptz;
 
-CREATE OR REPLACE FUNCTION public.extract_ano_letivo_inicio(raw text)
-RETURNS integer
-LANGUAGE sql
-AS $$
-  SELECT NULLIF(regexp_replace(raw, '^(\d{4}).*$', '\1'), '')::integer
-$$;
+-- Índice para agrupar rápido por import/classe/turma/ano
+CREATE INDEX IF NOT EXISTS staging_alunos_import_classe_turma_ano_idx
+  ON public.staging_alunos (import_id, classe_label, turma_label, ano_letivo);
 
-UPDATE public.staging_alunos
-SET ano_letivo_inicio = public.extract_ano_letivo_inicio(ano_letivo_raw)
-WHERE ano_letivo_raw IS NOT NULL;
+-- Índice para acompanhar “pendentes de processamento”
+CREATE INDEX IF NOT EXISTS staging_alunos_import_escola_status_idx
+  ON public.staging_alunos (import_id, escola_id)
+  WHERE processed_at IS NULL;

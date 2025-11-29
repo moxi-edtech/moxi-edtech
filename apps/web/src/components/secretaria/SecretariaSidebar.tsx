@@ -9,6 +9,8 @@ export default function SecretariaSidebar() {
     { href: "/secretaria", label: "Dashboard", icon: "HomeIcon" },
     { href: "/secretaria/alunos", label: "Alunos", icon: "UsersIcon" },
     { href: "/secretaria/turmas", label: "Turmas", icon: "RectangleStackIcon" },
+    { href: "/secretaria/turmas/ocupacao", label: "Ocupação de Turmas", icon: "UsersIcon" },
+    { href: "/secretaria/classes", label: "Classes", icon: "BookOpenIcon" },
     { href: "/secretaria/matriculas", label: "Matrículas", icon: "AcademicCapIcon" },
     { href: "/secretaria/relatorios", label: "Relatórios", icon: "ChartBarIcon" },
     { href: "/secretaria/alertas", label: "Alertas", icon: "BellAlertIcon" },

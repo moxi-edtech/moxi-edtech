@@ -7,10 +7,8 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 type TurmaRow = {
   id: string;
   nome: string | null;
-  codigo?: string | null;
   classe?: string | null;
   turno?: string | null;
-  periodo?: string | null;
   sala?: string | null;
   escolas?: {
     id: string;
@@ -45,7 +43,7 @@ type MatriculaRow = {
   } | null;
 };
 
-export async function GET(req: Request, context: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
     const supabase = await supabaseServerTyped<any>();
     const { data: userRes } = await supabase.auth.getUser();
@@ -55,7 +53,7 @@ export async function GET(req: Request, context: { params: { id: string } }) {
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     }
 
-    const turmaId = context.params.id;
+    const turmaId = params.id;
     const { searchParams } = new URL(req.url);
     const format = searchParams.get("format") ?? "json";
 
@@ -66,10 +64,8 @@ export async function GET(req: Request, context: { params: { id: string } }) {
         `
         id,
         nome,
-        codigo,
         classe,
         turno,
-        periodo,
         sala,
         escolas (
           id,
@@ -149,9 +145,9 @@ export async function GET(req: Request, context: { params: { id: string } }) {
         turma: {
           id: turma.id,
           nome: turma.nome,
-          codigo: turma.codigo,
+          codigo: null,
           classe: turma.classe,
-          turno: turma.turno ?? turma.periodo ?? null,
+          turno: turma.turno ?? null,
           sala: turma.sala ?? null,
           escola_nome: turma.escolas?.nome ?? null,
         },
@@ -167,7 +163,7 @@ export async function GET(req: Request, context: { params: { id: string } }) {
       process.env.NEXT_PUBLIC_VALIDATION_BASE_URL ?? escola?.validation_base_url ?? undefined;
 
     const pdfBytes = await createInstitutionalPdf({
-      title: `Lista de Alunos – Turma ${turma.nome ?? turma.codigo ?? ""}`,
+      title: `Lista de Alunos – Turma ${turma.nome ?? ""}`,
       school: {
         name: escola?.nome ?? "Escola",
         nif: escola?.nif ?? escola?.numero_fiscal,
@@ -206,9 +202,9 @@ export async function GET(req: Request, context: { params: { id: string } }) {
 
         // Cabeçalho da turma
         draw(
-          `Turma: ${turma.nome ?? turma.codigo ?? "—"}   •   Classe: ${
+          `Turma: ${turma.nome ?? "—"}   •   Classe: ${
             turma.classe ?? "—"
-          }   •   Turno: ${turma.turno ?? turma.periodo ?? "—"}`,
+          }   •   Turno: ${turma.turno ?? "—"}`,
           margin,
           cursorY,
           { bold: true, size: 11 }
@@ -303,7 +299,7 @@ export async function GET(req: Request, context: { params: { id: string } }) {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="lista_alunos_turma_${
-          turma.nome ?? turma.codigo ?? turma.id
+          turma.nome ?? turma.id
         }.pdf"`,
       },
     });

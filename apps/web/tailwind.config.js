@@ -8,10 +8,10 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Cores da MoxiNexa
         moxinexa: {
-          // Mantém compatibilidade: classes como bg-moxinexa-teal continuam funcionando via DEFAULT
           teal: {
-            DEFAULT: "#0D9488", // ~teal-600
+            DEFAULT: "#0D9488",
             50:  "#f0fdfa",
             100: "#ccfbf1",
             200: "#99f6e4",
@@ -24,18 +24,64 @@ module.exports = {
             900: "#134e4a",
             950: "#042f2e",
           },
-          navy: "#0B2C45",   // Azul escuro (Moxi)
-          dark: "#1A2B3C",   // Texto forte
-          light: "#F9FAFB",  // Fundo claro
-          gray: "#6C757D",   // Texto secundário
+          navy: "#0B2C45",
+          dark: "#1A2B3C",
+          light: "#F9FAFB",
+          gray: "#6C757D",
         },
+        // Cores do design compartilhado
+        brand: {
+          900: '#0f172a',
+          800: '#1e293b',
+        },
+        // Cores do slate para compatibilidade
+        slate: {
+          50: '#f8fafc',
+          100: '#f1f5f9',
+          200: '#e2e8f0',
+          300: '#cbd5e1',
+          400: '#94a3b8',
+          500: '#64748b',
+          600: '#475569',
+          700: '#334155',
+          800: '#1e293b',
+          900: '#0f172a',
+        }
       },
       fontFamily: {
-        sans: ["Poppins", "sans-serif"],  // Fonte oficial da marca
-        mono: ["var(--font-geist-mono)", "monospace"], // Geist Mono para números/código
+        sans: ["Poppins", "sans-serif"],
+        mono: ["var(--font-geist-mono)", "monospace"],
+      },
+      animation: {
+        'fade-in': 'fadeIn 0.6s ease-out',
+        'pulse': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'sidebar-collapse': 'sidebarCollapse 0.2s ease-out',
+        'sidebar-expand': 'sidebarExpand 0.2s ease-out',
+      },
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        sidebarCollapse: {
+          '0%': { width: 'var(--sidebar-expanded, 256px)' },
+          '100%': { width: 'var(--sidebar-collapsed, 80px)' },
+        },
+        sidebarExpand: {
+          '0%': { width: 'var(--sidebar-collapsed, 80px)' },
+          '100%': { width: 'var(--sidebar-expanded, 256px)' },
+        },
+      },
+      backdropBlur: {
+        xs: '2px',
+      },
+      // Adiciona suporte para CSS custom properties
+      spacing: {
+        'sidebar': 'var(--sidebar-w, 256px)',
+        'sidebar-collapsed': 'var(--sidebar-collapsed, 80px)',
+        'sidebar-expanded': 'var(--sidebar-expanded, 256px)',
       },
     },
   },
-  // Tailwind plugins são declarados no PostCSS, não aqui.
   plugins: [],
 };

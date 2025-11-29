@@ -33,10 +33,8 @@ interface ProfileRow {
 interface TurmaRow {
   id: string;
   nome?: string | null;
-  codigo?: string | null;
   classe?: string | null;
   turno?: string | null;
-  periodo?: string | null;
   school_sessions?: {
     id: string;
     nome?: string | null;
@@ -131,10 +129,8 @@ export async function GET(_req: Request, { params }: { params: { alunoId: string
           turma:turmas (
             id,
             nome,
-            codigo,
             classe,
             turno,
-            periodo,
             school_sessions (
               id,
               nome,
@@ -297,9 +293,9 @@ export async function GET(_req: Request, { params }: { params: { alunoId: string
               turma: turmaNormalized
                 ? {
                     id: turmaNormalized.id,
-                    nome: turmaNormalized.nome ?? turmaNormalized.codigo ?? null,
+                    nome: turmaNormalized.nome ?? null,
                     classe: turmaNormalized.classe ?? null,
-                    turno: turmaNormalized.turno ?? turmaNormalized.periodo ?? null,
+                    turno: turmaNormalized.turno ?? null,
                     anoLetivoLabel:
                       turmaNormalized.school_sessions?.nome ?? turmaNormalized.school_sessions?.ano ?? null,
                   }
