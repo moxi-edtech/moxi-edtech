@@ -5,7 +5,6 @@ type OcupacaoRow = {
   id: string;
   escola_id: string;
   nome: string | null;
-  codigo: string | null;
   classe: string | null;
   turno: string | null;
   sala: string | null;
@@ -39,7 +38,6 @@ export async function GET(req: Request) {
         id,
         escola_id,
         nome,
-        codigo,
         classe,
         turno,
         sala,

@@ -1,0 +1,88 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { Loader2, BookOpen } from "lucide-react";
+import Link from "next/link";
+
+type Classe = {
+  id: string;
+  nome: string;
+  // Add other properties as needed
+};
+
+export default function ClassesListClient() {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [classes, setClasses] = useState<Classe[]>([]);
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/secretaria/classes`);
+        const json = await res.json();
+        if (!res.ok || !json.ok) {
+          throw new Error(json.error || "Falha ao carregar classes");
+        }
+        setClasses(json.items);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Erro desconhecido");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
+  return (
+    <div className="w-full max-w-4xl mx-auto space-y-6 p-6">
+      <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+        <h1 className="text-2xl font-bold text-moxinexa-navy">Classes</h1>
+        <p className="text-sm text-slate-500 mt-1">
+          Lista de todas as classes disponíveis.
+        </p>
+      </div>
+
+      {loading && (
+        <div className="text-center p-8">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-moxinexa-teal" />
+          <p className="text-slate-500 mt-2">Carregando...</p>
+        </div>
+      )}
+
+      {error && <div className="bg-red-50 text-red-700 p-4 rounded-lg border border-red-200">{error}</div>}
+
+      {!loading && !error && classes.length > 0 && (
+        <div className="bg-white rounded-xl shadow border">
+          <table className="min-w-full divide-y divide-slate-200">
+            <thead className="bg-slate-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  Nome
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  Ações
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-slate-200">
+              {classes.map((classe) => (
+                <tr key={classe.id}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
+                    {classe.nome}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <Link href={`/secretaria/classes/${classe.id}`} className="text-emerald-600 hover:text-emerald-900">
+                        Ver Disciplinas
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}

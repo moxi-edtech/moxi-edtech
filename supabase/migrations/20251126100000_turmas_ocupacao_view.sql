@@ -23,9 +23,8 @@ SELECT
   t.id,
   t.escola_id,
   t.nome,
-  t.codigo,
   t.classe,
-  COALESCE(t.turno, t.periodo) AS turno,
+  t.turno AS turno,
   t.sala,
   COALESCE(t.capacidade_maxima, 30) AS capacidade_maxima,
 
@@ -70,9 +69,8 @@ GROUP BY
   t.id,
   t.escola_id,
   t.nome,
-  t.codigo,
   t.classe,
-  COALESCE(t.turno, t.periodo),
+  t.turno,
   t.sala,
   COALESCE(t.capacidade_maxima, 30);
 

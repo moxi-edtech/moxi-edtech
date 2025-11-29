@@ -36,6 +36,7 @@ export default function AlunoDetalhesPage() {
   const [error, setError] = useState<string | null>(null);
   const [aluno, setAluno] = useState<AlunoDetails | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showHardDeleteModal, setShowHardDeleteModal] = useState(false);
   const [deleteReason, setDeleteReason] = useState("");
   const [deleting, setDeleting] = useState(false);
 
@@ -58,6 +59,22 @@ export default function AlunoDetalhesPage() {
     })();
     return () => { active = false };
   }, [alunoId]);
+
+  const handleRestore = async () => {
+    if (!aluno) return;
+    if (!confirm(`Tem certeza que deseja restaurar o aluno ${aluno.nome}?`)) return;
+    try {
+        const res = await fetch(`/api/secretaria/alunos/${encodeURIComponent(aluno.id)}/restore`, {
+            method: 'POST',
+        });
+        const json = await res.json().catch(() => null);
+        if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao restaurar aluno');
+        // reaload page
+        window.location.reload();
+    } catch (e) {
+        alert(e instanceof Error ? e.message : String(e));
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-moxinexa-light to-blue-50 py-8">
@@ -90,10 +107,20 @@ export default function AlunoDetalhesPage() {
                 </Button>
               </Link>
             )}
-            {aluno && (
+            {aluno && aluno.status !== 'inativo' && (
               <Button tone="red" size="sm" onClick={() => setShowDeleteModal(true)}>
                 Arquivar
               </Button>
+            )}
+            {aluno && aluno.status === 'inativo' && (
+                <Button tone="green" size="sm" onClick={handleRestore}>
+                    Restaurar
+                </Button>
+            )}
+            {aluno && aluno.status === 'inativo' && (
+                <Button tone="red" variant="outline" size="sm" onClick={() => setShowHardDeleteModal(true)}>
+                    Excluir
+                </Button>
             )}
           </div>
         </div>
@@ -194,6 +221,53 @@ export default function AlunoDetalhesPage() {
           </div>
         </div>
       )}
+
+        {showHardDeleteModal && aluno && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+                    <h2 className="text-lg font-semibold text-gray-900">Excluir aluno permanentemente</h2>
+                    <p className="mt-2 text-sm text-gray-600">
+                        Tem certeza que deseja excluir o aluno <span className="font-semibold">{aluno.nome}</span> permanentemente?
+                        <br />Esta ação não pode ser desfeita.
+                    </p>
+
+                    <div className="mt-6 flex justify-end gap-3">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            tone="gray"
+                            onClick={() => { setShowHardDeleteModal(false); }}
+                            disabled={deleting}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            type="button"
+                            tone="red"
+                            onClick={async () => {
+                                try {
+                                    setDeleting(true);
+                                    const res = await fetch(`/api/secretaria/alunos/${encodeURIComponent(aluno.id)}/hard-delete`, {
+                                        method: 'POST',
+                                    });
+                                    const json = await res.json().catch(() => null);
+                                    if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao excluir aluno');
+                                    setShowHardDeleteModal(false);
+                                    router.push('/secretaria/alunos');
+                                } catch (e) {
+                                    alert(e instanceof Error ? e.message : String(e));
+                                } finally {
+                                    setDeleting(false);
+                                }
+                            }}
+                            disabled={deleting}
+                        >
+                            {deleting ? 'Excluindo…' : 'Confirmar exclusão'}
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        )}
     </div>
   );
 }

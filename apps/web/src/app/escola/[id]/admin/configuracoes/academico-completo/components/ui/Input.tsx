@@ -12,7 +12,8 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
  * Componente de input com label e tratamento de erro.
  */
 export function Input({ label, id, error, className, ...props }: InputProps) {
-  const inputId = id || useId();
+  const fallbackId = useId();
+  const inputId = id || fallbackId;
   return (
     <div className="w-full">
       <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 mb-1.5">

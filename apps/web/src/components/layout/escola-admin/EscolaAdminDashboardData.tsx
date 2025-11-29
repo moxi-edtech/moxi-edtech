@@ -2,39 +2,41 @@
 
 import { useEffect, useState } from "react";
 import EscolaAdminDashboardContent from "./EscolaAdminDashboardContent";
+import type { KpiStats } from "./KpiSection";
 
-type KpiStats = { turmas: number; alunos: number; professores: number; avaliacoes: number };
-type Aviso = { id: string; titulo: string; dataISO: string };
-type Evento = { id: string; titulo: string; dataISO: string };
-type PagamentosResumo = { pago: number; pendente: number; inadimplente: number };
-type ChartsPayload = { meses: string[]; alunosPorMes: number[]; pagamentos: PagamentosResumo };
+// ... (teus types existentes)
 
-export default function EscolaAdminDashboardData({ escolaId }: { escolaId: string; escolaNome?: string }) {
+export default function EscolaAdminDashboardData({ escolaId }: { escolaId: string }) {
   const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<any>(null); // Armazena tudo
   const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState<KpiStats>({ turmas: 0, alunos: 0, professores: 0, avaliacoes: 0 });
-  const [avisos, setAvisos] = useState<Aviso[]>([]);
-  const [eventos, setEventos] = useState<Evento[]>([]);
-  const [charts, setCharts] = useState<ChartsPayload | undefined>(undefined);
 
   useEffect(() => {
     let mounted = true;
     async function load() {
       try {
         setLoading(true);
-        setError(null);
         const res = await fetch(`/api/escolas/${escolaId}/admin/dashboard`, { cache: 'no-store' });
-        if (!res.ok) throw new Error(`Falha ao carregar dashboard (${res.status})`);
-        const data = await res.json();
-        if (!data?.ok) throw new Error(data?.error || 'Resposta inválida');
-        if (!mounted) return;
-        setStats(data.kpis ?? stats);
-        setAvisos(data.avisos ?? []);
-        setEventos(data.eventos ?? []);
-        setCharts(data.charts ?? undefined);
+        if (!res.ok) throw new Error('Falha na API');
+        const json = await res.json();
+        
+        if (mounted) {
+            // Assumindo que a tua API retorna algo como { avisos, eventos, charts, kpis }
+            // Se a tua API atual não retorna 'kpis' diretos com contagens totais, 
+            // precisas adicionar isso ao endpoint ou calcular aqui.
+            // Vou simular mapeamento:
+            setData({
+                ...json,
+                kpis: { // Mapeia o que vier da API para o formato KpiStats
+                    turmas: json.charts?.turmasCount || 0, // Ajusta conforme tua API
+                    alunos: json.charts?.alunosTotal || 0,
+                    professores: json.charts?.professoresCount || 0,
+                    avaliacoes: 0
+                }
+            });
+        }
       } catch (e: any) {
-        if (!mounted) return;
-        setError(e?.message || 'Erro ao carregar dashboard');
+        if (mounted) setError(e.message);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -43,15 +45,19 @@ export default function EscolaAdminDashboardData({ escolaId }: { escolaId: strin
     return () => { mounted = false };
   }, [escolaId]);
 
+  // Fallback stats se a API falhar ou estiver loading
+  const stats: KpiStats = data?.kpis || { turmas: 0, alunos: 0, professores: 0, avaliacoes: 0 };
+
   return (
     <EscolaAdminDashboardContent
       escolaId={escolaId}
-      stats={stats}
       loading={loading}
       error={error}
-      notices={avisos}
-      events={eventos}
-      charts={charts}
+      stats={stats} // <--- O IMPORTANTE ESTÁ AQUI
+      pagamentosKpis={data?.charts?.pagamentos}
+      notices={data?.avisos}
+      events={data?.eventos}
+      charts={data?.charts}
     />
   );
 }

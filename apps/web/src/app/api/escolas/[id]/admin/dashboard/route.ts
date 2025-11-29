@@ -63,6 +63,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       pago: pgList.filter((p: any) => p.status === 'pago').length,
       pendente: pgList.filter((p: any) => p.status === 'pendente').length,
       inadimplente: pgList.filter((p: any) => p.status === 'atrasado' || p.status === 'inadimplente').length,
+      ajuste: pgList.filter((p: any) => p.status === 'ajuste').length,
     };
 
     // Matrículas por mês (últimos 12 meses)

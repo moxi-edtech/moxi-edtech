@@ -1,16 +1,11 @@
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-import { FlatCompat } from "@eslint/eslintrc";
+import nextPlugin from "@next/eslint-plugin-next";
+import reactPlugin from "eslint-plugin-react";
+import hooksPlugin from "eslint-plugin-react-hooks";
+import typescriptParser from "@typescript-eslint/parser";
+import tsPlugin from "@typescript-eslint/eslint-plugin";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
-
+/** @type {import('eslint').Linter.FlatConfig[]} */
 const eslintConfig = [
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
     ignores: [
       "node_modules/**",
@@ -21,7 +16,29 @@ const eslintConfig = [
     ],
   },
   {
+    files: ["**/*.{js,jsx,ts,tsx}"],
+    plugins: {
+      "@next/next": nextPlugin,
+      "react": reactPlugin,
+      "react-hooks": hooksPlugin,
+      "@typescript-eslint": tsPlugin,
+    },
+    languageOptions: {
+      parser: typescriptParser,
+      globals: {
+        "React": "readonly",
+      }
+    },
+    settings: {
+      react: {
+        version: "detect",
+      },
+    },
     rules: {
+      ...nextPlugin.configs.recommended.rules,
+      ...nextPlugin.configs["core-web-vitals"].rules,
+      ...reactPlugin.configs.recommended.rules,
+      ...hooksPlugin.configs.recommended.rules,
       // Relax strictness during builds while keeping visibility
       "@typescript-eslint/no-explicit-any": "warn",
       // Downgrade prefer-const so it doesn't fail builds
@@ -36,6 +53,9 @@ const eslintConfig = [
           ignoreRestSiblings: true,
         },
       ],
+      "react/react-in-jsx-scope": "off",
+      "react/prop-types": "off",
+      "react/no-unknown-property": ["error", { "ignore": ["jsx", "global"] }]
     },
   },
   // In API routes we accept dynamic shapes more often
@@ -48,3 +68,4 @@ const eslintConfig = [
 ];
 
 export default eslintConfig;
+

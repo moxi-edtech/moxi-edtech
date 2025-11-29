@@ -24,7 +24,7 @@ type AlunoTurmaRow = {
 
 export async function GET(
   req: Request,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     const supabase = await supabaseServerTyped<any>();
@@ -38,7 +38,7 @@ export async function GET(
       );
     }
 
-    const turmaId = context.params.id;
+    const turmaId = params.id;
 
     const { data, error } = await supabase
       .from("matriculas")

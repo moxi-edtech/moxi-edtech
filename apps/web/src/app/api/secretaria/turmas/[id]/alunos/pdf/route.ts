@@ -6,7 +6,7 @@ import { createQrImage, buildSignatureLine } from "@/lib/pdf/qr";
 
 export async function GET(
   req: Request,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
     const supabase = await supabaseServerTyped<any>();
@@ -20,7 +20,7 @@ export async function GET(
       );
     }
 
-    const turmaId = context.params.id;
+    const turmaId = params.id;
 
     const { data: turma, error: turmaError } = await supabase
       .from("turmas")
@@ -130,9 +130,9 @@ export async function GET(
         };
 
         draw(
-          `Turma: ${turma.nome ?? turma.codigo ?? "—"} • Classe: ${
+          `Turma: ${turma.nome ?? "—"} • Classe: ${
             turma.classe ?? "—"
-          } • Turno: ${turma.turno ?? turma.periodo ?? "—"}`,
+          } • Turno: ${turma.turno ?? "—"}`,
           margin,
           10,
           true
@@ -236,7 +236,7 @@ export async function GET(
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="lista_alunos_turma_${
-          turma.nome ?? turma.codigo ?? "turma"
+          turma.nome ?? "turma"
         }.pdf"`,
       },
     });

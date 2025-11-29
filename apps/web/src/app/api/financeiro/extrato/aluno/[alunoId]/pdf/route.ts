@@ -32,10 +32,8 @@ interface ProfileRow {
 interface TurmaRow {
   id: string;
   nome?: string | null;
-  codigo?: string | null;
   classe?: string | null;
   turno?: string | null;
-  periodo?: string | null;
   school_sessions?: {
     id: string;
     nome?: string | null;
@@ -137,10 +135,8 @@ export async function GET(_req: Request, { params }: { params: { alunoId: string
           turma:turmas (
             id,
             nome,
-            codigo,
             classe,
             turno,
-            periodo,
             school_sessions (
               id,
               nome,
@@ -330,7 +326,7 @@ export async function GET(_req: Request, { params }: { params: { alunoId: string
         cursorY -= lineHeight / 2;
         if (matriculaAtual) {
           draw("Dados acadêmicos", { bold: true, size: 12 });
-          draw(`Turma: ${turmaAtual?.nome ?? turmaAtual?.codigo ?? "—"} • Classe: ${turmaAtual?.classe ?? "—"}`);
+          draw(`Turma: ${turmaAtual?.nome ?? "—"} • Classe: ${turmaAtual?.classe ?? "—"}`);
           draw(
             `Ano letivo: ${
               turmaAtual?.school_sessions?.nome ??

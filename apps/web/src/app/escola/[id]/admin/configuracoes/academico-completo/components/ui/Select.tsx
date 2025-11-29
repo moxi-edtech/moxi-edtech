@@ -9,7 +9,8 @@ type Props = SelectHTMLAttributes<HTMLSelectElement> & {
 };
 
 export function Select({ label, id, error, className = '', options, children, ...props }: Props) {
-  const selectId = id || useId();
+  const fallbackId = useId();
+  const selectId = id || fallbackId;
   const selectEl = (
     <select
       id={selectId}

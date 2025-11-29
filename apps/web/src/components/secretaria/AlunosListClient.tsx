@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { 
   Loader2, 
@@ -167,7 +167,7 @@ export default function AlunosListClient() {
     [items]
   );
 
-  const getStatusColor = (status: string | null | undefined) => {
+  const getStatusColor = (status: string | null) => {
     switch (status) {
       case 'ativo': return 'bg-emerald-100 text-emerald-700';
       case 'suspenso': return 'bg-amber-100 text-amber-700';
@@ -177,7 +177,7 @@ export default function AlunosListClient() {
     }
   };
 
-  const getStatusIcon = (status: string | null | undefined) => {
+  const getStatusIcon = (status: string | null) => {
     switch (status) {
       case 'ativo': return '🟢';
       case 'suspenso': return '🟡';
@@ -397,8 +397,8 @@ export default function AlunosListClient() {
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${getStatusColor(aluno.status ?? null)}`}>
-                        {getStatusIcon(aluno.status ?? null)} {aluno.status ?? '—'}
+                      <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${getStatusColor(aluno.status)}`}>
+                        {getStatusIcon(aluno.status)} {aluno.status || '—'}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-slate-600">

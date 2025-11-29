@@ -1,471 +1,389 @@
 "use client";
 
 import { useState } from "react";
-import { Calendar, BookOpen, Users, GraduationCap, CheckCircle2 } from "lucide-react";
-
-// Importar os componentes - ajuste os caminhos conforme sua estrutura
-import SessaoAcademicaStep from "./SessaoAcademicaStep";
-import PeriodosAcademicosStep from "./PeriodosAcademicosStep";
-import CursosStep from "./CursosStep";
-import ClassesStep from "./ClassesStep";
-import DisciplinasStep from "./DisciplinasStep";
-
-// Usar SEUS tipos
-import type { AcademicSession, Semester, Course, Class, Discipline } from "@/types/academico.types";
+import { useRouter } from "next/navigation";
+import { StepHeader } from "@/components/onboarding/StepHeader";
+import { StepFooter } from "@/components/onboarding/StepFooter";
+import { toast } from "sonner";
+import AcademicStep1 from "./AcademicStep1";
+import AcademicStep2 from "./AcademicStep2";
+import {
+  type CurriculumKey,
+  type CurriculumCategory,
+} from "@/lib/onboarding";
+import {
+  type TurnosState,
+  type AcademicSession,
+  type Periodo,
+  type MatrixRow,
+  type SelectedBlueprint,
+} from "./academicSetupTypes";
 
 type Props = {
   escolaId: string;
-  // Dados carregados da sua página atual
-  sessoes: AcademicSession[];
-  sessaoAtiva: AcademicSession | null;
-  periodos: Semester[];
-  cursos: Course[];
-  classes: Class[];
-  disciplinas: Discipline[];
-  // Callbacks para atualizar estado na página pai
-  onSessaoAtualizada: (sessao: AcademicSession | null) => void;
-  onSessoesAtualizadas: (sessoes: AcademicSession[]) => void;
-  onPeriodosAtualizados: (periodos: Semester[]) => void;
-  onCursosAtualizados: (cursos: Course[]) => void;
-  onClassesAtualizadas: (classes: Class[]) => void;
-  onDisciplinasAtualizadas: (disciplinas: Discipline[]) => void;
-  onComplete?: () => void;
-  onClose?: () => void;
 };
 
-export default function AcademicSetupWizard({
-  escolaId,
-  sessoes,
-  sessaoAtiva,
-  periodos,
-  cursos,
-  classes,
-  disciplinas,
-  onSessaoAtualizada,
-  onSessoesAtualizadas,
-  onPeriodosAtualizados,
-  onCursosAtualizados,
-  onClassesAtualizadas,
-  onDisciplinasAtualizadas,
-  onComplete,
-  onClose
-}: Props) {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const totalSteps = 5;
+export default function AcademicSetupWizard({ escolaId }: Props) {
+  const router = useRouter();
+  const [step, setStep] = useState(1);
 
-  const handleCompleteSetup = async () => {
-    setIsSubmitting(true);
+  // STEP 1 – identidade & sessão
+  const [schoolDisplayName, setSchoolDisplayName] = useState<string>("Colégio Horizonte");
+  const [regime, setRegime] = useState<"trimestral" | "semestral" | "bimestral">("trimestral");
+  const [anoLetivo, setAnoLetivo] = useState<string>("2024/2025");
+  const [turnos, setTurnos] = useState<TurnosState>({
+    Manhã: true,
+    Tarde: true,
+    Noite: false,
+  });
+
+  const [sessaoAtiva, setSessaoAtiva] = useState<AcademicSession | null>(null);
+  const [periodos, setPeriodos] = useState<Periodo[]>([]);
+  const [creatingSession, setCreatingSession] = useState(false);
+
+  // STEP 2 – currículo + matriz
+  const [presetCategory, setPresetCategory] = useState<CurriculumCategory>("geral");
+  const [curriculumPreset, setCurriculumPreset] = useState<CurriculumKey | null>(null);
+  const [selectedBlueprint, setSelectedBlueprint] = useState<SelectedBlueprint | null>(null);
+  const [matrix, setMatrix] = useState<MatrixRow[]>([]);
+  const [presetApplied, setPresetApplied] = useState(false);
+  const [applyingPreset, setApplyingPreset] = useState(false);
+
+  // FASE 3 – finalizar
+  const [isCompleting, setIsCompleting] = useState(false);
+
+  const canProceedStep1 = !!sessaoAtiva && periodos.length > 0;
+  const canProceedStep2 = presetApplied;
+
+  // =========================
+  // STEP 1 – criar sessão
+  // =========================
+  async function handleCreateSession() {
+    const toastId = toast.loading("Criando sessão académica...");
 
     try {
-      // Finaliza onboarding no backend (marca onboarding_finalizado = true)
-      const res = await fetch(`/api/escolas/${escolaId}/onboarding`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        // Campos são opcionais no schema; enviamos apenas o necessário
-        body: JSON.stringify({}),
-      });
+      setCreatingSession(true);
 
-      if (!res.ok) {
-        const j = await res.json().catch(() => null);
-        throw new Error(j?.error || 'Falha ao finalizar onboarding.');
+      const [startYearRaw] = anoLetivo.split("/");
+      const startYear = (startYearRaw || "").trim();
+
+      if (!startYear || !/^\d{4}$/.test(startYear)) {
+        throw new Error("Ano inicial inválido. Use algo como 2024/2025.");
       }
 
-      // Opcionalmente poderíamos redirecionar para dashboard usando nextPath do backend
-      // mas aqui mantemos o fluxo da página pai e apenas sinalizamos conclusão.
-      if (onComplete) onComplete();
-    } catch (error) {
-      console.error('Erro ao finalizar configuração:', error);
-      // Mantemos o estado do wizard e deixamos o usuário tentar novamente
+      const res = await fetch(
+        `/api/escolas/${escolaId}/onboarding/core/session`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            nome: schoolDisplayName,
+            anoLetivo: Number(startYear),
+            esquemaPeriodos: regime,
+          }),
+        }
+      );
+
+      const json = await res.json().catch(() => null);
+
+      if (!res.ok || !json?.ok) {
+        throw new Error(
+          json?.error || "Falha ao criar/atualizar sessão académica."
+        );
+      }
+
+      const active = json.data as {
+        id: string;
+        nome: string;
+        data_inicio: string;
+        data_fim: string;
+        status: "ativa" | "inativa";
+      };
+
+      // Atualiza sessão ativa
+      setSessaoAtiva({
+        id: active.id,
+        nome: active.nome,
+        status: active.status,
+        data_inicio: active.data_inicio,
+        data_fim: active.data_fim,
+      });
+
+      // Busca períodos gerados para essa sessão
+      try {
+        const semRes = await fetch(
+          `/api/escolas/${escolaId}/semestres?session_id=${encodeURIComponent(
+            active.id
+          )}`,
+          { cache: "no-store" }
+        );
+        const semJson = await semRes.json().catch(() => null);
+        if (semRes.ok && Array.isArray(semJson?.data)) {
+          const rows = semJson.data as any[];
+          const mapped: Periodo[] = rows.map((row, idx) => ({
+            id: row.id,
+            nome: row.nome,
+            numero: typeof row.numero === "number" ? row.numero : idx + 1,
+            data_inicio: String(row.data_inicio),
+            data_fim: String(row.data_fim),
+          }));
+          setPeriodos(mapped);
+        } else {
+          setPeriodos([]);
+        }
+      } catch {
+        setPeriodos([]);
+      }
+
+      toast.success("Sessão académica criada/atualizada com sucesso.", {
+        id: toastId,
+      });
+    } catch (err: any) {
+      console.error(err);
+      toast.error(
+        err?.message || "Erro ao criar/atualizar sessão académica.",
+        { id: toastId }
+      );
     } finally {
-      setIsSubmitting(false);
+      setCreatingSession(false);
     }
+  }
+
+  // =========================
+  // STEP 2 – presets & matriz
+  // =========================
+  const handleTurnoToggle = (turno: keyof TurnosState) => {
+    setTurnos((prev) => ({ ...prev, [turno]: !prev[turno] }));
   };
 
-  const nextStep = () => {
-    if (currentStep < totalSteps) {
-      setCurrentStep(prev => prev + 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+  const handlePresetChange = (key: string) => {
+    const k = key as CurriculumKey;
+    setCurriculumPreset(k);
+    setPresetApplied(false);
   };
 
-  const prevStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(prev => prev - 1);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+  const handleMatrixUpdate = (
+    id: number,
+    field: "manha" | "tarde" | "noite",
+    value: string
+  ) => {
+    const n = parseInt(value, 10);
+    setMatrix((prev) =>
+      prev.map((row) =>
+        row.id === id ? { ...row, [field]: isNaN(n) ? 0 : n } : row
+      )
+    );
   };
 
-  // Navegar para qualquer passo
-  const jumpToStep = (step: number) => {
-    if (step >= 1 && step <= totalSteps) {
-      setCurrentStep(step);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+  async function handleApplyCurriculumPreset() {
+    if (!sessaoAtiva?.id) {
+      toast.error("Crie/ative uma sessão primeiro.");
+      return;
     }
-  };
-
-  // Verificar se pode avançar
-  const canProceed = () => {
-    switch (currentStep) {
-      case 1: return !!sessaoAtiva;
-      case 2: return periodos.length > 0;
-      case 3: return true; // Cursos são opcionais
-      case 4: return classes.length > 0;
-      // No passo 5 (Disciplinas), permitir concluir mesmo sem disciplinas,
-      // desde que as classes (passo anterior, obrigatório) estejam configuradas.
-      // Disciplinas podem ser adicionadas depois.
-      case 5: return disciplinas.length > 0 || classes.length > 0;
-      default: return false;
+    if (!curriculumPreset || !selectedBlueprint) {
+      toast.error("Selecione um curso/modelo curricular.");
+      return;
     }
-  };
 
-  // Verificar se um passo está completo
-  const isStepComplete = (step: number) => {
-    switch (step) {
-      case 1: return !!sessaoAtiva;
-      case 2: return periodos.length > 0;
-      case 3: return cursos.length > 0; // Opcional, mas marcamos como completo se tiver cursos
-      case 4: return classes.length > 0;
-      case 5: return disciplinas.length > 0;
-      default: return false;
+    const toastId = toast.loading("Aplicando modelo curricular...");
+
+    try {
+      setApplyingPreset(true);
+
+      const matrixPayload = matrix.map((row) => ({
+        classe: row.nome,
+        qtyManha: row.manha || 0,
+        qtyTarde: row.tarde || 0,
+        qtyNoite: row.noite || 0,
+      }));
+
+      const res = await fetch(
+        `/api/escolas/${escolaId}/onboarding/curriculum/apply`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: sessaoAtiva.id,
+            presetKey: curriculumPreset,
+            matrix: matrixPayload,
+          }),
+        }
+      );
+
+      const json = await res.json().catch(() => null);
+
+      if (!res.ok || !json?.ok) {
+        throw new Error(
+          json?.error || "Falha ao aplicar modelo curricular."
+        );
+      }
+
+      const created = json.summary || json.data?.summary || json.created || {};
+      const msgParts: string[] = [];
+
+      if (created.disciplinas) {
+        msgParts.push(`+${created.disciplinas} disciplinas`);
+      }
+      if (created.classes) {
+        msgParts.push(`+${created.classes} classes`);
+      }
+      if (created.turmas) {
+        msgParts.push(`+${created.turmas} turmas`);
+      }
+      if (created.cursos) {
+        msgParts.push(`+${created.cursos} cursos`);
+      }
+
+      setPresetApplied(true);
+
+      toast.success(
+        msgParts.length
+          ? `Modelo aplicado: ${msgParts.join(", ")}.`
+          : "Modelo curricular aplicado.",
+        { id: toastId }
+      );
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message || "Erro ao aplicar modelo curricular.", {
+        id: toastId,
+      });
+    } finally {
+      setApplyingPreset(false);
     }
-  };
+  }
 
-  // Barra de progresso
-  const ProgressBar = () => (
-    <div className="mb-8">
-      <div className="flex justify-between items-center mb-3">
-        <span className="text-sm font-medium text-gray-700">
-          Passo {currentStep} de {totalSteps}
-        </span>
-        <span className="text-xs text-emerald-600 font-medium">
-          {currentStep === 1 && "Sessão Acadêmica"}
-          {currentStep === 2 && "Períodos Acadêmicos"}
-          {currentStep === 3 && "Cursos (Opcional)"}
-          {currentStep === 4 && "Classes"}
-          {currentStep === 5 && "Disciplinas"}
-        </span>
-      </div>
-      <div className="w-full bg-gray-200 rounded-full h-2">
-        <div 
-          className="bg-emerald-600 h-2 rounded-full transition-all duration-500 ease-in-out"
-          style={{ width: `${(currentStep / totalSteps) * 100}%` }}
-        ></div>
-      </div>
-    </div>
-  );
+  // =========================
+  // FASE FINAL – concluir
+  // =========================
+  async function handleCompleteSetup() {
+    if (!sessaoAtiva?.id) {
+      toast.error(
+        "Sessão académica não encontrada. Volte ao passo 1 e crie/seleccione uma sessão."
+      );
+      return;
+    }
+    if (!presetApplied) {
+      toast.error("Aplique um modelo curricular antes de concluir.");
+      return;
+    }
 
-  // Navegação rápida entre passos
-  const StepNavigation = () => (
-    <div className="flex justify-between mb-8">
-      {[1, 2, 3, 4, 5].map((step) => (
-        <button
-          key={step}
-          onClick={() => jumpToStep(step)}
-          className={`flex flex-col items-center flex-1 mx-1 p-3 rounded-lg border transition-all duration-200 ${
-            step === currentStep 
-              ? 'border-emerald-500 bg-emerald-50 text-emerald-700' 
-              : isStepComplete(step)
-              ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'
-              : 'border-gray-200 bg-gray-50 text-gray-500 hover:bg-gray-100'
-          }`}
-        >
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium mb-2 ${
-            step === currentStep 
-              ? 'bg-emerald-600 text-white' 
-              : isStepComplete(step)
-              ? 'bg-green-500 text-white'
-              : 'bg-gray-300 text-gray-600'
-          }`}>
-            {isStepComplete(step) ? <CheckCircle2 className="w-4 h-4" /> : step}
-          </div>
-          <span className="text-xs font-medium text-center">
-            {step === 1 && 'Sessão\nAcadêmica'}
-            {step === 2 && 'Períodos\nAcadêmicos'}
-            {step === 3 && 'Cursos\n(Opcional)'}
-            {step === 4 && 'Classes'}
-            {step === 5 && 'Disciplinas'}
-          </span>
-        </button>
-      ))}
-    </div>
-  );
+    const toastId = toast.loading("Finalizando configuração académica...");
 
-  // Resumo do progresso atual
-  const ProgressSummary = () => (
-    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-      <h4 className="font-medium text-blue-900 mb-3">Progresso da Configuração</h4>
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
-        <div className={`text-center p-2 rounded ${
-          isStepComplete(1) ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
-        }`}>
-          <Calendar className="w-4 h-4 mx-auto mb-1" />
-          <div>Sessão</div>
-          <div className="text-xs">{sessaoAtiva ? '✓' : '⏳'}</div>
-        </div>
-        
-        <div className={`text-center p-2 rounded ${
-          isStepComplete(2) ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
-        }`}>
-          <BookOpen className="w-4 h-4 mx-auto mb-1" />
-          <div>Períodos</div>
-          <div className="text-xs">{periodos.length > 0 ? `${periodos.length}✓` : '⏳'}</div>
-        </div>
-        
-        <div className={`text-center p-2 rounded ${
-          isStepComplete(3) ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-        }`}>
-          <GraduationCap className="w-4 h-4 mx-auto mb-1" />
-          <div>Cursos</div>
-          <div className="text-xs">{cursos.length > 0 ? `${cursos.length}✓` : '⚡'}</div>
-        </div>
-        
-        <div className={`text-center p-2 rounded ${
-          isStepComplete(4) ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
-        }`}>
-          <Users className="w-4 h-4 mx-auto mb-1" />
-          <div>Classes</div>
-          <div className="text-xs">{classes.length > 0 ? `${classes.length}✓` : '⏳'}</div>
-        </div>
-        
-        <div className={`text-center p-2 rounded ${
-          isStepComplete(5) ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
-        }`}>
-          <CheckCircle2 className="w-4 h-4 mx-auto mb-1" />
-          <div>Disciplinas</div>
-          <div className="text-xs">{disciplinas.length > 0 ? `${disciplinas.length}✓` : '⏳'}</div>
-        </div>
-      </div>
-    </div>
-  );
+    try {
+      setIsCompleting(true);
+
+      const res = await fetch(`/api/escolas/${escolaId}/onboarding/core/finalize`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: sessaoAtiva.id,
+          tipo: "academico",
+        }),
+      });
+
+      const json = await res.json().catch(() => null);
+
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || "Falha ao finalizar onboarding.");
+      }
+
+      toast.success("Estrutura académica pronta para uso! 🎉", {
+        id: toastId,
+      });
+
+      router.push(`/dashboard?escolaId=${escolaId}`);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message || "Erro ao finalizar onboarding.", {
+        id: toastId,
+      });
+    } finally {
+      setIsCompleting(false);
+    }
+  }
+
+  function goBack() {
+    setStep((prev) => Math.max(1, prev - 1));
+  }
+
+  function handleNextClick() {
+    if (step === 1) {
+      if (!canProceedStep1) {
+        toast.error("Crie a sessão académica antes de avançar.");
+        return;
+      }
+      setStep(2);
+      return;
+    }
+
+    if (step === 2) {
+      handleCompleteSetup();
+    }
+  }
+
+  const pageTitle = step === 1 ? "Identidade & Operação" : "Estrutura Académica";
+  const pageDesc = step === 1
+    ? "Confirme a identidade da escola e defina o ritmo do ano letivo."
+    : "Selecione o curso e gere a matriz de turmas.";
 
   return (
-    <div className="bg-white rounded-lg border shadow-sm">
-      {/* Header */}
-      <div className="flex justify-between items-center p-6 border-b bg-gradient-to-r from-blue-50 to-emerald-50">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Configuração Acadêmica Guiada</h2>
-          <p className="text-gray-600 mt-1">
-            Siga os passos para configurar toda a estrutura acadêmica da sua escola
-          </p>
-        </div>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-white"
-            title="Fechar configuração guiada"
-          >
-            ✕
-          </button>
-        )}
-      </div>
-      
-      {/* Conteúdo */}
-      <div className="p-6">
-        <ProgressBar />
-        <StepNavigation />
-        <ProgressSummary />
+    <div className="max-w-6xl mx-auto px-6 py-10 space-y-10">
+      <StepHeader step={step} totalSteps={2} />
 
-        <div className="animate-fade-in">
-          {/* Passo 1: Sessão Acadêmica */}
-          {currentStep === 1 && (
-            <div>
-              <div className="flex items-center gap-3 mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <Calendar className="w-6 h-6 text-blue-600" />
-                <div>
-                  <h3 className="font-semibold text-blue-900">Sessão Acadêmica</h3>
-                  <p className="text-sm text-blue-700">
-                    Configure o ano letivo atual da sua escola
-                  </p>
-                </div>
-              </div>
-              
-              <SessaoAcademicaStep
-                escolaId={escolaId}
-                sessoes={sessoes}
-                sessaoAtiva={sessaoAtiva}
-                onSessaoAtualizada={onSessaoAtualizada}
-                onSessoesAtualizadas={onSessoesAtualizadas}
-              />
-            </div>
-          )}
+      <header className="text-center space-y-2">
+        <h1 className="text-3xl font-bold text-slate-900">
+          {pageTitle}
+        </h1>
+        <p className="text-slate-500 text-sm max-w-xl mx-auto">
+          {pageDesc}
+        </p>
+      </header>
 
-          {/* Passo 2: Períodos Acadêmicos */}
-          {currentStep === 2 && (
-            <div>
-              <div className="flex items-center gap-3 mb-6 p-4 bg-green-50 rounded-lg border border-green-200">
-                <BookOpen className="w-6 h-6 text-green-600" />
-                <div>
-                  <h3 className="font-semibold text-green-900">Períodos Acadêmicos</h3>
-                  <p className="text-sm text-green-700">
-                    Divida o ano letivo em trimestres, bimestres ou semestres
-                  </p>
-                </div>
-              </div>
+      {/* STEP 1 */}
+      {step === 1 && (
+        <AcademicStep1
+          schoolDisplayName={schoolDisplayName}
+          setSchoolDisplayName={setSchoolDisplayName}
+          regime={regime}
+          setRegime={setRegime}
+          anoLetivo={anoLetivo}
+          setAnoLetivo={setAnoLetivo}
+          turnos={turnos}
+          onTurnoToggle={handleTurnoToggle}
+          sessaoAtiva={sessaoAtiva}
+          periodos={periodos}
+          creatingSession={creatingSession}
+          onCreateSession={handleCreateSession}
+        />
+      )}
 
-              <PeriodosAcademicosStep
-                escolaId={escolaId}
-                sessaoAtiva={sessaoAtiva}
-                periodos={periodos}
-                onPeriodosAtualizados={onPeriodosAtualizados}
-              />
-            </div>
-          )}
+      {/* STEP 2 */}
+      {step === 2 && (
+        <AcademicStep2
+          presetCategory={presetCategory}
+          onPresetCategoryChange={setPresetCategory}
+          curriculumPreset={curriculumPreset}
+          onCurriculumPresetChange={handlePresetChange}
+          selectedBlueprint={selectedBlueprint}
+          onSelectedBlueprintChange={setSelectedBlueprint}
+          matrix={matrix}
+          onMatrixChange={setMatrix}
+          onMatrixUpdate={handleMatrixUpdate}
+          presetApplied={presetApplied}
+          applyingPreset={applyingPreset}
+          turnos={turnos}
+          onApplyCurriculumPreset={handleApplyCurriculumPreset}
+        />
+      )}
 
-          {/* Passo 3: Cursos */}
-          {currentStep === 3 && (
-            <div>
-              <div className="flex items-center gap-3 mb-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
-                <GraduationCap className="w-6 h-6 text-purple-600" />
-                <div>
-                  <h3 className="font-semibold text-purple-900">Cursos (Opcional)</h3>
-                  <p className="text-sm text-purple-700">
-                    Configure cursos específicos para o 2º ciclo do ensino secundário
-                  </p>
-                </div>
-              </div>
-
-              <CursosStep
-                escolaId={escolaId}
-                sessaoAtiva={sessaoAtiva}
-                cursos={cursos}
-                onCursosAtualizados={onCursosAtualizados}
-              />
-            </div>
-          )}
-
-          {/* Passo 4: Classes */}
-          {currentStep === 4 && (
-            <div>
-              <div className="flex items-center gap-3 mb-6 p-4 bg-orange-50 rounded-lg border border-orange-200">
-                <Users className="w-6 h-6 text-orange-600" />
-                <div>
-                  <h3 className="font-semibold text-orange-900">Classes</h3>
-                  <p className="text-sm text-orange-700">
-                    Crie as classes/turmas da sua escola de acordo com o sistema angolano
-                  </p>
-                </div>
-              </div>
-
-              <ClassesStep
-                escolaId={escolaId}
-                classes={classes}
-                onClassesAtualizadas={onClassesAtualizadas}
-              />
-            </div>
-          )}
-
-          {/* Passo 5: Disciplinas */}
-          {currentStep === 5 && (
-            <div>
-              <div className="flex items-center gap-3 mb-6 p-4 bg-emerald-50 rounded-lg border border-emerald-200">
-                <CheckCircle2 className="w-6 h-6 text-emerald-600" />
-                <div>
-                  <h3 className="font-semibold text-emerald-900">Disciplinas</h3>
-                  <p className="text-sm text-emerald-700">
-                    Cadastre as disciplinas oferecidas em cada classe
-                  </p>
-                </div>
-              </div>
-
-              <DisciplinasStep
-                escolaId={escolaId}
-                cursos={cursos}
-                classes={classes}
-                disciplinas={disciplinas}
-                onDisciplinasAtualizadas={onDisciplinasAtualizadas}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Navegação entre passos */}
-        <div className="flex justify-between items-center pt-8 border-t mt-8">
-          <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={prevStep}
-              disabled={currentStep === 1}
-              className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 ${
-                currentStep === 1 
-                  ? "text-gray-400 cursor-not-allowed" 
-                  : "text-gray-700 hover:text-gray-900 hover:bg-gray-100 border border-gray-300"
-              }`}
-            >
-              ← Voltar
-            </button>
-
-            {/* Indicador de passo atual */}
-            <span className="text-sm text-gray-500">
-              Passo {currentStep} de {totalSteps}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-4">
-            {/* Pular configuração (apenas se não for o último passo) */}
-            {currentStep < totalSteps && (
-              <button
-                type="button"
-                onClick={nextStep}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 text-sm transition-colors"
-              >
-                Pular este passo →
-              </button>
-            )}
-
-            {currentStep < totalSteps ? (
-              <button
-                type="button"
-                onClick={nextStep}
-                disabled={!canProceed()}
-                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-all duration-200 flex items-center gap-2"
-              >
-                Próximo Passo
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleCompleteSetup}
-                disabled={isSubmitting || !canProceed()}
-                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-all duration-200 flex items-center gap-2"
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Finalizando...
-                  </>
-                ) : (
-                  <>
-                    Concluir Configuração
-                    <CheckCircle2 className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Ajuda rápida */}
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg border">
-          <p className="text-sm text-gray-600 text-center">
-            💡 <strong>Dica:</strong> Você pode navegar livremente entre os passos usando os botões acima. 
-            Seu progresso é salvo automaticamente.
-          </p>
-        </div>
-      </div>
-
-      <style jsx>{`
-        @keyframes fade-in {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in {
-          animation: fade-in 0.3s ease-out;
-        }
-      `}</style>
+      <StepFooter
+        step={step}
+        totalSteps={2}
+        canProceed={step === 1 ? canProceedStep1 : canProceedStep2}
+        onNext={handleNextClick}
+        onBack={goBack}
+        loading={isCompleting}
+      />
     </div>
   );
 }

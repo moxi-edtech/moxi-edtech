@@ -1,82 +1,44 @@
 "use client";
 
-import { useCallback } from "react";
 import { usePathname } from "next/navigation";
-import type { AcaoRapida } from "./definitions";
-import {
-  PlusIcon,
-  AcademicCapIcon,
-  UsersIcon,
-  ClipboardDocumentListIcon,
-  MegaphoneIcon,
-  CalendarIcon,
-} from "@heroicons/react/24/outline";
+import { UserPlus, Users, FileText, Megaphone, Calendar, PlusCircle } from "lucide-react";
 
-interface QuickActionsSectionProps {
-  acoes?: AcaoRapida[];
-  onAcao?: (acaoId: string) => void;
-}
-
-export default function QuickActionsSection({
-  acoes,
-  onAcao,
-}: QuickActionsSectionProps) {
+export default function QuickActionsSection() {
   const pathname = usePathname();
-  const escolaIdMatch = pathname?.match(/\/escola\/([^/]+)/);
-  const escolaId = escolaIdMatch?.[1] ?? "";
+  const escolaId = pathname?.split('/')[2];
 
-  const defaults: AcaoRapida[] = [
-    { id: "cadastrar-funcionario", rotulo: "Cadastrar Funcionário", icone: AcademicCapIcon, iconeExtra: PlusIcon, href: escolaId ? `/escola/${escolaId}/funcionarios/novo` : undefined },
-    { id: "cadastrar-professor", rotulo: "Cadastrar Professor", icone: UsersIcon, iconeExtra: PlusIcon },
-    { id: "lancar-nota", rotulo: "Lançar Nota", icone: ClipboardDocumentListIcon },
-    { id: "criar-aviso", rotulo: "Criar Aviso", icone: MegaphoneIcon },
-    { id: "agendar-evento", rotulo: "Agendar Evento", icone: CalendarIcon },
+  const actions = [
+    { label: "Novo Funcionário", icon: UserPlus, href: `/escola/${escolaId}/funcionarios/novo` },
+    { label: "Novo Professor", icon: Users, href: "#" }, // Link placeholder
+    { label: "Lançar Nota", icon: FileText, href: "#" },
+    { label: "Criar Aviso", icon: Megaphone, href: "#" },
+    { label: "Agendar Evento", icon: Calendar, href: "#" },
   ];
 
-  const lista = acoes?.length ? acoes : defaults;
-
-  const handleClick = useCallback(
-    (id: string, href?: string) => {
-      if (onAcao) return onAcao(id);
-      if (href) window.location.href = href;
-      else console.log("[QuickActions] ação:", id);
-    },
-    [onAcao]
-  );
-
   return (
-    <div className="bg-white rounded-xl p-6 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-800">Ações Rápidas</h2>
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="mb-6 flex items-center gap-2">
+        <div className="rounded-lg bg-slate-100 p-2 text-slate-600">
+          <PlusCircle className="h-5 w-5" />
+        </div>
+        <h3 className="text-lg font-bold text-slate-800">Ações Rápidas</h3>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {lista.map((a) => {
-          const Icon = a.icone;
-          const Extra = a.iconeExtra;
-
-          return (
-            <button
-              key={a.id}
-              onClick={() => handleClick(a.id, a.href)}
-              className={`group w-full rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 hover:border-emerald-300 transition p-3 text-center ${a.className ?? ""}`}
-              aria-label={a.rotulo}
-            >
-              <div className="relative flex justify-center items-center mb-2">
-                {Extra ? (
-                  <div className="relative">
-                    <Icon className="w-6 h-6 text-gray-600 group-hover:text-gray-800" />
-                    <Extra className="w-3 h-3 text-emerald-500 absolute -top-1 -right-1 bg-white rounded-full" />
-                  </div>
-                ) : (
-                  <Icon className="w-6 h-6 text-gray-600 group-hover:text-gray-800" />
-                )}
-              </div>
-              <div className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
-                {a.rotulo}
-              </div>
-            </button>
-          );
-        })}
+      
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+        {actions.map((action, idx) => (
+          <button
+            key={idx}
+            onClick={() => action.href && (window.location.href = action.href)}
+            className="group flex flex-col items-center justify-center gap-3 rounded-xl border border-slate-100 bg-slate-50 py-6 px-2 transition-all hover:border-teal-200 hover:bg-white hover:shadow-md"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-slate-500 shadow-sm ring-1 ring-slate-200 transition-colors group-hover:text-teal-600 group-hover:ring-teal-100">
+              <action.icon className="h-6 w-6" />
+            </div>
+            <span className="text-sm font-semibold text-slate-600 group-hover:text-slate-900">
+              {action.label}
+            </span>
+          </button>
+        ))}
       </div>
     </div>
   );

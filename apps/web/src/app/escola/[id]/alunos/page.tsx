@@ -1,491 +1,389 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Button from "@/components/ui/Button";
+import { 
+  ArrowLeft, 
+  UserPlus, 
+  Users, 
+  Search, 
+  Filter, 
+  Download, 
+  Camera, 
+  Check, 
+  ChevronRight, 
+  ChevronLeft,
+  Mail,
+  Phone,
+  MapPin,
+  GraduationCap,
+  Lock,
+  User,
+  Shield,
+  Loader2
+} from "lucide-react";
 
-export default function AlunosPage() {
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"add" | "list">("add");
-  const [fileName, setFileName] = useState<string>("Nenhum ficheiro selecionado");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitSuccess, setSubmitSuccess] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 5;
+// --- SUB-COMPONENTES VISUAIS ---
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setFileName(e.target.files[0].name);
-      // Feedback visual
-      const label = e.target.parentElement;
-      if (label) {
-        label.classList.add("border-emerald-500", "bg-emerald-50");
-        setTimeout(() => {
-          label.classList.remove("border-emerald-500", "bg-emerald-50");
-        }, 1000);
-      }
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    
-    // Simulação de envio
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    setIsSubmitting(false);
-    setSubmitSuccess(true);
-    
-    // Reset após 3 segundos
-    setTimeout(() => {
-      setSubmitSuccess(false);
-      setCurrentStep(1);
-    }, 3000);
-  };
-
-  const nextStep = () => {
-    if (currentStep < totalSteps) {
-      setCurrentStep(prev => prev + 1);
-    }
-  };
-
-  const prevStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(prev => prev - 1);
-    }
-  };
-
-  // Indicador de progresso
-  const ProgressBar = () => (
-    <div className="mb-6">
-      <div className="flex justify-between items-center mb-2">
-        <span className="text-sm font-medium text-gray-700">
-          Passo {currentStep} de {totalSteps}
-        </span>
-        <span className="text-xs text-emerald-600 font-medium">
-          {currentStep === 1 && "Informações Pessoais"}
-          {currentStep === 2 && "Contactos"}
-          {currentStep === 3 && "Encarregado"}
-          {currentStep === 4 && "Informações Académicas"}
-          {currentStep === 5 && "Acesso"}
-        </span>
+// 1. O Stepper (Barra de Progresso)
+const Stepper = ({ current, total, steps }: { current: number, total: number, steps: string[] }) => (
+  <div className="mb-8">
+    {/* Mobile: Barra Simples */}
+    <div className="md:hidden">
+      <div className="flex justify-between text-xs font-bold text-slate-500 mb-2 uppercase tracking-wide">
+        <span>Passo {current} de {total}</span>
+        <span className="text-teal-600">{steps[current - 1]}</span>
       </div>
-      <div className="w-full bg-gray-200 rounded-full h-2">
-        <div 
-          className="bg-emerald-600 h-2 rounded-full transition-all duration-500 ease-in-out"
-          style={{ width: `${(currentStep / totalSteps) * 100}%` }}
-        ></div>
+      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+        <div className="h-full bg-teal-500 transition-all duration-500 ease-out" style={{ width: `${(current / total) * 100}%` }} />
+      </div>
+    </div>
+
+    {/* Desktop: Indicadores Visuais */}
+    <div className="hidden md:flex justify-between relative">
+        <div className="absolute top-1/2 left-0 w-full h-0.5 bg-slate-100 -z-10 -translate-y-1/2" />
+        {steps.map((label, idx) => {
+            const stepNum = idx + 1;
+            const isActive = stepNum === current;
+            const isDone = stepNum < current;
+            
+            return (
+                <div key={idx} className="flex flex-col items-center gap-2 bg-white px-2">
+                    <div className={`
+                        w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 border-2
+                        ${isActive ? "border-teal-500 bg-teal-50 text-teal-700 scale-110" : ""}
+                        ${isDone ? "border-teal-500 bg-teal-500 text-white" : ""}
+                        ${!isActive && !isDone ? "border-slate-200 bg-white text-slate-400" : ""}
+                    `}>
+                        {isDone ? <Check size={14} strokeWidth={3}/> : stepNum}
+                    </div>
+                    <span className={`text-[10px] font-bold uppercase tracking-wide ${isActive ? "text-teal-700" : "text-slate-400"}`}>{label}</span>
+                </div>
+            )
+        })}
+    </div>
+  </div>
+);
+
+// 2. Input Field (Reutilizável e Bonito)
+const InputGroup = ({ label, icon: Icon, ...props }: any) => (
+  <div className="space-y-1.5">
+    <label className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-2">
+        {Icon && <Icon size={14} className="text-slate-400"/>} {label}
+    </label>
+    <div className="relative group">
+        <input 
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all placeholder:text-slate-400 group-hover:bg-white"
+            {...props} 
+        />
+    </div>
+  </div>
+);
+
+// 3. Select Field
+const SelectGroup = ({ label, icon: Icon, children, ...props }: any) => (
+    <div className="space-y-1.5">
+      <label className="text-xs font-bold text-slate-500 uppercase tracking-wide flex items-center gap-2">
+          {Icon && <Icon size={14} className="text-slate-400"/>} {label}
+      </label>
+      <div className="relative">
+          <select 
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all appearance-none cursor-pointer hover:bg-white"
+              {...props} 
+          >
+            {children}
+          </select>
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+            <svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          </div>
       </div>
     </div>
   );
 
+// --- COMPONENTE PRINCIPAL ---
+
+export default function AlunosPage() {
+  const router = useRouter();
+  const [view, setView] = useState<"list" | "form">("list"); // Controla a vista
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [step, setStep] = useState(1);
+  
+  const STEPS_LABELS = ["Pessoal", "Contactos", "Encarregado", "Académico", "Acesso"];
+  const TOTAL_STEPS = STEPS_LABELS.length;
+
+  // --- ACTIONS ---
+  const handleNext = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (step < TOTAL_STEPS) setStep(s => s + 1);
+    else handleSubmit();
+  };
+
+  const handleBack = () => {
+    if (step > 1) setStep(s => s - 1);
+    else setView("list");
+  };
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    // Simulação API
+    await new Promise(r => setTimeout(r, 2000));
+    setIsSubmitting(false);
+    alert("Aluno criado com sucesso! 🎓");
+    setView("list");
+    setStep(1);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-2 text-sm text-gray-600 hover:text-emerald-600 transition-colors duration-200"
-          >
-            ← Voltar
-          </button>
-          <h1 className="text-2xl font-bold text-[#0B2C45]">
-            Gestão de Estudantes
-          </h1>
+    <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans text-slate-900 pb-20">
+      
+      {/* HEADER DE NAVEGAÇÃO */}
+      <div className="max-w-6xl mx-auto mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <button 
+                onClick={() => view === 'form' ? setView('list') : router.back()}
+                className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors mb-2"
+            >
+                <ArrowLeft size={14}/> {view === 'form' ? 'Cancelar registo' : 'Voltar ao Dashboard'}
+            </button>
+            <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
+                {view === 'list' ? 'Gestão de Alunos' : 'Novo Aluno'}
+            </h1>
         </div>
-        <div className="text-sm text-gray-500">
-          Início <span className="mx-1">/</span>{" "}
-          <span className="text-emerald-600 font-medium">Estudantes</span>
-        </div>
-      </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-gray-200 mb-6">
-        <button
-          className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${
-            activeTab === "add"
-              ? "text-emerald-600 border-b-2 border-emerald-600"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-          onClick={() => setActiveTab("add")}
-        >
-          Adicionar Estudante
-        </button>
-        <button
-          className={`px-4 py-2 text-sm font-medium transition-colors duration-200 ${
-            activeTab === "list"
-              ? "text-emerald-600 border-b-2 border-emerald-600"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-          onClick={() => setActiveTab("list")}
-        >
-          Lista de Estudantes
-        </button>
-      </div>
-
-      {/* Conteúdo */}
-      {activeTab === "add" && (
-        <div className="bg-white rounded-lg shadow p-6 transition-all duration-300">
-          <h2 className="text-lg font-semibold text-[#0B2C45] mb-4">
-            Adicionar Novo Estudante
-          </h2>
-          
-          {/* Alert de sucesso */}
-          {submitSuccess && (
-            <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-3 animate-fade-in">
-              <div className="w-8 h-8 bg-emerald-100 rounded-full flex items-center justify-center">
-                <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <div>
-                <p className="font-medium text-emerald-800">Estudante adicionado com sucesso!</p>
-                <p className="text-sm text-emerald-600">Os dados foram guardados no sistema.</p>
-              </div>
+        {view === 'list' && (
+            <div className="flex gap-3">
+                <button className="hidden md:flex items-center gap-2 bg-white border border-slate-200 text-slate-600 px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-slate-50 transition">
+                    <Download size={16}/> Exportar
+                </button>
+                <button 
+                    onClick={() => setView('form')}
+                    className="flex items-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-slate-900/20 hover:-translate-y-0.5 transition-all"
+                >
+                    <UserPlus size={18}/> <span className="hidden sm:inline">Adicionar Aluno</span>
+                </button>
             </div>
-          )}
+        )}
+      </div>
 
-          <div className="bg-emerald-50 border-l-4 border-emerald-500 p-4 text-sm text-gray-700 mb-6 rounded">
-            <p className="font-medium">💡 Lembre-se</p>
-            <p>Crie a <strong>Turma</strong> e a <strong>Seção</strong> antes de cadastrar o estudante.</p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <ProgressBar />
-
-            {/* Passo 1: Informações Pessoais */}
-            {currentStep === 1 && (
-              <div className="animate-fade-in">
-                <h3 className="font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                  <span className="w-6 h-6 bg-emerald-100 text-emerald-600 rounded-full text-sm flex items-center justify-center">1</span>
-                  Informações Pessoais
-                </h3>
-                <div className="space-y-4">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Primeiro Nome*</label>
-                      <input
-                        type="text"
-                        placeholder="Manuel"
-                        className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Sobrenome*</label>
-                      <input
-                        type="text"
-                        placeholder="José"
-                        className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Data de Nascimento*</label>
-                      <input
-                        type="date"
-                        className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Género*</label>
-                      <div className="flex gap-6 mt-2 text-sm">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input type="radio" name="gender" value="M" className="text-emerald-600 focus:ring-emerald-500" required />
-                          <span>Masculino</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input type="radio" name="gender" value="F" className="text-emerald-600 focus:ring-emerald-500" required />
-                          <span>Feminino</span>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Nº do Bilhete de Identidade*</label>
-                    <input
-                      type="text"
-                      placeholder="004568923LA049"
-                      className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                      required
+      {/* --- VISTA: LISTA --- */}
+      {view === 'list' && (
+        <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            
+            {/* Filtros e Pesquisa */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4">
+                <div className="relative flex-1">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18}/>
+                    <input 
+                        type="text" 
+                        placeholder="Pesquisar por nome, BI ou matrícula..." 
+                        className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-teal-500/50 transition-all"
                     />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Foto</label>
-                    <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-8 cursor-pointer transition-all duration-200 hover:border-emerald-400 hover:bg-emerald-25">
-                      <svg className="w-8 h-8 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                      </svg>
-                      <p className="text-sm text-gray-600 text-center">
-                        Clique para enviar ou arraste e solte
-                        <br />
-                        <span className="text-xs text-gray-500">PNG, JPG até 5MB</span>
-                      </p>
-                      <p className="text-xs text-emerald-600 font-medium mt-2">{fileName}</p>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleFileUpload}
-                      />
-                    </label>
-                  </div>
                 </div>
-              </div>
-            )}
-
-            {/* Passo 2: Contactos */}
-            {currentStep === 2 && (
-              <div className="animate-fade-in">
-                <h3 className="font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                  <span className="w-6 h-6 bg-emerald-100 text-emerald-600 rounded-full text-sm flex items-center justify-center">2</span>
-                  Contactos
-                </h3>
-                <div className="space-y-4">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Email*</label>
-                      <input
-                        type="email"
-                        placeholder="manuel.jose@escola.co.ao"
-                        className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Telefone*</label>
-                      <input
-                        type="tel"
-                        placeholder="+244 923 456 789"
-                        className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Endereço*</label>
-                    <input
-                      type="text"
-                      placeholder="Rua da Independência, nº 45 - Cazenga, Luanda"
-                      className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Passo 3: Encarregado */}
-            {currentStep === 3 && (
-              <div className="animate-fade-in">
-                <h3 className="font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                  <span className="w-6 h-6 bg-emerald-100 text-emerald-600 rounded-full text-sm flex items-center justify-center">3</span>
-                  Encarregado de Educação
-                </h3>
-                <div className="space-y-4">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Nome do Encarregado*</label>
-                      <input
-                        type="text"
-                        placeholder="António Manuel"
-                        className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Contacto do Encarregado*</label>
-                      <input
-                        type="tel"
-                        placeholder="+244 912 123 456"
-                        className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Email do Encarregado</label>
-                    <input
-                      type="email"
-                      placeholder="encarregado@exemplo.co.ao"
-                      className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Passo 4: Académico */}
-            {currentStep === 4 && (
-              <div className="animate-fade-in">
-                <h3 className="font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                  <span className="w-6 h-6 bg-emerald-100 text-emerald-600 rounded-full text-sm flex items-center justify-center">4</span>
-                  Informações Académicas
-                </h3>
-                <div className="space-y-4">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Atribuir à Turma*</label>
-                      <select className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent" required>
-                        <option value="">Selecione...</option>
+                <div className="flex gap-2">
+                    <select className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 outline-none cursor-pointer hover:border-slate-300">
+                        <option>Todas as Turmas</option>
                         <option>10ª A</option>
                         <option>11ª B</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Atribuir à Seção*</label>
-                      <select className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent" required>
-                        <option value="">Selecione...</option>
-                        <option>Seção A</option>
-                        <option>Seção B</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-2">Número de Matrícula*</label>
-                    <input
-                      type="text"
-                      placeholder="2025-000123"
-                      className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                      required
-                    />
-                  </div>
+                    </select>
+                    <button className="p-2.5 border border-slate-200 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-slate-700">
+                        <Filter size={18}/>
+                    </button>
                 </div>
-              </div>
-            )}
-
-            {/* Passo 5: Acesso */}
-            {currentStep === 5 && (
-              <div className="animate-fade-in">
-                <h3 className="font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                  <span className="w-6 h-6 bg-emerald-100 text-emerald-600 rounded-full text-sm flex items-center justify-center">5</span>
-                  Acesso à Plataforma
-                </h3>
-                <div className="space-y-4">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Senha*</label>
-                      <input
-                        type="password"
-                        className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2">Confirmar Senha*</label>
-                      <input
-                        type="password"
-                        className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-                    <p className="text-sm text-blue-700">
-                      <strong>Dica:</strong> A senha deve ter pelo menos 8 caracteres, incluindo letras e números.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Navegação entre passos */}
-            <div className="flex justify-between pt-6 border-t">
-              <Button type="button" onClick={prevStep} disabled={currentStep === 1} variant="outline" tone="gray" size="sm">
-                ← Anterior
-              </Button>
-
-              {currentStep < totalSteps ? (
-                <Button type="button" onClick={nextStep} tone="emerald" size="sm" className="gap-2">
-                  Próximo
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </Button>
-              ) : (
-                <Button type="submit" disabled={isSubmitting} tone="emerald" size="sm" className="gap-2">
-                  {isSubmitting ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      A processar...
-                    </>
-                  ) : (
-                    <>
-                      Adicionar Estudante
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </>
-                  )}
-                </Button>
-              )}
             </div>
-          </form>
+
+            {/* Tabela Premium */}
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                        <thead className="bg-slate-50 text-slate-500 font-bold text-xs uppercase border-b border-slate-200">
+                            <tr>
+                                <th className="px-6 py-4">Estudante</th>
+                                <th className="px-6 py-4">Matrícula</th>
+                                <th className="px-6 py-4">Turma</th>
+                                <th className="px-6 py-4">Status</th>
+                                <th className="px-6 py-4 text-right">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {[1, 2, 3].map((_, i) => (
+                                <tr key={i} className="hover:bg-slate-50 transition-colors group cursor-pointer">
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold text-xs">
+                                                MJ
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-slate-800">Manuel José</p>
+                                                <p className="text-xs text-slate-400">manuel.jose@escola.ao</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-4 font-mono text-slate-500 text-xs">2025-00123</td>
+                                    <td className="px-6 py-4">
+                                        <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-bold border border-slate-200">10ª Classe A</span>
+                                    </td>
+                                    <td className="px-6 py-4">
+                                        <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full text-xs font-bold border border-emerald-100">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"/> Ativo
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-right">
+                                        <button className="text-slate-400 hover:text-teal-600 transition-colors">
+                                            <ChevronRight size={18}/>
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
       )}
 
-      {activeTab === "list" && (
-        <div className="bg-white rounded-lg shadow p-6 transition-all duration-300">
-          <h2 className="text-lg font-semibold text-[#0B2C45] mb-4">
-            Lista de Estudantes
-          </h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="bg-gray-100 text-[#0B2C45]">
-                  <th className="px-4 py-3 text-left font-semibold">Nº Documento</th>
-                  <th className="px-4 py-3 text-left font-semibold">Nome</th>
-                  <th className="px-4 py-3 text-left font-semibold">Email</th>
-                  <th className="px-4 py-3 text-left font-semibold">Telefone</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="hover:bg-gray-50 transition-colors duration-150">
-                  <td className="px-4 py-3 border-t">004568923LA049</td>
-                  <td className="px-4 py-3 border-t">Manuel José</td>
-                  <td className="px-4 py-3 border-t">manuel.jose@escola.co.ao</td>
-                  <td className="px-4 py-3 border-t">+244 923 456 789</td>
-                </tr>
-                <tr className="hover:bg-gray-50 transition-colors duration-150">
-                  <td className="px-4 py-3 border-t">004568923LA050</td>
-                  <td className="px-4 py-3 border-t">Maria António</td>
-                  <td className="px-4 py-3 border-t">maria.antonio@escola.co.ao</td>
-                  <td className="px-4 py-3 border-t">+244 912 123 456</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+      {/* --- VISTA: FORMULÁRIO (WIZARD) --- */}
+      {view === 'form' && (
+        <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-8 duration-500">
+            
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden">
+                
+                {/* Header do Form */}
+                <div className="bg-slate-50 border-b border-slate-200 px-8 py-6">
+                    <Stepper current={step} total={TOTAL_STEPS} steps={STEPS_LABELS} />
+                    <h2 className="text-xl font-bold text-slate-800 mt-6">{STEPS_LABELS[step-1]}</h2>
+                    <p className="text-sm text-slate-500">Preencha os dados obrigatórios para avançar.</p>
+                </div>
+
+                <form onSubmit={handleNext} className="p-8">
+                    
+                    {/* PASSO 1: PESSOAL */}
+                    {step === 1 && (
+                        <div className="space-y-6 animate-in fade-in duration-300">
+                            <div className="flex justify-center mb-6">
+                                <label className="group relative w-32 h-32 rounded-full bg-slate-50 border-2 border-dashed border-slate-300 flex flex-col items-center justify-center cursor-pointer hover:border-teal-500 hover:bg-teal-50/10 transition-all">
+                                    <Camera className="w-8 h-8 text-slate-400 group-hover:text-teal-500 mb-2 transition-colors"/>
+                                    <span className="text-[10px] font-bold text-slate-400 group-hover:text-teal-600 uppercase">Foto</span>
+                                    <input type="file" className="hidden" accept="image/*"/>
+                                </label>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                                <InputGroup label="Primeiro Nome" icon={User} placeholder="Ex: Manuel" required />
+                                <InputGroup label="Sobrenome" placeholder="Ex: José" required />
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                                <InputGroup label="Data Nascimento" type="date" required />
+                                <SelectGroup label="Género">
+                                    <option>Masculino</option>
+                                    <option>Feminino</option>
+                                </SelectGroup>
+                            </div>
+
+                            <InputGroup label="Nº Bilhete de Identidade" icon={Shield} placeholder="00XXXXXXLAXXX" required />
+                        </div>
+                    )}
+
+                    {/* PASSO 2: CONTACTOS */}
+                    {step === 2 && (
+                        <div className="space-y-6 animate-in fade-in duration-300">
+                            <InputGroup label="Email Pessoal" icon={Mail} type="email" placeholder="aluno@email.com" />
+                            <InputGroup label="Telefone" icon={Phone} type="tel" placeholder="+244 9XX XXX XXX" required />
+                            <InputGroup label="Endereço Residencial" icon={MapPin} placeholder="Rua, Bairro, Nº Casa" />
+                        </div>
+                    )}
+
+                    {/* PASSO 3: ENCARREGADO */}
+                    {step === 3 && (
+                        <div className="space-y-6 animate-in fade-in duration-300">
+                            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-xs text-blue-700 mb-4">
+                                💡 Estes dados são usados para comunicações financeiras e emergências.
+                            </div>
+                            <InputGroup label="Nome Completo" icon={Users} placeholder="Nome do Pai/Mãe/Tutor" required />
+                            <div className="grid grid-cols-2 gap-4">
+                                <InputGroup label="Telefone Principal" icon={Phone} required />
+                                <InputGroup label="Email (Opcional)" icon={Mail} />
+                            </div>
+                            <SelectGroup label="Grau de Parentesco">
+                                <option>Pai / Mãe</option>
+                                <option>Tio(a)</option>
+                                <option>Avô(ó)</option>
+                                <option>Outro</option>
+                            </SelectGroup>
+                        </div>
+                    )}
+
+                    {/* PASSO 4: ACADÉMICO */}
+                    {step === 4 && (
+                        <div className="space-y-6 animate-in fade-in duration-300">
+                            <div className="grid grid-cols-2 gap-4">
+                                <SelectGroup label="Classe" icon={GraduationCap}>
+                                    <option>10ª Classe</option>
+                                    <option>11ª Classe</option>
+                                    <option>12ª Classe</option>
+                                </SelectGroup>
+                                <SelectGroup label="Turma">
+                                    <option>Turma A (Manhã)</option>
+                                    <option>Turma B (Tarde)</option>
+                                </SelectGroup>
+                            </div>
+                            <InputGroup label="Número de Matrícula" value="2025-AUTO-001" readOnly className="bg-slate-100 text-slate-500 cursor-not-allowed" />
+                            <p className="text-[10px] text-slate-400 text-right">*Gerado automaticamente</p>
+                        </div>
+                    )}
+
+                    {/* PASSO 5: ACESSO */}
+                    {step === 5 && (
+                        <div className="space-y-6 animate-in fade-in duration-300">
+                            <div className="text-center mb-6">
+                                <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                                    <Lock className="w-8 h-8 text-teal-600"/>
+                                </div>
+                                <h3 className="font-bold text-slate-800">Credenciais de Acesso</h3>
+                                <p className="text-sm text-slate-500">Defina a senha inicial para o Portal do Aluno.</p>
+                            </div>
+                            
+                            <InputGroup label="Senha Provisória" type="password" icon={Lock} placeholder="••••••••" required />
+                            <InputGroup label="Confirmar Senha" type="password" placeholder="••••••••" required />
+                            
+                            <div className="flex items-center gap-2 mt-4">
+                                <input type="checkbox" id="send-email" className="w-4 h-4 text-teal-600 rounded border-slate-300 focus:ring-teal-500" defaultChecked />
+                                <label htmlFor="send-email" className="text-sm text-slate-600">Enviar credenciais por email ao aluno</label>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* FOOTER DO FORM (Ações) */}
+                    <div className="flex items-center justify-between pt-8 mt-8 border-t border-slate-100">
+                        <button 
+                            type="button" 
+                            onClick={handleBack}
+                            className="text-slate-400 hover:text-slate-600 text-sm font-bold px-4 py-2 rounded-lg transition-colors"
+                        >
+                            {step === 1 ? 'Cancelar' : 'Voltar'}
+                        </button>
+
+                        <button 
+                            type="submit"
+                            disabled={isSubmitting}
+                            className={`
+                                flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold text-white shadow-lg transition-all
+                                ${isSubmitting ? 'bg-slate-400 cursor-wait' : 'bg-slate-900 hover:bg-slate-800 hover:-translate-y-1 shadow-slate-900/20'}
+                            `}
+                        >
+                            {isSubmitting ? (
+                                <><Loader2 className="animate-spin" size={16}/> Processando...</>
+                            ) : (
+                                step === TOTAL_STEPS ? 'Finalizar Matrícula' : <>Próximo <ChevronRight size={16}/></>
+                            )}
+                        </button>
+                    </div>
+
+                </form>
+            </div>
         </div>
       )}
 
-      {/* Footer */}
-      <div className="text-center text-gray-500 text-xs mt-10 border-t pt-4">
-        Moxi Nexa • Criamos sistemas que escalam • © 2025
-      </div>
-
-      <style jsx global>{`
-        @keyframes fade-in {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in {x
-          animation: fade-in 0.3s ease-out;
-        }
-        .hover\:bg-emerald-25:hover {
-          background-color: rgb(240 253 250);
-        }
-      `}</style>
     </div>
   );
 }

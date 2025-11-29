@@ -1,3 +1,5 @@
+import type { Json } from "./supabase";
+
 export type ImportStatus = "uploaded" | "validando" | "validado" | "imported" | "failed";
 
 export interface AlunoCSV {
@@ -7,9 +9,11 @@ export interface AlunoCSV {
   bi?: string;
   email?: string;
   profile_id?: string;
-  // novos campos “escolares” que podem vir no CSV
-  classe_label?: string;
-  turma_label?: string;
+  // campos escolares que podem vir no CSV (valores crus como texto)
+  curso_codigo?: string;
+  classe_numero?: string;
+  turno_codigo?: string;
+  turma_letra?: string;
   ano_letivo?: string;
   numero_matricula?: string;
   [key: string]: string | undefined;
@@ -30,12 +34,14 @@ export interface AlunoStagingRecord {
   email?: string;
 
   // dados escolares para ajudar na matrícula em massa
-  classe_label?: string;
-  turma_label?: string;
-  ano_letivo?: string;
-  numero_matricula?: string;
+  curso_codigo?: string;      // Ex.: EMG, CTI, EF1, EF2
+  classe_numero?: number;     // Ex.: 1, 7, 10, 11, 12
+  turno_codigo?: string;      // Ex.: M, T, N
+  turma_letra?: string;       // Ex.: A, B, AB, ABNG
+  ano_letivo?: number;        // Ex.: 2025
+  numero_matricula?: string;  // Opcional; pode ser gerado
 
-  raw_data?: Record<string, unknown>;
+  raw_data?: Json;
 }
 
 export interface ErroImportacao {
@@ -52,6 +58,7 @@ export interface ImportResult {
 }
 
 export interface MappedColumns {
+  [key: string]: string | undefined;
   // Dados pessoais
   nome?: string;
   bi?: string;
@@ -59,12 +66,13 @@ export interface MappedColumns {
   telefone?: string;
   email?: string;
 
-  // Matrícula – formato flexível
-  curso_codigo?: string;   // continua igual: EMG, CTI, etc.
-  classe_label?: string;   // agora: "1ª classe", "7ª classe", "10ª classe"...
-  turno_codigo?: string;   // M / T / N (podemos aceitar texto tipo "Manhã" e normalizar depois)
-  turma_label?: string;    // "A", "AB", "ABNG", "Turma 1"...
-  ano_letivo?: string;     // "2025" ou "2025-2026"
+  // Matrícula – colunas do CSV que mapeiam para os campos do staging
+  curso_codigo?: string;
+  classe_numero?: string;
+  turno_codigo?: string;
+  turma_letra?: string;
+  ano_letivo?: string;      // aceitamos "2025" ou "2025-2026" (normaliza p/ 2025)
+  numero_matricula?: string;
 
   // Opcional avançado
   profile_id?: string;
