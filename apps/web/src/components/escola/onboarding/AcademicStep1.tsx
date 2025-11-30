@@ -65,6 +65,7 @@ export default function AcademicStep1({
                 onChange={(e) => setSchoolDisplayName(e.target.value)}
                 className="w-full text-xl font-bold border-b-2 border-slate-200 py-2 focus:border-teal-500 outline-none bg-transparent transition-colors text-slate-800 placeholder-slate-300"
                 placeholder="Nome da escola"
+                readOnly
               />
             </div>
 
