@@ -162,7 +162,23 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { aluno_id, session_id, turma_id, numero_matricula, data_matricula } = body;
+    const {
+      aluno_id,
+      session_id,
+      turma_id,
+      numero_matricula,
+      data_matricula,
+    } = body;
+    // Ignora qualquer tentativa de enviar valor/dia manualmente no corpo
+    // para garantir que apenas a tabela oficial será utilizada
+    const manualValorMensalidade = (body as any)?.valor_mensalidade;
+    const manualDiaVencimento = (body as any)?.dia_vencimento;
+
+    if (manualValorMensalidade != null || manualDiaVencimento != null) {
+      console.warn(
+        "[matriculas.create] Campos de preço/dia no corpo foram ignorados para usar tabela oficial."
+      );
+    }
     const body_classe_id: string | undefined = body?.classe_id || undefined;
     const body_curso_id: string | undefined = body?.curso_id || undefined;
     const gerar_todas: boolean = body?.gerar_mensalidades_todas ?? true;
@@ -292,6 +308,24 @@ export async function POST(req: Request) {
         {
           ok: false,
           error: 'Bloqueio Financeiro: Este curso não tem preço definido.',
+        },
+        { status: 400 }
+      );
+    }
+
+    const valorMensalidadeTabela =
+      typeof tabelaPreco.valor_mensalidade === 'number'
+        ? Number(tabelaPreco.valor_mensalidade)
+        : undefined;
+    const diaVencimentoTabela =
+      tabelaPreco.dia_vencimento != null ? Number(tabelaPreco.dia_vencimento) : undefined;
+
+    if (!Number.isFinite(valorMensalidadeTabela) || !Number.isFinite(diaVencimentoTabela)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'Bloqueio Financeiro: Tabela de preços incompleta (valor/dia).',
+          code: 'INCOMPLETE_PRICE_TABLE',
         },
         { status: 400 }
       );
@@ -444,12 +478,8 @@ export async function POST(req: Request) {
     // 3) FINANCEIRO – gera mensalidades usando tabela de preços oficial
     // ------------------------------------------------------------------
 
-    let efetivoValor: number | undefined =
-      typeof tabelaPreco.valor_mensalidade === "number"
-        ? Number(tabelaPreco.valor_mensalidade)
-        : undefined;
-    let efetivoDia: number | undefined =
-      tabelaPreco.dia_vencimento != null ? Number(tabelaPreco.dia_vencimento) : undefined;
+    let efetivoValor: number | undefined = valorMensalidadeTabela as number;
+    let efetivoDia: number | undefined = diaVencimentoTabela as number;
 
     if (
       efetivoValor &&
