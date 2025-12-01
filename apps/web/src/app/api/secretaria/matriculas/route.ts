@@ -3,7 +3,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { generateNumeroLogin } from "@/lib/generateNumeroLogin";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
-import { resolveMensalidade } from "@/lib/financeiro/pricing";
+import { resolveTabelaPreco } from "@/lib/financeiro/tabela-preco";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -165,10 +165,6 @@ export async function POST(req: Request) {
     const { aluno_id, session_id, turma_id, numero_matricula, data_matricula } = body;
     const body_classe_id: string | undefined = body?.classe_id || undefined;
     const body_curso_id: string | undefined = body?.curso_id || undefined;
-    const valor_mensalidade: number | undefined =
-      body?.valor_mensalidade != null ? Number(body.valor_mensalidade) : undefined;
-    const dia_vencimento: number | undefined =
-      body?.dia_vencimento != null ? Number(body.dia_vencimento) : undefined;
     const gerar_todas: boolean = body?.gerar_mensalidades_todas ?? true;
 
     // Resolve escola a partir do aluno, com fallback ao perfil do usuário
@@ -223,6 +219,7 @@ export async function POST(req: Request) {
     }
 
     // Validar turma pertence à escola e sessão compatível
+    let anoLetivoTurma: number | undefined;
     try {
       const { data: turma } = await supabase
         .from('turmas')
@@ -236,6 +233,7 @@ export async function POST(req: Request) {
       if ((turma as any).session_id && String((turma as any).session_id) !== String(session_id)) {
         return NextResponse.json({ ok: false, error: 'Ano letivo selecionado não corresponde à turma' }, { status: 400 });
       }
+      anoLetivoTurma = (turma as any).ano_letivo ? Number((turma as any).ano_letivo) : undefined;
     } catch {}
 
     // ------------------------------------------------------------------
@@ -256,6 +254,48 @@ export async function POST(req: Request) {
         );
       }
     } catch {}
+
+    // ------------------------------------------------------------------
+    // 0.1) RESOLVER TABELA DE PREÇOS (cascata em financeiro_tabelas)
+    // ------------------------------------------------------------------
+
+    let cursoResolvedId: string | undefined = body_curso_id;
+    let classeResolvedId: string | undefined = body_classe_id;
+
+    try {
+      if (!cursoResolvedId || !classeResolvedId) {
+        const { data: oferta } = await supabase
+          .from('cursos_oferta')
+          .select('curso_id, classe_id')
+          .eq('turma_id', turma_id)
+          .limit(1);
+        if (!cursoResolvedId) {
+          cursoResolvedId = (oferta?.[0] as any)?.curso_id as string | undefined;
+        }
+        if (!classeResolvedId) {
+          classeResolvedId = (oferta?.[0] as any)?.classe_id as string | undefined;
+        }
+      }
+    } catch {}
+
+    const anoLetivo = anoLetivoTurma ?? new Date().getFullYear();
+
+    const { tabela: tabelaPreco } = await resolveTabelaPreco(supabase as any, {
+      escolaId,
+      anoLetivo,
+      cursoId: cursoResolvedId,
+      classeId: classeResolvedId,
+    });
+
+    if (!tabelaPreco) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'Bloqueio Financeiro: Este curso não tem preço definido.',
+        },
+        { status: 400 }
+      );
+    }
 
     // ------------------------------------------------------------------
     // 1) GARANTIR NUMERO_LOGIN DO ALUNO NA MATRÍCULA
@@ -401,47 +441,15 @@ export async function POST(req: Request) {
     }
 
     // ------------------------------------------------------------------
-    // 3) FINANCEIRO – gera mensalidades (mantive seu código)
+    // 3) FINANCEIRO – gera mensalidades usando tabela de preços oficial
     // ------------------------------------------------------------------
 
-    let efetivoValor: number | undefined = valor_mensalidade;
-    let efetivoDia: number | undefined = dia_vencimento;
-
-    if (
-      (!efetivoValor || !Number.isFinite(efetivoValor)) ||
-      (!efetivoDia || !Number.isFinite(efetivoDia))
-    ) {
-      try {
-        let cursoId: string | undefined = body_curso_id;
-        let classeId: string | undefined = body_classe_id;
-
-        if (!cursoId) {
-          const { data: co } = await supabase
-            .from("cursos_oferta")
-            .select("curso_id")
-            .eq("turma_id", turma_id)
-            .limit(1);
-          cursoId = (co?.[0] as any)?.curso_id as string | undefined;
-        }
-
-        const resolved = await resolveMensalidade(supabase as any, escolaId, {
-          classeId,
-          cursoId,
-        });
-
-        if (
-          (!efetivoValor || !Number.isFinite(efetivoValor)) &&
-          typeof resolved.valor === "number"
-        )
-          efetivoValor = resolved.valor;
-
-        if (
-          (!efetivoDia || !Number.isFinite(efetivoDia)) &&
-          resolved.dia_vencimento
-        )
-          efetivoDia = Number(resolved.dia_vencimento);
-      } catch (_) {}
-    }
+    let efetivoValor: number | undefined =
+      typeof tabelaPreco.valor_mensalidade === "number"
+        ? Number(tabelaPreco.valor_mensalidade)
+        : undefined;
+    let efetivoDia: number | undefined =
+      tabelaPreco.dia_vencimento != null ? Number(tabelaPreco.dia_vencimento) : undefined;
 
     if (
       efetivoValor &&
@@ -466,10 +474,10 @@ export async function POST(req: Request) {
           ? new Date(data_matricula)
           : new Date();
 
-        let anoLetivo = String(dataInicioSess.getFullYear());
+        let anoLetivoMensal = String(anoLetivoTurma ?? dataInicioSess.getFullYear());
         const nomeSess = String(((sess as any)?.nome ?? "")).trim();
         const anoNome = (nomeSess.match(/\b(20\d{2}|19\d{2})\b/) || [])[0];
-        if (anoNome) anoLetivo = anoNome;
+        if (anoNome) anoLetivoMensal = anoNome;
 
         const dia = Math.min(Math.max(1, Math.trunc(efetivoDia as number)), 31);
 
@@ -526,7 +534,7 @@ export async function POST(req: Request) {
             escola_id: escolaId,
             aluno_id,
             turma_id,
-            ano_letivo: anoLetivo,
+            ano_letivo: anoLetivoMensal,
             mes_referencia: mes,
             ano_referencia: ano,
             valor_previsto: valor,
