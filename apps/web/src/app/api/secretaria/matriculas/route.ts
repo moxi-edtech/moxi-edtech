@@ -149,6 +149,88 @@ export async function GET(req: Request) {
   }
 }
 
+type PagamentoMatriculaPayload = {
+  pagar_agora?: boolean;
+  metodo_pagamento?: string | null;
+  valor_pago?: number | null;
+  comprovativo_url?: string | null;
+};
+
+async function registrarLancamentoMatricula(
+  client: any,
+  opts: {
+    escolaId: string;
+    alunoId: string;
+    matriculaId: string;
+    valorMatricula?: number | null;
+    pagamento?: PagamentoMatriculaPayload;
+    createdBy?: string | null;
+  }
+) {
+  const valor = Number(opts.valorMatricula || 0);
+  if (!Number.isFinite(valor) || valor <= 0) return;
+
+  const pagarAgora = Boolean(opts.pagamento?.pagar_agora);
+  const metodo = (opts.pagamento?.metodo_pagamento || "")?.trim() || null;
+  const comprovativoUrl = opts.pagamento?.comprovativo_url || null;
+  const valorPago = Number(
+    typeof opts.pagamento?.valor_pago === "number"
+      ? opts.pagamento?.valor_pago
+      : valor
+  );
+
+  const lancInsert = await client
+    .from("financeiro_lancamentos")
+    .insert({
+      escola_id: opts.escolaId,
+      aluno_id: opts.alunoId,
+      matricula_id: opts.matriculaId,
+      tipo: "debito",
+      origem: "matricula",
+      descricao: "Matrícula",
+      valor_original: valor,
+      status: pagarAgora ? "pago" : "pendente",
+      data_pagamento: pagarAgora ? new Date().toISOString() : null,
+      metodo_pagamento: pagarAgora ? (metodo as any) : null,
+      comprovativo_url: pagarAgora ? comprovativoUrl : null,
+      created_by: opts.createdBy || null,
+    })
+    .select("id")
+    .single();
+
+  if (lancInsert.error || !lancInsert.data) {
+    throw new Error(lancInsert.error?.message || "Falha ao registrar lançamento da matrícula");
+  }
+
+  if (pagarAgora && Number.isFinite(valorPago) && valorPago > 0) {
+    const pagamentoInsert = await client
+      .from("pagamentos")
+      .insert({
+        escola_id: opts.escolaId,
+        aluno_id: opts.alunoId,
+        valor: valorPago as any,
+        status: "pago",
+        metodo: metodo,
+        referencia: `matricula:${opts.matriculaId}`,
+        descricao: "Pagamento de matrícula",
+        comprovante_url: comprovativoUrl,
+      })
+      .select("id")
+      .single();
+
+    if (pagamentoInsert.error || !pagamentoInsert.data) {
+      await client
+        .from("financeiro_lancamentos")
+        .delete()
+        .eq("id", (lancInsert.data as any).id)
+        .eq("escola_id", opts.escolaId);
+      throw new Error(pagamentoInsert.error?.message || "Falha ao registrar pagamento da matrícula");
+    }
+
+    await client.rpc("refresh_all_materialized_views").catch(() => null);
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const supabase = await supabaseServerTyped<any>();
@@ -286,6 +368,25 @@ export async function POST(req: Request) {
       cursoId: cursoResolvedId,
       classeId: classeResolvedId,
     });
+
+    const valorMatriculaTabela =
+      typeof tabelaPreco?.valor_matricula === "number"
+        ? Number(tabelaPreco?.valor_matricula)
+        : null;
+
+    const pagamentoMatricula: PagamentoMatriculaPayload = {
+      pagar_agora: Boolean(body?.pagar_matricula_agora ?? body?.pagamento_imediato),
+      metodo_pagamento:
+        typeof body?.metodo_pagamento === "string"
+          ? body.metodo_pagamento.trim()
+          : null,
+      valor_pago:
+        typeof body?.valor_matricula_pago === "number"
+          ? Number(body.valor_matricula_pago)
+          : null,
+      comprovativo_url:
+        typeof body?.comprovativo_url === "string" ? body.comprovativo_url : null,
+    };
 
     if (!tabelaPreco) {
       return NextResponse.json(
@@ -437,6 +538,33 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { ok: false, error: error.message },
         { status: 400 }
+      );
+    }
+
+    const financeiroClient: any =
+      adminUrl && serviceRole
+        ? createAdminClient<Database>(adminUrl, serviceRole)
+        : supabase;
+
+    try {
+      await registrarLancamentoMatricula(financeiroClient, {
+        escolaId,
+        alunoId: aluno_id,
+        matriculaId: newMatricula.id,
+        valorMatricula: valorMatriculaTabela,
+        pagamento: pagamentoMatricula,
+        createdBy: user.id,
+      });
+    } catch (finErr) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            finErr instanceof Error
+              ? finErr.message
+              : "Falha ao registrar lançamento financeiro da matrícula.",
+        },
+        { status: 500 }
       );
     }
 
