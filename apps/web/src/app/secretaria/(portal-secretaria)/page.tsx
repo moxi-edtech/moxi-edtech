@@ -32,7 +32,7 @@ export default function SecretariaDashboardPage() {
   const [error, setError] = useState<string | null>(null);
   
   // Mock de permissões e plano (em prod viriam do contexto)
-  const plan = 'standard'; 
+  let plan: 'standard' | 'basico' = 'standard'; 
   const canCriarMatricula = true;
 
   useEffect(() => {
