@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import type { Database } from "~types/supabase";
-import { importBelongsToEscola, userHasAccessToEscola } from "../../auth-helpers";
+import { importBelongsToEscola, userHasAccessToEscola } from "../../../auth-helpers";
 
 // --- HELPERS DE NORMALIZAÇÃO ---
 

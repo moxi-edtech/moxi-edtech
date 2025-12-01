@@ -2,8 +2,8 @@
 
 import { useMemo } from "react";
 import type { ComponentType } from "react";
-import @/lib/onboarding;
-import { CURRICULUM_PRESETS } from "@/components/escola/onboarding/curriculum-presets";
+import type { CurriculumKey } from "@/lib/onboarding";
+import { CURRICULUM_PRESETS } from "@/lib/onboarding";
 import {
   BookOpen,
   Briefcase,
