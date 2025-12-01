@@ -8,11 +8,12 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const escolaId = awaitedParams.id
   const s = await supabaseServer()
 
-  const [ paid, pending, all, detalhes ] = await Promise.all([
+  const [ paid, pending, all, detalhes, dashboardResumo ] = await Promise.all([
     s.from('pagamentos').select('valor', { head: false }).eq('escola_id', escolaId).eq('status', 'pago'),
     s.from('pagamentos').select('valor', { head: false }).eq('escola_id', escolaId).eq('status', 'pendente'),
     s.from('pagamentos').select('id', { count: 'exact', head: true }).eq('escola_id', escolaId),
     fetch(`/api/escolas/${escolaId}/nome`, { cache: 'no-store' }).then(r => r.json()).catch(() => null),
+    fetch(`/api/financeiro/dashboard?escolaId=${escolaId}`, { cache: 'no-store' }).then(r => r.json()).catch(() => null),
   ])
 
   const sum = (rows: any[] | null | undefined) => (rows || []).reduce((acc, r) => acc + Number(r.valor || 0), 0)
@@ -21,6 +22,9 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const total = totalPago + totalPendente
   const percentPago = total ? Math.round((totalPago / total) * 100) : 0
   const totalPagamentos = all.count ?? 0
+
+  const cursosPendentesPorEscola = (dashboardResumo as any)?.cursosPendentes?.totalPorEscola || {}
+  const cursosPendentes = Number(cursosPendentesPorEscola[escolaId] || 0)
 
   const plan = ((detalhes as any)?.plano || 'basico') as 'basico'|'standard'|'premium'
 
@@ -31,6 +35,22 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     <PortalLayout>
       <AuditPageView portal="financeiro" acao="PAGE_VIEW" entity="home" />
       <div className="mb-4 text-sm text-moxinexa-gray">Plano atual: <b className="uppercase">{plan}</b></div>
+      {cursosPendentes > 0 && (
+        <div className="mb-4 rounded-xl border-2 border-amber-500 bg-amber-50 p-4 text-amber-900 shadow-sm">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="text-base font-semibold">Cursos sem tabela de preços configurada</div>
+              <p className="text-sm">{cursosPendentes} curso(s) desta escola precisam de uma tabela de preços para gerar propinas corretamente.</p>
+            </div>
+            <Link
+              href="/financeiro/tabelas-mensalidade"
+              className="inline-flex items-center justify-center rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-amber-700"
+            >
+              Configurar preços agora
+            </Link>
+          </div>
+        </div>
+      )}
       <div className="grid md:grid-cols-3 gap-6">
         {/* Cards principais - corrigindo bordas */}
         <div className="bg-white p-6 rounded-xl shadow border border-gray-200">
