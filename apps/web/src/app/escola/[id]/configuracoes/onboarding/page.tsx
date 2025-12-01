@@ -1,29 +1,112 @@
-import AcademicSetupWizard from "@/components/escola/onboarding/AcademicSetupWizard";
+"use client";
 
+import { useState, useEffect, use } from "react";
+import { createClient } from "@/lib/supabaseClient"; 
+import { Loader2 } from "lucide-react";
+
+// Importa os teus componentes (ajusta os caminhos se necessário)
+import AcademicSetupWizard from "@/components/escola/onboarding/AcademicSetupWizard";
+import SettingsHub from "@/components/escola/settings/SettingsHub";
+
+// Definição de Props para Next.js 15
 type Props = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
-export default function OnboardingPage({ params }: Props) {
-  // O ID da escola agora vem dos parâmetros da rota, que é mais robusto
-  const escolaId = params.id;
+export default function ConfiguracoesPage({ params }: Props) {
+  // Desembrulha os params (obrigatório no Next 15)
+  const resolvedParams = use(params);
+  const escolaId = resolvedParams.id;
 
-  if (!escolaId) {
+  const [loading, setLoading] = useState(true);
+  const [setupComplete, setSetupComplete] = useState(false);
+  const [forceWizard, setForceWizard] = useState(false); // Para edição manual
+
+  // 1. Verificar Estado da Escola
+  useEffect(() => {
+    async function checkStatus() {
+      try {
+        const supabase = createClient();
+        
+        // Verifica se já existem turmas criadas
+        const { count, error } = await supabase
+          .from('turmas')
+          .select('*', { count: 'exact', head: true })
+          .eq('escola_id', escolaId);
+
+        if (!error && count && count > 0) {
+          setSetupComplete(true);
+        } else {
+          setSetupComplete(false);
+        }
+      } catch (error) {
+        console.error("Erro ao verificar status:", error);
+        // Em caso de erro, assumimos incompleto para não bloquear
+        setSetupComplete(false);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (escolaId) {
+      checkStatus();
+    }
+  }, [escolaId]);
+
+  // 2. Loading State
+  if (loading) {
     return (
-      <div className="max-w-3xl mx-auto px-6 py-16">
-        <h1 className="text-xl font-bold text-slate-900 mb-2">
-          Selecione uma escola
-        </h1>
-        <p className="text-sm text-slate-500">
-          Esta página de onboarding precisa de um <code>escolaId</code> válido.
-        </p>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
+          <p className="text-sm text-slate-500 font-medium">A carregar configurações...</p>
+        </div>
       </div>
     );
   }
 
+  // 3. MODO WIZARD (Se não tem turmas OU o utilizador pediu para reconfigurar)
+  // AQUI ESTÁ A CORREÇÃO: Renderizamos o componente, não redirecionamos.
+  if (!setupComplete || forceWizard) {
+    return (
+      <div className="bg-slate-50 min-h-screen">
+        {/* Botão de voltar (só aparece se ele já tiver o setup feito e estiver a editar) */}
+        {setupComplete && (
+          <div className="max-w-6xl mx-auto pt-6 px-6">
+            <button 
+              onClick={() => setForceWizard(false)} 
+              className="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-2 transition-colors"
+            >
+              ← Voltar ao menu
+            </button>
+          </div>
+        )}
+        
+        <AcademicSetupWizard 
+          escolaId={escolaId} 
+          onComplete={() => {
+             // Quando terminar, atualizamos o estado local
+             setSetupComplete(true);
+             setForceWizard(false);
+             
+             // Se era a primeira vez, mandamos para o Dashboard para ver o "Hero"
+             if (!setupComplete) {
+                window.location.href = `/escola/${escolaId}/admin/dashboard`;
+             }
+          }}
+        />
+      </div>
+    );
+  }
+
+  // 4. MODO HUB (Painel de Configurações)
+  // Se já tem tudo pronto, mostra o menu bonito
   return (
     <div className="bg-slate-50 min-h-screen">
-      <AcademicSetupWizard escolaId={escolaId} />
+      <SettingsHub 
+        escolaId={escolaId} 
+        onOpenWizard={() => setForceWizard(true)} 
+      />
     </div>
   );
 }

@@ -1,12 +1,14 @@
 "use client";
 
 import { PropsWithChildren } from "react";
-import { useSidebar } from "./useSidebar";
+import { useSidebar } from "./useSidebar"; // O teu hook atual
+import { SidebarProvider } from "./SidebarContext"; // O ficheiro acima
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import clsx from "clsx";
 
 type Props = PropsWithChildren<{
-  storageKey: string;         // ex: "super-admin:sidebar"
-  cssVar?: string;            // default: --sidebar-w
+  storageKey: string;
+  cssVar?: string;
   collapsedWidth?: string;
   expandedWidth?: string;
   className?: string;
@@ -28,24 +30,28 @@ export default function SidebarContainer({
   });
 
   return (
-    <aside
-      className={clsx(
-        "fixed left-0 top-0 md:relative z-40 h-screen md:h-auto bg-gradient-to-br from-teal-500 to-sky-600 text-white shadow-xl transition-[width] duration-200",
-        className
-      )}
-      style={{ width: `var(${cssVar}, ${expandedWidth})` }}
-      data-collapsed={collapsed ? "1" : "0"}
-    >
-      <button
-        type="button"
-        onClick={toggle}
-        title={collapsed ? "Expandir" : "Recolher"}
-        className="absolute right-2 top-2 rounded-md bg-white/10 px-2 py-1 text-xs hover:bg-white/20"
+    <SidebarProvider value={{ collapsed, toggle }}>
+      <aside
+        className={clsx(
+          "group/sidebar fixed left-0 top-0 z-40 h-screen transition-[width] duration-300 ease-in-out",
+          "bg-slate-900 border-r border-slate-800 text-white shadow-xl", // Estilo MoxiNexa Dark
+          className
+        )}
+        style={{ width: collapsed ? collapsedWidth : expandedWidth }}
       >
-        {collapsed ? "»" : "«"}
-      </button>
+        {/* Botão de Toggle Flutuante */}
+        <button
+          onClick={toggle}
+          className="absolute -right-3 top-6 z-50 flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm hover:bg-slate-50 hover:text-teal-600 transition-colors hidden md:flex"
+        >
+          {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+        </button>
 
-      {children}
-    </aside>
+        {/* Conteúdo Interno */}
+        <div className="flex h-full flex-col overflow-hidden">
+          {children}
+        </div>
+      </aside>
+    </SidebarProvider>
   );
 }

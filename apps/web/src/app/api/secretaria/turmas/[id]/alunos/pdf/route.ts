@@ -6,7 +6,7 @@ import { createQrImage, buildSignatureLine } from "@/lib/pdf/qr";
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await supabaseServerTyped<any>();
@@ -20,7 +20,7 @@ export async function GET(
       );
     }
 
-    const turmaId = params.id;
+    const { id: turmaId } = await params;
 
     const { data: turma, error: turmaError } = await supabase
       .from("turmas")

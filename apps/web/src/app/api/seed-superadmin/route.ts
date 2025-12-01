@@ -55,8 +55,14 @@ export async function GET(request: Request) {
         email_confirm: true,
         user_metadata: {
           nome,
-          role: "super_admin", // ⚠️ ADICIONE ESTA LINHA
+          role: "super_admin", // mantém em user_metadata para compatibilidade
         },
+        // Garantir que o JWT contenha a claim usada pelas RLS (app_metadata.role)
+        // Supabase Admin API aceita app_metadata em createUser/updateUser
+        // Ref: https://supabase.com/docs/reference/javascript/auth-admin-createuser
+        app_metadata: {
+          role: "super_admin",
+        } as any,
       });
     if (createError || !newUser.user) throw createError;
 
@@ -129,8 +135,11 @@ export async function POST(request: Request) {
         email_confirm: true,
         user_metadata: {
           nome,
-          role: "super_admin", // ⚠️ ADICIONE ESTA LINHA
+          role: "super_admin", // mantém em user_metadata para compatibilidade
         },
+        app_metadata: {
+          role: "super_admin",
+        } as any,
       });
     if (createError || !newUser.user) throw createError;
 

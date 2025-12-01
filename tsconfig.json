@@ -17,7 +17,9 @@
     // 👇 Configuração de paths global do monorepo (apenas compartilhados)
     "baseUrl": ".",
     "paths": {
-      "~types/*": ["types/*"]
+      "~types/*": ["types/*"],
+      "@/*": ["apps/web/src/*"],
+      "~/*": ["apps/web/src/*"]
     }
   }
 }

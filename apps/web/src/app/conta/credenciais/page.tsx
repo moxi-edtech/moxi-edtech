@@ -23,8 +23,13 @@ export default async function CredenciaisPage() {
   const escolaId = (profile as any)?.escola_id ?? null;
   let escolaNome: string | null = null;
   if (escolaId) {
-    const { data: esc } = await s.from('escolas').select('nome').eq('id', escolaId).maybeSingle();
-    escolaNome = (esc as any)?.nome ?? null;
+    try {
+      const res = await fetch(`/api/escolas/${escolaId}/nome`, { cache: 'no-store' })
+      const json = await res.json().catch(() => null)
+      escolaNome = res.ok && json?.ok ? (json?.nome ?? null) : null
+    } catch {
+      escolaNome = null
+    }
   }
 
   return (
@@ -54,4 +59,3 @@ export default async function CredenciaisPage() {
     </main>
   );
 }
-

@@ -1,8 +1,24 @@
 import crypto from "node:crypto";
-
 import type { AlunoCSV, AlunoStagingRecord, MappedColumns } from "~types/migracao";
 
 export const MAX_UPLOAD_SIZE = 12 * 1024 * 1024; // 12 MB
+
+// --- CONFIGURAÇÃO DE NORMALIZAÇÃO (Fácil de ajustar) ---
+const DATE_FORMATS = [
+  { regex: /^(\d{4})-(\d{2})-(\d{2})$/, map: (y: string, m: string, d: string) => `${y}-${m}-${d}` }, // ISO: 2025-01-31
+  { regex: /^(\d{2})\/(\d{2})\/(\d{4})$/, map: (d: string, m: string, y: string) => `${y}-${m}-${d}` }, // PT: 31/01/2025
+  { regex: /^(\d{2})-(\d{2})-(\d{4})$/, map: (d: string, m: string, y: string) => `${y}-${m}-${d}` }, // PT: 31-01-2025
+  { regex: /^(\d{2})\.(\d{2})\.(\d{4})$/, map: (d: string, m: string, y: string) => `${y}-${m}-${d}` }, // PT: 31.01.2025
+  { regex: /^(\d{1,2})\/(\d{1,2})\/(\d{2})$/, map: (d: string, m: string, y: string) => `20${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}` }, // Curta: 1/1/25
+];
+
+const SHIFT_MAP: Record<string, string> = {
+  'm': 'M', 'manha': 'M', 'manhã': 'M', 'matutino': 'M',
+  't': 'T', 'tarde': 'T', 'vespertino': 'T',
+  'n': 'N', 'noite': 'N', 'noturno': 'N'
+};
+
+// --- FUNÇÕES UTILITÁRIAS ---
 
 export function hashBuffer(buffer: Buffer): string {
   const hash = crypto.createHash("sha256");
@@ -11,107 +27,139 @@ export function hashBuffer(buffer: Buffer): string {
 }
 
 export function normalizeText(value?: string | null): string | undefined {
-  if (!value) return undefined;
-  const cleaned = value
-    .normalize("NFD")
-    .replace(/\p{Diacritic}/gu, "")
-    .trim()
-    .replace(/\s+/g, " ");
-  return cleaned.toLowerCase();
+  if (!value || typeof value !== 'string') return undefined;
+  try {
+    const cleaned = value
+      .normalize("NFD")
+      .replace(/\p{Diacritic}/gu, "")
+      .trim()
+      .replace(/\s+/g, " ");
+    return cleaned.toLowerCase();
+  } catch (e) {
+    return undefined; // Fallback seguro
+  }
 }
 
 export function normalizeDateString(value?: string | null): string | undefined {
   if (!value) return undefined;
-  const normalized = value.trim();
-  const formats = [
-    { regex: /^(\d{4})-(\d{2})-(\d{2})$/, map: (y: string, m: string, d: string) => `${y}-${m}-${d}` }, // 2025-01-31
-    { regex: /^(\d{2})\/(\d{2})\/(\d{4})$/, map: (d: string, m: string, y: string) => `${y}-${m}-${d}` }, // 31/01/2025
-    { regex: /^(\d{2})-(\d{2})-(\d{4})$/, map: (d: string, m: string, y: string) => `${y}-${m}-${d}` }, // 31-01-2025
-    { regex: /^(\d{2})\/(\d{2})\/(\d{2})$/, map: (d: string, m: string, y: string) => `20${y}-${m}-${d}` }, // 31/01/25
-  ];
+  const normalized = String(value).trim();
 
-  for (const { regex, map } of formats) {
+  for (const { regex, map } of DATE_FORMATS) {
     const match = normalized.match(regex);
     if (match) {
-      return map(match[1], match[2], match[3]);
+      try {
+        // Validação extra: verificar se é uma data real
+        const isoDate = map(match[1], match[2], match[3]);
+        const d = new Date(isoDate);
+        if (!isNaN(d.getTime())) return isoDate;
+      } catch {
+        continue;
+      }
     }
   }
+  return undefined;
+}
+
+// ------------- NORMALIZADORES ESPECÍFICOS -------------
+
+export function normalizeClasseNumero(value?: string | null | number): number | undefined {
+  if (value === null || value === undefined) return undefined;
+  
+  // Se já vier como número do Excel/JSON
+  if (typeof value === 'number') return value;
+
+  const strValue = String(value).trim();
+  const digits = strValue.replace(/\D/g, ""); // Remove tudo que não é dígito
+  
+  if (!digits) return undefined;
+  
+  const parsed = parseInt(digits, 10);
+  // Validar range razoável (ex: 1ª a 13ª classe) para evitar lixo
+  return (!Number.isNaN(parsed) && parsed > 0 && parsed <= 13) ? parsed : undefined;
+}
+
+export function normalizeAnoLetivo(value?: string | null | number): number | undefined {
+  if (!value) return undefined;
+  const strValue = String(value).trim();
+  
+  // Aceita "2025", "2025-2026", "2025/2026"
+  const match = strValue.match(/(\d{4})/);
+  if (!match) return undefined;
+  
+  const year = parseInt(match[1], 10);
+  // Validação de sanidade (ex: entre 2000 e 2100)
+  return (!Number.isNaN(year) && year > 2000 && year < 2100) ? year : undefined;
+}
+
+export function normalizeTurnoCodigo(value?: string | null): string | undefined {
+  if (!value) return undefined;
+  const trimmed = String(value).trim().toLowerCase();
+  
+  // 1. Tenta mapa exato
+  if (SHIFT_MAP[trimmed]) return SHIFT_MAP[trimmed];
+
+  // 2. Fallback: Primeira letra se for M, T ou N
+  const firstChar = trimmed.charAt(0).toUpperCase();
+  if (['M', 'T', 'N'].includes(firstChar)) return firstChar;
 
   return undefined;
 }
 
-// ------------- NOVOS NORMALIZADORES PARA MATRÍCULA -------------
-
-export function normalizeClasseNumero(value?: string | null): number | undefined {
-  if (!value) return undefined;
-  const digits = value.replace(/\D/g, "");
-  if (!digits) return undefined;
-  const parsed = parseInt(digits, 10);
-  return Number.isNaN(parsed) ? undefined : parsed;
-}
-
-/**
- * Aceita "2025", "2025-2026", "2025/2026" e similares.
- * Sempre devolve o primeiro ano (2025).
- */
-export function normalizeAnoLetivo(value?: string | null): number | undefined {
-  if (!value) return undefined;
-  const trimmed = value.trim();
-  const match = trimmed.match(/(\d{4})/);
-  if (!match) return undefined;
-  const year = parseInt(match[1], 10);
-  return Number.isNaN(year) ? undefined : year;
-}
-
-/**
- * Normaliza turno para um código curto:
- * - "M" / "Manhã" / "manha" -> "M"
- * - "T" / "Tarde" -> "T"
- * - "N" / "Noite" -> "N"
- * Se não bater, devolve a primeira letra maiúscula.
- */
-export function normalizeTurnoCodigo(value?: string | null): string | undefined {
-  if (!value) return undefined;
-  const trimmed = value.trim();
-  if (!trimmed) return undefined;
-
-  const lower = trimmed.toLowerCase();
-
-  if (lower.startsWith("m")) return "M";
-  if (lower.startsWith("t")) return "T";
-  if (lower.startsWith("n")) return "N";
-
-  const first = trimmed[0]?.toUpperCase();
-  return first || undefined;
-}
-
 export function normalizeTurmaLetra(value?: string | null): string | undefined {
   if (!value) return undefined;
-  const trimmed = value.trim();
-  if (!trimmed) return undefined;
-  return trimmed.toUpperCase();
+  const trimmed = String(value).trim().toUpperCase();
+  
+  // Aceita apenas letras simples ou combinadas curtas (ex: "A", "B", "T1")
+  // Remove caracteres especiais para evitar injeção ou lixo
+  const clean = trimmed.replace(/[^A-Z0-9]/g, "");
+  
+  return clean.length > 0 ? clean : undefined;
 }
 
-// ------------- CSV -> JSON LINES (para preview local) -------------
+// ------------- CSV PARSER -------------
 
 export function csvToJsonLines(csv: string): AlunoCSV[] {
-  const lines = csv.split(/\r?\n/).filter(Boolean);
-  if (lines.length === 0) return [];
+  if (!csv) return [];
+  
+  try {
+    const lines = csv.split(/\r?\n/).filter(line => line.trim().length > 0);
+    if (lines.length === 0) return [];
 
-  const delimiter = lines[0].includes(";") && !lines[0].includes(",") ? ";" : ",";
-  const headers = lines[0].split(delimiter).map((h) => h.trim());
+    // Detecção automática de delimitador (conta ocorrências na primeira linha)
+    const headerLine = lines[0];
+    const countSemi = (headerLine.match(/;/g) || []).length;
+    const countComma = (headerLine.match(/,/g) || []).length;
+    const delimiter = countSemi >= countComma ? ";" : ",";
 
-  return lines.slice(1).map((line) => {
-    const values = line.split(delimiter);
-    const entry: AlunoCSV = {};
-    headers.forEach((header, idx) => {
-      entry[header] = values[idx]?.trim();
+    // Limpeza de headers (remove BOM, quotes e espaços)
+    const headers = headerLine.split(delimiter).map((h) => 
+      h.replace(/^[\uFEFF]/, '').trim().replace(/^"|"$/g, '')
+    );
+
+    return lines.slice(1).map((line) => {
+      // Tratamento básico para CSV quotes (não perfeito, mas melhor que split simples)
+      // Nota: Para produção pesada, recomenda-se uma lib como 'papaparse', 
+      // mas para manter zero deps, este split funciona para casos simples.
+      const values = line.split(delimiter);
+      
+      const entry: AlunoCSV = {};
+      headers.forEach((header, idx) => {
+        // Remove aspas envolventes dos valores
+        let val = values[idx]?.trim();
+        if (val && val.startsWith('"') && val.endsWith('"')) {
+          val = val.slice(1, -1);
+        }
+        entry[header] = val || "";
+      });
+      return entry;
     });
-    return entry;
-  });
+  } catch (error) {
+    console.error("Erro ao processar CSV:", error);
+    return [];
+  }
 }
 
-// ------------- MAPEAR UMA LINHA DO CSV PARA staging_alunos -------------
+// ------------- MAPPER PRINCIPAL -------------
 
 export function mapAlunoFromCsv(
   entry: AlunoCSV,
@@ -119,55 +167,53 @@ export function mapAlunoFromCsv(
   importId: string,
   escolaId: string
 ): AlunoStagingRecord {
+  
+  // Inicializa objeto seguro
   const mapped: AlunoStagingRecord = {
     import_id: importId,
     escola_id: escolaId,
     raw_data: entry,
+    // Inicializa com undefined para garantir que a chave existe no objeto final
+    nome: undefined,
+    data_nascimento: undefined,
+    telefone: undefined,
+    bi: undefined,
+    email: undefined,
+    profile_id: undefined,
+    curso_codigo: undefined,
+    classe_numero: undefined,
+    turno_codigo: undefined,
+    turma_letra: undefined,
+    ano_letivo: undefined,
+    numero_matricula: undefined
   };
 
-  // --- PESSOAIS ---
+  // Helper para pegar valor cru de forma segura
+  const getVal = (key?: string) => key && entry[key] ? String(entry[key]) : null;
 
-  const nomeKey = columnMap.nome;
-  if (nomeKey) mapped.nome = normalizeText(entry[nomeKey]);
+  // --- DADOS PESSOAIS ---
+  mapped.nome = normalizeText(getVal(columnMap.nome));
+  mapped.data_nascimento = normalizeDateString(getVal(columnMap.data_nascimento));
+  
+  // Telefone: mantemos apenas números e o sinal +
+  const rawTel = getVal(columnMap.telefone);
+  mapped.telefone = rawTel ? rawTel.replace(/[^\d+]/g, "") : undefined;
 
-  const dataKey = columnMap.data_nascimento;
-  if (dataKey) mapped.data_nascimento = normalizeDateString(entry[dataKey]);
+  mapped.bi = getVal(columnMap.bi)?.trim().toUpperCase(); // BI geralmente é Upper
+  mapped.email = getVal(columnMap.email)?.trim().toLowerCase();
+  mapped.profile_id = getVal(columnMap.profile_id)?.trim();
 
-  const telKey = columnMap.telefone;
-  if (telKey) mapped.telefone = entry[telKey]?.replace(/[^\d+]/g, "");
-
-  const biKey = columnMap.bi;
-  if (biKey) mapped.bi = entry[biKey]?.trim();
-
-  const emailKey = columnMap.email;
-  if (emailKey) mapped.email = entry[emailKey]?.trim()?.toLowerCase();
-
-  const profileKey = columnMap.profile_id;
-  if (profileKey) mapped.profile_id = entry[profileKey]?.trim();
-
-  // NOVOS CAMPOS MATRÍCULA
-  const cursoKey = columnMap.curso_codigo;
-  if (cursoKey) mapped.curso_codigo = entry[cursoKey]?.trim().toUpperCase();
-
-  const classeKey = columnMap.classe_numero;
-  if (classeKey) mapped.classe_numero = normalizeClasseNumero(entry[classeKey]);
-
-  const turnoKey = columnMap.turno_codigo;
-  if (turnoKey) mapped.turno_codigo = normalizeTurnoCodigo(entry[turnoKey]);
-
-  const turmaKey = columnMap.turma_letra;
-  if (turmaKey) mapped.turma_letra = normalizeTurmaLetra(entry[turmaKey]);
-
-  const anoLetivoKey = columnMap.ano_letivo;
-  if (anoLetivoKey) mapped.ano_letivo = normalizeAnoLetivo(entry[anoLetivoKey]);
-
-  const numMatKey = columnMap.numero_matricula;
-  if (numMatKey) mapped.numero_matricula = entry[numMatKey]?.trim();
+  // --- DADOS ACADÊMICOS (Normalizados) ---
+  mapped.curso_codigo = getVal(columnMap.curso_codigo)?.trim().toUpperCase();
+  mapped.classe_numero = normalizeClasseNumero(getVal(columnMap.classe_numero));
+  mapped.turno_codigo = normalizeTurnoCodigo(getVal(columnMap.turno_codigo));
+  mapped.turma_letra = normalizeTurmaLetra(getVal(columnMap.turma_letra));
+  mapped.ano_letivo = normalizeAnoLetivo(getVal(columnMap.ano_letivo));
+  mapped.numero_matricula = getVal(columnMap.numero_matricula)?.trim();
 
   return mapped;
 }
 
-// Preview local: só os primeiros N registros para mostrar na UI
 export function summarizePreview(rows: AlunoStagingRecord[], limit = 20): AlunoStagingRecord[] {
   return rows.slice(0, limit);
 }

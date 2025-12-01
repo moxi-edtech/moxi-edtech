@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
+import { useSearchParams } from 'next/navigation';
 import { createClient } from "@/lib/supabaseClient";
 import {
   Loader2,
@@ -15,6 +16,7 @@ import {
   RefreshCw,
   Info,
 } from "lucide-react";
+import BackfillStep from "@/components/escola/importacao/wizard/steps/BackfillStep";
 
 import { ColumnMapper } from "~/components/migracao/ColumnMapper";
 import { ErrorList } from "~/components/migracao/ErrorList";
@@ -25,11 +27,14 @@ import type { AlunoStagingRecord, ErroImportacao, ImportResult, MappedColumns } 
 const STEPS = [
   { id: 1, title: "Upload", icon: Upload, description: "Faça upload do arquivo CSV" },
   { id: 2, title: "Mapeamento", icon: Map, description: "Mapeie as colunas do arquivo" },
-  { id: 3, title: "Pré-visualização", icon: Eye, description: "Revise os dados antes de importar" },
-  { id: 4, title: "Finalização", icon: CheckCircle, description: "Resumo da importação" },
+  { id: 3, title: "Pré-visualização", icon: Eye, description: "Revise os dados importáveis" },
+  { id: 4, title: "Backfill Acadêmico", icon: Eye, description: "Criar sessões, classes, cursos e turmas" },
+  { id: 5, title: "Importação", icon: Eye, description: "Criar/atualizar alunos" },
+  { id: 6, title: "Finalização", icon: CheckCircle, description: "Resumo da importação" },
 ];
 
 export default function AlunoMigrationWizard() {
+  const STORAGE_KEY = 'moxi:wizard:importacao:alunos';
   const [step, setStep] = useState(1);
   const [file, setFile] = useState<File | null>(null);
   const [headers, setHeaders] = useState<string[]>([]);
@@ -41,11 +46,28 @@ export default function AlunoMigrationWizard() {
   const [userId, setUserId] = useState<string | null>(null);
   const [importErrors, setImportErrors] = useState<ErroImportacao[]>([]);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [matriculaBatches, setMatriculaBatches] = useState<any[]>([]);
+  const [selectedBatches, setSelectedBatches] = useState<Record<number, boolean>>({});
+  const [matriculando, setMatriculando] = useState(false);
+  const [progressTotal, setProgressTotal] = useState(0);
+  const [progressDone, setProgressDone] = useState(0);
+  const [matriculaSummary, setMatriculaSummary] = useState<Array<{ turma_nome: string; turma_id: string | null; success: number; errors: number }>>([]);
   const [loading, setLoading] = useState(false);
 
   const supabase = useMemo(() => createClient(), []);
+  const searchParams = useSearchParams();
+  const deepApplied = useRef(false);
 
-  // Carrega sessão e contexto de escola
+  const batchKey = (b: any) =>
+    [
+      b?.ano_letivo ?? '',
+      b?.classe_numero ?? '',
+      String(b?.turno_codigo || '').toUpperCase(),
+      String(b?.turma_letra || '').toUpperCase(),
+      b?.turma_id ?? '',
+    ].join('|');
+
+  // Carrega sessão e resolve contexto de escola de forma robusta
   useEffect(() => {
     const loadSession = async () => {
       try {
@@ -54,7 +76,38 @@ export default function AlunoMigrationWizard() {
         } = await supabase.auth.getSession();
         setUserId(session?.user?.id ?? null);
         const appMeta = session?.user?.app_metadata as { escola_id?: string } | undefined;
-        const escola = appMeta?.escola_id ?? null;
+        let escola = appMeta?.escola_id ?? null;
+
+        // Fallbacks: profiles.current_escola_id -> profiles.escola_id -> escola_usuarios.escola_id
+        if (!escola && session?.user?.id) {
+          try {
+            const { data: prof } = await supabase
+              .from('profiles' as any)
+              .select('current_escola_id, escola_id, user_id')
+              .eq('user_id', session.user.id)
+              .order('created_at', { ascending: false })
+              .limit(1);
+            const escolaFromProfile = (prof?.[0] as any)?.current_escola_id || (prof?.[0] as any)?.escola_id || null;
+            escola = (escolaFromProfile as string | null) ?? escola;
+          } catch {
+            // ignore and try next fallback
+          }
+
+          if (!escola) {
+            try {
+              const { data: vinc } = await supabase
+                .from('escola_usuarios' as any)
+                .select('escola_id')
+                .eq('user_id', session.user.id)
+                .limit(1);
+              const escolaFromVinc = (vinc?.[0] as any)?.escola_id || null;
+              escola = (escolaFromVinc as string | null) ?? escola;
+            } catch {
+              // ignore
+            }
+          }
+        }
+
         setEscolaId(escola);
       } catch {
         setUserId(null);
@@ -64,6 +117,56 @@ export default function AlunoMigrationWizard() {
 
     loadSession();
   }, [supabase]);
+
+  // Restaurar progresso salvo após identificar escolaId
+  useEffect(() => {
+    try {
+      if (!escolaId) return;
+      const raw = typeof window !== 'undefined' ? window.localStorage.getItem(STORAGE_KEY) : null;
+      if (!raw) return;
+      const st = JSON.parse(raw || '{}');
+      if (st && st.escolaId === escolaId) {
+        if (st.importId) setImportId(st.importId);
+        if (st.step && Number.isFinite(st.step)) setStep(st.step);
+        if (st.mapping) setMapping(st.mapping);
+      }
+    } catch {}
+  }, [escolaId]);
+
+  // Persistir progresso minimal (idempotente)
+  useEffect(() => {
+    try {
+      // Persist também seleção de lotes (por keys) se existir
+      let selectedBatchKeys: string[] | undefined = undefined;
+      try {
+        const keys: string[] = [];
+        matriculaBatches.forEach((b, idx) => { if (selectedBatches[idx]) keys.push(batchKey(b)); });
+        selectedBatchKeys = keys;
+      } catch {}
+      const payload = { step, importId, escolaId, mapping, selectedBatchKeys } as any;
+      if (typeof window !== 'undefined') window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    } catch {}
+  }, [step, importId, escolaId, mapping, selectedBatches, matriculaBatches]);
+
+  // Deep link: ?importId=...&step=review|<n>
+  useEffect(() => {
+    try {
+      if (deepApplied.current) return;
+      if (!escolaId) return;
+      const qImportId = searchParams?.get('importId');
+      if (!qImportId) return;
+      deepApplied.current = true;
+      setImportId(qImportId);
+      const qStep = (searchParams?.get('step') || '').toLowerCase();
+      if (qStep === 'review') {
+        setStep(6);
+      } else if (qStep && !Number.isNaN(Number(qStep))) {
+        setStep(Math.max(1, Math.min(7, Number(qStep))));
+      } else {
+        setStep(6);
+      }
+    } catch {}
+  }, [searchParams, escolaId]);
 
   const extractHeaders = async () => {
     if (!file) return;
@@ -211,7 +314,8 @@ export default function AlunoMigrationWizard() {
       }
 
       setImportResult(payload.result ?? null);
-      setStep(4);
+      setStep(6);
+      await fetchMatriculaPreview();
 
       const errorsResponse = await fetch(`/api/migracao/${importId}/erros`);
       if (errorsResponse.ok) {
@@ -225,6 +329,44 @@ export default function AlunoMigrationWizard() {
     }
   };
 
+  const fetchMatriculaPreview = async () => {
+    try {
+      if (!importId || !escolaId) return;
+      const res = await fetch(`/api/migracao/${encodeURIComponent(importId)}/matricula/preview?escola_id=${encodeURIComponent(escolaId)}`, { cache: 'no-store' });
+      const json = await res.json();
+      if (res.ok && json?.ok) {
+        setMatriculaBatches(json.batches || []);
+        const sel: Record<number, boolean> = {};
+        // Tenta restaurar seleção anterior por keys
+        let savedKeys = [] as string[];
+        try {
+          const raw = typeof window !== 'undefined' ? window.localStorage.getItem(STORAGE_KEY) : null;
+          if (raw) {
+            const st = JSON.parse(raw || '{}');
+            if (st && st.escolaId === escolaId && st.importId === importId && Array.isArray(st.selectedBatchKeys)) {
+              savedKeys = st.selectedBatchKeys as string[];
+            }
+          }
+        } catch {}
+        const savedSet = new Set(savedKeys);
+        (json.batches || []).forEach((b: any, idx: number) => {
+          const key = batchKey(b);
+          if (savedSet.size > 0) sel[idx] = savedSet.has(key);
+          else sel[idx] = true;
+        });
+        setSelectedBatches(sel);
+      }
+    } catch {}
+  };
+
+  // Ao entrar no passo 6 com importId válido, carregue o preview
+  useEffect(() => {
+    if (step === 6 && importId && escolaId) {
+      fetchMatriculaPreview();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, importId, escolaId]);
+
   const resetWizard = () => {
     setStep(1);
     setFile(null);
@@ -235,6 +377,7 @@ export default function AlunoMigrationWizard() {
     setMapping({});
     setHeaders([]);
     setImportId(null);
+    try { if (typeof window !== 'undefined') window.localStorage.removeItem(STORAGE_KEY); } catch {}
   };
 
   const StepProgress = () => (
@@ -589,12 +732,53 @@ export default function AlunoMigrationWizard() {
               <PreviewTable records={preview} />
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
                 <p className="text-[11px] text-slate-500">
-                  Confirme se os dados estão consistentes. A partir deste ponto, a importação criará/atualizará alunos reais.
+                  Confirme se os dados estão consistentes. Em seguida, criaremos automaticamente a estrutura acadêmica faltante (anos letivos, classes, cursos, turmas) antes de importar os alunos.
+                </p>
+                <ActionButton
+                  onClick={() => setStep(4)}
+                  disabled={preview.length === 0}
+                  loading={false}
+                  icon={Eye}
+                >
+                  Analisar Estrutura
+                </ActionButton>
+              </div>
+            </div>
+          </StepCard>
+        )}
+
+        {/* Passo 4: Backfill Acadêmico */}
+        {step >= 4 && escolaId && importId && (
+          <StepCard
+            stepNumber={4}
+            title="Estrutura Acadêmica"
+            description="Crie sessões, classes, cursos e turmas automaticamente a partir do ficheiro."
+          >
+            <BackfillStep
+              importId={importId}
+              escolaId={escolaId}
+              onBack={() => setStep(3)}
+              onNext={() => setStep(5)}
+            />
+          </StepCard>
+        )}
+
+        {/* Passo 5: Importação */}
+        {step >= 5 && (
+          <StepCard
+            stepNumber={5}
+            title="Importação de Alunos"
+            description="Crie/atualize os alunos na escola a partir dos dados validados."
+          >
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+                <p className="text-[11px] text-slate-500">
+                  Ao confirmar, os alunos serão criados/atualizados. Depois poderá matricular em massa.
                 </p>
                 <ActionButton
                   onClick={handleImport}
-                  disabled={preview.length === 0}
-                  loading={loading && step === 3}
+                  disabled={!importId || !escolaId}
+                  loading={loading && step === 5}
                   icon={CheckCircle}
                 >
                   Confirmar importação
@@ -604,15 +788,152 @@ export default function AlunoMigrationWizard() {
           </StepCard>
         )}
 
-        {/* Passo 4: Finalização */}
-        {step >= 4 && (
+        {/* Passo 6: Revisão de Matrícula */}
+        {step >= 6 && (
           <StepCard
-            stepNumber={4}
+            stepNumber={6}
+            title="Revisão de Matrícula"
+            description="Revise os grupos por turma detectados e confirme a matrícula em massa para cada turma."
+          >
+            <div className="space-y-4">
+              {matriculaBatches.length === 0 ? (
+                <p className="text-sm text-slate-500">Nenhum grupo encontrado para este ficheiro.</p>
+              ) : (
+                <div className="border rounded-lg divide-y">
+                  {matriculaBatches.map((b: any, idx: number) => (
+                    <div key={idx} className="p-3 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={!!selectedBatches[idx]}
+                          onChange={(e) => setSelectedBatches({ ...selectedBatches, [idx]: e.target.checked })}
+                        />
+                        <div>
+                          <div className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                            {b.turma_nome}
+                            {b.curso_codigo && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">{b.curso_codigo}</span>
+                            )}
+                            {b.turno_codigo && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">{b.turno_codigo}</span>
+                            )}
+                          </div>
+                          <div className="text-xs text-slate-500">{b.classe || 'Classe não definida'} • {b.total_alunos} aluno(s) • {b.status === 'ready' ? 'Pronto' : 'Sem turma correspondente'}</div>
+                        </div>
+                      </div>
+                      <div className="text-xs font-medium {b.status==='ready' ? 'text-emerald-700' : 'text-amber-700'}">
+                        {b.status === 'ready' ? 'OK' : 'Atenção'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {matriculando && (
+                <div className="w-full bg-slate-100 rounded h-2 overflow-hidden">
+                  <div className="bg-emerald-600 h-2 transition-all" style={{ width: `${progressTotal>0 ? Math.round((progressDone/progressTotal)*100) : 0}%` }} />
+                  <div className="mt-1 text-[11px] text-slate-500">A matricular {progressDone} de {progressTotal} turmas…</div>
+                </div>
+              )}
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+                <p className="text-[11px] text-slate-500">Os grupos marcados serão matriculados, um a um, com progresso visível.</p>
+                <ActionButton
+                  onClick={async () => {
+                    if (!importId || !escolaId) return;
+                    setMatriculando(true);
+                    setProgressDone(0);
+                    setMatriculaSummary([]);
+                    try {
+                      const toRun = matriculaBatches
+                        .map((b: any, idx: number) => ({ b, idx }))
+                        .filter(({ idx }) => selectedBatches[idx])
+                        .filter(({ b }) => b.status === 'ready' && b.turma_id);
+                      setProgressTotal(toRun.length);
+                      let done = 0;
+                      for (const { b } of toRun) {
+                        // Chama endpoint por turma (RPC no banco)
+                        const payload = {
+                          import_id: importId,
+                          escola_id: escolaId,
+                          turma_id: b.turma_id,
+                        };
+                        const res = await fetch('/api/matriculas/massa/por-turma', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify(payload),
+                        });
+                        let success = 0, errors = 0;
+                        try {
+                          const json = await res.json();
+                          if (res.ok && json?.ok) {
+                            success = Number(json.success_count || 0);
+                            errors = Number(json.error_count || 0);
+                          }
+                        } catch {}
+                        setMatriculaSummary(prev => ([...prev, { turma_nome: b.turma_nome, turma_id: b.turma_id, success, errors }]));
+                        done++;
+                        setProgressDone(done);
+                      }
+                      setStep(7);
+                    } finally {
+                      setMatriculando(false);
+                    }
+                  }}
+                  disabled={matriculaBatches.length === 0}
+                  loading={matriculando}
+                  icon={CheckCircle}
+                  >
+                    Confirmar e Matricular
+                </ActionButton>
+                <button
+                  onClick={async () => { await fetchMatriculaPreview(); }}
+                  className="inline-flex items-center justify-center rounded-lg px-3 py-2 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200"
+                >
+                  Recarregar análise
+                </button>
+              </div>
+            </div>
+          </StepCard>
+        )}
+
+        {/* Passo 7: Finalização */}
+        {step >= 7 && (
+          <StepCard
+            stepNumber={7}
             title="Importação concluída"
             description="Veja o resumo da importação e trate eventuais erros."
           >
             <div className="space-y-5">
               <ResultsSummary />
+              {matriculaSummary.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-sm font-semibold text-slate-900">Resumo das matrículas por turma</div>
+                  <div className="rounded-md border border-slate-200 overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <th className="text-left px-3 py-2 text-slate-600 font-medium">Turma</th>
+                          <th className="text-right px-3 py-2 text-slate-600 font-medium">Inseridos</th>
+                          <th className="text-right px-3 py-2 text-slate-600 font-medium">Erros</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {matriculaSummary.map((it, i) => (
+                          <tr key={i} className="border-t border-slate-100">
+                            <td className="px-3 py-2">{it.turma_nome}</td>
+                            <td className="px-3 py-2 text-right text-emerald-700 font-medium">{it.success}</td>
+                            <td className="px-3 py-2 text-right text-red-600">{it.errors}</td>
+                          </tr>
+                        ))}
+                        <tr className="border-t border-slate-200 bg-slate-50">
+                          <td className="px-3 py-2 font-semibold">Totais</td>
+                          <td className="px-3 py-2 text-right font-semibold text-emerald-800">{matriculaSummary.reduce((a, b) => a + b.success, 0)}</td>
+                          <td className="px-3 py-2 text-right font-semibold text-red-700">{matriculaSummary.reduce((a, b) => a + b.errors, 0)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
 
               {importErrors.length > 0 && (
                 <div className="space-y-3">
@@ -647,6 +968,18 @@ export default function AlunoMigrationWizard() {
               </div>
 
               <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-100">
+                <a
+                  href="/secretaria/matriculas"
+                  className="w-full sm:w-auto inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition-colors"
+                >
+                  Ir para Matrículas
+                </a>
+                <a
+                  href="/secretaria/rematricula"
+                  className="w-full sm:w-auto inline-flex items-center justify-center rounded-lg px-4 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+                >
+                  Ir para Rematrícula
+                </a>
                 <ActionButton onClick={resetWizard} icon={RefreshCw}>
                   Nova importação
                 </ActionButton>

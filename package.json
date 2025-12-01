@@ -20,6 +20,7 @@
     "db:reset": "supabase db reset",
     "db:push:seed": "supabase db push --include-seed",
     "db:seed:remote": "supabase db push --include-seed",
+    "db:pull": "bash scripts/supabase-pull-remote.sh",
     "db:pull:remote": "bash scripts/supabase-pull-remote.sh",
     "db:dump:remote": "bash scripts/db-dump-remote.sh",
     "db:dump:remote:schema-only": "SCHEMA_ONLY=1 bash scripts/db-dump-remote.sh",

@@ -38,10 +38,12 @@ export default function StudentPortalLayout({ children }: { children: React.Reac
         const { data: prof } = await supabase.from('profiles').select('escola_id').order('created_at', { ascending: false }).limit(1)
         const escolaId = (prof?.[0] as any)?.escola_id as string | null
         if (!mounted || !escolaId) return
-        const { data: esc } = await supabase.from('escolas').select('plano').eq('id', escolaId).maybeSingle()
-        if (!mounted) return
-        const p = ((esc as any)?.plano || null) as any
-        if (p && ['basico','standard','premium'].includes(p)) setPlan(p)
+        try {
+          const res = await fetch(`/api/escolas/${escolaId}/nome`, { cache: 'no-store' })
+          const json = await res.json().catch(() => null)
+          const p = (json?.plano || null) as any
+          if (mounted && p && ['basico','standard','premium'].includes(p)) setPlan(p)
+        } catch {}
       } catch {}
     })()
     return () => { mounted = false }

@@ -1,14 +1,13 @@
 import EscolaAdminDashboard from "@/components/layout/escola-admin/EscolaAdminDashboard";
-import { supabaseServer } from "@/lib/supabaseServer";
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const s = await supabaseServer()
   let escolaNome: string | undefined = undefined
   try {
-    const { data } = await s.from('escolas').select('nome').eq('id', id).maybeSingle()
-    escolaNome = (data as any)?.nome || undefined
+    const res = await fetch(`/api/escolas/${id}/nome`, { cache: 'no-store' })
+    const json = await res.json().catch(() => null)
+    if (res.ok && json?.ok && json?.nome) escolaNome = String(json.nome)
   } catch {}
 
   return <EscolaAdminDashboard escolaId={id} escolaNome={escolaNome} />;

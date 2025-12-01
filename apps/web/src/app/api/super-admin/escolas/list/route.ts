@@ -24,7 +24,10 @@ export async function GET() {
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
     const { data: rows } = await s.from('profiles').select('role').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1)
     const role = (rows?.[0] as any)?.role as string | undefined
-    if (role !== 'super_admin') return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
+    const allowed = ['super_admin', 'global_admin']
+    if (!allowed.includes(role || '')) {
+      return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
+    }
 
     // Decide se podemos usar client admin (service-role)
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL

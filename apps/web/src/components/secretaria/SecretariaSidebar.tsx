@@ -13,6 +13,7 @@ export default function SecretariaSidebar() {
     { href: "/secretaria/classes", label: "Classes", icon: "BookOpenIcon" },
     { href: "/secretaria/matriculas", label: "Matrículas", icon: "AcademicCapIcon" },
     { href: "/secretaria/relatorios", label: "Relatórios", icon: "ChartBarIcon" },
+    { href: "/secretaria/importacoes", label: "Importações", icon: "Upload" },
     { href: "/secretaria/alertas", label: "Alertas", icon: "BellAlertIcon" },
     { href: "/secretaria/exportacoes", label: "Exportações", icon: "ArrowDownTrayIcon" },
   ];

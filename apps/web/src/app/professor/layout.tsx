@@ -7,7 +7,7 @@ export default function ProfessorLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-amber-50 to-white">
       <ProfessorSidebar />
-      <main className="flex-1 p-6 ml-[var(--sidebar-w-professor,256px)]">
+      <main className="flex-1 p-6 overflow-y-auto pl-[var(--sidebar-w-professor,256px)] transition-[padding] duration-300 ease-in-out">
         {children}
       </main>
     </div>

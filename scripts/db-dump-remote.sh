@@ -30,6 +30,53 @@ if [[ "$DB_URL" != *"?"* && "$DB_URL" != *"sslmode="* ]]; then
   DB_URL="${DB_URL}?sslmode=require"
 fi
 
+# Resolve IPv4 for host and export PGHOSTADDR to avoid IPv6 inside Docker
+# This prevents "Network is unreachable" when the hostname resolves to AAAA first.
+extract_host() {
+  local url="$1"
+  local no_proto hostpart host
+  no_proto="${url#*://}"
+  # strip credentials if present
+  if [[ "$no_proto" == *"@"* ]]; then
+    hostpart="${no_proto#*@}"
+  else
+    hostpart="$no_proto"
+  fi
+  # host ends before ':' or '/' or '?' whatever comes first
+  host="${hostpart%%[:/?]*}"
+  printf '%s\n' "$host"
+}
+
+resolve_ipv4() {
+  local host="$1" ip=""
+  # Prefer system Python if available (works on macOS/Linux)
+  if command -v python3 >/dev/null 2>&1; then
+    ip=$(printf '%s\n' \
+      'import socket, sys' \
+      'h=sys.argv[1]' \
+      'try:' \
+      '    print(socket.gethostbyname(h))' \
+      'except Exception:' \
+      '    sys.exit(1)' \
+      | python3 - "$host" 2>/dev/null)
+  fi
+  # Fallback to dig
+  if [[ -z "$ip" ]] && command -v dig >/dev/null 2>&1; then
+    ip=$(dig +short A "$host" | head -n1)
+  fi
+  # Fallback to nslookup
+  if [[ -z "$ip" ]] && command -v nslookup >/dev/null 2>&1; then
+    ip=$(nslookup -type=A "$host" 2>/dev/null | awk '/^Address: /{print $2; exit}')
+  fi
+  printf '%s\n' "$ip"
+}
+
+HOSTNAME_ONLY=$(extract_host "$DB_URL")
+HOSTADDR_V4=""
+if [[ -n "$HOSTNAME_ONLY" ]]; then
+  HOSTADDR_V4=$(resolve_ipv4 "$HOSTNAME_ONLY" || true)
+fi
+
 build_schema_args() {
   local args=()
   # Se SCHEMAS='*', não passa --schema (dump de todos os schemas permitidos)
@@ -60,7 +107,12 @@ if $use_local_pg_dump; then
     pg_args+=(--schema-only)
   fi
   # shellcheck disable=SC2046
-  pg_dump ${pg_args[@]} $(build_schema_args) -f "$OUT"
+  if [[ -n "$HOSTADDR_V4" ]]; then
+    echo "[INFO] Preferindo IPv4: $HOSTNAME_ONLY -> $HOSTADDR_V4"
+    PGHOST="$HOSTNAME_ONLY" PGHOSTADDR="$HOSTADDR_V4" pg_dump ${pg_args[@]} $(build_schema_args) -f "$OUT"
+  else
+    pg_dump ${pg_args[@]} $(build_schema_args) -f "$OUT"
+  fi
 else
   if ! command -v docker >/dev/null 2>&1; then
     echo "[ERR] pg_dump >=17 não encontrado e Docker indisponível. Instale postgresql@17 ou Docker." >&2
@@ -72,8 +124,14 @@ else
     extra="--schema-only"
   fi
   # shellcheck disable=SC2046
-  docker run --rm -v "$PWD:/work" postgres:17 \
-    pg_dump "$DB_URL" --no-owner --no-privileges $extra $(build_schema_args) -f "/work/$OUT"
+  if [[ -n "$HOSTADDR_V4" ]]; then
+    echo "[INFO] Preferindo IPv4 dentro do Docker: $HOSTNAME_ONLY -> $HOSTADDR_V4"
+    docker run --rm -e PGHOST="$HOSTNAME_ONLY" -e PGHOSTADDR="$HOSTADDR_V4" -v "$PWD:/work" postgres:17 \
+      pg_dump "$DB_URL" --no-owner --no-privileges $extra $(build_schema_args) -f "/work/$OUT"
+  else
+    docker run --rm -v "$PWD:/work" postgres:17 \
+      pg_dump "$DB_URL" --no-owner --no-privileges $extra $(build_schema_args) -f "/work/$OUT"
+  fi
 fi
 
 echo "[OK] Dump gerado em $OUT"

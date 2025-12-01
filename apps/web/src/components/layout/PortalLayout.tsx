@@ -114,12 +114,20 @@ export default function PortalLayout({
         const { data: prof } = await supabase.from('profiles').select('escola_id').order('created_at', { ascending: false }).limit(1)
         const escolaId = (prof?.[0] as any)?.escola_id as string | null
         if (!mounted || !escolaId) return
-        const { data: esc } = await supabase.from('escolas').select('plano, nome').eq('id', escolaId).maybeSingle()
-        if (!mounted) return
-        const p = ((esc as any)?.plano || null) as any
-        if (p && ['basico','standard','premium'].includes(p)) setPlan(p)
-        const nome = (esc as any)?.nome as string | undefined
-        if (nome) setEscolaNome(nome)
+
+        // Carrega nome e plano da escola via API (service role)
+        try {
+          const res = await fetch(`/api/escolas/${escolaId}/nome`, { cache: 'no-store' })
+          const json = await res.json().catch(() => null)
+          if (mounted && res.ok && json?.ok && json?.nome) {
+            setEscolaNome(String(json.nome))
+          }
+          if (mounted) {
+            const p = (json?.plano || null) as any
+            if (p && ['basico','standard','premium'].includes(p)) setPlan(p)
+          }
+        } catch {}
+        
       } catch {}
     })()
     return () => { mounted = false }

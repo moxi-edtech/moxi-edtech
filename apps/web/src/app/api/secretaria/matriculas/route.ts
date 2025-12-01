@@ -222,6 +222,41 @@ export async function POST(req: Request) {
       );
     }
 
+    // Validar turma pertence à escola e sessão compatível
+    try {
+      const { data: turma } = await supabase
+        .from('turmas')
+        .select('id, escola_id, session_id, ano_letivo')
+        .eq('id', turma_id)
+        .maybeSingle();
+      if (!turma) return NextResponse.json({ ok: false, error: 'Turma não encontrada' }, { status: 400 });
+      if ((turma as any).escola_id && String((turma as any).escola_id) !== String(escolaId)) {
+        return NextResponse.json({ ok: false, error: 'Turma não pertence à escola selecionada' }, { status: 403 });
+      }
+      if ((turma as any).session_id && String((turma as any).session_id) !== String(session_id)) {
+        return NextResponse.json({ ok: false, error: 'Ano letivo selecionado não corresponde à turma' }, { status: 400 });
+      }
+    } catch {}
+
+    // ------------------------------------------------------------------
+    // 0) VALIDA DUPLICIDADE: aluno já matriculado nesta sessão?
+    // ------------------------------------------------------------------
+    try {
+      const { count: dupCount, error: dupErr } = await supabase
+        .from('matriculas')
+        .select('id', { count: 'exact', head: true })
+        .eq('escola_id', escolaId)
+        .eq('aluno_id', aluno_id)
+        .eq('session_id', session_id)
+        .in('status', ['ativo','ativa','active']);
+      if (!dupErr && (dupCount ?? 0) > 0) {
+        return NextResponse.json(
+          { ok: false, error: 'Aluno já possui matrícula ativa neste ano letivo.' },
+          { status: 409 }
+        );
+      }
+    } catch {}
+
     // ------------------------------------------------------------------
     // 1) GARANTIR NUMERO_LOGIN DO ALUNO NA MATRÍCULA
     // ------------------------------------------------------------------

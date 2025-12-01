@@ -16,10 +16,17 @@ Este documento descreve **como trabalhar corretamente com o banco**, evitando dr
 
 # ⚙️ **1. Conexão com o banco remoto**
 
-A URL do pooler deve ser exportada em **DB_URL**:
+A URL do pooler deve ser exportada em **DB_URL** (use placeholders e mantenha fora do versionamento, via `.env.db`):
 
 ```bash
-export DB_URL="postgresql://postgres.wjtifcpxxxotsbmvbgoq:MoxinexaDB2025@aws-1-eu-north-1.pooler.supabase.com:5432/postgres"
+# Preferencial: Transaction Pooler (porta 6543)
+export DB_URL="postgresql://postgres.wjtifcpxxxotsbmvbgoq:<PASSWORD>@aws-1-eu-north-1.pooler.supabase.com:6543/postgres?sslmode=require"
+
+# Alternativa: Session Pooler (porta 5432)
+# export DB_URL="postgresql://postgres.wjtifcpxxxotsbmvbgoq:<PASSWORD>@aws-1-eu-north-1.pooler.supabase.com:5432/postgres?sslmode=require"
+
+# Dica: copie .env.db.example para .env.db e preencha DB_URL
+# cp .env.db.example .env.db && $EDITOR .env.db
 ```
 
 > ⚠️ **Importante:** Sempre use a URL do pooler, nunca a URL direta (`db.`).  
@@ -70,7 +77,11 @@ supabase db push --db-url "$DB_URL" --include-seed
 Quando precisar atualizar o schema local para refletir o banco real:
 
 ```bash
+# Usa o DB_URL do pooler; se estiver em session mode e saturado, troque para 6543 (transaction)
 supabase db pull --db-url "$DB_URL"
+
+# ou use o script que carrega .env.db automaticamente e desativa serviços durante o pull
+npm run db:pull:remote
 ```
 
 Isso gera um arquivo grande:
@@ -191,7 +202,7 @@ Pré‑requisitos
 
 1) Exportar a URL do pooler remoto
 ```bash
-export DB_URL="postgresql://postgres.wjtifcpxxxotsbmvbgoq:MoxinexaDB2025@aws-1-eu-north-1.pooler.supabase.com:5432/postgres?sslmode=require"
+export DB_URL="postgresql://postgres.wjtifcpxxxotsbmvbgoq:<PASSWORD>@aws-1-eu-north-1.pooler.supabase.com:6543/postgres?sslmode=require"
 ```
 
 2) Gerar o dump somente de `public` e `graphql_public`

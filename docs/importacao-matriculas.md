@@ -9,7 +9,7 @@ Este guia descreve o fluxo ponta a ponta de importação de alunos via wizard, v
 4. **Acompanhamento**: a tela de finalização busca `/api/migracao/[importId]/erros` para listar erros linha a linha e a página de histórico consome `/api/migracao/historico` para exibir as últimas 50 importações.
 
 ## Wizard de migração (frontend)
-- **Contexto autenticado**: o wizard carrega `userId` e `escolaId` da sessão Supabase no `useEffect` e impede upload sem escola válida.【F:apps/web/src/app/migracao/alunos/page.tsx†L22-L147】
+- **Contexto autenticado**: o wizard carrega `userId` e resolve `escolaId` no `useEffect` a partir de `app_metadata.escola_id` ou, em fallback, via `profiles.current_escola_id` → `profiles.escola_id` → `escola_usuarios.escola_id`. O upload é bloqueado sem escola válida.【F:apps/web/src/app/migracao/alunos/page.tsx†L22-L147】
 - **Upload (passo 1)**: envia `file`, `escolaId` e opcionalmente `userId` para `/api/migracao/upload`; guarda `importId` retornado, limpa erros anteriores e extrai cabeçalhos do CSV para mapeamento.【F:apps/web/src/app/migracao/alunos/page.tsx†L89-L118】
 - **Mapeamento + validação (passo 2)**: envia `importId`, `escolaId` e `columnMap` para `/api/migracao/alunos/validar`; na resposta, popula a pré-visualização das primeiras linhas e avança ao passo 3.【F:apps/web/src/app/migracao/alunos/page.tsx†L62-L87】
 - **Importação (passo 3)**: dispara `/api/migracao/alunos/importar` com os IDs reais; após sucesso, carrega erros detalhados via `/api/migracao/[importId]/erros` e mostra o resumo retornado pela API.【F:apps/web/src/app/migracao/alunos/page.tsx†L120-L215】

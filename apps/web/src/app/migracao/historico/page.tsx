@@ -54,6 +54,20 @@ export default function HistoricoImportacao() {
               <p>Com erro: {item.error_rows ?? "-"}</p>
               <p>Criado: {new Date(item.created_at).toLocaleString()}</p>
               {item.processed_at && <p>Processado: {new Date(item.processed_at).toLocaleString()}</p>}
+              <div className="pt-2 flex items-center gap-2">
+                <a
+                  href={`/migracao/alunos?importId=${encodeURIComponent(item.id)}&step=review`}
+                  className="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700"
+                >
+                  Reabrir Wizard na Revisão
+                </a>
+                <a
+                  href={`/api/migracao/${encodeURIComponent(item.id)}/erros`}
+                  className="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200"
+                >
+                  Ver erros
+                </a>
+              </div>
             </CardContent>
           </Card>
         ))}

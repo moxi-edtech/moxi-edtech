@@ -65,6 +65,12 @@ if [[ -z "${SKIP_TOGGLE:-}" ]]; then
   ' "$BACKUP" > "$CONFIG"
 fi
 
+# Tenta carregar DB_URL de .env.db, se não fornecido no ambiente
+if [[ -z "${DB_URL:-}" ]] && [[ -f "$WORKDIR/.env.db" ]]; then
+  # shellcheck disable=SC1091
+  set -a && source "$WORKDIR/.env.db" && set +a
+fi
+
 echo "[INFO] Iniciando pull remoto (schemas=$SCHEMAS) ..."
 
 PULL_ARGS=(db pull --schema "$SCHEMAS" --yes --workdir "$WORKDIR" "${PROFILE_FLAG[@]}")
@@ -72,8 +78,56 @@ if [[ -n "${DB_URL:-}" ]]; then
   PULL_ARGS+=(--db-url "$DB_URL")
 fi
 
+# Prefer IPv4 when DB_URL is provided, to avoid IPv6 issues inside containers
+extract_host() {
+  local url="$1" no_proto hostpart host
+  no_proto="${url#*://}"
+  if [[ "$no_proto" == *"@"* ]]; then
+    hostpart="${no_proto#*@}"
+  else
+    hostpart="$no_proto"
+  fi
+  host="${hostpart%%[:/?]*}"
+  printf '%s\n' "$host"
+}
+
+resolve_ipv4() {
+  local host="$1" ip=""
+  if command -v python3 >/dev/null 2>&1; then
+    ip=$(printf '%s\n' \
+      'import socket, sys' \
+      'h=sys.argv[1]' \
+      'try:' \
+      '    print(socket.gethostbyname(h))' \
+      'except Exception:' \
+      '    sys.exit(1)' \
+      | python3 - "$host" 2>/dev/null)
+  fi
+  if [[ -z "$ip" ]] && command -v dig >/dev/null 2>&1; then
+    ip=$(dig +short A "$host" | head -n1)
+  fi
+  if [[ -z "$ip" ]] && command -v nslookup >/dev/null 2>&1; then
+    ip=$(nslookup -type=A "$host" 2>/dev/null | awk '/^Address: /{print $2; exit}')
+  fi
+  printf '%s\n' "$ip"
+}
+
+HOSTADDR_V4=""
+HOSTNAME_ONLY=""
+if [[ -n "${DB_URL:-}" ]]; then
+  HOSTNAME_ONLY=$(extract_host "$DB_URL")
+  if [[ -n "$HOSTNAME_ONLY" ]]; then
+    HOSTADDR_V4=$(resolve_ipv4 "$HOSTNAME_ONLY" || true)
+  fi
+fi
+
 set +e
-supabase "${PULL_ARGS[@]}"
+if [[ -n "$HOSTADDR_V4" ]]; then
+  echo "[INFO] Preferindo IPv4 para db pull: $HOSTNAME_ONLY -> $HOSTADDR_V4"
+  PGHOST="$HOSTNAME_ONLY" PGHOSTADDR="$HOSTADDR_V4" supabase "${PULL_ARGS[@]}"
+else
+  supabase "${PULL_ARGS[@]}"
+fi
 status=$?
 set -e
 
@@ -93,4 +147,3 @@ if [[ $status -ne 0 ]]; then
 fi
 
 echo "[OK] Pull remoto concluído."
-

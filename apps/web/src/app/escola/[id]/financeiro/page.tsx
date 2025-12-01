@@ -8,11 +8,11 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const escolaId = awaitedParams.id
   const s = await supabaseServer()
 
-  const [ paid, pending, all, escola ] = await Promise.all([
+  const [ paid, pending, all, detalhes ] = await Promise.all([
     s.from('pagamentos').select('valor', { head: false }).eq('escola_id', escolaId).eq('status', 'pago'),
     s.from('pagamentos').select('valor', { head: false }).eq('escola_id', escolaId).eq('status', 'pendente'),
     s.from('pagamentos').select('id', { count: 'exact', head: true }).eq('escola_id', escolaId),
-    s.from('escolas').select('plano').eq('id', escolaId).maybeSingle(),
+    fetch(`/api/escolas/${escolaId}/nome`, { cache: 'no-store' }).then(r => r.json()).catch(() => null),
   ])
 
   const sum = (rows: any[] | null | undefined) => (rows || []).reduce((acc, r) => acc + Number(r.valor || 0), 0)
@@ -22,7 +22,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const percentPago = total ? Math.round((totalPago / total) * 100) : 0
   const totalPagamentos = all.count ?? 0
 
-  const plan = ((escola as any)?.data?.plano || 'basico') as 'basico'|'standard'|'premium'
+  const plan = ((detalhes as any)?.plano || 'basico') as 'basico'|'standard'|'premium'
 
   const isStandard = plan === 'standard' || plan === 'premium'
   const isPremium = plan === 'premium'

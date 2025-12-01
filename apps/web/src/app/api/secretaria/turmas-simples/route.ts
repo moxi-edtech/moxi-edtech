@@ -1,230 +1,128 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   try {
-    const url = new URL(req.url);
-    const sessionId = url.searchParams.get('session_id');
-    const qsEscolaId = url.searchParams.get('escola_id') || undefined;
-    const alunoId = url.searchParams.get('aluno_id') || undefined;
-    const include = url.searchParams.get('include');
-
     const supabase = await supabaseServerTyped<any>();
+    
+    // 1. Autenticação
     const { data: userRes } = await supabase.auth.getUser();
     const user = userRes?.user;
-    if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado', debug: { reason: 'missing_user' } }, { status: 401 });
+    if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
 
-    // Resolver escolaId
-    let escolaId = qsEscolaId as string | undefined;
-    let escolaIdSource: 'query' | 'aluno' | 'profile' | 'vinculo' | 'none' = 'none';
-    if (escolaId) escolaIdSource = 'query';
-
-    if (!escolaId && alunoId) {
-      try {
-        const { data: aluno } = await supabase
-          .from('alunos')
-          .select('escola_id')
-          .eq('id', alunoId)
-          .maybeSingle();
-        escolaId = (aluno as any)?.escola_id as string | undefined;
-        if (escolaId) escolaIdSource = 'aluno';
-      } catch {}
-    }
-    if (!escolaId) {
+    // 2. Resolver Escola (Lógica mantida)
+    let escolaId: string | undefined;
+    try {
       const { data: prof } = await supabase
         .from('profiles')
-        .select('current_escola_id, escola_id, user_id')
-        .eq('user_id', user.id)
+        .select('current_escola_id, escola_id')
         .order('created_at', { ascending: false })
         .limit(1);
       escolaId = ((prof?.[0] as any)?.current_escola_id || (prof?.[0] as any)?.escola_id) as string | undefined;
-      if (escolaId) escolaIdSource = 'profile';
+      
       if (!escolaId) {
-        try {
-          const { data: vinc } = await supabase
-            .from('escola_usuarios')
-            .select('escola_id')
-            .eq('user_id', user.id)
-            .limit(1);
-          escolaId = (vinc?.[0] as any)?.escola_id as string | undefined;
-          if (escolaId) escolaIdSource = 'vinculo';
-        } catch {}
+        const { data: vinc } = await supabase
+          .from('escola_usuarios')
+          .select('escola_id')
+          .eq('user_id', user.id)
+          .limit(1);
+        escolaId = (vinc?.[0] as any)?.escola_id as string | undefined;
       }
-    }
-    if (!escolaId) return NextResponse.json({ ok: true, items: [], debug: { escolaId: null, escolaIdSource: 'none', sessionId } });
+    } catch {}
 
-    // Verificar vínculo do usuário com a escola
-    const { data: vincUser } = await supabase
-      .from('escola_usuarios')
-      .select('user_id')
-      .eq('user_id', user.id)
+    if (!escolaId) return NextResponse.json({ ok: true, items: [], total: 0 });
+
+    // 3. Parâmetros da URL
+    const url = new URL(req.url);
+    const sessionId = url.searchParams.get('session_id') || undefined;
+    const turno = url.searchParams.get('turno') || undefined;
+    const alunoId = url.searchParams.get('aluno_id') || undefined;
+
+    // 4. CONSULTA PRINCIPAL (Tabela Turmas + Joins)
+    // Aqui buscamos os nomes reais das classes e cursos
+    let query = supabase
+      .from('turmas')
+      .select(`
+        id, 
+        nome, 
+        turno, 
+        capacidade_maxima, 
+        session_id,
+        classe:classes ( nome ),
+        curso:cursos ( nome )
+      `)
       .eq('escola_id', escolaId)
-      .limit(1);
-    const vinculado = Boolean(vincUser && vincUser.length > 0);
-    if (!vinculado) {
-      return NextResponse.json({ ok: false, error: 'Sem vínculo com a escola', debug: { escolaId, escolaIdSource, sessionId, vinculado } }, { status: 403 });
+      .order('nome');
+
+    if (sessionId) query = query.eq('session_id', sessionId);
+    if (turno) query = query.eq('turno', turno);
+
+    const { data: turmasRaw, error: turmasErr } = await query;
+
+    if (turmasErr) {
+      return NextResponse.json({ ok: false, error: turmasErr.message }, { status: 400 });
     }
 
-    // ✅ CORREÇÃO: Usar apenas campos que existem na tabela turmas
-    let selectFields = 'id, nome, turno, sala, ano_letivo';
-    
-    // ✅ CORREÇÃO: Se sessionId foi fornecido, buscar o nome da sessão para filtrar
-    let anoLetivoFiltro: string | null = null;
-    if (sessionId) {
-      const { data: session } = await supabase
-        .from('school_sessions')
-        .select('nome')
-        .eq('id', sessionId)
-        .single();
-      
-      if (session) {
-        anoLetivoFiltro = session.nome;
-        console.log("🎯 Filtrando por ano letivo:", anoLetivoFiltro);
-      } else {
-        console.error("❌ Sessão não encontrada:", sessionId);
-      }
+    if (!turmasRaw || turmasRaw.length === 0) {
+      return NextResponse.json({ ok: true, items: [], total: 0 });
     }
 
-    // Preferir service role quando disponível. Se faltar, usa o client do usuário.
-    const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    // 5. Buscar Ocupação (Números) separadamente ou via View
+    // Usamos a view apenas para pegar o 'total_matriculas_ativas'
+    const turmaIds = turmasRaw.map((t: any) => t.id);
+    let ocupacaoMap = new Map<string, number>();
 
-    // Se não houver service role configurado, usa o caminho do usuário
-    if (!(adminUrl && serviceRole)) {
-      let query = supabase
-        .from('turmas')
-        .select(selectFields)
-        .eq('escola_id', escolaId)
-        .order('nome');
+    if (turmaIds.length > 0) {
+      const { data: occData } = await supabase
+        .from('vw_ocupacao_turmas')
+        .select('id, total_matriculas_ativas')
+        .in('id', turmaIds);
       
-      // ✅ CORREÇÃO: Filtrar por ano_letivo se sessionId foi fornecido
-      if (anoLetivoFiltro) {
-        query = query.eq('ano_letivo', anoLetivoFiltro);
-      }
-      
-      const { data, error } = await query;
-      
-      if (error) {
-        console.error("❌ Erro ao buscar turmas:", error);
-        return NextResponse.json({ 
-          ok: false, 
-          error: error.message, 
-          debug: { path: 'user', escolaId, escolaIdSource, sessionId, anoLetivoFiltro } 
-        }, { status: 400 });
-      }
-      
-      let items = data || [];
-
-      // ✅ CORREÇÃO: Buscar dados de sessão se solicitado (usando ano_letivo)
-      if (include && include.includes('session') && items.length > 0) {
-        const anosLetivos = Array.from(new Set(items.map((t: any) => t.ano_letivo).filter(Boolean)));
-        if (anosLetivos.length > 0) {
-          const { data: sessions } = await supabase
-            .from('school_sessions')
-            .select('id, nome')
-            .in('nome', anosLetivos);
-          const sessionMap: Map<string, { id: string; nome: string }> = new Map(
-            (sessions || []).map((s: any) => [s.nome as string, { id: s.id as string, nome: s.nome as string }])
-          );
-          
-          items = items.map((turma: any) => {
-            const sess = turma?.ano_letivo ? sessionMap.get(turma.ano_letivo as string) : undefined;
-            return {
-              ...turma,
-              session_id: sess?.id ?? null,
-              session_nome: turma.ano_letivo, // Já temos o nome no ano_letivo
-            };
-          });
-        }
-      }
-
-      return NextResponse.json({ 
-        ok: true, 
-        items, 
-        debug: { 
-          path: 'user', 
-          escolaId, 
-          escolaIdSource, 
-          sessionId, 
-          anoLetivoFiltro,
-          count: items.length,
-          includes: include || 'none'
-        } 
+      occData?.forEach((row: any) => {
+        ocupacaoMap.set(row.id, row.total_matriculas_ativas || 0);
       });
     }
 
-    // ✅ CORREÇÃO: Usar admin client com mesma lógica (tipos garantidos pelo if acima)
-    const admin = createAdminClient<Database>(adminUrl, serviceRole);
-    let query = (admin as any)
-      .from('turmas')
-      .select(selectFields)
-      .eq('escola_id', escolaId)
-      .order('nome');
-    
-    // ✅ CORREÇÃO: Filtrar por ano_letivo se sessionId foi fornecido
-    if (anoLetivoFiltro) {
-      query = query.eq('ano_letivo', anoLetivoFiltro);
-    }
-    
-    const { data, error } = await query;
-    
-    if (error) {
-      console.error("❌ Erro ao buscar turmas:", error);
-      return NextResponse.json({ 
-        ok: false, 
-        error: error.message, 
-        debug: { path: 'admin', escolaId, escolaIdSource, sessionId, anoLetivoFiltro } 
-      }, { status: 400 });
-    }
-    
-    let items = data || [];
-    
-    // ✅ CORREÇÃO: Processar dados relacionados também para admin
-    if (include && include.includes('session') && items.length > 0) {
-      const anosLetivos = Array.from(new Set(items.map((t: any) => t.ano_letivo).filter(Boolean)));
-      if (anosLetivos.length > 0) {
-        const { data: sessions } = await (admin as any)
-          .from('school_sessions')
-          .select('id, nome')
-          .in('nome', anosLetivos);
-        const sessionMap: Map<string, { id: string; nome: string }> = new Map(
-          (sessions || []).map((s: any) => [s.nome as string, { id: s.id as string, nome: s.nome as string }])
-        );
+    // 6. Filtrar se aluno já está matriculado (Opcional)
+    let turmasFiltradas = turmasRaw;
+    if (alunoId) {
+      const { data: matriculasExistentes } = await supabase
+        .from('matriculas')
+        .select('turma_id')
+        .eq('escola_id', escolaId)
+        .eq('aluno_id', alunoId)
+        .in('status', ['ativo', 'ativa'])
+        .in('turma_id', turmaIds);
         
-        items = items.map((turma: any) => {
-          const sess = turma?.ano_letivo ? sessionMap.get(turma.ano_letivo as string) : undefined;
-          return {
-            ...turma,
-            session_id: sess?.id ?? null,
-            session_nome: turma.ano_letivo,
-          };
-        });
-      }
+      const jaMatriculadoIds = new Set((matriculasExistentes || []).map((m: any) => m.turma_id));
+      turmasFiltradas = turmasRaw.filter((t: any) => !jaMatriculadoIds.has(t.id));
     }
 
-    return NextResponse.json({ 
-      ok: true, 
-      items, 
-      debug: { 
-        path: 'admin', 
-        escolaId, 
-        escolaIdSource, 
-        sessionId, 
-        anoLetivoFiltro,
-        count: items.length,
-        includes: include || 'none'
-      } 
-    });
+    // 7. Montar Resposta Final
+    const items = turmasFiltradas.map((t: any) => ({
+      id: t.id,
+      nome: t.nome,
+      turno: t.turno,
+      session_id: t.session_id,
+      
+      // Dados de Estrutura (Objetos e Strings Planas para facilidade)
+      classe: t.classe,
+      classe_nome: t.classe?.nome || null,
+      
+      curso: t.curso,
+      curso_nome: t.curso?.nome || null,
+      
+      // Dados Numéricos
+      capacidade_maxima: t.capacidade_maxima ?? 35,
+      ocupacao_atual: ocupacaoMap.get(t.id) ?? 0
+    }));
+
+    return NextResponse.json({ ok: true, items, total: items.length });
 
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    console.error("💥 Erro geral:", e);
-    return NextResponse.json({ 
-      ok: false, 
-      error: message, 
-      debug: { reason: 'exception' } 
-    }, { status: 500 });
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

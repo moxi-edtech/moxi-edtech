@@ -28,7 +28,10 @@ export async function GET() {
       .order('created_at', { ascending: false })
       .limit(1)
     const role = (rows?.[0] as any)?.role as string | undefined
-    if (role !== 'super_admin') return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
+    const allowed = ['super_admin', 'global_admin']
+    if (!allowed.includes(role || '')) {
+      return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
+    }
 
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return NextResponse.json({ ok: false, error: 'Configuração do Supabase ausente' }, { status: 500 })
