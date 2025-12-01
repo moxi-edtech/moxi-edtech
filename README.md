@@ -1,3 +1,54 @@
+# Moxi Nexa — Guia Rápido (Angola)
+
+Este repositório contém o módulo acadêmico/secretaria do Moxi Nexa, preparado para operação em escolas de Angola com foco em importação em massa, backfill automático da estrutura acadêmica, matrícula por turma (RPC) e rematrícula em massa. Para detalhes aprofundados do fluxo de importação e matrícula, consulte também `README-IMP.md`.
+
+Principais URLs (App Router)
+- Wizard de Importação: `/migracao/alunos`
+- Deep link: `/migracao/alunos?importId={uuid}&step=review` reabre diretamente na Revisão de Matrícula do import.
+- Rematrícula em Massa (Secretaria): `/secretaria/rematricula`
+- Nova Matrícula (individual): `/secretaria/matriculas/nova`
+
+Variáveis de ambiente (Web/API)
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (obrigatória para rotas RPC server-side)
+
+Fluxo recomendado (produção)
+1) Backfill Acadêmico (opcional, via Wizard)
+   - Analisar e criar Sessões (anos letivos), Classes, Cursos e Turmas em falta a partir do CSV (staging).
+2) Importação de Pessoas
+   - Importa somente “alunos” (dados civis) — sem matrículas/financeiro nesta etapa.
+3) Revisão de Matrícula (por Turma)
+   - Pré-visualiza grupos por turma (status “ready” ou “warning”).
+   - O operador marca os lotes e confirma.
+4) Matrícula em Massa (RPC por Turma)
+   - O front dispara em loop para cada turma marcada: `POST /api/matriculas/massa/por-turma`.
+5) Rematrícula em Massa (Secretaria)
+   - Suporta RPC e geração opcional de mensalidades.
+
+Getting Started (Angola)
+- Migrations: rode as migrations do Supabase (inclui RPCs e índices críticos).
+- Envs: configure `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
+- Importação: acesse `/migracao/alunos` e siga os passos (inclui Backfill e Revisão por Turma).
+- Gestão diária: use `/secretaria/matriculas` e `/secretaria/rematricula` para matrícula e rematrícula.
+- PDFs oficiais: `/api/secretaria/matriculas/{id}/declaracao` gera PDF com QR e assinatura.
+- Persistência de progresso: o Wizard grava localmente o passo atual, `importId`, `escolaId`, mapeamento e a seleção dos lotes de matrícula; ao recarregar a página, retoma de onde parou.
+
+APIs principais
+- Backfill Acadêmico (preview/aplicar): `GET/POST /api/migracao/:importId/academico/backfill`
+- Preview de Matrícula: `GET /api/migracao/:importId/matricula/preview`
+- Matrícula por Turma (RPC): `POST /api/matriculas/massa/por-turma`
+
+Banco de Dados (pontos críticos)
+- `importar_alunos` (RPC): apenas cria/atualiza em `public.alunos` (matching por profile_id → BI → email).
+- `matricular_em_massa_por_turma` (RPC): matricula apenas a turma alvo (idempotente; ON CONFLICT reativa matrícula).
+- Índice único em `mensalidades (escola_id, aluno_id, ano_referencia, mes_referencia)` para evitar duplicidade.
+
+Documentação detalhada
+- Leia `README-IMP.md` para o fluxo completo com diagramas Mermaid, endpoints e exemplos.
+
+---
+
 # Supabase CLI (v1)
 
 [![Coverage Status](https://coveralls.io/repos/github/supabase/cli/badge.svg?branch=main)](https://coveralls.io/github/supabase/cli?branch=main)

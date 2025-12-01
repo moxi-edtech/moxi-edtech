@@ -28,11 +28,13 @@ export type Periodo = {
 };
 
 export type MatrixRow = {
-  id: number;
+  // Alterado para string | number para flexibilidade, mas usaremos string no novo componente
+  id: string | number; 
   nome: string;
-  manha?: number;
-  tarde?: number;
-  noite?: number;
+  cursoKey?: string; // Novo campo para saber a origem
+  manha: number;
+  tarde: number;
+  noite: number;
 };
 
 export type SelectedBlueprint = {
@@ -70,17 +72,22 @@ export interface AcademicStep1Props {
 export interface AcademicStep2Props {
   presetCategory: CurriculumCategory;
   onPresetCategoryChange: (category: CurriculumCategory) => void;
-  curriculumPreset: CurriculumKey | null;
-  onCurriculumPresetChange: (preset: CurriculumKey | null) => void;
-  selectedBlueprint: SelectedBlueprint | null;
-  onSelectedBlueprintChange: (blueprint: SelectedBlueprint | null) => void;
+  
+  // Props simplificadas para a nova lógica
   matrix: MatrixRow[];
   onMatrixChange: (matrix: MatrixRow[]) => void;
-  onMatrixUpdate: (id: number, field: "manha" | "tarde" | "noite", value: string) => void;
-  presetApplied: boolean;
-  applyingPreset: boolean;
+  onMatrixUpdate: (id: string | number, field: "manha" | "tarde" | "noite", value: string) => void;
+  
   turnos: TurnosState;
   onApplyCurriculumPreset: () => void;
+  applyingPreset: boolean;
+  
+  // Mantidos para compatibilidade se necessário, mas não usados na lógica nova
+  curriculumPreset?: CurriculumKey | null;
+  onCurriculumPresetChange?: (preset: CurriculumKey | null) => void;
+  selectedBlueprint?: SelectedBlueprint | null;
+  onSelectedBlueprintChange?: (blueprint: SelectedBlueprint | null) => void;
+  presetApplied?: boolean;
 }
 
 // =========================
@@ -93,12 +100,6 @@ export const PRESETS_META: CurriculumPresetMeta[] = [
     key: "primario_base",
     categoria: "geral",
     label: "Primário (Base)",
-    badge: "1ª a 6ª Classe",
-  },
-  {
-    key: "primario_avancado",
-    categoria: "geral",
-    label: "Primário (Avançado)",
     badge: "1ª a 6ª Classe",
   },
   {
@@ -116,6 +117,11 @@ export const PRESETS_META: CurriculumPresetMeta[] = [
     categoria: "geral",
     label: "Ciências Económicas e Jurídicas",
   },
+  {
+    key: "humanas",
+    categoria: "geral",
+    label: "Ciências Humanas",
+  },
 
   // TÉCNICO – INDÚSTRIA & TEC
   {
@@ -129,16 +135,21 @@ export const PRESETS_META: CurriculumPresetMeta[] = [
     label: "Técnico de Construção Civil",
   },
   {
-    key: "tecnico_base",
+    key: "tecnico_energia",
     categoria: "tecnico_ind",
-    label: "Técnico (Base Genérica)",
+    label: "Energia e Instalações",
   },
 
   // TÉCNICO – GESTÃO & SERVIÇOS
   {
     key: "tecnico_gestao",
     categoria: "tecnico_serv",
-    label: "Técnico de Gestão / Contabilidade",
+    label: "Técnico de Gestão",
+  },
+  {
+    key: "tecnico_rh",
+    categoria: "tecnico_serv",
+    label: "Recursos Humanos",
   },
 
   // SAÚDE
@@ -150,7 +161,14 @@ export const PRESETS_META: CurriculumPresetMeta[] = [
   {
     key: "saude_farmacia_analises",
     categoria: "saude",
-    label: "Farmácia / Análises Clínicas",
+    label: "Farmácia / Análises",
+  },
+  
+  // MAGISTÉRIO
+  {
+    key: "magisterio_primario",
+    categoria: "magisterio",
+    label: "Magistério Primário",
   },
 ];
 
@@ -158,22 +176,26 @@ export const PRESETS_META: CurriculumPresetMeta[] = [
 // UTILITÁRIOS
 // =========================
 
-export function createMatrixFromBlueprint(blueprint: CurriculumDisciplineBlueprint[]): MatrixRow[] {
-  const uniqueClasses = Array.from(
-    new Set(blueprint.map((d: CurriculumDisciplineBlueprint) => d.classe))
-  );
+// Atualizado para retornar estrutura plana compatível com o blueprint atual
+export function createMatrixFromBlueprint(blueprint: any): MatrixRow[] {
+  // Se o blueprint for a estrutura antiga (array de objetos com classe), extrai classes únicas
+  // Se for a nova (objeto com .classes array), usa direto
+  
+  let classes: string[] = [];
+  
+  if (Array.isArray(blueprint)) {
+     classes = Array.from(new Set(blueprint.map((d: any) => d.classe)));
+  } else if (blueprint?.classes) {
+     classes = blueprint.classes;
+  }
 
-  return uniqueClasses.map((cls, idx) => ({
-    id: idx,
-    nome: cls,
+  return classes.map((cls, idx) => ({
+    id: idx, // Será sobrescrito no componente
+    nome: cls.includes('ª') ? `${cls} Classe` : cls,
     manha: 0,
     tarde: 0,
     noite: 0,
   }));
-}
-
-export function getDisciplinasFromBlueprint(blueprint: CurriculumDisciplineBlueprint[]): string[] {
-  return Array.from(new Set(blueprint.map((d) => d.nome)));
 }
 
 export function calculateTotalTurmas(matrix: MatrixRow[], turnos: TurnosState): number {

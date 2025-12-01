@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { createRouteClient } from "@/lib/supabase/route-client";
+import { importBelongsToEscola, userHasAccessToEscola } from "../../auth-helpers";
 
 import type { Database } from "~types/supabase";
 import type { AlunoStagingRecord, MappedColumns } from "~types/migracao";
@@ -21,6 +23,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "SUPABASE configuration missing" }, { status: 500 });
   }
 
+  // Autentica usuário
+  const routeClient = await createRouteClient();
+  const { data: userRes } = await routeClient.auth.getUser();
+  const authUser = userRes?.user;
+  if (!authUser) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+
   let body: ValidateBody;
   try {
     body = await request.json();
@@ -34,6 +42,12 @@ export async function POST(request: Request) {
   }
 
   const supabase = createAdminClient<Database>(adminUrl, serviceKey);
+
+  // Verifica acesso e consistência do importId/escolaId
+  const hasAccess = await userHasAccessToEscola(supabase, escolaId, authUser.id);
+  if (!hasAccess) return NextResponse.json({ error: "Sem vínculo com a escola" }, { status: 403 });
+  const sameEscola = await importBelongsToEscola(supabase, importId, escolaId);
+  if (!sameEscola) return NextResponse.json({ error: "Importação não pertence à escola" }, { status: 403 });
 
   const { data: migration, error: migrationError } = await supabase
     .from("import_migrations")

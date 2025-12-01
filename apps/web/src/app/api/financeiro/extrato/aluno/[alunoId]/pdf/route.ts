@@ -100,7 +100,7 @@ function normalizePagamentos(pagamentos: PaymentRow | PaymentRow[] | null | unde
   return Array.isArray(pagamentos) ? pagamentos : [pagamentos];
 }
 
-export async function GET(_req: Request, { params }: { params: { alunoId: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ alunoId: string }> }) {
   try {
     const supabase = await supabaseServerTyped<any>();
     const { data: userRes } = await supabase.auth.getUser();
@@ -109,7 +109,7 @@ export async function GET(_req: Request, { params }: { params: { alunoId: string
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     }
 
-    const alunoId = params.alunoId;
+    const { alunoId } = await params;
 
     const { data: alunoRow, error: alunoError } = await supabase
       .from("alunos")

@@ -20,9 +20,10 @@ const UpdateSchema = z.object({
 })
 
 // GET aluno details (alunos + profiles)
-export async function GET(_req: Request, { params }: { params: Promise<{ alunoId: string }> }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { alunoId } = await params
+    const { id } = await params
+    const alunoId = id
     const s = await supabaseServerTyped<any>()
     const { data: userRes } = await s.auth.getUser()
     const user = userRes?.user
@@ -83,9 +84,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ alunoId
 }
 
 // PATCH aluno (alunos + profiles)
-export async function PATCH(req: Request, { params }: { params: Promise<{ alunoId: string }> }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { alunoId } = await params
+    const { id } = await params
+    const alunoId = id
     const json = await req.json().catch(() => ({}))
     const parsed = UpdateSchema.safeParse(json)
     if (!parsed.success) {
@@ -178,3 +180,4 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ alunoI
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
 }
+

@@ -8,7 +8,24 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Cores da MoxiNexa
+        // --- AQUI ESTÁ A MUDANÇA MÁGICA ---
+        // Atualizei o 'brand' para o tom escuro (Slate) que você gostou no HTML
+        brand: {
+          DEFAULT: '#0f172a', // Slate 900
+          50: '#f8fafc',
+          100: '#f1f5f9',
+          200: '#e2e8f0',
+          300: '#cbd5e1',
+          400: '#94a3b8',
+          500: '#64748b',
+          600: '#475569',
+          700: '#334155',
+          800: '#1e293b', // Slate 800 (usado para bordas escuras)
+          900: '#0f172a', // Slate 900 (O Fundo do Sidebar que você gostou)
+          950: '#020617', // Mais escuro ainda, para gradientes profundos
+        },
+        
+        // Cores legadas/específicas da MoxiNexa
         moxinexa: {
           teal: {
             DEFAULT: "#0D9488",
@@ -24,17 +41,14 @@ module.exports = {
             900: "#134e4a",
             950: "#042f2e",
           },
-          navy: "#0B2C45",
+          // Mantive o navy original caso precise usar em botões secundários
+          navy: "#0B2C45", 
           dark: "#1A2B3C",
           light: "#F9FAFB",
           gray: "#6C757D",
         },
-        // Cores do design compartilhado
-        brand: {
-          900: '#0f172a',
-          800: '#1e293b',
-        },
-        // Cores do slate para compatibilidade
+
+        // Redefinindo Slate explicitamente (para garantir compatibilidade)
         slate: {
           50: '#f8fafc',
           100: '#f1f5f9',
@@ -75,7 +89,6 @@ module.exports = {
       backdropBlur: {
         xs: '2px',
       },
-      // Adiciona suporte para CSS custom properties
       spacing: {
         'sidebar': 'var(--sidebar-w, 256px)',
         'sidebar-collapsed': 'var(--sidebar-collapsed, 80px)',

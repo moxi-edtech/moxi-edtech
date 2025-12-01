@@ -3,6 +3,35 @@
 --  - Atualiza vw_financeiro_propinas_por_turma para usar apenas t.nome
 -- ======================================================================
 
+-- Garante que mensalidades.matricula_id exista (idempotente)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name   = 'mensalidades'
+      AND column_name  = 'matricula_id'
+  ) THEN
+    ALTER TABLE public.mensalidades
+      ADD COLUMN matricula_id uuid;
+
+    -- opcional: FK para public.matriculas
+    BEGIN
+      ALTER TABLE public.mensalidades
+        ADD CONSTRAINT mensalidades_matricula_id_fkey
+        FOREIGN KEY (matricula_id)
+        REFERENCES public.matriculas(id)
+        ON DELETE SET NULL;
+    EXCEPTION
+      WHEN duplicate_object THEN
+        -- constraint já existe, ignora
+        NULL;
+    END;
+  END IF;
+END $$;
+
+
 CREATE OR REPLACE VIEW public.vw_financeiro_propinas_por_turma
 WITH (security_invoker = true) AS
 SELECT

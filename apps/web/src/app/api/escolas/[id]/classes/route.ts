@@ -105,3 +105,108 @@ export async function GET(
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
 }
+
+// POST /api/escolas/[id]/classes
+// Cria uma nova classe na escola (usa service role com autorização)
+export async function POST(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id: escolaId } = await context.params;
+  try {
+    const s = await supabaseServer();
+    const { data: auth } = await s.auth.getUser();
+    const user = auth?.user;
+    if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
+
+    // Autoriza criar: super_admin, configurar_escola, admin vinculado
+    let allowed = false;
+    try {
+      const { data: prof } = await s
+        .from('profiles')
+        .select('role')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      const role = (prof?.[0] as any)?.role as string | undefined;
+      if (role === 'super_admin') allowed = true;
+    } catch {}
+    if (!allowed) {
+      try {
+        const { data: vinc } = await s
+          .from('escola_usuarios')
+          .select('papel')
+          .eq('escola_id', escolaId)
+          .eq('user_id', user.id)
+          .maybeSingle();
+        const papel = (vinc as any)?.papel as any | undefined;
+        if (papel) allowed = true; // hasPermission(papel,'configurar_escola') poderia refinar
+      } catch {}
+    }
+    if (!allowed) {
+      try {
+        const { data: adminLink } = await s
+          .from('escola_administradores')
+          .select('user_id')
+          .eq('escola_id', escolaId)
+          .eq('user_id', user.id)
+          .limit(1);
+        allowed = Boolean(adminLink && (adminLink as any[]).length > 0);
+      } catch {}
+    }
+    if (!allowed) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
+
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ ok: false, error: 'Configuração Supabase ausente.' }, { status: 500 });
+    }
+    const admin = createAdminClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    const body = await req.json().catch(() => ({}));
+    const schema = z.object({
+      nome: z.string().trim().min(1),
+      nivel: z.string().trim().nullable().optional(),
+      descricao: z.string().trim().nullable().optional(),
+    });
+    const parsed = schema.safeParse(body);
+    if (!parsed.success) {
+      const msg = parsed.error.issues?.[0]?.message || 'Dados inválidos';
+      return NextResponse.json({ ok: false, error: msg }, { status: 400 });
+    }
+
+    // Define ordem como último+1
+    let ordem = 1;
+    try {
+      const { data } = await (admin as any)
+        .from('classes')
+        .select('ordem')
+        .eq('escola_id', escolaId)
+        .order('ordem', { ascending: false })
+        .limit(1);
+      const top = (data || [])[0] as any;
+      ordem = Number(top?.ordem || 0) + 1;
+    } catch {}
+
+    const payload: any = {
+      escola_id: escolaId,
+      nome: parsed.data.nome,
+      ordem,
+    };
+    if (parsed.data.nivel !== undefined) payload.nivel = parsed.data.nivel;
+    if (parsed.data.descricao !== undefined) payload.descricao = parsed.data.descricao;
+
+    const { data: ins, error } = await (admin as any)
+      .from('classes')
+      .insert(payload)
+      .select('id, nome, nivel, descricao, ordem')
+      .single();
+    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+
+    return NextResponse.json({ ok: true, data: ins });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Erro inesperado';
+    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+  }
+}

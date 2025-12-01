@@ -4,12 +4,12 @@ import type { GrupoMatricula } from "~types/matricula";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { importId: string } }
+  { params }: { params: Promise<{ importId: string }> }
 ) {
   const supabase = createRouteClient();
 
   // opcional: validar user/escola via sessão aqui se quiser
-  const importId = params.importId;
+  const { importId } = await params;
 
   const { data, error } = await supabase
     .from("staging_alunos")

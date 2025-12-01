@@ -154,18 +154,13 @@ export function MatriculasEmMassa({
     setMatriculandoKey(grupoKey(grupo));
 
     try {
-      const payload: MatriculaMassaPayload = {
+      const payload = {
         import_id: grupo.import_id,
         escola_id: grupo.escola_id,
-        curso_codigo: grupo.curso_codigo!,
-        classe_numero: grupo.classe_numero!,
-        turno_codigo: grupo.turno_codigo!,
-        turma_letra: grupo.turma_letra!,
-        ano_letivo: grupo.ano_letivo!,
         turma_id: turmaId,
       };
 
-      const res = await fetch("/api/matriculas/massa", {
+      const res = await fetch("/api/matriculas/massa/por-turma", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

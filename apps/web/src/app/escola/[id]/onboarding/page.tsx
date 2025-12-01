@@ -20,5 +20,5 @@ export default async function OnboardingPage({ params }: { params: Promise<{ id:
   } catch {}
 
   // Caso contrário, vai para a página de configurações acadêmicas (wizard)
-  redirect(`/escola/${id}/admin`)
+  redirect(`/escola/${id}/configuracoes/onboarding`)
 }

@@ -7,7 +7,7 @@ export default function SecretariaShell({ children }: { children: React.ReactNod
   return (
     <div className="flex min-h-screen font-sans bg-gradient-to-br from-moxinexa-light/20 to-white text-moxinexa-dark">
       <SecretariaSidebar />
-      <div className="flex-1">
+      <div className="flex-1 transition-[padding] duration-300 ease-in-out" style={{ paddingLeft: "var(--sidebar-w, 256px)" }}>
         <AppHeader title="Secretaria" />
         <main className="p-6 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-sm p-6 border border-moxinexa-light/30">

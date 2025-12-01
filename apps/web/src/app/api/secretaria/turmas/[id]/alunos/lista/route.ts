@@ -43,7 +43,7 @@ type MatriculaRow = {
   } | null;
 };
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const supabase = await supabaseServerTyped<any>();
     const { data: userRes } = await supabase.auth.getUser();
@@ -53,7 +53,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     }
 
-    const turmaId = params.id;
+    const { id: turmaId } = await params;
     const { searchParams } = new URL(req.url);
     const format = searchParams.get("format") ?? "json";
 

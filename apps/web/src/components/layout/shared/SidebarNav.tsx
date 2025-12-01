@@ -1,84 +1,60 @@
 "use client";
 
 import Link from "next/link";
-import clsx from "clsx";
 import { usePathname } from "next/navigation";
-import {
-  HomeIcon,
-  UsersIcon,
-  ChartBarIcon,
-  Cog6ToothIcon,
-  LifebuoyIcon,
-  BuildingLibraryIcon,
-  BanknotesIcon,
-  BoltIcon,
-  EnvelopeIcon,
-  AcademicCapIcon,
-  MegaphoneIcon,
-  BellAlertIcon,
-  ArrowDownTrayIcon,
-} from "@heroicons/react/24/outline";
-
-// Map of icon name -> component. Allows passing serializable strings from Server Components.
-const ICONS = {
-  HomeIcon,
-  UsersIcon,
-  ChartBarIcon,
-  Cog6ToothIcon,
-  LifebuoyIcon,
-  BuildingLibraryIcon,
-  BanknotesIcon,
-  BoltIcon,
-  EnvelopeIcon,
-  AcademicCapIcon,
-  MegaphoneIcon,
-  BellAlertIcon,
-  ArrowDownTrayIcon,
-};
+import { useSidebarContext } from "./SidebarContext";
+// Importa os ícones dinâmicos do Lucide ou Heroicons aqui
+import * as Icons from "lucide-react"; 
 
 export type NavItem = {
   label: string;
   href: string;
-  // Icon is passed as a string key that maps to ICONS
-  icon?: keyof typeof ICONS | string;
-  active?: boolean;
-  disabled?: boolean;
+  icon: string; // Nome do ícone (ex: 'LayoutDashboard')
   badge?: string;
 };
 
 export function SidebarNav({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
+  const { collapsed } = useSidebarContext();
+
   return (
-    <nav className="mt-2 space-y-1">
-      {items.map((it) => {
-        const Icon = it.icon ? ICONS[it.icon as keyof typeof ICONS] : undefined;
-        const isActive = typeof it.active === 'boolean'
-          ? it.active
-          : Boolean(pathname && (pathname === it.href || pathname.startsWith(it.href + "/")));
-        const content = (
-          <div
-            className={clsx(
-              "flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition",
-              it.disabled
-                ? "opacity-60 cursor-not-allowed"
-                : isActive
-                ? "bg-white/20 shadow-sm border-l-4 border-white"
-                : "hover:bg-white/10"
-            )}
+    <nav className="flex-1 space-y-1 py-4">
+      {items.map((item) => {
+        const Icon = (Icons as any)[item.icon] || Icons.HelpCircle;
+        const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`);
+
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            title={collapsed ? item.label : undefined} // Tooltip nativo se colapsado
+            className={`
+              relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all mx-2
+              ${isActive 
+                ? "bg-teal-600 text-white shadow-md shadow-teal-900/20" 
+                : "text-slate-400 hover:bg-white/5 hover:text-white"
+              }
+              ${collapsed ? "justify-center px-0" : ""}
+            `}
           >
-            {Icon && <Icon className="w-5 h-5" />}
-            <span className="truncate sidebar-text">{it.label}</span>
-            {it.badge && (
-              <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-white/10 border border-white/20 sidebar-text">
-                {it.badge}
+            <Icon size={20} className="shrink-0" />
+            
+            <span className={`whitespace-nowrap transition-all duration-300 ${collapsed ? 'w-0 opacity-0 hidden' : 'w-auto opacity-100 block'}`}>
+              {item.label}
+            </span>
+
+            {/* Badge (Pendente, Novo, etc) */}
+            {item.badge && !collapsed && (
+              <span className="ml-auto rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-400">
+                {item.badge}
               </span>
             )}
-          </div>
-        );
-        return it.disabled ? (
-          <div key={it.label} title="Indisponível">{content}</div>
-        ) : (
-          <Link key={it.label} href={it.href}>{content}</Link>
+            
+            {/* Ponto indicador de Badge se colapsado */}
+            {item.badge && collapsed && (
+              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-amber-500" />
+            )}
+          </Link>
         );
       })}
     </nav>

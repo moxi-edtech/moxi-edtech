@@ -1,13 +1,19 @@
 "use client";
 
-import { useState, useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { useState, useEffect, useMemo } from 'react';
+import { 
+  User, Calendar, Building, Wallet, CheckCircle2, 
+  ArrowRight, Loader2, Search, X, GraduationCap, Clock, AlertCircle,
+  BookOpen
+} from "lucide-react";
 
+// --- TIPOS MAIS FLEXÍVEIS ---
 interface Aluno {
   id: string;
   nome: string;
-  email?: string;
-  telefone?: string;
-  endereco?: string;
+  bilhete?: string;
+  fotoUrl?: string;
 }
 
 interface Session {
@@ -19,284 +25,147 @@ interface Turma {
   id: string;
   nome: string;
   turno?: string;
-  classe?: string;
-  curso?: string;
+  
+  // Variações possíveis de retorno da API
+  classe_nome?: string; 
+  classe?: { nome: string }; 
+  classes?: { nome: string }; // Supabase às vezes retorna plural
+  
+  curso_nome?: string;
+  curso?: { nome: string };
+  cursos?: { nome: string }; // Supabase às vezes retorna plural
+  
+  ocupacao?: number;
+  ocupacao_atual?: number;
+  capacidade?: number;
+  capacidade_maxima?: number;
 }
 
-interface Classe {
-  id: string;
-  nome: string;
-}
-
-interface Curso {
-  id: string;
-  nome: string;
-}
-
-export default function NovaMatriculaPage() {
+export default function NovaMatriculaLean() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  const [alunoId, setAlunoId] = useState("");
-  const [sessionId, setSessionId] = useState("");
-  const [turmaId, setTurmaId] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [ok, setOk] = useState<string | null>(null);
-  const [numeroGerado, setNumeroGerado] = useState<string | null>(null);
-  const [dataMatriculaGerada, setDataMatriculaGerada] = useState<string | null>(null);
-
-  const [turno, setTurno] = useState<"manha" | "tarde" | "noite" | "">("");
-  const [classeId, setClasseId] = useState("");
-  const [cursoId, setCursoId] = useState("");
-
-  const [alunos, setAlunos] = useState<Aluno[]>([]);
+  // --- ESTADOS ---
+  const [loadingInit, setLoadingInit] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  
+  const [alunosList, setAlunosList] = useState<Aluno[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [turmas, setTurmas] = useState<Turma[]>([]);
-  const [classes, setClasses] = useState<Classe[]>([]);
-  const [cursos, setCursos] = useState<Curso[]>([]);
-  const [alunoSelecionado, setAlunoSelecionado] = useState<Aluno | null>(null);
 
-  // Financeiro: campos de mensalidade
-  const [valorMensalidade, setValorMensalidade] = useState<string>("");
-  const [diaVencimento, setDiaVencimento] = useState<string>("");
-  const [gerarMensalidadesTodas, setGerarMensalidadesTodas] = useState<boolean>(true);
+  const [alunoId, setAlunoId] = useState(searchParams?.get("alunoId") || "");
+  const [sessionId, setSessionId] = useState("");
+  const [turmaId, setTurmaId] = useState("");
 
-  // ✅ NOVO: Estados de carregamento para debug
-  const [carregandoAlunos, setCarregandoAlunos] = useState(true);
-  const [carregandoSessions, setCarregandoSessions] = useState(true);
-  const [carregandoClasses, setCarregandoClasses] = useState(true);
-  const [carregandoCursos, setCarregandoCursos] = useState(true);
-  const [carregandoTurmas, setCarregandoTurmas] = useState(true);
+  // --- MEMOS ---
+  const alunoSelecionado = useMemo(() => 
+    alunosList.find(a => a.id === alunoId), 
+  [alunoId, alunosList]);
 
+  const turmaSelecionada = useMemo(() => 
+    turmas.find(t => t.id === turmaId), 
+  [turmaId, turmas]);
+
+  // --- DEBUGGER (Olha para o Console do Browser F12) ---
   useEffect(() => {
-    const fetchData = async () => {
+    if (turmaSelecionada) {
+      console.log("🔎 DEBUG TURMA SELECIONADA:", turmaSelecionada);
+    }
+  }, [turmaSelecionada]);
+
+  // --- HELPERS DE EXTRAÇÃO ROBUSTOS ---
+  const getClasseLabel = (t?: Turma) => {
+    if (!t) return "—";
+    // Tenta todas as combinações possíveis
+    const nome = t.classe?.nome || t.classes?.nome || t.classe_nome;
+    return nome || "Classe não definida";
+  };
+
+  const getCursoLabel = (t?: Turma) => {
+    if (!t) return "—";
+    // Tenta todas as combinações possíveis
+    const nome = t.curso?.nome || t.cursos?.nome || t.curso_nome;
+    
+    // Se ainda assim for null/undefined, assumimos Ensino Geral se não for técnico explicitamente
+    return nome || "Ensino Geral";
+  };
+
+  const getTurnoLabel = (t?: Turma) => t?.turno || "Turno não definido";
+  
+  const getOcupacao = (t?: Turma) => {
+    const atual = t?.ocupacao_atual ?? t?.ocupacao ?? 0;
+    const max = t?.capacidade_maxima ?? t?.capacidade ?? 30;
+    return `${atual}/${max}`;
+  };
+
+  const isTecnico = (t?: Turma) => {
+    const nome = getCursoLabel(t).toLowerCase();
+    return nome.includes('técnico') || nome.includes('tecnico') || nome.includes('saúde');
+  };
+
+  // --- CARREGAMENTO INICIAL ---
+  useEffect(() => {
+    async function loadData() {
       try {
-        setCarregandoAlunos(true);
-        setCarregandoSessions(true);
-        setCarregandoClasses(true);
-        setCarregandoCursos(true);
-
-        console.log("🔄 Iniciando carregamento de dados...");
-
-        // ✅ CORREÇÃO: Fetch separado para cada endpoint com debug
-        const [alunosRes, sessionsRes, classesRes, cursosRes] = await Promise.all([
-          fetch("/api/secretaria/alunos"),
-          fetch("/api/secretaria/school-sessions"),
-          fetch("/api/secretaria/classes"),
-          fetch("/api/secretaria/cursos"),
+        setLoadingInit(true);
+        const [resAlunos, resSessions] = await Promise.all([
+          fetch("/api/secretaria/alunos?status=ativo"),
+          fetch("/api/secretaria/school-sessions")
         ]);
 
-        console.log("📊 Status das respostas:", {
-          alunos: alunosRes.status,
-          sessions: sessionsRes.status,
-          classes: classesRes.status,
-          cursos: cursosRes.status,
-        });
-
-        // Processar alunos
-        if (alunosRes.ok) {
-          const alunosJson = await alunosRes.json();
-          console.log("👥 Dados dos alunos:", alunosJson);
-          if (alunosJson.items) {
-            setAlunos(alunosJson.items);
-          } else if (alunosJson.alunos) {
-            setAlunos(alunosJson.alunos);
-          } else if (Array.isArray(alunosJson)) {
-            setAlunos(alunosJson);
-          }
-        } else {
-          console.error("❌ Erro ao carregar alunos:", alunosRes.status);
+        if (resAlunos.ok) {
+          const json = await resAlunos.json();
+          setAlunosList(json.data || json.items || []);
         }
-        setCarregandoAlunos(false);
-
-        // Processar sessions (ano letivo)
-        if (sessionsRes.ok) {
-          const sessionsJson = await sessionsRes.json();
-          console.log("📅 Dados das sessions:", sessionsJson);
-          if (sessionsJson.items) {
-            setSessions(sessionsJson.items);
-          }
-        } else {
-          console.error("❌ Erro ao carregar sessions:", sessionsRes.status);
+        if (resSessions.ok) {
+          const json = await resSessions.json();
+          const items = json.data || json.items || [];
+          setSessions(items);
+          const active = items.find((s: any) => s.status === 'ativa');
+          if (active) setSessionId(active.id);
+          else if (items.length > 0) setSessionId(items[0].id);
         }
-        setCarregandoSessions(false);
-
-        // Processar classes
-        if (classesRes.ok) {
-          const classesJson = await classesRes.json();
-          console.log("🏫 Dados das classes:", classesJson);
-          if (classesJson.items) {
-            setClasses(classesJson.items);
-          }
-        } else {
-          console.error("❌ Erro ao carregar classes:", classesRes.status);
-        }
-        setCarregandoClasses(false);
-
-        // Processar cursos
-        if (cursosRes.ok) {
-          const cursosJson = await cursosRes.json();
-          console.log("📚 Dados dos cursos:", cursosJson);
-          if (cursosJson.items) {
-            setCursos(cursosJson.items);
-          }
-        } else {
-          console.error("❌ Erro ao carregar cursos:", cursosRes.status);
-        }
-        setCarregandoCursos(false);
-
-      } catch (e) {
-        console.error("💥 Erro geral ao carregar dados:", e);
-        setError("Falha ao carregar dados para o formulário.");
-        setCarregandoAlunos(false);
-        setCarregandoSessions(false);
-        setCarregandoClasses(false);
-        setCarregandoCursos(false);
+      } catch (error) {
+        console.error("Erro loading:", error);
+      } finally {
+        setLoadingInit(false);
       }
-    };
-    fetchData();
+    }
+    loadData();
   }, []);
 
+  // --- CARREGAR TURMAS ---
   useEffect(() => {
-    const fetchAndSetAluno = async () => {
-      const alunoIdFromUrl = searchParams?.get("alunoId");
-      if (alunoIdFromUrl) {
-        setAlunoId(alunoIdFromUrl);
-        
-        const aluno = alunos.find((a) => a.id === alunoIdFromUrl);
-        if(aluno) {
-          setAlunoSelecionado(aluno);
-        } else {
-          // Se o aluno não estiver na lista, busque-o individualmente
-          try {
-            const res = await fetch(
-              `/api/secretaria/alunos/${alunoIdFromUrl}`,
-            );
-            if (res.ok) {
-              const alunoData = await res.json();
-              if (alunoData) {
-                // Adicione o aluno à lista e defina-o como selecionado
-                setAlunos((prevAlunos) => [...prevAlunos, alunoData]);
-                setAlunoSelecionado(alunoData);
-              }
-            }
-          } catch (error) {
-            console.error("Erro ao buscar aluno individualmente:", error);
-          }
-        }
-      }
-    };
-
-    fetchAndSetAluno();
-  }, [searchParams, alunos]);
-
-  // ✅ CORREÇÃO: Carregar turmas quando sessionId mudar
-  useEffect(() => {
-    const fetchTurmas = async () => {
-      if (sessionId) {
-        try {
-          setCarregandoTurmas(true);
-          console.log("🔄 Buscando turmas para session:", sessionId);
-          
-          const url = `/api/secretaria/turmas-simples?session_id=${sessionId}&aluno_id=${alunoId || ''}`;
-          console.log("📡 URL das turmas:", url);
-          
-          const res = await fetch(url);
-          console.log("📊 Status das turmas:", res.status);
-          
-          if (res.ok) {
-            const json = await res.json();
-            console.log("🏫 Dados das turmas:", json);
-            // Aceita múltiplos formatos de resposta: { ok, items }, { items }, { turmas }, { data }, []
-            const items: any[] = Array.isArray(json)
-              ? json
-              : (json?.items ?? json?.turmas ?? json?.data ?? []);
-            if (Array.isArray(items)) {
-              setTurmas(items as any);
-              console.log("✅ Turmas carregadas:", items.length, json?.debug ? { debug: json.debug } : undefined);
-            } else {
-              console.error("❌ Formato inesperado de turmas:", json);
-            }
-          } else {
-            console.error("❌ Erro HTTP das turmas:", res.status);
-          }
-        } catch (e) {
-          console.error("💥 Erro ao carregar turmas:", e);
-          setError("Falha ao carregar turmas.");
-        } finally {
-          setCarregandoTurmas(false);
-        }
-      } else {
+    async function loadTurmas() {
+      if (!sessionId) {
         setTurmas([]);
         setTurmaId("");
-        setCarregandoTurmas(false);
+        return;
       }
-    };
-    fetchTurmas();
-  }, [sessionId, alunoId]);
-
-  // Auto-preencher valor/dia conforme curso/classe selecionados, se ainda não preenchidos
-  useEffect(() => {
-    const run = async () => {
       try {
-        if (!classeId && !cursoId) return;
-        const params = new URLSearchParams();
-        if (classeId) params.set('classe_id', classeId);
-        if (cursoId) params.set('curso_id', cursoId);
-        const res = await fetch(`/api/financeiro/tabelas-mensalidade/resolve?${params.toString()}`, { cache: 'no-store' });
-        const json = await res.json();
-        if (json?.ok) {
-          if (!valorMensalidade && typeof json.valor === 'number') setValorMensalidade(String(json.valor));
-          if (!diaVencimento && json.dia_vencimento) setDiaVencimento(String(json.dia_vencimento));
+        const res = await fetch(`/api/secretaria/turmas-simples?session_id=${sessionId}`);
+        if (res.ok) {
+          const json = await res.json();
+          // IMPORTANTE: O backend deve retornar 'classe: { nome: ... }' e 'curso: { nome: ... }'
+          setTurmas(json.data || json.items || []);
         }
-      } catch {}
-    };
-    run();
-  }, [classeId, cursoId]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    setOk(null);
-    setNumeroGerado(null);
-    setDataMatriculaGerada(null);
-
-    // ✅ Validação dos campos obrigatórios
-    const camposObrigatorios = [
-      { campo: alunoId, nome: "Aluno" },
-      { campo: sessionId, nome: "Ano Letivo" },
-      { campo: turmaId, nome: "Turma" },
-      { campo: turno, nome: "Turno" },
-      { campo: classeId, nome: "Classe" },
-      { campo: cursoId, nome: "Curso" },
-    ];
-
-    const camposFaltantes = camposObrigatorios.filter(item => !item.campo);
-    if (camposFaltantes.length > 0) {
-      setError(`Por favor, preencha todos os campos obrigatórios: ${camposFaltantes.map(item => item.nome).join(', ')}`);
-      setLoading(false);
-      return;
+      } catch (error) {
+        console.error(error);
+      }
     }
+    loadTurmas();
+  }, [sessionId]);
 
+  // --- SUBMIT ---
+  const handleSubmit = async () => {
+    if (!alunoId || !sessionId || !turmaId) return;
+    setSubmitting(true);
     try {
       const payload = {
         aluno_id: alunoId,
-        session_id: sessionId,
         turma_id: turmaId,
-        turno: turno,
-        classe_id: classeId,
-        curso_id: cursoId,
-        numero_matricula: null,
-        data_matricula: null,
-        // financeiro (opcional)
-        valor_mensalidade: valorMensalidade ? Number(valorMensalidade) : undefined,
-        dia_vencimento: diaVencimento ? Number(diaVencimento) : undefined,
-        gerar_mensalidades_todas: gerarMensalidadesTodas,
+        session_id: sessionId,
       };
-
-      console.log("📤 Enviando payload:", payload);
 
       const res = await fetch("/api/secretaria/matriculas", {
         method: "POST",
@@ -305,373 +174,239 @@ export default function NovaMatriculaPage() {
       });
 
       const json = await res.json();
-      console.log("📥 Resposta da API:", json);
+      if (!res.ok) throw new Error(json.error || "Erro ao matricular");
 
-      if (!res.ok || !json.ok) {
-        throw new Error(json.error || "Falha ao criar matrícula");
-      }
-      
-      const numero = json?.data?.numero_matricula as string | undefined;
-      const dataMatricula = json?.data?.data_matricula as string | undefined;
-      
-      if (numero) setNumeroGerado(numero);
-      if (dataMatricula) setDataMatriculaGerada(dataMatricula);
-      setOk("Matrícula criada com sucesso.");
+      alert(`Matrícula Confirmada!\nNº Processo: ${json.data?.numero_matricula || 'Gerado'}`);
+      router.back();
 
-    } catch (e) {
-      console.error("💥 Erro no submit:", e);
-      setError(e instanceof Error ? e.message : String(e));
+    } catch (error: any) {
+      alert("Erro: " + error.message);
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
+  if (loadingInit) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-slate-50">
+        <Loader2 className="w-8 h-8 animate-spin text-teal-600"/>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
-        {/* Header */}
-        <div className="mb-8">
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-2 text-sm text-gray-600 hover:text-emerald-600 mb-4"
-          >
-            ← Voltar
+    <div className="flex flex-col h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden">
+      
+      {/* HEADER */}
+      <header className="flex-none h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between z-50">
+        <div className="flex items-center gap-4">
+          <button onClick={() => router.back()} className="p-2 hover:bg-slate-100 rounded-full transition text-slate-500">
+            <X className="w-5 h-5"/>
           </button>
-          <h1 className="text-3xl font-bold text-gray-900">Nova Matrícula</h1>
-          <p className="text-gray-600 mt-2">Complete as informações académicas do estudante</p>
+          <h1 className="text-lg font-bold text-slate-800">Nova Matrícula</h1>
         </div>
+        <div className="hidden md:flex items-center gap-2 text-xs font-medium text-slate-400">
+          <span className="text-teal-600 font-bold flex items-center gap-1"><User className="w-3 h-3"/> Seleção</span>
+          <span className="w-4 h-px bg-slate-300"></span>
+          <span className="text-teal-600 font-bold flex items-center gap-1"><Building className="w-3 h-3"/> Alocação</span>
+          <span className="w-4 h-px bg-slate-300"></span>
+          <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Confirmação</span>
+        </div>
+      </header>
 
-        <div className="bg-white rounded-xl shadow border p-6">
-          {/* Alerta de sucesso */}
-          {ok && (
-            <div className="mb-6 p-4 border border-green-200 bg-green-50 rounded-lg">
-              <div className="text-sm text-green-700">
-                <p className="font-medium">{ok}</p>
-                {(numeroGerado || dataMatriculaGerada) && (
-                  <div className="mt-2 space-y-1">
-                    {numeroGerado && (
-                      <p>
-                        <strong>Número de matrícula:</strong> <span className="font-mono">{numeroGerado}</span>
-                      </p>
-                    )}
-                    {dataMatriculaGerada && (
-                      <p>
-                        <strong>Data da matrícula:</strong> {new Date(dataMatriculaGerada).toLocaleDateString('pt-AO')}
-                      </p>
-                    )}
-                  </div>
-                )}
+      <div className="flex-1 flex overflow-hidden max-w-7xl mx-auto w-full">
+        
+        {/* COLUNA ESQUERDA: FORMULÁRIO */}
+        <main className="flex-1 overflow-y-auto p-6 lg:p-8 pb-32 custom-scrollbar">
+          <div className="max-w-3xl mx-auto space-y-8">
+            
+            {/* 1. QUEM? */}
+            <section className="space-y-4">
+              <div className="flex items-center gap-3 text-slate-800">
+                <div className="w-8 h-8 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-sm">1</div>
+                <h2 className="text-lg font-bold">Quem vamos matricular?</h2>
               </div>
-              <div className="flex items-center gap-2 mt-3">
-                {numeroGerado && (
-                  <button
-                    type="button"
-                    className="px-3 py-1 border border-green-300 rounded text-xs text-green-700 hover:bg-green-100"
-                    onClick={() => navigator.clipboard.writeText(numeroGerado!)}
-                  >
-                    Copiar Número
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => router.push('/secretaria/matriculas')}
-                  className="px-3 py-1 border border-green-300 rounded text-xs text-green-700 hover:bg-green-100"
-                >
-                  Ir para matrículas
-                </button>
-              </div>
-            </div>
-          )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Informações do Aluno */}
-            <div className="border-b pb-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Informações do Estudante</h2>
-              
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Aluno *</label>
-                  <select
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-teal-400 transition-colors group">
+                <div className="relative">
+                  <Search className="absolute left-4 top-3.5 w-5 h-5 text-slate-400 group-focus-within:text-teal-500" />
+                  <select 
                     value={alunoId}
                     onChange={(e) => setAlunoId(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
-                    required
-                    disabled={carregandoAlunos}
+                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border-none rounded-xl appearance-none outline-none focus:ring-2 focus:ring-teal-500/20 font-medium cursor-pointer text-slate-700"
                   >
-                    <option value="">
-                      {carregandoAlunos ? "Carregando alunos..." : "Selecione um aluno"}
-                    </option>
-                    {alunos.map((aluno) => (
-                      <option key={aluno.id} value={aluno.id}>
-                        {aluno.nome}
-                      </option>
+                    <option value="">Pesquisar aluno por nome ou BI...</option>
+                    {alunosList.map(a => (
+                      <option key={a.id} value={a.id}>{a.nome} (BI: {a.bilhete || 'N/A'})</option>
                     ))}
                   </select>
-                  {carregandoAlunos && (
-                    <p className="mt-1 text-xs text-gray-500">Carregando lista de alunos...</p>
-                  )}
-                  {!carregandoAlunos && alunos.length === 0 && (
-                    <p className="mt-1 text-xs text-red-500">Nenhum aluno cadastrado encontrado.</p>
-                  )}
                 </div>
 
                 {alunoSelecionado && (
-                  <div className="bg-gray-50 p-3 rounded-lg">
-                    <p className="text-sm text-gray-600">
-                      <strong>Aluno selecionado:</strong> {alunoSelecionado.nome}
-                      <br />
-                      {alunoSelecionado.email && `Email: ${alunoSelecionado.email}`}
-                      {alunoSelecionado.telefone && `Telefone: ${alunoSelecionado.telefone}`}
-                    </p>
+                  <div className="mt-6 flex items-center gap-4 animate-in fade-in slide-in-from-top-2">
+                    <div className="w-16 h-16 rounded-full bg-teal-50 text-teal-600 flex items-center justify-center font-black text-2xl border-2 border-white shadow-sm">
+                      {alunoSelecionado.nome.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-900 text-lg">{alunoSelecionado.nome}</p>
+                      <p className="text-sm text-slate-500">BI: {alunoSelecionado.bilhete || "Não informado"}</p>
+                    </div>
+                    <div className="ml-auto">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-100">
+                          <CheckCircle2 size={12} /> Validado
+                        </span>
+                    </div>
                   </div>
                 )}
               </div>
-            </div>
+            </section>
 
-            {/* Informações Acadêmicas */}
-            <div className="border-b pb-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Informações Acadêmicas</h2>
-              
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Ano Letivo *</label>
-                  <select
-                    value={sessionId}
-                    onChange={(e) => setSessionId(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
-                    required
-                    disabled={carregandoSessions}
-                  >
-                    <option value="">
-                      {carregandoSessions ? "Carregando anos letivos..." : "Selecione um ano letivo"}
-                    </option>
-                    {sessions.map((session) => (
-                      <option key={session.id} value={session.id}>
-                        {session.nome}
-                      </option>
-                    ))}
-                  </select>
-                  {carregandoSessions && (
-                    <p className="mt-1 text-xs text-gray-500">Carregando anos letivos...</p>
-                  )}
-                  {!carregandoSessions && sessions.length === 0 && (
-                    <p className="mt-1 text-xs text-red-500">Nenhum ano letivo encontrado.</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Turma *</label>
-                  <select
-                    value={turmaId}
-                    onChange={(e) => setTurmaId(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
-                    required
-                    disabled={!sessionId || carregandoTurmas}
-                  >
-                    <option value="">
-                      {carregandoTurmas ? "Carregando turmas..." : !sessionId ? "Selecione primeiro o ano letivo" : "Selecione uma turma"}
-                    </option>
-                    {turmas.map((turma) => (
-                      <option key={turma.id} value={turma.id}>
-                        {turma.nome}
-                      </option>
-                    ))}
-                  </select>
-                  {carregandoTurmas && (
-                    <p className="mt-1 text-xs text-gray-500">Carregando turmas...</p>
-                  )}
-                  {!carregandoTurmas && sessionId && turmas.length === 0 && (
-                    <p className="mt-1 text-xs text-red-500">Nenhuma turma encontrada para este ano letivo.</p>
-                  )}
-                </div>
+            {/* 2. ONDE? */}
+            <section className={`space-y-4 transition-all duration-500 ${!alunoId ? 'opacity-50 grayscale pointer-events-none' : ''}`}>
+              <div className="flex items-center gap-3 text-slate-800">
+                <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">2</div>
+                <h2 className="text-lg font-bold">Para onde vai?</h2>
               </div>
 
-              {/* ✅ NOVOS CAMPOS para seleção no formulário */}
-              <div className="grid md:grid-cols-3 gap-4 mt-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Turno *</label>
-                  <select
-                    value={turno}
-                    onChange={(e) => setTurno(e.target.value as any)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
-                    required
-                  >
-                    <option value="">Selecione o turno</option>
-                    <option value="manha">Manhã</option>
-                    <option value="tarde">Tarde</option>
-                    <option value="noite">Noite</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Classe *</label>
-                  <select
-                    value={classeId}
-                    onChange={(e) => setClasseId(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
-                    required
-                    disabled={carregandoClasses}
-                  >
-                    <option value="">
-                      {carregandoClasses ? "Carregando classes..." : "Selecione a classe"}
-                    </option>
-                    {classes.map((classe) => (
-                      <option key={classe.id} value={classe.id}>
-                        {classe.nome}
-                      </option>
-                    ))}
-                  </select>
-                  {carregandoClasses && (
-                    <p className="mt-1 text-xs text-gray-500">Carregando classes...</p>
-                  )}
-                  {!carregandoClasses && classes.length === 0 && (
-                    <p className="mt-1 text-xs text-red-500">Nenhuma classe encontrada.</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Curso *</label>
-                  <select
-                    value={cursoId}
-                    onChange={(e) => setCursoId(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
-                    required
-                    disabled={carregandoCursos}
-                  >
-                    <option value="">
-                      {carregandoCursos ? "Carregando cursos..." : "Selecione o curso"}
-                    </option>
-                    {cursos.map((curso) => (
-                      <option key={curso.id} value={curso.id}>
-                        {curso.nome}
-                      </option>
-                    ))}
-                  </select>
-                  {carregandoCursos && (
-                    <p className="mt-1 text-xs text-gray-500">Carregando cursos...</p>
-                  )}
-                  {!carregandoCursos && cursos.length === 0 && (
-                    <p className="mt-1 text-xs text-red-500">Nenhum curso encontrado.</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Informações da Matrícula */}
-            <div className="border-b pb-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Informações da Matrícula</h2>
-              
-              <div className="space-y-4">
-                <div className="grid md:grid-cols-2 gap-4">
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+                <div className="grid md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Número da Matrícula</label>
-                    <div className="mt-1 block w-full rounded-md border-gray-200 bg-gray-50 p-3">
-                      <p className="text-sm text-gray-600">
-                        {numeroGerado ? (
-                          <span className="font-mono font-medium text-green-600">{numeroGerado}</span>
-                        ) : (
-                          "Será gerado automaticamente após confirmar a matrícula"
-                        )}
-                      </p>
-                    </div>
+                    <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Ano Letivo</label>
+                    <select 
+                      value={sessionId}
+                      onChange={(e) => setSessionId(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium cursor-pointer"
+                    >
+                      <option value="">Selecione...</option>
+                      {sessions.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+                    </select>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Data da Matrícula</label>
-                    <div className="mt-1 block w-full rounded-md border-gray-200 bg-gray-50 p-3">
-                      <p className="text-sm text-gray-600">
-                        {dataMatriculaGerada ? (
-                          <span className="font-medium text-green-600">
-                            {new Date(dataMatriculaGerada).toLocaleDateString('pt-AO')}
-                          </span>
-                        ) : (
-                          "Será definida automaticamente como a data atual"
-                        )}
-                      </p>
-                    </div>
+                    <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Turma de Destino</label>
+                    <select 
+                      value={turmaId}
+                      onChange={(e) => setTurmaId(e.target.value)}
+                      disabled={!sessionId}
+                      className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium cursor-pointer disabled:opacity-50"
+                    >
+                      <option value="">{sessionId ? "Escolha a turma..." : "Aguardando ano..."}</option>
+                      {turmas.map(t => (
+                        <option key={t.id} value={t.id}>
+                          {t.nome} ({getOcupacao(t)})
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
-                
-                <p className="text-xs text-gray-500">
-                  Ambos os campos serão gerados automaticamente pelo sistema ao confirmar a matrícula.
-                </p>
+
+                {/* PREVIEW INTELIGENTE */}
+                {turmaSelecionada && (
+                  <div className="pt-6 border-t border-slate-100 animate-in fade-in">
+                    <p className="text-xs font-bold text-slate-400 uppercase mb-3">Detalhes Automáticos</p>
+                    <div className="grid grid-cols-3 gap-4">
+                        
+                        <div className={`p-4 rounded-xl border flex flex-col items-center text-center transition-colors
+                           ${isTecnico(turmaSelecionada) ? 'bg-purple-50 border-purple-100' : 'bg-indigo-50/50 border-indigo-100/50'}`}>
+                            {isTecnico(turmaSelecionada) 
+                              ? <BookOpen className="w-5 h-5 mx-auto text-purple-500 mb-2"/>
+                              : <GraduationCap className="w-5 h-5 mx-auto text-indigo-400 mb-2"/>
+                            }
+                            <p className="text-[10px] text-slate-400 uppercase font-bold">Curso</p>
+                            <p className={`text-xs font-bold line-clamp-2 mt-0.5 ${isTecnico(turmaSelecionada) ? 'text-purple-900' : 'text-indigo-900'}`}>
+                                {getCursoLabel(turmaSelecionada)}
+                            </p>
+                        </div>
+
+                        <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex flex-col items-center text-center">
+                            <Building className="w-5 h-5 mx-auto text-slate-400 mb-2"/>
+                            <p className="text-[10px] text-slate-400 uppercase font-bold">Classe</p>
+                            <p className="text-xs font-bold text-slate-900 mt-0.5">{getClasseLabel(turmaSelecionada)}</p>
+                        </div>
+
+                        <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex flex-col items-center text-center">
+                            <Clock className="w-5 h-5 mx-auto text-slate-400 mb-2"/>
+                            <p className="text-[10px] text-slate-400 uppercase font-bold">Turno</p>
+                            <p className="text-xs font-bold text-slate-900 mt-0.5 capitalize">{getTurnoLabel(turmaSelecionada)}</p>
+                        </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
+            </section>
 
-            {/* Financeiro */}
-            <div className="border-b pb-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Mensalidade (opcional)</h2>
+          </div>
+        </main>
 
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Valor da mensalidade (KZ)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={valorMensalidade}
-                    onChange={(e) => setValorMensalidade(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
-                    placeholder="ex.: 15000.00"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">Se informado, criaremos a primeira mensalidade.</p>
+        {/* COLUNA DIREITA: RESUMO */}
+        <aside className="hidden lg:flex flex-col w-[380px] bg-white border-l border-slate-200 p-8 z-10 shadow-[-10px_0_40px_-20px_rgba(0,0,0,0.05)]">
+            <div className="flex items-center gap-3 mb-8">
+                <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600">
+                    <Wallet className="w-6 h-6"/>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Dia de vencimento</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="31"
-                    value={diaVencimento}
-                    onChange={(e) => setDiaVencimento(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
-                    placeholder="ex.: 5"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">Aceita 1–31. O sistema ajusta automaticamente para o último dia do mês.</p>
+                <h3 className="font-bold text-slate-800 text-lg">Resumo</h3>
+            </div>
+
+            <div className="flex-1 space-y-6">
+                <div className="space-y-3">
+                    <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">Matrícula</span>
+                        <span className="font-bold text-slate-900">5.000 Kz</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">Cartão</span>
+                        <span className="font-bold text-slate-900">2.500 Kz</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">Seguro</span>
+                        <span className="font-bold text-slate-900">1.000 Kz</span>
+                    </div>
+                    <div className="h-px bg-slate-100 my-2"></div>
+                    <div className="flex justify-between items-center">
+                        <span className="text-sm font-bold text-slate-400 uppercase">Total</span>
+                        <span className="text-2xl font-black text-emerald-600">8.500 Kz</span>
+                    </div>
                 </div>
-              </div>
 
-              <div className="mt-4 flex items-center gap-2">
-                <input
-                  id="gerar-todas"
-                  type="checkbox"
-                  checked={gerarMensalidadesTodas}
-                  onChange={(e) => setGerarMensalidadesTodas(e.target.checked)}
-                  className="h-4 w-4 text-emerald-600 border-gray-300 rounded"
-                />
-                <label htmlFor="gerar-todas" className="text-sm text-gray-700">
-                  Gerar mensalidades para todo o ano letivo
-                </label>
-              </div>
-              <p className="mt-1 text-xs text-gray-500">
-                Se desmarcado, criaremos apenas a mensalidade do mês da matrícula. Caso a matrícula ocorra após o dia de vencimento, aplicamos pró-rata no primeiro mês.
-              </p>
+                <div className="p-4 bg-slate-50 rounded-xl text-xs text-slate-500 leading-relaxed flex gap-3 border border-slate-100">
+                    <AlertCircle className="w-4 h-4 text-slate-400 shrink-0 mt-0.5"/>
+                    <p>Ao confirmar, o aluno será vinculado à turma e o débito será lançado na conta corrente automaticamente.</p>
+                </div>
             </div>
 
-            {error && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-600">{error}</p>
-              </div>
-            )}
+            <button
+              onClick={handleSubmit}
+              disabled={submitting || !alunoId || !turmaId}
+              className={`
+                w-full py-4 rounded-xl font-bold text-white shadow-lg flex items-center justify-center gap-2 transition-all hover:-translate-y-1
+                ${submitting || !alunoId || !turmaId 
+                  ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' 
+                  : 'bg-slate-900 hover:bg-slate-800 shadow-slate-900/20'}
+              `}
+            >
+              {submitting ? (
+                <><Loader2 className="w-5 h-5 animate-spin" /> Processando...</>
+              ) : (
+                <>Confirmar Matrícula <ArrowRight className="w-5 h-5" /></>
+              )}
+            </button>
+        </aside>
 
-            <div className="flex justify-end gap-4 pt-6">
-              <button
-                type="button"
-                onClick={() => router.back()}
-                className="px-6 py-3 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+        {/* MOBILE FOOTER */}
+        <div className="lg:hidden fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 p-4 z-50 flex flex-col gap-3 shadow-top">
+             <div className="flex justify-between items-center px-2">
+                <span className="text-xs font-bold text-slate-500 uppercase">Total a Pagar</span>
+                <span className="text-lg font-black text-emerald-600">8.500 Kz</span>
+             </div>
+             <button
+                onClick={handleSubmit}
+                disabled={submitting || !alunoId || !turmaId}
+                className="w-full py-3.5 rounded-xl font-bold text-white bg-slate-900 disabled:bg-slate-300 shadow-lg flex items-center justify-center gap-2"
               >
-                Cancelar
+                Confirmar
               </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-6 py-3 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {loading ? "Salvando..." : "Confirmar Matrícula"}
-              </button>
-            </div>
-          </form>
         </div>
+
       </div>
     </div>
   );

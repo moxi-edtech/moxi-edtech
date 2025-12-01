@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from 'next/navigation';
 
 interface Turma {
   id: string;
@@ -13,11 +14,19 @@ interface Aluno {
 }
 
 export default function RematriculaPage() {
+  const router = useRouter();
   const [originTurmaId, setOriginTurmaId] = useState("");
   const [destinationTurmaId, setDestinationTurmaId] = useState("");
   const [turmas, setTurmas] = useState<Turma[]>([]);
   const [sugestoes, setSugestoes] = useState<any[]>([]);
   const [loadingSugestoes, setLoadingSugestoes] = useState(false);
+  const [alunos, setAlunos] = useState<Aluno[]>([]);
+  const [selectedAlunos, setSelectedAlunos] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [rpcResult, setRpcResult] = useState<{ inserted: number; skipped: number } | null>(null);
+  const [gerarMensalidades, setGerarMensalidades] = useState(false);
+  const [gerarTodas, setGerarTodas] = useState(true);
 
   useEffect(() => {
     const fetchTurmas = async () => {
@@ -81,6 +90,7 @@ export default function RematriculaPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setRpcResult(null);
 
     try {
       const res = await fetch("/api/secretaria/rematricula", {
@@ -106,14 +116,62 @@ export default function RematriculaPage() {
     }
   };
 
+  const handleRpcAll = async () => {
+    setLoading(true);
+    setError(null);
+    setRpcResult(null);
+    try {
+      const res = await fetch('/api/secretaria/rematricula', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          origin_turma_id: originTurmaId,
+          destination_turma_id: destinationTurmaId,
+          use_rpc: true,
+          gerar_mensalidades: gerarMensalidades,
+          gerar_todas: gerarTodas,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || 'Falha ao rematricular via RPC');
+      setRpcResult({ inserted: json.inserted ?? 0, skipped: json.skipped ?? 0 });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="bg-white rounded-xl shadow border p-5">
       <h1 className="text-lg font-semibold mb-4">Rematrícula em Massa</h1>
-      <div className="mb-4">
+      <div className="mb-4 flex items-center gap-3">
         <button onClick={loadSugestoes} className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
           {loadingSugestoes ? "Carregando..." : "Carregar Sugestões"}
         </button>
+        <button
+          onClick={handleRpcAll}
+          disabled={loading || !originTurmaId || !destinationTurmaId}
+          className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 disabled:opacity-50"
+        >
+          {loading ? 'Processando...' : 'Rematricular todos (RPC)'}
+        </button>
       </div>
+      <div className="mb-4 flex items-center gap-4">
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <input type="checkbox" checked={gerarMensalidades} onChange={(e)=>setGerarMensalidades(e.target.checked)} />
+          Gerar mensalidades
+        </label>
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <input type="checkbox" checked={gerarTodas} onChange={(e)=>setGerarTodas(e.target.checked)} disabled={!gerarMensalidades} />
+          Para todo o ano letivo
+        </label>
+      </div>
+      {rpcResult && (
+        <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+          Rematrícula concluída: {rpcResult.inserted} inseridos, {rpcResult.skipped} ignorados (já ativos na sessão).
+        </div>
+      )}
         {sugestoes.length > 0 && (
             <div className="mb-4">
                 <h2 className="text-md font-semibold mb-2">Sugestões de Rematrícula</h2>

@@ -18,8 +18,13 @@ export default async function Page() {
     )
   }
   const eid: string = escolaId
-  const { data: esc } = await s.from('escolas').select('plano').eq('id', eid).maybeSingle()
-  const plan = ((esc as any)?.plano || 'basico') as 'basico'|'standard'|'premium'
+  let plan: 'basico'|'standard'|'premium' = 'basico'
+  try {
+    const res = await fetch(`/api/escolas/${eid}/nome`, { cache: 'no-store' })
+    const json = await res.json().catch(() => null)
+    const p = (json?.plano || 'basico') as any
+    if (['basico','standard','premium'].includes(p)) plan = p
+  } catch {}
   const allowed = plan === 'standard' || plan === 'premium'
 
   return (

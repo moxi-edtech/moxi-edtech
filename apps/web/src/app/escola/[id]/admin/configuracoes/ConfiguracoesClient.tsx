@@ -21,6 +21,8 @@ import {
   Users,
   Calendar,
   GraduationCap,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -55,6 +57,7 @@ export default function ConfiguracoesAcademicasPage() {
   const [curriculumPreset, setCurriculumPreset] =
     useState<CurriculumKey | null>(null);
   const [applyPresetLoading, setApplyPresetLoading] = useState(false);
+  const [quickActionLoading, setQuickActionLoading] = useState<string | null>(null);
 
   // Dados da escola e Danger Zone (wipe)
   const [escolaNome, setEscolaNome] = useState<string>("");
@@ -489,6 +492,291 @@ const handleApplyCurriculumPreset = async () => {
 
       {/* Configurações Avançadas */}
       <div className="space-y-6">
+        {/* Gerenciar estrutura: Classes, Cursos, Disciplinas */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-[#0B2C45]">
+              <Users className="w-5 h-5" />
+              Gerenciar Estrutura
+            </CardTitle>
+            <CardDescription>Edite ou remova itens existentes.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Classes */}
+            <section>
+              <h3 className="text-sm font-semibold text-[#0B2C45] mb-2">Classes</h3>
+              {classes.length === 0 ? (
+                <p className="text-sm text-gray-500">Nenhuma classe cadastrada.</p>
+              ) : (
+                <ul className="divide-y divide-slate-200 rounded border">
+                  {classes.slice(0, 10).map((c: any) => (
+                    <li key={c.id} className="flex items-center justify-between px-3 py-2">
+                      <span className="text-sm text-[#0B2C45]">{c.nome}</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded border hover:bg-slate-50"
+                          onClick={async () => {
+                            const novo = window.prompt('Novo nome da classe', c.nome);
+                            if (!novo || novo.trim() === c.nome) return;
+                            try {
+                              const res = await fetch(`/api/escolas/${escolaId}/classes/${c.id}`, {
+                                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: novo.trim() })
+                              });
+                              const json = await res.json().catch(()=>null);
+                              if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao atualizar classe');
+                              setClasses(prev => prev.map((x:any)=> x.id===c.id ? { ...x, nome: novo.trim() } : x));
+                            } catch (e:any) { toast.error(e?.message || 'Erro ao atualizar classe'); }
+                          }}
+                        >
+                          <Pencil className="w-3.5 h-3.5" /> Editar
+                        </button>
+                        <button
+                          className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded border border-red-300 text-red-700 hover:bg-red-50"
+                          onClick={async () => {
+                            if (!window.confirm(`Remover classe "${c.nome}"? Esta ação não pode ser desfeita.`)) return;
+                            try {
+                              const res = await fetch(`/api/escolas/${escolaId}/classes/${c.id}`, { method: 'DELETE' });
+                              const json = await res.json().catch(()=>null);
+                              if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao remover classe');
+                              setClasses(prev => prev.filter((x:any)=> x.id !== c.id));
+                            } catch (e:any) { toast.error(e?.message || 'Erro ao remover classe'); }
+                          }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Remover
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            {/* Cursos */}
+            <section>
+              <h3 className="text-sm font-semibold text-[#0B2C45] mb-2">Cursos</h3>
+              {cursos.length === 0 ? (
+                <p className="text-sm text-gray-500">Nenhum curso cadastrado.</p>
+              ) : (
+                <ul className="divide-y divide-slate-200 rounded border">
+                  {cursos.slice(0, 10).map((c: any) => (
+                    <li key={c.id} className="flex items-center justify-between px-3 py-2">
+                      <span className="text-sm text-[#0B2C45]">{c.nome}</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded border hover:bg-slate-50"
+                          onClick={async () => {
+                            const novo = window.prompt('Novo nome do curso', c.nome);
+                            if (!novo || novo.trim() === c.nome) return;
+                            try {
+                              const res = await fetch(`/api/escolas/${escolaId}/cursos/${c.id}`, {
+                                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: novo.trim() })
+                              });
+                              const json = await res.json().catch(()=>null);
+                              if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao atualizar curso');
+                              setCursos(prev => prev.map((x:any)=> x.id===c.id ? { ...x, nome: novo.trim() } : x));
+                            } catch (e:any) { toast.error(e?.message || 'Erro ao atualizar curso'); }
+                          }}
+                        >
+                          <Pencil className="w-3.5 h-3.5" /> Editar
+                        </button>
+                        <button
+                          className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded border border-red-300 text-red-700 hover:bg-red-50"
+                          onClick={async () => {
+                            if (!window.confirm(`Remover curso "${c.nome}"? Esta ação não pode ser desfeita.`)) return;
+                            try {
+                              const res = await fetch(`/api/escolas/${escolaId}/cursos/${c.id}`, { method: 'DELETE' });
+                              const json = await res.json().catch(()=>null);
+                              if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao remover curso');
+                              setCursos(prev => prev.filter((x:any)=> x.id !== c.id));
+                            } catch (e:any) { toast.error(e?.message || 'Erro ao remover curso'); }
+                          }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Remover
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            {/* Disciplinas */}
+            <section>
+              <h3 className="text-sm font-semibold text-[#0B2C45] mb-2">Disciplinas</h3>
+              {disciplinas.length === 0 ? (
+                <p className="text-sm text-gray-500">Nenhuma disciplina cadastrada.</p>
+              ) : (
+                <ul className="divide-y divide-slate-200 rounded border">
+                  {disciplinas.slice(0, 10).map((d: any) => (
+                    <li key={d.id} className="flex items-center justify-between px-3 py-2">
+                      <span className="text-sm text-[#0B2C45]">{d.nome}</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded border hover:bg-slate-50"
+                          onClick={async () => {
+                            const novo = window.prompt('Novo nome da disciplina', d.nome);
+                            if (!novo || novo.trim() === d.nome) return;
+                            try {
+                              const res = await fetch(`/api/escolas/${escolaId}/disciplinas/${d.id}`, {
+                                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: novo.trim() })
+                              });
+                              const json = await res.json().catch(()=>null);
+                              if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao atualizar disciplina');
+                              setDisciplinas(prev => prev.map((x:any)=> x.id===d.id ? { ...x, nome: novo.trim() } : x));
+                            } catch (e:any) { toast.error(e?.message || 'Erro ao atualizar disciplina'); }
+                          }}
+                        >
+                          <Pencil className="w-3.5 h-3.5" /> Editar
+                        </button>
+                        <button
+                          className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded border border-red-300 text-red-700 hover:bg-red-50"
+                          onClick={async () => {
+                            if (!window.confirm(`Remover disciplina "${d.nome}"? Esta ação não pode ser desfeita.`)) return;
+                            try {
+                              const res = await fetch(`/api/escolas/${escolaId}/disciplinas/${d.id}`, { method: 'DELETE' });
+                              const json = await res.json().catch(()=>null);
+                              if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao remover disciplina');
+                              setDisciplinas(prev => prev.filter((x:any)=> x.id !== d.id));
+                            } catch (e:any) { toast.error(e?.message || 'Erro ao remover disciplina'); }
+                          }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Remover
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </CardContent>
+        </Card>
+        {/* Ações rápidas: criar itens pós-onboarding */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-[#0B2C45]">
+              <Settings className="w-5 h-5" />
+              Ações Rápidas
+            </CardTitle>
+            <CardDescription>
+              Crie novos elementos acadêmicos mesmo após o onboarding.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="default"
+                disabled={!!quickActionLoading}
+                onClick={async () => {
+                  if (!escolaId) return;
+                  const nome = window.prompt('Nome da classe (ex.: 10ª, 11ª, 12ª)');
+                  if (!nome) return;
+                  setQuickActionLoading('classe');
+                  try {
+                    const res = await fetch(`/api/escolas/${escolaId}/classes`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ nome }),
+                    });
+                    const json = await res.json().catch(() => null);
+                    if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao criar classe');
+                    toast.success('Classe criada');
+                    // reload classes
+                    const r = await fetch(`/api/escolas/${escolaId}/classes`, { cache: 'no-store' });
+                    const j = await r.json().catch(() => null);
+                    if (r.ok && Array.isArray(j?.data)) setClasses(j.data as any);
+                  } catch (e: any) {
+                    toast.error(e?.message || 'Erro ao criar classe');
+                  } finally {
+                    setQuickActionLoading(null);
+                  }
+                }}
+              >
+                Nova Classe
+              </Button>
+
+              <Button
+                variant="default"
+                disabled={!!quickActionLoading}
+                onClick={async () => {
+                  if (!escolaId) return;
+                  const nome = window.prompt('Nome do curso (ex.: Matemática, Ciências)');
+                  if (!nome) return;
+                  setQuickActionLoading('curso');
+                  try {
+                    const res = await fetch(`/api/escolas/${escolaId}/cursos`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ nome }),
+                    });
+                    const json = await res.json().catch(() => null);
+                    if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao criar curso');
+                    toast.success('Curso criado');
+                    const r = await fetch(`/api/escolas/${escolaId}/cursos`, { cache: 'no-store' });
+                    const j = await r.json().catch(() => null);
+                    if (r.ok && Array.isArray(j?.data)) setCursos(j.data as any);
+                  } catch (e: any) {
+                    toast.error(e?.message || 'Erro ao criar curso');
+                  } finally {
+                    setQuickActionLoading(null);
+                  }
+                }}
+              >
+                Novo Curso
+              </Button>
+
+              <Button
+                variant="default"
+                disabled={!!quickActionLoading}
+                onClick={async () => {
+                  if (!escolaId) return;
+                  const nome = window.prompt('Nome da disciplina (ex.: Álgebra, Física)');
+                  if (!nome) return;
+                  setQuickActionLoading('disciplina');
+                  try {
+                    const res = await fetch(`/api/escolas/${escolaId}/disciplinas`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ nome }),
+                    });
+                    const json = await res.json().catch(() => null);
+                    if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao criar disciplina');
+                    toast.success('Disciplina criada');
+                    const r = await fetch(`/api/escolas/${escolaId}/disciplinas`, { cache: 'no-store' });
+                    const j = await r.json().catch(() => null);
+                    if (r.ok && Array.isArray(j?.data)) setDisciplinas(j.data as any);
+                  } catch (e: any) {
+                    toast.error(e?.message || 'Erro ao criar disciplina');
+                  } finally {
+                    setQuickActionLoading(null);
+                  }
+                }}
+              >
+                Nova Disciplina
+              </Button>
+
+              <Button
+                variant="outline"
+                disabled={!!quickActionLoading}
+                onClick={async () => {
+                  if (!escolaId) return;
+                  setQuickActionLoading('backfill');
+                  try {
+                    const res = await fetch(`/api/escolas/${escolaId}/academico/offers/backfill`, { method: 'POST' });
+                    const json = await res.json().catch(() => null);
+                    if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao completar ofertas');
+                    toast.success(`Ofertas criadas/atualizadas: ${json.updated ?? 0}`);
+                  } catch (e: any) {
+                    toast.error(e?.message || 'Erro ao completar ofertas');
+                  } finally {
+                    setQuickActionLoading(null);
+                  }
+                }}
+              >
+                Completar Ofertas (turma×semestre)
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
         {/* 🔹 Modelo Curricular Base */}
         <Card>
           <CardHeader>

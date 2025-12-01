@@ -6,10 +6,11 @@ import { recordAuditServer } from "@/lib/audit";
 
 export async function POST(
   req: Request,
-  { params }: { params: Promise<{ alunoId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { alunoId } = await params;
+    const { id } = await params;
+    const alunoId = id;
     if (!alunoId) return NextResponse.json({ ok: false, error: "ID do aluno não fornecido" }, { status: 400 });
 
     const s = await supabaseServerTyped<any>();
@@ -100,7 +101,7 @@ export async function POST(
   }
 }
 
-export async function DELETE(req: Request, ctx: { params: Promise<{ alunoId: string }> }) {
+export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }> }) {
   return POST(req, ctx);
 }
 

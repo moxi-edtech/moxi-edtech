@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { createRouteClient } from "@/lib/supabase/route-client";
 import { randomUUID } from "node:crypto";
 
 import type { Database } from "~types/supabase";
@@ -16,10 +17,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "SUPABASE configuration missing" }, { status: 500 });
   }
 
+  // Autentica e determina o usuário pelo token (ignorar userId vindo do cliente)
+  const routeClient = await createRouteClient();
+  const { data: userRes } = await routeClient.auth.getUser();
+  const authUser = userRes?.user;
+  if (!authUser) {
+    return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+  }
+
   const formData = await request.formData();
   const file = formData.get("file");
   const escolaId = formData.get("escolaId")?.toString();
-  const createdBy = formData.get("userId")?.toString();
+  const createdBy = authUser.id;
 
   if (!file || !(file instanceof File)) {
     return NextResponse.json({ error: "Arquivo obrigatório" }, { status: 400 });
@@ -39,6 +48,32 @@ export async function POST(request: Request) {
   const objectPath = `migracoes/${importId}/${file.name}`;
 
   const supabase = createAdminClient<Database>(adminUrl, serviceKey);
+
+  // Verifica vínculo do usuário com a escola informada
+  try {
+    const { data: vinc } = await supabase
+      .from("escola_usuarios")
+      .select("user_id")
+      .eq("escola_id", escolaId)
+      .eq("user_id", createdBy)
+      .limit(1);
+    let hasAccess = !!(vinc && vinc.length > 0);
+    if (!hasAccess) {
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .eq("user_id", createdBy)
+        .or(`current_escola_id.eq.${escolaId},escola_id.eq.${escolaId}`)
+        .limit(1);
+      hasAccess = !!(prof && prof.length > 0);
+    }
+    if (!hasAccess) {
+      return NextResponse.json({ error: "Sem vínculo com a escola" }, { status: 403 });
+    }
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 
   // Ensure bucket exists
   try {

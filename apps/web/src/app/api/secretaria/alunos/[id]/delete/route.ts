@@ -7,10 +7,11 @@ import { recordAuditServer } from "@/lib/audit";
 // DELETE OU POST (estamos usando POST na UI)
 export async function POST(
   req: Request,
-  { params }: { params: Promise<{ alunoId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { alunoId } = await params;
+    const { id } = await params;
+    const alunoId = id;
     if (!alunoId) {
       return NextResponse.json(
         { ok: false, error: "ID do aluno não fornecido" },
@@ -125,54 +126,22 @@ export async function POST(
     const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY!;
     if (!adminUrl || !serviceRole) {
       return NextResponse.json(
-        {
-          ok: false,
-          error:
-            "Server misconfigured: faltando SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY",
-        },
+        { ok: false, error: "Server misconfigured: falta SUPABASE_SERVICE_ROLE_KEY" },
         { status: 500 }
       );
     }
-
     const admin = createAdminClient<Database>(adminUrl, serviceRole);
 
-    const nowIso = new Date().toISOString();
-
-    // 6.1) Insere registro em alunos_excluidos (histórico)
-    try {
-      // Adaptado ao schema local de alunos_excluidos
-      const payload: Database["public"]["Tables"]["alunos_excluidos"]["Insert"] = {
-        escola_id: alunoEscolaId,
-        aluno_id: (aluno as any).id,
-        profile_id: (aluno as any).profile_id,
-        numero_login: null,
-        nome: (aluno as any).nome ?? null,
-        aluno_created_at: (aluno as any).created_at ?? null,
-        aluno_deleted_at: nowIso,
-        exclusao_motivo: reason || null,
-        excluido_por: user.id,
-        dados_anonimizados: false,
-        snapshot: {
-          aluno,
-          captured_at: nowIso,
-        } as any,
-      };
-
-      await admin.from("alunos_excluidos").insert(payload as any);
-    } catch (e) {
-      // não falha a operação de arquivamento se só o histórico quebrar
-      console.warn("[alunos.delete] Falha ao inserir em alunos_excluidos", e);
-    }
-
-    // 6.2) Soft delete em alunos
+    // 7) Atualiza aluno -> soft delete (marca deleted_at, deleted_by e reason)
+    const now = new Date().toISOString();
     const { error: updErr } = await admin
       .from("alunos")
       .update({
-        deleted_at: nowIso,
+        deleted_at: now,
         deleted_by: user.id,
         deletion_reason: reason,
-        status: "inativo",
-      } as any)
+        status: 'arquivado' as any,
+      } as Database["public"]["Tables"]["alunos"]["Update"])
       .eq("id", alunoId);
 
     if (updErr) {
@@ -182,26 +151,38 @@ export async function POST(
       );
     }
 
-    // 7) Auditoria
+    // 8) Cria/atualiza registro em alunos_excluidos (histórico)
     try {
-      await recordAuditServer({
-        escolaId: alunoEscolaId,
-        portal: "secretaria",
-        acao: "ALUNO_ARQUIVADO",
-        entity: "aluno",
-        entityId: String(alunoId),
-        details: {
-          reason,
-          aluno_nome: (aluno as any).nome,
-          performed_by: user.id,
-          role,
-        },
-      });
-    } catch {
-      // auditoria não bloqueia
+      await admin.from("alunos_excluidos").insert({
+        aluno_id: (aluno as any).id,
+        escola_id: (aluno as any).escola_id,
+        profile_id: (aluno as any).profile_id,
+        nome: (aluno as any).nome ?? null,
+        exclusao_motivo: reason,
+        aluno_created_at: (aluno as any).created_at ?? null,
+        aluno_deleted_at: now,
+        excluido_por: user.id,
+        dados_anonimizados: false,
+        snapshot: { aluno, captured_at: now } as any,
+      } as Database["public"]["Tables"]["alunos_excluidos"]["Insert"]);
+    } catch (e) {
+      // Não bloqueia a operação principal
+      console.warn("[alunos.delete] Falha ao inserir em alunos_excluidos", e);
     }
 
-    return NextResponse.json({ ok: true });
+    // 9) Auditoria
+    try {
+      await recordAuditServer({
+        escolaId: (aluno as any).escola_id,
+        portal: 'secretaria',
+        acao: 'ALUNO_ARQUIVADO',
+        entity: 'aluno',
+        entityId: String(alunoId),
+        details: { performed_by: user.id, role }
+      })
+    } catch {}
+
+    return NextResponse.json({ ok: true, mode: "soft" });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     console.error("[alunos.delete] Erro inesperado:", message);
@@ -209,10 +190,7 @@ export async function POST(
   }
 }
 
-// Compat: ainda há chamadas usando DELETE no frontend
-export async function DELETE(
-  req: Request,
-  ctx: { params: Promise<{ alunoId: string }> }
-) {
+export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }> }) {
   return POST(req, ctx);
 }
+

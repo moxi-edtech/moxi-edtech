@@ -14,9 +14,9 @@ import { hasPermission } from "@/lib/permissions"
 // using the service role key to avoid client-side RLS violations during onboarding.
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const escolaId = params.id;
+  const { id: escolaId } = await params;
 
   try {
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {

@@ -22,6 +22,7 @@ export type Database = {
           deleted_at: string | null
           deleted_by: string | null
           deletion_reason: string | null
+          email: string | null
           escola_id: string | null
           id: string
           import_id: string | null
@@ -40,6 +41,7 @@ export type Database = {
           deleted_at?: string | null
           deleted_by?: string | null
           deletion_reason?: string | null
+          email?: string | null
           escola_id?: string | null
           id?: string
           import_id?: string | null
@@ -58,6 +60,7 @@ export type Database = {
           deleted_at?: string | null
           deleted_by?: string | null
           deletion_reason?: string | null
+          email?: string | null
           escola_id?: string | null
           id?: string
           import_id?: string | null
@@ -517,7 +520,73 @@ export type Database = {
             foreignKeyName: "cursos_oferta_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
+            referencedRelation: "vw_financeiro_propinas_por_turma"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "cursos_oferta_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
             referencedRelation: "vw_ocupacao_turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cursos_oferta_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_turmas_para_matricula"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      disciplinas: {
+        Row: {
+          classe_id: string | null
+          created_at: string
+          curso_id: string | null
+          escola_id: string
+          id: string
+          nome: string
+          tipo: string
+        }
+        Insert: {
+          classe_id?: string | null
+          created_at?: string
+          curso_id?: string | null
+          escola_id: string
+          id?: string
+          nome: string
+          tipo?: string
+        }
+        Update: {
+          classe_id?: string | null
+          created_at?: string
+          curso_id?: string | null
+          escola_id?: string
+          id?: string
+          nome?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disciplinas_classe_id_fkey"
+            columns: ["classe_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disciplinas_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "cursos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disciplinas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
             referencedColumns: ["id"]
           },
         ]
@@ -943,6 +1012,36 @@ export type Database = {
         }
         Relationships: []
       }
+      frequencias_2026_01: {
+        Row: {
+          curso_oferta_id: string | null
+          data: string
+          escola_id: string
+          id: string
+          matricula_id: string
+          routine_id: string | null
+          status: string
+        }
+        Insert: {
+          curso_oferta_id?: string | null
+          data: string
+          escola_id: string
+          id: string
+          matricula_id: string
+          routine_id?: string | null
+          status: string
+        }
+        Update: {
+          curso_oferta_id?: string | null
+          data?: string
+          escola_id?: string
+          id?: string
+          matricula_id?: string
+          routine_id?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       frequencias_default: {
         Row: {
           curso_oferta_id: string | null
@@ -1261,6 +1360,39 @@ export type Database = {
         }
         Relationships: []
       }
+      lancamentos_2026_01: {
+        Row: {
+          avaliacao_id: string
+          criado_em: string
+          escola_id: string
+          final: boolean
+          id: string
+          matricula_id: string
+          tenant_id: string | null
+          valor: number
+        }
+        Insert: {
+          avaliacao_id: string
+          criado_em: string
+          escola_id: string
+          final: boolean
+          id: string
+          matricula_id: string
+          tenant_id?: string | null
+          valor: number
+        }
+        Update: {
+          avaliacao_id?: string
+          criado_em?: string
+          escola_id?: string
+          final?: boolean
+          id?: string
+          matricula_id?: string
+          tenant_id?: string | null
+          valor?: number
+        }
+        Relationships: []
+      }
       lancamentos_default: {
         Row: {
           avaliacao_id: string
@@ -1396,7 +1528,21 @@ export type Database = {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
+            referencedRelation: "vw_financeiro_propinas_por_turma"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
             referencedRelation: "vw_ocupacao_turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
         ]
@@ -1454,6 +1600,7 @@ export type Database = {
           data_vencimento: string
           escola_id: string | null
           id: string
+          matricula_id: string | null
           mes_referencia: number | null
           observacoes: string | null
           status: string | null
@@ -1472,6 +1619,7 @@ export type Database = {
           data_vencimento: string
           escola_id?: string | null
           id?: string
+          matricula_id?: string | null
           mes_referencia?: number | null
           observacoes?: string | null
           status?: string | null
@@ -1490,6 +1638,7 @@ export type Database = {
           data_vencimento?: string
           escola_id?: string | null
           id?: string
+          matricula_id?: string | null
           mes_referencia?: number | null
           observacoes?: string | null
           status?: string | null
@@ -1505,6 +1654,13 @@ export type Database = {
             columns: ["aluno_id"]
             isOneToOne: false
             referencedRelation: "alunos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mensalidades_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
             referencedColumns: ["id"]
           },
         ]
@@ -1569,7 +1725,21 @@ export type Database = {
             foreignKeyName: "notas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
+            referencedRelation: "vw_financeiro_propinas_por_turma"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "notas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
             referencedRelation: "vw_ocupacao_turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
         ]
@@ -1815,7 +1985,21 @@ export type Database = {
             foreignKeyName: "presencas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
+            referencedRelation: "vw_financeiro_propinas_por_turma"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "presencas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
             referencedRelation: "vw_ocupacao_turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "presencas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
         ]
@@ -2140,7 +2324,21 @@ export type Database = {
             foreignKeyName: "rotinas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
+            referencedRelation: "vw_financeiro_propinas_por_turma"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "rotinas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
             referencedRelation: "vw_ocupacao_turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rotinas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
         ]
@@ -2221,7 +2419,21 @@ export type Database = {
             foreignKeyName: "secoes_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
+            referencedRelation: "vw_financeiro_propinas_por_turma"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "secoes_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
             referencedRelation: "vw_ocupacao_turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "secoes_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
         ]
@@ -2332,7 +2544,21 @@ export type Database = {
             foreignKeyName: "sistemas_notas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
+            referencedRelation: "vw_financeiro_propinas_por_turma"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "sistemas_notas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
             referencedRelation: "vw_ocupacao_turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sistemas_notas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
         ]
@@ -2575,7 +2801,21 @@ export type Database = {
             foreignKeyName: "turma_disciplinas_professores_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
+            referencedRelation: "vw_financeiro_propinas_por_turma"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "turma_disciplinas_professores_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
             referencedRelation: "vw_ocupacao_turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turma_disciplinas_professores_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
         ]
@@ -2586,6 +2826,7 @@ export type Database = {
           capacidade_maxima: number | null
           classe: string | null
           classe_id: string | null
+          curso_id: string | null
           escola_id: string
           id: string
           nome: string
@@ -2598,6 +2839,7 @@ export type Database = {
           capacidade_maxima?: number | null
           classe?: string | null
           classe_id?: string | null
+          curso_id?: string | null
           escola_id: string
           id?: string
           nome: string
@@ -2610,6 +2852,7 @@ export type Database = {
           capacidade_maxima?: number | null
           classe?: string | null
           classe_id?: string | null
+          curso_id?: string | null
           escola_id?: string
           id?: string
           nome?: string
@@ -2623,6 +2866,13 @@ export type Database = {
             columns: ["classe_id"]
             isOneToOne: false
             referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turmas_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "cursos"
             referencedColumns: ["id"]
           },
           {
@@ -2685,7 +2935,21 @@ export type Database = {
             foreignKeyName: "turmas_auditoria_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
+            referencedRelation: "vw_financeiro_propinas_por_turma"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "turmas_auditoria_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
             referencedRelation: "vw_ocupacao_turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turmas_auditoria_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
         ]
@@ -2728,7 +2992,21 @@ export type Database = {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
+            referencedRelation: "vw_financeiro_propinas_por_turma"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
             referencedRelation: "vw_ocupacao_turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
         ]
@@ -2801,7 +3079,21 @@ export type Database = {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
+            referencedRelation: "vw_financeiro_propinas_por_turma"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
             referencedRelation: "vw_ocupacao_turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
         ]
@@ -2860,7 +3152,21 @@ export type Database = {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
+            referencedRelation: "vw_financeiro_propinas_por_turma"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
             referencedRelation: "vw_ocupacao_turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
         ]
@@ -2871,6 +3177,23 @@ export type Database = {
           escola_id: string | null
           mes: number | null
           total_aberto: number | null
+        }
+        Relationships: []
+      }
+      vw_financeiro_propinas_por_turma: {
+        Row: {
+          ano_letivo: string | null
+          classe_label: string | null
+          escola_id: string | null
+          inadimplencia_pct: number | null
+          qtd_em_atraso: number | null
+          qtd_mensalidades: number | null
+          total_em_atraso: number | null
+          total_pago: number | null
+          total_previsto: number | null
+          turma_id: string | null
+          turma_nome: string | null
+          turno: string | null
         }
         Relationships: []
       }
@@ -2919,6 +3242,35 @@ export type Database = {
             columns: ["aluno_id"]
             isOneToOne: false
             referencedRelation: "alunos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vw_turmas_para_matricula: {
+        Row: {
+          capacidade_maxima: number | null
+          classe_nome: string | null
+          curso_nome: string | null
+          escola_id: string | null
+          id: string | null
+          nome: string | null
+          ocupacao_atual: number | null
+          session_id: string | null
+          turno: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "turmas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turmas_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "school_sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -3012,6 +3364,14 @@ export type Database = {
           success_count: number
         }[]
       }
+      matricular_em_massa_por_turma: {
+        Args: { p_escola_id: string; p_import_id: string; p_turma_id: string }
+        Returns: {
+          error_count: number
+          errors: Json
+          success_count: number
+        }[]
+      }
       move_profile_to_archive: {
         Args: { p_performed_by: string; p_user_id: string }
         Returns: undefined
@@ -3020,6 +3380,18 @@ export type Database = {
       normalize_text: { Args: { input_text: string }; Returns: string }
       partitions_info: { Args: never; Returns: Json }
       refresh_all_materialized_views: { Args: never; Returns: undefined }
+      rematricula_em_massa: {
+        Args: {
+          p_destino_turma_id: string
+          p_escola_id: string
+          p_origem_turma_id: string
+        }
+        Returns: {
+          errors: Json
+          inserted: number
+          skipped: number
+        }[]
+      }
       secretaria_audit_by_aluno_matricula: {
         Args: {
           p_aluno_id?: string

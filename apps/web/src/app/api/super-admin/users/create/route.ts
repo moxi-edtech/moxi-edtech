@@ -97,6 +97,8 @@ export async function POST(request: Request) {
         password,
         email_confirm: true,
         user_metadata: { nome, role: roleEnum, must_change_password: true },
+        // Injetar role também em app_metadata para que o JWT carregue a claim
+        app_metadata: { role: roleEnum } as any,
       })
       if (error || !data?.user) {
         // Se já existe, tenta reaproveitar o usuário existente para tornar a operação idempotente

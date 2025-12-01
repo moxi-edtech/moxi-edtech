@@ -4,9 +4,10 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 import { recordAuditServer } from "@/lib/audit";
 
-export async function POST(_req: Request, { params }: { params: Promise<{ alunoId: string }> }) {
+export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { alunoId } = await params;
+    const { id } = await params;
+    const alunoId = id;
     if (!alunoId) return NextResponse.json({ ok: false, error: 'ID do aluno não fornecido' }, { status: 400 })
 
     const s = await supabaseServerTyped<any>();

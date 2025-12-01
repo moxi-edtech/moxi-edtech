@@ -8,9 +8,9 @@ import type { Database } from "~types/supabase";
 // POST /api/escolas/[id]/cursos
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: escolaId } = params;
+  const { id: escolaId } = await params;
 
   try {
     const raw = await req.json();
@@ -199,9 +199,9 @@ export async function POST(
 // GET /api/escolas/[id]/cursos
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: escolaId } = params;
+  const { id: escolaId } = await params;
   try {
     const s = await supabaseServer();
     const { data: auth } = await s.auth.getUser();

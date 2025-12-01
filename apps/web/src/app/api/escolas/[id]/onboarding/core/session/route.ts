@@ -9,9 +9,9 @@ import type { Database } from "~types/supabase"
 // Creates or updates the active school session (school_sessions) for the escola.
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const escolaId = params.id
+  const { id: escolaId } = await params
 
   try {
     const raw = await req.json();
@@ -21,6 +21,7 @@ export async function POST(
     const rawEsquema = (raw as any)?.esquemaPeriodos as
       | "semestral"
       | "trimestral"
+      | "bimestral"
       | undefined;
 
     // 🔹 Se vier no formato novo (anoLetivo + esquemaPeriodos), convertemos para o formato antigo
@@ -98,16 +99,17 @@ export async function POST(
         return NextResponse.json({ ok: false, error: 'A sessão deve ter exatamente 1 ano de duração' }, { status: 400 })
       }
       data_inicio = `${startYear}-01-01`
-      // Para manter consistência com regra de 1 ano - 1 dia, definimos fim como 31/12 do ano final
-      data_fim = `${endYear}-12-31`
+      // Fim deve ser exatamente 1 ano - 1 dia após o início: 31/12 do ano inicial
+      data_fim = `${startYear}-12-31`
     } else {
       return NextResponse.json({ ok: false, error: 'Payload inválido' }, { status: 400 })
     }
 
     // Mapeia esquemaPeriodos (novo) para periodo_tipo (tabela configuracoes_escola)
-    let periodoTipoToSave: "semestre" | "trimestre" | null = null;
+    let periodoTipoToSave: "semestre" | "trimestre" | "bimestre" | null = null;
     if (rawEsquema === "semestral") periodoTipoToSave = "semestre";
     if (rawEsquema === "trimestral") periodoTipoToSave = "trimestre";
+    if (rawEsquema === "bimestral") periodoTipoToSave = "bimestre";
 
     const s = await supabaseServer()
     const { data: auth } = await s.auth.getUser()
@@ -226,19 +228,34 @@ export async function POST(
       active = (all || []).find((s: any) => s.status === 'ativa') || null
     } catch {}
 
-    // Autogerar períodos conforme preferências, se habilitado e ainda não existirem períodos
+    // Autogerar períodos conforme preferências, se habilitado e ainda não existirem períodos.
+    // Fallback: se não houver configuracoes_escola (ou colunas), usa o esquema enviado no payload (rawEsquema)
     try {
       if (active && active.id) {
         // Lê preferências
-        const { data: cfg } = await (admin as any)
-          .from('configuracoes_escola')
-          .select('autogerar_periodos, periodo_tipo, tipo_presenca')
-          .eq('escola_id', escolaId)
-          .maybeSingle()
+        let auto = false as boolean
+        let periodoTipo = undefined as 'semestre' | 'trimestre' | 'bimestre' | undefined
+        let tipoPresenca = undefined as 'secao' | 'curso' | undefined
 
-        const auto = Boolean((cfg as any)?.autogerar_periodos)
-        const periodoTipo = (cfg as any)?.periodo_tipo as ('semestre' | 'trimestre' | undefined)
-        const tipoPresenca = (cfg as any)?.tipo_presenca as ('secao' | 'curso' | undefined)
+        try {
+          const { data: cfg } = await (admin as any)
+            .from('configuracoes_escola')
+            .select('autogerar_periodos, periodo_tipo, tipo_presenca')
+            .eq('escola_id', escolaId)
+            .maybeSingle()
+          auto = Boolean((cfg as any)?.autogerar_periodos)
+          periodoTipo = (cfg as any)?.periodo_tipo as ('semestre' | 'trimestre' | 'bimestre' | undefined)
+          tipoPresenca = (cfg as any)?.tipo_presenca as ('secao' | 'curso' | undefined)
+        } catch (_) {
+          // Se a tabela/coluna não existir, seguimos com fallback abaixo
+        }
+
+        // Fallback baseado no payload: se recebemos esquemaPeriodos, forçamos autogerar e derivamos o periodoTipo
+        if (!auto && rawEsquema) auto = true
+        if (!periodoTipo && rawEsquema) {
+          periodoTipo = rawEsquema === 'semestral' ? 'semestre' : rawEsquema === 'bimestral' ? 'bimestre' : 'trimestre'
+        }
+        if (!tipoPresenca) tipoPresenca = 'secao'
 
         if (auto) {
           // Já existem períodos para esta sessão?
@@ -249,9 +266,9 @@ export async function POST(
 
           if (!count || count === 0) {
             // Define quantidade e rótulo
-            const n = periodoTipo === 'semestre' ? 2 : 3
-            const label = periodoTipo === 'semestre' ? 'Semestre' : 'Trimestre'
-            const tipoUpper = periodoTipo === 'semestre' ? 'SEMESTRE' : 'TRIMESTRE'
+            const n = periodoTipo === 'semestre' ? 2 : periodoTipo === 'bimestre' ? 6 : 3
+            const label = periodoTipo === 'semestre' ? 'Semestre' : periodoTipo === 'bimestre' ? 'Bimestre' : 'Trimestre'
+            const tipoUpper = periodoTipo === 'semestre' ? 'SEMESTRE' : periodoTipo === 'bimestre' ? 'BIMESTRE' : 'TRIMESTRE'
             const attendance = tipoPresenca === 'curso' ? 'course' : 'section'
 
             // Utilitário para dividir o intervalo em N partes contíguas (inclusivo)
@@ -323,9 +340,9 @@ export async function POST(
 // Lists all sessions for the escola using service role (authorization enforced first)
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const escolaId = params.id;
+  const { id: escolaId } = await params;
 
   try {
     const s = await supabaseServer();
@@ -390,4 +407,3 @@ export async function GET(
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
 }
-
