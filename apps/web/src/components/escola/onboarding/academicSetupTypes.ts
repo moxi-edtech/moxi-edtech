@@ -1,4 +1,4 @@
-import { CurriculumKey, CurriculumCategory, CurriculumDisciplineBlueprint } from "@/lib/onboarding";
+import { CurriculumKey } from "@/lib/onboarding";
 
 // =========================
 // TIPOS PRINCIPAIS
@@ -49,6 +49,14 @@ export type CurriculumPresetMeta = {
   label: string;
   badge?: string;
 };
+
+// Categoria dos presets (apenas para UI/agrupamento)
+export type CurriculumCategory =
+  | "geral"
+  | "tecnico_ind"
+  | "tecnico_serv"
+  | "saude"
+  | "magisterio";
 
 // =========================
 // PROPS DOS COMPONENTES
@@ -118,7 +126,7 @@ export const PRESETS_META: CurriculumPresetMeta[] = [
     label: "Ciências Económicas e Jurídicas",
   },
   {
-    key: "humanas",
+    key: "primario_avancado",
     categoria: "geral",
     label: "Ciências Humanas",
   },
@@ -135,7 +143,7 @@ export const PRESETS_META: CurriculumPresetMeta[] = [
     label: "Técnico de Construção Civil",
   },
   {
-    key: "tecnico_energia",
+    key: "tecnico_base",
     categoria: "tecnico_ind",
     label: "Energia e Instalações",
   },
@@ -146,11 +154,7 @@ export const PRESETS_META: CurriculumPresetMeta[] = [
     categoria: "tecnico_serv",
     label: "Técnico de Gestão",
   },
-  {
-    key: "tecnico_rh",
-    categoria: "tecnico_serv",
-    label: "Recursos Humanos",
-  },
+  // Removido técnico RH por ausência de blueprint específico
 
   // SAÚDE
   {
@@ -165,11 +169,7 @@ export const PRESETS_META: CurriculumPresetMeta[] = [
   },
   
   // MAGISTÉRIO
-  {
-    key: "magisterio_primario",
-    categoria: "magisterio",
-    label: "Magistério Primário",
-  },
+  // Sem blueprint específico no momento — mantemos a categoria sem itens
 ];
 
 // =========================

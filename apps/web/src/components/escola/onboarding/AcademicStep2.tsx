@@ -21,10 +21,8 @@ import {
   calculateTotalTurmas,
 } from "./academicSetupTypes";
 
-import type {
-  AcademicStep2Props,
-  CurriculumKey,
-} from "./academicSetupTypes";
+import type { AcademicStep2Props } from "./academicSetupTypes";
+import type { CurriculumKey } from "@/lib/onboarding";
 
 export default function AcademicStep2({
   presetCategory,

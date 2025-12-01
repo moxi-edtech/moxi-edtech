@@ -9,10 +9,7 @@ import { toast } from "sonner";
 import AcademicStep1 from "./AcademicStep1";
 import AcademicStep2 from "./AcademicStep2";
 
-import {
-  type CurriculumCategory,
-  type CurriculumKey,
-} from "@/lib/onboarding";
+import { type CurriculumCategory } from "./academicSetupTypes";
 
 import {
   type TurnosState,
