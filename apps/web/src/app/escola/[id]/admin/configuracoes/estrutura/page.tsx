@@ -1,5 +1,5 @@
 import { use } from "react";
-import StructureMarketplace from "@/components/escola/settings/StructureMarketplace";
+import StructureMarketplace from "../../../../../../components/escola/settings/StructureMarketplace";
 
 type Props = {
   params: Promise<{ id: string }>;
