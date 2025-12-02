@@ -6,10 +6,9 @@ import {
   Loader2, Search, Filter, ArrowLeft,
   Users, BookOpen, BarChart3, Building2, Calendar,
   Eye, Edit, MoreVertical, Link as LinkIcon, Plus, Trash2,
-  GraduationCap, School
+  GraduationCap, School, ScrollText
 } from "lucide-react";
 
-// Componentes
 import TurmaForm from "./TurmaForm";
 import AtribuirProfessorForm from "./AtribuirProfessorForm";
 
@@ -26,6 +25,7 @@ interface TurmaItem {
   ultima_matricula: string | null;
   classe_nome?: string;
   curso_nome?: string;
+  curso_tipo?: string; // <--- NOVO CAMPO VINDO DA VIEW
 }
 
 interface TurmasResponse {
@@ -93,77 +93,73 @@ export default function TurmasListClient() {
 
   useEffect(() => { fetchData(); }, [turno]);
 
-  // --- LÓGICA INTELIGENTE (SMART DISPLAY v4 - Híbrida) ---
+  // --- LÓGICA INTELIGENTE V8 (BASEADA NO TIPO REAL) ---
   const getDisplayInfo = (t: TurmaItem) => {
-    let curso = t.curso_nome || "";
-    let classe = t.classe_nome || "";
-    const nomeTurma = t.nome.trim();
-
-    // 1. LIMPEZA DE DADOS (Normalizar o que vem da API)
-    const cursoEhGenerico = !curso || curso === "Ensino Geral" || curso === "Curso Base";
-    const classeEhGenerica = !classe || classe === "Classe não definida";
-
-    // 2. DETETIVE DE DADOS (Se a API falhou, tentamos descobrir pelo nome da turma)
+    // Dados diretos do Banco (A Verdade)
+    const tipoBanco = t.curso_tipo || 'geral';
+    const cursoLabel = t.curso_nome || "Curso Geral";
     
-    // Tenta descobrir a Classe (ex: "10ª" no nome da turma)
-    if (classeEhGenerica) {
-        const matchClasse = nomeTurma.match(/(\d+)(?:ª|a|º)?/);
-        if (matchClasse) classe = `${matchClasse[1]}ª Classe`;
-        else classe = nomeTurma; // Fallback
+    // Normalizar Classe
+    let classeLabel = t.classe_nome || "";
+    const matchNum = (classeLabel + " " + t.nome).match(/(\d+)/);
+    const numeroClasse = matchNum ? parseInt(matchNum[1], 10) : 0;
+
+    if (!classeLabel || classeLabel === 'Classe não definida') {
+        classeLabel = numeroClasse > 0 ? `${numeroClasse}ª Classe` : t.nome;
     }
 
-    // Tenta descobrir o Curso Técnico pelo nome da turma (ex: "10ª A Informática")
-    // Isto "salva" as turmas antigas que não têm vínculo na BD
-    if (cursoEhGenerico) {
-        const lowerNome = nomeTurma.toLowerCase();
-        if (lowerNome.includes('informática') || lowerNome.includes('inf')) curso = "Técnico de Informática";
-        else if (lowerNome.includes('gestão') || lowerNome.includes('ges')) curso = "Técnico de Gestão";
-        else if (lowerNome.includes('enfermagem') || lowerNome.includes('enf')) curso = "Técnico de Enfermagem";
-        else if (lowerNome.includes('construção') || lowerNome.includes('civil')) curso = "Construção Civil";
-        else if (lowerNome.includes('frio')) curso = "Instalações e Energia";
-        // Se não encontrar nada, mantém-se "Ensino Geral"
+    // --- 1. TÉCNICO ---
+    if (tipoBanco === 'tecnico' || tipoBanco === 'curso_tecnico') {
+        return {
+            main: cursoLabel,
+            sub: classeLabel,
+            isHighlight: true,
+            isTecnico: true, // Roxo
+            icon: GraduationCap
+        };
     }
 
-    // 3. DECISÃO DE VISUALIZAÇÃO
-    // Agora que já "limpámos" os dados, decidimos como mostrar
+    // --- 2. PUNIV (II CICLO GERAL) ---
+    if (tipoBanco === 'puniv' || tipoBanco === 'curso_puniv') {
+        return {
+            main: cursoLabel,
+            sub: `${classeLabel} (PUNIV)`,
+            isHighlight: true,
+            isTecnico: false, // Azul/Indigo (ScrollText)
+            icon: ScrollText
+        };
+    }
 
-    const isTecnico = curso && 
-      !curso.includes("Geral") && 
-      !curso.includes("Base") && 
-      !curso.includes("Primário") && 
-      !curso.includes("Ciclo");
+    // --- 3. Iº CICLO ---
+    if (tipoBanco === 'ciclo1' || (numeroClasse >= 7 && numeroClasse <= 9)) {
+        return {
+            main: classeLabel,
+            sub: "Iº Ciclo do Secundário",
+            isHighlight: false,
+            icon: School
+        };
+    }
 
-    if (isTecnico) {
-      // CASO A: TÉCNICO (Destaque ao Curso)
-      return {
-        main: curso,       // "Técnico de Informática"
-        sub: classe,       // "10ª Classe"
-        isHighlight: true, // Cor Roxo/Indigo
-        icon: GraduationCap
-      };
-    } else {
-      // CASO B: GERAL (Destaque à Classe)
-      // Vamos calcular o Ciclo corretamente baseado no número da classe
-      let ciclo = "Ensino Geral";
-      const numeroClasse = parseInt(classe.match(/\d+/)?.[0] || "0", 10);
-      
-      if (numeroClasse > 0) {
-         if (numeroClasse <= 6) ciclo = "Ensino Primário";
-         else if (numeroClasse <= 9) ciclo = "Iº Ciclo do Secundário";
-         else ciclo = "IIº Ciclo (PUNIV)";
-      }
+    // --- 4. PRIMÁRIO ---
+    if (tipoBanco === 'primario' || (numeroClasse >= 1 && numeroClasse <= 6)) {
+        return {
+            main: classeLabel,
+            sub: "Ensino Primário",
+            isHighlight: false,
+            icon: BookOpen
+        };
+    }
 
-      return {
-        main: classe,      // "7ª Classe"
-        sub: ciclo,        // "Iº Ciclo"
-        isHighlight: false, // Cinza
+    // Fallback
+    return {
+        main: classeLabel,
+        sub: "Ensino Geral",
+        isHighlight: false,
         icon: School
-      };
-    }
+    };
   };
 
-  // ... (Resto do código igual: filtrosTurno, itensFiltrados, getOcupacao, loadAssignments) ...
-  
+  // --- LÓGICA FILTROS ---
   const filtrosTurno = useMemo(() => {
     const porTurno = data?.stats?.porTurno ?? [];
     const base = porTurno.map((item) => ({
@@ -238,6 +234,7 @@ export default function TurmasListClient() {
 
       {/* TABELA */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        
         <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row gap-4 justify-between items-center">
            <div className="relative w-full sm:max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -291,8 +288,8 @@ export default function TurmasListClient() {
 
                                 <td className="px-6 py-4">
                                     <div className="space-y-1">
-                                        <div className={`flex items-center gap-1.5 text-sm font-medium ${info.isHighlight ? 'text-purple-700' : 'text-slate-700'}`}>
-                                            <InfoIcon className={`w-3.5 h-3.5 ${info.isHighlight ? 'text-purple-500' : 'text-slate-400'}`}/>
+                                        <div className={`flex items-center gap-1.5 text-sm font-medium ${info.isHighlight ? (info.isTecnico ? 'text-purple-700' : 'text-blue-700') : 'text-slate-700'}`}>
+                                            <InfoIcon className={`w-3.5 h-3.5 ${info.isHighlight ? (info.isTecnico ? 'text-purple-500' : 'text-blue-500') : 'text-slate-400'}`}/>
                                             {info.main}
                                         </div>
                                         <div className="flex items-center gap-1.5 text-xs text-slate-500 ml-0.5">
@@ -334,7 +331,35 @@ export default function TurmasListClient() {
                             {manageTurmaId === turma.id && (
                                 <tr className="bg-slate-50/50 border-b border-slate-200">
                                     <td colSpan={5} className="px-6 py-4">
-                                       {/* Painel de Atribuições */}
+                                        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm animate-in slide-in-from-top-2">
+                                            <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-2">
+                                                <h4 className="font-bold text-sm text-slate-700 flex items-center gap-2"><BookOpen className="w-4 h-4 text-purple-500"/> Atribuições de Professores</h4>
+                                                <button onClick={() => setShowAtribuirForm(true)} className="text-xs font-bold bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700 transition">+ Atribuir</button>
+                                            </div>
+                                            {loadingAssignments ? (
+                                                <div className="py-4 text-center text-xs text-slate-400"><Loader2 className="w-4 h-4 animate-spin mx-auto mb-1"/> Carregando...</div>
+                                            ) : !assignments || assignments.length === 0 ? (
+                                                <div className="py-4 text-center text-xs text-slate-400 italic">Nenhum professor atribuído a esta turma.</div>
+                                            ) : (
+                                                <div className="grid gap-2">
+                                                    {assignments.map(a => (
+                                                        <div key={a.id} className="flex items-center justify-between p-2 border border-slate-100 rounded-lg bg-slate-50 hover:bg-white transition">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-xs">{(a.professor?.nome || '?')[0]}</div>
+                                                                <div>
+                                                                    <p className="text-xs font-bold text-slate-700">{a.disciplina?.nome}</p>
+                                                                    <p className="text-[10px] text-slate-400">{a.professor?.nome}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex gap-1">
+                                                                {a.vinculos.notas && <span className="text-[9px] bg-green-100 text-green-700 px-1.5 rounded">Notas</span>}
+                                                                <button className="p-1 text-slate-300 hover:text-red-500"><Trash2 className="w-3 h-3"/></button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                     </td>
                                 </tr>
                             )}
@@ -347,7 +372,6 @@ export default function TurmasListClient() {
         </div>
       </div>
       
-      {/* Modais */}
       {showCreateForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
             <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-lg">
@@ -359,6 +383,19 @@ export default function TurmasListClient() {
             </div>
         </div>
       )}
+
+      {showAtribuirForm && manageTurmaId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
+             <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-lg">
+                <div className="flex justify-between mb-4">
+                    <h3 className="font-bold text-lg">Atribuir Professor</h3>
+                    <button onClick={() => setShowAtribuirForm(false)}><ArrowLeft className="w-5 h-5"/></button>
+                </div>
+                <AtribuirProfessorForm turmaId={manageTurmaId} onSuccess={() => { setShowAtribuirForm(false); loadAssignments(manageTurmaId); }} />
+            </div>
+        </div>
+      )}
+
     </div>
   );
 }
