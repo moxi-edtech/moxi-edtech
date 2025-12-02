@@ -22,8 +22,20 @@ const bodySchema = z.object({
       qtyManha: z.number().optional(),
       qtyTarde: z.number().optional(),
       qtyNoite: z.number().optional(),
+      tipo: z.string().optional(), // Adicionado para incluir o tipo de curso
     })
   ).optional(),
+  data: z.object({
+    tipo: z.enum(['ciclo_base', 'curso_tecnico', 'curso_puniv']),
+    nome: z.string().optional(), // Nome do curso, se aplicável
+    estrutura: z.array(
+      z.object({
+        nome: z.string(), // Ex: "10ª Classe"
+        turnos: z.array(z.string()), // Ex: ["manha", "tarde"]
+        disciplinas: z.array(z.string()), // Ex: ["Português", "Matemática"]
+      })
+    ),
+  }).optional(),
 });
 
 // Helper para criar códigos de curso
@@ -55,7 +67,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ ok: false, error: "Dados inválidos." }, { status: 400 });
     }
 
-    const { presetKey, sessionId, matrix } = parsed.data;
+    const { presetKey, sessionId, matrix, data } = parsed.data;
     
     // CLIENTE ADMIN
     const admin = createAdminClient<Database>(
@@ -63,7 +75,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    const summary = { cursos: 0, classes: 0, turmas: 0, disciplinas: 0 };
+    const summary = {
+      cursos: { created: 0 },
+      classes: { created: 0 },
+      disciplinas: { created: 0 },
+      turmas: { created: 0 },
+    };
 
     // =================================================================================
     // LÓGICA PRINCIPAL
@@ -107,6 +124,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                 disciplinasDoCurso = presetData;
             }
 
+            // Extrair o curso_tipo do presetData
+            // Assume que o primeiro item do blueprint define o tipo para o curso geral
+            const tipoCurso = presetData[0]?.curso_tipo || 'geral'; 
+
             // B. CRIAR/BUSCAR O CURSO NO BANCO
             let cursoId: string | null = null;
             
@@ -130,12 +151,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                         .insert({
                             escola_id: escolaId,
                             nome: labelCurso,
-                            codigo: makeCursoCodigo(labelCurso)
+                            codigo: makeCursoCodigo(labelCurso),
+                            tipo: tipoCurso // <--- Adicionado o tipo aqui
                         })
                         .select('id')
                         .single();
                     cursoId = novoCurso?.id ?? null;
-                    summary.cursos++;
+                    summary.cursos.created++;
                 }
             }
 
@@ -151,6 +173,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
             if (classeExistente) {
                 classeId = classeExistente.id;
+                summary.classes.created++;
             } else {
                 const { data: novaClasse } = await admin
                     .from('classes')
@@ -162,7 +185,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                     .select('id')
                     .single();
                 classeId = novaClasse?.id ?? null;
-                summary.classes++;
+                summary.classes.created++;
             }
 
             // D. CRIAR DISCIPLINAS
@@ -174,11 +197,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                     curso_id: cursoId
                 }));
 
-                const { error: errDisc } = await admin
-                    .from('disciplinas')
+                const { error: errDisc } = await (admin as any).from('disciplinas')
                     .upsert(discToInsert, { onConflict: 'escola_id, classe_id, curso_id, nome' } as any);
                 
-                if (!errDisc) summary.disciplinas += disciplinasDoCurso.length;
+                if (!errDisc) summary.disciplinas.created += disciplinasDoCurso.length;
             }
 
             // E. CRIAR TURMAS
@@ -214,13 +236,116 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                             capacidade_maxima: 35
                         });
                         
-                        summary.turmas++;
+                        summary.turmas.created++;
                         nextIndex++;
                     }
                 }
             }
         }
     }
+
+    // =================================================================================
+    // MODO D: ADVANCED BUILDER (Hierárquico)
+    // =================================================================================
+    if (presetKey === 'advanced_builder' && data) {
+        
+        // 1. Criar o Curso (se aplicável)
+        let cursoId: string | null = null;
+        
+        if (data.tipo !== 'ciclo_base') {
+            const { data: novoCurso, error: errCurso } = await admin
+                .from('cursos')
+                .insert({
+                    escola_id: escolaId,
+                    nome: data.nome,
+                    codigo: makeCursoCodigo(data.nome), // Função helper existente
+                    tipo: data.tipo // 'curso_tecnico' ou 'curso_puniv'
+                })
+                .select('id')
+                .single();
+            
+            if (errCurso) throw errCurso;
+            cursoId = novoCurso.id;
+            summary.cursos.created++;
+        }
+
+        // 2. Iterar sobre a Estrutura (Classes)
+        for (const nivel of data.estrutura) {
+            // nivel = { nome: "10ª Classe", turnos: ["manha"], disciplinas: ["Português"...] }
+            
+            // A. Criar/Buscar Classe
+            const { data: classe, error: errClasse } = await admin
+                .from('classes')
+                .insert({
+                    escola_id: escolaId,
+                    nome: nivel.nome,
+                    curso_id: cursoId, // Vincula ao curso específico
+                    ordem: parseInt(nivel.nome.replace(/\D/g, '')) || 0
+                })
+                .select('id')
+                .single();
+             
+            if (errClasse) { console.error(errClasse); continue; }
+            const classeId = classe.id;
+            summary.classes.created++;
+
+            // B. Criar Disciplinas
+            if (nivel.disciplinas.length > 0) {
+                const discs = nivel.disciplinas.map((d: string) => ({
+                    escola_id: escolaId,
+                    nome: d,
+                    classe_id: classeId,
+                    curso_id: cursoId
+                }));
+                await admin.from('disciplinas').insert(discs);
+                summary.disciplinas.created += discs.length;
+            }
+
+            // C. Criar Turmas (Opcional - 1 por turno selecionado)
+            if (sessionId && classeId) { // Certifica-te que passas o sessionId no payload ou buscas o ativo
+                const turnosMap = {
+                    "manha": "Manhã",
+                    "tarde": "Tarde",
+                    "noite": "Noite"
+                };
+                const letras = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+                for (const turnoKey of nivel.turnos) {
+                    const turnoNome = turnosMap[turnoKey as keyof typeof turnosMap] || turnoKey; // Fallback para o próprio key se não mapeado
+
+                    const { count } = await admin
+                        .from('turmas')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('escola_id', escolaId)
+                        .eq('session_id', sessionId)
+                        .eq('classe_id', classeId)
+                        .eq('turno', turnoNome); // Considerar turmas do mesmo turno
+
+                    let nextIndex = count || 0;
+
+                    const letra = letras[nextIndex % letras.length];
+                    const suffix = Math.floor(nextIndex / letras.length);
+                    const nomeTurma = suffix > 0 ? `${letra}${suffix}` : letra;
+
+                    await admin.from('turmas').insert({
+                        escola_id: escolaId,
+                        session_id: sessionId,
+                        classe_id: classeId,
+                        curso_id: cursoId,
+                        nome: nomeTurma,
+                        turno: turnoNome,
+                        capacidade_maxima: 35
+                    });
+                    
+                    summary.turmas.created++;
+                }
+            }
+        }
+
+        return NextResponse.json({ ok: true, summary });
+    }
+
+
 
     return NextResponse.json({ ok: true, summary });
 
