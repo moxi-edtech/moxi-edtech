@@ -26,12 +26,17 @@ export type Database = {
           escola_id: string | null
           id: string
           import_id: string | null
+          naturalidade: string | null
           nome: string
           profile_id: string | null
           responsavel: string | null
+          responsavel_contato: string | null
+          responsavel_nome: string | null
+          sexo: string | null
           status: string | null
           telefone: string | null
           telefone_responsavel: string | null
+          tsv: unknown
           updated_at: string | null
         }
         Insert: {
@@ -45,12 +50,17 @@ export type Database = {
           escola_id?: string | null
           id?: string
           import_id?: string | null
+          naturalidade?: string | null
           nome: string
           profile_id?: string | null
           responsavel?: string | null
+          responsavel_contato?: string | null
+          responsavel_nome?: string | null
+          sexo?: string | null
           status?: string | null
           telefone?: string | null
           telefone_responsavel?: string | null
+          tsv?: unknown
           updated_at?: string | null
         }
         Update: {
@@ -64,12 +74,17 @@ export type Database = {
           escola_id?: string | null
           id?: string
           import_id?: string | null
+          naturalidade?: string | null
           nome?: string
           profile_id?: string | null
           responsavel?: string | null
+          responsavel_contato?: string | null
+          responsavel_nome?: string | null
+          sexo?: string | null
           status?: string | null
           telefone?: string | null
           telefone_responsavel?: string | null
+          tsv?: unknown
           updated_at?: string | null
         }
         Relationships: [
@@ -85,6 +100,13 @@ export type Database = {
             columns: ["escola_id"]
             isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alunos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
           {
@@ -151,6 +173,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "alunos_excluidos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "alunos_excluidos_excluido_por_fkey"
             columns: ["excluido_por"]
             isOneToOne: false
@@ -194,6 +223,13 @@ export type Database = {
             columns: ["escola_id"]
             isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "atribuicoes_prof_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
           {
@@ -267,6 +303,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "audit_logs_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "audit_logs_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -319,6 +362,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "avaliacoes_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "avaliacoes_sistema_notas_id_fkey"
             columns: ["sistema_notas_id"]
             isOneToOne: false
@@ -330,6 +380,7 @@ export type Database = {
       classes: {
         Row: {
           created_at: string
+          curso_id: string | null
           descricao: string | null
           escola_id: string
           id: string
@@ -340,6 +391,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          curso_id?: string | null
           descricao?: string | null
           escola_id: string
           id?: string
@@ -350,6 +402,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          curso_id?: string | null
           descricao?: string | null
           escola_id?: string
           id?: string
@@ -360,10 +413,87 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "classes_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "cursos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "classes_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "vw_cursos_reais"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "classes_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "classes_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      configuracoes_curriculo: {
+        Row: {
+          config: Json
+          created_at: string | null
+          curso_id: string
+          escola_id: string
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          config?: Json
+          created_at?: string | null
+          curso_id: string
+          escola_id: string
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          config?: Json
+          created_at?: string | null
+          curso_id?: string
+          escola_id?: string
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "configuracoes_curriculo_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "cursos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "configuracoes_curriculo_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "vw_cursos_reais"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "configuracoes_curriculo_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "configuracoes_curriculo_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
         ]
@@ -401,45 +531,82 @@ export type Database = {
             referencedRelation: "escolas"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "configuracoes_escola_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: true
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
         ]
       }
       cursos: {
         Row: {
           codigo: string
+          curso_global_id: string | null
           descricao: string | null
           escola_id: string
           id: string
+          is_custom: boolean | null
           nivel: string | null
           nome: string
           semestre_id: string | null
           tipo: string | null
+          updated_at: string | null
         }
         Insert: {
           codigo: string
+          curso_global_id?: string | null
           descricao?: string | null
           escola_id: string
           id?: string
+          is_custom?: boolean | null
           nivel?: string | null
           nome: string
           semestre_id?: string | null
           tipo?: string | null
+          updated_at?: string | null
         }
         Update: {
           codigo?: string
+          curso_global_id?: string | null
           descricao?: string | null
           escola_id?: string
           id?: string
+          is_custom?: boolean | null
           nivel?: string | null
           nome?: string
           semestre_id?: string | null
           tipo?: string | null
+          updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "cursos_curso_global_id_fkey"
+            columns: ["curso_global_id"]
+            isOneToOne: false
+            referencedRelation: "cursos_globais_cache"
+            referencedColumns: ["hash"]
+          },
+          {
+            foreignKeyName: "cursos_curso_global_id_fkey"
+            columns: ["curso_global_id"]
+            isOneToOne: false
+            referencedRelation: "vw_turmas_para_matricula"
+            referencedColumns: ["curso_global_hash"]
+          },
           {
             foreignKeyName: "cursos_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cursos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
           {
@@ -454,6 +621,54 @@ export type Database = {
             columns: ["semestre_id"]
             isOneToOne: false
             referencedRelation: "semestres"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cursos_globais_cache: {
+        Row: {
+          created_at: string | null
+          created_by_escola: string | null
+          first_seen_at: string | null
+          hash: string
+          last_used_at: string | null
+          nome: string
+          tipo: string
+          usage_count: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by_escola?: string | null
+          first_seen_at?: string | null
+          hash: string
+          last_used_at?: string | null
+          nome: string
+          tipo: string
+          usage_count?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by_escola?: string | null
+          first_seen_at?: string | null
+          hash?: string
+          last_used_at?: string | null
+          nome?: string
+          tipo?: string
+          usage_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cursos_globais_cache_created_by_escola_fkey"
+            columns: ["created_by_escola"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cursos_globais_cache_created_by_escola_fkey"
+            columns: ["created_by_escola"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
         ]
@@ -489,10 +704,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "cursos_oferta_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "vw_cursos_reais"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "cursos_oferta_escola_fk"
             columns: ["escola_id"]
             isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cursos_oferta_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
           {
@@ -541,45 +770,51 @@ export type Database = {
       }
       disciplinas: {
         Row: {
-          classe_id: string | null
-          created_at: string
-          curso_id: string | null
+          carga_horaria: number | null
+          classe_nome: string
+          created_at: string | null
+          curso_escola_id: string
           escola_id: string
           id: string
+          nivel_ensino: string | null
           nome: string
-          tipo: string
+          tipo: string | null
         }
         Insert: {
-          classe_id?: string | null
-          created_at?: string
-          curso_id?: string | null
+          carga_horaria?: number | null
+          classe_nome: string
+          created_at?: string | null
+          curso_escola_id: string
           escola_id: string
           id?: string
+          nivel_ensino?: string | null
           nome: string
-          tipo?: string
+          tipo?: string | null
         }
         Update: {
-          classe_id?: string | null
-          created_at?: string
-          curso_id?: string | null
+          carga_horaria?: number | null
+          classe_nome?: string
+          created_at?: string | null
+          curso_escola_id?: string
           escola_id?: string
           id?: string
+          nivel_ensino?: string | null
           nome?: string
-          tipo?: string
+          tipo?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "disciplinas_classe_id_fkey"
-            columns: ["classe_id"]
+            foreignKeyName: "disciplinas_curso_escola_id_fkey"
+            columns: ["curso_escola_id"]
             isOneToOne: false
-            referencedRelation: "classes"
+            referencedRelation: "cursos"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "disciplinas_curso_id_fkey"
-            columns: ["curso_id"]
+            foreignKeyName: "disciplinas_curso_escola_id_fkey"
+            columns: ["curso_escola_id"]
             isOneToOne: false
-            referencedRelation: "cursos"
+            referencedRelation: "vw_cursos_reais"
             referencedColumns: ["id"]
           },
           {
@@ -587,6 +822,13 @@ export type Database = {
             columns: ["escola_id"]
             isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disciplinas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
         ]
@@ -625,10 +867,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "escola_administradores_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "fk_escola_admin_escola"
             columns: ["escola_id"]
             isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_escola_admin_escola"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
           {
@@ -673,6 +929,13 @@ export type Database = {
             referencedRelation: "escolas"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "escola_auditoria_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
         ]
       }
       escola_configuracoes: {
@@ -697,6 +960,13 @@ export type Database = {
             columns: ["escola_id"]
             isOneToOne: true
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escola_configuracoes_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: true
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
         ]
@@ -729,6 +999,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "escola_members_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "escola_members_role_id_fkey"
             columns: ["role_id"]
             isOneToOne: false
@@ -741,6 +1018,45 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      escola_users: {
+        Row: {
+          created_at: string | null
+          escola_id: string
+          id: string
+          role: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          escola_id: string
+          id?: string
+          role?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          escola_id?: string
+          id?: string
+          role?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escola_users_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escola_users_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -772,6 +1088,13 @@ export type Database = {
             columns: ["escola_id"]
             isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escola_usuarios_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
         ]
@@ -860,6 +1183,255 @@ export type Database = {
             referencedRelation: "escolas"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "events_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financeiro_itens: {
+        Row: {
+          ativo: boolean
+          categoria: Database["public"]["Enums"]["financeiro_categoria_item"]
+          controla_estoque: boolean
+          created_at: string | null
+          escola_id: string
+          estoque_atual: number
+          id: string
+          nome: string
+          preco: number
+          updated_at: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          categoria?: Database["public"]["Enums"]["financeiro_categoria_item"]
+          controla_estoque?: boolean
+          created_at?: string | null
+          escola_id: string
+          estoque_atual?: number
+          id?: string
+          nome: string
+          preco?: number
+          updated_at?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          categoria?: Database["public"]["Enums"]["financeiro_categoria_item"]
+          controla_estoque?: boolean
+          created_at?: string | null
+          escola_id?: string
+          estoque_atual?: number
+          id?: string
+          nome?: string
+          preco?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_itens_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_itens_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financeiro_lancamentos: {
+        Row: {
+          aluno_id: string
+          ano_referencia: number | null
+          comprovativo_url: string | null
+          created_at: string | null
+          created_by: string | null
+          data_pagamento: string | null
+          data_vencimento: string | null
+          descricao: string
+          escola_id: string
+          id: string
+          matricula_id: string | null
+          mes_referencia: number | null
+          metodo_pagamento:
+            | Database["public"]["Enums"]["metodo_pagamento_enum"]
+            | null
+          origem: Database["public"]["Enums"]["financeiro_origem"]
+          status: Database["public"]["Enums"]["financeiro_status"] | null
+          tipo: Database["public"]["Enums"]["financeiro_tipo_transacao"]
+          updated_at: string | null
+          valor_desconto: number | null
+          valor_multa: number | null
+          valor_original: number
+          valor_total: number | null
+        }
+        Insert: {
+          aluno_id: string
+          ano_referencia?: number | null
+          comprovativo_url?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          data_pagamento?: string | null
+          data_vencimento?: string | null
+          descricao: string
+          escola_id: string
+          id?: string
+          matricula_id?: string | null
+          mes_referencia?: number | null
+          metodo_pagamento?:
+            | Database["public"]["Enums"]["metodo_pagamento_enum"]
+            | null
+          origem: Database["public"]["Enums"]["financeiro_origem"]
+          status?: Database["public"]["Enums"]["financeiro_status"] | null
+          tipo: Database["public"]["Enums"]["financeiro_tipo_transacao"]
+          updated_at?: string | null
+          valor_desconto?: number | null
+          valor_multa?: number | null
+          valor_original?: number
+          valor_total?: number | null
+        }
+        Update: {
+          aluno_id?: string
+          ano_referencia?: number | null
+          comprovativo_url?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          data_pagamento?: string | null
+          data_vencimento?: string | null
+          descricao?: string
+          escola_id?: string
+          id?: string
+          matricula_id?: string | null
+          mes_referencia?: number | null
+          metodo_pagamento?:
+            | Database["public"]["Enums"]["metodo_pagamento_enum"]
+            | null
+          origem?: Database["public"]["Enums"]["financeiro_origem"]
+          status?: Database["public"]["Enums"]["financeiro_status"] | null
+          tipo?: Database["public"]["Enums"]["financeiro_tipo_transacao"]
+          updated_at?: string | null
+          valor_desconto?: number | null
+          valor_multa?: number | null
+          valor_original?: number
+          valor_total?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_lancamentos_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "alunos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_lancamentos_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financeiro_tabelas: {
+        Row: {
+          ano_letivo: number
+          classe_id: string | null
+          created_at: string | null
+          curso_id: string | null
+          dia_vencimento: number | null
+          escola_id: string
+          id: string
+          multa_atraso_percentual: number | null
+          multa_diaria: number | null
+          updated_at: string | null
+          valor_matricula: number
+          valor_mensalidade: number
+        }
+        Insert: {
+          ano_letivo: number
+          classe_id?: string | null
+          created_at?: string | null
+          curso_id?: string | null
+          dia_vencimento?: number | null
+          escola_id: string
+          id?: string
+          multa_atraso_percentual?: number | null
+          multa_diaria?: number | null
+          updated_at?: string | null
+          valor_matricula?: number
+          valor_mensalidade?: number
+        }
+        Update: {
+          ano_letivo?: number
+          classe_id?: string | null
+          created_at?: string | null
+          curso_id?: string | null
+          dia_vencimento?: number | null
+          escola_id?: string
+          id?: string
+          multa_atraso_percentual?: number | null
+          multa_diaria?: number | null
+          updated_at?: string | null
+          valor_matricula?: number
+          valor_mensalidade?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_tabelas_classe_id_fkey"
+            columns: ["classe_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_tabelas_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "cursos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_tabelas_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "vw_cursos_reais"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_tabelas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_tabelas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
         ]
       }
       frequencias: {
@@ -890,7 +1462,22 @@ export type Database = {
           routine_id?: string | null
           status?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "frequencias_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "frequencias_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       frequencias_2025_09: {
         Row: {
@@ -1079,13 +1666,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "frequencias_matricula_id_fkey"
             columns: ["matricula_id"]
             isOneToOne: false
@@ -1193,6 +1773,13 @@ export type Database = {
             referencedRelation: "escolas"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "import_migrations_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
         ]
       }
       lancamentos: {
@@ -1226,7 +1813,22 @@ export type Database = {
           tenant_id?: string | null
           valor?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "lancamentos_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lancamentos_2025_09: {
         Row: {
@@ -1433,13 +2035,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "lancamentos_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "lancamentos_matricula_id_fkey"
             columns: ["matricula_id"]
             isOneToOne: false
@@ -1501,6 +2096,13 @@ export type Database = {
             columns: ["escola_id"]
             isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
           {
@@ -1579,6 +2181,13 @@ export type Database = {
             columns: ["escola_id"]
             isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_cursos_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
           {
@@ -1708,6 +2317,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "notas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "notas_periodo_id_fkey"
             columns: ["periodo_id"]
             isOneToOne: false
@@ -1777,6 +2393,13 @@ export type Database = {
             referencedRelation: "escolas"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "notices_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
         ]
       }
       onboarding_drafts: {
@@ -1812,6 +2435,13 @@ export type Database = {
             referencedRelation: "escolas"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "onboarding_drafts_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
         ]
       }
       pagamentos: {
@@ -1819,9 +2449,12 @@ export type Database = {
           conciliado: boolean | null
           created_at: string
           data_pagamento: string | null
+          escola_id: string | null
           id: string
           mensalidade_id: string | null
+          metodo: string | null
           metodo_pagamento: string | null
+          referencia: string | null
           status: string | null
           telemovel_origem: string | null
           transacao_id_externo: string | null
@@ -1831,9 +2464,12 @@ export type Database = {
           conciliado?: boolean | null
           created_at?: string
           data_pagamento?: string | null
+          escola_id?: string | null
           id?: string
           mensalidade_id?: string | null
+          metodo?: string | null
           metodo_pagamento?: string | null
+          referencia?: string | null
           status?: string | null
           telemovel_origem?: string | null
           transacao_id_externo?: string | null
@@ -1843,9 +2479,12 @@ export type Database = {
           conciliado?: boolean | null
           created_at?: string
           data_pagamento?: string | null
+          escola_id?: string | null
           id?: string
           mensalidade_id?: string | null
+          metodo?: string | null
           metodo_pagamento?: string | null
+          referencia?: string | null
           status?: string | null
           telemovel_origem?: string | null
           transacao_id_externo?: string | null
@@ -1902,6 +2541,13 @@ export type Database = {
             columns: ["escola_id"]
             isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "periodos_letivos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
         ]
@@ -1975,6 +2621,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "presencas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "presencas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
@@ -2035,6 +2688,13 @@ export type Database = {
             columns: ["escola_id"]
             isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professores_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
           {
@@ -2122,10 +2782,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "profiles_current_escola_id_fkey"
+            columns: ["current_escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "profiles_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
         ]
@@ -2224,6 +2898,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "regras_escala_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "regras_escala_sistema_notas_id_fkey"
             columns: ["sistema_notas_id"]
             isOneToOne: false
@@ -2297,6 +2978,13 @@ export type Database = {
             columns: ["escola_id"]
             isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rotinas_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
           {
@@ -2376,6 +3064,13 @@ export type Database = {
             referencedRelation: "escolas"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "school_sessions_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
         ]
       }
       secoes: {
@@ -2406,6 +3101,13 @@ export type Database = {
             columns: ["escola_id"]
             isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "secoes_escola_fk_linter_fix"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
           {
@@ -2478,6 +3180,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "semestres_escola_fk_linter_fix"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "semestres_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: false
@@ -2517,6 +3226,13 @@ export type Database = {
             columns: ["escola_id"]
             isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sistemas_notas_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
           {
@@ -2671,6 +3387,13 @@ export type Database = {
             referencedRelation: "escolas"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "syllabi_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
         ]
       }
       tabelas_mensalidade: {
@@ -2723,10 +3446,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "tabelas_mensalidade_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "vw_cursos_reais"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "tabelas_mensalidade_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tabelas_mensalidade_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
         ]
@@ -2774,6 +3511,13 @@ export type Database = {
             columns: ["escola_id"]
             isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turma_disciplinas_professores_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
           {
@@ -2826,7 +3570,9 @@ export type Database = {
           capacidade_maxima: number | null
           classe: string | null
           classe_id: string | null
+          coordenador_pedagogico_id: string | null
           curso_id: string | null
+          diretor_turma_id: string | null
           escola_id: string
           id: string
           nome: string
@@ -2839,7 +3585,9 @@ export type Database = {
           capacidade_maxima?: number | null
           classe?: string | null
           classe_id?: string | null
+          coordenador_pedagogico_id?: string | null
           curso_id?: string | null
+          diretor_turma_id?: string | null
           escola_id: string
           id?: string
           nome: string
@@ -2852,7 +3600,9 @@ export type Database = {
           capacidade_maxima?: number | null
           classe?: string | null
           classe_id?: string | null
+          coordenador_pedagogico_id?: string | null
           curso_id?: string | null
+          diretor_turma_id?: string | null
           escola_id?: string
           id?: string
           nome?: string
@@ -2869,6 +3619,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "turmas_coordenador_pedagogico_id_fkey"
+            columns: ["coordenador_pedagogico_id"]
+            isOneToOne: false
+            referencedRelation: "escola_usuarios"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "turmas_curso_id_fkey"
             columns: ["curso_id"]
             isOneToOne: false
@@ -2876,10 +3633,31 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "turmas_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "vw_cursos_reais"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turmas_diretor_turma_id_fkey"
+            columns: ["diretor_turma_id"]
+            isOneToOne: false
+            referencedRelation: "escola_usuarios"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "turmas_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turmas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
           {
@@ -2925,37 +3703,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "turmas_auditoria_turma_id_fkey"
-            columns: ["turma_id"]
+            foreignKeyName: "turmas_auditoria_escola_id_fkey"
+            columns: ["escola_id"]
             isOneToOne: false
-            referencedRelation: "turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "turmas_auditoria_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_propinas_por_turma"
-            referencedColumns: ["turma_id"]
-          },
-          {
-            foreignKeyName: "turmas_auditoria_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_ocupacao_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "turmas_auditoria_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_turmas_para_matricula"
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
         ]
       }
     }
     Views: {
+      escolas_view: {
+        Row: {
+          cidade: string | null
+          estado: string | null
+          id: string | null
+          last_access: string | null
+          nome: string | null
+          plano: string | null
+          status: string | null
+          total_alunos: number | null
+          total_professores: number | null
+        }
+        Relationships: []
+      }
       matriculas_por_ano: {
         Row: {
           ano: string | null
@@ -2970,7 +3741,23 @@ export type Database = {
             referencedRelation: "escolas"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "matriculas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      mv_financeiro_escola_dia: {
+        Row: {
+          dia: string | null
+          escola_id: string | null
+          qtd_pagos: number | null
+          qtd_total: number | null
+        }
+        Relationships: []
       }
       mv_freq_por_turma_dia: {
         Row: {
@@ -2981,6 +3768,20 @@ export type Database = {
           turma_id: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "frequencias_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "frequencias_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
@@ -3025,7 +3826,29 @@ export type Database = {
             referencedRelation: "cursos_oferta"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "lancamentos_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      pagamentos_status: {
+        Row: {
+          escola_id: string | null
+          status: string | null
+          total: number | null
+        }
+        Relationships: []
       }
       periodos: {
         Row: {
@@ -3059,6 +3882,15 @@ export type Database = {
           },
         ]
       }
+      v_financeiro_escola_dia: {
+        Row: {
+          dia: string | null
+          escola_id: string | null
+          qtd_pagos: number | null
+          qtd_total: number | null
+        }
+        Relationships: []
+      }
       v_freq_por_turma_dia: {
         Row: {
           dia: string | null
@@ -3068,6 +3900,20 @@ export type Database = {
           turma_id: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "frequencias_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "frequencias_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
@@ -3112,6 +3958,20 @@ export type Database = {
             referencedRelation: "cursos_oferta"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "lancamentos_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
         ]
       }
       v_top_cursos_media: {
@@ -3129,6 +3989,20 @@ export type Database = {
             referencedRelation: "cursos_oferta"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "lancamentos_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lancamentos_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
         ]
       }
       v_top_turmas_hoje: {
@@ -3141,6 +4015,20 @@ export type Database = {
           turma_nome: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "frequencias_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "frequencias_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
@@ -3180,6 +4068,68 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_cursos_reais: {
+        Row: {
+          codigo: string | null
+          descricao: string | null
+          escola_id: string | null
+          id: string | null
+          nivel: string | null
+          nome: string | null
+          semestre_id: string | null
+          tipo: string | null
+        }
+        Insert: {
+          codigo?: string | null
+          descricao?: string | null
+          escola_id?: string | null
+          id?: string | null
+          nivel?: string | null
+          nome?: string | null
+          semestre_id?: string | null
+          tipo?: string | null
+        }
+        Update: {
+          codigo?: string | null
+          descricao?: string | null
+          escola_id?: string | null
+          id?: string | null
+          nivel?: string | null
+          nome?: string | null
+          semestre_id?: string | null
+          tipo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cursos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cursos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cursos_semestre_id_fkey"
+            columns: ["semestre_id"]
+            isOneToOne: false
+            referencedRelation: "periodos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cursos_semestre_id_fkey"
+            columns: ["semestre_id"]
+            isOneToOne: false
+            referencedRelation: "semestres"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vw_financeiro_propinas_por_turma: {
         Row: {
           ano_letivo: string | null
@@ -3218,6 +4168,13 @@ export type Database = {
             referencedRelation: "escolas"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "turmas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
         ]
       }
       vw_radar_inadimplencia: {
@@ -3248,22 +4205,44 @@ export type Database = {
       }
       vw_turmas_para_matricula: {
         Row: {
+          ano_letivo: string | null
           capacidade_maxima: number | null
+          classe_id: string | null
           classe_nome: string | null
+          curso_global_hash: string | null
+          curso_id: string | null
+          curso_is_custom: boolean | null
           curso_nome: string | null
+          curso_tipo: string | null
           escola_id: string | null
           id: string | null
-          nome: string | null
           ocupacao_atual: number | null
+          sala: string | null
           session_id: string | null
+          turma_nome: string | null
           turno: string | null
+          ultima_matricula: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "turmas_classe_id_fkey"
+            columns: ["classe_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "turmas_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
             referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turmas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
           {
@@ -3310,6 +4289,7 @@ export type Database = {
         Returns: undefined
       }
       current_tenant_escola_id: { Args: never; Returns: string }
+      current_user_id: { Args: never; Returns: string }
       current_user_role: { Args: never; Returns: string }
       dashboard: { Args: never; Returns: Json }
       generate_unique_numero_login: {
@@ -3380,6 +4360,24 @@ export type Database = {
       normalize_text: { Args: { input_text: string }; Returns: string }
       partitions_info: { Args: never; Returns: Json }
       refresh_all_materialized_views: { Args: never; Returns: undefined }
+      registrar_venda_avulsa: {
+        Args: {
+          p_aluno_id: string
+          p_created_by?: string
+          p_desconto?: number
+          p_descricao?: string
+          p_escola_id: string
+          p_item_id: string
+          p_metodo_pagamento?: Database["public"]["Enums"]["metodo_pagamento_enum"]
+          p_quantidade: number
+          p_status?: Database["public"]["Enums"]["financeiro_status"]
+          p_valor_unit: number
+        }
+        Returns: {
+          estoque_atual: number
+          lancamento_id: string
+        }[]
+      }
       rematricula_em_massa: {
         Args: {
           p_destino_turma_id: string
@@ -3416,12 +4414,37 @@ export type Database = {
       unaccent: { Args: { "": string }; Returns: string }
     }
     Enums: {
+      financeiro_categoria_item:
+        | "uniforme"
+        | "documento"
+        | "material"
+        | "transporte"
+        | "outros"
+        | "servico"
+      financeiro_origem:
+        | "mensalidade"
+        | "matricula"
+        | "venda_avulsa"
+        | "multa"
+        | "taxa_extra"
+      financeiro_status:
+        | "pendente"
+        | "pago"
+        | "parcial"
+        | "vencido"
+        | "cancelado"
+      financeiro_tipo_transacao: "debito" | "credito"
       mensalidade_status:
         | "pendente"
         | "pago_parcial"
         | "pago"
         | "isento"
         | "cancelado"
+      metodo_pagamento_enum:
+        | "numerario"
+        | "multicaixa"
+        | "transferencia"
+        | "deposito"
       user_role:
         | "super_admin"
         | "global_admin"
@@ -3557,12 +4580,41 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      financeiro_categoria_item: [
+        "uniforme",
+        "documento",
+        "material",
+        "transporte",
+        "outros",
+        "servico",
+      ],
+      financeiro_origem: [
+        "mensalidade",
+        "matricula",
+        "venda_avulsa",
+        "multa",
+        "taxa_extra",
+      ],
+      financeiro_status: [
+        "pendente",
+        "pago",
+        "parcial",
+        "vencido",
+        "cancelado",
+      ],
+      financeiro_tipo_transacao: ["debito", "credito"],
       mensalidade_status: [
         "pendente",
         "pago_parcial",
         "pago",
         "isento",
         "cancelado",
+      ],
+      metodo_pagamento_enum: [
+        "numerario",
+        "multicaixa",
+        "transferencia",
+        "deposito",
       ],
       user_role: [
         "super_admin",
