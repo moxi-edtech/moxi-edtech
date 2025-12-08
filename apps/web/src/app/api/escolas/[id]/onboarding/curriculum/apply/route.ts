@@ -247,7 +247,7 @@ async function findOrCreateCursoEscola(
   cursoGlobalHash: string,
   isCustom: boolean
 ) {
-  // tenta achar por (escola, curso_global) OU por (escola, nome, tipo)
+  // 1. Tenta buscar existente primeiro (Otimização de leitura)
   const { data: existing, error: selErr } = await supabaseAdmin
     .from("cursos")
     .select("*")
@@ -269,6 +269,7 @@ async function findOrCreateCursoEscola(
     return existing;
   }
 
+  // 2. Tenta Criar
   const codigo = makeCursoCodigo(nome, escolaId);
 
   const { data: created, error: insErr } = await supabaseAdmin
@@ -286,9 +287,34 @@ async function findOrCreateCursoEscola(
     .select("*")
     .single();
 
-  if (insErr || !created) {
-    console.error("Erro ao criar curso escola:", insErr);
-    throw new Error("Erro ao criar curso para a escola");
+  // 3. Tratamento de Erro Robusto (A CORREÇÃO ESTÁ AQUI)
+  if (insErr) {
+    // Se o erro for "Violação de Unicidade" (23505), significa que
+    // o curso foi criado milissegundos atrás por outro processo (Race Condition)
+    // ou a consulta inicial falhou em achá-lo.
+    if (insErr.code === '23505') {
+      // Retry: Buscamos novamente o registro que conflitou
+      const { data: retryData } = await supabaseAdmin
+        .from("cursos")
+        .select("*")
+        .eq("escola_id", escolaId)
+        .or(
+           `curso_global_id.eq.${cursoGlobalHash},and(nome.eq.${nome},tipo.eq.${tipo})`
+        )
+        .maybeSingle();
+
+      if (retryData) {
+        return retryData; // Sucesso: retornamos o existente
+      }
+    }
+
+    // Se for outro erro (ex: banco fora do ar, erro de permissão), aí sim estouramos o erro
+    console.error("Erro REAL ao criar curso escola:", insErr);
+    throw new Error(`Erro ao criar curso: ${insErr.message}`);
+  }
+
+  if (!created) {
+    throw new Error("Erro desconhecido ao criar curso (sem dados retornados)");
   }
 
   return created;
@@ -385,14 +411,19 @@ async function upsertConfiguracaoCurriculo(
 
 export async function POST(
   req: NextRequest,
-  context: { params: { escolaId: string } }
+  // 1. Tipagem estrita: 'params' é uma Promise contendo o slug definido na pasta [id]
+  props: { params: Promise<{ id: string }> }
 ) {
   try {
-    const escolaId = context.params.escolaId;
+    // 2. Await obrigatório no Next.js 15 antes de ler qualquer parâmetro
+    const params = await props.params;
+    
+    // 3. Mapeamento explícito: A pasta chama-se [id], logo o param é .id
+    const escolaId = params.id;
 
     if (!escolaId) {
       return NextResponse.json(
-        { ok: false, error: "escolaId não informado" },
+        { ok: false, error: "escolaId não informado na URL." },
         { status: 400 }
       );
     }
