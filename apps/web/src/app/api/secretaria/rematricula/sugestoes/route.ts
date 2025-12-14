@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
+import { tryCanonicalFetch } from '@/lib/api/proxyCanonical'
 
 // Rule: 6 -> 7, 9 -> 10, 12 -> concluido
 function proximaClasseNumero(num: number): number | null {
@@ -17,7 +18,7 @@ function extraiNumeroClasse(nome: string | null | undefined): number | null {
   return Number.isFinite(n) ? n : null
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const supabase = await supabaseServerTyped<any>()
     const { data: userRes } = await supabase.auth.getUser()
@@ -34,13 +35,16 @@ export async function GET() {
     let escolaId = ((prof?.[0] as any)?.current_escola_id || (prof?.[0] as any)?.escola_id) as string | undefined
     if (!escolaId) {
       const { data: vinc } = await supabase
-        .from('escola_usuarios')
+        .from('escola_users')
         .select('escola_id')
         .eq('user_id', user.id)
         .limit(1)
       escolaId = (vinc?.[0] as any)?.escola_id as string | undefined
     }
     if (!escolaId) return NextResponse.json({ ok: true, sugestoes: [] })
+
+    const forwarded = await tryCanonicalFetch(req, `/api/escolas/${escolaId}/rematricula/sugestoes`)
+    if (forwarded) return forwarded
 
     // Carrega turmas com classe_id para usar regra acadêmica por classe
     const { data: turmas } = await supabase

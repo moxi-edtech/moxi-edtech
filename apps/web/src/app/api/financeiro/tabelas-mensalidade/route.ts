@@ -1,7 +1,98 @@
 import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
+import type { Database } from '~types/supabase'
 
-// Lista e cria/atualiza regras de mensalidade por escola/curso/classe
+// Lista e cria/atualiza regras de mensalidade por escola/curso/classe usando
+// a tabela padrão `financeiro_tabelas` (valor_mensalidade).
+
+async function resolverEscolaId(client: any, user: any) {
+  try {
+    const { data } = await client.rpc('current_tenant_escola_id')
+    if (data) return data as string
+  } catch {}
+
+  const claimEscola = (user?.app_metadata?.escola_id || user?.user_metadata?.escola_id) as
+    | string
+    | undefined
+  if (claimEscola) return claimEscola as string
+
+  try {
+    const { data: prof } = await client
+      .from('profiles' as any)
+      .select('current_escola_id, escola_id')
+      .eq('user_id', user.id)
+      .limit(1)
+    const perfil = prof?.[0] as any
+    if (perfil?.current_escola_id) return perfil.current_escola_id as string
+    if (perfil?.escola_id) return perfil.escola_id as string
+  } catch {}
+
+  try {
+    const { data: vinc } = await client
+      .from('escola_users')
+      .select('escola_id')
+      .eq('user_id', user.id)
+      .limit(1)
+    const vinculo = vinc?.[0] as any
+    if (vinculo?.escola_id) return vinculo.escola_id as string
+  } catch {}
+
+  return null
+}
+
+async function possuiVinculo(client: any, userId: string, escolaId: string) {
+  try {
+    const { data } = await client
+      .from('escola_users')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('escola_id', escolaId)
+      .limit(1)
+    if (data && data.length > 0) return true
+  } catch {}
+
+  try {
+    const { data } = await client
+      .from('escola_users')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('escola_id', escolaId)
+      .limit(1)
+    if (data && data.length > 0) return true
+  } catch {}
+
+  return false
+}
+
+function getTenantClient(fallback: any) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (url && serviceRole) {
+    return createAdminClient<Database>(url, serviceRole)
+  }
+  return fallback
+}
+
+const parseValor = (raw: unknown) => {
+  if (typeof raw === 'number') return Number.isFinite(raw) ? raw : null;
+  if (typeof raw !== 'string') return null;
+  const str = raw.trim();
+  if (!str) return null;
+  if (str.includes(',')) {
+    const normalized = str.replace(/\./g, '').replace(/,/g, '.');
+    const num = Number(normalized);
+    return Number.isFinite(num) ? num : null;
+  }
+  const num = Number(str);
+  return Number.isFinite(num) ? num : null;
+}
+
+function parseAnoLetivo(raw?: string | null) {
+  if (!raw) return null
+  const num = Number(raw)
+  return Number.isFinite(num) ? Math.trunc(num) : null
+}
 
 export async function GET(req: Request) {
   try {
@@ -10,28 +101,40 @@ export async function GET(req: Request) {
     const user = userRes?.user
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
-    // Resolve escola do usuário
-    let escolaId: string | undefined
-    const { data: prof } = await s
-      .from('profiles' as any)
-      .select('current_escola_id, escola_id')
-      .eq('user_id', user.id)
-      .limit(1)
-    escolaId = ((prof?.[0] as any)?.current_escola_id || (prof?.[0] as any)?.escola_id) as string | undefined
-    if (!escolaId) {
-      const { data: vinc } = await s.from('escola_usuarios').select('escola_id').eq('user_id', user.id).limit(1)
-      escolaId = (vinc?.[0] as any)?.escola_id as string | undefined
-    }
+    const escolaId = await resolverEscolaId(s as any, user)
     if (!escolaId) return NextResponse.json({ ok: true, items: [] })
 
-    const { data, error } = await s
-      .from('tabelas_mensalidade')
-      .select('id, curso_id, classe_id, valor, dia_vencimento, ativo, created_at, updated_at')
+    const url = new URL(req.url)
+    const anoParam = parseAnoLetivo(url.searchParams.get('ano_letivo') || url.searchParams.get('ano'))
+    const anoLetivo = anoParam ?? new Date().getFullYear()
+
+    const vinculado = await possuiVinculo(s as any, user.id, escolaId)
+    if (!vinculado) return NextResponse.json({ ok: false, error: 'Sem vínculo com a escola' }, { status: 403 })
+
+    const db = getTenantClient(s)
+
+    const { data, error } = await db
+      .from('financeiro_tabelas')
+      .select('id, curso_id, classe_id, valor_mensalidade, dia_vencimento, ano_letivo, created_at, updated_at')
       .eq('escola_id', escolaId)
+      .eq('ano_letivo', anoLetivo)
       .order('created_at', { ascending: false })
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
-    return NextResponse.json({ ok: true, items: data || [] })
+
+    const items = (data || []).map((row: any) => ({
+      id: row.id,
+      curso_id: row.curso_id,
+      classe_id: row.classe_id,
+      valor: row.valor_mensalidade,
+      dia_vencimento: row.dia_vencimento,
+      ativo: true,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      ano_letivo: row.ano_letivo,
+    }))
+
+    return NextResponse.json({ ok: true, items })
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
@@ -46,64 +149,83 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
     const body = await req.json().catch(() => ({}))
-    const { curso_id, classe_id, valor, dia_vencimento, ativo = true } = body || {}
-    if (!valor || Number(valor) <= 0) return NextResponse.json({ ok: false, error: 'Valor inválido' }, { status: 400 })
+    const { curso_id, classe_id, valor, dia_vencimento, ativo = true, ano_letivo } = body || {}
+    const parsedValor = parseValor(valor)
+    if (parsedValor === null || parsedValor <= 0) return NextResponse.json({ ok: false, error: 'Valor inválido' }, { status: 400 })
+    const parsedDiaRaw = Number(dia_vencimento)
+    const parsedDia = Number.isFinite(parsedDiaRaw) ? parsedDiaRaw : null
 
-    // Resolve escola do usuário
-    let escolaId: string | undefined
-    const { data: prof } = await s
-      .from('profiles' as any)
-      .select('current_escola_id, escola_id')
-      .eq('user_id', user.id)
-      .limit(1)
-    escolaId = ((prof?.[0] as any)?.current_escola_id || (prof?.[0] as any)?.escola_id) as string | undefined
-    if (!escolaId) {
-      const { data: vinc } = await s.from('escola_usuarios').select('escola_id').eq('user_id', user.id).limit(1)
-      escolaId = (vinc?.[0] as any)?.escola_id as string | undefined
-    }
+    const anoLetivo = parseAnoLetivo(ano_letivo) ?? new Date().getFullYear()
+
+    const escolaId = await resolverEscolaId(s as any, user)
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 })
 
-    // Upsert por (escola, curso, classe)
+    const vinculado = await possuiVinculo(s as any, user.id, escolaId)
+    if (!vinculado) return NextResponse.json({ ok: false, error: 'Sem vínculo com a escola' }, { status: 403 })
+
+    const db = getTenantClient(s)
+
+    // Upsert por (escola, ano, curso, classe) na tabela oficial
+    const cursoId = curso_id || null
+    const classeId = classe_id || null
+    let valorMatricula = 0
+
     const payload = {
       escola_id: escolaId,
-      curso_id: curso_id || null,
-      classe_id: classe_id || null,
-      valor: Number(Number(valor).toFixed(2)),
-      dia_vencimento: dia_vencimento ? Math.max(1, Math.min(31, Number(dia_vencimento))) : null,
-      ativo: Boolean(ativo),
+      ano_letivo: anoLetivo,
+      curso_id: cursoId,
+      classe_id: classeId,
+      valor_matricula: valorMatricula,
+      valor_mensalidade: Number(parsedValor.toFixed(2)),
+      dia_vencimento: parsedDia ? Math.max(1, Math.min(31, parsedDia)) : null,
       updated_at: new Date().toISOString(),
     } as any
 
-    // Tenta encontrar existente
-    const { data: exists } = await s
-      .from('tabelas_mensalidade')
-      .select('id')
-      .eq('escola_id', escolaId)
-      .is('curso_id', curso_id || null)
-      .is('classe_id', classe_id || null)
-      .limit(1)
+    if (body?.id) {
+      const { data: existing, error: findErr } = await db
+        .from('financeiro_tabelas')
+        .select('id, escola_id, valor_matricula')
+        .eq('id', body.id)
+        .eq('escola_id', escolaId)
+        .maybeSingle()
+      if (findErr) return NextResponse.json({ ok: false, error: findErr.message }, { status: 400 })
+      if (!existing) return NextResponse.json({ ok: false, error: 'Registro não encontrado' }, { status: 404 })
 
-    let result
-    if (exists && exists.length > 0) {
-      result = await s
-        .from('tabelas_mensalidade')
+      payload.valor_matricula = (existing as any)?.valor_matricula ?? 0
+
+      const { data, error } = await db
+        .from('financeiro_tabelas')
         .update(payload)
-        .eq('id', (exists[0] as any).id)
+        .eq('id', body.id)
         .select()
         .single()
-    } else {
-      result = await s
-        .from('tabelas_mensalidade')
-        .insert(payload)
-        .select()
-        .single()
+
+      if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
+      return NextResponse.json({ ok: true, item: data })
     }
 
-    if ((result as any).error) {
-      const err = (result as any).error
-      return NextResponse.json({ ok: false, error: err.message }, { status: 400 })
-    }
-    return NextResponse.json({ ok: true, item: (result as any).data })
+    try {
+      const { data: existing } = await db
+        .from('financeiro_tabelas')
+        .select('valor_matricula')
+        .eq('escola_id', escolaId)
+        .eq('ano_letivo', anoLetivo)
+        .eq('curso_id', cursoId)
+        .eq('classe_id', classeId)
+        .maybeSingle()
+      if (existing && typeof (existing as any).valor_matricula === 'number') {
+        payload.valor_matricula = (existing as any).valor_matricula
+      }
+    } catch {}
+
+    const { data, error } = await db
+      .from('financeiro_tabelas')
+      .upsert(payload, { onConflict: 'escola_id, ano_letivo, curso_id, classe_id' })
+      .select()
+      .single()
+
+    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
+    return NextResponse.json({ ok: true, item: data })
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
@@ -121,16 +243,24 @@ export async function DELETE(req: Request) {
     const id = url.searchParams.get('id') || null
     if (!id) return NextResponse.json({ ok: false, error: 'id é obrigatório' }, { status: 400 })
 
-    // Valida que o registro pertence à escola do usuário
-    const { data: reg } = await s
-      .from('tabelas_mensalidade')
+    const escolaId = await resolverEscolaId(s as any, user)
+    if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 })
+
+    const vinculado = await possuiVinculo(s as any, user.id, escolaId)
+    if (!vinculado) return NextResponse.json({ ok: false, error: 'Sem vínculo com a escola' }, { status: 403 })
+
+    const db = getTenantClient(s)
+
+    const { data: reg, error: findErr } = await db
+      .from('financeiro_tabelas')
       .select('id, escola_id')
       .eq('id', id)
+      .eq('escola_id', escolaId)
       .maybeSingle()
+    if (findErr) return NextResponse.json({ ok: false, error: findErr.message }, { status: 400 })
     if (!reg) return NextResponse.json({ ok: false, error: 'Registro não encontrado' }, { status: 404 })
 
-    // Soft delete: marca ativo=false
-    const { error } = await s.from('tabelas_mensalidade').update({ ativo: false, updated_at: new Date().toISOString() } as any).eq('id', id)
+    const { error } = await db.from('financeiro_tabelas').delete().eq('id', id)
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
     return NextResponse.json({ ok: true })
   } catch (e) {

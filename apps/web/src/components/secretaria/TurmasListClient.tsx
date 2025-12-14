@@ -11,6 +11,8 @@ import {
 
 import TurmaForm from "./TurmaForm";
 import AtribuirProfessorForm from "./AtribuirProfessorForm";
+import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildEscolaUrl } from "@/lib/escola/url";
 
 // --- TIPOS ---
 interface TurmaItem {
@@ -71,15 +73,17 @@ export default function TurmasListClient() {
   const [assignments, setAssignments] = useState<any[] | null>(null);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
   const [showAtribuirForm, setShowAtribuirForm] = useState(false);
+  const { escolaId, isLoading: escolaLoading, error: escolaError } = useEscolaId();
 
   const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
+      if (!escolaId) throw new Error('Escola não identificada');
       const params = new URLSearchParams();
       if (turno !== "todos") params.set('turno', turno);
-      
-      const res = await fetch(`/api/secretaria/turmas?${params.toString()}`, { cache: 'no-store' });
+      const url = buildEscolaUrl(escolaId, '/turmas', params);
+      const res = await fetch(url, { cache: 'no-store', headers: { 'X-Proxy-Used': 'canonical' } });
       const json = await res.json();
       
       if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao carregar');
@@ -91,7 +95,7 @@ export default function TurmasListClient() {
     }
   };
 
-  useEffect(() => { fetchData(); }, [turno]);
+  useEffect(() => { if (escolaId) fetchData(); }, [turno, escolaId]);
 
   // --- LÓGICA INTELIGENTE V8 (BASEADA NO TIPO REAL) ---
   const getDisplayInfo = (t: TurmaItem) => {
@@ -198,7 +202,8 @@ export default function TurmasListClient() {
   const loadAssignments = async (turmaId: string) => {
       setLoadingAssignments(true);
       try {
-        const res = await fetch(`/api/secretaria/turmas/${turmaId}/disciplinas`);
+        if (!escolaId) throw new Error('Escola não identificada');
+        const res = await fetch(buildEscolaUrl(escolaId, `/turmas/${turmaId}/disciplinas`), { headers: { 'X-Proxy-Used': 'canonical' } });
         const json = await res.json();
         if (json.ok) setAssignments(json.items || []);
       } catch(e) { setAssignments([]); } 

@@ -11,6 +11,13 @@ drop policy if exists "insert_own_classes" on public.classes;
 drop policy if exists "update_own_classes" on public.classes;
 drop policy if exists "delete_own_classes" on public.classes;
 
+-- Drop new policies if they exist, for idempotency
+drop policy if exists "classes_select_membro" on public.classes;
+drop policy if exists "classes_insert_staff" on public.classes;
+drop policy if exists "classes_update_staff" on public.classes;
+drop policy if exists "classes_delete_staff" on public.classes;
+
+
 -- SELECT: Any authenticated member of the school can view classes.
 create policy "classes_select_membro"
 on public.classes
@@ -62,6 +69,12 @@ drop policy if exists "turmas select membros escola" on public.turmas;
 drop policy if exists "turmas insert membros escola" on public.turmas;
 drop policy if exists "turmas update membros escola" on public.turmas;
 drop policy if exists "turmas delete membros escola" on public.turmas;
+
+-- Drop new policies if they exist, for idempotency
+drop policy if exists "turmas_select_membro" on public.turmas;
+drop policy if exists "turmas_insert_staff" on public.turmas;
+drop policy if exists "turmas_update_staff" on public.turmas;
+drop policy if exists "turmas_delete_staff" on public.turmas;
 
 
 -- SELECT: Any authenticated member of the school can view turmas.

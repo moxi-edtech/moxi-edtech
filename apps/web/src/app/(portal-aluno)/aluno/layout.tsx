@@ -33,7 +33,7 @@ export default function AlunoLayout({ children }: { children: React.ReactNode })
 
       // Vínculo do aluno
       const { data: vinc } = await s
-        .from("escola_usuarios")
+        .from("escola_users")
         .select("papel, escola_id")
         .eq("user_id", user.id)
         .eq("papel", "aluno")

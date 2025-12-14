@@ -6,7 +6,7 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ importId: string }> }
 ) {
-  const supabase = createRouteClient();
+  const supabase = await createRouteClient();
 
   // opcional: validar user/escola via sessão aqui se quiser
   const { importId } = await params;

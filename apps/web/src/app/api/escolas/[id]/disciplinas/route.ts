@@ -1,29 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabaseServer";
-import { hasPermission } from "@/lib/permissions";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
-
-
 
 // GET /api/escolas/[id]/disciplinas
 export async function GET(
   _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id: escolaId } = await params;
+  const { id: escolaId } = await context.params;
   try {
     const s = await supabaseServer();
     const { data: auth } = await s.auth.getUser();
     const user = auth?.user;
-    if (!user)
-      return NextResponse.json(
-        { ok: false, error: "Não autenticado" },
-        { status: 401 }
-      );
+    if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
+    // Autorização
     let allowed = false;
+    
+    // 1. Super Admin
     try {
       const { data: prof } = await s
         .from("profiles")
@@ -34,10 +30,12 @@ export async function GET(
       const role = (prof?.[0] as any)?.role as string | undefined;
       if (role === "super_admin") allowed = true;
     } catch {}
+
+    // 2. Vínculo (CORRIGIDO: escola_users)
     if (!allowed) {
       try {
         const { data: vinc } = await s
-          .from("escola_usuarios")
+          .from("escola_users") // <--- Corrigido
           .select("papel")
           .eq("escola_id", escolaId)
           .eq("user_id", user.id)
@@ -45,6 +43,8 @@ export async function GET(
         allowed = Boolean((vinc as any)?.papel);
       } catch {}
     }
+
+    // 3. Admin Legado
     if (!allowed) {
       try {
         const { data: adminLink } = await s
@@ -56,6 +56,8 @@ export async function GET(
         allowed = Boolean(adminLink && (adminLink as any[]).length > 0);
       } catch {}
     }
+
+    // 4. Admin Profile
     if (!allowed) {
       try {
         const { data: prof } = await s
@@ -69,23 +71,16 @@ export async function GET(
         );
       } catch {}
     }
-    if (!allowed)
-      return NextResponse.json(
-        { ok: false, error: "Sem permissão" },
-        { status: 403 }
-      );
 
-    const supabaseUrl =
-      process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!allowed) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
 
-    if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json(
-        { ok: false, error: "Configuração Supabase ausente." },
-        { status: 500 }
-      );
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ ok: false, error: "Configuração Supabase ausente." }, { status: 500 });
     }
-    const admin = createAdminClient<Database>(supabaseUrl, serviceRoleKey);
+    const admin = createAdminClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
 
     let rows: any[] = [];
     {
@@ -96,16 +91,13 @@ export async function GET(
         .order("nome", { ascending: true });
       if (!error) rows = data || [];
       else {
+        // Retry
         const retry = await (admin as any)
           .from("disciplinas")
           .select("id, nome")
           .eq("escola_id", escolaId)
           .order("nome", { ascending: true });
-        if (retry.error)
-          return NextResponse.json(
-            { ok: false, error: retry.error.message },
-            { status: 400 }
-          );
+        if (retry.error) return NextResponse.json({ ok: false, error: retry.error.message }, { status: 400 });
         rows = retry.data || [];
       }
     }
@@ -129,20 +121,16 @@ export async function GET(
 // Cria uma disciplina (opcionalmente vinculada a curso e/ou classe)
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id: escolaId } = await params;
+  const { id: escolaId } = await context.params;
   try {
     const s = await supabaseServer();
     const { data: auth } = await s.auth.getUser();
     const user = auth?.user;
-    if (!user)
-      return NextResponse.json(
-        { ok: false, error: "Não autenticado" },
-        { status: 401 }
-      );
+    if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
-    // Autoriza criar: super_admin, configurar_escola, admin vinculado
+    // Autoriza criar
     let allowed = false;
     try {
       const { data: prof } = await s
@@ -154,10 +142,11 @@ export async function POST(
       const role = (prof?.[0] as any)?.role as string | undefined;
       if (role === "super_admin") allowed = true;
     } catch {}
+
     if (!allowed) {
       try {
         const { data: vinc } = await s
-          .from("escola_usuarios")
+          .from("escola_users") // <--- Corrigido
           .select("papel")
           .eq("escola_id", escolaId)
           .eq("user_id", user.id)
@@ -165,6 +154,7 @@ export async function POST(
         allowed = Boolean((vinc as any)?.papel);
       } catch {}
     }
+
     if (!allowed) {
       try {
         const { data: adminLink } = await s
@@ -176,23 +166,16 @@ export async function POST(
         allowed = Boolean(adminLink && (adminLink as any[]).length > 0);
       } catch {}
     }
-    if (!allowed)
-      return NextResponse.json(
-        { ok: false, error: "Sem permissão" },
-        { status: 403 }
-      );
 
-    const supabaseUrl =
-      process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!allowed) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
 
-    if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json(
-        { ok: false, error: "Configuração Supabase ausente." },
-        { status: 500 }
-      );
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ ok: false, error: "Configuração Supabase ausente." }, { status: 500 });
     }
-    const admin = createAdminClient<Database>(supabaseUrl, serviceRoleKey);
+    const admin = createAdminClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
 
     const body = await req.json().catch(() => ({}));
     const schema = z.object({
@@ -222,8 +205,17 @@ export async function POST(
       .insert(payload)
       .select("id, nome, tipo, curso_id, classe_id, descricao")
       .single();
-    if (error)
+
+    if (error) {
+      // [BLINDAGEM] Tratamento de duplicidade
+      if (error.code === '23505') {
+        return NextResponse.json(
+          { ok: false, error: `A disciplina "${parsed.data.nome}" já existe.` },
+          { status: 409 } // Conflict
+        );
+      }
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+    }
 
     return NextResponse.json({ ok: true, data: ins });
   } catch (e) {

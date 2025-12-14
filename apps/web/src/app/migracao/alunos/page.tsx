@@ -78,7 +78,7 @@ export default function AlunoMigrationWizard() {
         const appMeta = session?.user?.app_metadata as { escola_id?: string } | undefined;
         let escola = appMeta?.escola_id ?? null;
 
-        // Fallbacks: profiles.current_escola_id -> profiles.escola_id -> escola_usuarios.escola_id
+        // Fallbacks: profiles.current_escola_id -> profiles.escola_id -> escola_users.escola_id
         if (!escola && session?.user?.id) {
           try {
             const { data: prof } = await supabase
@@ -96,7 +96,7 @@ export default function AlunoMigrationWizard() {
           if (!escola) {
             try {
               const { data: vinc } = await supabase
-                .from('escola_usuarios' as any)
+                .from('escola_users' as any)
                 .select('escola_id')
                 .eq('user_id', session.user.id)
                 .limit(1);

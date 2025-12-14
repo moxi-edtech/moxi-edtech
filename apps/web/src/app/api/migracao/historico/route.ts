@@ -20,7 +20,7 @@ export async function GET() {
   const escolaIds: string[] = [];
   try {
     const { data: vincs } = await admin
-      .from("escola_usuarios")
+      .from("escola_users")
       .select("escola_id")
       .eq("user_id", authUser.id);
     for (const v of vincs || []) {

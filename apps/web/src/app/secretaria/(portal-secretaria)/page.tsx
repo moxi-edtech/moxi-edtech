@@ -26,13 +26,15 @@ type DashboardData = {
   avisos_recentes: Array<{ id: string; titulo: string; resumo: string; data: string }>;
 };
 
+type Plano = "standard" | "premium" | "enterprise" | "basic" | "basico";
+
 export default function SecretariaDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   // Mock de permissões e plano (em prod viriam do contexto)
-  const plan = 'standard'; 
+  const [plan] = useState<Plano>('standard');
   const canCriarMatricula = true;
 
   useEffect(() => {

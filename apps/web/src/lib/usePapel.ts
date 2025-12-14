@@ -19,7 +19,7 @@ export function usePapel(escolaId: string | null | undefined) {
         const userId = u?.user?.id
         if (!userId) { setPapel(null); return }
         const { data, error } = await s
-          .from('escola_usuarios')
+          .from('escola_users')
           .select('papel')
           .eq('user_id', userId)
           .eq('escola_id', escolaId)

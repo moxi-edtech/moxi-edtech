@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
+import { resolveEscolaIdForUser, authorizeTurmasManage } from '@/lib/escola/disciplinas'
+import { tryCanonicalFetch } from '@/lib/api/proxyCanonical'
 
 const Body = z.object({
   disciplina_id: z.string().uuid(),
@@ -17,6 +19,7 @@ const Body = z.object({
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     const supabase = await supabaseServerTyped<any>()
+    const headers = new Headers()
     const { data: userRes } = await supabase.auth.getUser()
     const user = userRes?.user
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
@@ -27,23 +30,17 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (!parsed.success) return NextResponse.json({ ok: false, error: parsed.error.issues?.[0]?.message || 'Dados inválidos' }, { status: 400 })
     const body = parsed.data as z.infer<typeof Body>
 
-    // Resolve escola do usuário
-    const { data: prof } = await supabase
-      .from('profiles')
-      .select('current_escola_id, escola_id')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-    let escolaId = ((prof?.[0] as any)?.current_escola_id || (prof?.[0] as any)?.escola_id) as string | undefined
-    if (!escolaId) {
-      const { data: vinc } = await supabase
-        .from('escola_usuarios')
-        .select('escola_id')
-        .eq('user_id', user.id)
-        .limit(1)
-      escolaId = (vinc?.[0] as any)?.escola_id as string | undefined
-    }
+    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 })
+
+    const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id)
+    if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 })
+
+    headers.set('Deprecation', 'true')
+    headers.set('Link', `</api/escolas/${escolaId}/turmas>; rel="successor-version"`)
+
+    const forwarded = await tryCanonicalFetch(req, `/api/escolas/${escolaId}/turmas/${turmaId}/atribuir-professor`)
+    if (forwarded) return forwarded
 
     // Upsert unique by (turma_id, disciplina_id)
     // Ensure disciplina and professor exist and belong to escola
@@ -58,10 +55,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         : Promise.resolve({ data: null } as any),
       supabase.from('turmas').select('id').eq('id', turmaId).eq('escola_id', escolaId).maybeSingle(),
     ])
-    if (!discQ.data) return NextResponse.json({ ok: false, error: 'Disciplina não encontrada' }, { status: 404 })
+    if (!discQ.data) return NextResponse.json({ ok: false, error: 'Disciplina não encontrada' }, { status: 404, headers })
     const profResolved = (profByIdQ.data || profByUserQ.data) as any | null
-    if (!profResolved) return NextResponse.json({ ok: false, error: 'Professor não encontrado' }, { status: 404 })
-    if (!turmaQ.data) return NextResponse.json({ ok: false, error: 'Turma não encontrada' }, { status: 404 })
+    if (!profResolved) return NextResponse.json({ ok: false, error: 'Professor não encontrado' }, { status: 404, headers })
+    if (!turmaQ.data) return NextResponse.json({ ok: false, error: 'Turma não encontrada' }, { status: 404, headers })
 
     // If exists, update; else insert
     const { data: existing } = await supabase
@@ -77,8 +74,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         .from('turma_disciplinas_professores')
         .update({ professor_id: profResolved.id, horarios: body.horarios ?? null, planejamento: body.planejamento ?? null })
         .eq('id', existing.id)
-      if (updErr) return NextResponse.json({ ok: false, error: updErr.message }, { status: 400 })
-      return NextResponse.json({ ok: true, mode: 'updated' })
+      if (updErr) return NextResponse.json({ ok: false, error: updErr.message }, { status: 400, headers })
+      return NextResponse.json({ ok: true, mode: 'updated' }, { headers })
     }
 
     const { error: insErr } = await supabase
@@ -91,8 +88,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         horarios: body.horarios ?? null,
         planejamento: body.planejamento ?? null,
       } as any)
-    if (insErr) return NextResponse.json({ ok: false, error: insErr.message }, { status: 400 })
-    return NextResponse.json({ ok: true, mode: 'created' })
+    if (insErr) return NextResponse.json({ ok: false, error: insErr.message }, { status: 400, headers })
+    return NextResponse.json({ ok: true, mode: 'created' }, { headers })
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })

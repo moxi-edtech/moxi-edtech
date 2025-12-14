@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabaseServer";
-import { hasPermission } from "@/lib/permissions";
+import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 
@@ -45,58 +45,10 @@ export async function POST(
         { status: 401 }
       );
 
-    // Autorização
-    let allowed = false;
-    try {
-      const { data: prof } = await s
-        .from("profiles")
-        .select("role")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1);
-      const role = (prof?.[0] as any)?.role as string | undefined;
-      if (role === "super_admin") allowed = true;
-    } catch {}
-    try {
-      const { data: vinc } = await s
-        .from("escola_usuarios")
-        .select("papel")
-        .eq("escola_id", escolaId)
-        .eq("user_id", user.id)
-        .maybeSingle();
-      const papel = (vinc as any)?.papel as any | undefined;
-      allowed =
-        !!papel &&
-        (hasPermission(papel, "configurar_escola") ||
-          hasPermission(papel, "gerenciar_disciplinas"));
-    } catch {}
-    if (!allowed) {
-      try {
-        const { data: adminLink } = await s
-          .from("escola_administradores")
-          .select("user_id")
-          .eq("escola_id", escolaId)
-          .eq("user_id", user.id)
-          .limit(1);
-        allowed = Boolean(adminLink && (adminLink as any[]).length > 0);
-      } catch {}
-    }
-    if (!allowed) {
-      try {
-        const { data: prof } = await s
-          .from("profiles")
-          .select("user_id, role, escola_id")
-          .eq("user_id", user.id)
-          .eq("escola_id", escolaId)
-          .limit(1);
-        allowed = Boolean(
-          prof && (prof as any[]).length > 0 && (prof as any)[0]?.role === "admin"
-        );
-      } catch {}
-    }
-    if (!allowed)
+    const authz = await authorizeEscolaAction(s as any, escolaId, user.id, ['configurar_escola', 'gerenciar_disciplinas']);
+    if (!authz.allowed)
       return NextResponse.json(
-        { ok: false, error: "Sem permissão" },
+        { ok: false, error: authz.reason || "Sem permissão" },
         { status: 403 }
       );
 
@@ -226,7 +178,7 @@ export async function GET(
     if (!allowed) {
       try {
         const { data: vinc } = await s
-          .from("escola_usuarios")
+          .from("escola_users")
           .select("papel")
           .eq("escola_id", escolaId)
           .eq("user_id", user.id)

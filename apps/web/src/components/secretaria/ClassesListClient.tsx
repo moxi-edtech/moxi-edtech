@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { Loader2, BookOpen } from "lucide-react";
 import Link from "next/link";
+import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildEscolaUrl } from "@/lib/escola/url";
 
 type Classe = {
   id: string;
@@ -14,13 +16,14 @@ export default function ClassesListClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [classes, setClasses] = useState<Classe[]>([]);
+  const { escolaId, isLoading: escolaLoading, error: escolaError } = useEscolaId();
 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/secretaria/classes`);
+        const res = await fetch(buildEscolaUrl(escolaId, '/classes'));
         const json = await res.json();
         if (!res.ok || !json.ok) {
           throw new Error(json.error || "Falha ao carregar classes");
@@ -32,8 +35,8 @@ export default function ClassesListClient() {
         setLoading(false);
       }
     };
-    loadData();
-  }, []);
+    if (escolaId) loadData();
+  }, [escolaId]);
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6 p-6">
@@ -44,14 +47,14 @@ export default function ClassesListClient() {
         </p>
       </div>
 
-      {loading && (
+      {(loading || escolaLoading) && (
         <div className="text-center p-8">
           <Loader2 className="h-8 w-8 animate-spin mx-auto text-moxinexa-teal" />
           <p className="text-slate-500 mt-2">Carregando...</p>
         </div>
       )}
 
-      {error && <div className="bg-red-50 text-red-700 p-4 rounded-lg border border-red-200">{error}</div>}
+      {(error || escolaError) && <div className="bg-red-50 text-red-700 p-4 rounded-lg border border-red-200">{error || escolaError}</div>}
 
       {!loading && !error && classes.length > 0 && (
         <div className="bg-white rounded-xl shadow border">

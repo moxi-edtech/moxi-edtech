@@ -9,7 +9,10 @@ interface TransferFormProps {
 
 interface Turma {
   id: string;
-  nome: string;
+  nome?: string;
+  turma_nome?: string;
+  classe_nome?: string;
+  turno?: string;
 }
 
 export default function TransferForm({ matriculaId, onSuccess }: TransferFormProps) {
@@ -74,11 +77,15 @@ export default function TransferForm({ matriculaId, onSuccess }: TransferFormPro
           required
         >
           <option value="">Selecione uma turma</option>
-          {turmas.map((turma) => (
-            <option key={turma.id} value={turma.id}>
-              {turma.nome}
-            </option>
-          ))}
+          {turmas.map((turma) => {
+            const displayName = turma.turma_nome || turma.nome || 'Turma sem nome';
+            const details = [turma.turno, turma.classe_nome].filter(Boolean).join(' • ');
+            return (
+              <option key={turma.id} value={turma.id}>
+                {details ? `${displayName} (${details})` : displayName}
+              </option>
+            );
+          })}
         </select>
       </div>
 

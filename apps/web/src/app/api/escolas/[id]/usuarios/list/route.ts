@@ -16,13 +16,13 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     const { data: userRes } = await s.auth.getUser()
     const requesterId = userRes?.user?.id
     if (!requesterId) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
-    const { data: vinc } = await s.from('escola_usuarios').select('papel').eq('user_id', requesterId).eq('escola_id', escolaId).limit(1)
+    const { data: vinc } = await s.from('escola_users').select('papel').eq('user_id', requesterId).eq('escola_id', escolaId).limit(1)
     const papelReq = vinc?.[0]?.papel as any
     if (!hasPermission(papelReq, 'editar_usuario')) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
 
     const admin = createServiceRoleClient()
 
-    const { data: links, error } = await scopeToTenant(admin, 'escola_usuarios', escolaId)
+    const { data: links, error } = await scopeToTenant(admin, 'escola_users', escolaId)
       .select('user_id, papel')
       .returns<{ user_id: string; papel: string | null }[]>()
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })

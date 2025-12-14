@@ -6,7 +6,7 @@ import type { KpiStats } from "./KpiSection";
 
 // ... (teus types existentes)
 
-export default function EscolaAdminDashboardData({ escolaId }: { escolaId: string }) {
+export default function EscolaAdminDashboardData({ escolaId }: { escolaId: string; escolaNome?: string }) {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null); // Armazena tudo
   const [error, setError] = useState<string | null>(null);

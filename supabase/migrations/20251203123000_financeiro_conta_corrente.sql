@@ -193,8 +193,8 @@ create table if not exists financeiro_lancamentos (
   created_at timestamptz default now(),
   created_by uuid, -- id do user que gerou (auth.users.id ou profiles.user_id, conforme padrão do projeto)
 
-  -- Você pode adicionar updated_at se quiser rastrear alterações
-  -- updated_at timestamptz default now()
+  -- updated_at para rastrear alterações
+  updated_at timestamptz default now()
 );
 
 -- (Opcional) se quiser versionar edits:

@@ -161,7 +161,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete }: Props) {
           schoolDisplayName={schoolDisplayName}
           setSchoolDisplayName={setSchoolDisplayName}
           regime={regime as any}
-          setRegime={setRegime}
+          setRegime={(val) => setRegime(val as typeof regime)}
           anoLetivo={anoLetivo}
           setAnoLetivo={setAnoLetivo}
           turnos={turnos}

@@ -13,7 +13,7 @@ export type KpiStats = {
 
 interface KpiSectionProps {
   escolaId?: string;
-  stats: KpiStats;
+  stats?: KpiStats;
   loading?: boolean;
   error?: string | null;
   onboardingComplete?: boolean; // Define se mostramos dados reais ou placeholders
@@ -27,6 +27,8 @@ export default function KpiSection({
   onboardingComplete = false 
 }: KpiSectionProps) {
 
+  const safeStats: KpiStats = stats ?? { turmas: 0, alunos: 0, professores: 0, avaliacoes: 0 };
+
   // Função auxiliar para gerar links
   const getHref = (path: string) => escolaId ? `/escola/${escolaId}/admin/${path}` : '#';
 
@@ -35,7 +37,7 @@ export default function KpiSection({
     {
       title: "Turmas Criadas",
       // Se carregando: tralha. Se onboarding completo: valor real. Se não: valor do setup (ex: 12)
-      value: loading ? "—" : (onboardingComplete ? stats.turmas : 12),
+      value: loading ? "—" : (onboardingComplete ? safeStats.turmas : 12),
       icon: Building2,
       theme: "blue",
       status: onboardingComplete ? "Ativas" : "Estrutura Pronta",
@@ -43,7 +45,7 @@ export default function KpiSection({
     },
     {
       title: "Alunos",
-      value: loading ? "—" : (onboardingComplete ? stats.alunos : 0),
+      value: loading ? "—" : (onboardingComplete ? safeStats.alunos : 0),
       icon: Users,
       theme: "emerald",
       // Lógica visual crítica: Se não tem onboarding, mostra alerta
@@ -53,7 +55,7 @@ export default function KpiSection({
     },
     {
       title: "Professores",
-      value: loading ? "—" : (onboardingComplete ? stats.professores : 0),
+      value: loading ? "—" : (onboardingComplete ? safeStats.professores : 0),
       icon: GraduationCap,
       theme: "orange",
       status: onboardingComplete ? "Contratados" : "Pendente",
