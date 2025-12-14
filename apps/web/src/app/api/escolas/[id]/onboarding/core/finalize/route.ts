@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient as createAdminClient } from "@supabase/supabase-js"
 import { supabaseServer } from "@/lib/supabaseServer"
-import type { Database, TablesInsert, TablesUpdate } from "~types/supabase"
+import type { Database, TablesInsert } from "~types/supabase"
 import { mapPapelToGlobalRole } from "@/lib/permissions"
 import { recordAuditServer } from "@/lib/audit"
-import { generateNumeroLogin } from "@/lib/generateNumeroLogin"
+// ❌ REMOVIDO: import { generateNumeroLogin } from "@/lib/generateNumeroLogin"
 import { buildCredentialsEmail, buildOnboardingEmail, sendMail } from "@/lib/mailer"
 import { z } from 'zod'
 import { hasPermission } from "@/lib/permissions"
@@ -34,11 +34,12 @@ export async function POST(
       },
       z.string().email().optional(),
     )
+
     const PayloadSchema = z.object({
       // Novo: modo “finalizar onboarding acadêmico”
       tipo: z.enum(["academico"]).optional(),
       sessionId: z.string().uuid().optional(),
-    
+
       // 🔹 Campos antigos (modo “onboarding geral”)
       schoolName: z.string().trim().min(1).optional(),
       primaryColor: z
@@ -50,23 +51,26 @@ export async function POST(
       subjects: z.string().trim().optional(),
       teacherEmail: EmailOpt,
       staffEmail: EmailOpt,
-    });    const parse = PayloadSchema.safeParse(await req.json())
+    })
+
+    const parse = PayloadSchema.safeParse(await req.json())
     if (!parse.success) {
       const msg = parse.error.issues?.[0]?.message || 'Dados inválidos'
       return NextResponse.json({ ok: false, error: msg }, { status: 400 })
     }
     const payload = parse.data;
-const {
-  tipo,
-  sessionId,
-  schoolName,
-  primaryColor,
-  logoUrl,
-  className,
-  subjects,
-  teacherEmail,
-  staffEmail,
-} = payload;
+
+    const {
+      tipo,
+      sessionId,
+      schoolName,
+      primaryColor,
+      logoUrl,
+      className,
+      subjects,
+      teacherEmail,
+      staffEmail,
+    } = payload;
 
     // 1) Get current user via RLS-safe server client
     const sserver = await supabaseServer()
@@ -77,12 +81,11 @@ const {
     }
 
     // 2) Authorization: must have configurar_escola permission linked to this escola
-    // Prefer escola_usuarios papel; fallback to explicit admin link or profile role+escola_id
     let authorized = false
     let nextPath: string | null = null
     try {
       const { data: vinc } = await sserver
-        .from("escola_usuarios")
+        .from("escola_users")
         .select("papel")
         .eq("escola_id", escolaId)
         .eq("user_id", user.id)
@@ -164,7 +167,6 @@ const {
     // 4) Use service role to perform writes bypassing RLS
 
     // 3.1) Update escola basics
-    // 3.1) Update escola basics + marcar conclusão de onboarding usando timestamp quando disponível
     const escolaUpdateBase: any = {
       ...(schoolName ? { nome: schoolName } : {}),
       ...(primaryColor ? { cor_primaria: primaryColor } : {}),
@@ -172,7 +174,6 @@ const {
       ...((typeof logoUrl === 'string' && logoUrl.length > 0) ? { logo_url: logoUrl } : {}),
     }
 
-    // Helper: realiza update e, se falhar por coluna ausente, tenta novamente sem needs_academic_setup
     const updateEscolaWithFallback = async (patch: any) => {
       const { data, error } = await admin.from('escolas').update(patch).eq('id', escolaId)
       if (error && Object.prototype.hasOwnProperty.call(patch, 'needs_academic_setup')) {
@@ -192,7 +193,6 @@ const {
     }
 
     let finalizadoOk = false
-    // Tentativa 1: usar onboarding_completed_at (timestamp) e opcionalmente onboarding_completed_by
     {
       const escolaUpdate1 = {
         ...escolaUpdateBase,
@@ -204,7 +204,6 @@ const {
       if (!err1) finalizadoOk = true
     }
 
-    // Tentativa 2 (fallback): usar booleano antigo
     if (!finalizadoOk) {
       const patch = { ...escolaUpdateBase, onboarding_finalizado: true, needs_academic_setup: false } as any
       const { error: err2 } = await updateEscolaWithFallback(patch)
@@ -241,7 +240,6 @@ const {
 
     // 3.3) Create cursos if provided
     if (subjects && subjects.trim()) {
-      // Normalize and de-duplicate
       const list = Array.from(new Set(
         subjects
           .split(',')
@@ -250,7 +248,6 @@ const {
       ))
 
       if (list.length) {
-        // Fetch existing cursos for these names
         const { data: existing } = await (admin as any)
           .from('cursos')
           .select('nome')
@@ -261,11 +258,9 @@ const {
         const toCreate = list.filter((nome) => !existingNames.has(nome))
 
         if (toCreate.length) {
-          // No strict types available until types are regenerated; use any-compatible rows
           const cursoRows = toCreate.map((nome) => ({ nome, escola_id: escolaId })) as any[]
           const { error: subjectsError } = await (admin as any).from('cursos').insert(cursoRows)
           if (subjectsError) {
-            // Not fatal to onboarding; return warning but ok=true
             return NextResponse.json({ ok: true, warning: subjectsError.message })
           }
         }
@@ -283,18 +278,21 @@ const {
       try {
         const roleEnum = mapPapelToGlobalRole(inv.papel)
         // Check if exists
-        const { data: prof } = await admin.from('profiles').select('user_id').eq('email', inv.email).limit(1)
+        const { data: prof } = await admin.from('profiles').select('user_id, numero_login').eq('email', inv.email).limit(1)
         let userId = (prof?.[0] as any)?.user_id as string | undefined
+        let numeroLogin: string | null = (prof?.[0] as any)?.numero_login ?? null
         let invited = false
+
         if (!userId) {
-          // Invite new user
           const { data: inviteRes } = await (admin as any).auth.admin.inviteUserByEmail(inv.email, {
             data: { nome: inv.nome ?? inv.papel, role: roleEnum, must_change_password: true },
           })
           userId = inviteRes?.user?.id as string | undefined
           if (userId) invited = true
         }
+
         if (!userId) continue
+
         // Generate temp password for newly invited users
         let tempPassword: string | null = null
         if (invited) {
@@ -316,34 +314,92 @@ const {
             tempPassword = null
           }
         }
-        // numero_login para secretaria
-        let numeroLogin: string | null = null
-        if (inv.papel === 'secretaria') {
-          try { numeroLogin = await generateNumeroLogin(escolaId, 'secretaria' as any, admin as any) } catch {}
-        }
-        // Ensure profile
-        try { await admin.from('profiles').upsert({ user_id: userId, email: inv.email, nome: inv.nome ?? inv.papel, role: roleEnum as any, escola_id: escolaId, numero_login: numeroLogin ?? undefined } as any) } catch {}
-        // Ensure app_metadata
-        try { await (admin as any).auth.admin.updateUserById(userId, { app_metadata: { role: roleEnum, escola_id: escolaId, numero_usuario: numeroLogin || undefined } }) } catch {}
-        // Link papel
-        try { await admin.from('escola_usuarios').upsert({ escola_id: escolaId, user_id: userId, papel: inv.papel } as any, { onConflict: 'escola_id,user_id' }) } catch {}
-        // Audit
-        try { recordAuditServer({ escolaId, portal: 'admin_escola', acao: 'USUARIO_CONVIDADO', entity: 'usuario', entityId: userId, details: { email: inv.email, papel: inv.papel, role: roleEnum, via: 'onboarding', numero_login: numeroLogin } }) } catch {}
 
-        // Envia email de credenciais sempre (incluindo senha temporária quando houver)
+        // ❗ numero_login:
+        // Agora não geramos mais aqui. Se já existia (ex: usuário-aluno previamente matriculado e promovido),
+        // reaproveitamos. Caso contrário, fica null e será criado via fluxo de matrícula (quando aplicável).
+
+        // Ensure profile (não pisa no numero_login existente se estiver null aqui)
+        const profilePayload: any = {
+          user_id: userId,
+          email: inv.email,
+          nome: inv.nome ?? inv.papel,
+          role: roleEnum as any,
+          escola_id: escolaId,
+        }
+        if (numeroLogin) {
+          profilePayload.numero_login = numeroLogin
+        }
+
         try {
-          const { data: esc } = await admin.from('escolas' as any).select('nome').eq('id', escolaId).maybeSingle()
-          const escolaNome = (esc as any)?.nome ?? null
+          await admin.from('profiles').upsert(profilePayload)
+        } catch {}
+
+        // Ensure app_metadata
+        try {
+          await (admin as any).auth.admin.updateUserById(userId, {
+            app_metadata: {
+              role: roleEnum,
+              escola_id: escolaId,
+              numero_usuario: numeroLogin || undefined,
+            },
+          })
+        } catch {}
+
+        // Link papel
+        try {
+          await admin.from('escola_users').upsert(
+            { escola_id: escolaId, user_id: userId, papel: inv.papel } as any,
+            { onConflict: 'escola_id,user_id' }
+          )
+        } catch {}
+
+        // Audit
+        try {
+          recordAuditServer({
+            escolaId,
+            portal: 'admin_escola',
+            acao: 'USUARIO_CONVIDADO',
+            entity: 'usuario',
+            entityId: userId,
+            details: {
+              email: inv.email,
+              papel: inv.papel,
+              role: roleEnum,
+              via: 'onboarding',
+              numero_login: numeroLogin,
+            },
+          })
+        } catch {}
+
+        // Envia email de credenciais (inclui numero_login só se já existir)
+        try {
+          const { data: esc2 } = await admin.from('escolas' as any).select('nome').eq('id', escolaId).maybeSingle()
+          const escolaNome = (esc2 as any)?.nome ?? null
           const loginUrl = process.env.NEXT_PUBLIC_BASE_URL ? `${process.env.NEXT_PUBLIC_BASE_URL}/login` : null
-          const mail = buildCredentialsEmail({ nome: inv.nome ?? inv.papel, email: inv.email, numero_login: numeroLogin ?? undefined, senha_temp: tempPassword ?? undefined, escolaNome, loginUrl })
+          const mail = buildCredentialsEmail({
+            nome: inv.nome ?? inv.papel,
+            email: inv.email,
+            numero_login: numeroLogin ?? undefined,
+            senha_temp: tempPassword ?? undefined,
+            escolaNome,
+            loginUrl,
+          })
           await sendMail({ to: inv.email, subject: mail.subject, html: mail.html, text: mail.text })
         } catch {}
+
         if (invited) inviteResult.sent.push(inv.email)
         else inviteResult.updated.push(inv.email)
-      } catch (_) { inviteResult.failed.push(inv.email) }
+      } catch (_) {
+        inviteResult.failed.push(inv.email)
+      }
     }
 
-    return NextResponse.json({ ok: true, nextPath: nextPath ?? `/escola/${escolaId}/admin/dashboard`, invites: inviteResult })
+    return NextResponse.json({
+      ok: true,
+      nextPath: nextPath ?? `/escola/${escolaId}/admin/dashboard`,
+      invites: inviteResult,
+    })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })

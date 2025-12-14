@@ -74,7 +74,10 @@ const mapCourseTypeToNivel = (tipo: CourseType): string => {
     case "puniv":
       return "secundario2";
     case "tecnico":
+    case "tecnico_ind":
+    case "tecnico_serv":
       return "tecnico";
+    case "geral":
     default:
       return "geral";
   }
@@ -247,7 +250,7 @@ async function findOrCreateCursoEscola(
   cursoGlobalHash: string,
   isCustom: boolean
 ) {
-  // 1. Tenta buscar existente primeiro (Otimização de leitura)
+  // 1. Tenta buscar existente
   const { data: existing, error: selErr } = await supabaseAdmin
     .from("cursos")
     .select("*")
@@ -272,6 +275,7 @@ async function findOrCreateCursoEscola(
   // 2. Tenta Criar
   const codigo = makeCursoCodigo(nome, escolaId);
 
+  // CORREÇÃO: Removemos created_at (pois não existe na tabela) e updated_at (boa prática deixar o banco lidar)
   const { data: created, error: insErr } = await supabaseAdmin
     .from("cursos")
     .insert({
@@ -281,19 +285,16 @@ async function findOrCreateCursoEscola(
       tipo,
       is_custom: isCustom,
       codigo,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      // REMOVIDO: created_at (Coluna não existe na sua tabela cursos)
+      // REMOVIDO: updated_at (Deixe o banco usar o default ou trigger se tiver)
     } as any)
     .select("*")
     .single();
 
-  // 3. Tratamento de Erro Robusto (A CORREÇÃO ESTÁ AQUI)
+  // 3. Tratamento de Erro Robusto (Race Condition / Duplicidade)
   if (insErr) {
-    // Se o erro for "Violação de Unicidade" (23505), significa que
-    // o curso foi criado milissegundos atrás por outro processo (Race Condition)
-    // ou a consulta inicial falhou em achá-lo.
     if (insErr.code === '23505') {
-      // Retry: Buscamos novamente o registro que conflitou
+      // Retry: Buscamos novamente o que "ganhou a corrida"
       const { data: retryData } = await supabaseAdmin
         .from("cursos")
         .select("*")
@@ -304,12 +305,12 @@ async function findOrCreateCursoEscola(
         .maybeSingle();
 
       if (retryData) {
-        return retryData; // Sucesso: retornamos o existente
+        return retryData;
       }
     }
 
-    // Se for outro erro (ex: banco fora do ar, erro de permissão), aí sim estouramos o erro
     console.error("Erro REAL ao criar curso escola:", insErr);
+    // Agora o erro será mais claro se acontecer outra coisa
     throw new Error(`Erro ao criar curso: ${insErr.message}`);
   }
 
@@ -326,7 +327,10 @@ async function upsertDisciplinasFromConfig(
   tipo: CourseType,
   payload: AdvancedConfigPayload
 ) {
-  const { classes, matrix, subjects } = payload;
+  // --- CORREÇÃO AQUI ---
+  // Adicionamos valores padrão: se subjects ou matrix não vierem, usamos array/objeto vazio.
+  const { classes, matrix = {}, subjects = [] } = payload;
+  
   const nivel = mapCourseTypeToNivel(tipo);
   const rows: {
     escola_id: string;
@@ -337,9 +341,11 @@ async function upsertDisciplinasFromConfig(
     tipo: string;
   }[] = [];
 
-  // Se não veio subject nenhum, tentamos pegar do preset oficial
-  let effectiveSubjects = subjects;
+  // Garante que effectiveSubjects é um array, mesmo que venha nulo
+  let effectiveSubjects = subjects || [];
+  
   if (effectiveSubjects.length === 0) {
+    // Se não tem disciplinas, apenas retornamos 0 (sucesso, mas nada criado)
     return 0;
   }
 
@@ -349,6 +355,7 @@ async function upsertDisciplinasFromConfig(
       const keyT = `${subject}::${cls}::T`;
       const keyN = `${subject}::${cls}::N`;
 
+      // Se matrix estiver vazia (Quick Install), isso apenas dá false e pula o if
       const ativo =
         Boolean(matrix[keyM]) || Boolean(matrix[keyT]) || Boolean(matrix[keyN]);
 
@@ -358,7 +365,7 @@ async function upsertDisciplinasFromConfig(
         escola_id: escolaId,
         curso_escola_id: cursoId,
         nome: subject,
-        classe_nome: cls + " Classe", // se você já guarda só "10ª", pode manter cls puro
+        classe_nome: cls + " Classe",
         nivel_ensino: nivel,
         tipo: "core",
       });
@@ -489,41 +496,50 @@ export async function POST(
       body.advancedConfig
     );
 
-    // 5. [NOVO] Scaffolding: Criar Classes (Estrutura) e Turmas (Oferta)
-    // Isso garante que ao final do wizard o usuário já tenha turmas prontas
-    let turmasCriadas = 0;
-    try {
-      const classesCriadas = await findOrCreateClassesForCurso(
-        escolaId,
-        cursoEscola.id,
-        body.advancedConfig.classes
-      );
+    // 5. Scaffolding Automático: Classes & Turmas
+    // "Sem Gambiarra": Garantimos arrays vazios se advancedConfig vier incompleto
+    const classesParaCriar = body.advancedConfig?.classes || [];
+    const turnosConfig = body.advancedConfig?.turnos || { manha: false, tarde: false, noite: false };
 
-      if (classesCriadas.length > 0) {
-        turmasCriadas = await createInitialTurmas(
+    let turmasStats = 0;
+
+    // Só tentamos criar estrutura se houver classes definidas
+    if (classesParaCriar.length > 0) {
+      try {
+        // A. Criar Estrutura (Classes)
+        // (Chama a função auxiliar que já está no seu arquivo)
+        const classesCriadas = await findOrCreateClassesForCurso(
           escolaId,
           cursoEscola.id,
-          classesCriadas,
-          body.advancedConfig.turnos
+          classesParaCriar
         );
+
+        // B. Criar Oferta (Turmas) apenas se tivermos classes criadas
+        if (classesCriadas.length > 0) {
+          turmasStats = await createInitialTurmas(
+            escolaId,
+            cursoEscola.id,
+            classesCriadas,
+            turnosConfig
+          );
+        }
+      } catch (err) {
+        // Logamos o aviso, mas não falhamos o request principal
+        // Isso garante que o curso seja instalado mesmo se o scaffolding falhar
+        console.error("Aviso: Scaffolding automático falhou parcialmente:", err);
       }
-    } catch (scaffoldErr) {
-      console.error("Aviso: Falha ao criar estrutura automática:", scaffoldErr);
-      // Não bloqueia o sucesso do request principal, pois o curso já foi criado
     }
 
     return NextResponse.json({
       ok: true,
-      message: "Currículo aplicado com sucesso",
-      curso: {
-        id: cursoEscola.id,
-        nome: cursoEscola.nome,
-        tipo: cursoEscola.tipo,
-        curso_global_id: cursoEscola.curso_global_id,
-        is_custom: cursoEscola.is_custom,
+      message: "Curso instalado com sucesso.",
+      data: {
+        cursoId: cursoEscola.id,
+        // Retornamos stats para debug, se quiser usar no front
+        turmasCriadas: turmasStats 
       },
-      disciplinasCriadasOuAtualizadas: createdCount,
-      turmasAutomaticasCriadas: turmasCriadas, // Retorna info extra para debug
+      // Mantemos compatibilidade com o retorno anterior se necessário
+      disciplinasCriadasOuAtualizadas: createdCount, 
     });
   } catch (e: any) {
     console.error("Erro na rota curriculum/apply:", e);

@@ -78,11 +78,11 @@ export async function GET() {
     const pRows = (profiles || []) as any[]
     const userIds = pRows.map((p: any) => String(p.user_id))
 
-    // 2) Vínculos escola_usuarios
+    // 2) Vínculos escola_users
     let vRows: any[] = []
     if (userIds.length > 0) {
       const { data: v, error: vErr } = await admin
-        .from('escola_usuarios' as any)
+        .from('escola_users' as any)
         .select('user_id, escola_id, papel')
         .in('user_id', userIds as any)
         .limit(200000)

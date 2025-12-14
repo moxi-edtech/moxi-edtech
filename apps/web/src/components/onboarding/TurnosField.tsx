@@ -1,4 +1,4 @@
-import type { TurnosState } from "@/app/configuracoes/onboarding/AcademicSetupWizard";
+import type { TurnosState } from "@/components/escola/onboarding/academicSetupTypes";
 
 type Props = {
   turnos: TurnosState;
@@ -11,9 +11,9 @@ export function TurnosField({ turnos, setTurnos }: Props) {
   }
 
   const chips: { key: keyof TurnosState; label: string }[] = [
-    { key: "manha", label: "Manhã" },
-    { key: "tarde", label: "Tarde" },
-    { key: "noite", label: "Noite" },
+    { key: "Manhã", label: "Manhã" },
+    { key: "Tarde", label: "Tarde" },
+    { key: "Noite", label: "Noite" },
   ];
 
   return (

@@ -1,14 +1,15 @@
 "use client";
 
 import { useId } from 'react';
-import type { InputHTMLAttributes } from 'react';
+import type { InputHTMLAttributes, Ref } from 'react';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
   error?: string;
+  inputRef?: Ref<HTMLInputElement>;
 }
 
-export function Input({ label, id, error, className = '', ...props }: InputProps) {
+export function Input({ label, id, error, className = '', inputRef, ...props }: InputProps) {
   const inputId = id || useId();
   return (
     <div className="w-full">
@@ -17,6 +18,7 @@ export function Input({ label, id, error, className = '', ...props }: InputProps
       </label>
       <input
         id={inputId}
+        ref={inputRef}
         className={`w-full p-3 border rounded-lg transition-colors duration-200 ${
           error ? 'border-red-500 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-teal-500 focus:border-teal-500'
         } ${className}`}

@@ -46,7 +46,7 @@ interface MatriculaRow {
   id: string;
   ano_letivo?: number | null;
   status?: string | null;
-  numero_matricula?: string | null;
+  numero_matricula?: number | null;
   turma?: TurmaRow | TurmaRow[] | null;
 }
 

@@ -1,46 +1,56 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { generateNumeroLogin } from "@/lib/generateNumeroLogin";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
+import { resolveEscolaIdForUser, authorizeMatriculasManage } from "@/lib/escola/disciplinas";
 
-// Retorna uma sugestão de número de matrícula sem consumir a sequência real.
-// Estratégia: usa o mesmo prefixo do trigger (SUBSTRING(MD5(escola_id) FOR 3))
-// e calcula o próximo sufixo com base no maior numero_matricula existente para o prefixo da escola.
 export async function GET() {
   try {
     const supabase = await supabaseServerTyped<any>();
+    const headers = new Headers();
+
+    // 1. Autenticação
     const { data: userRes } = await supabase.auth.getUser();
     const user = userRes?.user;
-    if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
+    if (!user)
+      return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
-    // Resolve escola do usuário logado
-    const { data: prof } = await supabase
-      .from('profiles')
-      .select('escola_id')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    const escolaId = (prof as any)?.escola_id as string | undefined;
-    if (!escolaId) return NextResponse.json({ ok: false, error: 'Perfil não vinculado à escola' }, { status: 403 });
+    // 2. Resolve a escola do usuário
+    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
 
-    // Usa a mesma função de geração que a criação efetiva
-    let numero: string | null = null;
-    try {
-      if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-        const admin = createAdminClient<Database>(
-          process.env.NEXT_PUBLIC_SUPABASE_URL!,
-          process.env.SUPABASE_SERVICE_ROLE_KEY!
-        );
-        numero = await generateNumeroLogin(escolaId, 'aluno' as any, admin as any);
-      } else {
-        numero = await generateNumeroLogin(escolaId, 'aluno' as any, supabase as any);
-      }
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      return NextResponse.json({ ok: false, error: message }, { status: 400 });
-    }
+    if (!escolaId)
+      return NextResponse.json(
+        { ok: false, error: "Perfil sem escola vinculada" },
+        { status: 403 }
+      );
 
-    return NextResponse.json({ ok: true, numero });
+    const authz = await authorizeMatriculasManage(supabase as any, escolaId, user.id);
+    if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 });
+
+    headers.set('Deprecation', 'true');
+    headers.set('Link', `</api/escolas/${escolaId}/matriculas>; rel="successor-version"`);
+
+    // 3. Admin client para chamar RPC segura
+    const admin =
+      process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
+        ? createAdminClient<Database>(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+          )
+        : supabase;
+
+    // 4. Chama RPC de prévia
+    const { data, error } = await admin.rpc("preview_next_matricula_number", {
+      p_escola_id: escolaId
+    });
+
+    if (error)
+      return NextResponse.json({ ok: false, error: error.message }, { status: 400, headers });
+
+    const numeroRaw = data as number | string | null;
+    const numero = numeroRaw === null || numeroRaw === undefined ? null : Number(numeroRaw);
+
+    return NextResponse.json({ ok: true, numero }, { headers });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

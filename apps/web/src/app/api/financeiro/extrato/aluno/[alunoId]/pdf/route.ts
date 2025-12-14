@@ -45,7 +45,7 @@ interface MatriculaRow {
   id: string;
   ano_letivo?: number | null;
   status?: string | null;
-  numero_matricula?: string | null;
+  numero_matricula?: number | null;
   turma?: TurmaRow | TurmaRow[] | null;
 }
 
@@ -271,7 +271,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ alunoId
     const verificationToken = randomUUID();
     const validationBase = process.env.NEXT_PUBLIC_VALIDATION_BASE_URL ?? escola?.validation_base_url ?? undefined;
 
-    const pdfBytes = await createInstitutionalPdf({
+    const pdfBytes = (await (createInstitutionalPdf as any)({
       title: "Extrato de Pagamentos / Propinas",
       school: {
         name: escola?.nome ?? "Escola",
@@ -472,9 +472,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ alunoId
           );
         }
       },
-    });
+    })) as Uint8Array;
 
-    return new NextResponse(pdfBytes, {
+    return new NextResponse(pdfBytes as any, {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="extrato_financeiro_${aluno.nome ?? "aluno"}.pdf"`,

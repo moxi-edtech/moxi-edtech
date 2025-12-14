@@ -52,7 +52,7 @@ export async function POST(request: Request) {
   // Verifica vínculo do usuário com a escola informada
   try {
     const { data: vinc } = await supabase
-      .from("escola_usuarios")
+      .from("escola_users")
       .select("user_id")
       .eq("escola_id", escolaId)
       .eq("user_id", createdBy)

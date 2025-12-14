@@ -14,7 +14,7 @@ async function resolveEscolaId(
     | string
     | undefined
   if (!escolaId) {
-    const { data: vinc } = await s.from('escola_usuarios').select('escola_id').eq('user_id', userId).limit(1)
+    const { data: vinc } = await s.from('escola_users').select('escola_id').eq('user_id', userId).limit(1)
     escolaId = (vinc?.[0] as any)?.escola_id as string | undefined
   }
   return escolaId
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
       p_aluno_id: aluno_id,
       p_item_id: item_id,
       p_quantidade: qty,
-      p_valor_unit: valor_unitario !== undefined ? Number(Number(valor_unitario).toFixed(2)) : null,
+      p_valor_unit: Number(Number(valor_unitario ?? 0).toFixed(2)),
       p_desconto: Number(Number(desconto || 0).toFixed(2)),
       p_metodo_pagamento: metodo_pagamento,
       p_status: status,

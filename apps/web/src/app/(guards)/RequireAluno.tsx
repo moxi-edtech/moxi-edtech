@@ -22,7 +22,7 @@ export default function RequireAluno({ children }: { children: React.ReactNode }
 
       // Check vínculo do usuário como aluno em alguma escola
       const { data: vinculos, error } = await supabase
-        .from("escola_usuarios")
+        .from("escola_users")
         .select("id, papel")
         .eq("user_id", user.id)
         .eq("papel", "aluno")
@@ -47,4 +47,3 @@ export default function RequireAluno({ children }: { children: React.ReactNode }
 
   return <>{children}</>;
 }
-

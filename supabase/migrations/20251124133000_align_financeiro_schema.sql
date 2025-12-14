@@ -118,7 +118,7 @@ BEGIN
     -- Backfill: preencher novos campos a partir do que já existe
     -- (valor_previsto a partir de valor; ano/mes a partir de data_vencimento)
     UPDATE public.mensalidades m
-       SET valor_previsto   = COALESCE(m.valor_previsto, m.valor),
+       SET valor_previsto   = COALESCE(m.valor_previsto, 0),
            valor_pago_total = COALESCE(m.valor_pago_total, 0),
            ano_referencia   = COALESCE(m.ano_referencia, EXTRACT(YEAR  FROM m.data_vencimento)::int),
            mes_referencia   = COALESCE(m.mes_referencia, EXTRACT(MONTH FROM m.data_vencimento)::int),
@@ -136,9 +136,9 @@ BEGIN
     -- Normalização de status antes de aplicar o CHECK
     UPDATE public.mensalidades m
        SET status = CASE
-                      WHEN status IS NULL OR btrim(status) = '' THEN 'pendente'
-                      WHEN lower(btrim(status)) IN ('pendente','pago_parcial','pago','isento','cancelado')
-                        THEN lower(btrim(status))
+                      WHEN status IS NULL OR btrim(status::text) = '' THEN 'pendente'
+                      WHEN lower(btrim(status::text)) IN ('pendente','pago_parcial','pago','isento','cancelado')
+                        THEN lower(btrim(status::text))::mensalidade_status
                       ELSE 'pendente'
                     END;
 
@@ -232,6 +232,7 @@ END$$;
 -- 4) View de Inadimplência (Radar)
 --    Compatível com colunas reais de alunos e mensalidades
 ------------------------------------------------------------
+DROP VIEW IF EXISTS public.vw_radar_inadimplencia;
 CREATE OR REPLACE VIEW public.vw_radar_inadimplencia
 WITH (security_invoker = true)
 AS
@@ -240,8 +241,8 @@ SELECT
   m.aluno_id                                       AS aluno_id,
   a.nome                                           AS nome_aluno,
   -- aqui usamos exatamente o que existe hoje em public.alunos
-  a.responsavel                                    AS responsavel,
-  a.telefone_responsavel                           AS telefone,
+  a.responsavel_nome                               AS responsavel,
+  a.responsavel_contato                            AS telefone,
   t.nome                                           AS nome_turma,
     -- Nomes projetados para o frontend/API
   COALESCE(m.valor_previsto, 0)::numeric(10,2)     AS valor_previsto,     -- mantém 10,2 (já era assim)
@@ -280,7 +281,7 @@ SELECT
   SUM(
     GREATEST(
       0,
-      COALESCE(m.valor_previsto, m.valor, 0)
+      COALESCE(m.valor_previsto, 0)
       - COALESCE(m.valor_pago_total, 0)
     )
   )::numeric(14,2) AS total_aberto

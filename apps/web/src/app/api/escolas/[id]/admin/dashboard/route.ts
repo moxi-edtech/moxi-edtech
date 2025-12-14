@@ -29,7 +29,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
         .in('status', ['ativa', 'ativo', 'active'])
         .not('aluno_id', 'is', null),
       supabase.from('turmas').select('id', { count: 'exact', head: true }).eq('escola_id', escolaId),
-      supabase.from('escola_usuarios').select('user_id', { count: 'exact', head: true }).eq('escola_id', escolaId).eq('papel', 'professor'),
+      supabase.from('escola_users').select('user_id', { count: 'exact', head: true }).eq('escola_id', escolaId).eq('papel', 'professor'),
       (supabase as any).from('avisos').select('id, titulo, created_at').eq('escola_id', escolaId).order('created_at', { ascending: false }).limit(5),
       supabase.from('pagamentos').select('status').eq('escola_id', escolaId),
       supabase.from('matriculas').select('id').eq('escola_id', escolaId),

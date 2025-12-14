@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabaseServer";
-import { hasPermission } from "@/lib/permissions";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
-
-
 
 // GET /api/escolas/[id]/classes
 // Lista classes da escola (usa service role com autorização)
@@ -21,6 +18,7 @@ export async function GET(
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
 
     let allowed = false;
+    // 1. Super Admin
     try {
       const { data: prof } = await s
         .from('profiles')
@@ -31,10 +29,12 @@ export async function GET(
       const role = (prof?.[0] as any)?.role as string | undefined;
       if (role === 'super_admin') allowed = true;
     } catch {}
+
+    // 2. Vínculo na Escola (CORRIGIDO: escola_users)
     if (!allowed) {
       try {
         const { data: vinc } = await s
-          .from('escola_usuarios')
+          .from('escola_users') // <--- NOME DA TABELA CORRIGIDO
           .select('papel')
           .eq('escola_id', escolaId)
           .eq('user_id', user.id)
@@ -42,6 +42,8 @@ export async function GET(
         allowed = Boolean((vinc as any)?.papel);
       } catch {}
     }
+
+    // 3. Admin legado
     if (!allowed) {
       try {
         const { data: adminLink } = await s
@@ -53,6 +55,8 @@ export async function GET(
         allowed = Boolean(adminLink && (adminLink as any[]).length > 0);
       } catch {}
     }
+
+    // 4. Admin Profile
     if (!allowed) {
       try {
         const { data: prof } = await s
@@ -64,6 +68,7 @@ export async function GET(
         allowed = Boolean(prof && (prof as any[]).length > 0 && (prof as any)[0]?.role === 'admin');
       } catch {}
     }
+
     if (!allowed) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
 
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -78,11 +83,13 @@ export async function GET(
     {
       const { data, error } = await (admin as any)
         .from('classes')
-        .select('id, nome, descricao, ordem, nivel')
+        .select('id, nome, descricao, ordem, nivel, curso_id') // Adicionei curso_id
         .eq('escola_id', escolaId)
         .order('ordem', { ascending: true });
+      
       if (!error) rows = data || [];
       else {
+        // Retry simples (opcional)
         const retry = await (admin as any)
           .from('classes')
           .select('id, nome, ordem')
@@ -92,13 +99,16 @@ export async function GET(
         rows = retry.data || [];
       }
     }
+
     const payload = rows.map((r: any) => ({
       id: r.id,
       nome: r.nome,
       descricao: r.descricao ?? undefined,
       ordem: r.ordem ?? 0,
       nivel: r.nivel ?? undefined,
+      curso_id: r.curso_id ?? undefined,
     }));
+
     return NextResponse.json({ ok: true, data: payload });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erro inesperado';
@@ -119,7 +129,7 @@ export async function POST(
     const user = auth?.user;
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
 
-    // Autoriza criar: super_admin, configurar_escola, admin vinculado
+    // Autoriza criar
     let allowed = false;
     try {
       const { data: prof } = await s
@@ -131,18 +141,20 @@ export async function POST(
       const role = (prof?.[0] as any)?.role as string | undefined;
       if (role === 'super_admin') allowed = true;
     } catch {}
+
     if (!allowed) {
       try {
         const { data: vinc } = await s
-          .from('escola_usuarios')
+          .from('escola_users') // <--- NOME CORRIGIDO
           .select('papel')
           .eq('escola_id', escolaId)
           .eq('user_id', user.id)
           .maybeSingle();
         const papel = (vinc as any)?.papel as any | undefined;
-        if (papel) allowed = true; // hasPermission(papel,'configurar_escola') poderia refinar
+        if (papel) allowed = true; 
       } catch {}
     }
+
     if (!allowed) {
       try {
         const { data: adminLink } = await s
@@ -154,6 +166,7 @@ export async function POST(
         allowed = Boolean(adminLink && (adminLink as any[]).length > 0);
       } catch {}
     }
+
     if (!allowed) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
 
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -165,34 +178,43 @@ export async function POST(
     );
 
     const body = await req.json().catch(() => ({}));
+    
+    // [SCHEMA] Adicionei curso_id pois é necessário para a unicidade
     const schema = z.object({
       nome: z.string().trim().min(1),
       nivel: z.string().trim().nullable().optional(),
       descricao: z.string().trim().nullable().optional(),
+      curso_id: z.string().uuid().optional().nullable(), 
+      ordem: z.number().optional(), // Opcional, se vier usamos, senão calculamos
     });
+
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
       const msg = parsed.error.issues?.[0]?.message || 'Dados inválidos';
       return NextResponse.json({ ok: false, error: msg }, { status: 400 });
     }
 
-    // Define ordem como último+1
-    let ordem = 1;
-    try {
-      const { data } = await (admin as any)
-        .from('classes')
-        .select('ordem')
-        .eq('escola_id', escolaId)
-        .order('ordem', { ascending: false })
-        .limit(1);
-      const top = (data || [])[0] as any;
-      ordem = Number(top?.ordem || 0) + 1;
-    } catch {}
+    // Calcula ordem apenas se não foi fornecida
+    let ordem = parsed.data.ordem;
+    if (ordem === undefined) {
+      ordem = 1;
+      try {
+        const { data } = await (admin as any)
+          .from('classes')
+          .select('ordem')
+          .eq('escola_id', escolaId)
+          .order('ordem', { ascending: false })
+          .limit(1);
+        const top = (data || [])[0] as any;
+        ordem = Number(top?.ordem || 0) + 1;
+      } catch {}
+    }
 
     const payload: any = {
       escola_id: escolaId,
       nome: parsed.data.nome,
       ordem,
+      curso_id: parsed.data.curso_id || null // [IMPORTANTE] Passar o curso para o insert
     };
     if (parsed.data.nivel !== undefined) payload.nivel = parsed.data.nivel;
     if (parsed.data.descricao !== undefined) payload.descricao = parsed.data.descricao;
@@ -202,7 +224,17 @@ export async function POST(
       .insert(payload)
       .select('id, nome, nivel, descricao, ordem')
       .single();
-    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+
+    if (error) {
+      // [BLINDAGEM] Tratamento de erro de chave duplicada
+      if (error.code === '23505') {
+        return NextResponse.json(
+          { ok: false, error: `A classe "${parsed.data.nome}" já existe para este curso.` },
+          { status: 409 } // Conflict
+        );
+      }
+      return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+    }
 
     return NextResponse.json({ ok: true, data: ins });
   } catch (e) {

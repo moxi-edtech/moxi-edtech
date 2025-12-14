@@ -27,7 +27,7 @@ async function usuarioTemAcessoEscola(client: any, userId: string, escolaId: str
 
   try {
     const { data: vinc } = await client
-      .from("escola_usuarios")
+      .from("escola_users")
       .select("papel")
       .eq("escola_id", escolaId)
       .eq("user_id", userId)
@@ -64,7 +64,7 @@ async function resolverEscola(client: any, userId: string, provided?: string | n
 
   try {
     const { data: vinc } = await client
-      .from("escola_usuarios")
+      .from("escola_users")
       .select("escola_id")
       .eq("user_id", userId)
       .limit(1);
@@ -131,6 +131,7 @@ export async function GET(req: Request) {
         anoLetivo,
         cursoId: cursoId || undefined,
         classeId: classeId || undefined,
+        allowMensalidadeFallback: true,
       });
     } catch {}
 

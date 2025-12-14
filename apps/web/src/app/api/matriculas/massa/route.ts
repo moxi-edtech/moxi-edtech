@@ -72,11 +72,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const result = Array.isArray(data) && data.length ? data[0] : data;
+  type RpcResult = { success_count: number; error_count: number; errors: unknown };
+  const result = (Array.isArray(data) && data.length ? data[0] : data) as Partial<RpcResult> | null;
 
   return NextResponse.json({
     success_count: result?.success_count ?? 0,
     error_count: result?.error_count ?? 0,
-    errors: result?.errors ?? [],
+    errors: (result?.errors as unknown[]) ?? [],
   });
 }

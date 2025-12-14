@@ -9,6 +9,12 @@ drop policy if exists "alunos_insert_own" on public.alunos;
 drop policy if exists "alunos_update_own" on public.alunos;
 drop policy if exists "alunos_delete_own" on public.alunos;
 
+-- Drop new policies if they exist, for idempotency
+drop policy if exists "alunos_select_por_escola_ou_proprio" on public.alunos;
+drop policy if exists "alunos_insert_staff" on public.alunos;
+drop policy if exists "alunos_update_staff" on public.alunos;
+drop policy if exists "alunos_delete_staff" on public.alunos;
+
 -- SELECT: Staff sees all in school, student sees own record.
 create policy "alunos_select_por_escola_ou_proprio"
 on public.alunos

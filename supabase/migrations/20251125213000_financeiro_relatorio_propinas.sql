@@ -76,8 +76,7 @@ SELECT
   m.escola_id,
   m.ano_letivo,
   t.id                        AS turma_id,
-  COALESCE(t.nome, t.codigo)  AS turma_nome,
-  t.classe                    AS classe_label,
+  t.nome  AS turma_nome,
   t.turno                     AS turno,
   
   -- agregação por turma
@@ -114,7 +113,7 @@ SELECT
   END AS inadimplencia_pct
 FROM public.mensalidades m
 JOIN public.matriculas mat
-  ON mat.id = m.matricula_id
+  ON mat.aluno_id = m.aluno_id
  AND (mat.status IN ('ativo','ativa') OR mat.ativo = true)
 LEFT JOIN public.turmas t
   ON t.id = mat.turma_id
@@ -123,8 +122,7 @@ GROUP BY
   m.escola_id,
   m.ano_letivo,
   t.id,
-  COALESCE(t.nome, t.codigo),
-  t.classe,
+  t.nome,
   t.turno;
 
 COMMENT ON VIEW public.vw_financeiro_propinas_por_turma IS

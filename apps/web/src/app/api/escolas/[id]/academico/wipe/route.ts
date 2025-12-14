@@ -73,10 +73,10 @@ export async function POST(
       if (role === "super_admin") allowed = true;
     } catch {}
 
-    // vinculado com permissão
+    // vinculado com permissão (tabela atual escola_users)
     try {
       const { data: vinc } = await s
-        .from("escola_usuarios")
+        .from("escola_users")
         .select("papel")
         .eq("escola_id", escolaId)
         .eq("user_id", user.id)
@@ -84,6 +84,19 @@ export async function POST(
       const papel = (vinc as any)?.papel as any | undefined;
       if (!allowed) allowed = !!papel && hasPermission(papel, "configurar_escola");
     } catch {}
+
+    if (!allowed) {
+      try {
+        const { data: vincLegacy } = await s
+          .from("escola_users")
+          .select("papel")
+          .eq("escola_id", escolaId)
+          .eq("user_id", user.id)
+          .maybeSingle();
+        const papel = (vincLegacy as any)?.papel as any | undefined;
+        if (!allowed) allowed = !!papel && hasPermission(papel, "configurar_escola");
+      } catch {}
+    }
 
     // fallback admin explícito
     if (!allowed) {
@@ -241,19 +254,18 @@ export async function POST(
       counts[key] = await safeCount(table, filters);
     };
 
-    // Session-scoped
+    // Session-scoped (sempre filtrando por escola)
     if ((scope === "session" || scope === "all") && sessionId) {
-      await addCount("matriculas", "matriculas", [["session_id", sessionId]]);
-      await addCount("turmas", "turmas", [["session_id", sessionId]]);
-      await addCount("semestres", "semestres", [["session_id", sessionId]]);
+      await addCount("matriculas", "matriculas", [["session_id", sessionId], ["escola_id", escolaId]]);
+      await addCount("turmas", "turmas", [["session_id", sessionId], ["escola_id", escolaId]]);
+      await addCount("semestres", "semestres", [["session_id", sessionId], ["escola_id", escolaId]]);
     }
 
     // Config-scoped (school wide)
     if (scope === "config" || scope === "all") {
       await addCount("disciplinas", "disciplinas", [["escola_id", escolaId]]);
       await addCount("classes", "classes", [["escola_id", escolaId]]);
-      // 🔹 Ajuste 3: aqui o físico costuma ser `cursos_oferta`, mas mantemos a key "cursos" para o payload
-      await addCount("cursos", "cursos_oferta", [["escola_id", escolaId]]);
+      await addCount("cursos", "cursos", [["escola_id", escolaId]]);
     }
 
     if (dryRun) {
@@ -280,17 +292,17 @@ export async function POST(
     // Session portion: matriculas -> turmas -> semestres
     if ((scope === "session" || scope === "all") && sessionId) {
       if (normalizedIncludes.includes("matriculas")) {
-        const res = await safeDelete("matriculas", [["session_id", sessionId]]);
+        const res = await safeDelete("matriculas", [["session_id", sessionId], ["escola_id", escolaId]]);
         if (!res.ok) warnings.push(`matriculas: ${res.error}`);
         else deleted.matriculas = res.deleted || 0;
       }
       if (normalizedIncludes.includes("turmas")) {
-        const res = await safeDelete("turmas", [["session_id", sessionId]]);
+        const res = await safeDelete("turmas", [["session_id", sessionId], ["escola_id", escolaId]]);
         if (!res.ok) warnings.push(`turmas: ${res.error}`);
         else deleted.turmas = res.deleted || 0;
       }
       if (normalizedIncludes.includes("semestres")) {
-        const res = await safeDelete("semestres", [["session_id", sessionId]]);
+        const res = await safeDelete("semestres", [["session_id", sessionId], ["escola_id", escolaId]]);
         if (!res.ok) warnings.push(`semestres: ${res.error}`);
         else deleted.semestres = res.deleted || 0;
       }
@@ -311,8 +323,7 @@ export async function POST(
         else deleted.classes = res.deleted || 0;
       }
       if (normalizedIncludes.includes("cursos")) {
-        // 🔹 Mesma coisa aqui: apagar de cursos_oferta
-        const res = await safeDelete("cursos_oferta", [
+        const res = await safeDelete("cursos", [
           ["escola_id", escolaId],
         ]);
         if (!res.ok) warnings.push(`cursos: ${res.error}`);

@@ -9,7 +9,7 @@ as $$
   select coalesce(
     nullif((current_setting('request.jwt.claims', true)::jsonb -> 'app_metadata' ->> 'role'), ''),
     nullif((current_setting('request.jwt.claims', true)::jsonb -> 'user_metadata' ->> 'role'), ''),
-    (select role from public.profiles where user_id = auth.uid() limit 1),
+    (select role::text from public.profiles where user_id = auth.uid() limit 1),
     ''
   );
 $$;

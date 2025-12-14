@@ -30,7 +30,7 @@ async function ensureAuth(escolaId: string) {
   } catch {}
   if (!allowed) {
     try {
-      const { data: vinc } = await s.from('escola_usuarios').select('papel').eq('escola_id', escolaId).eq('user_id', user.id).maybeSingle();
+      const { data: vinc } = await s.from('escola_users').select('papel').eq('escola_id', escolaId).eq('user_id', user.id).maybeSingle();
       const papel = (vinc as any)?.papel as string | undefined;
       allowed = !!papel && hasPermission(papel as any, 'configurar_escola');
     } catch {}

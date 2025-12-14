@@ -120,7 +120,7 @@ export async function POST(
     let allowed = false
     try {
       const { data: vinc } = await s
-        .from('escola_usuarios')
+        .from('escola_users')
         .select('papel')
         .eq('escola_id', escolaId)
         .eq('user_id', user.id)
@@ -153,10 +153,16 @@ export async function POST(
     }
     if (!allowed) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
 
-    const admin = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    )
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (!supabaseUrl || !serviceRoleKey) {
+      return NextResponse.json(
+        { ok: false, error: 'Configuração Supabase ausente' },
+        { status: 500 }
+      )
+    }
+
+    const admin = createAdminClient<Database>(supabaseUrl, serviceRoleKey) as any
 
     // Se recebemos esquemaPeriodos no payload novo, gravamos em configuracoes_escola
     if (periodoTipoToSave) {
@@ -354,7 +360,7 @@ export async function GET(
     let allowed = false;
     try {
       const { data: vinc } = await s
-        .from('escola_usuarios')
+        .from('escola_users')
         .select('papel')
         .eq('escola_id', escolaId)
         .eq('user_id', user.id)

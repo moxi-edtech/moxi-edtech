@@ -1,6 +1,6 @@
 // src/app/api/debug/generate-numero-login/route.ts (exemplo de caminho)
 import { NextResponse } from "next/server";
-import { generateNumeroLogin } from "@/lib/generateNumeroLogin";
+
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 
@@ -38,23 +38,5 @@ export async function GET(req: Request) {
 
   const userRole = roleParam as UserRole;
 
-  try {
-    const numeroLogin = await generateNumeroLogin(escolaId.trim(), userRole, {
-      client: admin,             // 👈 agora segue a mesma dinâmica da função
-      useDatabaseFunction: true, // usa RPC primeiro (default, mas deixei explícito)
-      useCache: true,
-    });
-
-    return NextResponse.json({ ok: true, numeroLogin });
-  } catch (error: any) {
-    console.error("Erro ao gerar numero_login:", error);
-
-    return NextResponse.json(
-      {
-        ok: false,
-        error: error?.message ?? "Erro ao gerar numero_login",
-      },
-      { status: 500 }
-    );
-  }
+    return NextResponse.json({ ok: false, error: "generateNumeroLogin is deprecated." }, { status: 500 });
 }

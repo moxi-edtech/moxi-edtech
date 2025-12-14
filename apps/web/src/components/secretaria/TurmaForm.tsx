@@ -1,86 +1,146 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { Loader2, AlertCircle, Info } from "lucide-react";
+import { formatTurmaName } from "@/utils/formatters";
 
 interface TurmaFormProps {
   onSuccess: () => void;
 }
 
-interface AnoLetivo {
+interface ItemSelect {
   id: string;
   nome: string;
 }
 
 export default function TurmaForm({ onSuccess }: TurmaFormProps) {
-  // ✅ ESTADOS ESSENCIAIS - apenas dados que existem na tabela
+  // --- ESTADOS ---
   const [nome, setNome] = useState("");
   const [turno, setTurno] = useState("");
-  const [anoLetivoId, setAnoLetivoId] = useState(""); // ✅ CORREÇÃO: usar ID da sessão
+  const [sessionId, setSessionId] = useState(""); // ID da Sessão
   const [sala, setSala] = useState("");
+  const [capacidade, setCapacidade] = useState(30);
+  
+  // Vínculos Académicos (Para a turma ser inteligente)
+  const [cursoId, setCursoId] = useState("");
+  const [classeId, setClasseId] = useState("");
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ✅ CORREÇÃO: Carregar anos letivos das sessões acadêmicas
-  const [anosLetivos, setAnosLetivos] = useState<AnoLetivo[]>([]);
-  const [carregandoAnos, setCarregandoAnos] = useState(true);
+  // Listas para Selects
+  const [sessions, setSessions] = useState<ItemSelect[]>([]);
+  const [cursos, setCursos] = useState<ItemSelect[]>([]);
+  const [classes, setClasses] = useState<ItemSelect[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
+  const [nomeSugestao, setNomeSugestao] = useState<string | null>(null);
 
+  const classeSelecionada = classes.find((c) => c.id === classeId);
+  const classeNumero = useMemo(() => {
+    if (!classeSelecionada?.nome) return null;
+    const digits = classeSelecionada.nome.replace(/\D/g, "");
+    return digits ? parseInt(digits, 10) : null;
+  }, [classeSelecionada]);
+
+  const requiresCourse = classeNumero !== null && classeNumero >= 10;
+
+  // --- CARREGAMENTO DE DADOS ---
   useEffect(() => {
-    const fetchAnosLetivos = async () => {
+    const fetchData = async () => {
       try {
-        setCarregandoAnos(true);
-        console.log("🔄 Carregando anos letivos...");
+        setLoadingData(true);
+        
+        // Carregamos tudo em paralelo para ser rápido
+        const [resSessions, resCursos, resClasses] = await Promise.all([
+          fetch("/api/secretaria/school-sessions"),
+          fetch("/api/secretaria/cursos"), // Precisas ter este endpoint simples
+          fetch("/api/secretaria/classes") // E este
+        ]);
 
-        const res = await fetch("/api/secretaria/school-sessions");
-        const json = await res.json();
+        const jsonSessions = await resSessions.json();
+        const jsonCursos = await resCursos.json();
+        const jsonClasses = await resClasses.json();
 
-        console.log("📊 Resposta da API (school-sessions):", json);
+        if (jsonSessions.ok) setSessions(jsonSessions.data || jsonSessions.items || []);
+        if (jsonCursos.ok) setCursos(jsonCursos.data || jsonCursos.items || []);
+        if (jsonClasses.ok) setClasses(jsonClasses.data || jsonClasses.items || []);
 
-        if (json.ok && json.items) {
-          setAnosLetivos(json.items);
-        } else {
-          console.error("❌ Erro ao carregar anos letivos:", json.error);
-        }
+        // Pré-selecionar sessão ativa se houver
+        const active = (jsonSessions.data || []).find((s: any) => s.status === 'ativa');
+        if (active) setSessionId(active.id);
+
       } catch (e) {
-        console.error("💥 Erro ao carregar anos letivos:", e);
+        console.error("Erro ao carregar dados:", e);
+        setError("Não foi possível carregar as listas de seleção.");
       } finally {
-        setCarregandoAnos(false);
+        setLoadingData(false);
       }
     };
 
-    fetchAnosLetivos();
+    fetchData();
   }, []);
 
+  // --- SUGESTÃO AUTOMÁTICA DE NOME ---
+  useEffect(() => {
+    const shouldSuggest = classeId && turno && sessionId;
+    if (!shouldSuggest) {
+      setNomeSugestao(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    const fetchSuggestion = async () => {
+      try {
+        const sessionObj = sessions.find((s) => s.id === sessionId);
+        const anoLetivoLabel = sessionObj?.nome;
+        const params = new URLSearchParams({ classe_id: classeId, turno });
+        if (anoLetivoLabel) params.set('ano_letivo', anoLetivoLabel);
+        params.set('session_id', sessionId);
+
+        const res = await fetch(`/api/secretaria/turmas/sugestao-nome?${params.toString()}`, { signal: controller.signal });
+        const json = await res.json();
+        if (!res.ok || !json?.ok) return;
+
+        const suggested = (json.suggested || '').toString().trim();
+        if (suggested) {
+          setNomeSugestao(suggested);
+          if (!nome) setNome(suggested);
+        }
+      } catch (e) {
+        if (!controller.signal.aborted) setNomeSugestao(null);
+      }
+    };
+
+    fetchSuggestion();
+    return () => controller.abort();
+  }, [classeId, turno, sessionId, nome, sessions]);
+
+  // --- SUBMIT ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    // ✅ VALIDAÇÃO MÍNIMA - apenas dados que existem
-    const camposObrigatorios = [
-      { campo: nome, nome: "Nome da Turma" },
-      { campo: turno, nome: "Turno" },
-    ];
-
-    const camposFaltantes = camposObrigatorios.filter(item => !item.campo);
-    if (camposFaltantes.length > 0) {
-      setError(`Por favor, preencha todos os campos obrigatórios: ${camposFaltantes.map(item => item.nome).join(', ')}`);
-      setLoading(false);
-      return;
-    }
-
     try {
-      // ✅ CORREÇÃO: Enviar o nome do ano letivo em vez do ID
-      const anoLetivoSelecionado = anosLetivos.find(ano => ano.id === anoLetivoId);
-      const anoLetivoNome = anoLetivoSelecionado ? anoLetivoSelecionado.nome : null;
+      if (requiresCourse && !cursoId) {
+        throw new Error("Curso é obrigatório para turmas de 10ª classe ou acima.");
+      }
+
+      // 1. Encontrar o nome do ano letivo para manter compatibilidade
+      const sessionObj = sessions.find(s => s.id === sessionId);
+      const anoLetivoLabel = sessionObj?.nome;
 
       const payload = {
         nome,
         turno,
-        ano_letivo: anoLetivoNome, // ✅ CORREÇÃO: enviar o nome do ano letivo
+        session_id: sessionId, // O Vínculo Real (Foreign Key)
+        ano_letivo: anoLetivoLabel, // O Texto (Visual)
         sala: sala || null,
+        capacidade_maxima: Number(capacidade),
+        // Vínculos Opcionais (Mas recomendados)
+        curso_id: cursoId || null,
+        classe_id: classeId || null
       };
-
-      console.log("📤 Enviando payload correto:", payload);
 
       const res = await fetch("/api/secretaria/turmas", {
         method: "POST",
@@ -89,168 +149,183 @@ export default function TurmaForm({ onSuccess }: TurmaFormProps) {
       });
 
       const json = await res.json();
-      console.log("📥 Resposta da API:", json);
 
       if (!res.ok || !json.ok) {
         throw new Error(json.error || "Falha ao criar turma");
       }
 
-      onSuccess();
-    } catch (e) {
-      console.error("💥 Erro no submit:", e);
-      const errorMessage = e instanceof Error ? e.message : String(e);
-      setError(errorMessage);
+      onSuccess(); // Fecha o modal e recarrega a lista
+    } catch (e: any) {
+      setError(e.message || "Erro desconhecido");
     } finally {
       setLoading(false);
     }
   };
 
+  if (loadingData) {
+    return (
+      <div className="flex justify-center items-center h-40">
+        <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Informações Básicas da Turma */}
-      <div className="border-b border-gray-200 pb-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Identificação da Turma</h3>
+      
+      {/* 1. IDENTIFICAÇÃO */}
+      <div className="space-y-4">
+        <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wide border-b border-slate-100 pb-2">
+          Identificação & Local
+        </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="nome" className="block text-sm font-medium text-gray-700">
-              Nome/Identificação *
-            </label>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Nome da Turma *</label>
             <input
-              type="text"
-              id="nome"
+              required
               value={nome}
               onChange={(e) => setNome(e.target.value)}
-              placeholder="Ex: Sala 101, Laboratório 2, Bloco A"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
-              required
+              placeholder="Ex: 10ª A, 7ª B..."
+              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 outline-none"
             />
-            <p className="mt-1 text-xs text-gray-500">
-              Identificação única do agrupamento físico
-            </p>
-          </div>
-
-          <div>
-            <label htmlFor="sala" className="block text-sm font-medium text-gray-700">
-              Local/Sala
-            </label>
-            <input
-              type="text"
-              id="sala"
-              value={sala}
-              onChange={(e) => setSala(e.target.value)}
-              placeholder="Ex: Sala 101, Laboratório de Ciências"
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              Espaço físico onde a turma se reúne
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Configurações de Horário e Período */}
-      <div className="border-b border-gray-200 pb-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Horário e Período</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="anoLetivoId" className="block text-sm font-medium text-gray-700">
-              Ano Letivo
-            </label>
-            <select
-              id="anoLetivoId"
-              value={anoLetivoId}
-              onChange={(e) => setAnoLetivoId(e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
-              disabled={carregandoAnos}
-            >
-              <option value="">
-                {carregandoAnos ? "Carregando anos letivos..." : "Selecione o ano letivo"}
-              </option>
-              {anosLetivos.map((ano) => (
-                <option key={ano.id} value={ano.id}>
-                  {ano.nome}
-                </option>
-              ))}
-            </select>
-            {carregandoAnos && (
-              <p className="mt-1 text-xs text-gray-500">Carregando anos letivos...</p>
-            )}
-            {!carregandoAnos && anosLetivos.length === 0 && (
-              <p className="mt-1 text-xs text-amber-600">
-                Nenhum ano letivo cadastrado. Configure primeiro as sessões acadêmicas.
+            {nomeSugestao && (
+              <p className="text-[11px] text-slate-500 mt-1">
+                Sugestão automática: {formatTurmaName({
+                  nome: nomeSugestao,
+                  turno,
+                  classes: classeSelecionada ? { nome: classeSelecionada.nome } : undefined,
+                })}
               </p>
             )}
-            <p className="mt-1 text-xs text-gray-500">
-              Período letivo (opcional)
-            </p>
           </div>
-
           <div>
-            <label htmlFor="turno" className="block text-sm font-medium text-gray-700">
-              Turno *
-            </label>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Sala / Local</label>
+            <input
+              value={sala}
+              onChange={(e) => setSala(e.target.value)}
+              placeholder="Ex: Sala 102, Laboratório"
+              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+           <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Capacidade</label>
+            <input
+              type="number"
+              min="1"
+              value={capacidade}
+              onChange={(e) => setCapacidade(parseInt(e.target.value))}
+              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+            />
+          </div>
+           <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Turno *</label>
             <select
-              id="turno"
+              required
               value={turno}
               onChange={(e) => setTurno(e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
-              required
+              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 outline-none"
             >
-              <option value="">Selecione o turno</option>
-              <option value="manha">Manhã</option>
-              <option value="tarde">Tarde</option>
-              <option value="noite">Noite</option>
-              <option value="integral">Integral</option>
+              <option value="">Selecione...</option>
+              <option value="Manhã">Manhã</option>
+              <option value="Tarde">Tarde</option>
+              <option value="Noite">Noite</option>
             </select>
-            <p className="mt-1 text-xs text-gray-500">
-              Período de funcionamento da turma
+          </div>
+        </div>
+      </div>
+
+      {/* 2. CONTEXTO ACADÉMICO (VITAL PARA MATRÍCULA INTELIGENTE) */}
+      <div className="space-y-4">
+        <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wide border-b border-slate-100 pb-2 flex items-center gap-2">
+          Contexto Académico <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded normal-case font-normal">Recomendado</span>
+        </h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+           <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Ano Letivo *</label>
+            <select
+              required
+              value={sessionId}
+              onChange={(e) => setSessionId(e.target.value)}
+              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+            >
+              <option value="">Selecione...</option>
+              {sessions.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}
+            </select>
+          </div>
+          
+          <div>
+             <label className="block text-xs font-bold text-slate-700 mb-1">Classe *</label>
+             <select
+              required
+              value={classeId}
+              onChange={(e) => setClasseId(e.target.value)}
+              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+            >
+              <option value="">Selecione...</option>
+              {classes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+            </select>
+          </div>
+
+          <div className="md:col-span-2">
+             <label className="block text-xs font-bold text-slate-700 mb-1">Curso Associado {requiresCourse && <span className="text-red-600">*</span>}</label>
+             <select
+              value={cursoId}
+              onChange={(e) => setCursoId(e.target.value)}
+              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+            >
+              <option value="">{requiresCourse ? "Selecione um curso" : "(Opcional) Ensino Geral / Todos"}</option>
+              {cursos.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+            </select>
+            {requiresCourse && !cursoId && (
+              <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" /> Obrigatório para turmas de 10ª classe ou acima (PUNIV/Técnico).
+              </p>
+            )}
+            <p className="text-[10px] text-slate-500 mt-1">
+                Vincular um curso permite ao sistema calcular propinas automaticamente na matrícula.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Informações sobre o conceito de turma */}
-      <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-        <h4 className="text-sm font-medium text-blue-900 mb-2">💡 Sobre Turmas</h4>
-        <p className="text-xs text-blue-700">
-          <strong>Turma</strong> = Agrupamento físico/horário<br/>
-          <strong>Classe/Curso</strong> = Contexto acadêmico (definido na matrícula)<br/>
-          <strong>Ano Letivo</strong> = Período acadêmico (definido nas sessões)<br/>
-          <br/>
-          Esta turma é um container onde alunos de diferentes classes e cursos 
-          podem compartilhar o mesmo espaço/tempo.
-        </p>
+      {/* INFO BOX */}
+      <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 flex gap-3 items-start">
+        <Info className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+        <div className="text-xs text-blue-800">
+            <p className="font-bold mb-1">Por que vincular Classe e Curso?</p>
+            <p>Se definir estes campos agora, quando matricular um aluno nesta turma, 
+            o sistema preenche automaticamente os dados académicos e aplica a tabela de preços correta.</p>
+        </div>
       </div>
 
       {error && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-sm text-red-600">{error}</p>
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex gap-2 items-center text-red-700 text-sm">
+            <AlertCircle className="w-4 h-4"/> {error}
         </div>
       )}
 
-      <div className="flex justify-end gap-4 pt-6">
+      <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+        {/* Use type="button" para cancelar sem submit */}
         <button
           type="button"
-          onClick={onSuccess}
-          className="px-6 py-3 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          onClick={onSuccess} // ou uma prop onCancel separada
+          className="px-4 py-2 text-slate-500 font-bold text-sm hover:bg-slate-100 rounded-lg transition"
         >
           Cancelar
         </button>
+        
         <button
           type="submit"
-          disabled={loading || carregandoAnos}
-          className="px-6 py-3 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          disabled={loading}
+          className="px-6 py-2 bg-teal-600 text-white font-bold text-sm rounded-lg hover:bg-teal-700 shadow-md transition flex items-center gap-2 disabled:opacity-50"
         >
-          {loading ? (
-            <>
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-              Criando Turma...
-            </>
-          ) : (
-            "Criar Turma"
-          )}
+          {loading && <Loader2 className="w-4 h-4 animate-spin"/>}
+          {loading ? "Criando..." : "Criar Turma"}
         </button>
       </div>
     </form>

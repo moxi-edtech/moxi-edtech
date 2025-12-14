@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser, authorizeTurmasManage } from "@/lib/escola/disciplinas";
+import { tryCanonicalFetch } from "@/lib/api/proxyCanonical";
 
 type OcupacaoRow = {
   id: string;
@@ -17,12 +19,26 @@ type OcupacaoRow = {
 export async function GET(req: Request) {
   try {
     const supabase = await supabaseServerTyped<any>();
+    const headers = new Headers();
     const { data: userRes } = await supabase.auth.getUser();
     const user = userRes?.user;
 
     if (!user) {
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     }
+
+    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
+    if (!escolaId) return NextResponse.json({ ok: true, total_turmas: 0, grupos: [] }, { headers });
+
+    // Try canonical forward first; fallback to local logic
+    const forwarded = await tryCanonicalFetch(req, `/api/escolas/${escolaId}/turmas/ocupacao`);
+    if (forwarded) return forwarded;
+
+    const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id);
+    if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 });
+
+    headers.set('Deprecation', 'true');
+    headers.set('Link', `</api/escolas/${escolaId}/turmas>; rel="successor-version"`);
 
     const { searchParams } = new URL(req.url);
     const classeFilter = searchParams.get("classe");
@@ -47,6 +63,7 @@ export async function GET(req: Request) {
         status_ocupacao
       `
       )
+      .eq('escola_id', escolaId)
       .order("classe", { ascending: true })
       .order("turno", { ascending: true })
       .order("nome", { ascending: true });
@@ -127,7 +144,7 @@ export async function GET(req: Request) {
       ok: true,
       total_turmas: rows.length,
       grupos,
-    });
+    }, { headers });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

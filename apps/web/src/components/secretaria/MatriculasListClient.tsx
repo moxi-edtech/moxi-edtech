@@ -16,12 +16,14 @@ import TransferForm from "./TransferForm";
 // --- TIPOS ---
 type Item = {
   id: string;
-  numero_matricula?: string | null;
+  numero_matricula?: number | null;
+  numero_chamada?: number | null;
   aluno_id: string;
   turma_id: string;
   aluno_nome?: string | null;
   turma_nome?: string | null;
   status: string;
+  data_matricula?: string | null;
   created_at: string;
 };
 
@@ -78,7 +80,7 @@ export default function MatriculasListClient() {
 
   // Estados Locais
   const [q, setQ] = useState("");
-  const [days, setDays] = useState("30");
+  const [days, setDays] = useState("0");
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
   const [items, setItems] = useState<Item[]>([]);
@@ -154,6 +156,16 @@ export default function MatriculasListClient() {
 
   const turmasUnicas = useMemo(() => new Set(items.map(item => item.turma_nome).filter(Boolean)), [items]);
 
+  const handleOpenStatusForm = (matricula: Item) => {
+    setSelectedMatricula(matricula);
+    setShowStatusForm(true);
+  };
+
+  const handleOpenTransferForm = (matricula: Item) => {
+    setSelectedMatricula(matricula);
+    setShowTransferForm(true);
+  };
+
   // --- RENDER ---
   return (
     <div className="w-full max-w-7xl mx-auto p-6 space-y-8 pb-20">
@@ -208,17 +220,17 @@ export default function MatriculasListClient() {
             </div>
             
             <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0">
-                {['1','7','30','90'].map((d) => (
+                {[{ value: '0', label: 'Todas' }, { value: '1', label: 'Hoje' }, { value: '7', label: '7 dias' }, { value: '30', label: '30 dias' }, { value: '90', label: '90 dias' }].map(({ value, label }) => (
                     <button 
-                    key={d} 
-                    onClick={() => setDays(d)}
+                    key={value} 
+                    onClick={() => setDays(value)}
                     className={`whitespace-nowrap px-3 py-2 rounded-lg text-xs font-bold border transition-all ${
-                        days === d 
+                        days === value 
                         ? 'bg-slate-800 text-white border-slate-800' 
                         : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                     }`}
                     >
-                    {d === '1' ? 'Hoje' : `${d} dias`}
+                    {label}
                     </button>
                 ))}
             </div>
@@ -283,13 +295,32 @@ export default function MatriculasListClient() {
                   </td>
                 </tr>
               ) : (
-                items.map((m) => (
+                items.map((m) => {
+                  const dataMatriculaFmt = (() => {
+                    if (!m.data_matricula) return null;
+                    const d = new Date(m.data_matricula);
+                    return Number.isNaN(d.getTime()) ? null : d.toLocaleDateString('pt-BR');
+                  })();
+
+                  return (
                   <tr key={m.id} className="hover:bg-slate-50/80 transition-colors group">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="font-mono text-xs font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded w-fit border border-slate-200">
-                        {m.numero_matricula || "PENDENTE"}
+                        {m.numero_matricula !== null && m.numero_matricula !== undefined ? String(m.numero_matricula) : "PENDENTE"}
                       </div>
-                      <div className="text-[10px] text-slate-400 mt-1">ID: {m.id.slice(0, 6)}</div>
+                      <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-400">
+                        <span>ID: {m.id.slice(0, 6)}</span>
+                        {m.numero_chamada ? (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">
+                            Chamada #{m.numero_chamada}
+                          </span>
+                        ) : null}
+                        {dataMatriculaFmt ? (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 font-semibold">
+                            {dataMatriculaFmt}
+                          </span>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-3">
@@ -319,7 +350,7 @@ export default function MatriculasListClient() {
                       </div>
                     </td>
                   </tr>
-                ))
+                )})
               )}
             </tbody>
           </table>

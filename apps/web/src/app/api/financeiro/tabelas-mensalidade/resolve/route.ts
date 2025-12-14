@@ -31,7 +31,7 @@ export async function GET(req: Request) {
         .limit(1)
       escolaId = ((prof?.[0] as any)?.current_escola_id || (prof?.[0] as any)?.escola_id) as string | undefined
       if (!escolaId) {
-        const { data: vinc } = await s.from('escola_usuarios').select('escola_id').eq('user_id', user.id).limit(1)
+        const { data: vinc } = await s.from('escola_users').select('escola_id').eq('user_id', user.id).limit(1)
         escolaId = (vinc?.[0] as any)?.escola_id as string | undefined
       }
     }
@@ -39,16 +39,40 @@ export async function GET(req: Request) {
 
     // Deriva curso por turma se necessário
     let efetivoCursoId = cursoId
-    if (!efetivoCursoId && turmaId) {
-      const { data: co } = await s.from('cursos_oferta').select('curso_id').eq('turma_id', turmaId).limit(1)
-      efetivoCursoId = (co?.[0] as any)?.curso_id as string | undefined
+    let efetivaClasseId = classeId
+
+    // Preferir IDs resolvidos pela view, alinhando com vw_turmas_para_matricula
+    if (turmaId && (!efetivoCursoId || !efetivaClasseId || !escolaId)) {
+      const { data: turmaView } = await s
+        .from('vw_turmas_para_matricula')
+        .select('curso_id, classe_id, escola_id')
+        .eq('id', turmaId)
+        .maybeSingle()
+
+      if (turmaView) {
+        if (!escolaId) escolaId = (turmaView as any).escola_id as string | undefined
+        if (!efetivoCursoId) efetivoCursoId = (turmaView as any).curso_id as string | undefined
+        if (!efetivaClasseId) efetivaClasseId = (turmaView as any).classe_id as string | undefined
+      }
     }
 
-    const resolved = await resolveMensalidade(s as any, escolaId, { classeId: classeId || undefined, cursoId: efetivoCursoId || undefined })
+    if (!efetivoCursoId && turmaId) {
+      const { data: co } = await s.from('cursos_oferta').select('curso_id, classe_id').eq('turma_id', turmaId).limit(1)
+      efetivoCursoId = (co?.[0] as any)?.curso_id as string | undefined
+      if (!efetivaClasseId) efetivaClasseId = (co?.[0] as any)?.classe_id as string | undefined
+    }
+
+    if (!efetivoCursoId || !efetivaClasseId) {
+      return NextResponse.json({ ok: false, error: 'Curso ou classe não encontrados' }, { status: 400 })
+    }
+
+    const resolved = await resolveMensalidade(s as any, escolaId as string, {
+      classeId: efetivaClasseId,
+      cursoId: efetivoCursoId,
+    })
     return NextResponse.json({ ok: true, ...resolved })
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
 }
-

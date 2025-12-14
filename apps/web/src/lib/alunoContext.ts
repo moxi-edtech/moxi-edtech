@@ -21,7 +21,7 @@ export async function getAlunoContext() {
 
   try {
     const { data: vinc } = await supabase
-      .from('escola_usuarios')
+      .from('escola_users')
       .select('escola_id, papel')
       .eq('user_id', user.id)
       .eq('papel', 'aluno')

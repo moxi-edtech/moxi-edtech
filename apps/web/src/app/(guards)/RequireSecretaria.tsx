@@ -17,7 +17,7 @@ export default function RequireSecretaria({ children }: { children: React.ReactN
       if (userErr || !user) { router.replace("/login"); return; }
 
       const { data: vinculos, error } = await supabase
-        .from("escola_usuarios")
+        .from("escola_users")
         .select("id, papel")
         .eq("user_id", user.id)
         .eq("papel", "secretaria")
@@ -32,4 +32,3 @@ export default function RequireSecretaria({ children }: { children: React.ReactN
   if (!ready) return <div className="p-6">🔒 Verificando permissões da secretaria...</div>;
   return <>{children}</>;
 }
-

@@ -14,11 +14,20 @@ WHERE a.profile_id = p.user_id
   AND a.escola_id IS NULL;
 
 -- 3) Cria FK para escolas (id)
-ALTER TABLE public.alunos
-  ADD CONSTRAINT alunos_escola_id_fkey
-  FOREIGN KEY (escola_id)
-  REFERENCES public.escolas (id)
-  ON DELETE CASCADE;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'alunos_escola_id_fkey'
+  ) THEN
+    ALTER TABLE public.alunos
+      ADD CONSTRAINT alunos_escola_id_fkey
+      FOREIGN KEY (escola_id)
+      REFERENCES public.escolas (id)
+      ON DELETE CASCADE;
+  END IF;
+END;
+$$;
 
 -- 4) (Opcional) Se você quiser forçar sempre ter escola_id
 --    Só faça isso DEPOIS de garantir que não há NULL

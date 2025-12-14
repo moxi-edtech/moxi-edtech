@@ -64,7 +64,7 @@ export async function getPapelForEscola(escolaId: string): Promise<Papel | null>
     if (userErr || !user) return null
 
     const { data, error } = await s
-      .from('escola_usuarios')
+      .from('escola_users')
       .select('papel')
       .eq('user_id', user.id)
       .eq('escola_id', escolaId)

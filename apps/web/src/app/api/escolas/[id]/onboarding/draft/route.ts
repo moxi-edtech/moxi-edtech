@@ -29,7 +29,7 @@ export async function GET(
     let authorized = false
     try {
       const { data: vinc } = await sserver
-        .from("escola_usuarios")
+        .from("escola_users")
         .select("papel")
         .eq("escola_id", escolaId)
         .eq("user_id", user.id)
@@ -101,7 +101,7 @@ export async function PUT(
     let authorized = false
     try {
       const { data: vinc } = await sserver
-        .from("escola_usuarios")
+        .from("escola_users")
         .select("papel")
         .eq("escola_id", escolaId)
         .eq("user_id", user.id)

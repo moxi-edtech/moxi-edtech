@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import type { Database, TablesInsert } from '~types/supabase'
 import { mapPapelToGlobalRole } from '@/lib/permissions'
-import { generateNumeroLogin } from '@/lib/generateNumeroLogin'
+// ❌ REMOVIDO: import { generateNumeroLogin } from '@/lib/generateNumeroLogin'
 
 type SeedOptions = {
   alunos?: number
@@ -85,7 +85,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const secByName = new Map<string,string>((exSec||[]).map((s:any)=>[s.nome,s.id]))
     for (const nome of secNames) {
       if (!secByName.get(nome)) {
-        const { data: secIns } = await admin.from('secoes').insert({ turma_id: turmaId!, nome, sala: `Sala ${nome}` } as TablesInsert<'secoes'>).select('id').single()
+        const { data: secIns, error: secErr } = await admin.from('secoes').insert({ turma_id: turmaId!, nome, sala: `Sala ${nome}` } as TablesInsert<'secoes'>).select('id').single()
+        if (secErr) return NextResponse.json({ ok: false, error: secErr.message }, { status: 400 })
         secByName.set(nome, (secIns as any).id)
       }
     }
@@ -110,7 +111,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         userId = created?.user?.id
       }
       try { await (admin as any).from('profiles').upsert({ user_id: userId, email, nome: `Professor ${i}`, role: 'professor' } as any) } catch {}
-      try { await (admin as any).from('escola_usuarios').upsert({ escola_id: escolaId, user_id: userId, papel: 'professor' } as any, { onConflict: 'escola_id,user_id' }) } catch {}
+      try { await (admin as any).from('escola_users').upsert({ escola_id: escolaId, user_id: userId, papel: 'professor' } as any, { onConflict: 'escola_id,user_id' }) } catch {}
       try { await (admin as any).from('professores').upsert({ id: userId, escola_id: escolaId, profile_id: userId } as any) } catch {}
       profs.push({ user_id: userId!, email })
     }
@@ -148,14 +149,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       }
       ofertas.push(ofertaId)
 
-      // atribuir professor e criar rotinas Mon/Wed 08:00-08:50 in seções A e B
       const prof = pick(profs).user_id
       try { await admin.from('atribuicoes_prof').upsert({ professor_user_id: prof, curso_oferta_id: ofertaId, secao_id: secaoA } as any, { onConflict: 'professor_user_id,curso_oferta_id,secao_id' }) } catch {}
       try { await admin.from('atribuicoes_prof').upsert({ professor_user_id: prof, curso_oferta_id: ofertaId, secao_id: secaoB } as any, { onConflict: 'professor_user_id,curso_oferta_id,secao_id' }) } catch {}
-      // Rotinas A
       const rotA1 = { turma_id: turmaId!, secao_id: secaoA, curso_oferta_id: ofertaId, professor_user_id: prof, weekday: 1, inicio: '08:00', fim: '08:50', sala: '101' }
       const rotA2 = { turma_id: turmaId!, secao_id: secaoA, curso_oferta_id: ofertaId, professor_user_id: prof, weekday: 3, inicio: '08:00', fim: '08:50', sala: '101' }
-      // Rotinas B
       const rotB1 = { turma_id: turmaId!, secao_id: secaoB, curso_oferta_id: ofertaId, professor_user_id: prof, weekday: 2, inicio: '09:00', fim: '09:50', sala: '102' }
       const rotB2 = { turma_id: turmaId!, secao_id: secaoB, curso_oferta_id: ofertaId, professor_user_id: prof, weekday: 4, inicio: '09:00', fim: '09:50', sala: '102' }
       try { await admin.from('rotinas').insert([rotA1, rotA2, rotB1, rotB2] as any) } catch {}
@@ -166,10 +164,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     for (const ofertaId of ofertas) {
       const { data: avEx } = await admin.from('avaliacoes').select('id').eq('curso_oferta_id', ofertaId)
       if (!avEx || avEx.length === 0) {
-        const { data: avIns } = await admin.from('avaliacoes').insert([
+        const { data: avIns, error: avErr } = await admin.from('avaliacoes').insert([
           { curso_oferta_id: ofertaId, nome: 'Prova 1', peso: 0.5 },
           { curso_oferta_id: ofertaId, nome: 'Trabalho', peso: 0.5 },
         ] as any).select('id')
+        if (avErr) return NextResponse.json({ ok: false, error: avErr.message }, { status: 400 })
         avaliacoes.push(...(avIns as any[]).map(r=>r.id))
       } else {
         avaliacoes.push(...(avEx as any[]).map(r=>r.id))
@@ -193,8 +192,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         userId = created?.user?.id
       }
       try { await (admin as any).from('profiles').upsert({ user_id: userId, email, nome: `Aluno ${i}`, role: 'aluno', escola_id: escolaId } as any) } catch {}
-      try { await (admin as any).from('escola_usuarios').upsert({ escola_id: escolaId, user_id: userId, papel: 'aluno' } as any, { onConflict: 'escola_id,user_id' }) } catch {}
-      // alunos table
+      try { await (admin as any).from('escola_users').upsert({ escola_id: escolaId, user_id: userId, papel: 'aluno' } as any, { onConflict: 'escola_id,user_id' }) } catch {}
+
       const { data: alEx } = await admin.from('alunos').select('id').eq('profile_id', userId!).maybeSingle()
       let alunoId = (alEx as any)?.id as string | undefined
       if (!alunoId) {
@@ -202,12 +201,44 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         if (aErr) return NextResponse.json({ ok: false, error: aErr.message }, { status: 400 })
         alunoId = (aIns as any).id
       }
+
       const sec = i % 2 === 0 ? secaoA : secaoB
-      let numeroMatricula: string | null = null
-      try { numeroMatricula = await generateNumeroLogin(escolaId, 'aluno' as any, admin as any) } catch { numeroMatricula = null }
-      const { data: mIns, error: mErr } = await admin.from('matriculas').insert({ aluno_id: alunoId!, turma_id: turmaId!, secao_id: sec, session_id: sessionId!, status: 'ativo', numero_matricula: numeroMatricula, data_matricula: `${year}-02-05`, escola_id: escolaId } as any).select('id').single()
-      if (mErr) return NextResponse.json({ ok: false, error: mErr.message }, { status: 400 })
-      alunos.push({ user_id: userId!, aluno_id: alunoId!, matricula_id: (mIns as any).id, secao_id: sec })
+
+      // 🔁 NOVO: usa a função central de matrícula (gera numero_matricula no banco)
+      const { data: numeroMatricula, error: rpcErr } = await (admin as any).rpc('create_or_confirm_matricula', {
+        p_aluno_id: alunoId!,
+        p_turma_id: turmaId!,
+        p_ano_letivo: year,
+      })
+      if (rpcErr) {
+        return NextResponse.json({ ok: false, error: rpcErr.message || 'Falha ao criar matrícula' }, { status: 400 })
+      }
+
+      // Buscar a matrícula criada/atualizada para pegar o ID
+      const { data: mat, error: matErr } = await admin
+        .from('matriculas')
+        .select('id')
+        .eq('aluno_id', alunoId!)
+        .eq('turma_id', turmaId!)
+        .eq('escola_id', escolaId)
+        .eq('ano_letivo', year)
+        .maybeSingle()
+      if (matErr || !mat) {
+        return NextResponse.json({ ok: false, error: matErr?.message || 'Matrícula não encontrada após criação' }, { status: 400 })
+      }
+
+      const matriculaId = (mat as any).id as string
+
+      // Atualiza campos logísticos da matrícula (secao, session, data_matricula)
+      const { error: upMatErr } = await admin
+        .from('matriculas')
+        .update({ secao_id: sec, session_id: sessionId!, data_matricula: `${year}-02-05` } as any)
+        .eq('id', matriculaId)
+      if (upMatErr) {
+        return NextResponse.json({ ok: false, error: upMatErr.message || 'Falha ao atualizar matrícula' }, { status: 400 })
+      }
+
+      alunos.push({ user_id: userId!, aluno_id: alunoId!, matricula_id: matriculaId, secao_id: sec })
     }
 
     // 9) Frequências: last 14 days for matching rotinas weekdays
@@ -218,7 +249,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const insertsFreq: any[] = []
     for (let back = 0; back < 14; back++) {
       const d = new Date(today.getTime() - back*24*3600*1000)
-      const dow = d.getDay() === 0 ? 7 : d.getDay() // 1..7
+      const dow = d.getDay() === 0 ? 7 : d.getDay()
       const ds = dateOf(d)
       for (const r of (rotinas || []) as any[]) {
         if (r.weekday !== dow) continue

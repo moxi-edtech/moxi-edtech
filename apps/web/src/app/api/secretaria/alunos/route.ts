@@ -31,7 +31,7 @@ export async function GET(req: Request) {
     if (!escolaId) {
       try {
         const { data: vinc } = await supabase
-          .from("escola_usuarios")
+          .from("escola_users")
           .select("escola_id")
           .eq("user_id", user.id)
           .limit(1);
@@ -44,6 +44,7 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const q = url.searchParams.get("q")?.trim() || "";
     const status = (url.searchParams.get("status") || 'active').toLowerCase();
+    const sessionIdParam = url.searchParams.get("session_id")?.trim() || undefined;
     const daysParam = url.searchParams.get("days") || "";
     const page = Math.max(
       1,
@@ -68,9 +69,24 @@ export async function GET(req: Request) {
 
 
 
-    // Descobrir sessão ativa da escola (para filtrar alunos já matriculados)
+    // Tentar usar a sessão enviada na query; se não houver ou não pertencer à escola, cai para a ativa
     let activeSessionId: string | undefined = undefined;
-    if (escolaId) {
+    if (escolaId && sessionIdParam) {
+      try {
+        const { data: sessParam } = await supabase
+          .from('school_sessions')
+          .select('id')
+          .eq('id', sessionIdParam)
+          .eq('escola_id', escolaId)
+          .limit(1);
+        activeSessionId = (sessParam?.[0] as any)?.id as string | undefined;
+      } catch {
+        // silencioso
+      }
+    }
+
+    // Descobrir sessão ativa da escola (para filtrar alunos já matriculados)
+    if (!activeSessionId && escolaId) {
       try {
         const { data: sess } = await supabase
           .from('school_sessions')
@@ -85,7 +101,7 @@ export async function GET(req: Request) {
       }
     }
 
-    // Se existe sessão ativa, coletar alunos com matrícula nesta sessão para excluí-los do resultado
+    // Se existe sessão (selecionada ou ativa), coletar alunos com matrícula nesta sessão para excluí-los do resultado
     let alunosComMatriculaAtual: string[] = [];
     if (escolaId && activeSessionId) {
       try {
@@ -116,6 +132,25 @@ export async function GET(req: Request) {
       }
     }
 
+    // Blindagem extra: exclui qualquer aluno que já possua numero_matricula atribuído na escola, independentemente da sessão
+    if (escolaId) {
+      try {
+        const { data: matsComNumero } = await supabase
+          .from('matriculas')
+          .select('aluno_id')
+          .eq('escola_id', escolaId)
+          .not('numero_matricula', 'is', null);
+
+        const withNumero = (matsComNumero ?? [])
+          .map((m: any) => m.aluno_id)
+          .filter((v: any) => !!v);
+
+        alunosComMatriculaAtual = Array.from(new Set([...(alunosComMatriculaAtual || []), ...withNumero]));
+      } catch {
+        // silencioso
+      }
+    }
+
     // Agora com relacionamento para profiles(numero_login)
     let query = supabase
       .from("alunos")
@@ -137,9 +172,9 @@ export async function GET(req: Request) {
       query = query.is('deleted_at', null)
     }
 
-    // Excluir alunos já matriculados na sessão ativa
+    // Excluir alunos já matriculados na sessão em uso
     if (alunosComMatriculaAtual.length > 0) {
-      const list = alunosComMatriculaAtual.join(',');
+      const list = Array.from(new Set(alunosComMatriculaAtual)).join(',');
       // NOT IN ( ... ) via supabase-js
       query = query.not('id', 'in', `(${list})`);
     }

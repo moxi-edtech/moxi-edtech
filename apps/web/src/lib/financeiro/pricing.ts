@@ -24,6 +24,8 @@ export async function resolveMensalidade(
         .eq('escola_id', escolaId)
         .eq('classe_id', classeId)
         .eq('ativo', true)
+        .order('updated_at', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(1);
       if (data && data.length > 0) {
         const row = data[0] as any;
@@ -40,6 +42,8 @@ export async function resolveMensalidade(
         .eq('curso_id', cursoId)
         .is('classe_id', null)
         .eq('ativo', true)
+        .order('updated_at', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(1);
       if (data && data.length > 0) {
         const row = data[0] as any;
@@ -56,6 +60,8 @@ export async function resolveMensalidade(
         .is('curso_id', null)
         .is('classe_id', null)
         .eq('ativo', true)
+        .order('updated_at', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(1);
       if (data && data.length > 0) {
         const row = data[0] as any;
@@ -68,4 +74,3 @@ export async function resolveMensalidade(
     return { source: 'none' };
   }
 }
-

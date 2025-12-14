@@ -1,236 +1,642 @@
-// src/lib/onboarding/curriculum-presets.ts
+// -----------------------------------------------------------------------------
+//  1. CONSTANTES DE STRINGS (DEDUPLICAÇÃO)
+// -----------------------------------------------------------------------------
+const DISC = {
+  PT: "Língua Portuguesa",
+  MAT: "Matemática",
+  EMC: "Educação Moral e Cívica",
+  EF: "Educação Física",
+  EST_MEIO: "Estudo do Meio",
+  CN: "Ciências da Natureza",
+  HGA: "História e Geografia de Angola",
+  FIS: "Física",
+  QUI: "Química",
+  BIO: "Biologia",
+  HIST: "História",
+  GEO: "Geografia",
+  DGD: "Desenho e Geometria Descritiva",
+  ECON: "Economia",
+  CONT_G: "Contabilidade Geral",
+  DIR_INTRO: "Introdução ao Direito",
+  GEO_ECO: "Geografia Económica",
+  DIR_OBR: "Direito das Obrigações",
+  DIR_COM: "Direito Comercial",
+  FIL_INTRO: "Introdução à Filosofia",
+  PSICO_INTRO: "Introdução à Psicologia",
+  FIL: "Filosofia",
+  PSICO: "Psicologia",
+  SOCIO: "Sociologia",
 
-// 🔑 Todas as chaves possíveis de modelos curriculares
+  // Técnicos – Informática
+  INF_INTRO: "Introdução à Informática",
+  LOGICA: "Lógica de Programação",
+  ARQ_COMP: "Arquitetura de Computadores",
+  REDES: "Redes de Computadores",
+  SO: "Sistemas Operativos",
+  POO: "Programação Orientada a Objetos",
+  BD: "Bases de Dados",
+  WEB: "Programação Web",
+  SI: "Sistemas de Informação",
+  SEG_INF: "Segurança Informática",
+  GEST_PROJ: "Gestão de Projectos TI",
+  PROJ_TEC: "Projecto Tecnológico",
+  ESTAGIO: "Estágio Curricular",
+
+  // Técnicos – Gestão
+  GEST_INTRO: "Introdução à Gestão",
+  CONT_AN: "Contabilidade Analítica",
+  GEST_RH: "Gestão de Recursos Humanos",
+  FISCAL: "Fiscalidade",
+  GEST_FIN: "Gestão Financeira",
+  GEST_COM_MKT: "Gestão Comercial e Marketing",
+  INFO_GEST: "Informática de Gestão",
+  GEST_ESTR: "Gestão Estratégica",
+  AUD_CONTROLO: "Auditoria e Controlo",
+  PROJ_GEST: "Projecto de Gestão",
+
+  // Técnicos – Construção
+  DESENHO_TEC: "Desenho Técnico",
+  MAT_CONST: "Materiais de Construção",
+  TOPOGRAFIA: "Topografia",
+  RES_MAT: "Resistência dos Materiais",
+  TEC_CONST: "Tecnologias da Construção",
+  INST_PRED: "Instalações Prediais",
+  ESTRUTURAS: "Estruturas",
+  GEST_OBRAS: "Gestão de Obras",
+  ORC_CUSTOS: "Orçamentação e Custos",
+  SEG_HIG: "Segurança e Higiene no Trabalho",
+  LEG_CONST: "Legislação da Construção",
+  PROJ_CONST: "Projecto de Construção",
+
+  // Técnicos – Enfermagem
+  ANAT_FISIO: "Anatomia e Fisiologia",
+  FUND_ENF: "Fundamentos de Enfermagem",
+  MICRO_PARASITO: "Microbiologia e Parasitologia",
+  ENF_MED: "Enfermagem Médica",
+  ENF_CIR: "Enfermagem Cirúrgica",
+  FARMACO: "Farmacologia",
+  ENF_COMUNIT: "Enfermagem Comunitária",
+  SAUDE_MI: "Saúde Materno-Infantil",
+  NUT_DIET: "Nutrição e Dietética",
+  URG_EMERG: "Urgências e Emergências",
+  SAUDE_MENTAL: "Saúde Mental",
+  GEST_ENF: "Gestão em Enfermagem",
+
+  // Técnicos – Análises Clínicas
+  QUIM_GERAL: "Química Geral",
+  ANALISES_INTRO: "Introdução às Análises Clínicas",
+  MICROBIO: "Microbiologia",
+  PARASITO: "Parasitologia",
+  BIOQ_CLIN: "Bioquímica Clínica",
+  HEMATO: "Hematologia",
+  IMUNO: "Imunologia",
+  BACTERIO: "Bacteriologia",
+  TOXICO: "Toxicologia",
+  GEST_LAB: "Gestão Laboratorial",
+  CONTROLO_QUAL: "Controlo de Qualidade",
+} as const;
+
+const CLASSES = {
+  C10: "10ª Classe",
+  C11: "11ª Classe",
+  C12: "12ª Classe",
+  C13: "13ª Classe",
+} as const;
+
+// -----------------------------------------------------------------------------
+//  2. TIPAGENS
+// -----------------------------------------------------------------------------
+
 export type CurriculumKey =
-  | "primario_base"
-  | "primario_avancado"
-  | "ciclo1"
-  | "puniv"
-  | "economicas"
+  | "pre_escolar"
+  | "primario_i"
+  | "primario_ii"
+  | "secundario_i"
+  | "secundario_ii_fb"
+  | "secundario_ii_ej"
+  | "secundario_ii_hs"
   | "tecnico_informatica"
   | "tecnico_gestao"
   | "tecnico_construcao"
-  | "tecnico_base"
-  | "saude_enfermagem"
-  | "saude_farmacia_analises";
+  | "tecnico_enfermagem"
+  | "tecnico_analises_clinicas";
 
-// Nível de ensino / segmento (pode aproveitar nos steps de Classes/Cursos)
 export type NivelEnsinoId =
-  | "base"          // 1ª – 6ª
-  | "secundario1"   // 7ª – 9ª
-  | "secundario2"   // 10ª – 13ª (geral)
-  | "tecnico"       // médio técnico/profissional
-  | "saude";        // técnico de saúde
+  | "pre_escolar"
+  | "primario_i"
+  | "primario_ii"
+  | "secundario_i"
+  | "secundario_ii"
+  | "tecnico";
 
-// Blueprint de disciplina que será usada pelo backend para gerar
-// classes, cursos e disciplinas da escola.
-export interface CurriculumDisciplineBlueprint {
-  nome: string;                // nome da disciplina
-  classe: string;              // ex: "7ª Classe"
+export type CurriculumDisciplineBlueprint = Readonly<{
+  nome: string;
+  classe: string;
   nivel: NivelEnsinoId;
-  curso?: string;              // ex: "Ciências Físico-Biológicas", "Informática"
-  tipo?: "core" | "eletivo";   // default: core
-}
+  curso?: string;
+  tipo?: "core" | "eletivo" | "especifica";
+}>;
 
-// Cada preset é um array de "blueprints" de disciplinas
-export const CURRICULUM_PRESETS: Record<
+// -----------------------------------------------------------------------------
+//  3. HELPERS
+// -----------------------------------------------------------------------------
+
+const d = (
+  nome: string,
+  classe: string,
+  nivel: NivelEnsinoId,
+  extra?: Partial<CurriculumDisciplineBlueprint>,
+): CurriculumDisciplineBlueprint => ({ nome, classe, nivel, ...extra });
+
+const grid = (
+  classes: readonly string[],
+  nivel: NivelEnsinoId,
+  nomes: readonly string[],
+): CurriculumDisciplineBlueprint[] =>
+  classes.flatMap((c) => nomes.map((n) => d(n, c, nivel)));
+
+// -----------------------------------------------------------------------------
+//  4. DATA STORE – PRESETS COMPLETOS
+// -----------------------------------------------------------------------------
+
+const _PRESETS: Record<
   CurriculumKey,
-  CurriculumDisciplineBlueprint[]
+  readonly CurriculumDisciplineBlueprint[]
 > = {
   // ---------------------------------------------------------------------------
-  // ENSINO DE BASE — PRIMÁRIO
+  // PRÉ-ESCOLAR
   // ---------------------------------------------------------------------------
-  primario_base: [
-    // 1ª Classe
-    { nome: "Língua Portuguesa", classe: "1ª Classe", nivel: "base" },
-    { nome: "Matemática", classe: "1ª Classe", nivel: "base" },
-    { nome: "Estudo do Meio", classe: "1ª Classe", nivel: "base" },
-    { nome: "Educação Moral e Cívica", classe: "1ª Classe", nivel: "base" },
-
-    // 2ª Classe
-    { nome: "Língua Portuguesa", classe: "2ª Classe", nivel: "base" },
-    { nome: "Matemática", classe: "2ª Classe", nivel: "base" },
-    { nome: "Estudo do Meio", classe: "2ª Classe", nivel: "base" },
-    { nome: "Educação Moral e Cívica", classe: "2ª Classe", nivel: "base" },
-
-    // 3ª Classe
-    { nome: "Língua Portuguesa", classe: "3ª Classe", nivel: "base" },
-    { nome: "Matemática", classe: "3ª Classe", nivel: "base" },
-    { nome: "Estudo do Meio", classe: "3ª Classe", nivel: "base" },
-    { nome: "Educação Moral e Cívica", classe: "3ª Classe", nivel: "base" },
-
-    // 4ª Classe
-    { nome: "Língua Portuguesa", classe: "4ª Classe", nivel: "base" },
-    { nome: "Matemática", classe: "4ª Classe", nivel: "base" },
-    { nome: "Estudo do Meio", classe: "4ª Classe", nivel: "base" },
-
-    // 5ª Classe
-    { nome: "Língua Portuguesa", classe: "5ª Classe", nivel: "base" },
-    { nome: "Matemática", classe: "5ª Classe", nivel: "base" },
-    { nome: "Ciências da Natureza", classe: "5ª Classe", nivel: "base" },
-
-    // 6ª Classe
-    { nome: "Língua Portuguesa", classe: "6ª Classe", nivel: "base" },
-    { nome: "Matemática", classe: "6ª Classe", nivel: "base" },
-    { nome: "Ciências da Natureza", classe: "6ª Classe", nivel: "base" },
-  ],
-
-  primario_avancado: [
-    // 1ª Classe
-    { nome: "Língua Portuguesa", classe: "1ª Classe", nivel: "base" },
-    { nome: "Matemática", classe: "1ª Classe", nivel: "base" },
-    { nome: "Estudo do Meio", classe: "1ª Classe", nivel: "base" },
-    // 2ª Classe
-    { nome: "Língua Portuguesa", classe: "2ª Classe", nivel: "base" },
-    { nome: "Matemática", classe: "2ª Classe", nivel: "base" },
-    { nome: "Estudo do Meio", classe: "2ª Classe", nivel: "base" },
-    // 3ª – 6ª com reforço de ciências e história/geografia
-    { nome: "Língua Portuguesa", classe: "3ª Classe", nivel: "base" },
-    { nome: "Matemática", classe: "3ª Classe", nivel: "base" },
-    { nome: "Ciências da Natureza", classe: "3ª Classe", nivel: "base" },
-
-    { nome: "Língua Portuguesa", classe: "4ª Classe", nivel: "base" },
-    { nome: "Matemática", classe: "4ª Classe", nivel: "base" },
-    { nome: "Ciências da Natureza", classe: "4ª Classe", nivel: "base" },
-    { nome: "História e Geografia", classe: "4ª Classe", nivel: "base" },
-
-    { nome: "Língua Portuguesa", classe: "5ª Classe", nivel: "base" },
-    { nome: "Matemática", classe: "5ª Classe", nivel: "base" },
-    { nome: "Ciências da Natureza", classe: "5ª Classe", nivel: "base" },
-    { nome: "História e Geografia", classe: "5ª Classe", nivel: "base" },
-
-    { nome: "Língua Portuguesa", classe: "6ª Classe", nivel: "base" },
-    { nome: "Matemática", classe: "6ª Classe", nivel: "base" },
-    { nome: "Ciências da Natureza", classe: "6ª Classe", nivel: "base" },
-    { nome: "História e Geografia", classe: "6ª Classe", nivel: "base" },
-  ],
+  pre_escolar: grid(
+    ["Creche", "Pré-Escolar"],
+    "pre_escolar",
+    ["Educação Pré-Escolar"],
+  ),
 
   // ---------------------------------------------------------------------------
-  // 1º CICLO (7ª – 9ª)
+  // PRIMÁRIO I (1ª–4ª)
   // ---------------------------------------------------------------------------
-  ciclo1: [
-    { nome: "Língua Portuguesa", classe: "7ª Classe", nivel: "secundario1" },
-    { nome: "Matemática", classe: "7ª Classe", nivel: "secundario1" },
-    { nome: "Física e Química", classe: "7ª Classe", nivel: "secundario1" },
-    { nome: "Biologia", classe: "7ª Classe", nivel: "secundario1" },
-    { nome: "História", classe: "7ª Classe", nivel: "secundario1" },
-    { nome: "Geografia", classe: "7ª Classe", nivel: "secundario1" },
-
-    { nome: "Língua Portuguesa", classe: "8ª Classe", nivel: "secundario1" },
-    { nome: "Matemática", classe: "8ª Classe", nivel: "secundario1" },
-    { nome: "Física e Química", classe: "8ª Classe", nivel: "secundario1" },
-    { nome: "Biologia", classe: "8ª Classe", nivel: "secundario1" },
-    { nome: "História", classe: "8ª Classe", nivel: "secundario1" },
-    { nome: "Geografia", classe: "8ª Classe", nivel: "secundario1" },
-
-    { nome: "Língua Portuguesa", classe: "9ª Classe", nivel: "secundario1" },
-    { nome: "Matemática", classe: "9ª Classe", nivel: "secundario1" },
-    { nome: "Física e Química", classe: "9ª Classe", nivel: "secundario1" },
-    { nome: "Biologia", classe: "9ª Classe", nivel: "secundario1" },
-    { nome: "História", classe: "9ª Classe", nivel: "secundario1" },
-    { nome: "Geografia", classe: "9ª Classe", nivel: "secundario1" },
-  ],
+  primario_i: grid(
+    ["1ª Classe", "2ª Classe", "3ª Classe", "4ª Classe"],
+    "primario_i",
+    [
+      DISC.PT,
+      DISC.MAT,
+      DISC.EST_MEIO,
+      DISC.EMC,
+      DISC.EF,
+    ],
+  ),
 
   // ---------------------------------------------------------------------------
-  // 2º CICLO – RAMO CIÊNCIAS FÍSICO-BIOLÓGICAS
+  // PRIMÁRIO II (5ª–6ª)
   // ---------------------------------------------------------------------------
-  puniv: [
-    { nome: "Matemática", classe: "10ª Classe", nivel: "secundario2", curso: "Ciências Físico-Biológicas" },
-    { nome: "Física", classe: "10ª Classe", nivel: "secundario2", curso: "Ciências Físico-Biológicas" },
-    { nome: "Química", classe: "10ª Classe", nivel: "secundario2", curso: "Ciências Físico-Biológicas" },
-    { nome: "Biologia", classe: "10ª Classe", nivel: "secundario2", curso: "Ciências Físico-Biológicas" },
-    { nome: "Língua Portuguesa", classe: "10ª Classe", nivel: "secundario2", curso: "Ciências Físico-Biológicas" },
-
-    { nome: "Matemática", classe: "11ª Classe", nivel: "secundario2", curso: "Ciências Físico-Biológicas" },
-    { nome: "Física", classe: "11ª Classe", nivel: "secundario2", curso: "Ciências Físico-Biológicas" },
-    { nome: "Química", classe: "11ª Classe", nivel: "secundario2", curso: "Ciências Físico-Biológicas" },
-    { nome: "Biologia", classe: "11ª Classe", nivel: "secundario2", curso: "Ciências Físico-Biológicas" },
-    { nome: "Língua Portuguesa", classe: "11ª Classe", nivel: "secundario2", curso: "Ciências Físico-Biológicas" },
-
-    { nome: "Matemática", classe: "12ª Classe", nivel: "secundario2", curso: "Ciências Físico-Biológicas" },
-    { nome: "Física", classe: "12ª Classe", nivel: "secundario2", curso: "Ciências Físico-Biológicas" },
-    { nome: "Química", classe: "12ª Classe", nivel: "secundario2", curso: "Ciências Físico-Biológicas" },
-    { nome: "Biologia", classe: "12ª Classe", nivel: "secundario2", curso: "Ciências Físico-Biológicas" },
-    { nome: "Língua Portuguesa", classe: "12ª Classe", nivel: "secundario2", curso: "Ciências Físico-Biológicas" },
-  ],
+  primario_ii: grid(
+    ["5ª Classe", "6ª Classe"],
+    "primario_ii",
+    [
+      DISC.PT,
+      DISC.MAT,
+      DISC.CN,
+      DISC.HGA,
+      DISC.EMC,
+      DISC.EF,
+    ],
+  ),
 
   // ---------------------------------------------------------------------------
-  // 2º CICLO – CIÊNCIAS ECONÓMICAS E JURÍDICAS
+  // SECUNDÁRIO I (7ª–9ª)
   // ---------------------------------------------------------------------------
-  economicas: [
-    { nome: "Matemática", classe: "10ª Classe", nivel: "secundario2", curso: "Ciências Económicas e Jurídicas" },
-    { nome: "Economia", classe: "10ª Classe", nivel: "secundario2", curso: "Ciências Económicas e Jurídicas" },
-    { nome: "Contabilidade", classe: "10ª Classe", nivel: "secundario2", curso: "Ciências Económicas e Jurídicas" },
-    { nome: "Direito", classe: "10ª Classe", nivel: "secundario2", curso: "Ciências Económicas e Jurídicas" },
-    { nome: "Língua Portuguesa", classe: "10ª Classe", nivel: "secundario2", curso: "Ciências Económicas e Jurídicas" },
-
-    { nome: "Matemática", classe: "11ª Classe", nivel: "secundario2", curso: "Ciências Económicas e Jurídicas" },
-    { nome: "Economia", classe: "11ª Classe", nivel: "secundario2", curso: "Ciências Económicas e Jurídicas" },
-    { nome: "Contabilidade", classe: "11ª Classe", nivel: "secundario2", curso: "Ciências Económicas e Jurídicas" },
-    { nome: "Direito", classe: "11ª Classe", nivel: "secundario2", curso: "Ciências Económicas e Jurídicas" },
-    { nome: "Língua Portuguesa", classe: "11ª Classe", nivel: "secundario2", curso: "Ciências Económicas e Jurídicas" },
-
-    { nome: "Matemática", classe: "12ª Classe", nivel: "secundario2", curso: "Ciências Económicas e Jurídicas" },
-    { nome: "Economia", classe: "12ª Classe", nivel: "secundario2", curso: "Ciências Económicas e Jurídicas" },
-    { nome: "Contabilidade", classe: "12ª Classe", nivel: "secundario2", curso: "Ciências Económicas e Jurídicas" },
-    { nome: "Direito", classe: "12ª Classe", nivel: "secundario2", curso: "Ciências Económicas e Jurídicas" },
-    { nome: "Língua Portuguesa", classe: "12ª Classe", nivel: "secundario2", curso: "Ciências Económicas e Jurídicas" },
-  ],
+  secundario_i: grid(
+    ["7ª Classe", "8ª Classe", "9ª Classe"],
+    "secundario_i",
+    [
+      DISC.PT,
+      DISC.MAT,
+      DISC.FIS,
+      DISC.QUI,
+      DISC.BIO,
+      DISC.HIST,
+      DISC.GEO,
+      DISC.EF,
+    ],
+  ),
 
   // ---------------------------------------------------------------------------
-  // TÉCNICO – INFORMÁTICA / GESTÃO / CONSTRUÇÃO / GENÉRICO
+  // SECUNDÁRIO II – Ciências Físico-Biológicas
+  // ---------------------------------------------------------------------------
+  secundario_ii_fb: [
+    // PT, MAT, FIS, QUI, BIO, EF – 10ª, 11ª, 12ª
+    ...grid(
+      [CLASSES.C10, CLASSES.C11, CLASSES.C12],
+      "secundario_ii",
+      [DISC.PT, DISC.MAT, DISC.FIS, DISC.QUI, DISC.BIO, DISC.EF],
+    ),
+    // DGD – só 10ª e 11ª
+    ...grid([CLASSES.C10, CLASSES.C11], "secundario_ii", [DISC.DGD]),
+  ].map((x) => ({ ...x, curso: "Ciências Físico-Biológicas" })),
+
+  // ---------------------------------------------------------------------------
+  // SECUNDÁRIO II – Ciências Económicas e Jurídicas
+  // ---------------------------------------------------------------------------
+  secundario_ii_ej: [
+    // PT, MAT, ECON, CONT_G, EF – 10ª, 11ª, 12ª
+    ...grid(
+      [CLASSES.C10, CLASSES.C11, CLASSES.C12],
+      "secundario_ii",
+      [DISC.PT, DISC.MAT, DISC.ECON, DISC.CONT_G, DISC.EF],
+    ),
+    d(DISC.DIR_INTRO, CLASSES.C10, "secundario_ii"),
+    d(DISC.GEO_ECO, CLASSES.C10, "secundario_ii"),
+    d(DISC.DIR_OBR, CLASSES.C11, "secundario_ii"),
+    d(DISC.GEO_ECO, CLASSES.C11, "secundario_ii"),
+    d(DISC.DIR_COM, CLASSES.C12, "secundario_ii"),
+  ].map((x) => ({ ...x, curso: "Ciências Económicas e Jurídicas" })),
+
+  // ---------------------------------------------------------------------------
+  // SECUNDÁRIO II – Ciências Humanas e Sociais
+  // ---------------------------------------------------------------------------
+  secundario_ii_hs: [
+    // PT, MAT, HIST, GEO, EF – 10ª, 11ª, 12ª
+    ...grid(
+      [CLASSES.C10, CLASSES.C11, CLASSES.C12],
+      "secundario_ii",
+      [DISC.PT, DISC.MAT, DISC.HIST, DISC.GEO, DISC.EF],
+    ),
+    // Introduções – 10ª
+    d(DISC.FIL_INTRO, CLASSES.C10, "secundario_ii"),
+    d(DISC.PSICO_INTRO, CLASSES.C10, "secundario_ii"),
+    // Filosofia, Psicologia, Sociologia – 11ª e 12ª
+    ...grid(
+      [CLASSES.C11, CLASSES.C12],
+      "secundario_ii",
+      [DISC.FIL, DISC.PSICO, DISC.SOCIO],
+    ),
+  ].map((x) => ({ ...x, curso: "Ciências Humanas e Sociais" })),
+
+  // ---------------------------------------------------------------------------
+  // TÉCNICO – Informática
   // ---------------------------------------------------------------------------
   tecnico_informatica: [
-    { nome: "Lógica de Programação", classe: "10ª Classe", nivel: "tecnico", curso: "Técnico de Informática" },
-    { nome: "Arquitetura de Computadores", classe: "10ª Classe", nivel: "tecnico", curso: "Técnico de Informática" },
-    { nome: "Redes de Computadores", classe: "11ª Classe", nivel: "tecnico", curso: "Técnico de Informática" },
-    { nome: "Sistemas Operativos", classe: "11ª Classe", nivel: "tecnico", curso: "Técnico de Informática" },
-    { nome: "Programação Avançada", classe: "12ª Classe", nivel: "tecnico", curso: "Técnico de Informática" },
-    { nome: "Projecto Tecnológico", classe: "13ª Classe", nivel: "tecnico", curso: "Técnico de Informática" },
-  ],
+    // PT – 10ª–13ª
+    ...grid(
+      [CLASSES.C10, CLASSES.C11, CLASSES.C12, CLASSES.C13],
+      "tecnico",
+      [DISC.PT],
+    ),
+    // MAT – 10ª–12ª
+    ...grid(
+      [CLASSES.C10, CLASSES.C11, CLASSES.C12],
+      "tecnico",
+      [DISC.MAT],
+    ),
+    // Específicas
+    d(DISC.INF_INTRO, CLASSES.C10, "tecnico", { tipo: "especifica" }),
+    d(DISC.LOGICA, CLASSES.C10, "tecnico", { tipo: "especifica" }),
+    d(DISC.ARQ_COMP, CLASSES.C10, "tecnico", { tipo: "especifica" }),
+    d(DISC.REDES, CLASSES.C11, "tecnico", { tipo: "especifica" }),
+    d(DISC.SO, CLASSES.C11, "tecnico", { tipo: "especifica" }),
+    d(DISC.POO, CLASSES.C11, "tecnico", { tipo: "especifica" }),
+    d(DISC.BD, CLASSES.C12, "tecnico", { tipo: "especifica" }),
+    d(DISC.WEB, CLASSES.C12, "tecnico", { tipo: "especifica" }),
+    d(DISC.SI, CLASSES.C12, "tecnico", { tipo: "especifica" }),
+    d(DISC.SEG_INF, CLASSES.C13, "tecnico", { tipo: "especifica" }),
+    d(DISC.GEST_PROJ, CLASSES.C13, "tecnico", { tipo: "especifica" }),
+    d(DISC.PROJ_TEC, CLASSES.C13, "tecnico", { tipo: "especifica" }),
+    d(DISC.ESTAGIO, CLASSES.C13, "tecnico", { tipo: "especifica" }),
+  ].map((x) => ({ ...x, curso: "Técnico de Informática" })),
 
+  // ---------------------------------------------------------------------------
+  // TÉCNICO – Gestão
+  // ---------------------------------------------------------------------------
   tecnico_gestao: [
-    { nome: "Introdução à Gestão", classe: "10ª Classe", nivel: "tecnico", curso: "Técnico de Gestão" },
-    { nome: "Contabilidade Geral", classe: "10ª Classe", nivel: "tecnico", curso: "Técnico de Gestão" },
-    { nome: "Fiscalidade", classe: "11ª Classe", nivel: "tecnico", curso: "Técnico de Gestão" },
-    { nome: "Gestão de Recursos Humanos", classe: "11ª Classe", nivel: "tecnico", curso: "Técnico de Gestão" },
-    { nome: "Contabilidade Analítica", classe: "12ª Classe", nivel: "tecnico", curso: "Técnico de Gestão" },
-    { nome: "Projecto de Gestão", classe: "13ª Classe", nivel: "tecnico", curso: "Técnico de Gestão" },
-  ],
+    // PT, MAT – 10ª, 11ª, 12ª
+    ...grid(
+      [CLASSES.C10, CLASSES.C11, CLASSES.C12],
+      "tecnico",
+      [DISC.PT, DISC.MAT],
+    ),
+    // PT – 13ª
+    d(DISC.PT, CLASSES.C13, "tecnico"),
+    // Específicas
+    d(DISC.GEST_INTRO, CLASSES.C10, "tecnico", { tipo: "especifica" }),
+    d(DISC.CONT_G, CLASSES.C10, "tecnico", { tipo: "especifica" }),
+    d(DISC.ECON, CLASSES.C10, "tecnico"),
+    d(DISC.GEST_RH, CLASSES.C11, "tecnico", { tipo: "especifica" }),
+    d(DISC.CONT_AN, CLASSES.C11, "tecnico", { tipo: "especifica" }),
+    d(DISC.FISCAL, CLASSES.C11, "tecnico", { tipo: "especifica" }),
+    d(DISC.GEST_FIN, CLASSES.C12, "tecnico", { tipo: "especifica" }),
+    d(DISC.GEST_COM_MKT, CLASSES.C12, "tecnico", { tipo: "especifica" }),
+    d(DISC.INFO_GEST, CLASSES.C12, "tecnico", { tipo: "especifica" }),
+    d(DISC.GEST_ESTR, CLASSES.C13, "tecnico", { tipo: "especifica" }),
+    d(DISC.AUD_CONTROLO, CLASSES.C13, "tecnico", { tipo: "especifica" }),
+    d(DISC.PROJ_GEST, CLASSES.C13, "tecnico", { tipo: "especifica" }),
+    d(DISC.ESTAGIO, CLASSES.C13, "tecnico", { tipo: "especifica" }),
+  ].map((x) => ({ ...x, curso: "Técnico de Gestão" })),
 
+  // ---------------------------------------------------------------------------
+  // TÉCNICO – Construção Civil
+  // ---------------------------------------------------------------------------
   tecnico_construcao: [
-    { nome: "Desenho Técnico", classe: "10ª Classe", nivel: "tecnico", curso: "Técnico de Construção Civil" },
-    { nome: "Materiais de Construção", classe: "10ª Classe", nivel: "tecnico", curso: "Técnico de Construção Civil" },
-    { nome: "Topografia", classe: "11ª Classe", nivel: "tecnico", curso: "Técnico de Construção Civil" },
-    { nome: "Estruturas", classe: "12ª Classe", nivel: "tecnico", curso: "Técnico de Construção Civil" },
-    { nome: "Projecto de Construção", classe: "13ª Classe", nivel: "tecnico", curso: "Técnico de Construção Civil" },
-  ],
-
-  tecnico_base: [
-    { nome: "Matemática Aplicada", classe: "10ª Classe", nivel: "tecnico" },
-    { nome: "Tecnologia e Sociedade", classe: "10ª Classe", nivel: "tecnico" },
-    { nome: "Projecto Integrador I", classe: "11ª Classe", nivel: "tecnico" },
-    { nome: "Projecto Integrador II", classe: "12ª Classe", nivel: "tecnico" },
-    { nome: "Estágio Curricular", classe: "13ª Classe", nivel: "tecnico" },
-  ],
+    // PT, MAT – 10ª, 11ª, 12ª
+    ...grid(
+      [CLASSES.C10, CLASSES.C11, CLASSES.C12],
+      "tecnico",
+      [DISC.PT, DISC.MAT],
+    ),
+    // PT – 13ª
+    d(DISC.PT, CLASSES.C13, "tecnico"),
+    // Específicas
+    d(DISC.DESENHO_TEC, CLASSES.C10, "tecnico", { tipo: "especifica" }),
+    d(DISC.MAT_CONST, CLASSES.C10, "tecnico", { tipo: "especifica" }),
+    d(DISC.TOPOGRAFIA, CLASSES.C10, "tecnico", { tipo: "especifica" }),
+    d(DISC.RES_MAT, CLASSES.C11, "tecnico", { tipo: "especifica" }),
+    d(DISC.TEC_CONST, CLASSES.C11, "tecnico", { tipo: "especifica" }),
+    d(DISC.INST_PRED, CLASSES.C11, "tecnico", { tipo: "especifica" }),
+    d(DISC.ESTRUTURAS, CLASSES.C12, "tecnico", { tipo: "especifica" }),
+    d(DISC.GEST_OBRAS, CLASSES.C12, "tecnico", { tipo: "especifica" }),
+    d(DISC.ORC_CUSTOS, CLASSES.C12, "tecnico", { tipo: "especifica" }),
+    d(DISC.SEG_HIG, CLASSES.C13, "tecnico", { tipo: "especifica" }),
+    d(DISC.LEG_CONST, CLASSES.C13, "tecnico", { tipo: "especifica" }),
+    d(DISC.PROJ_CONST, CLASSES.C13, "tecnico", { tipo: "especifica" }),
+    d(DISC.ESTAGIO, CLASSES.C13, "tecnico", { tipo: "especifica" }),
+  ].map((x) => ({ ...x, curso: "Técnico de Construção Civil" })),
 
   // ---------------------------------------------------------------------------
-  // TÉCNICO DE SAÚDE – ENFERMAGEM / FARMÁCIA / ANÁLISES
+  // TÉCNICO – Enfermagem
   // ---------------------------------------------------------------------------
-  saude_enfermagem: [
-    { nome: "Fundamentos de Enfermagem", classe: "10ª Classe", nivel: "saude", curso: "Técnico de Enfermagem" },
-    { nome: "Anatomia e Fisiologia", classe: "10ª Classe", nivel: "saude", curso: "Técnico de Enfermagem" },
-    { nome: "Enfermagem Médica", classe: "11ª Classe", nivel: "saude", curso: "Técnico de Enfermagem" },
-    { nome: "Enfermagem Cirúrgica", classe: "11ª Classe", nivel: "saude", curso: "Técnico de Enfermagem" },
-    { nome: "Enfermagem Comunitária", classe: "12ª Classe", nivel: "saude", curso: "Técnico de Enfermagem" },
-    { nome: "Saúde Materno-Infantil", classe: "13ª Classe", nivel: "saude", curso: "Técnico de Enfermagem" },
-  ],
+  tecnico_enfermagem: [
+    // PT, MAT – 10ª–13ª
+    ...grid(
+      [CLASSES.C10, CLASSES.C11, CLASSES.C12, CLASSES.C13],
+      "tecnico",
+      [DISC.PT, DISC.MAT],
+    ),
+    // Específicas
+    d(DISC.ANAT_FISIO, CLASSES.C10, "tecnico", { tipo: "especifica" }),
+    d(DISC.FUND_ENF, CLASSES.C10, "tecnico", { tipo: "especifica" }),
+    d(DISC.MICRO_PARASITO, CLASSES.C10, "tecnico", { tipo: "especifica" }),
+    d(DISC.ENF_MED, CLASSES.C11, "tecnico", { tipo: "especifica" }),
+    d(DISC.ENF_CIR, CLASSES.C11, "tecnico", { tipo: "especifica" }),
+    d(DISC.FARMACO, CLASSES.C11, "tecnico", { tipo: "especifica" }),
+    d(DISC.ENF_COMUNIT, CLASSES.C12, "tecnico", { tipo: "especifica" }),
+    d(DISC.SAUDE_MI, CLASSES.C12, "tecnico", { tipo: "especifica" }),
+    d(DISC.NUT_DIET, CLASSES.C12, "tecnico", { tipo: "especifica" }),
+    d(DISC.URG_EMERG, CLASSES.C13, "tecnico", { tipo: "especifica" }),
+    d(DISC.SAUDE_MENTAL, CLASSES.C13, "tecnico", { tipo: "especifica" }),
+    d(DISC.GEST_ENF, CLASSES.C13, "tecnico", { tipo: "especifica" }),
+    d(DISC.ESTAGIO, CLASSES.C13, "tecnico", { tipo: "especifica" }),
+  ].map((x) => ({ ...x, curso: "Técnico de Enfermagem" })),
 
-  saude_farmacia_analises: [
-    { nome: "Fundamentos de Farmácia", classe: "10ª Classe", nivel: "saude", curso: "Farmácia / Análises Clínicas" },
-    { nome: "Microbiologia", classe: "11ª Classe", nivel: "saude", curso: "Farmácia / Análises Clínicas" },
-    { nome: "Bioquímica Clínica", classe: "11ª Classe", nivel: "saude", curso: "Farmácia / Análises Clínicas" },
-    { nome: "Imunologia", classe: "12ª Classe", nivel: "saude", curso: "Farmácia / Análises Clínicas" },
-    { nome: "Tecnologia Farmacêutica", classe: "13ª Classe", nivel: "saude", curso: "Farmácia / Análises Clínicas" },
-  ],
+  // ---------------------------------------------------------------------------
+  // TÉCNICO – Análises Clínicas
+  // ---------------------------------------------------------------------------
+  tecnico_analises_clinicas: [
+    // PT, MAT – 10ª–13ª
+    ...grid(
+      [CLASSES.C10, CLASSES.C11, CLASSES.C12, CLASSES.C13],
+      "tecnico",
+      [DISC.PT, DISC.MAT],
+    ),
+    // Específicas
+    d(DISC.ANAT_FISIO, CLASSES.C10, "tecnico", { tipo: "especifica" }),
+    d(DISC.QUIM_GERAL, CLASSES.C10, "tecnico", { tipo: "especifica" }),
+    d(DISC.ANALISES_INTRO, CLASSES.C10, "tecnico", { tipo: "especifica" }),
+    d(DISC.MICROBIO, CLASSES.C11, "tecnico", { tipo: "especifica" }),
+    d(DISC.PARASITO, CLASSES.C11, "tecnico", { tipo: "especifica" }),
+    d(DISC.BIOQ_CLIN, CLASSES.C11, "tecnico", { tipo: "especifica" }),
+    d(DISC.HEMATO, CLASSES.C12, "tecnico", { tipo: "especifica" }),
+    d(DISC.IMUNO, CLASSES.C12, "tecnico", { tipo: "especifica" }),
+    d(DISC.BACTERIO, CLASSES.C12, "tecnico", { tipo: "especifica" }),
+    d(DISC.TOXICO, CLASSES.C13, "tecnico", { tipo: "especifica" }),
+    d(DISC.GEST_LAB, CLASSES.C13, "tecnico", { tipo: "especifica" }),
+    d(DISC.CONTROLO_QUAL, CLASSES.C13, "tecnico", { tipo: "especifica" }),
+    d(DISC.ESTAGIO, CLASSES.C13, "tecnico", { tipo: "especifica" }),
+  ].map((x) => ({ ...x, curso: "Técnico de Análises Clínicas" })),
 };
+
+export const CURRICULUM_PRESETS: Record<
+  CurriculumKey,
+  readonly CurriculumDisciplineBlueprint[]
+> = Object.freeze(_PRESETS);
+
+// -----------------------------------------------------------------------------
+//  5. META DOS PRESETS
+// -----------------------------------------------------------------------------
+
+export interface CurriculumPresetMeta {
+  readonly key: CurriculumKey;
+  readonly label: string;
+  readonly description?: string;
+  readonly badge?: string;
+  readonly recommended?: boolean;
+  readonly subjectsCount: number;
+  readonly classes: readonly string[];
+  readonly idadeMin?: number;
+  readonly idadeMax?: number;
+  readonly duracaoAnos?: number;
+  readonly tipo: string;
+}
+
+// Info de nível / faixa etária conforme combinámos
+const LEVEL_INFO: Record<
+  CurriculumKey,
+  {
+    idadeMin?: number;
+    idadeMax?: number;
+    duracaoAnos?: number;
+    tipo: string;
+  }
+> = {
+  pre_escolar: { idadeMin: 3, idadeMax: 5, duracaoAnos: 3, tipo: "Pré-Escolar" },
+  primario_i: { idadeMin: 6, idadeMax: 9, duracaoAnos: 4, tipo: "Primário I" },
+  primario_ii: { idadeMin: 10, idadeMax: 11, duracaoAnos: 2, tipo: "Primário II" },
+  secundario_i: { idadeMin: 12, idadeMax: 14, duracaoAnos: 3, tipo: "Secundário I" },
+  secundario_ii_fb: {
+    idadeMin: 15,
+    idadeMax: 17,
+    duracaoAnos: 3,
+    tipo: "Secundário II - FB",
+  },
+  secundario_ii_ej: {
+    idadeMin: 15,
+    idadeMax: 17,
+    duracaoAnos: 3,
+    tipo: "Secundário II - EJ",
+  },
+  secundario_ii_hs: {
+    idadeMin: 15,
+    idadeMax: 17,
+    duracaoAnos: 3,
+    tipo: "Secundário II - HS",
+  },
+  tecnico_informatica: { idadeMin: 15, duracaoAnos: 4, tipo: "Técnico" },
+  tecnico_gestao: { idadeMin: 15, duracaoAnos: 4, tipo: "Técnico" },
+  tecnico_construcao: { idadeMin: 15, duracaoAnos: 4, tipo: "Técnico" },
+  tecnico_enfermagem: { idadeMin: 17, duracaoAnos: 4, tipo: "Técnico de Saúde" },
+  tecnico_analises_clinicas: {
+    idadeMin: 17,
+    duracaoAnos: 4,
+    tipo: "Técnico de Saúde",
+  },
+};
+
+// Texto/UI base (sem campos derivados)
+const CURRICULUM_PRESETS_META_BASE: Array<
+  Omit<
+    CurriculumPresetMeta,
+    "subjectsCount" | "classes" | "idadeMin" | "idadeMax" | "duracaoAnos" | "tipo"
+  >
+> = [
+  {
+    key: "pre_escolar",
+    label: "Pré-Escolar",
+    description: "Educação infantil para crianças de 3 a 5 anos. (Em construção)",
+    badge: "Pré-Escolar",
+    recommended: false,
+  },
+  {
+    key: "primario_i",
+    label: "Ensino Primário I Ciclo",
+    description: "1ª a 4ª classe - Educação básica obrigatória.",
+    badge: "Primário",
+    recommended: true,
+  },
+  {
+    key: "primario_ii",
+    label: "Ensino Primário II Ciclo",
+    description: "5ª e 6ª classe - Conclusão do ensino primário.",
+    badge: "Primário",
+    recommended: true,
+  },
+  {
+    key: "secundario_i",
+    label: "Ensino Secundário I Ciclo",
+    description: "7ª a 9ª classe - Ensino secundário geral.",
+    badge: "Secundário",
+    recommended: true,
+  },
+  {
+    key: "secundario_ii_fb",
+    label: "Ciências Físico-Biológicas",
+    description: "10ª a 12ª classe - Foco em Física, Química, Biologia.",
+    badge: "Secundário II",
+    recommended: true,
+  },
+  {
+    key: "secundario_ii_ej",
+    label: "Ciências Económicas e Jurídicas",
+    description: "10ª a 12ª classe - Foco em Economia, Direito, Contabilidade.",
+    badge: "Secundário II",
+    recommended: false,
+  },
+  {
+    key: "secundario_ii_hs",
+    label: "Ciências Humanas e Sociais",
+    description: "10ª a 12ª classe - Foco em História, Geografia, Psicologia.",
+    badge: "Secundário II",
+    recommended: false,
+  },
+  {
+    key: "tecnico_informatica",
+    label: "Técnico de Informática",
+    description: "Curso técnico de 4 anos (10ª-13ª) com foco em TI.",
+    badge: "Técnico",
+    recommended: true,
+  },
+  {
+    key: "tecnico_gestao",
+    label: "Técnico de Gestão",
+    description: "Curso técnico de 4 anos (10ª-13ª) em gestão empresarial.",
+    badge: "Técnico",
+    recommended: true,
+  },
+  {
+    key: "tecnico_construcao",
+    label: "Técnico de Construção Civil",
+    description: "Curso técnico de 4 anos (10ª-13ª) em construção civil.",
+    badge: "Técnico",
+    recommended: true,
+  },
+  {
+    key: "tecnico_enfermagem",
+    label: "Técnico de Enfermagem",
+    description: "Curso técnico de 4 anos (10ª-13ª) em enfermagem.",
+    badge: "Saúde",
+    recommended: true,
+  },
+  {
+    key: "tecnico_analises_clinicas",
+    label: "Técnico de Análises Clínicas",
+    description: "Curso técnico de 4 anos (10ª-13ª) em análises clínicas.",
+    badge: "Saúde",
+    recommended: true,
+  },
+];
+
+// cache de classes únicas por preset
+const CLASSES_CACHE: Record<CurriculumKey, readonly string[]> = Object.freeze(
+  Object.fromEntries(
+    (Object.keys(CURRICULUM_PRESETS) as CurriculumKey[]).map((key) => {
+      const set = new Set<string>();
+      CURRICULUM_PRESETS[key].forEach((disc) => set.add(disc.classe));
+      return [key, Object.freeze(Array.from(set))];
+    }),
+  ) as Record<CurriculumKey, readonly string[]>,
+);
+
+// Construção final das metas
+export const CURRICULUM_PRESETS_META: Record<
+  CurriculumKey,
+  CurriculumPresetMeta
+> = Object.freeze(
+  Object.fromEntries(
+    CURRICULUM_PRESETS_META_BASE.map((base) => {
+      const key = base.key;
+      const level = LEVEL_INFO[key];
+      const subjectsCount = CURRICULUM_PRESETS[key].length;
+      const classes = CLASSES_CACHE[key];
+      const meta: CurriculumPresetMeta = {
+        ...base,
+        ...level,
+        key,
+        subjectsCount,
+        classes,
+      };
+      return [key, meta];
+    }),
+  ) as Record<CurriculumKey, CurriculumPresetMeta>,
+);
+
+// -----------------------------------------------------------------------------
+//  6. API PÚBLICA
+// -----------------------------------------------------------------------------
+
+export const getPresetMeta = (key: CurriculumKey): CurriculumPresetMeta =>
+  CURRICULUM_PRESETS_META[key];
+
+export const getAllPresetsMeta = (): CurriculumPresetMeta[] =>
+  (Object.keys(CURRICULUM_PRESETS_META) as CurriculumKey[]).map(
+    (k) => CURRICULUM_PRESETS_META[k],
+  );
+
+export const getSubjectsCount = (key: CurriculumKey): number =>
+  CURRICULUM_PRESETS[key]?.length ?? 0;
+
+export const getPresetsByLevel = (nivel: NivelEnsinoId): CurriculumKey[] =>
+  (Object.entries(CURRICULUM_PRESETS) as [
+    CurriculumKey,
+    readonly CurriculumDisciplineBlueprint[],
+  ][])
+    .filter(([, discs]) => discs[0]?.nivel === nivel)
+    .map(([key]) => key);
+
+export const getAgeRangeForPreset = (
+  key: CurriculumKey,
+): { min?: number; max?: number } => {
+  const meta = CURRICULUM_PRESETS_META[key];
+  return { min: meta.idadeMin, max: meta.idadeMax };
+};
+
+export const getDurationForPreset = (
+  key: CurriculumKey,
+): number | undefined => CURRICULUM_PRESETS_META[key].duracaoAnos;

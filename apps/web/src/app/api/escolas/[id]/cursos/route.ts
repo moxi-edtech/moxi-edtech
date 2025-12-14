@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabaseServer";
-import { hasPermission } from "@/lib/permissions";
+import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 
@@ -20,52 +20,8 @@ export async function GET(
     const user = auth?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
-    // Autoriza leitura básica por vínculo com a escola
-    let allowed = false;
-    try {
-      const { data: prof } = await s
-        .from("profiles")
-        .select("role")
-        .eq("user_id", user.id)
-        .order('created_at', { ascending: false })
-        .limit(1);
-      const role = (prof?.[0] as any)?.role as string | undefined;
-      if (role === 'super_admin') allowed = true;
-    } catch {}
-    if (!allowed) {
-      try {
-        const { data: vinc } = await s
-          .from("escola_usuarios")
-          .select("papel")
-          .eq("escola_id", escolaId)
-          .eq("user_id", user.id)
-          .maybeSingle();
-        allowed = Boolean((vinc as any)?.papel);
-      } catch {}
-    }
-    if (!allowed) {
-      try {
-        const { data: adminLink } = await s
-          .from("escola_administradores")
-          .select("user_id")
-          .eq("escola_id", escolaId)
-          .eq("user_id", user.id)
-          .limit(1);
-        allowed = Boolean(adminLink && (adminLink as any[]).length > 0);
-      } catch {}
-    }
-    if (!allowed) {
-      try {
-        const { data: prof } = await s
-          .from("profiles")
-          .select("role, escola_id")
-          .eq("user_id", user.id)
-          .eq("escola_id", escolaId)
-          .limit(1);
-        allowed = Boolean(prof && (prof as any[]).length > 0 && (prof as any)[0]?.role === 'admin');
-      } catch {}
-    }
-    if (!allowed) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
+    const authz = await authorizeEscolaAction(s as any, escolaId, user.id, []);
+    if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 });
 
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return NextResponse.json({ ok: false, error: "Configuração Supabase ausente." }, { status: 500 });
@@ -126,41 +82,8 @@ export async function POST(
     const user = auth?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
-    // Autoriza criar: super_admin, configurar_escola, admin vinculado
-    let allowed = false;
-    try {
-      const { data: prof } = await s
-        .from('profiles')
-        .select('role')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1);
-      const role = (prof?.[0] as any)?.role as string | undefined;
-      if (role === 'super_admin') allowed = true;
-    } catch {}
-    if (!allowed) {
-      try {
-        const { data: vinc } = await s
-          .from('escola_usuarios')
-          .select('papel')
-          .eq('escola_id', escolaId)
-          .eq('user_id', user.id)
-          .maybeSingle();
-        allowed = Boolean((vinc as any)?.papel);
-      } catch {}
-    }
-    if (!allowed) {
-      try {
-        const { data: adminLink } = await s
-          .from('escola_administradores')
-          .select('user_id')
-          .eq('escola_id', escolaId)
-          .eq('user_id', user.id)
-          .limit(1);
-        allowed = Boolean(adminLink && (adminLink as any[]).length > 0);
-      } catch {}
-    }
-    if (!allowed) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
+    const authz = await authorizeEscolaAction(s as any, escolaId, user.id, ['configurar_escola']);
+    if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 });
 
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return NextResponse.json({ ok: false, error: 'Configuração Supabase ausente.' }, { status: 500 });

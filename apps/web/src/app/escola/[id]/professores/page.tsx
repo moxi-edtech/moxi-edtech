@@ -46,7 +46,7 @@ export default function ProfessoresPage() {
       try {
         setLoading(true)
         const { data: links, error: linksErr } = await supabase
-          .from("escola_usuarios")
+          .from("escola_users")
           .select("user_id, papel")
           .eq("escola_id", escolaId)
           .eq("papel", "professor")
