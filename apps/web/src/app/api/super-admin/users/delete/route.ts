@@ -124,23 +124,23 @@ export async function POST(request: Request) {
       console.error('[Super Admin] Exceção ao limpar rotinas:', e)
     }
 
-    // 3. Remover de escola_usuarios (se existir)
+    // 3. Remover de escola_users (se existir)
     try {
       const { error: escolaUsuariosError } = await admin
-        .from('escola_usuarios')
+        .from('escola_users')
         .delete()
         .eq('user_id', userId)
       if (escolaUsuariosError) {
-        console.error(`[Super Admin] Erro ao excluir de escola_usuarios: ${escolaUsuariosError.message}`)
+        console.error(`[Super Admin] Erro ao excluir de escola_users: ${escolaUsuariosError.message}`)
         return NextResponse.json(
-          { ok: false, error: 'Erro ao remover usuário de escola_usuarios', details: escolaUsuariosError.message },
+          { ok: false, error: 'Erro ao remover usuário de escola_users', details: escolaUsuariosError.message },
           { status: 500 }
         )
       } else {
-        console.log(`[Super Admin] Usuário removido de escola_usuarios: ${userId}`)
+        console.log(`[Super Admin] Usuário removido de escola_users: ${userId}`)
       }
     } catch (e) {
-      console.error('[Super Admin] Exceção ao limpar escola_usuarios:', e)
+      console.error('[Super Admin] Exceção ao limpar escola_users:', e)
     }
 
     // 4. (Opcional) Se ainda quiseres excluir a linha profiles permanentemente:

@@ -107,8 +107,36 @@ export default function AlunosPage() {
   const [view, setView] = useState<"list" | "form">("list"); // Controla a vista
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [step, setStep] = useState(1);
+  const [formData, setFormData] = useState({
+    primeiro_nome: '',
+    sobrenome: '',
+    data_nascimento: '',
+    genero: 'Masculino',
+    bi: '',
+    nif: '',
+    numero_processo: '',
+    email: '',
+    telefone: '',
+    endereco: '',
+    encarregado_nome: '',
+    encarregado_telefone: '',
+    encarregado_email: '',
+    parentesco: 'Pai / Mãe',
+    classe_id: '',
+    turma_id: '',
+  });
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleBIChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { value } = e.target;
+    setFormData(prev => ({ ...prev, bi: value, nif: value }));
+  };
   
-  const STEPS_LABELS = ["Pessoal", "Contactos", "Encarregado", "Académico", "Acesso"];
+  const STEPS_LABELS = ["Pessoal", "Contactos", "Encarregado", "Académico"];
   const TOTAL_STEPS = STEPS_LABELS.length;
 
   // --- ACTIONS ---
@@ -268,28 +296,32 @@ export default function AlunosPage() {
                             </div>
                             
                             <div className="grid grid-cols-2 gap-4">
-                                <InputGroup label="Primeiro Nome" icon={User} placeholder="Ex: Manuel" required />
-                                <InputGroup label="Sobrenome" placeholder="Ex: José" required />
+                                <InputGroup label="Primeiro Nome" name="primeiro_nome" value={formData.primeiro_nome} onChange={handleInputChange} icon={User} placeholder="Ex: Manuel" required />
+                                <InputGroup label="Sobrenome" name="sobrenome" value={formData.sobrenome} onChange={handleInputChange} placeholder="Ex: José" required />
                             </div>
                             
                             <div className="grid grid-cols-2 gap-4">
-                                <InputGroup label="Data Nascimento" type="date" required />
-                                <SelectGroup label="Género">
+                                <InputGroup label="Data Nascimento" name="data_nascimento" value={formData.data_nascimento} onChange={handleInputChange} type="date" required />
+                                <SelectGroup label="Género" name="genero" value={formData.genero} onChange={handleInputChange}>
                                     <option>Masculino</option>
                                     <option>Feminino</option>
                                 </SelectGroup>
                             </div>
 
-                            <InputGroup label="Nº Bilhete de Identidade" icon={Shield} placeholder="00XXXXXXLAXXX" required />
+                            <div className="grid grid-cols-2 gap-4">
+                              <InputGroup label="Nº BI" name="bi" value={formData.bi} onChange={handleBIChange} icon={Shield} placeholder="00XXXXXXLAXXX" required />
+                              <InputGroup label="NIF" name="nif" value={formData.nif} onChange={handleInputChange} icon={Shield} placeholder="Copia do BI" />
+                            </div>
+                            <InputGroup label="Nº de Processo" name="numero_processo" value={formData.numero_processo} onChange={handleInputChange} placeholder="Automático" />
                         </div>
                     )}
 
                     {/* PASSO 2: CONTACTOS */}
                     {step === 2 && (
                         <div className="space-y-6 animate-in fade-in duration-300">
-                            <InputGroup label="Email Pessoal" icon={Mail} type="email" placeholder="aluno@email.com" />
-                            <InputGroup label="Telefone" icon={Phone} type="tel" placeholder="+244 9XX XXX XXX" required />
-                            <InputGroup label="Endereço Residencial" icon={MapPin} placeholder="Rua, Bairro, Nº Casa" />
+                            <InputGroup label="Email Pessoal" name="email" value={formData.email} onChange={handleInputChange} icon={Mail} type="email" placeholder="aluno@email.com" />
+                            <InputGroup label="Telefone" name="telefone" value={formData.telefone} onChange={handleInputChange} icon={Phone} type="tel" placeholder="+244 9XX XXX XXX" required />
+                            <InputGroup label="Endereço Residencial" name="endereco" value={formData.endereco} onChange={handleInputChange} icon={MapPin} placeholder="Rua, Bairro, Nº Casa" />
                         </div>
                     )}
 
@@ -299,12 +331,12 @@ export default function AlunosPage() {
                             <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-xs text-blue-700 mb-4">
                                 💡 Estes dados são usados para comunicações financeiras e emergências.
                             </div>
-                            <InputGroup label="Nome Completo" icon={Users} placeholder="Nome do Pai/Mãe/Tutor" required />
+                            <InputGroup label="Nome Completo" name="encarregado_nome" value={formData.encarregado_nome} onChange={handleInputChange} icon={Users} placeholder="Nome do Pai/Mãe/Tutor" required />
                             <div className="grid grid-cols-2 gap-4">
-                                <InputGroup label="Telefone Principal" icon={Phone} required />
-                                <InputGroup label="Email (Opcional)" icon={Mail} />
+                                <InputGroup label="Telefone Principal" name="encarregado_telefone" value={formData.encarregado_telefone} onChange={handleInputChange} icon={Phone} required />
+                                <InputGroup label="Email" name="encarregado_email" value={formData.encarregado_email} onChange={handleInputChange} icon={Mail} required />
                             </div>
-                            <SelectGroup label="Grau de Parentesco">
+                            <SelectGroup label="Grau de Parentesco" name="parentesco" value={formData.parentesco} onChange={handleInputChange}>
                                 <option>Pai / Mãe</option>
                                 <option>Tio(a)</option>
                                 <option>Avô(ó)</option>
@@ -317,12 +349,12 @@ export default function AlunosPage() {
                     {step === 4 && (
                         <div className="space-y-6 animate-in fade-in duration-300">
                             <div className="grid grid-cols-2 gap-4">
-                                <SelectGroup label="Classe" icon={GraduationCap}>
+                                <SelectGroup label="Classe" name="classe_id" value={formData.classe_id} onChange={handleInputChange} icon={GraduationCap}>
                                     <option>10ª Classe</option>
                                     <option>11ª Classe</option>
                                     <option>12ª Classe</option>
                                 </SelectGroup>
-                                <SelectGroup label="Turma">
+                                <SelectGroup label="Turma" name="turma_id" value={formData.turma_id} onChange={handleInputChange}>
                                     <option>Turma A (Manhã)</option>
                                     <option>Turma B (Tarde)</option>
                                 </SelectGroup>
@@ -332,26 +364,7 @@ export default function AlunosPage() {
                         </div>
                     )}
 
-                    {/* PASSO 5: ACESSO */}
-                    {step === 5 && (
-                        <div className="space-y-6 animate-in fade-in duration-300">
-                            <div className="text-center mb-6">
-                                <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mx-auto mb-3">
-                                    <Lock className="w-8 h-8 text-teal-600"/>
-                                </div>
-                                <h3 className="font-bold text-slate-800">Credenciais de Acesso</h3>
-                                <p className="text-sm text-slate-500">Defina a senha inicial para o Portal do Aluno.</p>
-                            </div>
-                            
-                            <InputGroup label="Senha Provisória" type="password" icon={Lock} placeholder="••••••••" required />
-                            <InputGroup label="Confirmar Senha" type="password" placeholder="••••••••" required />
-                            
-                            <div className="flex items-center gap-2 mt-4">
-                                <input type="checkbox" id="send-email" className="w-4 h-4 text-teal-600 rounded border-slate-300 focus:ring-teal-500" defaultChecked />
-                                <label htmlFor="send-email" className="text-sm text-slate-600">Enviar credenciais por email ao aluno</label>
-                            </div>
-                        </div>
-                    )}
+                    {/* PASSO 5: ACESSO - REMOVIDO */}
 
                     {/* FOOTER DO FORM (Ações) */}
                     <div className="flex items-center justify-between pt-8 mt-8 border-t border-slate-100">

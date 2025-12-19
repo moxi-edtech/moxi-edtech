@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { StepHeader } from "@/components/onboarding/StepHeader";
 import { StepFooter } from "@/components/onboarding/StepFooter";
 import { toast } from "sonner";
+import { CURRICULUM_PRESETS } from "@/lib/onboarding/curriculum-presets";
 
 import AcademicStep1 from "./AcademicStep1";
 import AcademicStep2 from "./AcademicStep2";
@@ -16,6 +17,7 @@ import {
   type AcademicSession,
   type Periodo,
   type MatrixRow,
+  type PadraoNomenclatura,
 } from "./academicSetupTypes";
 
 type Props = {
@@ -30,7 +32,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete }: Props) {
   // STEP 1
   const [schoolDisplayName, setSchoolDisplayName] = useState<string>("");
   const [regime, setRegime] = useState<"trimestral" | "semestral" | "bimestral">("trimestral");
-  const [anoLetivo, setAnoLetivo] = useState<string>("2024/2025");
+  const [anoLetivo, setAnoLetivo] = useState<number>(new Date().getFullYear());
   const [turnos, setTurnos] = useState<TurnosState>({
     "Manhã": true,
     "Tarde": true,
@@ -45,6 +47,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete }: Props) {
   const [presetCategory, setPresetCategory] = useState<CurriculumCategory>("geral");
   const [matrix, setMatrix] = useState<MatrixRow[]>([]);
   const [applyingPreset, setApplyingPreset] = useState(false);
+  const [padraoNomenclatura, setPadraoNomenclatura] = useState<PadraoNomenclatura>('descritivo_completo');
 
   // Load School Name
   useEffect(() => {
@@ -70,7 +73,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete }: Props) {
       const res = await fetch(`/api/escolas/${escolaId}/onboarding/core/session`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ anoLetivo: parseInt(anoLetivo.split('/')[0]), esquemaPeriodos: regime }),
+        body: JSON.stringify({ anoLetivo, esquemaPeriodos: regime }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Erro ao criar sessão.");
@@ -89,40 +92,89 @@ export default function AcademicSetupWizard({ escolaId, onComplete }: Props) {
   };
 
   const handleApplyCurriculumPreset = async () => {
-    if (!sessaoAtiva?.id) return toast.error("Sessão não encontrada.");
-    
-    // --- VALIDAÇÃO CRÍTICA: MATRIX CHEIA ---
-    if (matrix.length === 0) return toast.error("A matriz está vazia.");
-    
-    const totalTurmas = matrix.reduce((acc, r) => acc + (r.manha||0) + (r.tarde||0) + (r.noite||0), 0);
-    if (totalTurmas === 0) return toast.error("Defina pelo menos uma turma.");
+    // --- VALIDAÇÃO CRÍTICA ---
+    if (matrix.length === 0) return toast.error("A matriz de turmas está vazia.");
+    const totalTurmas = matrix.reduce((acc, r) => acc + (r.manha || 0) + (r.tarde || 0) + (r.noite || 0), 0);
+    if (totalTurmas === 0) return toast.error("Defina pelo menos uma turma na matriz.");
 
     setApplyingPreset(true);
-    const toastId = toast.loading("A criar estrutura...");
+    const toastId = toast.loading("A criar estrutura académica... Este processo pode demorar.");
 
     try {
-      const payload = {
-        sessionId: sessaoAtiva.id,
-        presetKey: "custom_matrix",
-        matrix: matrix.map(row => ({
-          classe: row.nome,
-          // Se o cursoKey não existir (legado), assume 'geral'
-          cursoKey: (row as any).cursoKey || 'geral',
-          qtyManha: row.manha || 0,
-          qtyTarde: row.tarde || 0,
-          qtyNoite: row.noite || 0
-        }))
-      };
+      // 1. Agrupar a matriz por curso
+      const groupedByCourse = matrix.reduce((acc, row) => {
+        const key = row.cursoKey;
+        if (!acc[key]) {
+          acc[key] = {
+            cursoNome: row.cursoNome || key,
+            rows: [],
+          };
+        }
+        acc[key].rows.push(row);
+        return acc;
+      }, {} as Record<string, { cursoNome: string; rows: MatrixRow[] }>);
 
-      const res = await fetch(`/api/escolas/${escolaId}/onboarding/curriculum/apply`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      // 2. Iterar e chamar a API para cada curso
+      for (const cursoKey in groupedByCourse) {
+        const courseData = groupedByCourse[cursoKey];
+        const { cursoNome, rows } = courseData;
 
-      if (!res.ok) throw new Error("Falha ao salvar.");
+        toast.info(`A processar curso: ${cursoNome}...`, { id: toastId });
+        
+        // NOVO: Extrair disciplinas do preset
+        const blueprint = CURRICULUM_PRESETS[cursoKey as keyof typeof CURRICULUM_PRESETS] || [];
+        
+        const allSubjectsForCourse = Array.from(new Set(blueprint.map(d => d.nome)));
 
-      toast.success("Sucesso! A redirecionar...", { id: toastId });
+        const disciplinesByClass = blueprint.reduce((acc, d) => {
+          if (!acc[d.classe]) {
+            acc[d.classe] = [];
+          }
+          acc[d.classe].push(d.nome);
+          return acc;
+        }, {} as Record<string, string[]>);
+
+
+        // 3. Construir o payload no formato "advancedConfig"
+        const payload = {
+          presetKey: cursoKey,
+          customData: { label: cursoNome },
+          advancedConfig: {
+            classesNomes: rows.map(r => r.nome),
+            turnos: {
+              manha: turnos["Manhã"],
+              tarde: turnos["Tarde"],
+              noite: turnos["Noite"],
+            },
+            turmasPorCombinacao: rows.reduce((acc, row) => {
+              acc[row.nome] = {
+                manha: row.manha || 0,
+                tarde: row.tarde || 0,
+                noite: row.noite || 0,
+              };
+              return acc;
+            }, {} as Record<string, { manha: number; tarde: number; noite: number }>),
+            
+            // Usar o estado para o padrão de nomenclatura
+            padraoNomenclatura: padraoNomenclatura,
+            subjects: allSubjectsForCourse, 
+            disciplinasPorClasse: disciplinesByClass,
+          },
+        };
+
+        const res = await fetch(`/api/escolas/${escolaId}/onboarding/curriculum/apply`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) {
+          const errorJson = await res.json();
+          throw new Error(`Falha ao criar o curso '${cursoNome}': ${errorJson.error || 'Erro desconhecido'}`);
+        }
+      }
+
+      toast.success("Estrutura académica criada com sucesso! A redirecionar...", { id: toastId });
       
       if (onComplete) onComplete();
       else window.location.href = `/escola/${escolaId}/admin/dashboard`;
@@ -161,7 +213,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete }: Props) {
           schoolDisplayName={schoolDisplayName}
           setSchoolDisplayName={setSchoolDisplayName}
           regime={regime as any}
-          setRegime={setRegime}
+          setRegime={(val) => setRegime(val as typeof regime)}
           anoLetivo={anoLetivo}
           setAnoLetivo={setAnoLetivo}
           turnos={turnos}
@@ -183,6 +235,8 @@ export default function AcademicSetupWizard({ escolaId, onComplete }: Props) {
           turnos={turnos}
           onApplyCurriculumPreset={handleApplyCurriculumPreset}
           applyingPreset={applyingPreset}
+          padraoNomenclatura={padraoNomenclatura}
+          onPadraoNomenclaturaChange={setPadraoNomenclatura}
         />
       )}
 

@@ -4,6 +4,7 @@ import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import type { Database } from '~types/supabase'
 import { recordAuditServer } from '@/lib/audit'
+import { resolveEscolaIdForUser } from '@/lib/escola/disciplinas'
 
 const UpdateSchema = z.object({
   nome: z.string().trim().min(1, 'Informe o nome').optional(),
@@ -37,12 +38,21 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       .maybeSingle()
 
     const role = (prof as any)?.role as string | undefined
-    const escolaFromProfile = (prof as any)?.current_escola_id || (prof as any)?.escola_id || null
+    let escolaFromProfile = (prof as any)?.current_escola_id || (prof as any)?.escola_id || null
+    if (!escolaFromProfile) {
+      escolaFromProfile = await resolveEscolaIdForUser(s as any, user.id)
+    }
     const allowedRoles = ['super_admin','global_admin','admin','secretaria','financeiro']
     if (!role || !allowedRoles.includes(role)) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     if (!escolaFromProfile) return NextResponse.json({ ok: false, error: 'Perfil não está vinculado a uma escola' }, { status: 403 })
 
-    const { data: aluno, error } = await s
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ ok: false, error: 'Configuração Supabase ausente.' }, { status: 500 })
+    }
+
+    const admin = createAdminClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
+
+    const { data: aluno, error } = await admin
       .from('alunos')
       .select('id, nome, responsavel, telefone_responsavel, status, created_at, profile_id, escola_id, profiles!alunos_profile_id_fkey(user_id, email, nome, telefone, data_nascimento, sexo, bi_numero, naturalidade, provincia, encarregado_relacao, numero_login)')
       .eq('id', alunoId)
@@ -51,8 +61,21 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
     if (!aluno) return NextResponse.json({ ok: false, error: 'Aluno não encontrado' }, { status: 404 })
 
-    if (String((aluno as any).escola_id) !== String(escolaFromProfile)) {
-      return NextResponse.json({ ok: false, error: 'Aluno não pertence à escola ativa do usuário' }, { status: 403 })
+    let alunoEscolaId = (aluno as any).escola_id
+    if (String(alunoEscolaId) !== String(escolaFromProfile)) {
+      const { data: vincMatricula, error: vincErr } = await admin
+        .from('matriculas')
+        .select('id')
+        .eq('aluno_id', alunoId)
+        .eq('escola_id', escolaFromProfile)
+        .limit(1)
+        .maybeSingle()
+
+      if (vincErr) return NextResponse.json({ ok: false, error: vincErr.message }, { status: 400 })
+      if (!vincMatricula) {
+        return NextResponse.json({ ok: false, error: 'Aluno não pertence à escola ativa do usuário' }, { status: 403 })
+      }
+      alunoEscolaId = escolaFromProfile
     }
 
     const profObj = Array.isArray((aluno as any).profiles) ? (aluno as any).profiles[0] : (aluno as any).profiles
@@ -65,7 +88,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         telefone_responsavel: (aluno as any).telefone_responsavel,
         status: (aluno as any).status,
         profile_id: (aluno as any).profile_id,
-        escola_id: (aluno as any).escola_id,
+        escola_id: alunoEscolaId,
         email: profObj?.email ?? null,
         numero_login: profObj?.numero_login ?? null,
         telefone: profObj?.telefone ?? null,
@@ -180,4 +203,3 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
 }
-

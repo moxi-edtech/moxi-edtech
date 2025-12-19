@@ -32,7 +32,8 @@ export function UploadField({ onFileSelected, maxSizeMb = 12 }: UploadFieldProps
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <Input
-          ref={inputRef}
+          label="Arquivo"
+          inputRef={inputRef}
           type="file"
           accept=".csv, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           onChange={(event) => handleFile(event.target.files)}

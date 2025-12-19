@@ -179,6 +179,7 @@ export function ColumnMapper({ headers, mapping, onChange }: ColumnMapperProps) 
       <div className="space-y-1.5">
         <Label className="text-xs sm:text-sm">Colunas detectadas no arquivo</Label>
         <Input
+          label="Colunas detectadas"
           readOnly
           value={options.join(", ")}
           className="text-xs sm:text-sm bg-slate-50"

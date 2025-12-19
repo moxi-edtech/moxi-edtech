@@ -13,7 +13,7 @@ export async function GET(req: Request) {
     const user = userRes?.user;
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
 
-    // Resolve escola do usuário: profiles.current_escola_id -> profiles.escola_id -> escola_usuarios.escola_id
+    // Resolve escola do usuário: profiles.current_escola_id -> profiles.escola_id -> escola_users.escola_id
     let escolaId = qsEscolaId as string | undefined;
     if (!escolaId && alunoId) {
       try {
@@ -36,7 +36,7 @@ export async function GET(req: Request) {
       if (!escolaId) {
         try {
           const { data: vinc } = await supabase
-            .from('escola_usuarios')
+            .from('escola_users')
             .select('escola_id')
             .eq('user_id', user.id)
             .limit(1);
@@ -48,7 +48,7 @@ export async function GET(req: Request) {
 
     // Verificar vínculo do usuário com a escola
     const { data: vincUser } = await supabase
-      .from('escola_usuarios')
+      .from('escola_users')
       .select('user_id')
       .eq('user_id', user.id)
       .eq('escola_id', escolaId)

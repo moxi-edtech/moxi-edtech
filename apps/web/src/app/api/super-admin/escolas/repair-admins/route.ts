@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import type { Database, TablesInsert } from '~types/supabase'
 import { supabaseServer } from '@/lib/supabaseServer'
-import { generateNumeroLogin } from '@/lib/generateNumeroLogin'
+// ❌ REMOVIDO: import { generateNumeroLogin } from '@/lib/generateNumeroLogin'
 
 type RepairResult = {
   escolaId: string
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
 
       // 2) Verifica se já há admin vinculado
       const { data: vinc, error: vErr } = await admin
-        .from('escola_usuarios' as any)
+        .from('escola_users' as any)
         .select('user_id, papel')
         .eq('escola_id', escolaId)
         .in('papel', ['admin','staff_admin'] as any)
@@ -167,34 +167,25 @@ export async function POST(req: NextRequest) {
 
       try {
         if (!dryRun) {
-          await admin.from('escola_usuarios' as any).upsert([
+          await admin.from('escola_users' as any).upsert([
             { escola_id: escolaId, user_id: userId, papel: 'admin' } as any,
           ], { onConflict: 'escola_id,user_id' })
-          actions.push('escola_usuarios upsert (papel=admin)')
+          actions.push('escola_users upsert (papel=admin)')
         } else {
-          actions.push('DRY-RUN: escola_usuarios upsert')
+          actions.push('DRY-RUN: escola_users upsert')
         }
       } catch (e: any) {
-        results.push({ escolaId, escolaNome, status: 'failed', reason: `falha upsert escola_usuarios: ${e?.message || 'erro'}` })
+        results.push({ escolaId, escolaNome, status: 'failed', reason: `falha upsert escola_users: ${e?.message || 'erro'}` })
         continue
       }
 
-      // 6) Gera numero_login se ausente
-      try {
-        if (!dryRun) {
-          const { data: p } = await admin.from('profiles' as any).select('numero_login, escola_id').eq('user_id', userId).limit(1)
-          const numero = (p?.[0] as any)?.numero_login as string | undefined | null
-          const currentEscolaId = (p?.[0] as any)?.escola_id as string | undefined | null
-          if (!numero) {
-            const n = await generateNumeroLogin(escolaId, 'admin' as any, admin)
-            await admin.from('profiles' as any).update({ numero_login: n, escola_id: currentEscolaId ?? escolaId } as any).eq('user_id', userId)
-            actions.push('numero_login gerado')
-          }
-        } else {
-          actions.push('DRY-RUN: geraria numero_login se ausente')
-        }
-      } catch {
-        actions.push('warn: não foi possível gerar numero_login')
+      // 6) Antes: gerava numero_login para admin.
+      // Agora, no modelo novo, numero_login é exclusivo do fluxo de matrícula (alunos).
+      // Mantemos apenas o log/ação, sem gerar nada.
+      if (!dryRun) {
+        actions.push('numero_login não gerado para admin (modelo novo)')
+      } else {
+        actions.push('DRY-RUN: verificaria numero_login (sem gerar para admin)')
       }
 
       results.push({ escolaId, escolaNome, status: 'ok', actions })
@@ -206,4 +197,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
 }
-

@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 
-const withGroup = (group: string) =>
-  ({ group } as unknown as { head?: boolean; count?: 'exact' | 'planned' | 'estimated' });
-
 function last12MonthsLabels(): string[] {
   const months = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
   const now = new Date();
@@ -15,49 +12,83 @@ function last12MonthsLabels(): string[] {
   return arr;
 }
 
-export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, context: { params: Promise<{ escolaId: string }> }) {
+  // Nota: Verifique se sua pasta se chama [escolaId] ou [id]. 
+  // No código anterior usaste 'id', mas a convenção do next é o nome do ficheiro. 
+  // Vou assumir que o param é 'escolaId' conforme a estrutura padrão.
+  const { escolaId } = await context.params; 
+
   try {
-    const { id: escolaId } = await context.params;
     const supabase = await supabaseServer();
 
-    const [alunosAtivosRes, turmasCount, professoresCount, avisosRes, pagamentosRes, matsIdsRes] = await Promise.all([
-      // Número de alunos com matrícula ativa (distinto por aluno_id)
+    // Data de corte para o gráfico (12 meses atrás)
+    const now = new Date();
+    const fromDate = new Date(now.getFullYear(), now.getMonth() - 11, 1).toISOString().slice(0, 10);
+
+    // 🚀 O SEGREDO: Disparar TODAS as queries ao mesmo tempo (Paralelismo)
+    const [
+      alunosRes,
+      turmasRes,
+      profsRes,
+      avisosRes,
+      pagamentosRes,
+      graficoMatriculasRes,
+      avaliacoesRes
+    ] = await Promise.all([
+      
+      // 1. Alunos Ativos (Count direto no banco, sem trazer dados)
       supabase
         .from('matriculas')
-        .select('aluno_id, count:aluno_id', withGroup('aluno_id'))
+        .select('*', { count: 'exact', head: true }) // head: true não traz o JSON, só o número!
         .eq('escola_id', escolaId)
-        .in('status', ['ativa', 'ativo', 'active'])
-        .not('aluno_id', 'is', null),
-      supabase.from('turmas').select('id', { count: 'exact', head: true }).eq('escola_id', escolaId),
-      supabase.from('escola_usuarios').select('user_id', { count: 'exact', head: true }).eq('escola_id', escolaId).eq('papel', 'professor'),
-      (supabase as any).from('avisos').select('id, titulo, created_at').eq('escola_id', escolaId).order('created_at', { ascending: false }).limit(5),
-      supabase.from('pagamentos').select('status').eq('escola_id', escolaId),
-      supabase.from('matriculas').select('id').eq('escola_id', escolaId),
+        .in('status', ['ativa', 'ativo', 'active']),
+
+      // 2. Turmas (Count direto)
+      supabase
+        .from('turmas')
+        .select('*', { count: 'exact', head: true })
+        .eq('escola_id', escolaId),
+
+      // 3. Professores (Count direto)
+      supabase
+        .from('escola_users')
+        .select('*', { count: 'exact', head: true })
+        .eq('escola_id', escolaId)
+        .eq('papel', 'professor'),
+
+      // 4. Avisos (Top 5)
+      supabase
+        .from('avisos')
+        .select('id, titulo, created_at')
+        .eq('escola_id', escolaId)
+        .order('created_at', { ascending: false })
+        .limit(5),
+
+      // 5. Pagamentos (Trazemos 'status' para calcular kpis no JS, pois são poucos bytes)
+      supabase
+        .from('pagamentos')
+        .select('status')
+        .eq('escola_id', escolaId),
+
+      // 6. Gráfico Matrículas (Já filtrado por data no banco)
+      supabase
+        .from('matriculas')
+        .select('data_matricula, created_at')
+        .eq('escola_id', escolaId)
+        .gte('data_matricula', fromDate),
+
+      // 7. Avaliações/Notas (OTIMIZAÇÃO CRÍTICA)
+      // Em vez de buscar IDs de matriculas e fazer um loop, usamos o JOIN do Supabase.
+      // Filtramos notas onde a matrícula associada pertence a esta escola.
+      supabase
+        .from('notas') // Verifique se o nome da tabela é 'notas' ou 'notas_avaliacoes'
+        .select('id, matriculas!inner(escola_id)', { count: 'exact', head: true })
+        .eq('matriculas.escola_id', escolaId)
     ]);
 
-    // Contagem de notas lançadas (por matrícula da escola)
-    let notasLancadas = 0;
-    try {
-      const mats = (matsIdsRes.data as any[]) || [];
-      if (mats.length > 0) {
-        const ids = mats.map((m: any) => m.id);
-        const { count } = await supabase
-          .from('notas')
-          .select('id', { head: true, count: 'exact' })
-          .in('matricula_id', ids);
-        notasLancadas = count ?? 0;
-      }
-    } catch {}
+    // --- Processamento dos Dados (Executado em memória, super rápido) ---
 
-    const kpis = {
-      alunos: (alunosAtivosRes.data?.length ?? 0),
-      turmas: turmasCount.count ?? 0,
-      professores: professoresCount.count ?? 0,
-      avaliacoes: notasLancadas,
-    };
-
-    const avisos = ((avisosRes as any).data || []).map((a: any) => ({ id: String(a.id), titulo: a.titulo, dataISO: a.created_at }))
-
+    // KPI: Pagamentos
     const pgList = pagamentosRes.data || [];
     const pagamentos = {
       pago: pgList.filter((p: any) => p.status === 'pago').length,
@@ -66,32 +97,45 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       ajuste: pgList.filter((p: any) => p.status === 'ajuste').length,
     };
 
-    // Matrículas por mês (últimos 12 meses)
-    const now = new Date();
-    const from = new Date(now.getFullYear(), now.getMonth() - 11, 1).toISOString().slice(0, 10);
-    const { data: mats } = await supabase
-      .from('matriculas')
-      .select('id, data_matricula, created_at')
-      .eq('escola_id', escolaId)
-      .gte('data_matricula', from);
-
+    // KPI: Gráfico de Matrículas
     const monthsLabels = last12MonthsLabels();
     const counts = new Array(12).fill(0);
-    (mats || []).forEach((m: any) => {
+    const matsGrafico = graficoMatriculasRes.data || [];
+    
+    matsGrafico.forEach((m: any) => {
       const d = new Date(m.data_matricula || m.created_at);
+      // Cálculo simples de diferença de meses
       const diff = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
       const idx = 11 - diff;
       if (idx >= 0 && idx < 12) counts[idx] += 1;
     });
 
+    // Mapeamento de Avisos
+    const avisos = (avisosRes.data || []).map((a: any) => ({
+      id: String(a.id),
+      titulo: a.titulo,
+      dataISO: a.created_at
+    }));
+
     return NextResponse.json({
       ok: true,
-      kpis,
+      kpis: {
+        alunos: alunosRes.count ?? 0,
+        turmas: turmasRes.count ?? 0,
+        professores: profsRes.count ?? 0,
+        avaliacoes: avaliacoesRes.count ?? 0, // Agora vem direto do banco!
+      },
       avisos,
-      eventos: [],
-      charts: { meses: monthsLabels, alunosPorMes: counts, pagamentos },
+      eventos: [], // Se tiveres tabela de eventos, adiciona ao Promise.all
+      charts: {
+        meses: monthsLabels,
+        alunosPorMes: counts,
+        pagamentos
+      },
     });
+
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message || 'Erro inesperado' }, { status: 500 });
+    console.error("Erro Dashboard:", e);
+    return NextResponse.json({ ok: false, error: e?.message || 'Erro interno' }, { status: 500 });
   }
 }

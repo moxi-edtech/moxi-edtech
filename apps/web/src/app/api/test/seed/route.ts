@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
       } catch {}
       // Link papel
       try {
-        await (admin as any).from('escola_usuarios').upsert({ escola_id: escolaId, user_id: userId, papel } as TablesInsert<'escola_usuarios'>, { onConflict: 'escola_id,user_id' })
+        await (admin as any).from('escola_users').upsert({ escola_id: escolaId, user_id: userId, papel } as TablesInsert<'escola_users'>, { onConflict: 'escola_id,user_id' })
       } catch {}
       users[papel] = { email, password: seedPw, papel }
     }

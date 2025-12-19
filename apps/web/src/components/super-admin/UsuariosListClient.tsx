@@ -59,6 +59,13 @@ function ListaUsuarios() {
         const usersJson = await usersRes.json();
         const escolasJson = await escolasRes.json();
 
+        const escolasArr =
+          (escolasJson.items || []) as Array<{ id: string; nome: string | null }>;
+
+        const escolaNameMap = new Map(
+          escolasArr.map((e) => [String(e.id), e.nome ?? ""])
+        );
+
         const allUsers = (usersJson.items || []) as Usuario[];
 
         // 1) remove alunos
@@ -71,12 +78,15 @@ function ListaUsuarios() {
             // Se tiver status, esconde arquivados/excluídos
             if (u.status === "arquivado" || u.status === "excluido") return false;
             return true;
-          });
+          })
+          .map((u) => ({
+            ...u,
+            escola_nome:
+              u.escola_nome ??
+              (u.escola_id ? escolaNameMap.get(String(u.escola_id)) ?? null : null),
+          }));
 
         setUsuarios(filteredUsers);
-
-        const escolasArr =
-          (escolasJson.items || []) as Array<{ id: string; nome: string | null }>;
 
         setEscolas(
           escolasArr.map(
@@ -136,7 +146,22 @@ function ListaUsuarios() {
       }
 
       setUsuarios((prev) =>
-        prev.map((u) => (u.id === usuarioId ? { ...u, ...editForm } : u))
+        prev.map((u) => {
+          if (u.id !== usuarioId) return u;
+
+          const updatedEscolaId =
+            editForm.escola_id !== undefined ? editForm.escola_id : u.escola_id;
+          const updatedEscolaNome = updatedEscolaId
+            ? escolas.find((e) => e.id === updatedEscolaId)?.nome ?? null
+            : null;
+
+          return {
+            ...u,
+            ...editForm,
+            escola_id: updatedEscolaId,
+            escola_nome: updatedEscolaNome,
+          };
+        })
       );
 
       setEditingId(null);
@@ -374,7 +399,10 @@ function ListaUsuarios() {
                         ))}
                       </select>
                     ) : (
-                      u.escola_nome ?? "—"
+                      u.escola_nome ??
+                        (u.escola_id
+                          ? escolas.find((escola) => escola.id === u.escola_id)?.nome ?? "—"
+                          : "—")
                     )}
                   </td>
 

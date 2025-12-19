@@ -282,25 +282,10 @@ export async function POST(req: NextRequest) {
       console.warn("[login] profile lookup failed:", e);
     }
 
-    // Monta resposta final reaproveitando Set-Cookie do cookieCarrier
-    // Copia apenas os headers de Set-Cookie do cookieCarrier
-    const headers = new Headers({
-      "content-type": "application/json; charset=utf-8",
-      "cache-control": "no-store",
-    })
-    try {
-      const cc: any = cookieCarrier.headers as any;
-      const iter = typeof cc?.entries === 'function' ? cc.entries() : [];
-      for (const pair of iter as Iterable<[string, string]>) {
-        const [key, value] = pair;
-        if (typeof key === 'string' && key.toLowerCase() === 'set-cookie') {
-          headers.append(key, value);
-        }
-      }
-    } catch {}
+    cookieCarrier.headers.set("cache-control", "no-store");
 
-    return new NextResponse(
-      JSON.stringify({
+    return NextResponse.json(
+      {
         ok: true,
         user: {
           id: data.user.id,
@@ -311,8 +296,11 @@ export async function POST(req: NextRequest) {
             (data.user as any)?.user_metadata?.must_change_password
           ),
         },
-      }),
-      { status: 200, headers }
+      },
+      {
+        status: 200,
+        headers: cookieCarrier.headers,
+      }
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

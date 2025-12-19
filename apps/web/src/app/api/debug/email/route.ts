@@ -58,7 +58,7 @@ export async function GET(req: Request) {
     if (!adminEmail) {
       if (admin) {
         const { data: vinc } = await admin
-          .from("escola_usuarios").select("user_id,papel").eq("escola_id", escolaId)
+          .from("escola_users").select("user_id,papel").eq("escola_id", escolaId)
           .in("papel", ["admin", "staff_admin"] as any).limit(1)
         const uid = (vinc?.[0] as any)?.user_id as string | undefined
         if (uid) {
@@ -68,7 +68,7 @@ export async function GET(req: Request) {
         }
       } else {
         const { data: vinc } = await s
-          .from("escola_usuarios").select("user_id,papel").eq("escola_id", escolaId)
+          .from("escola_users").select("user_id,papel").eq("escola_id", escolaId)
           .in("papel", ["admin", "staff_admin"] as any).limit(1)
         const uid = (vinc?.[0] as any)?.user_id as string | undefined
         if (uid) {

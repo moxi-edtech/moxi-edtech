@@ -7,6 +7,14 @@ import { createClient } from "@/lib/supabaseClient";
 // 🔹 O Wizard foi movido para a sua própria página para unificar o fluxo
 // import AcademicSetupWizard from "@/components/escola/onboarding/AcademicSetupWizard";
 import {
+  type AcademicSession,
+  type Semester,
+  type Course,
+  type Class,
+  type Discipline,
+  type Teacher,
+} from "@/types/academico.types";
+import {
   Card,
   CardContent,
   CardDescription,

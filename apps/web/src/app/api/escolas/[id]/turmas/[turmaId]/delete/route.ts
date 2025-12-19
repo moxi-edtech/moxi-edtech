@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import type { Database } from '~types/supabase'
 import { supabaseServer } from '@/lib/supabaseServer'
-import { hasPermission } from '@/lib/permissions'
+import { authorizeEscolaAction } from '@/lib/escola/disciplinas'
 import { recordAuditServer } from '@/lib/audit'
 
 export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: string; turmaId: string }> }) {
@@ -12,9 +12,8 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
     const s = await supabaseServer()
     const { data: { user } } = await s.auth.getUser()
     if (!user?.id) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
-    const { data: vinc } = await s.from('escola_usuarios').select('papel').eq('user_id', user.id).eq('escola_id', escolaId).limit(1)
-    const papel = vinc?.[0]?.papel as any
-    if (!hasPermission(papel, 'gerenciar_turmas')) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
+    const authz = await authorizeEscolaAction(s as any, escolaId, user.id, ['gerenciar_turmas'])
+    if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 })
     const { data: profCheck } = await s.from('profiles' as any).select('escola_id').eq('user_id', user.id).maybeSingle()
     if (!profCheck || (profCheck as any).escola_id !== escolaId) return NextResponse.json({ ok: false, error: 'Perfil não vinculado à escola' }, { status: 403 })
 

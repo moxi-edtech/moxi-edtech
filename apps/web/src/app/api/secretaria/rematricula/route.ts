@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
-import { resolveMensalidade } from "@/lib/financeiro/pricing";
+import { normalizeAnoLetivo, resolveTabelaPreco } from "@/lib/financeiro/tabela-preco";
 import { recordAuditServer } from "@/lib/audit";
+import { tryCanonicalFetch } from "@/lib/api/proxyCanonical";
 
 export async function POST(req: Request) {
   try {
@@ -21,6 +22,9 @@ export async function POST(req: Request) {
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 });
     }
+
+    const forwarded = await tryCanonicalFetch(req, `/api/escolas/${escolaId}/rematricula`);
+    if (forwarded) return forwarded;
 
     const body = await req.json();
     const { origin_turma_id, destination_turma_id, aluno_ids, use_rpc, gerar_mensalidades = false, gerar_todas = true } = body;
@@ -149,18 +153,73 @@ export async function POST(req: Request) {
   }
 }
 
+async function resolveMensalidadeAtual(
+  client: any,
+  escolaId: string,
+  turmaId: string,
+  anoLetivoNome: string | null,
+  classeIdHint: string | null,
+) {
+  let cursoId: string | null = null;
+  let classeId = classeIdHint || null;
+  let anoLetivo = normalizeAnoLetivo(anoLetivoNome ?? new Date().getFullYear());
+
+  try {
+    const { data: turmaView } = await client
+      .from('vw_turmas_para_matricula')
+      .select('curso_id, classe_id, ano_letivo')
+      .eq('id', turmaId)
+      .maybeSingle();
+
+    if (turmaView) {
+      const t = turmaView as any;
+      if (t.curso_id) cursoId = t.curso_id as string;
+      if (t.classe_id) classeId = t.classe_id as string;
+      if (t.ano_letivo) anoLetivo = normalizeAnoLetivo(t.ano_letivo);
+    }
+  } catch {}
+
+  if (cursoId) {
+    try {
+      const { data: realCurso } = await client
+        .from('vw_cursos_reais')
+        .select('id')
+        .eq('escola_id', escolaId)
+        .eq('id', cursoId)
+        .maybeSingle();
+      if (!realCurso) cursoId = null;
+    } catch {}
+  }
+
+  const { tabela } = await resolveTabelaPreco(client, {
+    escolaId,
+    anoLetivo,
+    cursoId: cursoId || undefined,
+    classeId: classeId || undefined,
+    allowMensalidadeFallback: false,
+  });
+
+  if (!tabela) return null;
+
+  return {
+    valor: tabela.valor_mensalidade,
+    dia_vencimento: tabela.dia_vencimento,
+  };
+}
+
 async function generateMensalidadesForAlunos(client: any, escolaId: string, turmaId: string, sessionId: string, anoLetivoNome: string | null, classeId: string | null, alunoIds: string[], gerarTodas: boolean) {
   try {
     if (!sessionId || alunoIds.length === 0) return;
     const { data: sess } = await client.from('school_sessions').select('data_inicio, data_fim, nome').eq('id', sessionId).maybeSingle();
     const dataInicioSess = (sess as any)?.data_inicio ? new Date((sess as any).data_inicio) : new Date();
     const dataFimSess = (sess as any)?.data_fim ? new Date((sess as any).data_fim) : new Date(dataInicioSess.getFullYear(), 11, 31);
-    const anoLetivo = (anoLetivoNome && String(anoLetivoNome)) || String(dataInicioSess.getFullYear());
+    const anoLetivoNum = normalizeAnoLetivo(anoLetivoNome ?? dataInicioSess.getFullYear());
+    const anoLetivo = String(anoLetivoNum);
 
-    const pricing = await resolveMensalidade(client, escolaId, { classeId: classeId || undefined, cursoId: undefined });
+    const pricing = await resolveMensalidadeAtual(client, escolaId, turmaId, anoLetivoNome, classeId);
     const valor = pricing?.valor;
     const dia = pricing?.dia_vencimento || 5;
-    if (!valor || !Number.isFinite(valor)) return;
+    if (valor == null || !Number.isFinite(valor)) return;
 
     const today = new Date();
     const startMonth = gerarTodas ? dataInicioSess : new Date(today.getFullYear(), today.getMonth(), 1);

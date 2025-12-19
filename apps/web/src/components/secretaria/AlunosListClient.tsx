@@ -54,7 +54,7 @@ function StatusBadge({ status }: { status?: string | null }) {
 export default function AlunosListClient() {
   // Estados de Filtro
   const [q, setQ] = useState("");
-  const [days, setDays] = useState("30");
+  const [status, setStatus] = useState("ativo");
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
   
@@ -77,7 +77,7 @@ export default function AlunosListClient() {
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams({ q, days, page: String(p), pageSize: String(pageSize) });
+      const params = new URLSearchParams({ q, status, page: String(p), pageSize: String(pageSize) });
       const res = await fetch(`/api/secretaria/alunos?${params.toString()}`, { cache: "no-store" });
       const json = await res.json();
 
@@ -94,7 +94,7 @@ export default function AlunosListClient() {
   }
 
   // Reload triggers
-  useEffect(() => { load(1); }, [q, days]); // Reset page on filter change
+  useEffect(() => { load(1); }, [q, status]); // Reset page on filter change
   useEffect(() => { load(page); }, [page]); // Load on page change
 
   // --- AÇÕES ---
@@ -183,17 +183,22 @@ export default function AlunosListClient() {
           </div>
 
           <div className="flex gap-2 w-full sm:w-auto overflow-x-auto">
-            {['1','7','30','90'].map((d) => (
+            {[
+              { label: 'Ativos', value: 'ativo' },
+              { label: 'Inativos', value: 'inativo' },
+              { label: 'Potenciais', value: 'pendente' },
+              { label: 'Todos', value: 'todos' },
+            ].map((s) => (
               <button 
-                key={d} 
-                onClick={() => setDays(d)}
-                className={`whitespace-nowrap px-3 py-2 rounded-lg text-xs font-bold border transition-all ${
-                  days === d 
-                  ? 'bg-slate-800 text-white border-slate-800' 
-                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                key={s.value} 
+                onClick={() => setStatus(s.value)}
+                className={`whitespace-nowrap px-4 py-2 rounded-lg text-sm font-bold border-b-4 transition-all ${
+                  status === s.value
+                  ? 'border-teal-500 bg-white text-teal-600' 
+                  : 'border-transparent text-slate-500 hover:bg-white hover:text-slate-700'
                 }`}
               >
-                {d === '1' ? 'Hoje' : `${d} dias`}
+                {s.label}
               </button>
             ))}
           </div>
@@ -246,6 +251,11 @@ export default function AlunosListClient() {
                     </td>
                     <td className="px-6 py-4 text-right">
                         <div className="flex justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                            {aluno.status !== 'ativo' && (
+                              <Link href={`/secretaria/matriculas/nova?alunoId=${aluno.id}`} className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition" title="Matricular Aluno">
+                                <UserPlus className="w-4 h-4"/>
+                              </Link>
+                            )}
                             <Link href={`/secretaria/alunos/${aluno.id}`} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"><Eye className="w-4 h-4"/></Link>
                             <Link href={`/secretaria/alunos/${aluno.id}/editar`} className="p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition"><Edit className="w-4 h-4"/></Link>
                             <button onClick={() => handleOpenDelete(aluno)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"><Archive className="w-4 h-4"/></button>

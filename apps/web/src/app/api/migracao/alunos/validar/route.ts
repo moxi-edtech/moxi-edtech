@@ -13,6 +13,7 @@ interface ValidateBody {
   importId: string;
   escolaId: string;
   columnMap: MappedColumns;
+  anoLetivo: number; // NOVO: Ano letivo para validação e importação
 }
 
 export async function POST(request: Request) {
@@ -36,9 +37,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
   }
 
-  const { importId, escolaId, columnMap } = body;
-  if (!importId || !escolaId) {
-    return NextResponse.json({ error: "importId e escolaId são obrigatórios" }, { status: 400 });
+  const { importId, escolaId, columnMap, anoLetivo } = body;
+  if (!importId || !escolaId || !anoLetivo) {
+    return NextResponse.json({ error: "importId, escolaId e anoLetivo são obrigatórios" }, { status: 400 });
   }
 
   const supabase = createAdminClient<Database>(adminUrl, serviceKey);
@@ -69,7 +70,7 @@ export async function POST(request: Request) {
 
   const text = await fileData.text();
   const entries = csvToJsonLines(text);
-  const staged: AlunoStagingRecord[] = entries.map((entry) => mapAlunoFromCsv(entry, columnMap, importId, escolaId));
+  const staged: AlunoStagingRecord[] = entries.map((entry) => mapAlunoFromCsv(entry, columnMap, importId, escolaId, anoLetivo));
 
   // Clear previous staging/errors for idempotency
   await supabase.from("import_errors").delete().eq("import_id", importId);

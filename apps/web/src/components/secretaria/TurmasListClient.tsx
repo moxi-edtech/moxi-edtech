@@ -11,13 +11,15 @@ import {
 
 import TurmaForm from "./TurmaForm";
 import AtribuirProfessorForm from "./AtribuirProfessorForm";
+import { useEscolaId } from "@/hooks/useEscolaId";
+import { buildEscolaUrl } from "@/lib/escola/url";
 
 // --- TIPOS ---
 interface TurmaItem {
   id: string;
   nome: string;
   turno: string;
-  ano_letivo: string | null;
+  ano_letivo: number | null;
   session_id?: string;
   sala?: string;
   capacidade_maxima?: number;
@@ -71,15 +73,17 @@ export default function TurmasListClient() {
   const [assignments, setAssignments] = useState<any[] | null>(null);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
   const [showAtribuirForm, setShowAtribuirForm] = useState(false);
+  const { escolaId, isLoading: escolaLoading, error: escolaError } = useEscolaId();
 
   const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
+      if (!escolaId) throw new Error('Escola não identificada');
       const params = new URLSearchParams();
       if (turno !== "todos") params.set('turno', turno);
-      
-      const res = await fetch(`/api/secretaria/turmas?${params.toString()}`, { cache: 'no-store' });
+      const url = buildEscolaUrl(escolaId, '/turmas', params);
+      const res = await fetch(url, { cache: 'no-store', headers: { 'X-Proxy-Used': 'canonical' } });
       const json = await res.json();
       
       if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao carregar');
@@ -91,7 +95,7 @@ export default function TurmasListClient() {
     }
   };
 
-  useEffect(() => { fetchData(); }, [turno]);
+  useEffect(() => { if (escolaId) fetchData(); }, [turno, escolaId]);
 
   // --- LÓGICA INTELIGENTE V8 (BASEADA NO TIPO REAL) ---
   const getDisplayInfo = (t: TurmaItem) => {
@@ -198,7 +202,8 @@ export default function TurmasListClient() {
   const loadAssignments = async (turmaId: string) => {
       setLoadingAssignments(true);
       try {
-        const res = await fetch(`/api/secretaria/turmas/${turmaId}/disciplinas`);
+        if (!escolaId) throw new Error('Escola não identificada');
+        const res = await fetch(buildEscolaUrl(escolaId, `/turmas/${turmaId}/disciplinas`), { headers: { 'X-Proxy-Used': 'canonical' } });
         const json = await res.json();
         if (json.ok) setAssignments(json.items || []);
       } catch(e) { setAssignments([]); } 
@@ -225,12 +230,14 @@ export default function TurmasListClient() {
       </div>
 
       {/* KPIS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard title="Total Turmas" value={data?.stats.totalTurmas || 0} icon={Building2} colorClass="text-blue-600" bgClass="bg-blue-50" />
-        <KpiCard title="Alunos Alocados" value={data?.stats.totalAlunos || 0} icon={Users} colorClass="text-orange-600" bgClass="bg-orange-50" />
-        <KpiCard title="Turnos Ativos" value={filtrosTurno.length - 1} icon={Calendar} colorClass="text-teal-600" bgClass="bg-teal-50" />
-        <KpiCard title="Média Alunos" value={Math.round((data?.stats.totalAlunos || 0) / Math.max(data?.stats.totalTurmas || 1, 1))} icon={BarChart3} colorClass="text-purple-600" bgClass="bg-purple-50" />
-      </div>
+      {data?.stats && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <KpiCard title="Total Turmas" value={data.stats.totalTurmas || 0} icon={Building2} colorClass="text-blue-600" bgClass="bg-blue-50" />
+          <KpiCard title="Alunos Alocados" value={data.stats.totalAlunos || 0} icon={Users} colorClass="text-orange-600" bgClass="bg-orange-50" />
+          <KpiCard title="Turnos Ativos" value={filtrosTurno.length - 1} icon={Calendar} colorClass="text-teal-600" bgClass="bg-teal-50" />
+          <KpiCard title="Média Alunos" value={Math.round((data.stats.totalAlunos || 0) / Math.max(data.stats.totalTurmas || 1, 1))} icon={BarChart3} colorClass="text-purple-600" bgClass="bg-purple-50" />
+        </div>
+      )}
 
       {/* TABELA */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">

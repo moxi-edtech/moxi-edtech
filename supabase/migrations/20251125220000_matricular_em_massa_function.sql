@@ -10,7 +10,7 @@ CREATE OR REPLACE FUNCTION public.matricular_em_massa(
   p_ano_letivo     integer,
   p_turma_id       uuid
 )
-RETURNS TABLE(success_count integer, error_count integer integer, errors jsonb)
+RETURNS TABLE(success_count integer, error_count integer, errors jsonb)
 LANGUAGE plpgsql
 AS $$
 DECLARE

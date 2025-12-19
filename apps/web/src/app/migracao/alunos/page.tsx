@@ -53,6 +53,7 @@ export default function AlunoMigrationWizard() {
   const [progressDone, setProgressDone] = useState(0);
   const [matriculaSummary, setMatriculaSummary] = useState<Array<{ turma_nome: string; turma_id: string | null; success: number; errors: number }>>([]);
   const [loading, setLoading] = useState(false);
+  const [anoLetivo, setAnoLetivo] = useState<number>(new Date().getFullYear());
 
   const supabase = useMemo(() => createClient(), []);
   const searchParams = useSearchParams();
@@ -78,7 +79,7 @@ export default function AlunoMigrationWizard() {
         const appMeta = session?.user?.app_metadata as { escola_id?: string } | undefined;
         let escola = appMeta?.escola_id ?? null;
 
-        // Fallbacks: profiles.current_escola_id -> profiles.escola_id -> escola_usuarios.escola_id
+        // Fallbacks: profiles.current_escola_id -> profiles.escola_id -> escola_users.escola_id
         if (!escola && session?.user?.id) {
           try {
             const { data: prof } = await supabase
@@ -96,7 +97,7 @@ export default function AlunoMigrationWizard() {
           if (!escola) {
             try {
               const { data: vinc } = await supabase
-                .from('escola_usuarios' as any)
+                .from('escola_users' as any)
                 .select('escola_id')
                 .eq('user_id', session.user.id)
                 .limit(1);
@@ -191,20 +192,18 @@ export default function AlunoMigrationWizard() {
       missing.push("Nome");
     }
     if (!mapping.data_nascimento) {
-      missing.push("Data de nascimento");
+      missing.push("Data de Nascimento");
     }
-
-    const hasAlgumIdentificador =
-      Boolean(mapping.bi) || Boolean(mapping.email) || Boolean(mapping.telefone);
-
-    if (!hasAlgumIdentificador) {
-      missing.push("Pelo menos um de: BI, Email ou Telefone");
+    if (!mapping.encarregado_telefone) {
+      missing.push("Telefone do Encarregado");
+    }
+    if (!mapping.turma_codigo) {
+      missing.push("Código da Turma");
     }
 
     return {
       ok: missing.length === 0,
       missing,
-      hasIdentificador: hasAlgumIdentificador,
     };
   }, [mapping]);
 
@@ -249,20 +248,13 @@ export default function AlunoMigrationWizard() {
   };
 
   const handleValidate = async () => {
-    if (!importId || !escolaId) {
-      setApiErrors(["Complete o upload primeiro."]);
+    if (!importId || !escolaId || !anoLetivo) {
+      setApiErrors(["Complete o upload e selecione o ano letivo primeiro."]);
       return;
     }
-
-    // 💡 regra de negócio nova: Nome + BI obrigatórios
-    const missing: string[] = [];
-    if (!mapping.nome) missing.push("Nome");
-    if (!mapping.bi) missing.push("BI");
-
-    if (missing.length) {
-      setApiErrors([
-        `Mapeie os campos obrigatórios antes de continuar: ${missing.join(", ")}.`
-      ]);
+    
+    if (!mappingStatus.ok) {
+      setApiErrors([`Mapeie os campos obrigatórios: ${mappingStatus.missing.join(", ")}.`]);
       return;
     }
 
@@ -273,7 +265,7 @@ export default function AlunoMigrationWizard() {
       const response = await fetch("/api/migracao/alunos/validar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ importId, escolaId, columnMap: mapping }),
+        body: JSON.stringify({ importId, escolaId, columnMap: mapping, anoLetivo }),
       });
 
       const payload = await response.json();
@@ -292,8 +284,8 @@ export default function AlunoMigrationWizard() {
   };
 
   const handleImport = async () => {
-    if (!importId || !escolaId) {
-      setApiErrors(["Importação inválida. Tente reiniciar o processo."]);
+    if (!importId || !escolaId || !anoLetivo) {
+      setApiErrors(["Importação inválida ou ano letivo não definido. Tente reiniciar o processo."]);
       return;
     }
 
@@ -304,7 +296,7 @@ export default function AlunoMigrationWizard() {
       const response = await fetch("/api/migracao/alunos/importar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ importId, escolaId }),
+        body: JSON.stringify({ importId, escolaId, anoLetivo }),
       });
 
       const payload = await response.json();
@@ -655,9 +647,21 @@ export default function AlunoMigrationWizard() {
         >
           <div className="space-y-4">
             <UploadField onFileSelected={setFile} />
+            <div className="rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2.5 text-[11px] space-y-1.5">
+              <div className="flex items-center gap-2 font-medium text-slate-700">
+                <Info className="h-3.5 w-3.5" />
+                <span>Requisitos do ficheiro CSV:</span>
+              </div>
+              <ul className="pl-5 space-y-0.5 text-slate-600 list-disc">
+                <li>Formato CSV separado por vírgula (,) ou ponto e vírgula (;).</li>
+                <li>A primeira linha deve conter os cabeçalhos das colunas.</li>
+                <li>Colunas obrigatórias: <strong>Nome</strong>, <strong>Data de Nascimento</strong>, <strong>Telefone do Encarregado</strong>, e <strong>Código da Turma</strong>.</li>
+                <li>Opcional recomendado: <strong>Número de Processo</strong> (será gerado se não existir).</li>
+              </ul>
+            </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
               <p className="text-[11px] text-slate-500">
-                Formato recomendado: CSV separado por ponto e vírgula (;), com cabeçalho na primeira linha.
+                Certifique-se que o seu ficheiro cumpre os requisitos antes de enviar.
               </p>
               <ActionButton
                 onClick={handleUpload}
@@ -679,16 +683,35 @@ export default function AlunoMigrationWizard() {
             description="Relacione as colunas do arquivo com os campos do sistema."
           >
             <div className="space-y-4">
+              {/* ANO LETIVO SELECTOR */}
+              <div className="p-3 rounded-lg border border-blue-100 bg-blue-50/60">
+                <label htmlFor="anoLetivo" className="block text-xs font-medium text-slate-700 mb-1">
+                  Ano Letivo de Importação
+                </label>
+                <select
+                  id="anoLetivo"
+                  value={anoLetivo}
+                  onChange={(e) => setAnoLetivo(Number(e.target.value))}
+                  className="block w-full sm:w-1/3 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                >
+                  <option value={new Date().getFullYear() -1}>{new Date().getFullYear() -1}</option>
+                  <option value={new Date().getFullYear()}>{new Date().getFullYear()}</option>
+                  <option value={new Date().getFullYear() + 1}>{new Date().getFullYear() + 1}</option>
+                </select>
+                <p className="text-[11px] text-slate-500 mt-1">Todos os alunos serão importados para este ano letivo.</p>
+              </div>
+
               {/* Checklist de campos obrigatórios */}
               <div className="rounded-lg border border-slate-100 bg-slate-50/60 px-3 py-2.5 text-[11px] space-y-1.5">
                 <div className="flex items-center gap-2 font-medium text-slate-700">
                   <Info className="h-3.5 w-3.5" />
-                  <span>Campos mínimos para uma importação segura:</span>
+                  <span>Campos obrigatórios para importação:</span>
                 </div>
                 <ul className="pl-5 space-y-0.5 text-slate-600 list-disc">
                   <li>Nome</li>
-                  <li>Data de nascimento</li>
-                  <li>Pelo menos um identificador: BI, Email ou Telefone</li>
+                  <li>Data de Nascimento</li>
+                  <li>Telefone do Encarregado</li>
+                  <li>Código da Turma</li>
                 </ul>
                 {!mappingStatus.ok && (
                   <p className="mt-1 text-[11px] text-red-600">
@@ -697,7 +720,7 @@ export default function AlunoMigrationWizard() {
                 )}
                 {mappingStatus.ok && (
                   <p className="mt-1 text-[11px] text-emerald-700">
-                    ✅ Mapeamento mínimo completo. Pode prosseguir para validação.
+                    ✅ Mapeamento obrigatório completo. Pode prosseguir para validação.
                   </p>
                 )}
               </div>
@@ -711,7 +734,7 @@ export default function AlunoMigrationWizard() {
                 <ActionButton
                   onClick={handleValidate}
                   loading={loading && step === 2}
-                  disabled={!mappingStatus.ok}
+                  disabled={!mappingStatus.ok || !anoLetivo}
                   icon={Eye}
                 >
                   Validar dados

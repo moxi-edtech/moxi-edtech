@@ -32,7 +32,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
     // AuthZ via papel -> permission mapping
     const { data: vinc } = await s
-      .from('escola_usuarios')
+      .from('escola_users')
       .select('papel')
       .eq('escola_id', escolaId)
       .eq('user_id', user.id)

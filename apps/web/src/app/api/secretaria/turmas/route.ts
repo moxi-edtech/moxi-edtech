@@ -1,235 +1,176 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser, authorizeTurmasManage } from "@/lib/escola/disciplinas";
 
-const withGroup = (group: string) =>
-  ({ group } as unknown as { head?: boolean; count?: 'exact' | 'planned' | 'estimated' });
+export const dynamic = 'force-dynamic';
 
+// --- GET (Listagem) - Mantido igual, apenas para contexto ---
 export async function GET(req: Request) {
   try {
     const supabase = await supabaseServerTyped<any>();
+    const headers = new Headers();
+    
+    // 1. Autenticação
     const { data: userRes } = await supabase.auth.getUser();
     const user = userRes?.user;
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
 
-    const { data: prof } = await supabase
-      .from('profiles')
-      .select('current_escola_id, escola_id')
-      .order('created_at', { ascending: false })
-      .limit(1);
-    let escolaId = ((prof?.[0] as any)?.current_escola_id || (prof?.[0] as any)?.escola_id) as string | undefined;
-    if (!escolaId) {
-      try {
-        const { data: vinc } = await supabase
-          .from('escola_usuarios')
-          .select('escola_id')
-          .eq('user_id', user.id)
-          .limit(1);
-        escolaId = (vinc?.[0] as any)?.escola_id as string | undefined;
-      } catch {}
-    }
-    if (!escolaId) {
-      return NextResponse.json({
-        ok: true,
-        items: [],
-        total: 0,
-        stats: { totalTurmas: 0, totalAlunos: 0, porTurno: [] },
-      });
-    }
+    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
+    if (!escolaId) return NextResponse.json({ ok: true, items: [], total: 0, stats: {} }, { headers });
 
+    const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id);
+    if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 });
+
+    headers.set('Deprecation', 'true');
+    headers.set('Link', `</api/escolas/${escolaId}/turmas>; rel="successor-version"`);
+
+    // 3. Parâmetros da URL
     const url = new URL(req.url);
-    const turnoFilter = url.searchParams.get('turno') || undefined;
-
-    // ✅ CORREÇÃO: Remover created_at da seleção
-    const { data: turmas, error: turmasError } = await supabase
-      .from('turmas')
-      .select(`
-        id, 
-        nome, 
-        turno, 
-        ano_letivo,
-        sala
-      `)
-      .eq('escola_id', escolaId)
-      .order('nome');
+    const turno = url.searchParams.get('turno');
+    const busca = url.searchParams.get('busca')?.toLowerCase() || "";
     
-    if (turmasError) {
-      console.error("❌ Erro ao buscar turmas:", turmasError);
-      return NextResponse.json({ ok: false, error: turmasError.message }, { status: 400 });
-    }
-
-    const turmaIds = (turmas || []).map((t) => t.id);
-
-    // Buscar ocupação atual das turmas (número de alunos ativos)
-    let ocupacaoMap = new Map<string, number>();
-    if (turmaIds.length > 0) {
-      const { data: matriculasCount } = await supabase
-        .from('matriculas')
-        .select('turma_id, count')
-        .eq('escola_id', escolaId)
-        .in('turma_id', turmaIds)
-        .eq('status', 'ativa');
-
-      for (const row of matriculasCount || []) {
-        ocupacaoMap.set(row.turma_id, row.count || 0);
-      }
-    }
-
-    // Buscar última matrícula
-    const { data: matriculasRecency } = await supabase
-      .from('matriculas')
-      .select('turma_id, created_at')
+    // 4. Query à VIEW
+    let query = supabase
+      .from('vw_turmas_para_matricula') 
+      .select('*')
       .eq('escola_id', escolaId)
-      .order('created_at', { ascending: false })
-      .limit(200);
+      .order('turma_nome', { ascending: true });
 
-    const lastByTurma = new Map<string, string>();
-    for (const row of matriculasRecency || []) {
-      if (row.turma_id && !lastByTurma.has(row.turma_id)) {
-        lastByTurma.set(row.turma_id, row.created_at ?? '');
-      }
+    if (turno && turno !== 'todos') query = query.eq('turno', turno);
+    
+    const { data: rows, error } = await query;
+
+    if (error) {
+        console.error("Erro na View:", error);
+        throw error;
     }
 
-    // Contar alunos por status
-    let matriculasResumo: any[] = [];
-    if (turmaIds.length > 0) {
-      const { data } = await supabase
-        .from('matriculas')
-        .select('turma_id, status, count:turma_id', withGroup('turma_id,status'))
-        .eq('escola_id', escolaId)
-        .in('turma_id', turmaIds);
-      matriculasResumo = data || [];
+    // 5. Filtro em Memória
+    let items = rows || [];
+
+    if (busca) {
+        items = items.filter((t: any) => 
+            (t.turma_codigo && t.turma_codigo.toLowerCase().includes(busca)) || // NOVO
+            (t.turma_nome && t.turma_nome.toLowerCase().includes(busca)) || 
+            (t.sala && t.sala.toLowerCase().includes(busca)) ||
+            (t.curso_nome && t.curso_nome.toLowerCase().includes(busca)) ||
+            (t.classe_nome && t.classe_nome.toLowerCase().includes(busca))
+        );
     }
 
-    const countsByTurma = new Map<string, Record<string, number>>();
+    // 6. Estatísticas
     let totalAlunos = 0;
-    for (const row of matriculasResumo) {
-      const turmaId = (row as any)?.turma_id;
-      if (!turmaId) continue;
-      const status = ((row as any)?.status ?? 'indefinido').toString();
-      const count = Number((row as any)?.count ?? 0);
-      if (!countsByTurma.has(turmaId)) countsByTurma.set(turmaId, {});
-      const current = countsByTurma.get(turmaId)!;
-      current[status] = (current[status] ?? 0) + count;
-      totalAlunos += count;
-    }
+    const porTurnoMap: Record<string, number> = {};
 
-    // ✅ CORREÇÃO: Mapear dados sem created_at
-    const items = (turmas || [])
-      .filter((turma) => {
-        if (!turnoFilter) return true;
-        return (turma.turno ?? 'sem_turno') === turnoFilter;
-      })
-      .map((turma) => {
-        const statusCounts = countsByTurma.get(turma.id) ?? {};
-        const total = Object.values(statusCounts).reduce((acc, cur) => acc + Number(cur || 0), 0);
-        
-        return {
-          id: turma.id,
-          nome: turma.nome,
-          turno: turma.turno ?? 'sem_turno',
-          ano_letivo: turma.ano_letivo,
-          sala: turma.sala || null,
-          capacidade_maxima: 30, // Valor padrão
-          ocupacao_atual: ocupacaoMap.get(turma.id) || 0,
-          status_counts: statusCounts,
-          total_alunos: total,
-          ultima_matricula: lastByTurma.get(turma.id) || null, // ✅ REMOVIDO: turma.created_at
-        };
-      });
+    items.forEach((t: any) => {
+        totalAlunos += (t.ocupacao_atual || 0);
+        const tr = t.turno || 'sem_turno';
+        porTurnoMap[tr] = (porTurnoMap[tr] || 0) + 1;
+    });
 
-    const porTurnoMap = new Map<string, number>();
-    for (const turma of turmas || []) {
-      const key = turma.turno ?? 'sem_turno';
-      porTurnoMap.set(key, (porTurnoMap.get(key) ?? 0) + 1);
-    }
-
-    const porTurno = Array.from(porTurnoMap.entries()).map(([turno, total]) => ({ turno, total }));
+    const stats = {
+        totalTurmas: items.length,
+        totalAlunos: totalAlunos,
+        porTurno: Object.entries(porTurnoMap).map(([k, v]) => ({ turno: k, total: v }))
+    };
 
     return NextResponse.json({
       ok: true,
       items,
       total: items.length,
-      stats: {
-        totalTurmas: turmas?.length ?? 0,
-        totalAlunos,
-        porTurno,
-      },
-    });
+      stats
+    }, { headers });
+
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    console.error("💥 Erro geral:", e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
 
+// --- POST (Criação) - AQUI ESTÁ A CORREÇÃO ---
 export async function POST(req: Request) {
   try {
     const supabase = await supabaseServerTyped<any>();
+    const headers = new Headers();
     const { data: userRes } = await supabase.auth.getUser();
     const user = userRes?.user;
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
 
-    const { data: prof } = await supabase
-      .from('profiles')
-      .select('current_escola_id, escola_id')
-      .order('created_at', { ascending: false })
-      .limit(1);
-    let escolaId = ((prof?.[0] as any)?.current_escola_id || (prof?.[0] as any)?.escola_id) as string | undefined;
-    if (!escolaId) {
-      try {
-        const { data: vinc } = await supabase
-          .from('escola_usuarios')
-          .select('escola_id')
-          .eq('user_id', user.id)
-          .limit(1);
-        escolaId = (vinc?.[0] as any)?.escola_id as string | undefined;
-      } catch {}
-    }
-    if (!escolaId) {
-      return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 });
-    }
+    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
+    if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 });
+
+    const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id);
+    if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 });
+
+    headers.set('Deprecation', 'true');
+    headers.set('Link', `</api/escolas/${escolaId}/turmas>; rel="successor-version"`);
 
     const body = await req.json();
     const {
       nome,
+      turma_codigo, // NOVO CAMPO
       turno,
       sala,
+      session_id,
       ano_letivo,
+      capacidade_maxima,
+      curso_id,
+      classe_id
     } = body;
 
-    if (!nome || !turno) {
-      return NextResponse.json({ 
-        ok: false, 
-        error: 'Campos obrigatórios em falta: nome, turno' 
-      }, { status: 400 });
+    if (!turma_codigo || !turno || !ano_letivo) {
+      return NextResponse.json({ ok: false, error: 'Código da Turma, Turno e Ano Letivo são obrigatórios' }, { status: 400 });
     }
 
+    const anoLetivoInt = typeof ano_letivo === 'string' ? parseInt(ano_letivo.replace(/\D/g, ''), 10) : ano_letivo;
+    if (isNaN(anoLetivoInt)) {
+        return NextResponse.json({ ok: false, error: 'Ano Letivo inválido' }, { status: 400 });
+    }
+    
+    // Inserção na tabela física 'turmas'
     const { data: newTurma, error } = await supabase
       .from('turmas')
       .insert({
-        nome,
+        escola_id: escolaId,
+        nome, // O nome ainda pode ser um descritivo (Ex: 10ª Classe - Manhã)
+        turma_codigo, // O código único para o ano (Ex: 10A)
+        ano_letivo: anoLetivoInt, // O ano como inteiro
         turno,
         sala: sala || null,
-        ano_letivo: ano_letivo || null,
-        escola_id: escolaId,
+        session_id: session_id || null,
+        capacidade_maxima: capacidade_maxima || 35,
+        curso_id: curso_id || null,   
+        classe_id: classe_id || null  
       })
       .select()
       .single();
 
+    // --- BLOCO DE TRATAMENTO DE DUPLICIDADE ---
     if (error) {
-      console.error("❌ Erro ao criar turma:", error);
-      return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+      if (error.code === '23505') {
+        // A constraint será 'unique_turma_por_ano_e_codigo'
+        return NextResponse.json(
+          { 
+            ok: false, 
+            error: `O código de turma "${turma_codigo}" já está em uso no ano letivo de ${ano_letivo}.` 
+          }, 
+          { status: 409, headers } // Conflict
+        );
+      }
+      
+      // Se não for duplicidade, lança o erro original
+      throw error;
     }
+    // ------------------------------------------
 
     return NextResponse.json({ 
       ok: true, 
       data: newTurma,
       message: 'Turma criada com sucesso' 
-    });
+    }, { headers });
 
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    console.error("💥 Erro geral ao criar turma:", e);
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  } catch (e: any) {
+    console.error("Erro POST Turma:", e);
+    return NextResponse.json({ ok: false, error: e.message || String(e) }, { status: 500 });
   }
 }

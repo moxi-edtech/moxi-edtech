@@ -15,9 +15,12 @@ type Batch = {
   ano_letivo: number | null
 };
 
-export async function GET(req: NextRequest, ctx: { params: { importId: string } }) {
+export async function GET(
+  req: NextRequest,
+  ctx: { params: Promise<{ importId: string }> }
+) {
   try {
-    const importId = ctx.params.importId
+    const { importId } = await ctx.params
     const supabase = await supabaseServerTyped<any>()
     const { data: userRes } = await supabase.auth.getUser()
     const user = userRes?.user
@@ -37,7 +40,7 @@ export async function GET(req: NextRequest, ctx: { params: { importId: string } 
       escolaId = ((prof?.[0] as any)?.current_escola_id || (prof?.[0] as any)?.escola_id) as string | undefined
       if (!escolaId) {
         const { data: vinc } = await supabase
-          .from('escola_usuarios')
+          .from('escola_users')
           .select('escola_id')
           .eq('user_id', user.id)
           .limit(1)
@@ -47,12 +50,15 @@ export async function GET(req: NextRequest, ctx: { params: { importId: string } 
     if (!escolaId) return NextResponse.json({ ok: true, batches: [] })
 
     // Carregar staging agrupado
-    const { data: staged } = await supabase
+    const stagedQuery = supabase
       .from('staging_alunos')
       .select('curso_codigo, classe_numero, turno_codigo, turma_letra, ano_letivo, count:id', { count: 'exact', head: false } as any)
       .eq('import_id', importId)
-      .eq('escola_id', escolaId)
-      .group('curso_codigo, classe_numero, turno_codigo, turma_letra, ano_letivo')
+      .eq('escola_id', escolaId);
+
+    const { data: staged } = await (stagedQuery as any).group(
+      'curso_codigo, classe_numero, turno_codigo, turma_letra, ano_letivo'
+    );
 
     const groups = (staged || []) as Array<{ curso_codigo?: string | null; classe_numero?: number | null; turno_codigo?: string | null; turma_letra?: string | null; ano_letivo?: number | null; count?: number }>
 
@@ -108,4 +114,3 @@ export async function GET(req: NextRequest, ctx: { params: { importId: string } 
     return NextResponse.json({ ok: false, error: msg }, { status: 500 })
   }
 }
-

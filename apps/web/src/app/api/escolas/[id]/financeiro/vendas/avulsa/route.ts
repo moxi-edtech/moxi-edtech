@@ -35,7 +35,7 @@ export async function POST(
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
     const { data: vinc } = await s
-      .from("escola_usuarios")
+      .from("escola_users")
       .select("papel")
       .eq("escola_id", escolaId)
       .eq("user_id", user.id)

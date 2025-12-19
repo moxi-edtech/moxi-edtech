@@ -40,7 +40,7 @@ export async function PATCH(
     let allowed = false
     try {
       const { data: vinc } = await s
-        .from('escola_usuarios')
+        .from('escola_users')
         .select('papel')
         .eq('escola_id', escolaId)
         .eq('user_id', user.id)
@@ -159,7 +159,7 @@ export async function GET(
     if (!allowed) {
       try {
         const { data: vinc } = await s
-          .from('escola_usuarios')
+          .from('escola_users')
           .select('papel')
           .eq('escola_id', escolaId)
           .eq('user_id', user.id)

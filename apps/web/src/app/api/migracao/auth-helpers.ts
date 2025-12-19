@@ -8,7 +8,7 @@ export async function userHasAccessToEscola(
 ): Promise<boolean> {
   try {
     const { data: vinc } = await admin
-      .from("escola_usuarios")
+      .from("escola_users")
       .select("user_id")
       .eq("escola_id", escolaId)
       .eq("user_id", userId)
