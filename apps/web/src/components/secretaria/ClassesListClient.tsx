@@ -25,10 +25,17 @@ export default function ClassesListClient() {
       try {
         const res = await fetch(buildEscolaUrl(escolaId, '/classes'));
         const json = await res.json();
-        if (!res.ok || !json.ok) {
-          throw new Error(json.error || "Falha ao carregar classes");
+        if (!res.ok || !json?.ok) {
+          throw new Error(json?.error || "Falha ao carregar classes");
         }
-        setClasses(json.items);
+
+        const items = Array.isArray(json?.items)
+          ? json.items
+          : Array.isArray(json?.data)
+            ? json.data
+            : [];
+
+        setClasses(items);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Erro desconhecido");
       } finally {
@@ -56,7 +63,7 @@ export default function ClassesListClient() {
 
       {(error || escolaError) && <div className="bg-red-50 text-red-700 p-4 rounded-lg border border-red-200">{error || escolaError}</div>}
 
-      {!loading && !error && classes.length > 0 && (
+      {!loading && !error && Array.isArray(classes) && classes.length > 0 && (
         <div className="bg-white rounded-xl shadow border">
           <table className="min-w-full divide-y divide-slate-200">
             <thead className="bg-slate-50">
