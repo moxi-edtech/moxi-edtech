@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabaseServer";
-import { hasPermission } from "@/lib/permissions";
+import { authorizeDisciplinaManage } from "@/lib/escola/disciplinas";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 
@@ -11,39 +11,8 @@ async function authorize(escolaId: string) {
   const user = auth?.user;
   if (!user) return { ok: false as const, status: 401, error: "Não autenticado" };
 
-  let allowed = false;
-  try {
-    const { data: prof } = await s
-      .from('profiles')
-      .select('role')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1);
-    const role = (prof?.[0] as any)?.role as string | undefined;
-    if (role === 'super_admin') allowed = true;
-  } catch {}
-  try {
-    const { data: vinc } = await s
-      .from('escola_usuarios')
-      .select('papel')
-      .eq('escola_id', escolaId)
-      .eq('user_id', user.id)
-      .maybeSingle();
-    const papel = (vinc as any)?.papel as any | undefined;
-    allowed = !!papel && (hasPermission(papel, 'configurar_escola') || hasPermission(papel, 'gerenciar_disciplinas'));
-  } catch {}
-  if (!allowed) {
-    try {
-      const { data: adminLink } = await s
-        .from('escola_administradores')
-        .select('user_id')
-        .eq('escola_id', escolaId)
-        .eq('user_id', user.id)
-        .limit(1);
-      allowed = Boolean(adminLink && (adminLink as any[]).length > 0);
-    } catch {}
-  }
-  if (!allowed) return { ok: false as const, status: 403, error: 'Sem permissão' };
+  const authz = await authorizeDisciplinaManage(s as any, escolaId, user.id);
+  if (!authz.allowed) return { ok: false as const, status: 403, error: authz.reason || 'Sem permissão' };
   return { ok: true as const };
 }
 

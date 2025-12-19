@@ -22,7 +22,7 @@ export async function GET() {
     const user = userRes?.user;
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
 
-    // Resolve escola do usuário: profiles.current_escola_id -> profiles.escola_id -> escola_usuarios.escola_id
+    // Resolve escola do usuário: profiles.current_escola_id -> profiles.escola_id -> escola_users.escola_id
     const { data: prof } = await supabase
       .from('profiles')
       .select('current_escola_id, escola_id, user_id')
@@ -32,7 +32,7 @@ export async function GET() {
     if (!escolaId) {
       try {
         const { data: vinc } = await supabase
-          .from('escola_usuarios')
+          .from('escola_users')
           .select('escola_id')
           .eq('user_id', user.id)
           .limit(1);

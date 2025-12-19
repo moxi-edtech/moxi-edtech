@@ -58,6 +58,7 @@ ALTER TABLE public.pagamentos
   ADD COLUMN IF NOT EXISTS conciliado BOOLEAN NOT NULL DEFAULT false;
 
 -- 4) Radar de inadimplência (view base)
+DROP VIEW IF EXISTS public.vw_radar_inadimplencia;
 CREATE OR REPLACE VIEW public.vw_radar_inadimplencia AS
 SELECT
   m.id                          AS mensalidade_id,
@@ -73,7 +74,7 @@ SELECT
   m.data_vencimento,
   CURRENT_DATE - m.data_vencimento        AS dias_em_atraso,
   m.status,
-  a.nome_completo AS nome_aluno,
+  a.nome AS nome_aluno,
   t.nome          AS nome_turma
 FROM public.mensalidades m
 JOIN public.alunos  a ON a.id = m.aluno_id
@@ -102,12 +103,26 @@ $$;
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE policyname = 'Mensalidades - staff da escola' AND tablename = 'mensalidades'
+    SELECT 1 FROM pg_policies WHERE policyname = 'Mensalidades - staff da escola - SELECT' AND tablename = 'mensalidades'
   ) THEN
-    CREATE POLICY "Mensalidades - staff da escola"
+    CREATE POLICY "Mensalidades - staff da escola - SELECT"
     ON public.mensalidades
-    FOR SELECT, UPDATE
-    USING ( public.is_staff_of_escola(escola_id) );
+    FOR SELECT
+    USING ( public.is_staff_escola(escola_id) );
+  END IF;
+END
+$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname = 'Mensalidades - staff da escola - UPDATE' AND tablename = 'mensalidades'
+  ) THEN
+    CREATE POLICY "Mensalidades - staff da escola - UPDATE"
+    ON public.mensalidades
+    FOR UPDATE
+    USING ( public.is_staff_escola(escola_id) )
+    WITH CHECK ( public.is_staff_escola(escola_id) );
   END IF;
 END
 $$;

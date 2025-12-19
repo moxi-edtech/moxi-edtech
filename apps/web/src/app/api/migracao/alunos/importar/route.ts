@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
 interface ImportBody {
   importId: string;
   escolaId: string;
+  anoLetivo: number;
 }
 
 export async function POST(request: Request) {
@@ -34,9 +35,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
   }
 
-  const { importId, escolaId } = body;
-  if (!importId || !escolaId) {
-    return NextResponse.json({ error: "importId e escolaId são obrigatórios" }, { status: 400 });
+  const { importId, escolaId, anoLetivo } = body;
+  if (!importId || !escolaId || !anoLetivo) {
+    return NextResponse.json({ error: "importId, escolaId e anoLetivo são obrigatórios" }, { status: 400 });
   }
 
   const supabase = createAdminClient<Database>(adminUrl, serviceKey);
@@ -50,6 +51,7 @@ export async function POST(request: Request) {
   const { data, error } = await supabase.rpc("importar_alunos", {
     p_import_id: importId,
     p_escola_id: escolaId,
+    p_ano_letivo: Number(anoLetivo), // Vital!
   });
 
   if (error) {

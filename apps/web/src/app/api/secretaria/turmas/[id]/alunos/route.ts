@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser, authorizeTurmasManage } from "@/lib/escola/disciplinas";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
+import type { Database } from "~types/supabase";
 
 type AlunoTurmaRow = {
   matricula_id: string;
@@ -27,7 +30,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await supabaseServerTyped<any>();
+    const supabase = await supabaseServerTyped<Database>();
+    const headers = new Headers();
     const { data: userRes } = await supabase.auth.getUser();
     const user = userRes?.user;
 
@@ -38,9 +42,26 @@ export async function GET(
       );
     }
 
+    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
+    if (!escolaId) return NextResponse.json({ ok: true, turmaId: null, total: 0, alunos: [] }, { headers });
+
+    const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id);
+    if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 });
+
+    headers.set('Deprecation', 'true');
+    headers.set('Link', `</api/escolas/${escolaId}/turmas>; rel="successor-version"`);
+
     const { id: turmaId } = await params;
 
-    const { data, error } = await supabase
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ ok: false, error: "Configuração Supabase ausente." }, { status: 500 });
+    }
+    const admin = createAdminClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    const { data, error } = await admin
       .from("matriculas")
       .select(
         `
@@ -52,6 +73,7 @@ export async function GET(
         alunos (
           id,
           nome,
+          profile_id,
           bi_numero,
           data_nascimento,
           naturalidade,
@@ -61,14 +83,16 @@ export async function GET(
           responsavel,
           telefone_responsavel,
           encarregado_relacao,
-          profiles (
-            id,
-            numero_login
+          profiles!alunos_profile_id_fkey (
+            user_id,
+            numero_login,
+            nome
           )
         )
       `
       )
       .eq("turma_id", turmaId)
+      .eq("escola_id", escolaId)
       .order("numero_lista", { ascending: true })
       .order("created_at", { ascending: true });
 
@@ -116,7 +140,7 @@ export async function GET(
       turmaId,
       total: alunos.length,
       alunos,
-    });
+    }, { headers });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json(

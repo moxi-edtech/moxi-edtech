@@ -26,7 +26,7 @@ export async function GET(req: Request) {
       const dt = new Date(); dt.setDate(dt.getDate() - d); return dt.toISOString()
     })()
 
-    // Esta exportação usa como fonte usuarios vinculados como 'professor' no portal (escola_usuarios + profiles)
+    // Esta exportação usa como fonte usuarios vinculados como 'professor' no portal (escola_users + profiles)
     if (cargo && cargo !== 'professor') {
       return NextResponse.json([])
     }
@@ -41,7 +41,7 @@ export async function GET(req: Request) {
     const papels = cargoToPapels[cargo as keyof typeof cargoToPapels] ?? ['professor']
 
     const { data: vinc, error: vincErr } = await s
-      .from('escola_usuarios')
+      .from('escola_users')
       .select('user_id, created_at, papel')
       .eq('escola_id', escolaId)
       .in('papel', papels)

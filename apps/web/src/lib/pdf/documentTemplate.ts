@@ -1,4 +1,4 @@
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb, type PDFFont } from "pdf-lib";
 
 export type InstitutionalPdfOptions = {
   title: string;
@@ -18,8 +18,8 @@ export type InstitutionalPdfOptions = {
     height: number;
     margin: number;
     contentStartY: number;
-    font: ReturnType<PDFDocument["embedFont"]>;
-    boldFont: ReturnType<PDFDocument["embedFont"]>;
+    font: PDFFont;
+    boldFont: PDFFont;
     verificationUrl?: string;
   }) => Promise<void>;
 };

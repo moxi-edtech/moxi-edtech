@@ -12,7 +12,7 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
     const s = await supabaseServer()
     const { data: { user } } = await s.auth.getUser()
     if (!user?.id) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
-    const { data: vinc } = await s.from('escola_usuarios').select('papel').eq('user_id', user.id).eq('escola_id', escolaId).limit(1)
+    const { data: vinc } = await s.from('escola_users').select('papel').eq('user_id', user.id).eq('escola_id', escolaId).limit(1)
     const papel = vinc?.[0]?.papel as any
     if (!hasPermission(papel, 'gerenciar_turmas')) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     const { data: profCheck } = await s.from('profiles' as any).select('escola_id').eq('user_id', user.id).maybeSingle()

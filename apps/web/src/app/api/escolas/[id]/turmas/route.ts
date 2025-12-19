@@ -2,66 +2,91 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
+import { canManageEscolaResources } from "../permissions";
 
-// GET /api/escolas/[id]/turmas
-// Lista turmas da escola usando service role (com autorização de vínculo)
+// --- GET: Listar Turmas (Admin) ---
 export async function GET(
-  _req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  req: NextRequest,
+  context: { params: { id: string } }
 ) {
-  const { id: escolaId } = await context.params;
+  const { id: escolaId } = context.params;
   try {
     const s = await supabaseServer();
     const { data: auth } = await s.auth.getUser();
     const user = auth?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ ok: false, error: "Configuração Supabase ausente." }, { status: 500 });
+    }
+    const admin = createAdminClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
 
-    // Autoriza leitura básica: qualquer vínculo com a escola (ou super_admin/admin)
-    let allowed = false;
-    try {
-      const { data: prof } = await s
-        .from("profiles")
-        .select("role")
-        .eq("user_id", user.id)
-        .order('created_at', { ascending: false })
-        .limit(1);
-      const role = (prof?.[0] as any)?.role as string | undefined;
-      if (role === 'super_admin') allowed = true;
-    } catch {}
-    if (!allowed) {
-      try {
-        const { data: vinc } = await s
-          .from("escola_usuarios")
-          .select("papel")
-          .eq("escola_id", escolaId)
-          .eq("user_id", user.id)
-          .maybeSingle();
-        allowed = Boolean((vinc as any)?.papel);
-      } catch {}
-    }
-    if (!allowed) {
-      try {
-        const { data: adminLink } = await s
-          .from("escola_administradores")
-          .select("user_id")
-          .eq("escola_id", escolaId)
-          .eq("user_id", user.id)
-          .limit(1);
-        allowed = Boolean(adminLink && (adminLink as any[]).length > 0);
-      } catch {}
-    }
-    if (!allowed) {
-      try {
-        const { data: prof } = await s
-          .from("profiles")
-          .select("role, escola_id")
-          .eq("user_id", user.id)
-          .eq("escola_id", escolaId)
-          .limit(1);
-        allowed = Boolean(prof && (prof as any[]).length > 0 && (prof as any)[0]?.role === 'admin');
-      } catch {}
-    }
+    const allowed = await canManageEscolaResources(admin, escolaId, user.id);
     if (!allowed) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
+
+    // 3. Parâmetros da URL
+    const url = new URL(req.url);
+    const turno = url.searchParams.get('turno');
+    
+    // 4. Query à VIEW
+    let query = admin
+      .from('vw_turmas_para_matricula') 
+      .select('*')
+      .eq('escola_id', escolaId)
+      .order('nome', { ascending: true });
+
+    if (turno && turno !== 'todos') query = query.eq('turno', turno);
+    
+    const { data: items, error } = await query;
+
+    if (error) {
+        console.error("Erro na View:", error);
+        throw error;
+    }
+
+    // 5. Estatísticas
+    let totalAlunos = 0;
+    const porTurnoMap: Record<string, number> = {};
+
+    (items || []).forEach((t: any) => {
+        totalAlunos += (t.ocupacao_atual || 0);
+        const tr = t.turno || 'sem_turno';
+        porTurnoMap[tr] = (porTurnoMap[tr] || 0) + 1;
+    });
+
+    const stats = {
+        totalTurmas: (items || []).length,
+        totalAlunos: totalAlunos,
+        porTurno: Object.entries(porTurnoMap).map(([k, v]) => ({ turno: k, total: v }))
+    };
+
+    return NextResponse.json({
+      ok: true,
+      items: items || [],
+      total: (items || []).length,
+      stats
+    });
+
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'Erro inesperado';
+    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+  }
+}
+
+// --- POST: Criar Turma (COM BLINDAGEM) ---
+export async function POST(
+  req: NextRequest,
+  context: { params: { id: string } }
+) {
+  const { id: escolaId } = context.params;
+  
+  try {
+    const s = await supabaseServer();
+    const { data: auth } = await s.auth.getUser();
+    const user = auth?.user;
+    if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return NextResponse.json({ ok: false, error: "Configuração Supabase ausente." }, { status: 500 });
@@ -71,17 +96,62 @@ export async function GET(
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    const { data, error } = await admin
-      .from('turmas')
-      .select('id, nome')
-      .eq('escola_id', escolaId)
-      .order('nome', { ascending: true });
-    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+    const allowed = await canManageEscolaResources(admin, escolaId, user.id);
+    if (!allowed) {
+      return NextResponse.json({ ok: false, error: "Permissão negada" }, { status: 403 });
+    }
 
-    return NextResponse.json({ ok: true, data: data || [] });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Erro inesperado';
-    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+    const body = await req.json().catch(() => ({}));
+    const { 
+      nome, 
+      turno, 
+      sala, 
+      ano_letivo, // OBRIGATÓRIO PARA A CONSTRAINT
+      session_id, 
+      capacidade_maxima, 
+      curso_id, 
+      classe_id 
+    } = body;
+
+    if (!nome || !turno || !ano_letivo) {
+        return NextResponse.json({ ok: false, error: "Nome, Turno e Ano Letivo são obrigatórios" }, { status: 400 });
+    }
+
+    // Insert direto na tabela
+    const { data, error } = await (admin as any)
+      .from('turmas')
+      .insert({
+        escola_id: escolaId,
+        nome,
+        turno,
+        ano_letivo, // Importante para diferenciar Turma A 2024 de Turma A 2025
+        session_id: session_id || null,
+        sala: sala || null,
+        capacidade_maxima: capacidade_maxima || 35,
+        curso_id: curso_id || null,
+        classe_id: classe_id || null
+      })
+      .select()
+      .single();
+
+    if (error) {
+        // [BLINDAGEM] Tratamento do Erro de Constraint Unique
+        if (error.code === '23505') {
+            return NextResponse.json(
+                { 
+                  ok: false, 
+                  error: `A Turma "${nome}" já existe para esta Classe/Curso neste turno e ano letivo.` 
+                }, 
+                { status: 409 } // Conflict
+            );
+        }
+        throw error;
+    }
+
+    return NextResponse.json({ ok: true, data, message: "Turma criada com sucesso" });
+
+  } catch (e: any) {
+    console.error("Erro POST Turma:", e);
+    return NextResponse.json({ ok: false, error: e.message || String(e) }, { status: 500 });
   }
 }
-

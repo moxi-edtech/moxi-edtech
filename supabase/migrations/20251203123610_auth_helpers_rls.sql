@@ -1,4 +1,4 @@
--- 20251203_auth_helpers_rls.sql
+-- 20251203123610_auth_helpers_rls.sql (renamed from 20251203)
 -- Infra de autenticação / RLS (helpers globais)
 
 -- ======================================================================

@@ -34,7 +34,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     // Resolve first admin for the school
     const { data: vinc } = await admin
-      .from('escola_usuarios')
+      .from('escola_users')
       .select('user_id,papel')
       .eq('escola_id', escolaId)
       .in('papel', ['admin','staff_admin'] as any)

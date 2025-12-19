@@ -21,7 +21,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const { data: userRes } = await s.auth.getUser()
     const requesterId = userRes?.user?.id
     if (!requesterId) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
-    const { data: vinc } = await s.from('escola_usuarios').select('papel').eq('user_id', requesterId).eq('escola_id', escolaId).limit(1)
+    const { data: vinc } = await s.from('escola_users').select('papel').eq('user_id', requesterId).eq('escola_id', escolaId).limit(1)
     const papelReq = vinc?.[0]?.papel as any
     if (!hasPermission(papelReq, 'criar_usuario')) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     const { data: profCheck } = await s.from('profiles' as any).select('escola_id').eq('user_id', requesterId).maybeSingle()

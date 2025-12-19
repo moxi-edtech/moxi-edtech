@@ -21,7 +21,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     let escolaId = ((prof?.[0] as any)?.current_escola_id || (prof?.[0] as any)?.escola_id) as string | undefined
     if (!escolaId) {
       const { data: vinc } = await supabase
-        .from('escola_usuarios')
+        .from('escola_users')
         .select('escola_id')
         .eq('user_id', user.id)
         .limit(1)

@@ -46,7 +46,7 @@ export default function ProfessoresPage() {
       try {
         setLoading(true)
         const { data: links, error: linksErr } = await supabase
-          .from("escola_usuarios")
+          .from("escola_users")
           .select("user_id, papel")
           .eq("escola_id", escolaId)
           .eq("papel", "professor")
@@ -118,7 +118,7 @@ export default function ProfessoresPage() {
   const loadTurmaAssignments = async (turmaId: string) => {
     if (!turmaId) { setTurmaAssignments(null); return }
     try {
-      const res = await fetch(`/api/secretaria/turmas/${turmaId}/disciplinas`, { cache: 'no-store' })
+      const res = await fetch(`/api/escolas/${escolaId}/turmas/${turmaId}/disciplinas`, { cache: 'no-store' })
       const json = await res.json().catch(() => null)
       if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao carregar atribuições')
       setTurmaAssignments(json.items || [])
@@ -134,7 +134,7 @@ export default function ProfessoresPage() {
     }
     setAtribuindo(true)
     try {
-      const res = await fetch(`/api/secretaria/turmas/${atribTurmaId}/atribuir-professor`, {
+      const res = await fetch(`/api/escolas/${escolaId}/turmas/${atribTurmaId}/atribuir-professor`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ disciplina_id: atribDisciplinaId, professor_user_id: atribProfessorUserId }),
@@ -395,7 +395,7 @@ export default function ProfessoresPage() {
                               onClick={async () => {
                                 if (!confirm('Remover esta atribuição?')) return
                                 try {
-                                  const res = await fetch(`/api/secretaria/turmas/${atribTurmaId}/disciplinas/${a.disciplina?.id}`, { method: 'DELETE' })
+                                  const res = await fetch(`/api/escolas/${escolaId}/turmas/${atribTurmaId}/disciplinas/${a.disciplina?.id}`, { method: 'DELETE' })
                                   const json = await res.json().catch(() => null)
                                   if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao remover')
                                   showToast('Atribuição removida', 'success')

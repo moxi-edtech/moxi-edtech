@@ -3,6 +3,8 @@ import { randomUUID } from "crypto";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { createInstitutionalPdf } from "@/lib/pdf/documentTemplate";
 import { createQrImage, buildSignatureLine } from "@/lib/pdf/qr";
+import { resolveEscolaIdForUser, authorizeTurmasManage } from "@/lib/escola/disciplinas";
+import { tryCanonicalFetch } from "@/lib/api/proxyCanonical";
 
 export async function GET(
   req: Request,
@@ -10,6 +12,7 @@ export async function GET(
 ) {
   try {
     const supabase = await supabaseServerTyped<any>();
+    const headers = new Headers();
     const { data: userRes } = await supabase.auth.getUser();
     const user = userRes?.user;
 
@@ -22,25 +25,45 @@ export async function GET(
 
     const { id: turmaId } = await params;
 
+    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
+    if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 });
+
+    const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id);
+    if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 });
+
+    headers.set('Deprecation', 'true');
+    headers.set('Link', `</api/escolas/${escolaId}/turmas>; rel="successor-version"`);
+
+    const forwarded = await tryCanonicalFetch(req, `/api/escolas/${escolaId}/turmas/${turmaId}/alunos/pdf`);
+    if (forwarded) return forwarded;
+
     const { data: turma, error: turmaError } = await supabase
       .from("turmas")
       .select(
         `
-        *,
+        id,
+        nome,
+        classe_id,
+        turno,
+        sala,
         escolas (*),
-        school_sessions (*)
+        school_sessions (*),
+        classes (
+            nome
+        )
       `
       )
       .eq("id", turmaId)
+      .eq("escola_id", escolaId)
       .single();
 
     if (turmaError || !turma) {
       return NextResponse.json(
         { ok: false, error: "Turma não encontrada" },
-        { status: 404 }
+        { status: 404, headers }
       );
     }
-
+    const classeNome = (turma as any)?.classes?.nome ?? '—';
     const escola = (turma as any).escolas;
     const sessao = (turma as any).school_sessions;
 
@@ -63,13 +86,14 @@ export async function GET(
       `
       )
       .eq("turma_id", turmaId)
+      .eq("escola_id", escolaId)
       .order("numero_lista", { ascending: true })
       .order("created_at", { ascending: true });
 
     if (alunosError) {
       return NextResponse.json(
         { ok: false, error: alunosError.message },
-        { status: 500 }
+        { status: 500, headers }
       );
     }
 
@@ -131,7 +155,7 @@ export async function GET(
 
         draw(
           `Turma: ${turma.nome ?? "—"} • Classe: ${
-            turma.classe ?? "—"
+            classeNome ?? "—"
           } • Turno: ${turma.turno ?? "—"}`,
           margin,
           10,
@@ -232,13 +256,13 @@ export async function GET(
       },
     });
 
-    return new NextResponse(pdfBytes, {
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="lista_alunos_turma_${
-          turma.nome ?? "turma"
-        }.pdf"`,
-      },
+    headers.set("Content-Type", "application/pdf");
+    headers.set(
+      "Content-Disposition",
+      `attachment; filename="lista_alunos_turma_${turma.nome ?? "turma"}.pdf"`
+    );
+    return new NextResponse(pdfBytes as any, {
+      headers,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

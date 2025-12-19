@@ -17,12 +17,15 @@ export default function RequireSecretaria({ children }: { children: React.ReactN
       if (userErr || !user) { router.replace("/login"); return; }
 
       const { data: vinculos, error } = await supabase
-        .from("escola_usuarios")
-        .select("id, papel")
+        .from("escola_users")
+        .select("*")
         .eq("user_id", user.id)
-        .eq("papel", "secretaria")
-        .limit(1);
-      if (error || !vinculos || vinculos.length === 0) { router.replace("/"); return; }
+        .limit(10);
+      const hasSecretaria = (vinculos || []).some((v: any) => {
+        const papel = (v as any)?.papel ?? (v as any)?.role ?? null;
+        return papel === "secretaria";
+      });
+      if (error || !hasSecretaria) { router.replace("/"); return; }
 
       if (active) setReady(true);
     })();
@@ -32,4 +35,3 @@ export default function RequireSecretaria({ children }: { children: React.ReactN
   if (!ready) return <div className="p-6">🔒 Verificando permissões da secretaria...</div>;
   return <>{children}</>;
 }
-

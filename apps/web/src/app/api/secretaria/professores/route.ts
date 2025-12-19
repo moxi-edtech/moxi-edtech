@@ -32,7 +32,7 @@ export async function GET(req: Request) {
       escolaId = ((prof?.[0] as any)?.current_escola_id || (prof?.[0] as any)?.escola_id) as string | undefined
       if (!escolaId) {
         const { data: vinc } = await s
-          .from('escola_usuarios')
+          .from('escola_users')
           .select('escola_id')
           .eq('user_id', user.id)
           .limit(1)
@@ -44,7 +44,7 @@ export async function GET(req: Request) {
 
     // Verificar vínculo do usuário com a escola
     const { data: vincUser } = await s
-      .from('escola_usuarios')
+      .from('escola_users')
       .select('user_id')
       .eq('user_id', user.id)
       .eq('escola_id', escolaId)
@@ -80,7 +80,7 @@ export async function GET(req: Request) {
 
       // 1) Buscar vínculos na escola pelos papéis desejados
       const { data: vinc, error: vincErr } = await (admin as any)
-        .from('escola_usuarios')
+        .from('escola_users')
         .select('id, user_id, created_at, papel')
         .eq('escola_id', escolaId)
         .in('papel', papels)
@@ -145,7 +145,7 @@ export async function GET(req: Request) {
 
         // Fallback sem service role: tentar via cliente do usuário (pode retornar vazio por RLS)
         const { data: vinc, error: vincErr } = await s
-          .from('escola_usuarios')
+          .from('escola_users')
           .select('id, user_id, created_at, papel')
           .eq('escola_id', escolaId)
           .in('papel', papels)

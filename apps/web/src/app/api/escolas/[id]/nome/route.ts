@@ -17,17 +17,31 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
 
     // Authorization: allow any user vinculado à escola; also allow admin/profiles-based link
     let allowed = false;
+
+    // First, check for an active onboarding draft, which grants temporary permission.
     try {
-      const { data: vinc } = await s
-        .from("escola_usuarios")
-        .select("papel")
+      const { data: draft } = await s
+        .from("onboarding_drafts")
+        .select("id")
         .eq("escola_id", escolaId)
         .eq("user_id", user.id)
         .maybeSingle();
-      const papel = (vinc as any)?.papel as string | undefined;
-      // Qualquer vínculo concede leitura de identificação básica da escola
-      if (!allowed) allowed = Boolean(papel);
+      if (draft) allowed = true;
     } catch {}
+
+    if (!allowed) {
+      try {
+        const { data: vinc } = await s
+          .from("escola_users")
+          .select("papel")
+          .eq("escola_id", escolaId)
+          .eq("user_id", user.id)
+          .maybeSingle();
+        const papel = (vinc as any)?.papel as string | undefined;
+        // Qualquer vínculo concede leitura de identificação básica da escola
+        if (!allowed) allowed = Boolean(papel);
+      } catch {}
+    }
     if (!allowed) {
       try {
         const { data: adminLink } = await s

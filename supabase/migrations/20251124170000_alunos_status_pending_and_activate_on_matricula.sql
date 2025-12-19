@@ -4,6 +4,8 @@
 
 -- 0) Garantir que o status suporta 'pendente'
 
+ALTER TABLE public.alunos ADD COLUMN IF NOT EXISTS status text;
+
 -- Opcional: normalizar algum valor estranho antes (exemplo: 'active' antigo)
 UPDATE public.alunos
    SET status = 'ativo'

@@ -7,7 +7,7 @@ export async function GET(req: Request) {
     const url = new URL(req.url)
     const format = (url.searchParams.get('format') || 'csv').toLowerCase()
     const q = url.searchParams.get('q') || ''
-    const days = url.searchParams.get('days') || '30'
+    const days = url.searchParams.get('days') ?? '0'
 
     const { data: sess } = await s.auth.getUser()
     const user = sess?.user
@@ -26,7 +26,7 @@ export async function GET(req: Request) {
 
     let query = s
       .from('matriculas')
-      .select('id, aluno_id, turma_id, status, created_at')
+      .select('id, aluno_id, turma_id, status, data_matricula, numero_chamada, created_at')
       .eq('escola_id', escolaId)
       .gte('created_at', since)
       .order('created_at', { ascending: false })
@@ -57,7 +57,7 @@ export async function GET(req: Request) {
       const escaped = s.replace(/"/g, '""')
       return `"${escaped}"`
     }
-    const header = ['id','aluno_id','turma_id','status','created_at']
+    const header = ['id','aluno_id','turma_id','status','data_matricula','numero_chamada','created_at']
     const csv = [header.map(csvEscape).join(','), ...rows.map((r: any) => header.map(k => csvEscape(r[k])).join(','))].join('\n')
     return new NextResponse(csv, { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="matriculas_${ts}.csv"` } })
   } catch (err) {

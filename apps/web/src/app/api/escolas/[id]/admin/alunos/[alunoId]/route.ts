@@ -17,7 +17,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string;
     const { data: prof } = await s.from('profiles').select('role').eq('user_id', user.id).maybeSingle();
     const globalRole = (prof as any)?.role as string | undefined;
     if (!['super_admin','global_admin'].includes(globalRole || '')) {
-      const { data: vinc } = await s.from('escola_usuarios').select('papel').eq('escola_id', escolaId).eq('user_id', user.id).limit(1);
+      const { data: vinc } = await s.from('escola_users').select('papel').eq('escola_id', escolaId).eq('user_id', user.id).limit(1);
       const papel = (vinc?.[0] as any)?.papel as string | undefined;
       if (papel !== 'admin') return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
     }
@@ -67,7 +67,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string; a
     const { data: prof } = await s.from('profiles').select('role').eq('user_id', user.id).maybeSingle();
     const globalRole = (prof as any)?.role as string | undefined;
     if (!['super_admin','global_admin'].includes(globalRole || '')) {
-      const { data: vinc } = await s.from('escola_usuarios').select('papel').eq('escola_id', escolaId).eq('user_id', user.id).limit(1);
+      const { data: vinc } = await s.from('escola_users').select('papel').eq('escola_id', escolaId).eq('user_id', user.id).limit(1);
       const papel = (vinc?.[0] as any)?.papel as string | undefined;
       if (papel !== 'admin') return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
     }

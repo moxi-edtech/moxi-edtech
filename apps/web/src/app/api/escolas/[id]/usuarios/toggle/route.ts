@@ -26,7 +26,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const { data: userRes } = await s.auth.getUser()
     const requesterId = userRes?.user?.id
     if (!requesterId) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
-    const { data: vinc } = await s.from('escola_usuarios').select('papel').eq('user_id', requesterId).eq('escola_id', escolaId).limit(1)
+    const { data: vinc } = await s.from('escola_users').select('papel').eq('user_id', requesterId).eq('escola_id', escolaId).limit(1)
     const papelReq = vinc?.[0]?.papel as any
     if (!hasPermission(papelReq, 'editar_usuario')) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     const { data: profCheck } = await s.from('profiles' as any).select('escola_id').eq('user_id', requesterId).maybeSingle()
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
     const roleBefore = (prof?.[0] as any)?.role as string | undefined
     const { data: linkBefore } = await admin
-      .from('escola_usuarios')
+      .from('escola_users')
       .select('user_id')
       .eq('escola_id', escolaId)
       .eq('user_id', userId)
@@ -59,9 +59,9 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     if (ativo) {
       // ensure link exists
     try {
-      await admin.from('escola_usuarios').insert([{ escola_id: escolaId, user_id: userId, papel: papel || 'secretaria' } as TablesInsert<'escola_usuarios'>]).select('user_id').single()
+      await admin.from('escola_users').insert([{ escola_id: escolaId, user_id: userId, papel: papel || 'secretaria' } as TablesInsert<'escola_users'>]).select('user_id').single()
     } catch {
-      if (papel) await admin.from('escola_usuarios').update({ papel }).eq('escola_id', escolaId).eq('user_id', userId)
+      if (papel) await admin.from('escola_users').update({ papel }).eq('escola_id', escolaId).eq('user_id', userId)
     }
       // set profile.escola_id to this if empty
       if (!prof?.[0]?.escola_id) await admin.from('profiles').update({ escola_id: escolaId }).eq('user_id', userId)
@@ -74,13 +74,13 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       recordAuditServer({ escolaId, portal: 'admin_escola', acao: 'USUARIO_ATIVADO', entity: 'usuario', entityId: userId, details: { email, papel: papel || 'secretaria', ativo_before: ativoBefore, ativo_after: true, role_before: roleBefore } }).catch(() => null)
     } else {
       // remove link
-      await admin.from('escola_usuarios').delete().eq('escola_id', escolaId).eq('user_id', userId)
+      await admin.from('escola_users').delete().eq('escola_id', escolaId).eq('user_id', userId)
       // if profile.escola_id equals this, null it
       if (prof?.[0]?.escola_id === escolaId) await admin.from('profiles').update({ escola_id: null }).eq('user_id', userId)
       // if user has no more school links, downgrade role to 'guest'
       let roleAfter = roleBefore
       const { data: remaining } = await admin
-        .from('escola_usuarios')
+        .from('escola_users')
         .select('user_id')
         .eq('user_id', userId)
         .limit(1)

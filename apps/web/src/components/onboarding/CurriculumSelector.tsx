@@ -3,7 +3,11 @@
 import { useMemo } from "react";
 import type { ComponentType } from "react";
 import type { CurriculumKey } from "@/lib/onboarding";
-import { CURRICULUM_PRESETS } from "@/lib/onboarding";
+import {
+  CURRICULUM_PRESETS,
+  CURRICULUM_PRESETS_META,
+} from "@/lib/onboarding";
+import { PRESET_TO_TYPE } from "@/lib/courseTypes";
 import {
   BookOpen,
   Briefcase,
@@ -18,14 +22,6 @@ interface CurriculumPresetSelectorProps {
 }
 
 type GroupId = "basico" | "tecnico" | "saude";
-
-interface PresetMeta {
-  key: CurriculumKey;
-  title: string;
-  badge?: string;
-  desc?: string;
-  group: GroupId;
-}
 
 const ICONS_BY_GROUP: Record<
   GroupId,
@@ -43,105 +39,50 @@ const GROUP_LABELS: Record<GroupId, string> = {
   saude: "Ensino Técnico de Saúde",
 };
 
-// Mapeamento semântico das keys para a UI
-const PRESETS_META: PresetMeta[] = [
-  // Básico
-  {
-    key: "primario_base",
-    title: "Primário (Base)",
-    badge: "1ª a 6ª Classe",
-    desc: "Currículo enxuto para escolas de base",
-    group: "basico",
-  },
-  {
-    key: "primario_avancado",
-    title: "Primário (Avançado)",
-    badge: "1ª a 6ª Classe",
-    desc: "Inclui Ciências, História e Geografia",
-    group: "basico",
-  },
-  {
-    key: "ciclo1",
-    title: "1º Ciclo",
-    badge: "7ª a 9ª Classe",
-    desc: "Línguas, Ciências e Humanidades",
-    group: "basico",
-  },
-  {
-    key: "puniv",
-    title: "Ciências Físico-Biológicas",
-    badge: "IIº Ciclo",
-    desc: "Ramo científico para acesso ao ensino superior",
-    group: "basico",
-  },
-  {
-    key: "economicas",
-    title: "Ciências Económicas e Jurídicas",
-    badge: "IIº Ciclo",
-    desc: "Base para cursos de Gestão, Direito, Economia",
-    group: "basico",
-  },
+type PresetCard = {
+  key: CurriculumKey;
+  title: string;
+  badge?: string;
+  desc?: string;
+  group: GroupId;
+};
 
-  // Técnico
-  {
-    key: "tecnico_informatica",
-    title: "Técnico de Informática",
-    badge: "Muito popular",
-    desc: "Programação, redes, sistemas e projecto",
-    group: "tecnico",
-  },
-  {
-    key: "tecnico_gestao",
-    title: "Técnico de Gestão / Contabilidade",
-    badge: "Administração",
-    desc: "Contabilidade, fiscalidade e gestão",
-    group: "tecnico",
-  },
-  {
-    key: "tecnico_construcao",
-    title: "Técnico de Construção Civil",
-    badge: "Obras",
-    desc: "Desenho, materiais, topografia e estabilidade",
-    group: "tecnico",
-  },
-  {
-    key: "tecnico_base",
-    title: "Técnico (Base Genérica)",
-    badge: "Modelo genérico",
-    desc: "Bloco padrão para técnicos não listados",
-    group: "tecnico",
-  },
-
-  // Saúde
-  {
-    key: "saude_enfermagem",
-    title: "Técnico de Enfermagem",
-    badge: "Saúde",
-    desc: "Fundamentos, comunitária, materno-infantil",
-    group: "saude",
-  },
-  {
-    key: "saude_farmacia_analises",
-    title: "Farmácia / Análises Clínicas",
-    badge: "Saúde",
-    desc: "Microbiologia, bioquímica, imunologia",
-    group: "saude",
-  },
-];
+const GROUP_BY_PRESET: Partial<Record<CurriculumKey, GroupId>> = {
+  saude_enfermagem: "saude",
+  saude_farmacia_analises: "saude",
+};
 
 export function CurriculumPresetSelector({
   value,
   onChange,
 }: CurriculumPresetSelectorProps) {
   const grouped = useMemo(() => {
-    const groups: Record<GroupId, PresetMeta[]> = {
+    const groups: Record<GroupId, PresetCard[]> = {
       basico: [],
       tecnico: [],
       saude: [],
     };
-    for (const meta of PRESETS_META) {
-      groups[meta.group].push(meta);
-    }
+
+    const resolveGroup = (key: CurriculumKey): GroupId => {
+      if (GROUP_BY_PRESET[key]) return GROUP_BY_PRESET[key] as GroupId;
+      const type = PRESET_TO_TYPE[key];
+      return type === "tecnico" ? "tecnico" : "basico";
+    };
+
+    (Object.entries(CURRICULUM_PRESETS_META) as [
+      CurriculumKey,
+      (typeof CURRICULUM_PRESETS_META)[CurriculumKey]
+    ][]).forEach(([key, meta]) => {
+      const group = resolveGroup(key);
+      groups[group].push({
+        key,
+        title: meta.label,
+        badge: meta.badge,
+        desc: meta.description,
+        group,
+      });
+    });
+
     return groups;
   }, []);
 

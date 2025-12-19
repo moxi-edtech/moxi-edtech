@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     const { data: prof } = await s.from('profiles' as any).select('current_escola_id, escola_id').eq('user_id', user.id).limit(1)
     escolaId = ((prof?.[0] as any)?.current_escola_id || (prof?.[0] as any)?.escola_id) as string | undefined
     if (!escolaId) {
-      const { data: vinc } = await s.from('escola_usuarios').select('escola_id').eq('user_id', user.id).limit(1)
+      const { data: vinc } = await s.from('escola_users').select('escola_id').eq('user_id', user.id).limit(1)
       escolaId = (vinc?.[0] as any)?.escola_id as string | undefined
     }
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 })
@@ -48,20 +48,30 @@ export async function POST(req: Request) {
 
     // Aplica filtros por classe/curso
     if (classe_id) {
-      // Obter turmas da classe (se a coluna existir)
-      try {
-        const { data: turmas } = await s.from('turmas').select('id').eq('classe_id', classe_id).eq('escola_id', escolaId)
-        const turmaIds = (turmas || []).map((t: any) => t.id)
-        if (turmaIds.length === 0) return NextResponse.json({ ok: true, updated: 0, note: 'Sem turmas para a classe' })
-        const { data } = await base.in('turma_id', turmaIds)
-        mensalidades = data || []
-      } catch {
-        return NextResponse.json({ ok: false, error: 'Não foi possível aplicar por classe (campo turma.classe_id indisponível)' }, { status: 400 })
-      }
+      // Obter turmas da classe usando view alinhada
+      const { data: turmas, error: turmasErr } = await s
+        .from('vw_turmas_para_matricula')
+        .select('id')
+        .eq('classe_id', classe_id)
+        .eq('escola_id', escolaId)
+
+      if (turmasErr) return NextResponse.json({ ok: false, error: turmasErr.message }, { status: 400 })
+
+      const turmaIds = (turmas || []).map((t: any) => t.id)
+      if (turmaIds.length === 0) return NextResponse.json({ ok: true, updated: 0, note: 'Sem turmas para a classe' })
+      const { data } = await base.in('turma_id', turmaIds)
+      mensalidades = data || []
     } else if (curso_id) {
-      // Turmas ligadas ao curso via cursos_oferta
-      const { data: co } = await s.from('cursos_oferta').select('turma_id').eq('curso_id', curso_id).eq('escola_id', escolaId)
-      const turmaIds = (co || []).map((x: any) => x.turma_id)
+      // Turmas ligadas ao curso (view já resolve curso_id)
+      const { data: turmas, error: turmasErr } = await s
+        .from('vw_turmas_para_matricula')
+        .select('id')
+        .eq('curso_id', curso_id)
+        .eq('escola_id', escolaId)
+
+      if (turmasErr) return NextResponse.json({ ok: false, error: turmasErr.message }, { status: 400 })
+
+      const turmaIds = (turmas || []).map((x: any) => x.id)
       if (turmaIds.length === 0) return NextResponse.json({ ok: true, updated: 0, note: 'Sem turmas para o curso' })
       const { data } = await base.in('turma_id', turmaIds)
       mensalidades = data || []
@@ -97,4 +107,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
 }
-

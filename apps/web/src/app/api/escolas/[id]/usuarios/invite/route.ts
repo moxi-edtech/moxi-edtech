@@ -1,3 +1,4 @@
+// apps/web/src/app/api/escolas/[id]/usuarios/invite/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
@@ -5,223 +6,243 @@ import type { Database, TablesInsert } from '~types/supabase'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { recordAuditServer } from '@/lib/audit'
 import { hasPermission, mapPapelToGlobalRole } from '@/lib/permissions'
-import { generateNumeroLogin } from '@/lib/generateNumeroLogin'
-import { buildCredentialsEmail, sendMail } from '@/lib/mailer'
 import { sanitizeEmail } from '@/lib/sanitize'
+import { buildCredentialsEmail, sendMail } from '@/lib/mailer'
+
+// ❌ REMOVIDO: generateNumeroLogin
 
 const BodySchema = z.object({
   email: z.string().email(),
   nome: z.string().trim().min(1),
   telefone: z.string().trim().nullable().optional(),
-  papel: z.enum(['admin','staff_admin','secretaria','financeiro','professor','aluno']).default('secretaria'),
-  roleEnum: z.enum(['super_admin','admin','professor','aluno','secretaria','financeiro','global_admin']).optional(),
-  numero: z.string().trim().regex(/^\d{4,12}$/).optional().nullable(),
+  papel: z.enum(['admin','staff_admin','secretaria','financeiro','professor','aluno'])
+    .default('secretaria'),
 })
-
-async function ensureUniqueNumero(admin: ReturnType<typeof createAdminClient<Database>>, escolaId: string, numero: string): Promise<boolean> {
-  try {
-    const { data } = await (admin as any)
-      .from('profiles')
-      .select('user_id')
-      .eq('escola_id', escolaId)
-      .eq('telefone', numero)
-      .limit(1)
-    return !Boolean(data?.[0])
-  } catch {
-    return true
-  }
-}
-
-function onlyDigitsUpTo7(v: unknown): number | null {
-  if (typeof v !== 'string') return null
-  const m = v.match(/^\d{1,7}$/)
-  if (!m) return null
-  const n = Number(v)
-  return Number.isFinite(n) ? n : null
-}
-
-async function getNextNumero(admin: ReturnType<typeof createAdminClient<Database>>, escolaId: string): Promise<string> {
-  try {
-    const { data } = await (admin as any)
-      .from('profiles')
-      .select('telefone, created_at')
-      .eq('escola_id', escolaId)
-      .order('created_at', { ascending: false })
-      .limit(2000)
-    let max = 0
-    for (const row of (data || []) as Array<{ telefone: string | null }>) {
-      const n = onlyDigitsUpTo7(row.telefone ?? '')
-      if (n != null && n > max) max = n
-    }
-    let next = Math.max(1, max + 1)
-    for (let i = 0; i < 10; i++) {
-      const cand = String(next)
-      const { data: exists } = await (admin as any)
-        .from('profiles')
-        .select('user_id')
-        .eq('escola_id', escolaId)
-        .eq('telefone', cand)
-        .limit(1)
-      if (!exists?.[0]) return cand
-      next++
-    }
-    return String(next)
-  } catch {
-    return '1'
-  }
-}
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id: escolaId } = await context.params
+
   try {
+    // -------------------------------
+    // 1) Parse Body
+    // -------------------------------
     const json = await req.json()
     const parse = BodySchema.safeParse(json)
-    if (!parse.success) return NextResponse.json({ ok: false, error: parse.error.issues?.[0]?.message || 'Dados inválidos' }, { status: 400 })
-    const body = parse.data
+    if (!parse.success)
+      return NextResponse.json({ ok: false, error: parse.error.issues?.[0]?.message || 'Dados inválidos' }, { status: 400 })
 
-    // 1) Permission check via papel -> permission mapping
+    const body = parse.data
+    const email = sanitizeEmail(body.email)
+    const nome = body.nome.trim()
+    const papel = body.papel
+    const roleEnum = mapPapelToGlobalRole(papel) as Database["public"]["Enums"]["user_role"]
+
+    // -------------------------------
+    // 2) Permission (secretaria/admin/etc)
+    // -------------------------------
     const s = await supabaseServer()
     const { data: userRes } = await s.auth.getUser()
     const requesterId = userRes?.user?.id
     if (!requesterId) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
-    const { data: vinc } = await s.from('escola_usuarios').select('papel').eq('user_id', requesterId).eq('escola_id', escolaId).limit(1)
-    const papelReq = vinc?.[0]?.papel as any
-    if (!hasPermission(papelReq, 'criar_usuario')) {
-      return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
-    }
-    const { data: profCheck } = await s.from('profiles' as any).select('escola_id').eq('user_id', requesterId).maybeSingle()
-    if (!profCheck || (profCheck as any).escola_id !== escolaId) {
-      return NextResponse.json({ ok: false, error: 'Perfil não vinculado à escola' }, { status: 403 })
-    }
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: 'Falta SUPABASE_SERVICE_ROLE_KEY para convidar.' }, { status: 500 })
-    }
+    const { data: vinc } = await s
+      .from('escola_users')
+      .select('papel')
+      .eq('user_id', requesterId)
+      .eq('escola_id', escolaId)
+      .limit(1)
+
+    const papelReq = vinc?.[0]?.papel
+    if (!hasPermission(papelReq as any, 'criar_usuario'))
+      return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
+
+    const profCheckRes = await s
+      .from('profiles' as any)
+      .select('escola_id')
+      .eq('user_id', requesterId)
+      .maybeSingle()
+
+    const profCheck = profCheckRes.data as { escola_id?: string | null } | null
+
+    if (!profCheck || profCheck.escola_id !== escolaId)
+      return NextResponse.json({ ok: false, error: 'Perfil não vinculado à escola' }, { status: 403 })
+
+    // -------------------------------
+    // 3) Admin client
+    // -------------------------------
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY)
+      return NextResponse.json({ ok: false, error: 'Falta SUPABASE_SERVICE_ROLE_KEY' }, { status: 500 })
 
     const admin = createAdminClient<Database>(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     )
 
-    // Verifica status da escola (bloqueia convites se suspensa/excluida)
-    const { data: esc } = await admin.from('escolas').select('status').eq('id', escolaId).limit(1)
-    const status = (esc?.[0] as any)?.status as string | undefined
-    if (status === 'excluida') return NextResponse.json({ ok: false, error: 'Escola excluída não permite convites.' }, { status: 400 })
-    if (status === 'suspensa') return NextResponse.json({ ok: false, error: 'Escola suspensa por pagamento. Regularize para convidar usuários.' }, { status: 400 })
+    // -------------------------------
+    // 4) Check school status
+    // -------------------------------
+    const { data: esc } = await admin
+      .from('escolas')
+      .select('status')
+      .eq('id', escolaId)
+      .limit(1)
 
-    // Normalize and sanitize email to avoid hidden unicode causing validation failures
-    const email = sanitizeEmail(body.email)
-    const nome = body.nome.trim()
-    const roleEnum = mapPapelToGlobalRole(body.papel as any)
-    const roleEnumDb = roleEnum as Database["public"]["Enums"]["user_role"]
-    const papelBody = body.papel as 'admin'|'staff_admin'|'secretaria'|'financeiro'|'professor'|'aluno'
-    // Número de login amigável (prefix+4 dígitos) para alunos/secretaria
-    const needsNumeroLogin = papelBody === 'aluno' || papelBody === 'secretaria'
-    let numeroLogin: string | null = null
-    if (needsNumeroLogin) {
-      try { numeroLogin = await generateNumeroLogin(escolaId, roleEnum as any, admin as any) } catch { numeroLogin = null }
-    }
+    const status = esc?.[0]?.status
+    if (status === 'excluida')
+      return NextResponse.json({ ok: false, error: 'Escola excluída não permite convites.' }, { status: 400 })
+    if (status === 'suspensa')
+      return NextResponse.json({ ok: false, error: 'Escola suspensa por pagamento.' }, { status: 400 })
 
-    // 2) Check if user exists
-    const { data: prof } = await admin.from('profiles').select('user_id').eq('email', email).limit(1)
-    const existingUserId = prof?.[0]?.user_id as string | undefined
+    // -------------------------------
+    // 5) Check if user exists
+    // -------------------------------
+    const { data: prof } = await admin
+      .from('profiles')
+      .select('user_id, numero_login')
+      .eq('email', email)
+      .limit(1)
 
-    // util simples para senha forte
+    let userId = prof?.[0]?.user_id as string | undefined
+    const existingNumeroLogin = prof?.[0]?.numero_login ?? null
+
+    // -------------------------------
+    // 6) Invite user if new
+    // -------------------------------
     const generateStrongPassword = (len = 12) => {
       const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
       const lower = 'abcdefghijklmnopqrstuvwxyz'
       const nums = '0123456789'
       const special = '!@#$%^&*()-_=+[]{};:,.?'
       const all = upper + lower + nums + special
-      const pick = (set: string) => set[Math.floor(Math.random() * set.length)]
+      const pick = (s: string) => s[Math.floor(Math.random() * s.length)]
       let pwd = pick(upper) + pick(lower) + pick(nums) + pick(special)
       for (let i = pwd.length; i < len; i++) pwd += pick(all)
       return pwd.split('').sort(() => Math.random() - 0.5).join('')
     }
 
-    let userId = existingUserId
     let tempPassword: string | null = null
+
     if (!userId) {
-      // Invite new user by email
-      const { data: inviteRes, error: inviteErr } = await admin.auth.admin.inviteUserByEmail(email, {
-        data: { nome, role: roleEnum, must_change_password: true, numero_usuario: numeroLogin || undefined },
+      const { data: inv, error: invErr } = await admin.auth.admin.inviteUserByEmail(email, {
+        data: { nome, role: roleEnum, must_change_password: true }
       })
-      if (inviteErr) return NextResponse.json({ ok: false, error: inviteErr.message }, { status: 400 })
 
-      userId = inviteRes?.user?.id
-      if (!userId) return NextResponse.json({ ok: false, error: 'Falha ao convidar usuário' }, { status: 400 })
+      if (invErr)
+        return NextResponse.json({ ok: false, error: invErr.message }, { status: 400 })
 
-      // Define senha temporária e força troca no primeiro acesso
-      try {
-        tempPassword = generateStrongPassword(12)
-        await (admin as any).auth.admin.updateUserById(userId, {
-          password: tempPassword,
-          user_metadata: { must_change_password: true },
-        })
-      } catch (_) {
-        tempPassword = null
-      }
+      userId = inv?.user?.id
+      if (!userId)
+        return NextResponse.json({ ok: false, error: 'Falha ao convidar usuário' }, { status: 400 })
+
+      tempPassword = generateStrongPassword(12)
+      await admin.auth.admin.updateUserById(userId, {
+        password: tempPassword,
+        user_metadata: { must_change_password: true }
+      })
 
       // Create profile
-      try {
-        await admin.from('profiles').insert([{
-          user_id: userId,
-          email,
-          nome,
-          telefone: (body.telefone ?? null) || null,
-          numero_login: numeroLogin ?? null,
-          role: roleEnumDb,
-          escola_id: escolaId,
-        } as TablesInsert<'profiles'>]).select('*').single()
-      } catch {}
-      try {
-        await admin.auth.admin.updateUserById(userId, { app_metadata: { role: roleEnum, escola_id: escolaId, numero_usuario: numeroLogin || undefined } as any })
-      } catch {}
+      await admin.from('profiles').insert({
+        user_id: userId,
+        email,
+        nome,
+        telefone: body.telefone ?? null,
+        role: roleEnum,
+        escola_id: escolaId,
+        // numero_login: null // será criado só pela matrícula
+      } as TablesInsert<'profiles'>)
     } else {
-      // Ensure profile role/escola updated
-      const profilePatch: any = { role: roleEnumDb, escola_id: escolaId }
-      if (body.telefone != null) profilePatch.telefone = body.telefone
-      if (numeroLogin) profilePatch.numero_login = numeroLogin
-      try { await admin.from('profiles').update(profilePatch).eq('user_id', userId) } catch {}
-      // Ensure app_metadata role/escola_id updated
-      try { await admin.auth.admin.updateUserById(userId, { app_metadata: { role: roleEnum, escola_id: escolaId, numero_usuario: numeroLogin || undefined } as any }) } catch {}
+      // User exists, update profile info (BUT DO NOT GENERATE numero_login)
+      await admin
+        .from('profiles')
+        .update({
+          telefone: body.telefone ?? null,
+          role: roleEnum,
+          escola_id: escolaId,
+        })
+        .eq('user_id', userId)
     }
 
-    // Em desenvolvimento, não exigir confirmação de e-mail para convites
-    // Confirma o e-mail automaticamente para evitar bloqueio no login durante o DEV
-    if (process.env.NODE_ENV !== 'production' && userId) {
-      try {
-        await (admin as any).auth.admin.updateUserById(userId, { email_confirm: true } as any)
-      } catch (_) {
-        // ignore
-      }
-    }
+    // Always sync app_metadata
+    await admin.auth.admin.updateUserById(userId!, {
+      app_metadata: { role: roleEnum, escola_id: escolaId }
+    })
 
-    // 3) Link to escola_usuarios (idempotent)
+    // -------------------------------
+    // 7) Link to escola_users
+    // -------------------------------
     try {
-      await admin.from('escola_usuarios').insert([{
+      await admin.from('escola_users').insert({
         escola_id: escolaId,
         user_id: userId!,
-        papel: body.papel,
-      } as TablesInsert<'escola_usuarios'>]).select('user_id').single()
+        papel,
+      })
     } catch {
-      await admin.from('escola_usuarios').update({ papel: body.papel }).eq('escola_id', escolaId).eq('user_id', userId!)
+      await admin
+        .from('escola_users')
+        .update({ papel })
+        .eq('user_id', userId!)
+        .eq('escola_id', escolaId)
     }
 
-    recordAuditServer({ escolaId, portal: 'admin_escola', acao: 'USUARIO_CONVIDADO', entity: 'usuario', entityId: userId!, details: { email, papel: body.papel, role: roleEnum, existed_before: Boolean(existingUserId), numero_login: numeroLogin } }).catch(() => null)
+    // -------------------------------
+    // 8) Audit
+    // -------------------------------
+    recordAuditServer({
+      escolaId,
+      portal: 'admin_escola',
+      acao: 'USUARIO_CONVIDADO',
+      entity: 'usuario',
+      entityId: userId!,
+      details: {
+        email,
+        papel,
+        role: roleEnum,
+        numero_login: existingNumeroLogin,
+      }
+    }).catch(() => null)
 
-    // Envia e-mail de credenciais com número de login (quando houver) e senha temporária (se definida)
+    // -------------------------------
+    // 9) Email: enviar numero_login só SE existir!
+    // -------------------------------
     try {
-      const { data: esc } = await admin.from('escolas' as any).select('nome').eq('id', escolaId).maybeSingle()
-      const escolaNome = (esc as any)?.nome ?? null
-      const loginUrl = process.env.NEXT_PUBLIC_BASE_URL ? `${process.env.NEXT_PUBLIC_BASE_URL}/login` : null
-      const mail = buildCredentialsEmail({ nome, email, numero_login: numeroLogin ?? undefined, senha_temp: tempPassword ?? undefined, escolaNome, loginUrl })
-      await sendMail({ to: email, subject: mail.subject, html: mail.html, text: mail.text })
+      const { data: esc2 } = await admin
+        .from('escolas')
+        .select('nome')
+        .eq('id', escolaId)
+        .maybeSingle()
+
+      const escolaNome = esc2?.nome ?? null
+      const loginUrl = process.env.NEXT_PUBLIC_BASE_URL
+        ? `${process.env.NEXT_PUBLIC_BASE_URL}/login`
+        : null
+
+      const mail = buildCredentialsEmail({
+        nome,
+        email,
+        numero_login: existingNumeroLogin ?? undefined,
+        senha_temp: tempPassword ?? undefined,
+        escolaNome,
+        loginUrl,
+      })
+
+      await sendMail({
+        to: email,
+        subject: mail.subject,
+        html: mail.html,
+        text: mail.text,
+      })
     } catch {}
 
-    return NextResponse.json({ ok: true, userId, numero_login: numeroLogin, senha_temp: tempPassword })
+    return NextResponse.json({
+      ok: true,
+      userId,
+      numero_login: existingNumeroLogin,
+      senha_temp: tempPassword,
+    })
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    return NextResponse.json({ ok: false, error: message }, { status: 500 })
+    return NextResponse.json({
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+    }, { status: 500 })
   }
 }

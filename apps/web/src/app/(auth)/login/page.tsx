@@ -2,8 +2,13 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { clearSupabaseCookies, clearAllAuthData, getCookiesForDebug } from '@/utils/cookieUtils';
+import {
+  clearSupabaseCookies,
+  clearAllAuthData,
+  getCookiesForDebug,
+} from '@/utils/cookieUtils';
 import Button from '@/components/ui/Button';
+import Image from 'next/image';
 
 export default function Page() {
   const router = useRouter();
@@ -20,35 +25,35 @@ export default function Page() {
     console.log('=== INÍCIO DO LOGIN DEBUG ===');
     console.log('Tentando login com:', { email, senha: '***' });
 
-    // 🔥 LIMPAR COOKIES CORROMPIDOS ANTES DO LOGIN
     clearSupabaseCookies();
     console.log('Cookies após limpeza:', getCookiesForDebug());
 
     try {
       console.log('Fazendo fetch para /api/auth/login...');
-      
+
       const res = await fetch('/api/auth/login', {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
-          email: email.trim(), 
-          password: senha 
+        body: JSON.stringify({
+          email: email.trim(),
+          password: senha,
         }),
       });
 
       console.log('✅ Fetch completo. Status:', res.status, res.statusText);
 
-      // Tente interpretar JSON quando indicado; suporte a corpo vazio em 401
       const contentType = res.headers.get('content-type') || '';
       let data: any = {};
       if (contentType.includes('application/json')) {
         try {
           data = await res.json();
           console.log('✅ JSON parseado com sucesso:', data);
-        } catch (parseError) {
-          console.warn('⚠️ Resposta com content-type json mas sem corpo/JSON inválido');
+        } catch {
+          console.warn(
+            '⚠️ Resposta com content-type json mas sem corpo/JSON inválido'
+          );
           data = {};
         }
       } else {
@@ -62,10 +67,12 @@ export default function Page() {
       }
 
       if (!res.ok) {
-        // Muitos ambientes retornam 401 com corpo vazio; trate com mensagem padrão
-        const friendly = data?.error || data?.message || (res.status === 401
-          ? 'Credenciais inválidas. Verifique usuário e senha.'
-          : `Erro ${res.status}: ${res.statusText}`);
+        const friendly =
+          data?.error ||
+          data?.message ||
+          (res.status === 401
+            ? 'Credenciais inválidas. Verifique usuário e senha.'
+            : `Erro ${res.status}: ${res.statusText}`);
         console.error('❌ Erro HTTP:', res.status, data);
         setErro(friendly);
       } else if (!data.ok) {
@@ -73,9 +80,6 @@ export default function Page() {
         setErro(data.error || 'Credenciais inválidas. Verifique seus dados.');
       } else {
         console.log('🎉 Login bem-sucedido! Dados:', data);
-        console.log('Redirecionando para /redirect...');
-        
-        // Forçar recarregamento completo para limpar estados
         window.location.href = '/redirect';
       }
     } catch (error) {
@@ -88,95 +92,141 @@ export default function Page() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-teal-500 to-sky-600 px-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 space-y-6">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-12 h-12 bg-teal-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-xl">MN</span>
-          </div>
-          <h1 className="text-3xl font-bold text-slate-900">Moxi Nexa</h1>
-          <p className="text-sm text-slate-500">Sistema de Gestão Escolar</p>
-        </div>
+    <main className="relative flex min-h-screen items-center justify-center bg-slate-950">
+      {/* Fundo azul escuro fosco */}
+      <div className="fixed inset-0 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-950" />
 
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-slate-700">
-              Usuário (e-mail ou número)
-            </label>
-            <input
-              type="text"
-              id="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-teal-600 focus:ring-teal-600"
-              placeholder="email ou número de usuário"
-              disabled={carregando}
-            />
+      {/* Conteúdo central */}
+      <div className="relative z-10 w-full max-w-md px-4">
+        {/* Card fosco */}
+        <div className="rounded-3xl bg-slate-900/80 border border-slate-800/70 shadow-xl shadow-black/40 backdrop-blur-sm px-8 py-8 md:px-10 md:py-10">
+          {/* Logo + marca */}
+          <div className="mb-8 flex flex-col items-center gap-3">
+            <div className="flex items-center gap-3">
+              <div className="relative h-9 w-9">
+                <Image
+                  src="/nexa-logo.svg" // ajusta o caminho conforme teu arquivo
+                  alt="Nexa"
+                  fill
+                  className="object-contain"
+                />
+              </div>
+              <span className="text-2xl font-semibold tracking-tight text-white">
+                NEXA
+              </span>
+            </div>
           </div>
 
-          <div>
-            <label htmlFor="senha" className="block text-sm font-medium text-slate-700">
-              Senha
-            </label>
-            <input
-              type="password"
-              id="senha"
-              required
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-teal-600 focus:ring-teal-600"
-              placeholder="••••••••"
-              disabled={carregando}
-            />
+          {/* Título/descrição */}
+          <div className="mb-6 text-center">
+            <h1 className="text-base font-semibold text-white">
+              Entrar na sua conta
+            </h1>
+            <p className="mt-1 text-xs text-slate-400">
+              Gestão escolar inteligente para escolas angolanas.
+            </p>
           </div>
 
-          {erro && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-sm text-red-600 font-medium">{erro}</p>
+          {/* Formulário */}
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label
+                htmlFor="email"
+                className="mb-1 block text-sm text-slate-300"
+              >
+                Usuário (e-mail ou número)
+              </label>
+              <input
+                type="text"
+                id="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="mt-1 w-full rounded-xl bg-slate-900/60 border border-slate-700/70
+                           px-4 py-2.5 text-sm text-slate-100
+                           placeholder:text-slate-500
+                           focus:outline-none focus:ring-2 focus:ring-sky-500/70 focus:border-sky-500/70"
+                placeholder="email ou número de usuário"
+                disabled={carregando}
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="senha"
+                className="mb-1 block text-sm text-slate-300"
+              >
+                Senha
+              </label>
+              <input
+                type="password"
+                id="senha"
+                required
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                className="mt-1 w-full rounded-xl bg-slate-900/60 border border-slate-700/70
+                           px-4 py-2.5 text-sm text-slate-100
+                           placeholder:text-slate-500
+                           focus:outline-none focus:ring-2 focus:ring-sky-500/70 focus:border-sky-500/70"
+                placeholder="••••••••"
+                disabled={carregando}
+              />
+            </div>
+
+            {erro && (
+              <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-3">
+                <p className="text-sm font-medium text-red-200">{erro}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    clearAllAuthData();
+                    alert(
+                      'Todos os dados de autenticação foram limpos! Recarregue a página.'
+                    );
+                  }}
+                  className="mt-2 text-xs font-medium text-sky-400 hover:text-sky-300"
+                >
+                  Limpar tudo e recarregar
+                </button>
+              </div>
+            )}
+
+            <Button type="submit" disabled={carregando} fullWidth>
+              {carregando ? 'Entrando...' : 'Entrar'}
+            </Button>
+          </form>
+
+          {/* Debug */}
+          <div className="mt-5 border-t border-slate-800/80 pt-4">
+            <p className="mb-2 text-[11px] uppercase tracking-[0.18em] text-slate-500">
+              Debug (ambiente de desenvolvimento)
+            </p>
+            <div className="flex flex-wrap gap-3">
               <button
-                type="button"
+                onClick={() => {
+                  console.log('Cookies atuais:', getCookiesForDebug());
+                  console.log('LocalStorage:', { ...localStorage });
+                }}
+                className="text-[11px] font-medium text-slate-400 underline underline-offset-2 hover:text-slate-200"
+              >
+                Ver cookies/localStorage
+              </button>
+              <button
                 onClick={() => {
                   clearAllAuthData();
-                  alert('Todos os dados de autenticação foram limpos! Recarregue a página.');
+                  console.log('Todos os dados de autenticação limpos');
                 }}
-                className="text-xs text-blue-500 underline mt-2"
+                className="text-[11px] font-medium text-slate-400 underline underline-offset-2 hover:text-slate-200"
               >
-                Limpar tudo e recarregar
+                Limpar tudo
               </button>
             </div>
-          )}
-
-          <Button type="submit" disabled={carregando} tone="teal" fullWidth>
-            {carregando ? 'Entrando...' : 'Entrar'}
-          </Button>
-        </form>
-
-        {/* Área de debug para testes manuais */}
-        <div className="border-t pt-4 mt-4">
-          <p className="text-xs text-gray-500 mb-2">Debug:</p>
-          <button
-            onClick={() => {
-              console.log('Cookies atuais:', getCookiesForDebug());
-              console.log('LocalStorage:', { ...localStorage });
-            }}
-            className="text-xs text-blue-500 underline mr-4"
-          >
-            Ver cookies
-          </button>
-          <button
-            onClick={() => {
-              clearAllAuthData();
-              console.log('Todos os dados de autenticação limpos');
-            }}
-            className="text-xs text-blue-500 underline"
-          >
-            Limpar tudo
-          </button>
+          </div>
         </div>
 
-        <p className="text-center text-xs text-slate-400">
-          &copy; {new Date().getFullYear()} Moxi Nexa
+        {/* Rodapé */}
+        <p className="mt-4 text-center text-[11px] text-slate-500">
+          &copy; {new Date().getFullYear()} Nexa. Todos os direitos reservados.
         </p>
       </div>
     </main>

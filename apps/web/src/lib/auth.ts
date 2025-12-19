@@ -64,8 +64,8 @@ export async function getPapelForEscola(escolaId: string): Promise<Papel | null>
     if (userErr || !user) return null
 
     const { data, error } = await s
-      .from('escola_usuarios')
-      .select('papel')
+      .from('escola_users')
+      .select('*')
       .eq('user_id', user.id)
       .eq('escola_id', escolaId)
       .limit(1)
@@ -75,7 +75,8 @@ export async function getPapelForEscola(escolaId: string): Promise<Papel | null>
       return null
     }
 
-    const papel = (data?.[0] as any)?.papel as Papel | undefined
+    const papelRaw = (data?.[0] as any)?.papel ?? (data?.[0] as any)?.role
+    const papel = papelRaw as Papel | undefined
     return papel ?? null
   } catch (e) {
     console.error('getPapelForEscola failed:', e)

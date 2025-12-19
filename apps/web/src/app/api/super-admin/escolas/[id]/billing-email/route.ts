@@ -32,7 +32,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     // Destinatários: papel financeiro; fallback para admin/staff_admin
     const { data: finUsers } = await admin
-      .from('escola_usuarios')
+      .from('escola_users')
       .select('user_id,papel')
       .eq('escola_id', escolaId)
       .in('papel', ['financeiro'] as any)
@@ -40,7 +40,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     let userIds: string[] = (finUsers || []).map((u: any) => String(u.user_id))
     if (!userIds.length) {
       const { data: admins } = await admin
-        .from('escola_usuarios')
+        .from('escola_users')
         .select('user_id,papel')
         .eq('escola_id', escolaId)
         .in('papel', ['admin','staff_admin'] as any)

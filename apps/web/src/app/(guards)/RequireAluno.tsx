@@ -22,13 +22,17 @@ export default function RequireAluno({ children }: { children: React.ReactNode }
 
       // Check vínculo do usuário como aluno em alguma escola
       const { data: vinculos, error } = await supabase
-        .from("escola_usuarios")
-        .select("id, papel")
+        .from("escola_users")
+        .select("*")
         .eq("user_id", user.id)
-        .eq("papel", "aluno")
-        .limit(1);
+        .limit(10);
 
-      if (error || !vinculos || vinculos.length === 0) {
+      const hasAluno = (vinculos || []).some((v: any) => {
+        const papel = (v as any)?.papel ?? (v as any)?.role ?? null;
+        return papel === "aluno";
+      });
+
+      if (error || !hasAluno) {
         router.replace("/");
         return;
       }
@@ -47,4 +51,3 @@ export default function RequireAluno({ children }: { children: React.ReactNode }
 
   return <>{children}</>;
 }
-

@@ -1,9 +1,6 @@
 "use client";
 
-import type {
-  MatrixRow,
-  TurnosState,
-} from "@/app/configuracoes/onboarding/AcademicSetupWizard";
+import type { MatrixRow, TurnosState } from "@/components/escola/onboarding/academicSetupTypes";
 
 type Props = {
   turnos: TurnosState;
@@ -12,7 +9,7 @@ type Props = {
 };
 
 export function MatrixTable({ turnos, matrix, setMatrix }: Props) {
-  function updateRow(id: number, field: keyof MatrixRow, value: string) {
+  function updateRow(id: string | number, field: keyof MatrixRow, value: string) {
     const num = parseInt(value, 10);
     const next = matrix.map((row) =>
       row.id === id ? { ...row, [field]: Number.isNaN(num) ? 0 : num } : row,
@@ -22,9 +19,9 @@ export function MatrixTable({ turnos, matrix, setMatrix }: Props) {
 
   const total = matrix.reduce((acc, row) => {
     let sum = 0;
-    if (turnos.manha) sum += row.manha || 0;
-    if (turnos.tarde) sum += row.tarde || 0;
-    if (turnos.noite) sum += row.noite || 0;
+    if (turnos.Manhã) sum += row.manha || 0;
+    if (turnos.Tarde) sum += row.tarde || 0;
+    if (turnos.Noite) sum += row.noite || 0;
     return acc + sum;
   }, 0);
 
@@ -62,17 +59,17 @@ export function MatrixTable({ turnos, matrix, setMatrix }: Props) {
           <thead className="text-xs text-slate-400 uppercase bg-white border-b border-slate-100">
             <tr>
               <th className="px-6 py-3 font-semibold text-slate-500">Classe</th>
-              {turnos.manha && (
+              {turnos.Manhã && (
                 <th className="px-6 py-3 font-semibold text-center w-32 bg-orange-50/50 text-orange-600 border-l border-slate-100">
                   Manhã
                 </th>
               )}
-              {turnos.tarde && (
+              {turnos.Tarde && (
                 <th className="px-6 py-3 font-semibold text-center w-32 bg-amber-50/50 text-amber-600 border-l border-slate-100">
                   Tarde
                 </th>
               )}
-              {turnos.noite && (
+              {turnos.Noite && (
                 <th className="px-6 py-3 font-semibold text-center w-32 bg-indigo-50/50 text-indigo-600 border-l border-slate-100">
                   Noite
                 </th>
@@ -83,10 +80,10 @@ export function MatrixTable({ turnos, matrix, setMatrix }: Props) {
             {matrix.map((row) => (
               <tr key={row.id} className="hover:bg-slate-50 transition group">
                 <td className="px-6 py-4 font-bold text-slate-700 border-r border-transparent group-hover:border-slate-100">
-                  {row.classe}
+                  {row.nome}
                 </td>
 
-                {turnos.manha && (
+                {turnos.Manhã && (
                   <td className="px-6 py-2 text-center bg-orange-50/10 border-l border-slate-100">
                     <input
                       type="number"
@@ -99,7 +96,7 @@ export function MatrixTable({ turnos, matrix, setMatrix }: Props) {
                   </td>
                 )}
 
-                {turnos.tarde && (
+                {turnos.Tarde && (
                   <td className="px-6 py-2 text-center bg-amber-50/10 border-l border-slate-100">
                     <input
                       type="number"
@@ -112,7 +109,7 @@ export function MatrixTable({ turnos, matrix, setMatrix }: Props) {
                   </td>
                 )}
 
-                {turnos.noite && (
+                {turnos.Noite && (
                   <td className="px-6 py-2 text-center bg-indigo-50/10 border-l border-slate-100">
                     <input
                       type="number"

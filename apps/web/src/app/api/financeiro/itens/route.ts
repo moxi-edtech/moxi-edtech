@@ -14,7 +14,7 @@ async function resolveEscolaId(
     | string
     | undefined
   if (!escolaId) {
-    const { data: vinc } = await s.from('escola_usuarios').select('escola_id').eq('user_id', userId).limit(1)
+    const { data: vinc } = await s.from('escola_users').select('escola_id').eq('user_id', userId).limit(1)
     escolaId = (vinc?.[0] as any)?.escola_id as string | undefined
   }
   return escolaId

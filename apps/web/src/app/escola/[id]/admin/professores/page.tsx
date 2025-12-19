@@ -34,7 +34,7 @@ export default async function ProfessoresPage({ params }: { params: Promise<{ id
 
   // 1. Buscar Vínculos (Professores da Escola)
   const { data: vinculados } = await s
-    .from('escola_usuarios')
+    .from('escola_users')
     .select('user_id, created_at')
     .eq('escola_id', escolaId)
     .eq('papel', 'professor');

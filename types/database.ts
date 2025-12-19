@@ -1351,7 +1351,7 @@ export type Database = {
           data_matricula: string | null
           escola_id: string
           id: string
-          numero_matricula: string | null
+          numero_matricula: number | null
           secao_id: string | null
           session_id: string | null
           status: string
@@ -1364,7 +1364,7 @@ export type Database = {
           data_matricula?: string | null
           escola_id: string
           id?: string
-          numero_matricula?: string | null
+          numero_matricula?: number | null
           secao_id?: string | null
           session_id?: string | null
           status?: string
@@ -1377,7 +1377,7 @@ export type Database = {
           data_matricula?: string | null
           escola_id?: string
           id?: string
-          numero_matricula?: string | null
+          numero_matricula?: number | null
           secao_id?: string | null
           session_id?: string | null
           status?: string
@@ -3074,4 +3074,3 @@ export const Constants = {
     },
   },
 } as const
-

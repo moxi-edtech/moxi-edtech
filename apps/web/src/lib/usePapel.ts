@@ -19,14 +19,17 @@ export function usePapel(escolaId: string | null | undefined) {
         const userId = u?.user?.id
         if (!userId) { setPapel(null); return }
         const { data, error } = await s
-          .from('escola_usuarios')
-          .select('papel')
+          .from('escola_users')
+          .select('*')
           .eq('user_id', userId)
           .eq('escola_id', escolaId)
           .limit(1)
         if (!mounted) return
         if (error) { setError(error.message || 'Erro'); setPapel(null) }
-        else setPapel((data?.[0] as any)?.papel ?? null)
+        else {
+          const papel = (data?.[0] as any)?.papel ?? (data?.[0] as any)?.role ?? null
+          setPapel(papel)
+        }
       } catch (e: any) {
         if (!mounted) return
         setError(e?.message || 'Erro inesperado'); setPapel(null)
@@ -40,4 +43,3 @@ export function usePapel(escolaId: string | null | undefined) {
 
   return { papel, loading, error }
 }
-

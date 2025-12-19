@@ -41,7 +41,7 @@ export async function getSugestoesMatricula(alunoId: string): Promise<{ ok: bool
 
   // check vínculo
   const { data: vinc } = await supabase
-    .from('escola_usuarios')
+    .from('escola_users')
     .select('user_id')
     .eq('user_id', user.id)
     .eq('escola_id', escolaId)

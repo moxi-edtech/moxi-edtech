@@ -11,7 +11,8 @@ import {
   ChevronRight,
   ArrowLeft,
   Layers, // Ícone novo para a Oferta Formativa
-  Wand2
+  Wand2,
+  AlertTriangle,
 } from "lucide-react";
 
 interface SettingsHubProps {
@@ -65,6 +66,13 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
       icon: ShieldCheck,
       href: `/escola/${escolaId}/admin/configuracoes/seguranca`,
       color: "bg-slate-100 text-slate-600"
+    },
+    {
+      title: "Zona de Perigo",
+      desc: "Apagar dados acadêmicos (turmas, matrículas, etc).",
+      icon: AlertTriangle,
+      href: `/escola/${escolaId}/admin/configuracoes`,
+      color: "bg-red-50 text-red-600"
     }
   ];
 
