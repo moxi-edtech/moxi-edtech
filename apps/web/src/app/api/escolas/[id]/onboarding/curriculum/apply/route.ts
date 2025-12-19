@@ -1,550 +1,141 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
-import {
-  CURRICULUM_PRESETS_META,
-  type CurriculumKey,
-} from "@/lib/onboarding";
-import { PRESET_TO_TYPE, type CourseType } from "@/lib/courseTypes";
+import { gerarNomeTurma } from "@/lib/turmaNaming";
 
 const supabaseAdmin = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// -----------------------------
-// Tipagens alinhadas ao Builder
-// -----------------------------
+export async function POST(req: NextRequest, { params }: any) {
+  const { id: escolaId } = params;
+  const payload = await req.json();
+  
+  const { 
+    classes: classesNomes, 
+    turnos, 
+    turmasPorCombinacao, 
+    padraoNomenclatura,
+    subjects: allSubjectNames
+  } = payload.advancedConfig;
 
-type BuilderTurnos = {
-  manha: boolean;
-  tarde: boolean;
-  noite: boolean;
-};
+  let cursoCriadoId: string | null = null;
 
-type MatrixKey = string; // "Disciplina::10ª::M"
-
-interface AdvancedConfigPayload {
-  classes: string[];
-  turnos: BuilderTurnos;
-  matrix: Record<MatrixKey, boolean>;
-  subjects: string[];
-}
-
-interface CustomDataPayload {
-  label: string;
-  associatedPreset: CurriculumKey;
-  classes: string[];
-  subjects: string[];
-}
-
-interface CurriculumApplyPayload {
-  presetKey: CurriculumKey;           // SEMPRE a base oficial (para custom = associatedPreset)
-  sessionId?: string | null;
-  customData?: CustomDataPayload;
-  advancedConfig: AdvancedConfigPayload;
-}
-
-// -----------------------------
-// Helpers internos
-// -----------------------------
-
-const normalizeNome = (nome: string): string =>
-  nome
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_");
-
-const makeGlobalHash = (nome: string, tipo: CourseType): string =>
-  `${tipo}_${normalizeNome(nome)}`;
-
-const makeCursoCodigo = (nome: string, escolaId: string): string => {
-  const prefix = escolaId.replace(/-/g, "").slice(0, 8);
-  return `${prefix}_${normalizeNome(nome)}`;
-};
-
-// mapeia CourseType → nivel_ensino texto da tabela disciplinas
-const mapCourseTypeToNivel = (tipo: CourseType): string => {
-  switch (tipo) {
-    case "primario":
-      return "base";
-    case "ciclo1":
-      return "secundario1";
-    case "puniv":
-      return "secundario2";
-    case "tecnico":
-    case "tecnico_ind":
-    case "tecnico_serv":
-      return "tecnico";
-    case "geral":
-    default:
-      return "geral";
-  }
-};
-
-// -----------------------------
-// Helpers de Scaffolding (Classes e Turmas)
-// -----------------------------
-
-async function findOrCreateClassesForCurso(
-  escolaId: string,
-  cursoId: string,
-  classNames: string[]
-) {
-  const classesCriadas: { id: string; nome: string }[] = [];
-
-  for (const nome of classNames) {
-    // 1. Tenta buscar existente
-    const { data: existing } = await supabaseAdmin
-      .from("classes")
-      .select("id, nome")
-      .eq("escola_id", escolaId)
-      .eq("curso_id", cursoId)
-      .eq("nome", nome)
-      .maybeSingle();
-
-    if (existing) {
-      classesCriadas.push(existing);
-      continue;
-    }
-
-    // 2. Se não existe, cria
-    const { data: created, error } = await supabaseAdmin
-      .from("classes")
+  try {
+    const { data: curso, error: erroCurso } = await supabaseAdmin
+      .from('cursos')
       .insert({
+        nome: payload.customData?.label || payload.presetKey,
+        tipo: 'tecnico', // Placeholder
         escola_id: escolaId,
-        curso_id: cursoId,
-        nome: nome,
-        // ordem: classNames.indexOf(nome) + 1 // Opcional se tiver coluna ordem
+        codigo: payload.presetKey,
       })
-      .select("id, nome")
+      .select('id, nome')
       .single();
 
-    if (!error && created) {
-      classesCriadas.push(created);
-    } else if (error?.code === "23505") {
-      // Race condition (criado por outro request concorrente)
-      const { data: retry } = await supabaseAdmin
-        .from("classes")
-        .select("id, nome")
-        .eq("escola_id", escolaId)
-        .eq("curso_id", cursoId)
-        .eq("nome", nome)
-        .maybeSingle();
-      if (retry) classesCriadas.push(retry);
-    } else {
-      console.error(`Erro ao criar classe ${nome}:`, error);
-    }
-  }
+    if (erroCurso) throw erroCurso;
+    cursoCriadoId = curso.id;
 
-  return classesCriadas;
-}
-
-async function createInitialTurmas(
-  escolaId: string,
-  cursoId: string,
-  classes: { id: string; nome: string }[],
-  turnosConfig: BuilderTurnos
-) {
-  const turnosAtivos: string[] = [];
-  if (turnosConfig.manha) turnosAtivos.push("Manhã");
-  if (turnosConfig.tarde) turnosAtivos.push("Tarde");
-  if (turnosConfig.noite) turnosAtivos.push("Noite");
-
-  if (turnosAtivos.length === 0) return 0;
-
-  const anoLetivo = new Date().getFullYear().toString();
-  let turmasCriadasCount = 0;
-
-  for (const cls of classes) {
-    for (const turno of turnosAtivos) {
-      // Tenta criar Turma "A"
-      const { error } = await supabaseAdmin.from("turmas").insert({
-        escola_id: escolaId,
-        curso_id: cursoId,
-        classe_id: cls.id,
-        ano_letivo: anoLetivo,
-        nome: "A", // Padrão inicial
-        turno: turno,
-        capacidade_maxima: 35, // Padrão razoável
-      });
-
-      // Se for violação de unicidade (23505), ignoramos (sucesso, já existe)
-      if (!error || error.code === "23505") {
-        if (!error) turmasCriadasCount++;
-      } else {
-        console.error(
-          `Erro ao scaffolding turma ${cls.nome} - ${turno}:`,
-          error
-        );
-      }
-    }
-  }
-  return turmasCriadasCount;
-}
-
-// -----------------------------
-// Entradas no banco
-// -----------------------------
-
-async function findOrCreateGlobalCourse(
-  nome: string,
-  tipo: CourseType,
-  escolaId: string
-) {
-  const hash = makeGlobalHash(nome, tipo);
-
-  // 1. tenta pegar
-  const { data: existing, error: selErr } = await supabaseAdmin
-    .from("cursos_globais_cache")
-    .select("*")
-    .eq("hash", hash)
-    .maybeSingle();
-
-  if (selErr) {
-    console.error("Erro ao buscar cursos_globais_cache:", selErr);
-    throw new Error("Erro ao consultar cache global de cursos");
-  }
-
-  if (existing) {
-    // atualiza usage_count
-    await supabaseAdmin
-      .from("cursos_globais_cache")
-      .update({
-        usage_count: (existing.usage_count || 0) + 1,
-        last_used_at: new Date().toISOString(),
-      })
-      .eq("hash", hash);
-
-    return existing;
-  }
-
-  // 2. criar
-  const { data: created, error: insErr } = await supabaseAdmin
-    .from("cursos_globais_cache")
-    .insert({
-      hash,
+    const classesPayload = classesNomes.map((nome: string, index: number) => ({
       nome,
-      tipo,
-      usage_count: 1,
-      first_seen_at: new Date().toISOString(),
-      last_used_at: new Date().toISOString(),
-      created_by_escola: escolaId,
-    })
-    .select("*")
-    .single();
+      ordem: index + 1,
+      curso_id: curso.id,
+      escola_id: escolaId
+    }));
 
-  if (insErr || !created) {
-    console.error("Erro ao criar cursos_globais_cache:", insErr);
-    throw new Error("Erro ao registrar curso global");
-  }
+    const { data: classesCriadas, error: erroClasses } = await supabaseAdmin
+      .from('classes')
+      .insert(classesPayload)
+      .select('id, nome');
 
-  return created;
-}
+    if (erroClasses) throw erroClasses;
 
-async function findOrCreateCursoEscola(
-  escolaId: string,
-  nome: string,
-  tipo: CourseType,
-  cursoGlobalHash: string,
-  isCustom: boolean
-) {
-  // 1. Tenta buscar existente
-  const { data: existing, error: selErr } = await supabaseAdmin
-    .from("cursos")
-    .select("*")
-    .eq("escola_id", escolaId)
-    .or(
-      [
-        `curso_global_id.eq.${cursoGlobalHash}`,
-        `and(nome.eq.${nome},tipo.eq.${tipo})`,
-      ].join(",")
-    )
-    .maybeSingle();
-
-  if (selErr) {
-    console.error("Erro ao buscar curso da escola:", selErr);
-    throw new Error("Erro ao consultar curso da escola");
-  }
-
-  if (existing) {
-    return existing;
-  }
-
-  // 2. Tenta Criar
-  const codigo = makeCursoCodigo(nome, escolaId);
-
-  // CORREÇÃO: Removemos created_at (pois não existe na tabela) e updated_at (boa prática deixar o banco lidar)
-  const { data: created, error: insErr } = await supabaseAdmin
-    .from("cursos")
-    .insert({
-      escola_id: escolaId,
-      curso_global_id: cursoGlobalHash,
-      nome,
-      tipo,
-      is_custom: isCustom,
-      codigo,
-      // REMOVIDO: created_at (Coluna não existe na sua tabela cursos)
-      // REMOVIDO: updated_at (Deixe o banco usar o default ou trigger se tiver)
-    } as any)
-    .select("*")
-    .single();
-
-  // 3. Tratamento de Erro Robusto (Race Condition / Duplicidade)
-  if (insErr) {
-    if (insErr.code === '23505') {
-      // Retry: Buscamos novamente o que "ganhou a corrida"
-      const { data: retryData } = await supabaseAdmin
-        .from("cursos")
-        .select("*")
-        .eq("escola_id", escolaId)
-        .or(
-           `curso_global_id.eq.${cursoGlobalHash},and(nome.eq.${nome},tipo.eq.${tipo})`
-        )
-        .maybeSingle();
-
-      if (retryData) {
-        return retryData;
-      }
-    }
-
-    console.error("Erro REAL ao criar curso escola:", insErr);
-    // Agora o erro será mais claro se acontecer outra coisa
-    throw new Error(`Erro ao criar curso: ${insErr.message}`);
-  }
-
-  if (!created) {
-    throw new Error("Erro desconhecido ao criar curso (sem dados retornados)");
-  }
-
-  return created;
-}
-
-async function upsertDisciplinasFromConfig(
-  escolaId: string,
-  cursoId: string,
-  tipo: CourseType,
-  payload: AdvancedConfigPayload
-) {
-  // --- CORREÇÃO AQUI ---
-  // Adicionamos valores padrão: se subjects ou matrix não vierem, usamos array/objeto vazio.
-  const { classes, matrix = {}, subjects = [] } = payload;
-  
-  const nivel = mapCourseTypeToNivel(tipo);
-  const rows: {
-    escola_id: string;
-    curso_escola_id: string;
-    nome: string;
-    classe_nome: string;
-    nivel_ensino: string;
-    tipo: string;
-  }[] = [];
-
-  // Garante que effectiveSubjects é um array, mesmo que venha nulo
-  let effectiveSubjects = subjects || [];
-  
-  if (effectiveSubjects.length === 0) {
-    // Se não tem disciplinas, apenas retornamos 0 (sucesso, mas nada criado)
-    return 0;
-  }
-
-  for (const subject of effectiveSubjects) {
-    for (const cls of classes) {
-      const keyM = `${subject}::${cls}::M`;
-      const keyT = `${subject}::${cls}::T`;
-      const keyN = `${subject}::${cls}::N`;
-
-      // Se matrix estiver vazia (Quick Install), isso apenas dá false e pula o if
-      const ativo =
-        Boolean(matrix[keyM]) || Boolean(matrix[keyT]) || Boolean(matrix[keyN]);
-
-      if (!ativo) continue;
-
-      rows.push({
-        escola_id: escolaId,
-        curso_escola_id: cursoId,
-        nome: subject,
-        classe_nome: cls + " Classe",
-        nivel_ensino: nivel,
-        tipo: "core",
-      });
-    }
-  }
-
-  if (rows.length === 0) return 0;
-
-  const { error: upErr } = await supabaseAdmin
-    .from("disciplinas")
-    .upsert(rows as any, {
-      onConflict: "curso_escola_id,classe_nome,nome",
-      ignoreDuplicates: false,
-    });
-
-  if (upErr) {
-    console.error("Erro ao upsert disciplinas:", upErr);
-    throw new Error("Erro ao salvar disciplinas");
-  }
-
-  return rows.length;
-}
-
-async function upsertConfiguracaoCurriculo(
-  escolaId: string,
-  cursoId: string,
-  config: AdvancedConfigPayload
-) {
-  const { error } = await supabaseAdmin
-    .from("configuracoes_curriculo")
-    .upsert(
-      {
-        escola_id: escolaId,
-        curso_id: cursoId,
-        config,
-        updated_at: new Date().toISOString(),
-      } as any,
-      { onConflict: "escola_id,curso_id" }
-    );
-
-  if (error) {
-    console.error("Erro ao upsert configuracoes_curriculo:", error);
-    throw new Error("Erro ao salvar configuração visual do currículo");
-  }
-}
-
-// -----------------------------
-// HANDLER
-// -----------------------------
-
-export async function POST(
-  req: NextRequest,
-  // 1. Tipagem estrita: 'params' é uma Promise contendo o slug definido na pasta [id]
-  props: { params: Promise<{ id: string }> }
-) {
-  try {
-    // 2. Await obrigatório no Next.js 15 antes de ler qualquer parâmetro
-    const params = await props.params;
+    const mapClasseId = new Map(classesCriadas.map(c => [c.nome, c.id]));
     
-    // 3. Mapeamento explícito: A pasta chama-se [id], logo o param é .id
-    const escolaId = params.id;
+    // Simplified find-or-create for disciplines
+    const { data: existingDisciplinas } = await supabaseAdmin.from('disciplinas').select('id, nome').in('nome', allSubjectNames);
+    const existingNomes = new Set(existingDisciplinas.map(d => d.nome));
+    const novasDisciplinasPayload = allSubjectNames.filter(nome => !existingNomes.has(nome)).map(nome => ({ nome, escola_id: escolaId }));
+    
+    const { data: novasDisciplinas, error: erroNovasDisc } = await supabaseAdmin.from('disciplinas').insert(novasDisciplinasPayload).select('id, nome');
+    if (erroNovasDisc) throw erroNovasDisc;
 
-    if (!escolaId) {
-      return NextResponse.json(
-        { ok: false, error: "escolaId não informado na URL." },
-        { status: 400 }
-      );
-    }
+    const allDisciplinas = [...existingDisciplinas, ...novasDisciplinas];
+    const mapDisciplinaId = new Map(allDisciplinas.map(d => [d.nome, d.id]));
 
-    const body = (await req.json()) as CurriculumApplyPayload;
-
-    if (!body.presetKey) {
-      return NextResponse.json(
-        { ok: false, error: "presetKey é obrigatório" },
-        { status: 400 }
-      );
-    }
-
-    if (!body.advancedConfig || !body.advancedConfig.classes?.length) {
-      return NextResponse.json(
-        { ok: false, error: "advancedConfig incompleto (classes ausentes)" },
-        { status: 400 }
-      );
-    }
-
-    const presetKey = body.presetKey;
-    const presetMeta = CURRICULUM_PRESETS_META[presetKey];
-
-    if (!presetMeta) {
-      return NextResponse.json(
-        { ok: false, error: "presetKey inválido" },
-        { status: 400 }
-      );
-    }
-
-    const tipo: CourseType = PRESET_TO_TYPE[presetKey] || "geral";
-
-    // Nome do curso:
-    const nomeCurso =
-      body.customData?.label?.trim() ||
-      presetMeta.label ||
-      "Curso sem nome";
-
-    // 1. Curso global
-    const global = await findOrCreateGlobalCourse(nomeCurso, tipo, escolaId);
-
-    // 2. Curso da escola
-    const cursoEscola = await findOrCreateCursoEscola(
-      escolaId,
-      nomeCurso,
-      tipo,
-      global.hash,
-      Boolean(body.customData)
-    );
-
-    // 3. Disciplinas (a partir da matriz/subjects)
-    const createdCount = await upsertDisciplinasFromConfig(
-      escolaId,
-      cursoEscola.id,
-      tipo,
-      body.advancedConfig
-    );
-
-    // 4. Configuração visual
-    await upsertConfiguracaoCurriculo(
-      escolaId,
-      cursoEscola.id,
-      body.advancedConfig
-    );
-
-    // 5. Scaffolding Automático: Classes & Turmas
-    // "Sem Gambiarra": Garantimos arrays vazios se advancedConfig vier incompleto
-    const classesParaCriar = body.advancedConfig?.classes || [];
-    const turnosConfig = body.advancedConfig?.turnos || { manha: false, tarde: false, noite: false };
-
-    let turmasStats = 0;
-
-    // Só tentamos criar estrutura se houver classes definidas
-    if (classesParaCriar.length > 0) {
-      try {
-        // A. Criar Estrutura (Classes)
-        // (Chama a função auxiliar que já está no seu arquivo)
-        const classesCriadas = await findOrCreateClassesForCurso(
-          escolaId,
-          cursoEscola.id,
-          classesParaCriar
-        );
-
-        // B. Criar Oferta (Turmas) apenas se tivermos classes criadas
-        if (classesCriadas.length > 0) {
-          turmasStats = await createInitialTurmas(
-            escolaId,
-            cursoEscola.id,
-            classesCriadas,
-            turnosConfig
-          );
+    // Assuming disciplinasPorClasse is part of the payload
+    const disciplinasPorClasse = payload.advancedConfig.disciplinasPorClasse || {};
+    const mapDisciplinasDaClasse: Record<string, string[]> = {};
+    for (const className in disciplinasPorClasse) {
+        const classId = mapClasseId.get(className);
+        if (classId) {
+            mapDisciplinasDaClasse[classId] = disciplinasPorClasse[className].map(discName => mapDisciplinaId.get(discName)).filter(id => id);
         }
-      } catch (err) {
-        // Logamos o aviso, mas não falhamos o request principal
-        // Isso garante que o curso seja instalado mesmo se o scaffolding falhar
-        console.error("Aviso: Scaffolding automático falhou parcialmente:", err);
+    }
+
+    const turmasParaInserir = [];
+    for (const classe of classesCriadas) {
+      for (const turno of ['manha', 'tarde', 'noite']) {
+        if (!turnos[turno]) continue;
+        const qtd = turmasPorCombinacao?.[classe.nome]?.[turno] || 1;
+        for (let i = 1; i <= qtd; i++) {
+          const nomeTurma = gerarNomeTurma(
+            curso.nome,
+            classe.nome,
+            turno,
+            i,
+            padraoNomenclatura || 'descritivo_completo'
+          );
+          turmasParaInserir.push({
+            nome: nomeTurma,
+            curso_id: curso.id,
+            classe_id: classe.id,
+            turno: turno,
+            ano_letivo: new Date().getFullYear().toString(),
+            capacidade: 30,
+            escola_id: escolaId
+          });
+        }
       }
     }
 
-    return NextResponse.json({
-      ok: true,
-      message: "Curso instalado com sucesso.",
-      data: {
-        cursoId: cursoEscola.id,
-        // Retornamos stats para debug, se quiser usar no front
-        turmasCriadas: turmasStats 
-      },
-      // Mantemos compatibilidade com o retorno anterior se necessário
-      disciplinasCriadasOuAtualizadas: createdCount, 
-    });
-  } catch (e: any) {
-    console.error("Erro na rota curriculum/apply:", e);
+    const { data: turmasCriadas, error: erroTurmas } = await supabaseAdmin
+      .from('turmas')
+      .insert(turmasParaInserir)
+      .select('id, classe_id');
+
+    if (erroTurmas) throw erroTurmas;
+
+    const ofertasParaInserir = [];
+    for (const turma of turmasCriadas) {
+      const idsDisciplinas = mapDisciplinasDaClasse[turma.classe_id] || [];
+      for (const disciplinaId of idsDisciplinas) {
+        ofertasParaInserir.push({
+          turma_id: turma.id,
+          disciplina_id: disciplinaId,
+          carga_horaria: 40,
+          professor_id: null
+        });
+      }
+    }
+
+    if (ofertasParaInserir.length > 0) {
+      const { error: erroOfertas } = await supabaseAdmin
+        .from('ofertas')
+        .insert(ofertasParaInserir);
+      if (erroOfertas) throw erroOfertas;
+    }
+
+    return NextResponse.json({ success: true, cursoId: curso.id });
+
+  } catch (error) {
+    console.error("Erro no processo de onboarding:", error);
+    if (cursoCriadoId) {
+      await supabaseAdmin.from('cursos').delete().eq('id', cursoCriadoId);
+    }
     return NextResponse.json(
-      { ok: false, error: e.message || "Erro interno ao aplicar currículo" },
+      { error: 'Falha ao aplicar currículo. Alterações foram revertidas.' },
       { status: 500 }
     );
   }

@@ -314,6 +314,14 @@ DROP POLICY IF EXISTS unified_select_profiles ON public.profiles;
 CREATE POLICY unified_select_profiles ON public.profiles
   FOR SELECT
   USING (
-    (check_super_admin_role()) OR
-    ((select auth.uid()) = user_id)
+    (
+      (
+        SELECT
+          profiles.role
+        FROM
+          profiles
+        WHERE
+          (profiles.user_id = auth.uid())
+      ) IN ('super_admin', 'global_admin')
+    ) OR ((select auth.uid()) = user_id)
   );

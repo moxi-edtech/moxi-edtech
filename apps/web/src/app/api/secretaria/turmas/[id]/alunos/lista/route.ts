@@ -83,7 +83,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         `
         id,
         nome,
-        classe,
+        classe_id,
         turno,
         sala,
         escolas (
@@ -101,6 +101,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           responsavel,
           diretor_nome,
           diretor_cargo
+        ),
+        classes (
+            nome
         )
       `
       )
@@ -111,6 +114,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     if (turmaError || !turma) {
       return NextResponse.json({ ok: false, error: "Turma não encontrada" }, { status: 404, headers });
     }
+    const classeNome = (turma as any)?.classes?.nome || '—';
 
     // 2) Buscar matrículas ativas + dados dos alunos
     const { data: matriculas, error: matriculasError } = await supabase
@@ -167,7 +171,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           id: turma.id,
           nome: turma.nome,
           codigo: null,
-          classe: turma.classe,
+          classe: classeNome,
           turno: turma.turno ?? null,
           sala: turma.sala ?? null,
           escola_nome: turma.escolas?.nome ?? null,
@@ -224,7 +228,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         // Cabeçalho da turma
         draw(
           `Turma: ${turma.nome ?? "—"}   •   Classe: ${
-            turma.classe ?? "—"
+            classeNome ?? "—"
           }   •   Turno: ${turma.turno ?? "—"}`,
           margin,
           cursorY,

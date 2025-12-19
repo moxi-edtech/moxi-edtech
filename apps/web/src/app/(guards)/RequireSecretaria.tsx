@@ -18,11 +18,14 @@ export default function RequireSecretaria({ children }: { children: React.ReactN
 
       const { data: vinculos, error } = await supabase
         .from("escola_users")
-        .select("id, papel")
+        .select("*")
         .eq("user_id", user.id)
-        .eq("papel", "secretaria")
-        .limit(1);
-      if (error || !vinculos || vinculos.length === 0) { router.replace("/"); return; }
+        .limit(10);
+      const hasSecretaria = (vinculos || []).some((v: any) => {
+        const papel = (v as any)?.papel ?? (v as any)?.role ?? null;
+        return papel === "secretaria";
+      });
+      if (error || !hasSecretaria) { router.replace("/"); return; }
 
       if (active) setReady(true);
     })();

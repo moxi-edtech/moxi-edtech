@@ -9,6 +9,7 @@ import type {
 
 export type AcademicSession = BaseAcademicSession;
 export type Periodo = BaseAcademicPeriod;
+export type PadraoNomenclatura = 'descritivo_completo' | 'descritivo_simples' | 'abreviado';
 
 // Atualizar a interface da matriz para incluir o tipo do curso
 export interface MatrixRow {
@@ -34,8 +35,8 @@ export interface AcademicStep1Props {
   setSchoolDisplayName: (val: string) => void;
   regime: string;
   setRegime: (val: string) => void;
-  anoLetivo: string;
-  setAnoLetivo: (val: string) => void;
+  anoLetivo: number;
+  setAnoLetivo: (val: number) => void;
   turnos: TurnosState;
   onTurnoToggle: (turno: keyof TurnosState) => void;
   sessaoAtiva: AcademicSession | null;
@@ -83,4 +84,6 @@ export interface AcademicStep2Props {
   turnos: TurnosState;
   onApplyCurriculumPreset: () => void;
   applyingPreset: boolean;
+  padraoNomenclatura: PadraoNomenclatura;
+  onPadraoNomenclaturaChange: (value: PadraoNomenclatura) => void;
 }

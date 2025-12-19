@@ -8,6 +8,7 @@ import { recordAuditServer } from '@/lib/audit'
 const BodySchema = z.object({
   nome: z.string().trim().min(1, 'Informe o nome'),
   email: z.string().email('Email inválido'),
+  telefone: z.string().trim().optional().nullable(),
   data_nascimento: z.string().optional().nullable(),
   sexo: z.enum(['M', 'F', 'O', 'N']).optional().nullable(),
   bi_numero: z.string().optional().nullable(),
@@ -107,6 +108,7 @@ export async function POST(req: Request) {
     const profileData = {
       user_id: targetUserId,
       email: body.email,
+      telefone: body.telefone ?? null,
       nome: body.nome,
       role: 'aluno',
       escola_id: escolaId,
@@ -132,8 +134,13 @@ export async function POST(req: Request) {
       profile_id: targetUserId,
       escola_id: escolaId,
       nome: body.nome,
+      email: body.email,
+      telefone: body.telefone ?? null,
+      bi_numero: body.bi_numero ?? null,
       responsavel: body.responsavel_nome ?? null,
+      responsavel_contato: body.responsavel_contato ?? null,
       telefone_responsavel: body.responsavel_contato ?? null,
+      status: 'pendente', // Definir status inicial como 'pendente'
       deleted_at: null, // Reativa soft-deleted
     }
 

@@ -16,6 +16,7 @@ interface ItemSelect {
 export default function TurmaForm({ onSuccess }: TurmaFormProps) {
   // --- ESTADOS ---
   const [nome, setNome] = useState("");
+  const [turmaCodigo, setTurmaCodigo] = useState("");
   const [turno, setTurno] = useState("");
   const [sessionId, setSessionId] = useState(""); // ID da Sessão
   const [sala, setSala] = useState("");
@@ -126,18 +127,18 @@ export default function TurmaForm({ onSuccess }: TurmaFormProps) {
         throw new Error("Curso é obrigatório para turmas de 10ª classe ou acima.");
       }
 
-      // 1. Encontrar o nome do ano letivo para manter compatibilidade
+      // 1. Encontrar o ano letivo numérico para o payload
       const sessionObj = sessions.find(s => s.id === sessionId);
-      const anoLetivoLabel = sessionObj?.nome;
+      const anoLetivoInt = sessionObj?.nome ? parseInt(sessionObj.nome.replace(/\D/g, ''), 10) : new Date().getFullYear();
 
       const payload = {
         nome,
+        turma_codigo: turmaCodigo,
         turno,
-        session_id: sessionId, // O Vínculo Real (Foreign Key)
-        ano_letivo: anoLetivoLabel, // O Texto (Visual)
+        session_id: sessionId,
+        ano_letivo: anoLetivoInt, // O número (Correto)
         sala: sala || null,
         capacidade_maxima: Number(capacidade),
-        // Vínculos Opcionais (Mas recomendados)
         curso_id: cursoId || null,
         classe_id: classeId || null
       };
@@ -186,7 +187,7 @@ export default function TurmaForm({ onSuccess }: TurmaFormProps) {
               required
               value={nome}
               onChange={(e) => setNome(e.target.value)}
-              placeholder="Ex: 10ª A, 7ª B..."
+              placeholder="Ex: 10ª Classe A"
               className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 outline-none"
             />
             {nomeSugestao && (
@@ -200,11 +201,12 @@ export default function TurmaForm({ onSuccess }: TurmaFormProps) {
             )}
           </div>
           <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">Sala / Local</label>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Código da Turma *</label>
             <input
-              value={sala}
-              onChange={(e) => setSala(e.target.value)}
-              placeholder="Ex: Sala 102, Laboratório"
+              required
+              value={turmaCodigo}
+              onChange={(e) => setTurmaCodigo(e.target.value)}
+              placeholder="Ex: 10A, 7B"
               className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 outline-none"
             />
           </div>
@@ -235,6 +237,16 @@ export default function TurmaForm({ onSuccess }: TurmaFormProps) {
               <option value="Noite">Noite</option>
             </select>
           </div>
+        </div>
+        
+        <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Sala / Local</label>
+            <input
+              value={sala}
+              onChange={(e) => setSala(e.target.value)}
+              placeholder="Ex: Sala 102, Laboratório"
+              className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 outline-none"
+            />
         </div>
       </div>
 

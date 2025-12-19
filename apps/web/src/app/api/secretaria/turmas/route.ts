@@ -50,6 +50,7 @@ export async function GET(req: Request) {
 
     if (busca) {
         items = items.filter((t: any) => 
+            (t.turma_codigo && t.turma_codigo.toLowerCase().includes(busca)) || // NOVO
             (t.turma_nome && t.turma_nome.toLowerCase().includes(busca)) || 
             (t.sala && t.sala.toLowerCase().includes(busca)) ||
             (t.curso_nome && t.curso_nome.toLowerCase().includes(busca)) ||
@@ -107,6 +108,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const {
       nome,
+      turma_codigo, // NOVO CAMPO
       turno,
       sala,
       session_id,
@@ -116,20 +118,26 @@ export async function POST(req: Request) {
       classe_id
     } = body;
 
-    if (!nome || !turno) {
-      return NextResponse.json({ ok: false, error: 'Nome e Turno são obrigatórios' }, { status: 400 });
+    if (!turma_codigo || !turno || !ano_letivo) {
+      return NextResponse.json({ ok: false, error: 'Código da Turma, Turno e Ano Letivo são obrigatórios' }, { status: 400 });
     }
 
+    const anoLetivoInt = typeof ano_letivo === 'string' ? parseInt(ano_letivo.replace(/\D/g, ''), 10) : ano_letivo;
+    if (isNaN(anoLetivoInt)) {
+        return NextResponse.json({ ok: false, error: 'Ano Letivo inválido' }, { status: 400 });
+    }
+    
     // Inserção na tabela física 'turmas'
     const { data: newTurma, error } = await supabase
       .from('turmas')
       .insert({
         escola_id: escolaId,
-        nome,
+        nome, // O nome ainda pode ser um descritivo (Ex: 10ª Classe - Manhã)
+        turma_codigo, // O código único para o ano (Ex: 10A)
+        ano_letivo: anoLetivoInt, // O ano como inteiro
         turno,
         sala: sala || null,
         session_id: session_id || null,
-        ano_letivo: ano_letivo || null, // Importante para a constraint funcionar bem
         capacidade_maxima: capacidade_maxima || 35,
         curso_id: curso_id || null,   
         classe_id: classe_id || null  
@@ -140,10 +148,11 @@ export async function POST(req: Request) {
     // --- BLOCO DE TRATAMENTO DE DUPLICIDADE ---
     if (error) {
       if (error.code === '23505') {
+        // A constraint será 'unique_turma_por_ano_e_codigo'
         return NextResponse.json(
           { 
             ok: false, 
-            error: `A Turma "${nome}" já existe para esta Classe/Curso neste turno e ano letivo.` 
+            error: `O código de turma "${turma_codigo}" já está em uso no ano letivo de ${ano_letivo}.` 
           }, 
           { status: 409, headers } // Conflict
         );

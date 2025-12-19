@@ -25,7 +25,12 @@ type ErrorRow = {
 async function getHistorico(): Promise<ImportItem[]> {
   const cookieStore = await cookies();
   const cookie = cookieStore.getAll().map(({ name, value }) => `${name}=${value}`).join('; ');
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/api/migracao/historico`, {
+  
+  const baseUrl = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : `http://localhost:${process.env.PORT || 3000}`;
+    
+  const res = await fetch(`${baseUrl}/api/migracao/historico`, {
     cache: 'no-store',
     headers: { cookie },
   });
@@ -37,7 +42,12 @@ async function getHistorico(): Promise<ImportItem[]> {
 async function getErros(importId: string): Promise<ErrorRow[]> {
   const cookieStore = await cookies();
   const cookie = cookieStore.getAll().map(({ name, value }) => `${name}=${value}`).join('; ');
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/api/migracao/${importId}/erros`, {
+
+  const baseUrl = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : `http://localhost:${process.env.PORT || 3000}`;
+
+  const res = await fetch(`${baseUrl}/api/migracao/${importId}/erros`, {
     cache: 'no-store',
     headers: { cookie },
   });
@@ -46,8 +56,8 @@ async function getErros(importId: string): Promise<ErrorRow[]> {
   return json?.errors ?? [];
 }
 
-export default async function ImportacaoDetailPage({ params }: { params: { id: string } }) {
-  const importId = params.id;
+export default async function ImportacaoDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: importId } = await params;
   const [items, erros] = await Promise.all([getHistorico(), getErros(importId)]);
   const item = items.find((i) => i.id === importId);
   if (!item) {

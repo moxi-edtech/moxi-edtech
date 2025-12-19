@@ -41,9 +41,16 @@ export async function GET(
       .from("turmas")
       .select(
         `
-        *,
+        id,
+        nome,
+        classe_id,
+        turno,
+        sala,
         escolas (*),
-        school_sessions (*)
+        school_sessions (*),
+        classes (
+            nome
+        )
       `
       )
       .eq("id", turmaId)
@@ -56,7 +63,7 @@ export async function GET(
         { status: 404, headers }
       );
     }
-
+    const classeNome = (turma as any)?.classes?.nome ?? '—';
     const escola = (turma as any).escolas;
     const sessao = (turma as any).school_sessions;
 
@@ -148,7 +155,7 @@ export async function GET(
 
         draw(
           `Turma: ${turma.nome ?? "—"} • Classe: ${
-            turma.classe ?? "—"
+            classeNome ?? "—"
           } • Turno: ${turma.turno ?? "—"}`,
           margin,
           10,

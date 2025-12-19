@@ -62,23 +62,6 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   const [showModal, setShowModal] = useState(false);
   const [draft, setDraft] = useState<CourseDraft | null>(null);
   const [newSubject, setNewSubject] = useState("");
-
-  if (escolaLoading) {
-    return (
-      <div className="p-6 flex flex-col items-center gap-2 text-slate-500">
-        <Loader2 className="h-6 w-6 animate-spin text-teal-600" />
-        <p>Carregando contexto da escola...</p>
-      </div>
-    );
-  }
-
-  if (escolaError || !resolvedEscolaId) {
-    return (
-      <div className="p-6 text-red-700 bg-red-50 border border-red-200 rounded-lg">
-        {escolaError || 'Escola não identificada.'}
-      </div>
-    );
-  }
   const [installing, setInstalling] = useState(false);
   const [quickInstallingKey, setQuickInstallingKey] = useState<string | null>(null);
 
@@ -126,6 +109,23 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     };
     loadSessions();
   }, [resolvedEscolaId]);
+
+  if (escolaLoading) {
+    return (
+      <div className="p-6 flex flex-col items-center gap-2 text-slate-500">
+        <Loader2 className="h-6 w-6 animate-spin text-teal-600" />
+        <p>Carregando contexto da escola...</p>
+      </div>
+    );
+  }
+
+  if (escolaError || !resolvedEscolaId) {
+    return (
+      <div className="p-6 text-red-700 bg-red-50 border border-red-200 rounded-lg">
+        {escolaError || 'Escola não identificada.'}
+      </div>
+    );
+  }
 
   // --- CARREGAR DETALHES DO CURSO (AO CLICAR) ---
   const handleOpenManager = async (courseId: string) => {
@@ -175,25 +175,28 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     turno: string;
   }) => {
     const sessionObj = activeSession;
-    const anoLetivo = sessionObj?.nome;
+    const anoLetivoLabel = sessionObj?.nome;
+    const anoLetivoInt = anoLetivoLabel ? parseInt(anoLetivoLabel.replace(/\D/g, ''), 10) : new Date().getFullYear();
 
     let suggested = '';
     try {
       const search = new URLSearchParams({ classe_id: params.classeId, turno: params.turno });
-      if (anoLetivo) search.set('ano_letivo', anoLetivo);
+      if (anoLetivoLabel) search.set('ano_letivo', anoLetivoLabel);
       if (sessionObj?.id) search.set('session_id', sessionObj.id);
       if (!resolvedEscolaId) throw new Error('Escola não identificada');
       const sJson = await fetchJson(buildEscolaUrl(resolvedEscolaId, '/turmas/sugestao-nome', search));
       suggested = (sJson.suggested || '').toString();
     } catch {}
 
-    const nome = suggested || 'A';
+    const turma_codigo = suggested || 'A';
+    const nome = `${params.classeNome} ${turma_codigo}`;
 
     const payload = {
       nome,
+      turma_codigo,
       turno: params.turno,
       session_id: sessionObj?.id || null,
-      ano_letivo: anoLetivo || null,
+      ano_letivo: anoLetivoInt,
       classe_id: params.classeId,
       curso_id: params.cursoId,
       capacidade_maxima: 35,
@@ -234,14 +237,14 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     if(!nome || !selectedCourseId) return;
 
     try {
-      const classeNome = details.classes[0].nome; // primeira classe como alvo
+      const classeId = details.classes[0].id; // USAR O ID
       await fetchJson('/api/secretaria/disciplinas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           nome,
           curso_id: selectedCourseId,
-          classe_nome: classeNome,
+          classe_id: classeId, // ENVIAR O ID
           tipo: 'core'
         })
       });
@@ -262,7 +265,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     return cls.data || cls;
   };
 
-  const createDisciplinaRecord = async (cursoId: string, classeNome: string, nome: string) => {
+  const createDisciplinaRecord = async (cursoId: string, classeId: string, nome: string) => {
     if (!resolvedEscolaId) throw new Error('Escola não identificada');
     await fetchJson(buildEscolaUrl(resolvedEscolaId, '/disciplinas'), {
       method: 'POST',
@@ -270,7 +273,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       body: JSON.stringify({
         nome,
         curso_id: cursoId,
-        classe_nome: classeNome,
+        classe_id: classeId,
         tipo: 'core'
       })
     });
@@ -326,7 +329,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         // Disciplinas (vincula na primeira classe criada)
         if (createdClasses[0]) {
           for (const subj of subjects) {
-            try { await createDisciplinaRecord(courseId, createdClasses[0].nome, subj); } catch (e) { console.warn('Disciplina', subj, e); }
+            try { await createDisciplinaRecord(courseId, createdClasses[0].id, subj); } catch (e) { console.warn('Disciplina', subj, e); }
           }
         }
 
@@ -395,7 +398,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
 
       if (createdClasses[0]) {
         for (const subj of draft.subjects) {
-          try { await createDisciplinaRecord(courseId, createdClasses[0].nome, subj); } catch (e) { console.warn('Disciplina', subj, e); }
+          try { await createDisciplinaRecord(courseId, createdClasses[0].id, subj); } catch (e) { console.warn('Disciplina', subj, e); }
         }
       }
 
@@ -414,9 +417,19 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   };
   
   const handleRemove = async (id: string, total: number) => {
-      if(total > 0) return toast.error("Curso tem alunos.");
-      // ... delete logic
-      toast.success("Curso removido.");
+      if (total > 0) return toast.error("Curso tem alunos.");
+      if (!resolvedEscolaId) return toast.error("Escola não identificada.");
+      if (!confirm("Remover este curso? Classes, turmas e disciplinas vinculadas serão apagadas.")) return;
+
+      try {
+        await fetchJson(buildEscolaUrl(resolvedEscolaId, `/cursos/${id}`), { method: 'DELETE' });
+        toast.success("Curso removido.");
+        setSelectedCourseId((prev) => (prev === id ? null : prev));
+        setCourses((prev) => prev.filter((c) => c.id !== id));
+        fetchCourses();
+      } catch (e: any) {
+        toast.error(e?.message || "Falha ao remover curso");
+      }
   };
 
   // --- RENDERIZAÇÃO ---

@@ -393,6 +393,11 @@ begin
           insert into public.escola_administradores (escola_id, user_id, cargo)
           values (v_escola_id, v_user_id, 'administrador_principal');
         end if;
+        
+        -- Garante a inserção na nova tabela de usuários com papel
+        -- insert into public.escola_usuarios (escola_id, user_id, papel)
+        -- values (v_escola_id, v_user_id, 'admin_escola')
+        -- on conflict (escola_id, user_id) do nothing;
 
         v_msg := v_msg || ' ✅ Administrador vinculado: ' || lower(trim(p_admin_email));
       else

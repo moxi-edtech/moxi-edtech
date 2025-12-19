@@ -435,6 +435,11 @@ export interface CurriculumPresetMeta {
   readonly idadeMax?: number;
   readonly duracaoAnos?: number;
   readonly tipo: string;
+  readonly configuracao_turmas?: {
+    padrao: '1_por_combinacao' | '2_por_combinacao' | 'personalizado';
+    capacidade_padrao: number;
+    nomenclatura_padrao: 'descritivo_completo' | 'descritivo_simples' | 'abreviado';
+  };
 }
 
 // Info de nível / faixa etária conforme combinámos
@@ -445,38 +450,47 @@ const LEVEL_INFO: Record<
     idadeMax?: number;
     duracaoAnos?: number;
     tipo: string;
+    configuracao_turmas?: {
+        padrao: '1_por_combinacao' | '2_por_combinacao' | 'personalizado';
+        capacidade_padrao: number;
+        nomenclatura_padrao: 'descritivo_completo' | 'descritivo_simples' | 'abreviado';
+    };
   }
 > = {
-  pre_escolar: { idadeMin: 3, idadeMax: 5, duracaoAnos: 3, tipo: "Pré-Escolar" },
-  primario_i: { idadeMin: 6, idadeMax: 9, duracaoAnos: 4, tipo: "Primário I" },
-  primario_ii: { idadeMin: 10, idadeMax: 11, duracaoAnos: 2, tipo: "Primário II" },
-  secundario_i: { idadeMin: 12, idadeMax: 14, duracaoAnos: 3, tipo: "Secundário I" },
+  pre_escolar: { idadeMin: 3, idadeMax: 5, duracaoAnos: 3, tipo: "Pré-Escolar", configuracao_turmas: { padrao: '1_por_combinacao', capacidade_padrao: 20, nomenclatura_padrao: 'descritivo_simples' } },
+  primario_i: { idadeMin: 6, idadeMax: 9, duracaoAnos: 4, tipo: "Primário I", configuracao_turmas: { padrao: '1_por_combinacao', capacidade_padrao: 30, nomenclatura_padrao: 'descritivo_simples' } },
+  primario_ii: { idadeMin: 10, idadeMax: 11, duracaoAnos: 2, tipo: "Primário II", configuracao_turmas: { padrao: '1_por_combinacao', capacidade_padrao: 30, nomenclatura_padrao: 'descritivo_simples' } },
+  secundario_i: { idadeMin: 12, idadeMax: 14, duracaoAnos: 3, tipo: "Secundário I", configuracao_turmas: { padrao: '1_por_combinacao', capacidade_padrao: 35, nomenclatura_padrao: 'descritivo_completo' } },
   secundario_ii_fb: {
     idadeMin: 15,
     idadeMax: 17,
     duracaoAnos: 3,
     tipo: "Secundário II - FB",
+    configuracao_turmas: { padrao: '1_por_combinacao', capacidade_padrao: 35, nomenclatura_padrao: 'descritivo_completo' }
   },
   secundario_ii_ej: {
     idadeMin: 15,
     idadeMax: 17,
     duracaoAnos: 3,
     tipo: "Secundário II - EJ",
+    configuracao_turmas: { padrao: '1_por_combinacao', capacidade_padrao: 35, nomenclatura_padrao: 'descritivo_completo' }
   },
   secundario_ii_hs: {
     idadeMin: 15,
     idadeMax: 17,
     duracaoAnos: 3,
     tipo: "Secundário II - HS",
+    configuracao_turmas: { padrao: '1_por_combinacao', capacidade_padrao: 35, nomenclatura_padrao: 'descritivo_completo' }
   },
-  tecnico_informatica: { idadeMin: 15, duracaoAnos: 4, tipo: "Técnico" },
-  tecnico_gestao: { idadeMin: 15, duracaoAnos: 4, tipo: "Técnico" },
-  tecnico_construcao: { idadeMin: 15, duracaoAnos: 4, tipo: "Técnico" },
-  tecnico_enfermagem: { idadeMin: 17, duracaoAnos: 4, tipo: "Técnico de Saúde" },
+  tecnico_informatica: { idadeMin: 15, duracaoAnos: 4, tipo: "Técnico", configuracao_turmas: { padrao: '1_por_combinacao', capacidade_padrao: 30, nomenclatura_padrao: 'abreviado' } },
+  tecnico_gestao: { idadeMin: 15, duracaoAnos: 4, tipo: "Técnico", configuracao_turmas: { padrao: '1_por_combinacao', capacidade_padrao: 30, nomenclatura_padrao: 'abreviado' } },
+  tecnico_construcao: { idadeMin: 15, duracaoAnos: 4, tipo: "Técnico", configuracao_turmas: { padrao: '1_por_combinacao', capacidade_padrao: 30, nomenclatura_padrao: 'abreviado' } },
+  tecnico_enfermagem: { idadeMin: 17, duracaoAnos: 4, tipo: "Técnico de Saúde", configuracao_turmas: { padrao: '1_por_combinacao', capacidade_padrao: 25, nomenclatura_padrao: 'abreviado' } },
   tecnico_analises_clinicas: {
     idadeMin: 17,
     duracaoAnos: 4,
     tipo: "Técnico de Saúde",
+    configuracao_turmas: { padrao: '1_por_combinacao', capacidade_padrao: 25, nomenclatura_padrao: 'abreviado' }
   },
 };
 

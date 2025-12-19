@@ -28,7 +28,7 @@ export async function GET(req: Request) {
     // 3. Filtros opcionais (Ex: filtrar disciplinas de um curso específico)
     const { searchParams } = new URL(req.url)
     const cursoId = searchParams.get('curso_id')
-    const classeNome = searchParams.get('classe_nome')
+    const classeId = searchParams.get('classe_id')
 
     let query = supabase
         .from('disciplinas')
@@ -37,7 +37,7 @@ export async function GET(req: Request) {
         .order('nome', { ascending: true });
 
     if (cursoId) query = query.eq('curso_escola_id', cursoId)
-    if (classeNome) query = query.eq('classe_nome', classeNome)
+    if (classeId) query = query.eq('classe_id', classeId)
 
     const { data, error } = await query
 
@@ -78,12 +78,12 @@ export async function POST(req: Request) {
     const { 
       nome, 
       curso_id, // Front deve mandar o ID do curso
-      classe_nome, // Ex: "10ª Classe"
+      classe_id, // NOVO CAMPO
       nivel_ensino, // Ex: "secundario1"
       tipo // Ex: "core"
     } = body
 
-    if (!nome || !curso_id || !classe_nome) {
+    if (!nome || !curso_id || !classe_id) {
         return NextResponse.json({ ok: false, error: "Nome, Curso e Classe são obrigatórios" }, { status: 400 })
     }
 
@@ -94,7 +94,7 @@ export async function POST(req: Request) {
             escola_id: escolaId,
             nome,
             curso_escola_id: curso_id, // Mapeando curso_id do front para curso_escola_id do banco
-            classe_nome,
+            classe_id, // USANDO O ID
             nivel_ensino: nivel_ensino || 'geral',
             tipo: tipo || 'core'
         })

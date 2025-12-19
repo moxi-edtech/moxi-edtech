@@ -55,6 +55,7 @@ export default function AlunosPage() {
       const payload: any = {
         nome: `${formData.firstName} ${formData.lastName}`.trim(),
         email: formData.email.trim(),
+        telefone: formData.phone.trim(),
         data_nascimento: formData.birthDate || null,
         sexo: (formData.gender as any) || null,
         bi_numero: formData.idNumber || null,

@@ -21,20 +21,39 @@ type Aluno = {
 };
 
 type TurmaData = {
+
   turma: {
+
     id: string;
+
     nome: string;
-    classe: string;
+
+    classe_id: string;
+
+    classe_nome: string;
+
+    ano_letivo: number;
+
     turno: string;
+
     sala: string | null;
+
     capacidade: number;
+
     ocupacao: number;
+
     diretor?: { id: string; nome: string; email: string } | null;
+
     curso_nome?: string | null;
+
     curso_tipo?: string | null;
+
   };
+
   alunos: Aluno[];
+
   disciplinas: Array<{ id: string; nome: string; professor?: string }>;
+
 };
 
 export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
@@ -84,8 +103,9 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-slate-900">{turma.nome}</h1>
-                <div className="flex items-center gap-3 text-sm text-slate-500 mt-1">
-                   <span className="flex items-center gap-1"><School className="w-4 h-4"/> {turma.classe}</span>
+                <p className="text-xs font-bold text-slate-400 mt-1">Ano Letivo {turma.ano_letivo}</p>
+                <div className="flex items-center gap-3 text-sm text-slate-500 mt-2">
+                   <span className="flex items-center gap-1"><School className="w-4 h-4"/> {turma.classe_nome}</span>
                    {turma.curso_nome && (
                      <span className="flex items-center gap-1">
                        <LayoutGrid className="w-4 h-4"/> {turma.curso_nome}

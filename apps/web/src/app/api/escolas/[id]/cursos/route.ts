@@ -1,9 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabaseServer";
-import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
+import { canManageEscolaResources } from "../permissions";
+
+// --- HELPERS PARA GERAR CÓDIGO (consistência com outras rotas) ---
+const normalizeNome = (nome: string): string =>
+  nome
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_");
+
+const makeCursoCodigo = (nome: string, escolaId: string): string => {
+  const prefix = escolaId.replace(/-/g, "").slice(0, 8);
+  return `${prefix}_${normalizeNome(nome)}`;
+};
 
 
 
@@ -19,10 +32,6 @@ export async function GET(
     const { data: auth } = await s.auth.getUser();
     const user = auth?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
-
-    const authz = await authorizeEscolaAction(s as any, escolaId, user.id, []);
-    if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 });
-
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return NextResponse.json({ ok: false, error: "Configuração Supabase ausente." }, { status: 500 });
     }
@@ -30,6 +39,9 @@ export async function GET(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
+
+    const allowed = await canManageEscolaResources(admin, escolaId, user.id);
+    if (!allowed) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
 
     // Buscar cursos com colunas opcionais em fallback
     let rows: any[] = [];
@@ -81,10 +93,6 @@ export async function POST(
     const { data: auth } = await s.auth.getUser();
     const user = auth?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
-
-    const authz = await authorizeEscolaAction(s as any, escolaId, user.id, ['configurar_escola']);
-    if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 });
-
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return NextResponse.json({ ok: false, error: 'Configuração Supabase ausente.' }, { status: 500 });
     }
@@ -92,6 +100,9 @@ export async function POST(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
+
+    const allowed = await canManageEscolaResources(admin, escolaId, user.id);
+    if (!allowed) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
     const schema = z.object({
@@ -110,10 +121,10 @@ export async function POST(
     const payload: any = {
       escola_id: escolaId,
       nome: parsed.data.nome,
+      codigo: parsed.data.codigo || makeCursoCodigo(parsed.data.nome, escolaId),
     };
     if (parsed.data.nivel !== undefined) payload.nivel = parsed.data.nivel;
     if (parsed.data.descricao !== undefined) payload.descricao = parsed.data.descricao;
-    if (parsed.data.codigo !== undefined) payload.codigo = parsed.data.codigo;
     if (parsed.data.tipo !== undefined) payload.tipo = parsed.data.tipo;
 
     const { data: ins, error } = await (admin as any)

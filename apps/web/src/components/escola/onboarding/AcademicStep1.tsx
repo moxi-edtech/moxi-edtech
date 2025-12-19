@@ -77,10 +77,11 @@ export default function AcademicStep1({
                 <div className="flex items-center gap-2 mt-2 border-b-2 border-slate-200 py-2 focus-within:border-teal-500 transition-colors">
                   <CalendarRange className="w-4 h-4 text-slate-400" />
                   <input
+                    type="number"
                     value={anoLetivo}
-                    onChange={(e) => setAnoLetivo(e.target.value)}
+                    onChange={(e) => setAnoLetivo(parseInt(e.target.value, 10))}
                     className="font-bold outline-none w-full bg-transparent text-sm text-slate-700"
-                    placeholder="2024/2025"
+                    placeholder="2024"
                   />
                 </div>
               </div>
