@@ -54,11 +54,11 @@ export async function authorizeEscolaAction(
   try {
     const { data: vinc } = await s
       .from("escola_users")
-      .select("papel")
+      .select("papel, role")
       .eq("escola_id", escolaId)
       .eq("user_id", userId)
       .maybeSingle();
-    const papel = (vinc as any)?.papel as string | undefined;
+    const papel = ((vinc as any)?.papel ?? (vinc as any)?.role) as string | undefined;
     if (papel && (requiredPermissions.length === 0 || requiredPermissions.some((perm) => hasPermission(papel as any, perm as any)))) {
       allowed = true;
     }

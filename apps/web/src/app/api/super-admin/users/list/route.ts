@@ -10,6 +10,7 @@ type UsuarioItem = {
   email: string
   telefone: string | null
   role: string
+  escola_id: string | null
   escola_nome: string | null
   papel_escola: string | null
 }
@@ -42,13 +43,17 @@ export async function GET() {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     ) as any
 
+    // Papéis globais que podem aparecer na lista (sem alunos/professores)
+    const allowedRoles = new Set(['super_admin', 'global_admin', 'admin', 'financeiro', 'secretaria'])
+
     // 1) Carrega perfis básicos
     let profiles: any[] | null = null
     {
       const { data, error: pErr } = await admin
         .from('profiles' as any)
-        .select('user_id, nome, email, telefone, role, numero_login')
+        .select('user_id, nome, email, telefone, role, numero_login, escola_id, current_escola_id')
         .is('deleted_at', null)
+        .in('role', Array.from(allowedRoles) as any)
         .order('nome', { ascending: true })
         .limit(5000)
       if (pErr) {
@@ -59,8 +64,9 @@ export async function GET() {
           // Fallback sem numero_login para ambientes sem a coluna
           const { data: data2, error: pErr2 } = await admin
             .from('profiles' as any)
-            .select('user_id, nome, email, telefone, role')
+            .select('user_id, nome, email, telefone, role, escola_id, current_escola_id')
             .is('deleted_at', null)
+            .in('role', Array.from(allowedRoles) as any)
             .order('nome', { ascending: true })
             .limit(5000)
           if (pErr2) {
@@ -75,25 +81,69 @@ export async function GET() {
       }
     }
 
-    const pRows = (profiles || []) as any[]
+    const pRows = ((profiles || []) as any[]).filter((p) =>
+      allowedRoles.has(String((p as any)?.role ?? ''))
+    )
     const userIds = pRows.map((p: any) => String(p.user_id))
 
     // 2) Vínculos escola_users
     let vRows: any[] = []
+    let papelField: 'papel' | 'role' = 'papel'
     if (userIds.length > 0) {
-      const { data: v, error: vErr } = await admin
-        .from('escola_users' as any)
-        .select('user_id, escola_id, papel')
-        .in('user_id', userIds as any)
-        .limit(200000)
+      const fetchVinculos = (field: 'papel' | 'role') =>
+        admin
+          .from('escola_users' as any)
+          .select(`user_id, escola_id, ${field}`)
+          .in('user_id', userIds as any)
+          .order('created_at', { ascending: false })
+          .limit(200000)
+
+      let { data: v, error: vErr } = await fetchVinculos('papel')
       if (vErr) {
-        return NextResponse.json({ ok: false, error: vErr.message }, { status: 400 })
+        const msg = (vErr as any)?.message as string | undefined
+        const code = (vErr as any)?.code as string | undefined
+        const missingColumn = code === '42703' || (msg && /column .* does not exist|does not exist/i.test(msg))
+        if (!missingColumn) {
+          return NextResponse.json({ ok: false, error: vErr.message }, { status: 400 })
+        }
+
+        // Fallback para esquemas que usam 'role' em vez de 'papel'
+        const fallback = await fetchVinculos('role')
+        if (fallback.error) {
+          return NextResponse.json({ ok: false, error: fallback.error.message }, { status: 400 })
+        }
+        papelField = 'role'
+        v = fallback.data
       }
       vRows = (v || []) as any[]
     }
 
     // 3) Nomes de escolas
-    const escolaIds = Array.from(new Set(vRows.map((v) => String(v.escola_id))))
+    const vinculosByUser = new Map<string, { escola_id: string | null; papel: string | null }>()
+    for (const v of vRows) {
+      const uid = String(v.user_id)
+      if (vinculosByUser.has(uid)) continue
+      const papel = (papelField === 'role' ? (v as any).role : (v as any).papel) ?? null
+      if (papel === 'aluno') continue
+      vinculosByUser.set(uid, {
+        escola_id: v.escola_id ? String(v.escola_id) : null,
+        papel,
+      })
+    }
+
+    const escolaIds = Array.from(
+      new Set(
+        [
+          ...Array.from(vinculosByUser.values())
+            .map((v) => v.escola_id)
+            .filter((id): id is string => !!id),
+          ...pRows
+            .map((p) => (p as any)?.current_escola_id ?? (p as any)?.escola_id ?? null)
+            .filter((id): id is string => !!id)
+            .map((id) => String(id)),
+        ]
+      )
+    )
     let escolasMap = new Map<string, string | null>()
     if (escolaIds.length > 0) {
       const { data: escolas, error: eErr } = await admin
@@ -107,21 +157,28 @@ export async function GET() {
       escolasMap = new Map((escolas || []).map((e: any) => [String(e.id), e.nome ?? null]))
     }
 
-    const items: UsuarioItem[] = pRows.map((u: any) => {
-      const vinc = vRows.find((v) => String(v.user_id) === String(u.user_id))
-      const escolaNome = vinc ? (escolasMap.get(String(vinc.escola_id)) ?? null) : null
+    const items: UsuarioItem[] = []
+    for (const u of pRows) {
+      const vinc = vinculosByUser.get(String(u.user_id))
+      const escolaIdFromProfile = (u as any)?.current_escola_id ?? (u as any)?.escola_id ?? null
       const papelEscola = vinc?.papel ?? null
-      return {
+      if (papelEscola === 'aluno' || String(u.role ?? '') === 'aluno') continue
+
+      const escolaId = vinc?.escola_id ?? (escolaIdFromProfile ? String(escolaIdFromProfile) : null)
+      const escolaNome = escolaId ? escolasMap.get(escolaId) ?? null : null
+
+      items.push({
         id: String(u.user_id),
         numero_login: u.numero_login ?? null,
         nome: u.nome ?? null,
         email: String(u.email ?? ''),
         telefone: u.telefone ?? null,
         role: String(u.role ?? ''),
+        escola_id: escolaId,
         escola_nome: escolaNome,
         papel_escola: papelEscola,
-      }
-    })
+      })
+    }
 
     return NextResponse.json({ ok: true, items })
   } catch (err) {

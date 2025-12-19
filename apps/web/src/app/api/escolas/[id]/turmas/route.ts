@@ -2,76 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
+import { canManageEscolaResources } from "../permissions";
 
 // --- GET: Listar Turmas (Admin) ---
 export async function GET(
-  _req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  req: NextRequest,
+  context: { params: { id: string } }
 ) {
-  const { id: escolaId } = await context.params;
+  const { id: escolaId } = context.params;
   try {
     const s = await supabaseServer();
     const { data: auth } = await s.auth.getUser();
     const user = auth?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
-
-    // 1. Verificação de Permissão (Hierarquia)
-    let allowed = false;
-
-    // A) Super Admin
-    try {
-      const { data: prof } = await s
-        .from("profiles")
-        .select("role")
-        .eq("user_id", user.id)
-        .order('created_at', { ascending: false })
-        .limit(1);
-      const role = (prof?.[0] as any)?.role as string | undefined;
-      if (role === 'super_admin') allowed = true;
-    } catch {}
-
-    // B) Vínculo na escola (CORRIGIDO: escola_users)
-    if (!allowed) {
-      try {
-        const { data: vinc } = await s
-          .from("escola_users") // <--- NOME CORRIGIDO
-          .select("papel")
-          .eq("escola_id", escolaId)
-          .eq("user_id", user.id)
-          .maybeSingle();
-        allowed = Boolean((vinc as any)?.papel);
-      } catch {}
-    }
-
-    // C) Tabela legado de administradores (se ainda usar)
-    if (!allowed) {
-      try {
-        const { data: adminLink } = await s
-          .from("escola_administradores")
-          .select("user_id")
-          .eq("escola_id", escolaId)
-          .eq("user_id", user.id)
-          .limit(1);
-        allowed = Boolean(adminLink && (adminLink as any[]).length > 0);
-      } catch {}
-    }
-
-    // D) Profile role 'admin' vinculado à escola
-    if (!allowed) {
-      try {
-        const { data: prof } = await s
-          .from("profiles")
-          .select("role, escola_id")
-          .eq("user_id", user.id)
-          .eq("escola_id", escolaId)
-          .limit(1);
-        allowed = Boolean(prof && (prof as any[]).length > 0 && (prof as any)[0]?.role === 'admin');
-      } catch {}
-    }
-
-    if (!allowed) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
-
-    // 2. Busca usando Admin Client (Bypass RLS)
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return NextResponse.json({ ok: false, error: "Configuração Supabase ausente." }, { status: 500 });
     }
@@ -80,15 +23,52 @@ export async function GET(
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    const { data, error } = await admin
-      .from('turmas')
-      .select('id, nome, turno, ano_letivo, capacidade_maxima, sala, curso_id, classe_id') // Adicionei mais campos úteis
+    const allowed = await canManageEscolaResources(admin, escolaId, user.id);
+    if (!allowed) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
+
+    // 3. Parâmetros da URL
+    const url = new URL(req.url);
+    const turno = url.searchParams.get('turno');
+    
+    // 4. Query à VIEW
+    let query = admin
+      .from('vw_turmas_para_matricula') 
+      .select('*')
       .eq('escola_id', escolaId)
       .order('nome', { ascending: true });
 
-    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+    if (turno && turno !== 'todos') query = query.eq('turno', turno);
+    
+    const { data: items, error } = await query;
 
-    return NextResponse.json({ ok: true, data: data || [] });
+    if (error) {
+        console.error("Erro na View:", error);
+        throw error;
+    }
+
+    // 5. Estatísticas
+    let totalAlunos = 0;
+    const porTurnoMap: Record<string, number> = {};
+
+    (items || []).forEach((t: any) => {
+        totalAlunos += (t.ocupacao_atual || 0);
+        const tr = t.turno || 'sem_turno';
+        porTurnoMap[tr] = (porTurnoMap[tr] || 0) + 1;
+    });
+
+    const stats = {
+        totalTurmas: (items || []).length,
+        totalAlunos: totalAlunos,
+        porTurno: Object.entries(porTurnoMap).map(([k, v]) => ({ turno: k, total: v }))
+    };
+
+    return NextResponse.json({
+      ok: true,
+      items: items || [],
+      total: (items || []).length,
+      stats
+    });
+
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erro inesperado';
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
@@ -98,9 +78,9 @@ export async function GET(
 // --- POST: Criar Turma (COM BLINDAGEM) ---
 export async function POST(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  context: { params: { id: string } }
 ) {
-  const { id: escolaId } = await context.params;
+  const { id: escolaId } = context.params;
   
   try {
     const s = await supabaseServer();
@@ -108,20 +88,20 @@ export async function POST(
     const user = auth?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
-    // Reutilizar lógica de permissão (simplificada aqui para brevidade, idealmente extrair para helper)
-    // Para POST, assumimos que precisa ter vínculo na tabela escola_users
-    const { data: vinc } = await s
-        .from("escola_users")
-        .select("id")
-        .eq("escola_id", escolaId)
-        .eq("user_id", user.id)
-        .maybeSingle();
-    
-    if (!vinc) {
-         return NextResponse.json({ ok: false, error: "Permissão negada" }, { status: 403 });
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ ok: false, error: "Configuração Supabase ausente." }, { status: 500 });
+    }
+    const admin = createAdminClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
+    const allowed = await canManageEscolaResources(admin, escolaId, user.id);
+    if (!allowed) {
+      return NextResponse.json({ ok: false, error: "Permissão negada" }, { status: 403 });
     }
 
-    const body = await req.json();
+    const body = await req.json().catch(() => ({}));
     const { 
       nome, 
       turno, 
@@ -138,21 +118,21 @@ export async function POST(
     }
 
     // Insert direto na tabela
-    const { data, error } = await s
-        .from('turmas')
-        .insert({
-            escola_id: escolaId,
-            nome,
-            turno,
-            ano_letivo, // Importante para diferenciar Turma A 2024 de Turma A 2025
-            session_id: session_id || null,
-            sala: sala || null,
-            capacidade_maxima: capacidade_maxima || 35,
-            curso_id: curso_id || null,
-            classe_id: classe_id || null
-        })
-        .select()
-        .single();
+    const { data, error } = await (admin as any)
+      .from('turmas')
+      .insert({
+        escola_id: escolaId,
+        nome,
+        turno,
+        ano_letivo, // Importante para diferenciar Turma A 2024 de Turma A 2025
+        session_id: session_id || null,
+        sala: sala || null,
+        capacidade_maxima: capacidade_maxima || 35,
+        curso_id: curso_id || null,
+        classe_id: classe_id || null
+      })
+      .select()
+      .single();
 
     if (error) {
         // [BLINDAGEM] Tratamento do Erro de Constraint Unique

@@ -18,7 +18,12 @@ type ImportItem = {
 async function getHistorico(): Promise<ImportItem[]> {
   const cookieStore = await cookies();
   const cookie = cookieStore.getAll().map(({ name, value }) => `${name}=${value}`).join('; ');
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/api/migracao/historico`, {
+  
+  const baseUrl = process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : `http://localhost:${process.env.PORT || 3000}`;
+  
+  const res = await fetch(`${baseUrl}/api/migracao/historico`, {
     cache: 'no-store',
     headers: { cookie },
   });

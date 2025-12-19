@@ -8,7 +8,7 @@ export default function EscolaAdminDashboard({ escolaId, escolaNome }: Props) {
   return (
     <div className="flex min-h-screen bg-slate-50">
       <EscolaAdminSidebar escolaId={escolaId} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col">
         {/* Header atualizado para combinar com o design */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-10">
           <h2 className="text-sm font-semibold text-slate-500">

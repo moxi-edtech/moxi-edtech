@@ -35,6 +35,7 @@ import {
   type AcademicStep2Props,
   type MatrixRow,
   type CurriculumCategory,
+  type PadraoNomenclatura,
 } from "./academicSetupTypes";
 
 // Mapeamento de presets → categorias de UI do Step2
@@ -77,6 +78,8 @@ export default function AcademicStep2({
   turnos,
   onApplyCurriculumPreset,
   applyingPreset,
+  padraoNomenclatura,
+  onPadraoNomenclaturaChange,
 }: AcademicStep2Props) {
   const [selectedPresetKey, setSelectedPresetKey] = useState<CurriculumKey | "">("");
   const [addedCourses, setAddedCourses] = useState<AddedCourse[]>([]);
@@ -316,6 +319,33 @@ export default function AcademicStep2({
           <span className="text-xs font-bold text-teal-700 bg-teal-50 px-3 py-1 rounded-full border border-teal-100">
             {totalTurmas} turmas a criar
           </span>
+        </div>
+
+        {/* SELETOR DE NOMENCLATURA */}
+        <div className="bg-white px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wide whitespace-nowrap">Padrão de Nomes</label>
+            <div className="flex gap-2">
+              {(
+                [
+                  { id: 'descritivo_completo', label: 'Completo' },
+                  { id: 'descritivo_simples', label: 'Simples' },
+                  { id: 'abreviado', label: 'Abreviado' },
+                ] as const
+              ).map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => onPadraoNomenclaturaChange(opt.id)}
+                  className={`flex-1 py-1.5 px-3 text-[11px] font-bold rounded-lg border transition-all ${
+                    padraoNomenclatura === opt.id
+                      ? "bg-slate-900 text-white border-slate-900 shadow-md"
+                      : "bg-white text-slate-400 border-slate-200 hover:border-slate-300 hover:text-slate-600"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
         </div>
 
         {/* Barra mágica */}

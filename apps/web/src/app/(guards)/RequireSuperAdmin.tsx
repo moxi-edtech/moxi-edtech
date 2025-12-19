@@ -7,20 +7,37 @@ import { createClient } from "@/lib/supabaseClient";
 export default function RequireSuperAdmin({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const supabase = createClient();
-  const [ready, setReady] = useState(false);
+  const [status, setStatus] = useState<"loading" | "authed" | "denied">("loading");
 
   useEffect(() => {
     let active = true;
 
     (async () => {
-      const { data: { user }, error } = await supabase.auth.getUser();
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-      if (error || !user) {
+      if (authError || !user) {
         router.replace("/login");
         return;
       }
 
-      if (active) setReady(true);
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("user_id", user.id)
+        .single();
+
+      if (profileError || !profile) {
+        console.error("Erro ao buscar perfil:", profileError);
+        if (active) setStatus("denied");
+        return;
+      }
+
+      const allowed = ["super_admin", "global_admin"];
+      if (allowed.includes(profile.role)) {
+        if (active) setStatus("authed");
+      } else {
+        if (active) setStatus("denied");
+      }
     })();
 
     return () => {
@@ -28,8 +45,12 @@ export default function RequireSuperAdmin({ children }: { children: React.ReactN
     };
   }, [router, supabase]);
 
-  if (!ready) {
-    return <div className="p-6">🔒 Verificando sessão...</div>;
+  if (status === "loading") {
+    return <div className="p-6">🔒 Verificando permissões...</div>;
+  }
+
+  if (status === "denied") {
+    return <div className="p-6">🚫 Acesso negado. Requer privilégios de Super Admin.</div>;
   }
 
   return <>{children}</>;

@@ -22,11 +22,14 @@ export async function getAlunoContext() {
   try {
     const { data: vinc } = await supabase
       .from('escola_users')
-      .select('escola_id, papel')
+      .select('*')
       .eq('user_id', user.id)
-      .eq('papel', 'aluno')
-      .limit(1);
-    escolaId = (vinc?.[0] as any)?.escola_id ?? null;
+      .limit(10);
+    const vincAluno = (vinc || []).find((v: any) => {
+      const papel = (v as any)?.papel ?? (v as any)?.role ?? null;
+      return papel === 'aluno';
+    }) as any;
+    escolaId = vincAluno?.escola_id ?? null;
 
     const { data: alunos } = await supabase
       .from('alunos')
@@ -59,4 +62,3 @@ export async function getAlunoContext() {
     } as AlunoContext,
   };
 }
-

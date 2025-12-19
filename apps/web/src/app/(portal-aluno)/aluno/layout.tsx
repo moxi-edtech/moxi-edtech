@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabaseClient";
 import AlunoShell from "@/components/aluno/AlunoShell";
 
-type Vínculo = { papel: string; escola_id: string } | null;
+type Vínculo = { papel: string | null; escola_id: string } | null;
 type Perfil = { id: string; nome: string | null } | null;
 
 export default function AlunoLayout({ children }: { children: React.ReactNode }) {
@@ -34,14 +34,18 @@ export default function AlunoLayout({ children }: { children: React.ReactNode })
       // Vínculo do aluno
       const { data: vinc } = await s
         .from("escola_users")
-        .select("papel, escola_id")
+        .select("*")
         .eq("user_id", user.id)
-        .eq("papel", "aluno")
-        .limit(1);
+        .limit(10);
 
-      if (!vinc || vinc.length === 0) { router.replace("/"); return; }
+      const vincAluno = (vinc || []).find((v: any) => {
+        const papel = (v as any)?.papel ?? (v as any)?.role ?? null;
+        return papel === "aluno";
+      }) as any;
 
-      const escolaId = (vinc?.[0] as any)?.escola_id as string | undefined;
+      if (!vincAluno) { router.replace("/"); return; }
+
+      const escolaId = vincAluno?.escola_id as string | undefined;
 
       // Gate por plano/feature
       let ok = true;
@@ -53,8 +57,10 @@ export default function AlunoLayout({ children }: { children: React.ReactNode })
       }
 
       if (!active) return;
+      const papel = vincAluno?.papel ?? vincAluno?.role ?? null;
+
       setPerfil((prof as any) ?? null);
-      setVinculo((vinc?.[0] as any) ?? null);
+      setVinculo(vincAluno ? { papel, escola_id: vincAluno.escola_id } : null);
       setAllowed(ok);
       if (!ok && pathname !== '/aluno/desabilitado') {
         router.replace('/aluno/desabilitado');

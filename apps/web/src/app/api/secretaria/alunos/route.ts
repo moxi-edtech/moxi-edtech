@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { createClient } from "@supabase/supabase-js";
+import type { Database } from "~types/supabase";
 
 // Lista alunos (portal secretaria)
 // Agora trazendo numero_login via relacionamento alunos -> profiles
@@ -15,13 +17,18 @@ export async function GET(req: Request) {
       );
     }
 
-    // Ainda resolvemos escolaId (útil pra RLS / futuro)
     const { data: prof } = await supabase
       .from("profiles")
-      .select("current_escola_id, escola_id, user_id")
+      .select("current_escola_id, escola_id, user_id, role")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(1);
+
+    const role = (prof?.[0] as any)?.role as string | undefined;
+    const allowedRoles = ["super_admin", "global_admin", "admin", "secretaria", "financeiro", "professor"];
+    if (!role || !allowedRoles.includes(role)) {
+      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
+    }
 
     let escolaId = (
       (prof?.[0] as any)?.current_escola_id ||
@@ -34,18 +41,32 @@ export async function GET(req: Request) {
           .from("escola_users")
           .select("escola_id")
           .eq("user_id", user.id)
-          .limit(1);
-        escolaId = (vinc?.[0] as any)?.escola_id as string | undefined;
+          .limit(1)
+          .maybeSingle();
+        escolaId = (vinc as any)?.escola_id as string | undefined;
       } catch {
         // silencioso
       }
     }
 
+    if (!escolaId) {
+      return NextResponse.json({ ok: false, error: "Usuário não vinculado a nenhuma escola" }, { status: 403 });
+    }
+
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ ok: false, error: "Server misconfigured: falta SUPABASE_SERVICE_ROLE_KEY" }, { status: 500 });
+    }
+
+    // Admin client to bypass RLS after manual escopo/role checks
+    const admin = createClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
     const url = new URL(req.url);
     const q = url.searchParams.get("q")?.trim() || "";
-    const status = (url.searchParams.get("status") || 'active').toLowerCase();
+    const status = (url.searchParams.get("status") || 'ativo').toLowerCase();
     const sessionIdParam = url.searchParams.get("session_id")?.trim() || undefined;
-    const daysParam = url.searchParams.get("days") || "";
     const page = Math.max(
       1,
       parseInt(url.searchParams.get("page") || "1", 10) || 1
@@ -56,56 +77,35 @@ export async function GET(req: Request) {
     );
     const offset = (page - 1) * pageSize;
 
-    // Filtra por período (days)
-    let since: string | null = null;
-    if (daysParam) {
-      const d = parseInt(daysParam, 10);
-      if (Number.isFinite(d) && d > 0) {
-        const dt = new Date();
-        dt.setDate(dt.getDate() - d);
-        since = dt.toISOString();
-      }
-    }
-
-
-
     // Tentar usar a sessão enviada na query; se não houver ou não pertencer à escola, cai para a ativa
     let activeSessionId: string | undefined = undefined;
-    if (escolaId && sessionIdParam) {
-      try {
-        const { data: sessParam } = await supabase
-          .from('school_sessions')
-          .select('id')
-          .eq('id', sessionIdParam)
-          .eq('escola_id', escolaId)
-          .limit(1);
-        activeSessionId = (sessParam?.[0] as any)?.id as string | undefined;
-      } catch {
-        // silencioso
-      }
+    if (sessionIdParam) {
+      const { data: sessParam } = await admin
+        .from('school_sessions')
+        .select('id')
+        .eq('id', sessionIdParam)
+        .eq('escola_id', escolaId)
+        .limit(1);
+      activeSessionId = (sessParam?.[0] as any)?.id as string | undefined;
     }
 
     // Descobrir sessão ativa da escola (para filtrar alunos já matriculados)
-    if (!activeSessionId && escolaId) {
-      try {
-        const { data: sess } = await supabase
-          .from('school_sessions')
-          .select('id, status')
-          .eq('escola_id', escolaId)
-          .eq('status', 'ativa')
-          .order('data_inicio', { ascending: false })
-          .limit(1);
-        activeSessionId = (sess?.[0] as any)?.id as string | undefined;
-      } catch {
-        // silencioso
-      }
+    if (!activeSessionId) {
+      const { data: sess } = await admin
+        .from('school_sessions')
+        .select('id, status')
+        .eq('escola_id', escolaId)
+        .eq('status', 'ativa')
+        .order('data_inicio', { ascending: false })
+        .limit(1);
+      activeSessionId = (sess?.[0] as any)?.id as string | undefined;
     }
 
     // Se existe sessão (selecionada ou ativa), coletar alunos com matrícula nesta sessão para excluí-los do resultado
     let alunosComMatriculaAtual: string[] = [];
     if (escolaId && activeSessionId) {
       try {
-        const { data: mats } = await supabase
+        const { data: mats } = await admin
           .from('matriculas')
           .select('aluno_id')
           .eq('escola_id', escolaId)
@@ -119,7 +119,7 @@ export async function GET(req: Request) {
     } else if (escolaId && !activeSessionId) {
       // Fallback: excluir alunos com matrícula ativa na escola, sem filtrar por sessão
       try {
-        const { data: mats } = await supabase
+        const { data: mats } = await admin
           .from('matriculas')
           .select('aluno_id, status')
           .eq('escola_id', escolaId)
@@ -135,7 +135,7 @@ export async function GET(req: Request) {
     // Blindagem extra: exclui qualquer aluno que já possua numero_matricula atribuído na escola, independentemente da sessão
     if (escolaId) {
       try {
-        const { data: matsComNumero } = await supabase
+        const { data: matsComNumero } = await admin
           .from('matriculas')
           .select('aluno_id')
           .eq('escola_id', escolaId)
@@ -152,7 +152,7 @@ export async function GET(req: Request) {
     }
 
     // Agora com relacionamento para profiles(numero_login)
-    let query = supabase
+    let query = admin
       .from("alunos")
       .select(
         "id, nome, responsavel, telefone_responsavel, status, created_at, profile_id, escola_id, profiles!alunos_profile_id_fkey ( numero_login, email )",
@@ -161,29 +161,44 @@ export async function GET(req: Request) {
       .order("created_at", { ascending: false });
 
     // Garante escopo da escola atual
-    if (escolaId) {
-      query = query.eq("escola_id", escolaId);
-    }
+    query = query.eq("escola_id", escolaId);
 
-    // Status: ativos (deleted_at null) ou arquivados (deleted_at not null)
-    if (status === 'archived') {
-      query = query.not('deleted_at', 'is', null as any)
-    } else {
-      query = query.is('deleted_at', null)
-    }
+    switch (status) {
+      case 'ativo':
+        if (alunosComMatriculaAtual.length > 0) {
+          const list = Array.from(new Set(alunosComMatriculaAtual)).map((id) => `"${id}"`).join(',');
+          query = query.in('id', `(${list})`);
+        } else {
+          // Se não há alunos com matrícula, a lista de ativos é vazia
+          query = query.eq('id', 'dummy-id-to-return-empty');
+        }
+        query = query.is('deleted_at', null);
+        break;
 
-    // Excluir alunos já matriculados na sessão em uso
-    if (alunosComMatriculaAtual.length > 0) {
-      const list = Array.from(new Set(alunosComMatriculaAtual)).join(',');
-      // NOT IN ( ... ) via supabase-js
-      query = query.not('id', 'in', `(${list})`);
-    }
+      case 'inativo':
+        if (alunosComMatriculaAtual.length > 0) {
+          const list = Array.from(new Set(alunosComMatriculaAtual)).map((id) => `"${id}"`).join(',');
+          query = query.not('id', 'in', `(${list})`);
+        }
+        // Garante que "pendentes" não apareçam como inativos
+        query = query.not('status', 'eq', 'pendente');
+        query = query.is('deleted_at', null);
+        break;
 
+      case 'pendente':
+        query = query.eq('status', 'pendente');
+        query = query.is('deleted_at', null);
+        break;
 
-
-    // Aplica filtro de período, se definido
-    if (since) {
-      query = query.gte("created_at", since);
+      case 'arquivado':
+        query = query.not('deleted_at', 'is', null);
+        break;
+      
+      case 'todos':
+      default:
+        // Por padrão, 'todos' deve incluir tanto alunos ativos quanto arquivados.
+        // Nenhuma condição adicional de deleted_at aqui.
+        break;
     }
 
     if (q) {
@@ -195,10 +210,11 @@ export async function GET(req: Request) {
         // 1) Coletar possíveis profiles por numero_login
         let profileIds: string[] = [];
         try {
-          let profQuery = supabase
+          let profQuery = admin
             .from("profiles")
             .select("user_id, numero_login")
             .ilike("numero_login", `%${q}%`)
+            .or(`escola_id.eq.${escolaId},current_escola_id.eq.${escolaId}`)
             .limit(500);
           const { data: profRows } = await profQuery;
           profileIds = (profRows ?? []).map((r: any) => r.user_id).filter(Boolean);
@@ -211,7 +227,7 @@ export async function GET(req: Request) {
           `responsavel.ilike.%${q}%`,
         ];
         if (profileIds.length > 0) {
-          const inList = profileIds.map((id) => id).join(",");
+          const inList = profileIds.map((id) => `"${id}"`).join(",");
           orParts.push(`profile_id.in.(${inList})`);
         }
         query = query.or(orParts.join(","));

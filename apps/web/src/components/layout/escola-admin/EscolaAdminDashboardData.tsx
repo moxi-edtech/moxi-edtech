@@ -25,15 +25,7 @@ export default function EscolaAdminDashboardData({ escolaId }: { escolaId: strin
             // Se a tua API atual não retorna 'kpis' diretos com contagens totais, 
             // precisas adicionar isso ao endpoint ou calcular aqui.
             // Vou simular mapeamento:
-            setData({
-                ...json,
-                kpis: { // Mapeia o que vier da API para o formato KpiStats
-                    turmas: json.charts?.turmasCount || 0, // Ajusta conforme tua API
-                    alunos: json.charts?.alunosTotal || 0,
-                    professores: json.charts?.professoresCount || 0,
-                    avaliacoes: 0
-                }
-            });
+            setData(json);
         }
       } catch (e: any) {
         if (mounted) setError(e.message);

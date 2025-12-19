@@ -22,6 +22,9 @@ type Item = {
   turma_id: string;
   aluno_nome?: string | null;
   turma_nome?: string | null;
+  sala?: string | null;
+  turno?: string | null;
+  classe_nome?: string | null;
   status: string;
   data_matricula?: string | null;
   created_at: string;
@@ -80,12 +83,23 @@ export default function MatriculasListClient() {
 
   // Estados Locais
   const [q, setQ] = useState("");
-  const [days, setDays] = useState("0");
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [selectedSession, setSelectedSession] = useState<string>("");
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
   const [items, setItems] = useState<Item[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  // Estados dos Filtros em Cascata
+  const [selectedEnsino, setSelectedEnsino] = useState<string>("");
+  const [cursos, setCursos] = useState<any[]>([]);
+  const [selectedCurso, setSelectedCurso] = useState<string>("");
+  const [classes, setClasses] = useState<any[]>([]);
+  const [selectedClasse, setSelectedClasse] = useState<string>("");
+  const [turmas, setTurmas] = useState<any[]>([]);
+  const [selectedTurma, setSelectedTurma] = useState<string>("");
+  const [showPendentes, setShowPendentes] = useState<boolean>(false);
   
   // Modais
   const [showStatusForm, setShowStatusForm] = useState(false);
@@ -95,6 +109,82 @@ export default function MatriculasListClient() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   // --- LÓGICA ---
+  
+  async function fetchSessions() {
+    try {
+      const res = await fetch("/api/secretaria/school-sessions");
+      const json = await res.json();
+      if (json.ok) {
+        setSessions(json.items);
+        const activeSession = json.items.find((s: any) => s.status === 'ativa');
+        if (activeSession) {
+          setSelectedSession(activeSession.id);
+        } else if (json.items.length > 0) {
+          setSelectedSession(json.items[0].id);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch sessions", error);
+    }
+  }
+
+  async function fetchCursos() {
+    try {
+      const res = await fetch("/api/secretaria/cursos");
+      const json = await res.json();
+      if (json.ok) {
+        setCursos(json.items);
+      }
+    } catch (error) {
+      console.error("Failed to fetch cursos", error);
+    }
+  }
+
+  useEffect(() => {
+    fetchSessions();
+    fetchCursos();
+  }, []);
+
+  useEffect(() => {
+    async function fetchClasses() {
+      if (!selectedCurso) {
+        setClasses([]);
+        setSelectedClasse("");
+        return;
+      }
+      try {
+        const res = await fetch(`/api/secretaria/classes?curso_id=${selectedCurso}`);
+        const json = await res.json();
+        if (json.ok) {
+          setClasses(json.items);
+        }
+      } catch (error) {
+        console.error("Failed to fetch classes", error);
+      }
+    }
+    fetchClasses();
+  }, [selectedCurso]);
+
+  useEffect(() => {
+    async function fetchTurmas() {
+      if (!selectedClasse) {
+        setTurmas([]);
+        setSelectedTurma("");
+        return;
+      }
+      try {
+        const res = await fetch(`/api/secretaria/turmas-simples?classe_id=${selectedClasse}&session_id=${selectedSession}`);
+        const json = await res.json();
+        if (json.ok) {
+          setTurmas(json.items);
+        }
+      } catch (error) {
+        console.error("Failed to fetch turmas", error);
+      }
+    }
+    fetchTurmas();
+  }, [selectedClasse, selectedSession]);
+
   const replaceParams = (fn: (p: URLSearchParams) => void) => {
     const p = new URLSearchParams(Array.from(searchParams.entries()));
     fn(p);
@@ -126,10 +216,25 @@ export default function MatriculasListClient() {
   };
 
   async function load(p = page) {
+    if (!selectedSession) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
-      const params = new URLSearchParams({ q, days, page: String(p), pageSize: String(pageSize) });
-      if (turmaIdFromQuery) params.set('turma_id', turmaIdFromQuery);
+      const params = new URLSearchParams({ 
+        q, 
+        session_id: selectedSession, 
+        page: String(p), 
+        pageSize: String(pageSize) 
+      });
+      if (selectedTurma) params.set('turma_id', selectedTurma);
+      else if (showPendentes) params.set('turma_id', 'null');
+      
+      if (selectedClasse) params.set('classe_id', selectedClasse);
+      if (selectedCurso) params.set('curso_id', selectedCurso);
+      if (selectedEnsino) params.set('ensino', selectedEnsino);
+
       if (statusFromQuery) params.set('status', statusFromQuery);
       if (statusInFromQuery) params.set('status_in', statusInFromQuery);
       
@@ -144,7 +249,7 @@ export default function MatriculasListClient() {
     }
   }
 
-  useEffect(() => { load(1); setPage(1); }, [q, days, turmaIdFromQuery, statusFromQuery, statusInFromQuery]);
+  useEffect(() => { load(1); setPage(1); }, [q, selectedSession, selectedTurma, selectedClasse, selectedCurso, selectedEnsino, showPendentes, statusFromQuery, statusInFromQuery]);
   useEffect(() => { load(page); }, [page]);
 
   // Métricas
@@ -220,33 +325,63 @@ export default function MatriculasListClient() {
             </div>
             
             <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0">
-                {[{ value: '0', label: 'Todas' }, { value: '1', label: 'Hoje' }, { value: '7', label: '7 dias' }, { value: '30', label: '30 dias' }, { value: '90', label: '90 dias' }].map(({ value, label }) => (
-                    <button 
-                    key={value} 
-                    onClick={() => setDays(value)}
-                    className={`whitespace-nowrap px-3 py-2 rounded-lg text-xs font-bold border transition-all ${
-                        days === value 
-                        ? 'bg-slate-800 text-white border-slate-800' 
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                    }`}
-                    >
-                    {label}
-                    </button>
+              <select
+                value={selectedSession}
+                onChange={(e) => setSelectedSession(e.target.value)}
+                className="w-full sm:w-auto px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-shadow"
+              >
+                {sessions.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.nome}
+                  </option>
                 ))}
+              </select>
             </div>
           </div>
 
           {/* Export Actions */}
           <div className="flex gap-2">
-            <a href={`/secretaria/matriculas/export?format=csv&days=${days}&q=${q}`} target="_blank" className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 transition">
+            <a href={`/secretaria/matriculas/export?format=csv&session_id=${selectedSession}&q=${q}`} target="_blank" className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 transition">
               <Download className="h-3 w-3" /> CSV
             </a>
-            <a href={`/secretaria/matriculas/export?format=json&days=${days}&q=${q}`} target="_blank" className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 transition">
+            <a href={`/secretaria/matriculas/export?format=json&session_id=${selectedSession}&q=${q}`} target="_blank" className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 transition">
               <Download className="h-3 w-3" /> JSON
             </a>
           </div>
         </div>
 
+        {/* CASCADING FILTERS */}
+        <div className="p-5 border-b border-slate-100 flex flex-wrap items-center gap-3 bg-slate-50/50">
+            <select value={selectedEnsino} onChange={e => setSelectedEnsino(e.target.value)} className="w-full sm:w-auto px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-shadow">
+                <option value="">Ensino/Nível</option>
+                <option value="primario">Ensino Primário</option>
+                <option value="ciclo1">I Ciclo</option>
+                <option value="ciclo2">II Ciclo</option>
+            </select>
+            <select value={selectedCurso} onChange={e => setSelectedCurso(e.target.value)} className="w-full sm:w-auto px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-shadow">
+                <option value="">Curso</option>
+                {cursos.map(curso => (
+                    <option key={curso.id} value={curso.id}>{curso.nome}</option>
+                ))}
+            </select>
+            <select value={selectedClasse} onChange={e => setSelectedClasse(e.target.value)} className="w-full sm:w-auto px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-shadow">
+                <option value="">Classe</option>
+                {classes.map(classe => (
+                    <option key={classe.id} value={classe.id}>{classe.nome}</option>
+                ))}
+            </select>
+            <select value={selectedTurma} onChange={e => setSelectedTurma(e.target.value)} className="w-full sm:w-auto px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-shadow">
+                <option value="">Turma</option>
+                {turmas.map(turma => (
+                    <option key={turma.id} value={turma.id}>{turma.nome}</option>
+                ))}
+            </select>
+            <div className="flex items-center">
+                <input type="checkbox" id="pendentes" checked={showPendentes} onChange={e => setShowPendentes(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"/>
+                <label htmlFor="pendentes" className="ml-2 text-sm font-medium text-slate-700">Pendentes de Enturmação</label>
+            </div>
+        </div>
+        
         {/* Tags de Filtros Ativos */}
         {(statusFilters.length > 0 || turmaIdFromQuery) && (
           <div className="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center gap-2">
@@ -302,6 +437,8 @@ export default function MatriculasListClient() {
                     return Number.isNaN(d.getTime()) ? null : d.toLocaleDateString('pt-BR');
                   })();
 
+                  const fichaHref = m.aluno_id ? `/secretaria/alunos/${m.aluno_id}/ficha` : null;
+
                   return (
                   <tr key={m.id} className="hover:bg-slate-50/80 transition-colors group">
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -323,19 +460,37 @@ export default function MatriculasListClient() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 border border-slate-200">
-                          {m.aluno_nome ? m.aluno_nome.substring(0, 2).toUpperCase() : '?'}
+                      {fichaHref ? (
+                        <Link
+                          href={fichaHref}
+                          className="flex items-center gap-3 group-hover:text-teal-700"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 border border-slate-200">
+                            {m.aluno_nome ? m.aluno_nome.substring(0, 2).toUpperCase() : '?'}
+                          </div>
+                          <div className="font-bold text-sm text-slate-800">{m.aluno_nome || "Aluno Desconhecido"}</div>
+                        </Link>
+                      ) : (
+                        <div className="flex items-center gap-3 text-slate-500">
+                          <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-400 border border-slate-200">
+                            {m.aluno_nome ? m.aluno_nome.substring(0, 2).toUpperCase() : '?'}
+                          </div>
+                          <div className="font-bold text-sm text-slate-400">{m.aluno_nome || "Aluno Desconhecido"}</div>
                         </div>
-                        <div className="font-bold text-sm text-slate-800">{m.aluno_nome || "Aluno Desconhecido"}</div>
-                      </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {m.turma_nome ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 text-xs font-bold border border-indigo-100">
-                          <BookOpen className="w-3 h-3" />
-                          {m.turma_nome}
-                        </span>
+                        <div>
+                          <p className="font-bold text-sm text-slate-800">
+                            <span className="font-bold text-teal-700">{m.classe_nome}</span> / {m.turma_nome}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {m.turno && <span>{m.turno}</span>}
+                            {m.sala && <span className="ml-2">Sala: {m.sala}</span>}
+                          </p>
+                        </div>
+
                       ) : <span className="text-slate-300 text-xs italic">Sem turma</span>}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">

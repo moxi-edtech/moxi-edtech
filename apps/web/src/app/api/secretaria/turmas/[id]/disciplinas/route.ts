@@ -76,13 +76,6 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
           .eq('turma_id', turmaId)
           .eq('disciplina_id', row.disciplina_id)
         notasCount = count ?? 0
-      } else if (disciplinaNome) {
-        const { count } = await supabase
-          .from('notas')
-          .select('id', { count: 'exact', head: true })
-          .eq('turma_id', turmaId)
-          .eq('disciplina', disciplinaNome)
-        notasCount = count ?? 0
       }
 
       // Check rotinas (horário) by turma and professor profile

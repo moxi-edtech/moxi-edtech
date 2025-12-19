@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
+import { canManageEscolaResources } from "../permissions";
 
 // GET /api/escolas/[id]/classes
 // Lista classes da escola (usa service role com autorização)
@@ -16,61 +17,6 @@ export async function GET(
     const { data: auth } = await s.auth.getUser();
     const user = auth?.user;
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
-
-    let allowed = false;
-    // 1. Super Admin
-    try {
-      const { data: prof } = await s
-        .from('profiles')
-        .select('role')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1);
-      const role = (prof?.[0] as any)?.role as string | undefined;
-      if (role === 'super_admin') allowed = true;
-    } catch {}
-
-    // 2. Vínculo na Escola (CORRIGIDO: escola_users)
-    if (!allowed) {
-      try {
-        const { data: vinc } = await s
-          .from('escola_users') // <--- NOME DA TABELA CORRIGIDO
-          .select('papel')
-          .eq('escola_id', escolaId)
-          .eq('user_id', user.id)
-          .maybeSingle();
-        allowed = Boolean((vinc as any)?.papel);
-      } catch {}
-    }
-
-    // 3. Admin legado
-    if (!allowed) {
-      try {
-        const { data: adminLink } = await s
-          .from('escola_administradores')
-          .select('user_id')
-          .eq('escola_id', escolaId)
-          .eq('user_id', user.id)
-          .limit(1);
-        allowed = Boolean(adminLink && (adminLink as any[]).length > 0);
-      } catch {}
-    }
-
-    // 4. Admin Profile
-    if (!allowed) {
-      try {
-        const { data: prof } = await s
-          .from('profiles')
-          .select('role, escola_id')
-          .eq('user_id', user.id)
-          .eq('escola_id', escolaId)
-          .limit(1);
-        allowed = Boolean(prof && (prof as any[]).length > 0 && (prof as any)[0]?.role === 'admin');
-      } catch {}
-    }
-
-    if (!allowed) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
-
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return NextResponse.json({ ok: false, error: 'Configuração Supabase ausente.' }, { status: 500 });
     }
@@ -78,6 +24,9 @@ export async function GET(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
+
+    const allowed = await canManageEscolaResources(admin, escolaId, user.id);
+    if (!allowed) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
 
     let rows: any[] = [];
     {
@@ -128,47 +77,6 @@ export async function POST(
     const { data: auth } = await s.auth.getUser();
     const user = auth?.user;
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
-
-    // Autoriza criar
-    let allowed = false;
-    try {
-      const { data: prof } = await s
-        .from('profiles')
-        .select('role')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1);
-      const role = (prof?.[0] as any)?.role as string | undefined;
-      if (role === 'super_admin') allowed = true;
-    } catch {}
-
-    if (!allowed) {
-      try {
-        const { data: vinc } = await s
-          .from('escola_users') // <--- NOME CORRIGIDO
-          .select('papel')
-          .eq('escola_id', escolaId)
-          .eq('user_id', user.id)
-          .maybeSingle();
-        const papel = (vinc as any)?.papel as any | undefined;
-        if (papel) allowed = true; 
-      } catch {}
-    }
-
-    if (!allowed) {
-      try {
-        const { data: adminLink } = await s
-          .from('escola_administradores')
-          .select('user_id')
-          .eq('escola_id', escolaId)
-          .eq('user_id', user.id)
-          .limit(1);
-        allowed = Boolean(adminLink && (adminLink as any[]).length > 0);
-      } catch {}
-    }
-
-    if (!allowed) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
-
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return NextResponse.json({ ok: false, error: 'Configuração Supabase ausente.' }, { status: 500 });
     }
@@ -176,6 +84,9 @@ export async function POST(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
+
+    const allowed = await canManageEscolaResources(admin, escolaId, user.id);
+    if (!allowed) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
     

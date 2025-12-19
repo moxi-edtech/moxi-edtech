@@ -1,20 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabaseServer";
-import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { createClient as createAdminClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
+import { canManageEscolaResources } from "../../permissions";
 
 // --- AUTH HELPER (Mantido igual) ---
-async function authorize(escolaId: string) {
+type AuthResult =
+  | { ok: true; admin: SupabaseClient<Database> }
+  | { ok: false; status: number; error: string };
+
+async function authorize(escolaId: string): Promise<AuthResult> {
   const s = await supabaseServer();
   const { data: auth } = await s.auth.getUser();
   const user = auth?.user;
   if (!user) return { ok: false as const, status: 401, error: "Não autenticado" };
 
-  const authz = await authorizeEscolaAction(s as any, escolaId, user.id, ['configurar_escola', 'gerenciar_disciplinas']);
-  if (!authz.allowed) return { ok: false as const, status: 403, error: authz.reason || 'Sem permissão' };
-  return { ok: true as const };
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceRoleKey) return { ok: false as const, status: 500, error: 'Configuração ausente.' };
+
+  const admin = createAdminClient<Database>(supabaseUrl, serviceRoleKey);
+  const allowed = await canManageEscolaResources(admin, escolaId, user.id);
+  if (!allowed) return { ok: false as const, status: 403, error: 'Sem permissão' };
+  return { ok: true as const, admin };
 }
 
 // --- PUT: ATUALIZAR CURSO ---
@@ -26,13 +35,7 @@ export async function PUT(
   
   const authz = await authorize(escolaId);
   if (!authz.ok) return NextResponse.json({ ok: false, error: authz.error }, { status: authz.status });
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  
-  if (!supabaseUrl || !serviceRoleKey) return NextResponse.json({ ok: false, error: 'Configuração ausente.' }, { status: 500 });
-  
-  const admin = createAdminClient<Database>(supabaseUrl, serviceRoleKey);
+  const admin = authz.admin!;
 
   try {
     const raw = await req.json();
@@ -86,13 +89,7 @@ export async function DELETE(
 
   const authz = await authorize(escolaId);
   if (!authz.ok) return NextResponse.json({ ok: false, error: authz.error }, { status: authz.status });
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  
-  if (!supabaseUrl || !serviceRoleKey) return NextResponse.json({ ok: false, error: 'Configuração ausente.' }, { status: 500 });
-  
-  const admin = createAdminClient<Database>(supabaseUrl, serviceRoleKey);
+  const admin = authz.admin!;
 
   try {
     const { count: turmasCount, error: countErr } = await (admin as any)
