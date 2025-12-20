@@ -5,7 +5,7 @@ import { importBelongsToEscola, userHasAccessToEscola } from "../../auth-helpers
 
 import type { Database } from "~types/supabase";
 import type { AlunoStagingRecord, MappedColumns } from "~types/migracao";
-import { csvToJsonLines, mapAlunoFromCsv, summarizePreview } from "../../utils";
+import { csvToJsonLines, fileToCsvText, mapAlunoFromCsv, summarizePreview } from "../../utils";
 
 export const dynamic = "force-dynamic";
 
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
 
   const { data: migration, error: migrationError } = await supabase
     .from("import_migrations")
-    .select("storage_path")
+    .select("storage_path, file_name")
     .eq("id", importId)
     .single();
 
@@ -68,7 +68,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: downloadError?.message || "Arquivo não encontrado" }, { status: 404 });
   }
 
-  const text = await fileData.text();
+  const text = await fileToCsvText(fileData as Blob, {
+    fileName: migration.file_name || migration.storage_path || undefined,
+    mimeType: (fileData as any).type,
+  });
   const entries = csvToJsonLines(text);
   const staged: AlunoStagingRecord[] = entries.map((entry) => mapAlunoFromCsv(entry, columnMap, importId, escolaId, anoLetivo));
 

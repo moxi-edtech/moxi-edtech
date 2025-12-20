@@ -21,7 +21,8 @@ import {
 interface Aluno {
   id: string;
   nome: string;
-  bilhete?: string;
+  bi_numero?: string | null;
+  bilhete?: string | null;
   fotoUrl?: string;
 }
 
@@ -264,6 +265,9 @@ export default function NovaMatriculaPage() {
     loadData();
   }, [alunoId]);
 
+  // [FIX BUG] Carrega tanto alunos ATIVOS quanto PENDENTES.
+  // Anteriormente, apenas 'ativo' era carregado, o que fazia com que alunos
+  // potenciais (status=pendente) passados pela URL não aparecessem no dropdown.
   useEffect(() => {
     if (!sessionId) return;
     let cancelled = false;
@@ -271,12 +275,23 @@ export default function NovaMatriculaPage() {
     const loadAlunos = async () => {
       try {
         setLoadingAlunos(true);
-        setAlunosList([]);
-        const resAlunos = await fetch(`/api/secretaria/alunos?status=ativo&session_id=${sessionId}`);
-        if (resAlunos.ok) {
-          const json = await resAlunos.json();
-          if (!cancelled) setAlunosList(json.data || json.items || []);
-        }
+        
+        const urls = [
+          `/api/secretaria/alunos?status=ativo&session_id=${sessionId}`,
+          `/api/secretaria/alunos?status=pendente&session_id=${sessionId}`
+        ];
+
+        const results = await Promise.all(urls.map(url => fetch(url).then(res => res.json())));
+
+        if (cancelled) return;
+
+        const combinedAlunos = results.flatMap(json => json.items || json.data || []);
+        
+        // Remover duplicatas
+        const uniqueAlunos = Array.from(new Map(combinedAlunos.map(a => [a.id, a])).values());
+        
+        setAlunosList(uniqueAlunos);
+
       } catch (e) {
         if (!cancelled) console.error("Erro ao carregar alunos:", e);
       } finally {
@@ -287,11 +302,7 @@ export default function NovaMatriculaPage() {
     return () => { cancelled = true; };
   }, [sessionId]);
 
-  useEffect(() => {
-    if (alunoId && !alunosList.some((a) => a.id === alunoId)) {
-      setAlunoId("");
-    }
-  }, [alunosList, alunoId]);
+
 
   // --- 2. CARREGAR TURMAS ---
   useEffect(() => {
@@ -365,6 +376,7 @@ export default function NovaMatriculaPage() {
         body: JSON.stringify({
           aluno_id: alunoId,
           turma_id: turmaId,
+          ano_letivo: anoLetivoAtivo,
           session_id: sessionId,
           curso_id: cursoResolvedId,
           classe_id: classeResolvedId,
@@ -373,7 +385,11 @@ export default function NovaMatriculaPage() {
 
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Erro ao processar");
-      alert(`Sucesso! Nº Processo: ${json.data?.numero_matricula}`);
+      const numeroMatricula =
+        json.data?.numero_matricula ??
+        json.data?.matricula?.numero_matricula ??
+        json.data?.matricula?.numero;
+      alert(`Sucesso! Nº Matrícula: ${numeroMatricula ?? "—"}`);
       router.back();
     } catch (e: any) {
       alert("Erro: " + e.message);
@@ -441,7 +457,7 @@ export default function NovaMatriculaPage() {
                     {!loadingAlunos &&
                       alunosList.map((a) => (
                         <option key={a.id} value={a.id}>
-                          {a.nome} (BI: {a.bilhete || "N/A"})
+                          {a.nome} (BI: {a.bi_numero || a.bilhete || "N/A"})
                         </option>
                       ))}
                   </select>
@@ -458,7 +474,7 @@ export default function NovaMatriculaPage() {
                     </div>
                     <div>
                       <p className="font-bold text-slate-900 text-lg">{alunoSelecionado.nome}</p>
-                      <p className="text-sm text-slate-500">BI: {alunoSelecionado.bilhete || "Não informado"}</p>
+                      <p className="text-sm text-slate-500">BI: {alunoSelecionado.bi_numero || alunoSelecionado.bilhete || "Não informado"}</p>
                     </div>
                   </div>
                 )}

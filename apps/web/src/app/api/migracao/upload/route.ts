@@ -43,6 +43,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Arquivo maior que o limite permitido" }, { status: 400 });
   }
 
+  const nameLower = file.name.toLowerCase();
+  const contentType = file.type || "";
+  const isXlsx =
+    nameLower.endsWith(".xlsx") ||
+    contentType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+  const isCsv =
+    nameLower.endsWith(".csv") ||
+    contentType === "text/csv" ||
+    contentType === "application/vnd.ms-excel";
+
+  if (!isCsv && !isXlsx) {
+    return NextResponse.json({ error: "Formato não suportado. Envie CSV ou XLSX." }, { status: 400 });
+  }
+
   const hash = hashBuffer(buffer);
   const importId = randomUUID();
   const objectPath = `migracoes/${importId}/${file.name}`;

@@ -8,8 +8,11 @@ const supabaseAdmin = createClient<Database>(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-export async function POST(req: NextRequest, { params }: any) {
-  const { id: escolaId } = params;
+export async function POST(
+  req: NextRequest,
+  ctx: { params: Promise<{ id: string }> }
+) {
+  const { id: escolaId } = await ctx.params;
   const payload = await req.json();
   
   const { 

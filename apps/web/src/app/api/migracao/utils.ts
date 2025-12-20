@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import * as XLSX from "xlsx";
 import type { AlunoCSV, AlunoStagingRecord, MappedColumns } from "~types/migracao";
 
 export const MAX_UPLOAD_SIZE = 12 * 1024 * 1024; // 12 MB
@@ -159,6 +160,31 @@ export function csvToJsonLines(csv: string): AlunoCSV[] {
   }
 }
 
+export async function fileToCsvText(
+  file: Blob,
+  opts: { fileName?: string; mimeType?: string } = {}
+): Promise<string> {
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  // Detecta XLSX pelo magic number "PK\x03\x04" + mime/ext
+  const nameLower = (opts.fileName || (file as any).name || "").toLowerCase();
+  const contentType = opts.mimeType || (file as any).type || "";
+  const isXlsx =
+    (!!nameLower && nameLower.endsWith(".xlsx")) ||
+    contentType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+    (buffer[0] === 0x50 && buffer[1] === 0x4b && buffer[2] === 0x03 && buffer[3] === 0x04);
+
+  if (isXlsx) {
+    const wb = XLSX.read(buffer, { type: "buffer" });
+    const firstSheet = wb.SheetNames[0];
+    if (!firstSheet) return "";
+    return XLSX.utils.sheet_to_csv(wb.Sheets[firstSheet], { FS: "," });
+  }
+
+  // Fallback: trata como texto (CSV)
+  return buffer.toString("utf8");
+}
+
 // ------------- MAPPER PRINCIPAL -------------
 
 export function mapAlunoFromCsv(
@@ -179,8 +205,12 @@ export function mapAlunoFromCsv(
     data_nascimento: undefined,
     telefone: undefined,
     bi: undefined,
+    bi_numero: undefined,
+    nif: undefined,
     email: undefined,
+    encarregado_nome: undefined,
     encarregado_telefone: undefined, // NOVO
+    encarregado_email: undefined,
     numero_processo: undefined, // NOVO
     profile_id: undefined,
     turma_codigo: undefined, // NOVO
@@ -195,6 +225,7 @@ export function mapAlunoFromCsv(
   mapped.nome = normalizeText(getVal(columnMap.nome));
   mapped.data_nascimento = normalizeDateString(getVal(columnMap.data_nascimento));
   
+  mapped.encarregado_nome = getVal(columnMap.encarregado_nome)?.trim();
   // Telefone: mantemos apenas números e o sinal +
   const rawTel = getVal(columnMap.telefone);
   mapped.telefone = rawTel ? rawTel.replace(/[^\d+]/g, "") : undefined;
@@ -203,8 +234,16 @@ export function mapAlunoFromCsv(
   const rawEncarregadoTel = getVal(columnMap.encarregado_telefone);
   mapped.encarregado_telefone = rawEncarregadoTel ? rawEncarregadoTel.replace(/[^\d+]/g, "") : undefined;
 
-  mapped.bi = getVal(columnMap.bi)?.trim().toUpperCase(); // BI geralmente é Upper
+  const rawBi = getVal(columnMap.bi)?.trim();
+  mapped.bi = rawBi ? rawBi.toUpperCase() : undefined; // BI geralmente é Upper
+  const rawBiNumero = getVal(columnMap.bi_numero)?.trim();
+  mapped.bi_numero = (rawBiNumero || rawBi)?.toUpperCase();
+
+  const rawNif = getVal(columnMap.nif)?.trim();
+  mapped.nif = rawNif ? rawNif.toUpperCase() : undefined;
+
   mapped.email = getVal(columnMap.email)?.trim().toLowerCase();
+  mapped.encarregado_email = getVal(columnMap.encarregado_email)?.trim().toLowerCase();
   mapped.profile_id = getVal(columnMap.profile_id)?.trim();
   mapped.numero_processo = getVal(columnMap.numero_processo)?.trim(); // NOVO: Número de Processo
 

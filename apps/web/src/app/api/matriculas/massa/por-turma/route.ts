@@ -8,21 +8,38 @@ export async function POST(request: NextRequest) {
   if (!adminUrl || !serviceKey) {
     return NextResponse.json({ error: "SUPABASE configuration missing" }, { status: 500 });
   }
-  let body: { import_id?: string; escola_id?: string; turma_id?: string };
+  let body: { import_id?: string; escola_id?: string; turma_id?: string; turma_code?: string; ano_letivo?: number };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
   }
-  const { import_id, escola_id, turma_id } = body || {};
-  if (!import_id || !escola_id || !turma_id) {
-    return NextResponse.json({ error: "import_id, escola_id e turma_id são obrigatórios" }, { status: 400 });
+  const { import_id, escola_id, turma_id, turma_code, ano_letivo } = body || {};
+  if (!import_id || !escola_id) {
+    return NextResponse.json({ error: "import_id e escola_id são obrigatórios" }, { status: 400 });
   }
   const supabase = createAdminClient<Database>(adminUrl, serviceKey);
+  let finalTurmaId = turma_id;
+
+  if (!finalTurmaId) {
+    if (!turma_code || !ano_letivo) {
+      return NextResponse.json({ error: "turma_id ou (turma_code + ano_letivo) são obrigatórios" }, { status: 400 });
+    }
+    const { data: turmaRow, error: turmaErr } = await (supabase as any).rpc("create_or_get_turma_by_code", {
+      p_escola_id: escola_id,
+      p_ano_letivo: ano_letivo,
+      p_turma_code: turma_code,
+    });
+    if (turmaErr) return NextResponse.json({ error: turmaErr.message }, { status: 400 });
+    const turmaData = Array.isArray(turmaRow) ? turmaRow[0] : turmaRow;
+    finalTurmaId = turmaData?.id as string | undefined;
+    if (!finalTurmaId) return NextResponse.json({ error: "Falha ao resolver turma" }, { status: 400 });
+  }
+
   const { data, error } = await (supabase as any).rpc("matricular_em_massa_por_turma", {
     p_import_id: import_id,
     p_escola_id: escola_id,
-    p_turma_id: turma_id,
+    p_turma_id: finalTurmaId,
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   const row = Array.isArray(data) && data.length ? data[0] : data;
@@ -33,4 +50,3 @@ export async function POST(request: NextRequest) {
     errors: row?.errors ?? [],
   });
 }
-

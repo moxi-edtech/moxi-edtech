@@ -7,16 +7,20 @@ import { recordAuditServer } from '@/lib/audit'
 
 const BodySchema = z.object({
   nome: z.string().trim().min(1, 'Informe o nome'),
+  primeiro_nome: z.string().trim().optional().nullable(),
+  sobrenome: z.string().trim().optional().nullable(),
   email: z.string().email('Email inválido'),
   telefone: z.string().trim().optional().nullable(),
   data_nascimento: z.string().optional().nullable(),
   sexo: z.enum(['M', 'F', 'O', 'N']).optional().nullable(),
   bi_numero: z.string().optional().nullable(),
+  nif: z.string().optional().nullable(),
   naturalidade: z.string().optional().nullable(),
   provincia: z.string().optional().nullable(),
   responsavel_nome: z.string().optional().nullable(),
-  responsavel_contato: z.string().optional().nullable(),
+  responsavel_contato: z.string().trim().min(1, 'Telefone do encarregado é obrigatório'),
   encarregado_relacao: z.string().optional().nullable(),
+  encarregado_email: z.string().email().optional().nullable(),
 })
 
 // Removi o segundo argumento 'context' pois a rota não tem [id]
@@ -72,6 +76,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Usuário não vinculado a nenhuma escola.' }, { status: 403 })
     }
     
+    const nomeCompleto = `${body.primeiro_nome || ''} ${body.sobrenome || ''}`.replace(/\s+/g, ' ').trim() || body.nome.trim();
+
     // 2. Lógica de Auth IDEMPOTENTE
     const tempPassword = Math.random().toString(36).slice(-12) + "A1!"
     
@@ -79,7 +85,7 @@ export async function POST(req: Request) {
       email: body.email,
       password: tempPassword,
       email_confirm: true,
-      user_metadata: { nome: body.nome, role: 'aluno' },
+      user_metadata: { nome: nomeCompleto, role: 'aluno' },
       app_metadata: { role: 'aluno', escola_id: escolaId }
     })
 
@@ -109,7 +115,7 @@ export async function POST(req: Request) {
       user_id: targetUserId,
       email: body.email,
       telefone: body.telefone ?? null,
-      nome: body.nome,
+      nome: nomeCompleto,
       role: 'aluno',
       escola_id: escolaId,
       data_nascimento: body.data_nascimento ?? null,
@@ -130,19 +136,25 @@ export async function POST(req: Request) {
     if (linkErr) throw new Error(`Erro no vínculo: ${linkErr.message}`)
 
     // 4. TABELA ALUNOS (UPSERT + REATIVAÇÃO)
-    const alunoInsert = {
+    const alunoInsert: any = {
       profile_id: targetUserId,
       escola_id: escolaId,
-      nome: body.nome,
+      nome: nomeCompleto,
       email: body.email,
       telefone: body.telefone ?? null,
       bi_numero: body.bi_numero ?? null,
+      nif: body.nif ?? body.bi_numero ?? null,
       responsavel: body.responsavel_nome ?? null,
       responsavel_contato: body.responsavel_contato ?? null,
       telefone_responsavel: body.responsavel_contato ?? null,
+      encarregado_nome: body.responsavel_nome ?? null,
+      encarregado_telefone: body.responsavel_contato ?? null,
+      encarregado_email: body.encarregado_email ?? null,
       status: 'pendente', // Definir status inicial como 'pendente'
       deleted_at: null, // Reativa soft-deleted
     }
+
+    alunoInsert.nome_completo = nomeCompleto;
 
     const { data: aluno, error: alunoErr } = await admin
       .from('alunos')
