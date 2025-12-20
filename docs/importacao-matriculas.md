@@ -44,6 +44,12 @@ A página `/migracao/historico` consome a rota de histórico e renderiza cards c
 - **Criação de matrícula**: `POST /api/secretaria/matriculas` resolve a escola via aluno ou perfil, valida campos obrigatórios, garante/gera `numero_login` do aluno quando necessário, cria a matrícula com status `ativo` e, se parâmetros de preço/dia não forem fornecidos, resolve mensalidade via `resolveMensalidade` antes de gerar os lançamentos financeiros.【F:apps/web/src/app/api/secretaria/matriculas/route.ts†L152-L400】
 - **Atualização de status**: use `PUT /api/secretaria/matriculas/[id]/status` (não mostrado aqui) para alterar status com escopo de escola; combine com confirmações na UI para operações sensíveis.
 
+## Formato do Código da Turma
+- Use `<CURSO>-<CLASSE>-<TURNO>-<TURMA>` (ex.: `TI-10-M-A`).
+- CURSO: sigla configurada pela escola (`EP`, `ESG`, `TI`, `CFB`, etc.).
+- CLASSE: número 1–13. TURNO: `M` manhã, `T` tarde, `N` noite. TURMA: letra(s) (`A`, `B`, `C`...).
+- Ao importar com turma preenchida, o backend resolve `course_code` da escola, usa `create_or_get_turma_by_code` para criar/pegar a turma (único por escola+ano) e então matricula. Se a sigla do curso não estiver configurada na escola, retorna erro de validação.
+
 ## Boas práticas ao operar o fluxo
 - Sempre iniciar o wizard autenticado para garantir `escolaId` válido.
 - Não pular a etapa de validação: ela popula `staging_alunos`, limpa tentativas anteriores e salva o mapeamento.

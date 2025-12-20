@@ -101,6 +101,116 @@ export async function GET(req: Request) {
       activeSessionId = (sess?.[0] as any)?.id as string | undefined;
     }
 
+    const selectFields = "id, nome, bi_numero, responsavel, telefone_responsavel, status, created_at, profile_id, escola_id, profiles!alunos_profile_id_fkey ( numero_login, email, bi_numero )";
+
+    const mapAlunoRow = (row: any) => {
+      let numero_login: string | null = null;
+      let email: string | null = null;
+      let bi_numero: string | null = row.bi_numero ?? null;
+      const profiles = row.profiles;
+
+      if (Array.isArray(profiles)) {
+        numero_login = profiles[0]?.numero_login ?? null;
+        email = profiles[0]?.email ?? null;
+        bi_numero = bi_numero ?? profiles[0]?.bi_numero ?? null;
+      } else if (profiles && typeof profiles === "object") {
+        numero_login = (profiles as any).numero_login ?? null;
+        email = (profiles as any).email ?? null;
+        bi_numero = bi_numero ?? (profiles as any).bi_numero ?? null;
+      }
+
+      return {
+        id: row.id,
+        nome: row.nome,
+        email,
+        responsavel: row.responsavel,
+        telefone_responsavel: row.telefone_responsavel,
+        status: row.status,
+        created_at: row.created_at,
+        numero_login,
+        bi_numero,
+        bilhete: bi_numero,
+      };
+    };
+
+    // --- Alunos com matrícula ativa ---
+    if (status === 'ativo') {
+      let query = admin
+        .from('alunos')
+        .select(`${selectFields}, matriculas!inner(id, session_id, numero_matricula, status)`, { count: 'exact' })
+        .eq('escola_id', escolaId)
+        .eq('matriculas.escola_id', escolaId)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .not('matriculas.numero_matricula', 'is', null);
+
+      if (activeSessionId) {
+        query = query.eq('matriculas.session_id', activeSessionId);
+      } else {
+        query = query.in('matriculas.status', ['ativo', 'ativa']);
+      }
+
+      if (q) {
+        const uuidRe = /^[0-9a-fA-F-]{36}$/;
+        if (uuidRe.test(q)) {
+          query = query.or(`id.eq.${q}`);
+        } else {
+          let profileIds: string[] = [];
+          try {
+            let profQuery = admin
+              .from("profiles")
+              .select("user_id, numero_login")
+              .ilike("numero_login", `%${q}%`)
+              .or(`escola_id.eq.${escolaId},current_escola_id.eq.${escolaId}`)
+              .limit(500);
+            const { data: profRows } = await profQuery;
+            profileIds = (profRows ?? []).map((r: any) => r.user_id).filter(Boolean);
+          } catch {
+            // ignore
+          }
+
+          const orParts = [
+            `nome.ilike.%${q}%`,
+            `responsavel.ilike.%${q}%`,
+          ];
+          if (profileIds.length > 0) {
+            const inList = profileIds.map((id) => `"${id}"`).join(",");
+            orParts.push(`profile_id.in.(${inList})`);
+          }
+          query = query.or(orParts.join(","));
+        }
+      }
+
+      const { data, error, count } = await query.range(
+        offset,
+        offset + pageSize - 1
+      );
+
+      if (error) {
+        return NextResponse.json(
+          { ok: false, error: error.message },
+          { status: 400 }
+        );
+      }
+
+      const seen = new Set<string>();
+      const items = (data ?? []).reduce((acc: any[], row: any) => {
+        if (!seen.has(row.id)) {
+          seen.add(row.id);
+          acc.push(mapAlunoRow(row));
+        }
+        return acc;
+      }, []);
+
+      return NextResponse.json({
+        ok: true,
+        items,
+        total: count ?? items.length,
+        page,
+        pageSize,
+      });
+    }
+
     // Se existe sessão (selecionada ou ativa), coletar alunos com matrícula nesta sessão para excluí-los do resultado
     let alunosComMatriculaAtual: string[] = [];
     if (escolaId && activeSessionId) {
@@ -151,33 +261,22 @@ export async function GET(req: Request) {
       }
     }
 
+    // Demais status
     // Agora com relacionamento para profiles(numero_login)
     let query = admin
       .from("alunos")
-      .select(
-        "id, nome, responsavel, telefone_responsavel, status, created_at, profile_id, escola_id, profiles!alunos_profile_id_fkey ( numero_login, email )",
-        { count: "exact" }
-      )
+      .select(selectFields, { count: "exact" })
       .order("created_at", { ascending: false });
+
+    const alunosMatriculados = Array.from(new Set(alunosComMatriculaAtual)).filter(Boolean);
 
     // Garante escopo da escola atual
     query = query.eq("escola_id", escolaId);
 
     switch (status) {
-      case 'ativo':
-        if (alunosComMatriculaAtual.length > 0) {
-          const list = Array.from(new Set(alunosComMatriculaAtual)).map((id) => `"${id}"`).join(',');
-          query = query.in('id', `(${list})`);
-        } else {
-          // Se não há alunos com matrícula, a lista de ativos é vazia
-          query = query.eq('id', 'dummy-id-to-return-empty');
-        }
-        query = query.is('deleted_at', null);
-        break;
-
       case 'inativo':
-        if (alunosComMatriculaAtual.length > 0) {
-          const list = Array.from(new Set(alunosComMatriculaAtual)).map((id) => `"${id}"`).join(',');
+        if (alunosMatriculados.length > 0) {
+          const list = alunosMatriculados.map((id) => `"${id}"`).join(',');
           query = query.not('id', 'in', `(${list})`);
         }
         // Garante que "pendentes" não apareçam como inativos
@@ -246,31 +345,7 @@ export async function GET(req: Request) {
       );
     }
 
-    const items =
-      (data ?? []).map((row: any) => {
-        let numero_login: string | null = null;
-        let email: string | null = null;
-        const profiles = row.profiles;
-
-        if (Array.isArray(profiles)) {
-          numero_login = profiles[0]?.numero_login ?? null;
-          email = profiles[0]?.email ?? null;
-        } else if (profiles && typeof profiles === "object") {
-          numero_login = (profiles as any).numero_login ?? null;
-          email = (profiles as any).email ?? null;
-        }
-
-        return {
-          id: row.id,
-          nome: row.nome,
-          email,
-          responsavel: row.responsavel,
-          telefone_responsavel: row.telefone_responsavel,
-          status: row.status,
-          created_at: row.created_at,
-          numero_login,
-        };
-      }) ?? [];
+    const items = (data ?? []).map(mapAlunoRow);
 
     return NextResponse.json({
       ok: true,

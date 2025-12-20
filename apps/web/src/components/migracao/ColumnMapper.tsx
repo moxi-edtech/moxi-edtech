@@ -28,8 +28,14 @@ const PERSONAL_FIELDS: FieldOption[] = [
   { key: "data_nascimento", label: "Data de nascimento", hint: "Formato flexível: 2005-01-01 ou 01/01/2005" },
   { key: "telefone", label: "Telefone", hint: "Será normalizado para apenas dígitos" },
   { key: "bi", label: "BI / Documento", hint: "Ajuda a evitar duplicidades" },
+  { key: "bi_numero", label: "Número do BI (oficial)", hint: "Use se houver coluna específica" },
+  { key: "nif", label: "NIF (opcional)", hint: "Número de identificação fiscal" },
   { key: "email", label: "Email", hint: "Opcional, mas útil para portal do aluno" },
+  { key: "encarregado_nome", label: "Nome do encarregado", required: true, hint: "Nome do pai/mãe/encarregado" },
+  { key: "encarregado_telefone", label: "Telefone do encarregado", required: true, hint: "Obrigatório para contato" },
+  { key: "encarregado_email", label: "Email do encarregado", hint: "Opcional" },
   { key: "profile_id", label: "Profile ID (opcional)", hint: "Só use se já tiver IDs de usuário prontos" },
+  { key: "numero_processo", label: "Número de processo (opcional)", hint: "Se vazio, o sistema pode gerar" },
 ];
 
 const MATRICULA_FIELDS: FieldOption[] = [

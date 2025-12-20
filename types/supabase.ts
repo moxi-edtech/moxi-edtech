@@ -656,7 +656,9 @@ export type Database = {
       cursos: {
         Row: {
           codigo: string
+          course_code: string | null
           created_at: string | null
+          curriculum_key: string | null
           curso_global_id: string | null
           descricao: string | null
           escola_id: string
@@ -670,7 +672,9 @@ export type Database = {
         }
         Insert: {
           codigo: string
+          course_code?: string | null
           created_at?: string | null
+          curriculum_key?: string | null
           curso_global_id?: string | null
           descricao?: string | null
           escola_id: string
@@ -684,7 +688,9 @@ export type Database = {
         }
         Update: {
           codigo?: string
+          course_code?: string | null
           created_at?: string | null
+          curriculum_key?: string | null
           curso_global_id?: string | null
           descricao?: string | null
           escola_id?: string
@@ -3737,6 +3743,7 @@ export type Database = {
           data_nascimento: string | null
           email: string | null
           encarregado_email: string | null
+          encarregado_nome: string | null
           encarregado_telefone: string | null
           escola_id: string
           id: number
@@ -3762,6 +3769,7 @@ export type Database = {
           data_nascimento?: string | null
           email?: string | null
           encarregado_email?: string | null
+          encarregado_nome?: string | null
           encarregado_telefone?: string | null
           escola_id: string
           id?: number
@@ -3787,6 +3795,7 @@ export type Database = {
           data_nascimento?: string | null
           email?: string | null
           encarregado_email?: string | null
+          encarregado_nome?: string | null
           encarregado_telefone?: string | null
           escola_id?: string
           id?: number
@@ -4089,15 +4098,19 @@ export type Database = {
           ano_letivo: string | null
           capacidade_maxima: number | null
           classe_id: string | null
+          classe_num: number | null
           coordenador_pedagogico_id: string | null
           created_at: string | null
           curso_id: string | null
           diretor_turma_id: string | null
           escola_id: string
           id: string
+          letra: string | null
           nome: string
           sala: string | null
           session_id: string | null
+          status_validacao: string | null
+          turma_code: string | null
           turma_codigo: string | null
           turno: string | null
         }
@@ -4105,15 +4118,19 @@ export type Database = {
           ano_letivo?: string | null
           capacidade_maxima?: number | null
           classe_id?: string | null
+          classe_num?: number | null
           coordenador_pedagogico_id?: string | null
           created_at?: string | null
           curso_id?: string | null
           diretor_turma_id?: string | null
           escola_id: string
           id?: string
+          letra?: string | null
           nome: string
           sala?: string | null
           session_id?: string | null
+          status_validacao?: string | null
+          turma_code?: string | null
           turma_codigo?: string | null
           turno?: string | null
         }
@@ -4121,15 +4138,19 @@ export type Database = {
           ano_letivo?: string | null
           capacidade_maxima?: number | null
           classe_id?: string | null
+          classe_num?: number | null
           coordenador_pedagogico_id?: string | null
           created_at?: string | null
           curso_id?: string | null
           diretor_turma_id?: string | null
           escola_id?: string
           id?: string
+          letra?: string | null
           nome?: string
           sala?: string | null
           session_id?: string | null
+          status_validacao?: string | null
+          turma_code?: string | null
           turma_codigo?: string | null
           turno?: string | null
         }
@@ -4770,6 +4791,39 @@ export type Database = {
         }
         Returns: number
       }
+      create_or_get_turma_by_code: {
+        Args: {
+          p_ano_letivo: number
+          p_escola_id: string
+          p_turma_code: string
+        }
+        Returns: {
+          ano_letivo: string | null
+          capacidade_maxima: number | null
+          classe_id: string | null
+          classe_num: number | null
+          coordenador_pedagogico_id: string | null
+          created_at: string | null
+          curso_id: string | null
+          diretor_turma_id: string | null
+          escola_id: string
+          id: string
+          letra: string | null
+          nome: string
+          sala: string | null
+          session_id: string | null
+          status_validacao: string | null
+          turma_code: string | null
+          turma_codigo: string | null
+          turno: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "turmas"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       current_escola_id: { Args: never; Returns: string }
       current_tenant_escola_id: { Args: never; Returns: string }
       current_user_id: { Args: never; Returns: string }
@@ -4784,6 +4838,7 @@ export type Database = {
         }
         Returns: string
       }
+      get_my_escola_id: { Args: never; Returns: string }
       get_profile_dependencies: {
         Args: { p_user_id: string }
         Returns: {
@@ -4813,6 +4868,7 @@ export type Database = {
             }
             Returns: Json
           }
+      initcap_angola: { Args: { "": string }; Returns: string }
       is_admin_escola: { Args: never; Returns: boolean }
       is_escola_admin: { Args: { p_escola_id: string }; Returns: boolean }
       is_escola_diretor: { Args: { p_escola_id: string }; Returns: boolean }
@@ -4848,6 +4904,15 @@ export type Database = {
           errors: Json
           success_count: number
         }[]
+      }
+      matricular_lista_alunos: {
+        Args: {
+          p_aluno_ids: string[]
+          p_ano_letivo: number
+          p_escola_id: string
+          p_turma_id: string
+        }
+        Returns: Json
       }
       move_profile_to_archive: {
         Args: { p_performed_by: string; p_user_id: string }

@@ -18,6 +18,24 @@ export function UploadField({ onFileSelected, maxSizeMb = 12 }: UploadFieldProps
   const handleFile = (files: FileList | null) => {
     if (!files || files.length === 0) return;
     const file = files[0];
+    const lowerName = file.name.toLowerCase();
+    const contentType = file.type || "";
+
+    const isXlsx =
+      lowerName.endsWith(".xlsx") ||
+      contentType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+    const isCsv =
+      lowerName.endsWith(".csv") ||
+      contentType === "text/csv" ||
+      contentType === "application/vnd.ms-excel";
+
+    if (!isCsv && !isXlsx) {
+      setError("Formato não suportado. Envie um arquivo CSV ou XLSX.");
+      setFileName("");
+      return;
+    }
+
     const limit = maxSizeMb * 1024 * 1024;
     if (file.size > limit) {
       setError(`Arquivo maior que ${maxSizeMb}MB`);
@@ -35,7 +53,7 @@ export function UploadField({ onFileSelected, maxSizeMb = 12 }: UploadFieldProps
           label="Arquivo"
           inputRef={inputRef}
           type="file"
-          accept=".csv, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           onChange={(event) => handleFile(event.target.files)}
           className="max-w-xs"
         />
@@ -45,7 +63,7 @@ export function UploadField({ onFileSelected, maxSizeMb = 12 }: UploadFieldProps
       </div>
       {fileName && <p className="text-sm text-muted-foreground">Selecionado: {fileName}</p>}
       {error && <p className="text-sm text-destructive">{error}</p>}
-      <p className="text-xs text-muted-foreground">Limite: até {maxSizeMb}MB</p>
+      <p className="text-xs text-muted-foreground">CSV ou XLSX. Limite: até {maxSizeMb}MB</p>
     </div>
   );
 }

@@ -19,6 +19,7 @@ export async function GET(req: Request) {
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
+  const sinceDate = days > 0 ? new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString() : null;
 
   try {
     const supabase = await supabaseServerTyped<Database>();
@@ -53,16 +54,47 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: "Ano letivo (session_id) é obrigatório" }, { status: 400 });
     }
 
+    const { data: sessionRow, error: sessionErr } = await admin
+      .from('school_sessions')
+      .select('id, nome, data_inicio, data_fim')
+      .eq('id', sessionId)
+      .eq('escola_id', escolaId)
+      .maybeSingle();
+
+    if (sessionErr || !sessionRow) {
+      return NextResponse.json({ ok: false, error: "Sessão inválida para a escola" }, { status: 400 });
+    }
+
+    const sessionAno = (() => {
+      const name = String((sessionRow as any)?.nome ?? '').trim();
+      const match = name.match(/(19|20)\d{2}/);
+      if (match?.[0]) return Number(match[0]);
+      const inicio = sessionRow?.data_inicio ? new Date(sessionRow.data_inicio) : null;
+      if (inicio && !isNaN(inicio.getTime())) return inicio.getFullYear();
+      const fim = sessionRow?.data_fim ? new Date(sessionRow.data_fim) : null;
+      if (fim && !isNaN(fim.getTime())) return fim.getFullYear();
+      return null;
+    })();
+
     let query = admin
       .from("matriculas")
       .select(
         `id, numero_matricula, numero_chamada, aluno_id, turma_id, status, data_matricula, created_at,
-         alunos ( nome_completo, numero_processo ),
+         alunos ( nome, numero_processo ),
          turmas ( nome, sala, turno, classes ( nome ) )`,
         { count: "exact" }
       )
-      .eq("escola_id", escolaId)
-      .eq("session_id", sessionId);
+      .eq("escola_id", escolaId);
+
+    if (sessionAno !== null) {
+      query = query.or(`session_id.eq.${sessionId},and(session_id.is.null,ano_letivo.eq.${sessionAno})`);
+    } else {
+      query = query.eq("session_id", sessionId);
+    }
+
+    if (sinceDate) {
+      query = query.gte('created_at', sinceDate);
+    }
 
     if (turmaId) query = query.eq("turma_id", turmaId);
     if (statusIn.length > 0) {
@@ -74,7 +106,7 @@ export async function GET(req: Request) {
     if (q) {
       const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(q);
       const [alunosRes, turmasRes] = await Promise.all([
-        admin.from('alunos').select('id').eq('escola_id', escolaId).ilike('nome_completo', `%${q}%`),
+        admin.from('alunos').select('id').eq('escola_id', escolaId).ilike('nome', `%${q}%`),
         admin.from('turmas').select('id').eq('escola_id', escolaId).or(`nome.ilike.%${q}%,turma_codigo.ilike.%${q}%`),
       ]);
 
@@ -105,7 +137,7 @@ export async function GET(req: Request) {
         numero_chamada: row.numero_chamada ?? null,
         aluno_id: row.aluno_id,
         turma_id: row.turma_id,
-        aluno_nome: row.alunos?.nome_completo ?? null,
+        aluno_nome: row.alunos?.nome ?? null,
         turma_nome: row.turmas?.nome ?? null,
         sala: row.turmas?.sala ?? null,
         turno: row.turmas?.turno ?? null,
@@ -228,119 +260,179 @@ function isNumeroDuplicadoError(err: any) {
   );
 }
 
-// ============================================================================
-// POST: Criar Matrícula (Agora simplificado com RPC)
-// ============================================================================
 export async function POST(req: Request) {
   try {
     const supabase = await supabaseServerTyped<Database>();
-    const { data: userRes } = await supabase.auth.getUser();
-    const user = userRes?.user;
+    const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 
+    // 1. Parse Data
     const body = await req.json();
     const {
-      // Aluno
+      aluno_id, // <--- CRITICAL: Check if this exists
+      turma_id,
       primeiro_nome,
       sobrenome,
       data_nascimento,
-      genero,
-      bi,
+      bi_numero,
       nif,
-      numero_processo,
-      email,
-      telefone,
-      endereco,
-      // Encarregado
       encarregado_nome,
       encarregado_telefone,
       encarregado_email,
       parentesco,
-      // Matrícula
-      turma_id,
-      ano_letivo,
-      numero_chamada,
-      data_matricula,
       // Financeiro
       pagar_matricula_agora,
       metodo_pagamento,
       valor_matricula_pago,
       comprovativo_url,
+      session_id,
     } = body;
 
-    const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-    const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+    // Admin Client for privileged actions
+    const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY!;
     const adminClient = createAdminClient<Database>(adminUrl, serviceRole);
-    
-    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
-    if (!escolaId) {
-      return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 400 });
+
+    // 2. Validate Turma (Required for everyone)
+    if (!turma_id) {
+      return NextResponse.json({ ok: false, error: "A turma é obrigatória." }, { status: 400 });
     }
 
-    // 1. Inserir o Aluno
-    const nome_completo = `${primeiro_nome} ${sobrenome}`.trim();
-    const { data: alunoData, error: alunoError } = await adminClient
-      .from('alunos')
-      .insert({
-        escola_id: escolaId,
-        nome_completo,
-        data_nascimento,
-        genero,
-        bi_numero: bi,
-        nif: nif,
-        numero_processo: numero_processo || null,
-        email,
-        telefone,
-        endereco,
-        encarregado_nome,
-        encarregado_telefone,
-        encarregado_email,
-        encarregado_parentesco: parentesco,
-        // Status inicial 'pending', ativado pela matrícula
-        status: 'pending',
-      })
-      .select('id')
+    // Fetch Turma details
+    const { data: turma, error: turmaErr } = await adminClient
+      .from('turmas')
+      .select('*')
+      .eq('id', turma_id)
       .single();
 
-    if (alunoError) {
-      console.error("Erro ao criar aluno:", alunoError);
-      return NextResponse.json({ ok: false, error: "Falha ao criar o aluno. Verifique os dados." }, { status: 400 });
-    }
-    const alunoId = alunoData.id;
-
-    // 2. Criar a Matrícula
-    const { data: matriculaData, error: matriculaError } = await adminClient
-      .rpc('create_or_confirm_matricula', {
-        p_aluno_id: alunoId,
-        p_turma_id: turma_id,
-        p_ano_letivo: ano_letivo,
-      });
-
-    if (matriculaError) {
-      // Rollback manual do aluno se a matrícula falhar
-      await adminClient.from('alunos').delete().eq('id', alunoId);
-      console.error("Erro ao criar matrícula via RPC:", matriculaError);
-      return NextResponse.json({ ok: false, error: "Falha ao criar a matrícula." }, { status: 400 });
+    if (turmaErr || !turma) {
+      return NextResponse.json({ ok: false, error: "Turma inválida." }, { status: 400 });
     }
 
-    const { data: matriculaRecemCriada } = await adminClient
-        .from('matriculas')
-        .select('id, numero_matricula')
-        .eq('aluno_id', alunoId)
-        .eq('ano_letivo', ano_letivo)
+    const escolaId = turma.escola_id;
+    const ano_letivo = turma.ano_letivo;
+    const turmaSessionId = (turma as any)?.session_id || null;
+    const finalSessionId = session_id || turmaSessionId;
+
+    if (!finalSessionId) {
+      return NextResponse.json({ ok: false, error: "Sessão (session_id) é obrigatória." }, { status: 400 });
+    }
+
+    // Valida se a sessão pertence à mesma escola
+    const { data: sessionRow, error: sessionErr } = await adminClient
+      .from('school_sessions')
+      .select('id')
+      .eq('id', finalSessionId)
+      .eq('escola_id', escolaId)
+      .maybeSingle();
+
+    if (sessionErr || !sessionRow) {
+      return NextResponse.json({ ok: false, error: "Sessão inválida para a escola" }, { status: 400 });
+    }
+
+    // ---------------------------------------------------------
+    // 3. LOGIC BRANCH: Existing vs New Student
+    // ---------------------------------------------------------
+    let finalAlunoId = aluno_id;
+
+    if (!finalAlunoId) {
+      // === PATH A: CREATE NEW STUDENT ===
+      // Validate required fields for NEW students
+      const nomeCompleto = `${primeiro_nome || ''} ${sobrenome || ''}`.trim();
+      
+      if (!nomeCompleto) {
+        return NextResponse.json({ ok: false, error: "Nome do aluno é obrigatório para novos registros." }, { status: 400 });
+      }
+      if (!encarregado_telefone) {
+        return NextResponse.json({ ok: false, error: "Telefone do encarregado é obrigatório." }, { status: 400 });
+      }
+
+      // Insert into ALUNOS (Relies on DB triggers for numero_processo)
+      const { data: newAluno, error: createErr } = await adminClient
+        .from('alunos')
+        .insert({
+          escola_id: escolaId,
+          nome_completo: nomeCompleto, // Aligned with Master Script
+          data_nascimento: data_nascimento || null,
+          bi_numero: bi_numero || null,
+          nif: nif || bi_numero || null,
+          encarregado_nome: encarregado_nome || null,
+          encarregado_telefone: encarregado_telefone,
+          encarregado_email: encarregado_email || null,
+          // Note: status/active is handled by database defaults or null
+        })
+        .select('id')
         .single();
+
+      if (createErr || !newAluno) {
+        console.error("Error creating student:", createErr);
+        return NextResponse.json({ ok: false, error: `Erro ao criar aluno: ${createErr?.message}` }, { status: 400 });
+      }
+
+      finalAlunoId = newAluno.id;
+    } 
     
-    if (!matriculaRecemCriada) {
-        return NextResponse.json({ ok: false, error: "Matrícula criada, mas não foi possível encontrá-la para gerar finanças." }, { status: 500 });
+    // ---------------------------------------------------------
+    // 4. CREATE MATRICULA (Common Path)
+    // ---------------------------------------------------------
+    
+    // Check for existing matricula
+    const { data: existingMatricula } = await adminClient
+        .from('matriculas')
+        .select('id')
+        .eq('escola_id', escolaId)
+        .eq('aluno_id', finalAlunoId)
+        .eq('ano_letivo', ano_letivo)
+        .maybeSingle();
+
+    if (existingMatricula) {
+        return NextResponse.json({ ok: false, error: "Aluno já matriculado neste ano letivo." }, { status: 400 });
     }
 
+    // Insert Matricula
+    const { data: matricula, error: matErr } = await adminClient
+      .from('matriculas')
+      .insert({
+        escola_id: escolaId,
+        aluno_id: finalAlunoId,
+        turma_id: turma_id,
+        ano_letivo: ano_letivo,
+        session_id: finalSessionId,
+        status: 'ativo',
+        ativo: true,
+        // numero_matricula is handled by DB triggers or logic below
+        data_matricula: new Date().toISOString()
+      })
+      .select()
+      .single();
 
-    // 3. Lógica Financeira (se aplicável)
-    // (A lógica de `registrarLancamentoMatricula` e geração de mensalidades pode ser chamada aqui,
-    // usando os dados do body e o `matriculaRecemCriada.id`)
+    if (matErr) {
+      // Rollback: Only delete aluno if WE created it in this request
+      if (!aluno_id && finalAlunoId) {
+         await adminClient.from('alunos').delete().eq('id', finalAlunoId);
+      }
+      return NextResponse.json({ ok: false, error: matErr.message }, { status: 400 });
+    }
+
+    const { data: numeroMatriculaGerado, error: numeroErr } = await adminClient.rpc('generate_matricula_number', {
+      p_matricula_id: matricula.id
+    });
+
+    if (numeroErr) {
+      console.error("Erro ao gerar número da matrícula:", numeroErr);
+      // Mesmo com erro na geração do número, a matrícula foi criada.
+      // Retorne sucesso, mas sem o número, para que o sistema não trave.
+    }
+
+    const numeroMatriculaFinal = numeroMatriculaGerado ?? null;
+    (matricula as any).numero_matricula = numeroMatriculaFinal;
+
+    // ---------------------------------------------------------
+    // 5. FINANCIALS (Tabela de Preço Logic)
+    // ---------------------------------------------------------
     
     const { data: turmaView } = await supabase.from('vw_turmas_para_matricula').select('curso_id, classe_id').eq('id', turma_id).maybeSingle();
     const pricingParams = { escolaId, anoLetivo: ano_letivo, cursoId: turmaView?.curso_id, classeId: turmaView?.classe_id, allowMensalidadeFallback: true };
@@ -357,13 +449,13 @@ export async function POST(req: Request) {
         try {
             await registrarLancamentoMatricula(adminClient, {
                 escolaId,
-                alunoId: alunoId,
-                matriculaId: matriculaRecemCriada.id,
+                alunoId: finalAlunoId,
+                matriculaId: matricula.id,
                 valorMatricula: valorMatriculaTabela > 0 ? valorMatriculaTabela : null,
                 pagamento: pagamentoMatricula,
                 createdBy: user.id,
             });
-        } catch (finErr) {
+        } catch (finErr: any) {
             console.error("Erro no financeiro (taxa de matrícula):", finErr);
         }
     }
@@ -372,15 +464,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ 
         ok: true, 
         data: { 
-            aluno_id: alunoId,
-            matricula_id: matriculaRecemCriada.id, 
-            numero_matricula: matriculaRecemCriada.numero_matricula,
+            matricula_id: matricula.id,
+            aluno_id: finalAlunoId,
+            numero_matricula: numeroMatriculaFinal,
+            session_id: matricula.session_id,
         } 
     });
 
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
-    console.error("Erro inesperado no POST de matrículas:", message);
-    return NextResponse.json({ ok: false, error: "Ocorreu um erro inesperado no servidor." }, { status: 500 });
+  } catch (error: any) {
+    console.error("Fatal error:", error);
+    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
 }

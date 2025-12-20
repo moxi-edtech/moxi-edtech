@@ -7,7 +7,12 @@ export interface AlunoCSV {
   data_nascimento?: string;
   telefone?: string;
   bi?: string;
+  bi_numero?: string;
+  nif?: string;
   email?: string;
+  encarregado_nome?: string;
+  encarregado_telefone?: string;
+  encarregado_email?: string;
   profile_id?: string;
   // campos escolares que podem vir no CSV (valores crus como texto)
   curso_codigo?: string;
@@ -31,8 +36,12 @@ export interface AlunoStagingRecord {
   data_nascimento?: string;
   telefone?: string;
   bi?: string;
+  bi_numero?: string;
+  nif?: string;
   email?: string;
+  encarregado_nome?: string;
   encarregado_telefone?: string; // NOVO: Telefone do Encarregado
+  encarregado_email?: string;    // NOVO: Email do Encarregado
   numero_processo?: string; // NOVO: Número de Processo (opcional)
 
   // dados escolares para ajudar na matrícula em massa
@@ -52,8 +61,10 @@ export interface ErroImportacao {
 
 export interface ImportResult {
   imported: number;
-  skipped: number;
+  skipped?: number;
   errors: number;
+  warnings_turma?: number;
+  turmas_created?: number; // Turmas criadas automaticamente (rascunho)
 }
 
 export interface MappedColumns {
@@ -64,6 +75,7 @@ export interface MappedColumns {
   data_nascimento?: string;
   telefone?: string;
   email?: string;
+  encarregado_nome?: string;
   encarregado_telefone?: string; // NOVO: Telefone do Encarregado
   numero_processo?: string; // NOVO: Número de Processo
 
@@ -71,6 +83,11 @@ export interface MappedColumns {
   turma_codigo?: string;      // NOVO: Código da Turma
   ano_letivo?: string;
   numero_matricula?: string;
+
+  // Documentos
+  bi_numero?: string;
+  nif?: string;
+  encarregado_email?: string;
 
   // Opcional avançado
   profile_id?: string;

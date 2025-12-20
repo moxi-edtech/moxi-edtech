@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useRef } from "react";
+import * as XLSX from "xlsx";
 import { useSearchParams } from 'next/navigation';
 import { createClient } from "@/lib/supabaseClient";
 import {
@@ -173,6 +174,23 @@ export default function AlunoMigrationWizard() {
     if (!file) return;
 
     try {
+      const lowerName = file.name.toLowerCase();
+      const contentType = file.type || "";
+      const isXlsx =
+        lowerName.endsWith(".xlsx") ||
+        contentType === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+      if (isXlsx) {
+        const buffer = await file.arrayBuffer();
+        const wb = XLSX.read(buffer, { type: "array" });
+        const firstSheet = wb.SheetNames[0];
+        const rows = firstSheet ? (XLSX.utils.sheet_to_json(wb.Sheets[firstSheet], { header: 1 }) as any[][]) : [];
+        const headerRow = rows?.[0] || [];
+        const normalized = headerRow.map((h) => (h ? String(h).trim() : "")).filter(Boolean) as string[];
+        setHeaders(normalized);
+        return;
+      }
+
       const text = await file.text();
       const [firstLine] = text.split(/\r?\n/);
       if (!firstLine) return;
@@ -193,6 +211,9 @@ export default function AlunoMigrationWizard() {
     }
     if (!mapping.data_nascimento) {
       missing.push("Data de Nascimento");
+    }
+    if (!mapping.encarregado_nome) {
+      missing.push("Nome do Encarregado");
     }
     if (!mapping.encarregado_telefone) {
       missing.push("Telefone do Encarregado");
@@ -313,6 +334,22 @@ export default function AlunoMigrationWizard() {
       if (errorsResponse.ok) {
         const errorsPayload = await errorsResponse.json();
         setImportErrors(errorsPayload.errors ?? []);
+      }
+
+      const warnings = (payload.result?.warnings_turma as number | undefined) ?? 0;
+      if (warnings > 0) {
+        setApiErrors((prev) => [
+          ...prev,
+          `Importação concluída com ${warnings} alunos sem matrícula porque a turma não foi encontrada. Consulte o relatório de erros e crie/mapeie as turmas.`,
+        ]);
+      }
+
+      const turmasCriadas = (payload.result?.turmas_created as number | undefined) ?? 0;
+      if (turmasCriadas > 0) {
+        setApiErrors((prev) => [
+          ...prev,
+          `Importação criou ${turmasCriadas} turma(s) em modo rascunho. Valide-as em "Turmas" para ajustar curso/classe/turno/capacidade antes de liberar finanças.`,
+        ]);
       }
     } catch (error) {
       setApiErrors([error instanceof Error ? error.message : "Erro de conexão na importação"]);
@@ -559,24 +596,36 @@ export default function AlunoMigrationWizard() {
 
   const ResultsSummary = () =>
     importResult && (
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
         <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-3 text-center">
           <div className="text-lg font-semibold text-emerald-700">
-            {importResult.imported}
+            {importResult.imported ?? 0}
           </div>
           <div className="text-xs text-emerald-800">Importados</div>
         </div>
         <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-3 text-center">
           <div className="text-lg font-semibold text-amber-700">
-            {importResult.skipped}
+            {importResult.skipped ?? 0}
           </div>
           <div className="text-xs text-amber-800">Ignorados</div>
         </div>
         <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-3 text-center">
           <div className="text-lg font-semibold text-red-700">
-            {importResult.errors}
+            {importResult.errors ?? 0}
           </div>
           <div className="text-xs text-red-800">Erros</div>
+        </div>
+        <div className="bg-amber-50/70 border border-amber-200 rounded-lg px-3 py-3 text-center">
+          <div className="text-lg font-semibold text-amber-700">
+            {importResult.warnings_turma ?? 0}
+          </div>
+          <div className="text-xs text-amber-800">Sem matrícula (turma não encontrada)</div>
+        </div>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-3 text-center">
+          <div className="text-lg font-semibold text-blue-700">
+            {importResult.turmas_created ?? 0}
+          </div>
+          <div className="text-xs text-blue-800">Turmas criadas (rascunho)</div>
         </div>
       </div>
     );
@@ -874,10 +923,18 @@ export default function AlunoMigrationWizard() {
                       let done = 0;
                       for (const { b } of toRun) {
                         // Chama endpoint por turma (RPC no banco)
+                        const turmaCode = [
+                          (b.curso_codigo || '').toString().trim().toUpperCase(),
+                          b.classe_numero ?? '',
+                          (b.turno_codigo || '').toString().trim().toUpperCase(),
+                          (b.turma_letra || '').toString().trim().toUpperCase(),
+                        ].filter(Boolean).join('-');
                         const payload = {
                           import_id: importId,
                           escola_id: escolaId,
                           turma_id: b.turma_id,
+                          turma_code: turmaCode || undefined,
+                          ano_letivo: b.ano_letivo ?? anoLetivo,
                         };
                         const res = await fetch('/api/matriculas/massa/por-turma', {
                           method: 'POST',
@@ -927,6 +984,34 @@ export default function AlunoMigrationWizard() {
           >
             <div className="space-y-5">
               <ResultsSummary />
+              {(importResult?.turmas_created ?? 0) > 0 && (
+                <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">
+                  <div className="text-amber-600 mt-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+
+                  <div className="flex-1">
+                    <h4 className="text-sm font-bold text-amber-800">
+                      Atenção: {importResult?.turmas_created} novas turmas foram criadas automaticamente!
+                    </h4>
+                    <p className="text-sm text-amber-700 mt-1">
+                      O sistema detectou códigos de turma no CSV que não existiam no banco.
+                      Para não bloquear a importação, criamos estas turmas como <strong>Rascunho</strong>.
+                    </p>
+
+                    <div className="mt-3">
+                      <a
+                        href="/secretaria/turmas?status=rascunho"
+                        className="text-sm font-medium text-amber-800 underline hover:text-amber-900"
+                      >
+                        Ir para Turmas e validar preços/cursos &rarr;
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
               {matriculaSummary.length > 0 && (
                 <div className="space-y-2">
                   <div className="text-sm font-semibold text-slate-900">Resumo das matrículas por turma</div>

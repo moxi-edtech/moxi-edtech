@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { type Database } from "~types/supabase";
 
@@ -9,7 +9,7 @@ const supabaseAdmin = createClient<Database>(
 );
 
 export async function GET(
-  req: Request,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const escolaId = params.id;

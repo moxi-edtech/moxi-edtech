@@ -154,10 +154,19 @@ export function MatriculasEmMassa({
     setMatriculandoKey(grupoKey(grupo));
 
     try {
+      const turmaCode = [
+        (grupo.curso_codigo || '').toString().trim().toUpperCase(),
+        grupo.classe_numero ?? '',
+        (grupo.turno_codigo || '').toString().trim().toUpperCase(),
+        (grupo.turma_letra || '').toString().trim().toUpperCase(),
+      ].filter(Boolean).join('-');
+
       const payload = {
         import_id: grupo.import_id,
         escola_id: grupo.escola_id,
         turma_id: turmaId,
+        turma_code: turmaCode || undefined,
+        ano_letivo: grupo.ano_letivo,
       };
 
       const res = await fetch("/api/matriculas/massa/por-turma", {

@@ -34,6 +34,15 @@ Getting Started (Angola)
 - PDFs oficiais: `/api/secretaria/matriculas/{id}/declaracao` gera PDF com QR e assinatura.
 - Persistência de progresso: o Wizard grava localmente o passo atual, `importId`, `escolaId`, mapeamento e a seleção dos lotes de matrícula; ao recarregar a página, retoma de onde parou.
 
+Cadastro de Aluno (Identidade) x Matrícula (Vínculo)
+- Cadastro (UI: `/secretaria/alunos/novo`)
+  - Campos obrigatórios: primeiro nome, sobrenome, data de nascimento, género, BI; contacto: email, telefone; encarregado: nome + telefone obrigatório (login do responsável). NIF é copiado do BI se vazio.
+  - Payload: envia `primeiro_nome`, `sobrenome`, `nome` (concat), `bi_numero`, `nif`, `responsavel_nome`, `responsavel_contato`, `encarregado_email` (opcional). Backend salva `nome_completo` e mantém aluno com status pendente.
+- Matrícula (UI: `/secretaria/matriculas/nova`)
+  - Seleciona aluno existente, sessão/ano letivo (deriva `ano_letivo` inteiro), modo Classe ou Curso Técnico, e a Turma (chave mestre). Curso/Classe servem para filtro/UX; validação final é pelo `turma_id`.
+  - Payload: `aluno_id`, `turma_id`, `session_id`, `ano_letivo` (derivado), `curso_id`/`classe_id` conforme a turma. Backend gera `numero_matricula` e cria lançamentos financeiros (taxa de matrícula/mensalidades) via tabela de preço.
+  - Validação: impede matrícula duplicada por `(escola_id, aluno_id, ano_letivo)` e só aceita turmas da escola/sessão informada.
+
 APIs principais
 - Backfill Acadêmico (preview/aplicar): `GET/POST /api/migracao/:importId/academico/backfill`
 - Preview de Matrícula: `GET /api/migracao/:importId/matricula/preview`

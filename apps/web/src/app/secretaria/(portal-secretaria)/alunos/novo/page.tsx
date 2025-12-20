@@ -26,6 +26,7 @@ export default function AlunosPage() {
     birthDate: "",
     gender: "",
     idNumber: "",
+    nif: "",
     email: "",
     phone: "",
     address: "",
@@ -37,6 +38,13 @@ export default function AlunosPage() {
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
+
+  // Copia BI para NIF quando o usuário não preenche manualmente
+  React.useEffect(() => {
+    if (!formData.nif && formData.idNumber) {
+      setFormData((prev) => ({ ...prev, nif: prev.idNumber }));
+    }
+  }, [formData.idNumber, formData.nif]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -53,14 +61,18 @@ export default function AlunosPage() {
 
     try {
       const payload: any = {
+        primeiro_nome: formData.firstName.trim(),
+        sobrenome: formData.lastName.trim(),
         nome: `${formData.firstName} ${formData.lastName}`.trim(),
         email: formData.email.trim(),
         telefone: formData.phone.trim(),
         data_nascimento: formData.birthDate || null,
         sexo: (formData.gender as any) || null,
         bi_numero: formData.idNumber || null,
+        nif: formData.nif || formData.idNumber || null,
         responsavel_nome: formData.guardianName || null,
         responsavel_contato: formData.guardianPhone || null,
+        encarregado_email: formData.guardianEmail || null,
       };
 
       const res = await fetch('/api/secretaria/alunos/novo', {
@@ -342,6 +354,19 @@ export default function AlunosPage() {
                         value={formData.idNumber}
                         onChange={(e) => handleInputChange('idNumber', e.target.value)}
                         required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-moxinexa-dark">
+                        NIF (copiamos o BI se vazio)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Repete o BI para menores"
+                        className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
+                        value={formData.nif}
+                        onChange={(e) => handleInputChange('nif', e.target.value)}
                       />
                     </div>
 

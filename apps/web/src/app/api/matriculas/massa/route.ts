@@ -45,13 +45,28 @@ export async function POST(request: NextRequest) {
     !classe_numero ||
     !turno_codigo ||
     !turma_letra ||
-    !ano_letivo ||
-    !turma_id
+    !ano_letivo
   ) {
     return NextResponse.json(
       { error: "Campos obrigatórios ausentes no payload" },
       { status: 400 }
     );
+  }
+
+  const turmaCode = `${String(curso_codigo).toUpperCase()}-${String(classe_numero)}-${String(turno_codigo).toUpperCase()}-${String(turma_letra).toUpperCase()}`;
+
+  let resolvedTurmaId = turma_id;
+  try {
+    const { data: turmaRow, error: turmaErr } = await (supabase as any).rpc("create_or_get_turma_by_code", {
+      p_escola_id: escola_id,
+      p_ano_letivo: ano_letivo,
+      p_turma_code: turmaCode,
+    });
+    if (turmaErr) throw turmaErr;
+    const turmaData = Array.isArray(turmaRow) ? turmaRow[0] : turmaRow;
+    resolvedTurmaId = (turmaData as any)?.id || resolvedTurmaId;
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || "Falha ao resolver turma" }, { status: 400 });
   }
 
   const { data, error } = await supabase.rpc("matricular_em_massa", {
@@ -62,7 +77,7 @@ export async function POST(request: NextRequest) {
     p_turno_codigo: turno_codigo,
     p_turma_letra: turma_letra,
     p_ano_letivo: ano_letivo,
-    p_turma_id: turma_id,
+    p_turma_id: resolvedTurmaId,
   });
 
   if (error) {

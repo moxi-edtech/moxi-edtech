@@ -181,8 +181,10 @@ Resposta:
 🧭 Passo 2 — Mapeamento
 
 No front, o usuário mapeia colunas do CSV para campos internos, incluindo:
-	•	Dados pessoais: nome, data_nascimento, bi, telefone, email
+	•	Dados pessoais: nome, data_nascimento, bi/bi_numero, telefone, email, nif
+	•	Responsáveis: encarregado_nome (obrigatório), encarregado_telefone (obrigatório), encarregado_email
 	•	Dados de matrícula: curso_codigo, classe_numero, turno_codigo, turma_letra, ano_letivo, numero_matricula
+	•	Formato de turma (quando matricular): <CURSO>-<CLASSE>-<TURNO>-<TURMA> (ex.: TI-10-M-A) – CURSO é a sigla configurada na escola (EP/ESG/TI/CFB/CEJ/ENF/AC...).
 
 Esse columnMap é enviado na validação e persistido em import_migrations.column_map para auditoria/reuso.
 
@@ -194,8 +196,10 @@ Esse columnMap é enviado na validação e persistido em import_migrations.colum
 	•	Normaliza textos e datas
 	•	Preenche public.staging_alunos com:
 	•	import_id, escola_id
-	•	campos pessoais (nome, data_nascimento, telefone, bi, email)
+	•	campos pessoais (nome, data_nascimento, telefone, bi/bi_numero, nif, email)
+	•	campos de responsáveis (encarregado_nome, encarregado_telefone, encarregado_email)
 	•	campos de matrícula (curso_codigo, classe_numero, turno_codigo, turma_letra, ano_letivo, numero_matricula)
+	•	observação: quando há turma, o backend resolve curso via course_code da escola e cria/usa a turma por código único (escola+ano) antes de matricular; se a sigla não estiver configurada na escola, retorna erro.
 	•	raw_data (linha original)
 
 Também:
@@ -223,13 +227,15 @@ A função:
 	•	status = 'imported'
 	•	imported_rows, error_rows, processed_at
 
-Retorno típico:
+Retorno típico (Detect & Resolve habilitado):
 
 {
   "result": {
     "imported": 120,
     "skipped": 3,
-    "errors": 2
+    "errors": 2,
+    "warnings_turma": 5, // alunos criados sem matrícula porque a turma não foi encontrada
+    "turmas_created": 3   // turmas criadas automaticamente em modo rascunho
   }
 }
 
