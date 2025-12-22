@@ -27,7 +27,7 @@ function generateTurmaName(classeNumero: number, letra?: string | null): string 
 type BackfillPreview = {
   cursos: Array<{ codigo: string; nome: string }>;
   classes: Array<{ numero: number; nome: string }>;
-  sessions: Array<{ nome: string; status: "planejada" | "ativa"; data_inicio: string; data_fim: string }>;
+  sessions: Array<{ nome: string; status: "ativa" | "arquivada"; data_inicio: string; data_fim: string }>;
   turmas: Array<{ 
     nome: string; 
     ano_letivo: string; 
@@ -138,7 +138,7 @@ async function runBackfill(apply: boolean, req: NextRequest, importId: string) {
     const [cursosRes, classesRes, sessRes, turmasRes] = await Promise.all([
       (admin as any).from("cursos").select("id, codigo").eq("escola_id", escolaId),
       (admin as any).from("classes").select("id, numero").eq("escola_id", escolaId),
-      (admin as any).from("school_sessions").select("id, nome").eq("escola_id", escolaId),
+      (admin as any).from("school_sessions").select("id, nome, status").eq("escola_id", escolaId),
       (admin as any).from("turmas").select("id, nome, ano_letivo, session_id, classe_id, turno, curso_id").eq("escola_id", escolaId)
     ]);
 
@@ -151,7 +151,12 @@ async function runBackfill(apply: boolean, req: NextRequest, importId: string) {
     });
 
     const existingSessions = new Map<string, string>(); // Nome (Ano) -> ID
-    (sessRes.data || []).forEach((s: any) => existingSessions.set(String(s.nome).trim(), s.id));
+    let hasActiveSession = false;
+    (sessRes.data || []).forEach((s: any) => {
+        const nome = String(s.nome).trim();
+        existingSessions.set(nome, s.id);
+        if (String(s.status).trim() === "ativa") hasActiveSession = true;
+    });
 
     // Turmas existentes: Chave composta para comparação
     // Nota: Comparamos por Nome + Sessão (Ano) para simplificar, ou podemos ser mais estritos.
@@ -182,16 +187,26 @@ async function runBackfill(apply: boolean, req: NextRequest, importId: string) {
     });
 
     // Sessões Faltantes
-    sessionsSet.forEach(ano => {
+    const missingSessionYears = Array.from(sessionsSet).filter(ano => {
       const anoStr = String(ano);
-      if (!existingSessions.has(anoStr)) {
-        preview.sessions.push({
-          nome: anoStr,
-          status: "planejada",
-          data_inicio: `${ano}-02-01`, // Data padrão Angola (Fev)
-          data_fim: `${ano}-12-20`     // Data padrão Angola (Dez)
-        });
-      }
+      return !existingSessions.has(anoStr);
+    }).sort((a, b) => Number(a) - Number(b));
+
+    let alreadyHasActive = hasActiveSession;
+
+    missingSessionYears.forEach((ano, idx) => {
+      const anoStr = String(ano);
+      const shouldBeActive = !alreadyHasActive && idx === missingSessionYears.length - 1;
+      const status: "ativa" | "arquivada" = shouldBeActive ? "ativa" : "arquivada";
+
+      preview.sessions.push({
+        nome: anoStr,
+        status,
+        data_inicio: `${ano}-02-01`, // Data padrão Angola (Fev)
+        data_fim: `${ano}-12-20`     // Data padrão Angola (Dez)
+      });
+
+      if (status === "ativa") alreadyHasActive = true;
     });
 
     // Turmas Faltantes
@@ -273,6 +288,10 @@ async function runBackfill(apply: boolean, req: NextRequest, importId: string) {
         console.warn(`Ignorando turma ${t.nome}: Sessão ${t.ano_letivo} não resolvida.`);
         continue;
       }
+      if (t.curso_codigo && !cursoId) {
+        throw new Error(`Curso não encontrado para course_code=${t.curso_codigo} na escola`);
+      }
+
 
       // Prepara objeto de inserção
       const payload: any = {

@@ -154,8 +154,6 @@ export async function POST(req: Request) {
       deleted_at: null, // Reativa soft-deleted
     }
 
-    alunoInsert.nome_completo = nomeCompleto;
-
     const { data: aluno, error: alunoErr } = await admin
       .from('alunos')
       .upsert(alunoInsert as any, { 

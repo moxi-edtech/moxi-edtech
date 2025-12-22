@@ -355,7 +355,7 @@ export async function POST(req: Request) {
         .from('alunos')
         .insert({
           escola_id: escolaId,
-          nome_completo: nomeCompleto, // Aligned with Master Script
+          nome: nomeCompleto,
           data_nascimento: data_nascimento || null,
           bi_numero: bi_numero || null,
           nif: nif || bi_numero || null,

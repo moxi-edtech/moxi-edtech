@@ -3,6 +3,19 @@ import type { Json } from "./supabase";
 export type ImportStatus = "uploaded" | "validando" | "validado" | "imported" | "failed";
 
 export interface AlunoCSV {
+  // Template v2.0 (headers do Excel)
+  NOME_COMPLETO?: string | number;
+  NUMERO_PROCESSO?: string | number;
+  DATA_NASCIMENTO?: string | number;
+  GENERO?: string;
+  BI_NUMERO?: string | number;
+  NIF?: string | number;
+  NOME_ENCARREGADO?: string;
+  TELEFONE_ENCARREGADO?: string | number;
+  EMAIL_ENCARREGADO?: string;
+  TURMA_CODIGO?: string;
+
+  // Legado / compatibilidade
   nome?: string;
   data_nascimento?: string;
   telefone?: string;
@@ -14,19 +27,19 @@ export interface AlunoCSV {
   encarregado_telefone?: string;
   encarregado_email?: string;
   profile_id?: string;
-  // campos escolares que podem vir no CSV (valores crus como texto)
   curso_codigo?: string;
   classe_numero?: string;
   turno_codigo?: string;
   turma_letra?: string;
   ano_letivo?: string;
   numero_matricula?: string;
-  [key: string]: string | undefined;
+  [key: string]: string | number | undefined;
 }
 
 export interface AlunoStagingRecord {
   import_id: string;
   escola_id: string;
+  row_number?: number;
 
   // login/acesso (quase sempre vazio para alunos importados)
   profile_id?: string;
@@ -42,6 +55,7 @@ export interface AlunoStagingRecord {
   encarregado_nome?: string;
   encarregado_telefone?: string; // NOVO: Telefone do Encarregado
   encarregado_email?: string;    // NOVO: Email do Encarregado
+  sexo?: string; // Gênero (M/F)
   numero_processo?: string; // NOVO: Número de Processo (opcional)
 
   // dados escolares para ajudar na matrícula em massa
@@ -77,6 +91,7 @@ export interface MappedColumns {
   email?: string;
   encarregado_nome?: string;
   encarregado_telefone?: string; // NOVO: Telefone do Encarregado
+  sexo?: string;
   numero_processo?: string; // NOVO: Número de Processo
 
   // Matrícula – colunas do CSV que mapeiam para os campos do staging

@@ -4,8 +4,14 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 import { recordAuditServer } from "@/lib/audit";
 
-export async function POST(req: Request, ctx: { params: Promise<{ id: string; alunoId: string }> }) {
-  const { id: escolaId, alunoId } = await ctx.params;
+import { NextResponse } from "next/server";
+import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
+import type { Database } from "~types/supabase";
+import { recordAuditServer } from "@/lib/audit";
+
+export async function POST(req: Request, context: { params: { id: string; alunoId: string } }) {
+  const { id: escolaId, alunoId } = context.params;
   try {
     const body = await req.json().catch(() => ({} as any));
     const reason: string = (body?.reason as string | undefined)?.trim() || "Aluno arquivado (admin)";
@@ -27,7 +33,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; al
     // valida aluno e escola (RLS garante escopo)
     const { data: aluno, error: alunoErr } = await s
       .from("alunos")
-      .select("id, profile_id, escola_id, nome, created_at, deleted_at")
+      .select("id, escola_id")
       .eq("id", alunoId)
       .maybeSingle();
     if (alunoErr) return NextResponse.json({ ok: false, error: alunoErr.message }, { status: 400 });
@@ -41,30 +47,15 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; al
     if (!adminUrl || !serviceRole) return NextResponse.json({ ok: false, error: "Falta SUPABASE_SERVICE_ROLE_KEY" }, { status: 500 });
     const admin = createAdminClient<Database>(adminUrl, serviceRole);
 
-    const nowIso = new Date().toISOString();
+    const { error: rpcError } = await admin.rpc('soft_delete_aluno', {
+      p_id: alunoId,
+      p_deleted_by: user.id,
+      p_reason: reason,
+    });
 
-    // histórico em alunos_excluidos
-    try {
-      await admin.from("alunos_excluidos").insert({
-        escola_id: escolaId,
-        aluno_id: (aluno as any).id,
-        profile_id: (aluno as any).profile_id,
-        nome: (aluno as any).nome ?? null,
-        aluno_created_at: (aluno as any).created_at ?? null,
-        aluno_deleted_at: nowIso,
-        exclusao_motivo: reason,
-        excluido_por: user.id,
-        dados_anonimizados: false,
-        snapshot: { aluno, captured_at: nowIso } as any,
-      } as any);
-    } catch {}
-
-    // marca soft delete em alunos
-    const { error: updErr } = await admin
-      .from("alunos")
-      .update({ deleted_at: nowIso, deleted_by: user.id, deletion_reason: reason, status: "inativo" } as any)
-      .eq("id", alunoId);
-    if (updErr) return NextResponse.json({ ok: false, error: updErr.message }, { status: 400 });
+    if (rpcError) {
+      return NextResponse.json({ ok: false, error: rpcError.message }, { status: 400 });
+    }
 
     recordAuditServer({ escolaId, portal: "admin_escola", acao: "ALUNO_ARQUIVADO", entity: "aluno", entityId: String(alunoId), details: { reason } }).catch(() => null);
     return NextResponse.json({ ok: true });
@@ -73,3 +64,4 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string; al
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
+

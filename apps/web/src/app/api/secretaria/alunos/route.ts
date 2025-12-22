@@ -141,6 +141,7 @@ export async function GET(req: Request) {
         .eq('escola_id', escolaId)
         .eq('matriculas.escola_id', escolaId)
         .is('deleted_at', null)
+        .not('status', 'eq', 'inativo')
         .order('created_at', { ascending: false })
         .not('matriculas.numero_matricula', 'is', null);
 
@@ -275,12 +276,11 @@ export async function GET(req: Request) {
 
     switch (status) {
       case 'inativo':
+        query = query.eq('status', 'inativo');
         if (alunosMatriculados.length > 0) {
           const list = alunosMatriculados.map((id) => `"${id}"`).join(',');
           query = query.not('id', 'in', `(${list})`);
         }
-        // Garante que "pendentes" não apareçam como inativos
-        query = query.not('status', 'eq', 'pendente');
         query = query.is('deleted_at', null);
         break;
 

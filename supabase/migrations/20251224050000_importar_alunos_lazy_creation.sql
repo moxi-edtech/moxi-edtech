@@ -174,7 +174,7 @@ BEGIN
 
       -- B) UPSERT ALUNO
       INSERT INTO public.alunos (
-        escola_id, numero_processo, nome_completo, bi_numero, nif, 
+        escola_id, numero_processo, nome, bi_numero, nif, 
         encarregado_nome, encarregado_telefone, encarregado_email
       )
       VALUES (
@@ -188,7 +188,7 @@ BEGIN
         lower(trim(r.encarregado_email))
       )
       ON CONFLICT (escola_id, numero_processo) DO UPDATE SET
-        nome_completo = EXCLUDED.nome_completo,
+        nome = EXCLUDED.nome,
         bi_numero = EXCLUDED.bi_numero,
         encarregado_nome = COALESCE(EXCLUDED.encarregado_nome, public.alunos.encarregado_nome),
         encarregado_telefone = EXCLUDED.encarregado_telefone,

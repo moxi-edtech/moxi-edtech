@@ -61,6 +61,18 @@ export function normalizeDateString(value?: string | null): string | undefined {
   return undefined;
 }
 
+export function cleanString(value?: string | null): string | undefined {
+  if (!value) return undefined;
+  const str = String(value).trim().replace(/\s+/g, " ");
+  return str.length ? str : undefined;
+}
+
+export function normalizeSexo(value?: string | null): 'M' | 'F' | undefined {
+  if (!value) return undefined;
+  const v = String(value).trim().toUpperCase();
+  return v === 'M' || v === 'F' ? v : undefined;
+}
+
 // ------------- NORMALIZADORES ESPECÍFICOS -------------
 
 export function normalizeClasseNumero(value?: string | null | number): number | undefined {
@@ -192,13 +204,15 @@ export function mapAlunoFromCsv(
   columnMap: MappedColumns,
   importId: string,
   escolaId: string,
-  explicitAnoLetivo: number
+  explicitAnoLetivo: number,
+  rowNumber?: number
 ): AlunoStagingRecord {
   
   // Inicializa objeto seguro
   const mapped: AlunoStagingRecord = {
     import_id: importId,
     escola_id: escolaId,
+    row_number: rowNumber,
     raw_data: entry,
     // Inicializa com undefined para garantir que a chave existe no objeto final
     nome: undefined,
@@ -211,6 +225,7 @@ export function mapAlunoFromCsv(
     encarregado_nome: undefined,
     encarregado_telefone: undefined, // NOVO
     encarregado_email: undefined,
+    sexo: undefined,
     numero_processo: undefined, // NOVO
     profile_id: undefined,
     turma_codigo: undefined, // NOVO
@@ -222,11 +237,12 @@ export function mapAlunoFromCsv(
   const getVal = (key?: string) => key && entry[key] ? String(entry[key]) : null;
 
   // --- DADOS PESSOAIS ---
-  mapped.nome = normalizeText(getVal(columnMap.nome));
+  mapped.nome = cleanString(getVal(columnMap.nome));
   mapped.data_nascimento = normalizeDateString(getVal(columnMap.data_nascimento));
+  mapped.sexo = normalizeSexo(getVal(columnMap.sexo));
   
-  mapped.encarregado_nome = getVal(columnMap.encarregado_nome)?.trim();
-  // Telefone: mantemos apenas números e o sinal +
+  mapped.encarregado_nome = cleanString(getVal(columnMap.encarregado_nome));
+  // Telefone: mantemos apenas números e o sinal + (caso exista no CSV)
   const rawTel = getVal(columnMap.telefone);
   mapped.telefone = rawTel ? rawTel.replace(/[^\d+]/g, "") : undefined;
   
@@ -234,10 +250,8 @@ export function mapAlunoFromCsv(
   const rawEncarregadoTel = getVal(columnMap.encarregado_telefone);
   mapped.encarregado_telefone = rawEncarregadoTel ? rawEncarregadoTel.replace(/[^\d+]/g, "") : undefined;
 
-  const rawBi = getVal(columnMap.bi)?.trim();
-  mapped.bi = rawBi ? rawBi.toUpperCase() : undefined; // BI geralmente é Upper
-  const rawBiNumero = getVal(columnMap.bi_numero)?.trim();
-  mapped.bi_numero = (rawBiNumero || rawBi)?.toUpperCase();
+  const rawBiNumero = getVal(columnMap.bi_numero)?.trim() || getVal(columnMap.bi)?.trim();
+  mapped.bi_numero = rawBiNumero ? rawBiNumero.replace(/\s+/g, "").toUpperCase() : undefined;
 
   const rawNif = getVal(columnMap.nif)?.trim();
   mapped.nif = rawNif ? rawNif.toUpperCase() : undefined;
@@ -245,11 +259,14 @@ export function mapAlunoFromCsv(
   mapped.email = getVal(columnMap.email)?.trim().toLowerCase();
   mapped.encarregado_email = getVal(columnMap.encarregado_email)?.trim().toLowerCase();
   mapped.profile_id = getVal(columnMap.profile_id)?.trim();
-  mapped.numero_processo = getVal(columnMap.numero_processo)?.trim(); // NOVO: Número de Processo
+  const rawNumeroProcesso = getVal(columnMap.numero_processo)?.trim();
+  mapped.numero_processo = rawNumeroProcesso ? rawNumeroProcesso : undefined; // NOVO: Número de Processo
 
   // --- DADOS ACADÊMICOS (Normalizados) ---
-  mapped.turma_codigo = getVal(columnMap.turma_codigo)?.trim(); // NOVO: Turma Código
-  mapped.ano_letivo = normalizeAnoLetivo(getVal(columnMap.ano_letivo));
+  const rawTurma = getVal(columnMap.turma_codigo)?.trim();
+  mapped.turma_codigo = rawTurma ? rawTurma.toUpperCase().replace(/\s+/g, '') : undefined; // NOVO: Turma Código
+  const anoLetivoFromCsv = normalizeAnoLetivo(getVal(columnMap.ano_letivo));
+  mapped.ano_letivo = anoLetivoFromCsv ?? explicitAnoLetivo;
   mapped.numero_matricula = getVal(columnMap.numero_matricula)?.trim();
 
   return mapped;

@@ -34,31 +34,9 @@ export function MatriculasEmMassa({
   // key única por grupo
   const grupoKey = (g: GrupoMatricula) =>
     [
-      g.curso_codigo ?? "",
-      g.classe_numero ?? "",
-      g.turno_codigo ?? "",
-      g.turma_letra ?? "",
+      (g.turma_codigo || "").toString().trim().toUpperCase(),
       g.ano_letivo ?? "",
     ].join("|");
-
-  // labels amigáveis
-  const turnoLabel = (codigo?: string | null) => {
-    if (!codigo) return "Sem turno";
-    const c = codigo.toUpperCase();
-    if (c === "M") return "Manhã";
-    if (c === "T") return "Tarde";
-    if (c === "N") return "Noite";
-    return c;
-  };
-
-  const classeLabel = (classe?: number | string | null) => {
-    if (!classe) return "Classe não definida";
-    const num = Number(classe);
-    if (!Number.isNaN(num)) {
-      return `${num}ª classe`;
-    }
-    return String(classe);
-  };
 
   // Carregar grupos + turmas
   useEffect(() => {
@@ -88,7 +66,7 @@ export function MatriculasEmMassa({
 
         if ((gruposJson.grupos ?? []).length === 0) {
           setInfo(
-            "Nenhum grupo de pré-matrícula encontrado para este ficheiro. Verifique se o CSV tem Curso / Classe / Turno / Turma / Ano letivo."
+            "Nenhum grupo de pré-matrícula encontrado. Verifique se o CSV tem TURMA_CODIGO preenchido."
           );
         }
       } catch (err) {
@@ -115,31 +93,14 @@ export function MatriculasEmMassa({
       const key = grupoKey(g);
 
       const list = (turmas ?? []).filter((t) => {
-        // ano letivo
-        if (g.ano_letivo && t.ano_letivo && t.ano_letivo !== g.ano_letivo) {
-          return false;
-        }
-
-        // classe (por número)
-        if (g.classe_numero && t.classe?.numero) {
-          if (Number(t.classe.numero) !== Number(g.classe_numero)) return false;
-        }
-
-        // turno: se a escola preencheu turno/codigo na turma
-        if (g.turno_codigo && t.turno?.codigo) {
-          if (t.turno.codigo.toUpperCase() !== g.turno_codigo.toUpperCase()) {
-            return false;
-          }
-        }
-
-        // curso: se houver vínculo curso_codigo na turma
-        if (g.curso_codigo && t.curso?.codigo) {
-          if (t.curso.codigo.toUpperCase() !== g.curso_codigo.toUpperCase()) {
-            return false;
-          }
-        }
-
-        return true;
+        const code = (g.turma_codigo || "").toString().trim().toUpperCase();
+        if (!code) return false;
+        const turmaCode = (t as any)?.turma_code
+          ? (t as any).turma_code.toString().toUpperCase().replace(/\s+/g, "")
+          : '';
+        const matchesCode = turmaCode === code.replace(/\s+/g, "");
+        const matchesYear = g.ano_letivo && t.ano_letivo ? String(t.ano_letivo) === String(g.ano_letivo) : true;
+        return matchesCode && matchesYear;
       });
 
       map.set(key, list);
@@ -155,10 +116,7 @@ export function MatriculasEmMassa({
 
     try {
       const turmaCode = [
-        (grupo.curso_codigo || '').toString().trim().toUpperCase(),
-        grupo.classe_numero ?? '',
-        (grupo.turno_codigo || '').toString().trim().toUpperCase(),
-        (grupo.turma_letra || '').toString().trim().toUpperCase(),
+        (grupo.turma_codigo || '').toString().trim().toUpperCase(),
       ].filter(Boolean).join('-');
 
       const payload = {
@@ -289,14 +247,10 @@ export function MatriculasEmMassa({
                   </span>
                 </div>
                 <h4 className="text-sm font-semibold text-slate-900">
-                  {grupo.curso_codigo ?? "Curso indefinido"} ·{" "}
-                  {classeLabel(grupo.classe_numero)} · Turno{" "}
-                  {turnoLabel(grupo.turno_codigo)} · Turma{" "}
-                  {grupo.turma_letra || "?"} · {grupo.ano_letivo}
+                  Turma {grupo.turma_codigo || "indefinida"} · Ano {grupo.ano_letivo ?? "?"}
                 </h4>
                 <p className="text-xs text-slate-500">
-                  Os alunos deste grupo vieram do mesmo combo de Curso/Classe/Turno/Turma/Ano
-                  no ficheiro.
+                  Alunos agrupados pelo mesmo código de turma informado no ficheiro.
                 </p>
               </div>
 

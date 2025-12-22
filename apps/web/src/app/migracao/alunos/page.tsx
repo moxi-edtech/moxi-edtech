@@ -16,8 +16,10 @@ import {
   Download,
   RefreshCw,
   Info,
+  Settings, // Importado
 } from "lucide-react";
 import BackfillStep from "@/components/escola/importacao/wizard/steps/BackfillStep";
+import ConfigurationStep from "@/components/escola/importacao/wizard/steps/ConfigurationStep"; // Importado
 
 import { ColumnMapper } from "~/components/migracao/ColumnMapper";
 import { ErrorList } from "~/components/migracao/ErrorList";
@@ -30,8 +32,9 @@ const STEPS = [
   { id: 2, title: "Mapeamento", icon: Map, description: "Mapeie as colunas do arquivo" },
   { id: 3, title: "Pré-visualização", icon: Eye, description: "Revise os dados importáveis" },
   { id: 4, title: "Backfill Acadêmico", icon: Eye, description: "Criar sessões, classes, cursos e turmas" },
-  { id: 5, title: "Importação", icon: Eye, description: "Criar/atualizar alunos" },
-  { id: 6, title: "Finalização", icon: CheckCircle, description: "Resumo da importação" },
+  { id: 5, title: "Importação", icon: CheckCircle, description: "Criar/atualizar alunos" },
+  { id: 6, title: "Configuração", icon: Settings, description: "Ajustar cursos/turmas novas" },
+  { id: 7, title: "Finalização", icon: CheckCircle, description: "Resumo da importação" },
 ];
 
 export default function AlunoMigrationWizard() {
@@ -47,6 +50,11 @@ export default function AlunoMigrationWizard() {
   const [userId, setUserId] = useState<string | null>(null);
   const [importErrors, setImportErrors] = useState<ErroImportacao[]>([]);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  
+  // State for the new configuration step
+  const [configSummary, setConfigSummary] = useState<any | null>(null);
+  const [isConfiguring, setIsConfiguring] = useState(false);
+
   const [matriculaBatches, setMatriculaBatches] = useState<any[]>([]);
   const [selectedBatches, setSelectedBatches] = useState<Record<number, boolean>>({});
   const [matriculando, setMatriculando] = useState(false);
@@ -63,9 +71,7 @@ export default function AlunoMigrationWizard() {
   const batchKey = (b: any) =>
     [
       b?.ano_letivo ?? '',
-      b?.classe_numero ?? '',
-      String(b?.turno_codigo || '').toUpperCase(),
-      String(b?.turma_letra || '').toUpperCase(),
+      String(b?.turma_codigo || '').toUpperCase(),
       b?.turma_id ?? '',
     ].join('|');
 
@@ -206,21 +212,9 @@ export default function AlunoMigrationWizard() {
   const mappingStatus = useMemo(() => {
     const missing: string[] = [];
 
-    if (!mapping.nome) {
-      missing.push("Nome");
-    }
-    if (!mapping.data_nascimento) {
-      missing.push("Data de Nascimento");
-    }
-    if (!mapping.encarregado_nome) {
-      missing.push("Nome do Encarregado");
-    }
-    if (!mapping.encarregado_telefone) {
-      missing.push("Telefone do Encarregado");
-    }
-    if (!mapping.turma_codigo) {
-      missing.push("Código da Turma");
-    }
+    if (!mapping.nome) missing.push("Nome");
+    if (!mapping.data_nascimento) missing.push("Data de Nascimento");
+    if (!mapping.sexo) missing.push("Gênero (M/F)");
 
     return {
       ok: missing.length === 0,
@@ -314,6 +308,7 @@ export default function AlunoMigrationWizard() {
     setApiErrors([]);
 
     try {
+      // 1. Executa a importação principal
       const response = await fetch("/api/migracao/alunos/importar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -321,40 +316,45 @@ export default function AlunoMigrationWizard() {
       });
 
       const payload = await response.json();
-
       if (!response.ok) {
         throw new Error(payload.error || "Erro na importação");
       }
+      setImportResult(payload); // Guarda o resultado completo
 
-      setImportResult(payload.result ?? null);
-      setStep(6);
-      await fetchMatriculaPreview();
+      // 2. Verifica se há necessidade de configuração
+      const turmasCriadas = (payload.turmas_created as number | undefined) ?? 0;
+      const cursosCriados = (payload.cursos_created as number | undefined) ?? 0;
 
+      if (turmasCriadas > 0 || cursosCriados > 0) {
+        // 2.1 Busca os detalhes dos itens criados
+        setIsConfiguring(true);
+        const summaryRes = await fetch(`/api/migracao/${importId}/summary`);
+        const summaryPayload = await summaryRes.json();
+        
+        if (!summaryRes.ok) {
+          throw new Error(summaryPayload.error || "Erro ao buscar resumo da configuração.");
+        }
+        
+        setConfigSummary(summaryPayload);
+        setStep(6); // Vai para o passo de Configuração
+      } else {
+        // 2.2 Se não há o que configurar, vai para o passo final
+        setStep(7);
+      }
+
+      // 3. Busca erros de importação para exibir no final
       const errorsResponse = await fetch(`/api/migracao/${importId}/erros`);
       if (errorsResponse.ok) {
         const errorsPayload = await errorsResponse.json();
         setImportErrors(errorsPayload.errors ?? []);
       }
 
-      const warnings = (payload.result?.warnings_turma as number | undefined) ?? 0;
-      if (warnings > 0) {
-        setApiErrors((prev) => [
-          ...prev,
-          `Importação concluída com ${warnings} alunos sem matrícula porque a turma não foi encontrada. Consulte o relatório de erros e crie/mapeie as turmas.`,
-        ]);
-      }
-
-      const turmasCriadas = (payload.result?.turmas_created as number | undefined) ?? 0;
-      if (turmasCriadas > 0) {
-        setApiErrors((prev) => [
-          ...prev,
-          `Importação criou ${turmasCriadas} turma(s) em modo rascunho. Valide-as em "Turmas" para ajustar curso/classe/turno/capacidade antes de liberar finanças.`,
-        ]);
-      }
     } catch (error) {
       setApiErrors([error instanceof Error ? error.message : "Erro de conexão na importação"]);
+      setStep(7); // Mesmo com erro, vai para a tela final para ver o que aconteceu
     } finally {
       setLoading(false);
+      setIsConfiguring(false);
     }
   };
 
@@ -388,9 +388,9 @@ export default function AlunoMigrationWizard() {
     } catch {}
   };
 
-  // Ao entrar no passo 6 com importId válido, carregue o preview
+  // Ao entrar no passo 7 com importId válido, carregue o preview de matrícula
   useEffect(() => {
-    if (step === 6 && importId && escolaId) {
+    if (step === 7 && importId && escolaId) {
       fetchMatriculaPreview();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -406,6 +406,7 @@ export default function AlunoMigrationWizard() {
     setMapping({});
     setHeaders([]);
     setImportId(null);
+    setConfigSummary(null);
     try { if (typeof window !== 'undefined') window.localStorage.removeItem(STORAGE_KEY); } catch {}
   };
 
@@ -615,17 +616,17 @@ export default function AlunoMigrationWizard() {
           </div>
           <div className="text-xs text-red-800">Erros</div>
         </div>
-        <div className="bg-amber-50/70 border border-amber-200 rounded-lg px-3 py-3 text-center">
-          <div className="text-lg font-semibold text-amber-700">
-            {importResult.warnings_turma ?? 0}
-          </div>
-          <div className="text-xs text-amber-800">Sem matrícula (turma não encontrada)</div>
-        </div>
         <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-3 text-center">
           <div className="text-lg font-semibold text-blue-700">
             {importResult.turmas_created ?? 0}
           </div>
-          <div className="text-xs text-blue-800">Turmas criadas (rascunho)</div>
+          <div className="text-xs text-blue-800">Turmas Criadas</div>
+        </div>
+        <div className="bg-purple-50 border border-purple-200 rounded-lg px-3 py-3 text-center">
+          <div className="text-lg font-semibold text-purple-700">
+            {importResult.cursos_created ?? 0}
+          </div>
+          <div className="text-xs text-purple-800">Cursos Pendentes</div>
         </div>
       </div>
     );
@@ -845,7 +846,7 @@ export default function AlunoMigrationWizard() {
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
                 <p className="text-[11px] text-slate-500">
-                  Ao confirmar, os alunos serão criados/atualizados. Depois poderá matricular em massa.
+                  Ao confirmar, os alunos serão criados/atualizados.
                 </p>
                 <ActionButton
                   onClick={handleImport}
@@ -860,119 +861,28 @@ export default function AlunoMigrationWizard() {
           </StepCard>
         )}
 
-        {/* Passo 6: Revisão de Matrícula */}
-        {step >= 6 && (
-          <StepCard
+        {/* Passo 6: Configuração */}
+        {step >= 6 && importId && escolaId && configSummary && (
+           <StepCard
             stepNumber={6}
-            title="Revisão de Matrícula"
-            description="Revise os grupos por turma detectados e confirme a matrícula em massa para cada turma."
+            title="Configurar Estrutura Criada"
+            description="Ajuste os detalhes dos cursos e turmas criados durante a importação."
           >
-            <div className="space-y-4">
-              {matriculaBatches.length === 0 ? (
-                <p className="text-sm text-slate-500">Nenhum grupo encontrado para este ficheiro.</p>
-              ) : (
-                <div className="border rounded-lg divide-y">
-                  {matriculaBatches.map((b: any, idx: number) => (
-                    <div key={idx} className="p-3 flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="checkbox"
-                          checked={!!selectedBatches[idx]}
-                          onChange={(e) => setSelectedBatches({ ...selectedBatches, [idx]: e.target.checked })}
-                        />
-                        <div>
-                          <div className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-                            {b.turma_nome}
-                            {b.curso_codigo && (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">{b.curso_codigo}</span>
-                            )}
-                            {b.turno_codigo && (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">{b.turno_codigo}</span>
-                            )}
-                          </div>
-                          <div className="text-xs text-slate-500">{b.classe || 'Classe não definida'} • {b.total_alunos} aluno(s) • {b.status === 'ready' ? 'Pronto' : 'Sem turma correspondente'}</div>
-                        </div>
-                      </div>
-                      <div className="text-xs font-medium {b.status==='ready' ? 'text-emerald-700' : 'text-amber-700'}">
-                        {b.status === 'ready' ? 'OK' : 'Atenção'}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {matriculando && (
-                <div className="w-full bg-slate-100 rounded h-2 overflow-hidden">
-                  <div className="bg-emerald-600 h-2 transition-all" style={{ width: `${progressTotal>0 ? Math.round((progressDone/progressTotal)*100) : 0}%` }} />
-                  <div className="mt-1 text-[11px] text-slate-500">A matricular {progressDone} de {progressTotal} turmas…</div>
-                </div>
-              )}
-              <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
-                <p className="text-[11px] text-slate-500">Os grupos marcados serão matriculados, um a um, com progresso visível.</p>
-                <ActionButton
-                  onClick={async () => {
-                    if (!importId || !escolaId) return;
-                    setMatriculando(true);
-                    setProgressDone(0);
-                    setMatriculaSummary([]);
-                    try {
-                      const toRun = matriculaBatches
-                        .map((b: any, idx: number) => ({ b, idx }))
-                        .filter(({ idx }) => selectedBatches[idx])
-                        .filter(({ b }) => b.status === 'ready' && b.turma_id);
-                      setProgressTotal(toRun.length);
-                      let done = 0;
-                      for (const { b } of toRun) {
-                        // Chama endpoint por turma (RPC no banco)
-                        const turmaCode = [
-                          (b.curso_codigo || '').toString().trim().toUpperCase(),
-                          b.classe_numero ?? '',
-                          (b.turno_codigo || '').toString().trim().toUpperCase(),
-                          (b.turma_letra || '').toString().trim().toUpperCase(),
-                        ].filter(Boolean).join('-');
-                        const payload = {
-                          import_id: importId,
-                          escola_id: escolaId,
-                          turma_id: b.turma_id,
-                          turma_code: turmaCode || undefined,
-                          ano_letivo: b.ano_letivo ?? anoLetivo,
-                        };
-                        const res = await fetch('/api/matriculas/massa/por-turma', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify(payload),
-                        });
-                        let success = 0, errors = 0;
-                        try {
-                          const json = await res.json();
-                          if (res.ok && json?.ok) {
-                            success = Number(json.success_count || 0);
-                            errors = Number(json.error_count || 0);
-                          }
-                        } catch {}
-                        setMatriculaSummary(prev => ([...prev, { turma_nome: b.turma_nome, turma_id: b.turma_id, success, errors }]));
-                        done++;
-                        setProgressDone(done);
-                      }
-                      setStep(7);
-                    } finally {
-                      setMatriculando(false);
-                    }
-                  }}
-                  disabled={matriculaBatches.length === 0}
-                  loading={matriculando}
-                  icon={CheckCircle}
-                  >
-                    Confirmar e Matricular
-                </ActionButton>
-                <button
-                  onClick={async () => { await fetchMatriculaPreview(); }}
-                  className="inline-flex items-center justify-center rounded-lg px-3 py-2 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200"
-                >
-                  Recarregar análise
-                </button>
+            {isConfiguring ? (
+              <div className="flex items-center justify-center gap-2 text-slate-500 py-10">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Carregando resumo da importação...</span>
               </div>
-            </div>
-          </StepCard>
+            ) : (
+              <ConfigurationStep
+                escolaId={escolaId}
+                importId={importId}
+                initialSummaryData={configSummary}
+                onComplete={() => setStep(7)} // Move to the next step (Finalization)
+                onBack={() => setStep(5)} // Allow going back to Importation step
+            />
+            )}
+           </StepCard>
         )}
 
         {/* Passo 7: Finalização */}
@@ -984,34 +894,7 @@ export default function AlunoMigrationWizard() {
           >
             <div className="space-y-5">
               <ResultsSummary />
-              {(importResult?.turmas_created ?? 0) > 0 && (
-                <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-3">
-                  <div className="text-amber-600 mt-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </div>
-
-                  <div className="flex-1">
-                    <h4 className="text-sm font-bold text-amber-800">
-                      Atenção: {importResult?.turmas_created} novas turmas foram criadas automaticamente!
-                    </h4>
-                    <p className="text-sm text-amber-700 mt-1">
-                      O sistema detectou códigos de turma no CSV que não existiam no banco.
-                      Para não bloquear a importação, criamos estas turmas como <strong>Rascunho</strong>.
-                    </p>
-
-                    <div className="mt-3">
-                      <a
-                        href="/secretaria/turmas?status=rascunho"
-                        className="text-sm font-medium text-amber-800 underline hover:text-amber-900"
-                      >
-                        Ir para Turmas e validar preços/cursos &rarr;
-                      </a>
-                    </div>
-                  </div>
-                </div>
-              )}
+              
               {matriculaSummary.length > 0 && (
                 <div className="space-y-2">
                   <div className="text-sm font-semibold text-slate-900">Resumo das matrículas por turma</div>
@@ -1071,7 +954,7 @@ export default function AlunoMigrationWizard() {
                 </div>
                 <ul className="pl-5 list-disc space-y-0.5">
                   <li>Conferir os alunos importados em <strong>/secretaria/alunos</strong>.</li>
-                  <li>Usar a funcionalidade de <strong>Matrículas em Massa</strong> (quando ativada) para colocar os alunos nas turmas.</li>
+                  <li>Validar os <a href="/secretaria/turmas?status=rascunho" className="underline font-bold">cursos e turmas</a> criados em modo rascunho.</li>
                 </ul>
               </div>
 

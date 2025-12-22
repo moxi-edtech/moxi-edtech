@@ -9,9 +9,9 @@ import type { Database } from "~types/supabase"
 // Creates or updates the active school session (school_sessions) for the escola.
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: { id: string } }
 ) {
-  const { id: escolaId } = await params
+  const { id: escolaId } = context.params
 
   try {
     const raw = await req.json();
@@ -346,9 +346,9 @@ export async function POST(
 // Lists all sessions for the escola using service role (authorization enforced first)
 export async function GET(
   _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: { id: string } }
 ) {
-  const { id: escolaId } = await params;
+  const { id: escolaId } = context.params;
 
   try {
     const s = await supabaseServer();

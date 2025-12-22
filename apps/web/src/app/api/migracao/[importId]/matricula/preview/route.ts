@@ -3,15 +3,10 @@ import { supabaseServerTyped } from '@/lib/supabaseServer'
 
 type Batch = {
   turma_nome: string
-  classe: string | null
+  turma_codigo: string
   total_alunos: number
   status: 'ready' | 'warning'
   turma_id: string | null
-  // atributos necessários para /api/matriculas/massa
-  curso_codigo: string | null
-  classe_numero: number | null
-  turno_codigo: string | null
-  turma_letra: string | null
   ano_letivo: number | null
 };
 
@@ -50,60 +45,49 @@ export async function GET(
     if (!escolaId) return NextResponse.json({ ok: true, batches: [] })
 
     // Carregar staging agrupado
-    const stagedQuery = supabase
-      .from('staging_alunos')
-      .select('curso_codigo, classe_numero, turno_codigo, turma_letra, ano_letivo, count:id', { count: 'exact', head: false } as any)
-      .eq('import_id', importId)
-      .eq('escola_id', escolaId);
+    const { data: staged, error: stagedError } = await supabase.rpc(
+      'get_staging_alunos_summary',
+      {
+        p_import_id: importId,
+        p_escola_id: escolaId,
+      }
+    )
+    if (stagedError) throw stagedError;
 
-    const { data: staged } = await (stagedQuery as any).group(
-      'curso_codigo, classe_numero, turno_codigo, turma_letra, ano_letivo'
-    );
+    const groups = staged || []
 
-    const groups = (staged || []) as Array<{ curso_codigo?: string | null; classe_numero?: number | null; turno_codigo?: string | null; turma_letra?: string | null; ano_letivo?: number | null; count?: number }>
+    const codeSet = new Set<string>();
+    groups.forEach((g) => {
+      const code = (g.turma_codigo || '').toString().trim().toUpperCase().replace(/\s+/g, '')
+      if (code) codeSet.add(code)
+    })
 
-    // Pré-carregar classes e turmas
-    const { data: classes } = await supabase
-      .from('classes')
-      .select('id, numero, nome')
-      .eq('escola_id', escolaId)
-    const classByNumero = new Map<number, { id: string; nome: string }>()
-    for (const c of (classes || []) as any[]) {
-      if (c.numero != null) classByNumero.set(Number(c.numero), { id: c.id, nome: c.nome })
+    let turmas: any[] | null = []
+    if (codeSet.size > 0) {
+      const { data } = await supabase
+        .from('turmas')
+        .select('id, nome, ano_letivo, turma_code')
+        .eq('escola_id', escolaId)
+        .in('turma_code', Array.from(codeSet))
+      turmas = data as any[] | null
     }
-
-    const { data: turmas } = await supabase
-      .from('turmas')
-      .select('id, nome, ano_letivo, turno, classe_id')
-      .eq('escola_id', escolaId)
 
     const batches: Batch[] = []
     for (const g of groups) {
-      const letra = (g.turma_letra || '').toString().trim().toUpperCase()
-      const classeLabel = g.classe_numero != null ? `${g.classe_numero}ª Classe` : null
-      const turmaNomeSugerido = `${classeLabel ?? ''} ${letra}`.trim()
-      const targetClasse = g.classe_numero != null ? classByNumero.get(Number(g.classe_numero)) : undefined
-
-      // Resolver turma existente: mesmo ano_letivo, mesmo classe_id, mesmo turno (se disponível), nome terminando com letra
-      const candidatos = (turmas || []).filter((t: any) => {
+      const code = (g.turma_codigo || '').toString().trim().toUpperCase().replace(/\s+/g, '')
+      if (!code) continue
+      const ready = (turmas || []).find((t: any) => {
+        const sameCode = (t.turma_code || '').toString().toUpperCase().replace(/\s+/g, '') === code
         const sameYear = g.ano_letivo != null ? String(t.ano_letivo) === String(g.ano_letivo) : true
-        const sameClasse = targetClasse?.id ? t.classe_id === targetClasse.id : true
-        const sameTurno = g.turno_codigo ? (t.turno || '').toString().toLowerCase().startsWith(g.turno_codigo.toLowerCase().startsWith('m') ? 'm' : g.turno_codigo.toLowerCase().startsWith('t') ? 't' : 'n') : true
-        const endsWithLetter = letra ? String(t.nome || '').toUpperCase().trim().endsWith(` ${letra}`) : true
-        return sameYear && sameClasse && sameTurno && endsWithLetter
+        return sameCode && sameYear
       })
 
-      const ready = candidatos[0]
       batches.push({
-        turma_nome: ready ? String(ready.nome) : turmaNomeSugerido,
-        classe: classeLabel,
-        total_alunos: Number(g.count || 0),
+        turma_nome: ready ? String(ready.nome) : code,
+        turma_codigo: code,
+        total_alunos: Number(g.total_alunos ?? 0),
         status: ready ? 'ready' : 'warning',
         turma_id: ready ? String(ready.id) : null,
-        curso_codigo: g.curso_codigo ?? null,
-        classe_numero: g.classe_numero ?? null,
-        turno_codigo: g.turno_codigo ?? null,
-        turma_letra: letra || null,
         ano_letivo: g.ano_letivo ?? null,
       })
     }

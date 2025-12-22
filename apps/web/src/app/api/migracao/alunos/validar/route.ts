@@ -7,6 +7,8 @@ import type { Database } from "~types/supabase";
 import type { AlunoStagingRecord, MappedColumns } from "~types/migracao";
 import { csvToJsonLines, fileToCsvText, mapAlunoFromCsv, summarizePreview } from "../../utils";
 
+const UPSERT_BATCH_SIZE = 500;
+
 export const dynamic = "force-dynamic";
 
 interface ValidateBody {
@@ -42,52 +44,86 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "importId, escolaId e anoLetivo são obrigatórios" }, { status: 400 });
   }
 
-  const supabase = createAdminClient<Database>(adminUrl, serviceKey);
+  try {
+    const supabase = createAdminClient<Database>(adminUrl, serviceKey);
 
-  // Verifica acesso e consistência do importId/escolaId
-  const hasAccess = await userHasAccessToEscola(supabase, escolaId, authUser.id);
-  if (!hasAccess) return NextResponse.json({ error: "Sem vínculo com a escola" }, { status: 403 });
-  const sameEscola = await importBelongsToEscola(supabase, importId, escolaId);
-  if (!sameEscola) return NextResponse.json({ error: "Importação não pertence à escola" }, { status: 403 });
+    // Verifica acesso e consistência do importId/escolaId
+    const hasAccess = await userHasAccessToEscola(supabase, escolaId, authUser.id);
+    if (!hasAccess) return NextResponse.json({ error: "Sem vínculo com a escola" }, { status: 403 });
+    const sameEscola = await importBelongsToEscola(supabase, importId, escolaId);
+    if (!sameEscola) return NextResponse.json({ error: "Importação não pertence à escola" }, { status: 403 });
 
-  const { data: migration, error: migrationError } = await supabase
-    .from("import_migrations")
-    .select("storage_path, file_name")
-    .eq("id", importId)
-    .single();
+    const { data: migration, error: migrationError } = await supabase
+      .from("import_migrations")
+      .select("storage_path, file_name")
+      .eq("id", importId)
+      .single();
 
-  if (migrationError || !migration) {
-    return NextResponse.json({ error: migrationError?.message || "Importação não encontrada" }, { status: 404 });
+    if (migrationError || !migration) {
+      return NextResponse.json({ error: migrationError?.message || "Importação não encontrada" }, { status: 404 });
+    }
+
+    const { data: fileData, error: downloadError } = await supabase.storage
+      .from("migracoes")
+      .download(migration.storage_path!);
+
+    if (downloadError || !fileData) {
+      return NextResponse.json({ error: downloadError?.message || "Arquivo não encontrado" }, { status: 404 });
+    }
+
+    const text = await fileToCsvText(fileData as Blob, {
+      fileName: migration.file_name || migration.storage_path || undefined,
+      mimeType: (fileData as any).type,
+    });
+    const entries = csvToJsonLines(text);
+    const staged: AlunoStagingRecord[] = entries.map((entry, index) =>
+      mapAlunoFromCsv(entry, columnMap, importId, escolaId, anoLetivo, index + 2)
+    );
+
+    if (!staged.length) {
+      return NextResponse.json({ error: "Nenhuma linha encontrada no arquivo" }, { status: 400 });
+    }
+
+    // Descobre suporte a coluna row_number (nem todos os ambientes migraram ainda)
+    const { data: stagingColumns } = await supabase
+      .from("information_schema.columns" as any)
+      .select("column_name")
+      .eq("table_schema", "public")
+      .eq("table_name", "staging_alunos")
+      .eq("column_name", "row_number");
+
+    const supportsRowNumber = (stagingColumns?.length ?? 0) > 0;
+    const stagedForUpsert = supportsRowNumber
+      ? staged
+      : staged.map(({ row_number: _rn, ...rest }) => rest);
+
+    // Clear previous staging/errors for idempotency
+    await supabase.from("import_errors").delete().eq("import_id", importId);
+    await supabase.from("staging_alunos").delete().eq("import_id", importId);
+
+    for (let i = 0; i < stagedForUpsert.length; i += UPSERT_BATCH_SIZE) {
+      const chunk = stagedForUpsert.slice(i, i + UPSERT_BATCH_SIZE);
+      const { error: stageError } = await supabase.from("staging_alunos").upsert(chunk);
+      if (stageError) {
+        const rangeEnd = Math.min(staged.length, i + UPSERT_BATCH_SIZE);
+        return NextResponse.json(
+          { error: `Falha ao salvar linhas ${i + 1}-${rangeEnd}: ${stageError.message}` },
+          { status: 500 }
+        );
+      }
+    }
+
+    await supabase
+      .from("import_migrations")
+      .update({ status: "validado", total_rows: staged.length, column_map: columnMap })
+      .eq("id", importId);
+
+    return NextResponse.json({ preview: summarizePreview(staged), total: staged.length });
+  } catch (error) {
+    console.error("[migracao][alunos][validar] erro inesperado", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Erro interno" },
+      { status: 500 }
+    );
   }
-
-  const { data: fileData, error: downloadError } = await supabase.storage
-    .from("migracoes")
-    .download(migration.storage_path!);
-
-  if (downloadError || !fileData) {
-    return NextResponse.json({ error: downloadError?.message || "Arquivo não encontrado" }, { status: 404 });
-  }
-
-  const text = await fileToCsvText(fileData as Blob, {
-    fileName: migration.file_name || migration.storage_path || undefined,
-    mimeType: (fileData as any).type,
-  });
-  const entries = csvToJsonLines(text);
-  const staged: AlunoStagingRecord[] = entries.map((entry) => mapAlunoFromCsv(entry, columnMap, importId, escolaId, anoLetivo));
-
-  // Clear previous staging/errors for idempotency
-  await supabase.from("import_errors").delete().eq("import_id", importId);
-  await supabase.from("staging_alunos").delete().eq("import_id", importId);
-
-  const { error: stageError } = await supabase.from("staging_alunos").upsert(staged);
-  if (stageError) {
-    return NextResponse.json({ error: stageError.message }, { status: 500 });
-  }
-
-  await supabase
-    .from("import_migrations")
-    .update({ status: "validado", total_rows: staged.length, column_map: columnMap })
-    .eq("id", importId);
-
-  return NextResponse.json({ preview: summarizePreview(staged), total: staged.length });
 }

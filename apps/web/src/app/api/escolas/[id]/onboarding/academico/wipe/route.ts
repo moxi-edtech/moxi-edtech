@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
-export async function POST(req: Request, { params }: any) {
+export async function POST(req: Request, context: { params: { id: string } }) {
+  const { id: escolaId } = context.params;
   try {
     // TODO: limpar estrutura dessa sessão
 

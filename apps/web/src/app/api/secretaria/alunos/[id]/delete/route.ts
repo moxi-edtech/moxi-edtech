@@ -4,13 +4,14 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 import { recordAuditServer } from "@/lib/audit";
 
+
 // DELETE OU POST (estamos usando POST na UI)
 export async function POST(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
+    const { id } = context.params;
     const alunoId = id;
     if (!alunoId) {
       return NextResponse.json(
@@ -56,10 +57,8 @@ export async function POST(
     // 3) Autorização de papel
     const allowedRoles = [
       "super_admin",
-      "global_admin",
       "admin",
       "secretaria",
-      "financeiro",
     ];
 
     if (!role || !allowedRoles.includes(role)) {
@@ -76,12 +75,20 @@ export async function POST(
       );
     }
 
-    // 4) Carrega o aluno via cliente normal (RLS garante escopo)
-    const { data: aluno, error: alunoErr } = await s
+    // 4) Carrega o aluno usando service role (evita bloqueios inesperados de RLS)
+    const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    if (!adminUrl || !serviceRole) {
+      return NextResponse.json(
+        { ok: false, error: "Server misconfigured: falta SUPABASE_SERVICE_ROLE_KEY" },
+        { status: 500 }
+      );
+    }
+    const admin = createAdminClient<Database>(adminUrl, serviceRole);
+
+    const { data: aluno, error: alunoErr } = await admin
       .from("alunos")
-      .select(
-        "id, nome, responsavel, telefone_responsavel, status, created_at, profile_id, escola_id, deleted_at, deleted_by, deletion_reason"
-      )
+      .select("id, escola_id")
       .eq("id", alunoId)
       .maybeSingle();
 
@@ -121,56 +128,21 @@ export async function POST(
       );
     }
 
-    // 6) Usa service role para escrever em alunos / alunos_excluidos ignorando RLS
-    const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    if (!adminUrl || !serviceRole) {
-      return NextResponse.json(
-        { ok: false, error: "Server misconfigured: falta SUPABASE_SERVICE_ROLE_KEY" },
-        { status: 500 }
-      );
-    }
-    const admin = createAdminClient<Database>(adminUrl, serviceRole);
+    // 6) Usa service role para chamar a função `soft_delete_aluno`
+    const { error: rpcError } = await admin.rpc('soft_delete_aluno', {
+      p_id: alunoId,
+      p_deleted_by: user.id,
+      p_reason: reason,
+    });
 
-    // 7) Atualiza aluno -> soft delete (marca deleted_at, deleted_by e reason)
-    const now = new Date().toISOString();
-    const { error: updErr } = await admin
-      .from("alunos")
-      .update({
-        deleted_at: now,
-        deleted_by: user.id,
-        deletion_reason: reason,
-        status: 'arquivado' as any,
-      } as Database["public"]["Tables"]["alunos"]["Update"])
-      .eq("id", alunoId);
-
-    if (updErr) {
+    if (rpcError) {
       return NextResponse.json(
-        { ok: false, error: updErr.message },
+        { ok: false, error: rpcError.message },
         { status: 400 }
       );
     }
 
-    // 8) Cria/atualiza registro em alunos_excluidos (histórico)
-    try {
-      await admin.from("alunos_excluidos").insert({
-        aluno_id: (aluno as any).id,
-        escola_id: (aluno as any).escola_id,
-        profile_id: (aluno as any).profile_id,
-        nome: (aluno as any).nome ?? null,
-        exclusao_motivo: reason,
-        aluno_created_at: (aluno as any).created_at ?? null,
-        aluno_deleted_at: now,
-        excluido_por: user.id,
-        dados_anonimizados: false,
-        snapshot: { aluno, captured_at: now } as any,
-      } as Database["public"]["Tables"]["alunos_excluidos"]["Insert"]);
-    } catch (e) {
-      // Não bloqueia a operação principal
-      console.warn("[alunos.delete] Falha ao inserir em alunos_excluidos", e);
-    }
-
-    // 9) Auditoria
+    // 7) Auditoria
     try {
       await recordAuditServer({
         escolaId: (aluno as any).escola_id,
@@ -190,7 +162,6 @@ export async function POST(
   }
 }
 
-export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  return POST(req, ctx);
+export async function DELETE(req: Request, context: { params: { id: string } }) {
+  return POST(req, context);
 }
-
