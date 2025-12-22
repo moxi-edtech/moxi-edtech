@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import type { Database } from '~types/supabase'
+import { parsePlanTier, type PlanTier } from '@/config/plans'
 
 type EscolaItem = {
   id: string
   nome: string | null
   status: string | null
-  plano: string | null
+  plano: PlanTier | null
   last_access: string | null
   total_alunos: number
   total_professores: number
@@ -39,7 +40,7 @@ export async function GET() {
       // Tenta via view consolidada
       const { data, error } = await client
         .from('escolas_view' as any)
-        .select('id, nome, status, plano, last_access, total_alunos, total_professores, cidade, estado')
+        .select('id, nome, status, plano_atual, plano, last_access, total_alunos, total_professores, cidade, estado')
         .neq('status', 'excluida' as any)
         .order('nome', { ascending: true })
         .limit(1000)
@@ -49,7 +50,7 @@ export async function GET() {
           id: String(e.id),
           nome: e.nome ?? null,
           status: e.status ?? null,
-          plano: e.plano ?? null,
+          plano: e.plano_atual ? parsePlanTier(e.plano_atual) : e.plano ? parsePlanTier(e.plano) : null,
           last_access: e.last_access ?? null,
           total_alunos: Number(e.total_alunos ?? 0),
           total_professores: Number(e.total_professores ?? 0),
@@ -72,7 +73,7 @@ export async function GET() {
       // Fallback: usa tabela 'escolas' com subset de colunas
       const { data: raw, error: e2 } = await client
         .from('escolas' as any)
-        .select('id, nome, status, plano, endereco')
+        .select('id, nome, status, plano_atual, endereco, plano')
         .neq('status', 'excluida' as any)
         .order('nome', { ascending: true })
         .limit(1000)
@@ -82,7 +83,7 @@ export async function GET() {
         id: String(e.id),
         nome: e.nome ?? null,
         status: e.status ?? null,
-        plano: e.plano ?? null,
+        plano: e.plano_atual ? parsePlanTier(e.plano_atual) : e.plano ? parsePlanTier(e.plano) : null,
         last_access: null,
         total_alunos: 0,
         total_professores: 0,

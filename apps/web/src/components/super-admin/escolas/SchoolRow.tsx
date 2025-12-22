@@ -134,9 +134,9 @@ export function SchoolRow({
       </td>
       <td className="py-3 px-4">{onboardingBadge()}</td>
       <td className="py-3 px-4">
-        <select className="border rounded-md px-2 py-1 text-sm" value={String(valueOrForm('plan', school.plan || 'Básico'))} onChange={(e) => onInputChange('plan', e.target.value)}>
-          <option value="Básico">Básico</option>
-          <option value="Standard">Standard</option>
+        <select className="border rounded-md px-2 py-1 text-sm" value={String(valueOrForm('plan', school.plan || 'Essencial'))} onChange={(e) => onInputChange('plan', e.target.value)}>
+          <option value="Essencial">Essencial</option>
+          <option value="Profissional">Profissional</option>
           <option value="Premium">Premium</option>
         </select>
       </td>

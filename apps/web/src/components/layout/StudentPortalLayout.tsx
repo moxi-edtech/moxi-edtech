@@ -14,6 +14,7 @@ import {
 } from '@heroicons/react/24/outline'
 import SignOutButton from '@/components/auth/SignOutButton'
 import BackButton from '@/components/navigation/BackButton'
+import { parsePlanTier, PLAN_NAMES, type PlanTier } from "@/config/plans"
 
 type Item = { name: string, icon: React.ComponentType<React.SVGProps<SVGSVGElement>> }
 
@@ -28,7 +29,7 @@ const items: Item[] = [
 export default function StudentPortalLayout({ children }: { children: React.ReactNode }) {
   const [active, setActive] = useState('Dashboard')
   const [open, setOpen] = useState(false)
-  const [plan, setPlan] = useState<'basico'|'standard'|'premium'|null>(null)
+  const [plan, setPlan] = useState<PlanTier | null>(null)
 
   useEffect(() => {
     const supabase = createClient()
@@ -41,8 +42,8 @@ export default function StudentPortalLayout({ children }: { children: React.Reac
         try {
           const res = await fetch(`/api/escolas/${escolaId}/nome`, { cache: 'no-store' })
           const json = await res.json().catch(() => null)
-          const p = (json?.plano || null) as any
-          if (mounted && p && ['basico','standard','premium'].includes(p)) setPlan(p)
+          const p = json?.plano ?? null
+          if (mounted && p) setPlan(parsePlanTier(p))
         } catch {}
       } catch {}
     })()
@@ -88,7 +89,7 @@ export default function StudentPortalLayout({ children }: { children: React.Reac
             <button className="md:hidden p-2 rounded-lg bg-moxinexa-light/30" onClick={() => setOpen(true)}><Bars3Icon className="w-5 h-5" /></button>
             <h1 className="text-xl font-semibold">{active}</h1>
             {plan && (
-              <span className="text-[10px] uppercase px-2 py-1 rounded-full bg-gray-100 border text-gray-600">Plano: {plan}</span>
+              <span className="text-[10px] uppercase px-2 py-1 rounded-full bg-gray-100 border text-gray-600">Plano: {PLAN_NAMES[plan]}</span>
             )}
           </div>
           <div className="flex items-center gap-4">
