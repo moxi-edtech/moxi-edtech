@@ -50,6 +50,7 @@ export type Database = {
           naturalidade: string | null
           nif: string | null
           nome: string
+          nome_completo: string | null
           numero_processo: string | null
           profile_id: string | null
           responsavel: string | null
@@ -79,6 +80,7 @@ export type Database = {
           naturalidade?: string | null
           nif?: string | null
           nome: string
+          nome_completo?: string | null
           numero_processo?: string | null
           profile_id?: string | null
           responsavel?: string | null
@@ -108,6 +110,7 @@ export type Database = {
           naturalidade?: string | null
           nif?: string | null
           nome?: string
+          nome_completo?: string | null
           numero_processo?: string | null
           profile_id?: string | null
           responsavel?: string | null
@@ -3754,6 +3757,8 @@ export type Database = {
           numero_processo: string | null
           profile_id: string | null
           raw_data: Json | null
+          row_number: number | null
+          sexo: string | null
           telefone: string | null
           turma_codigo: string | null
           turma_letra: string | null
@@ -3780,6 +3785,8 @@ export type Database = {
           numero_processo?: string | null
           profile_id?: string | null
           raw_data?: Json | null
+          row_number?: number | null
+          sexo?: string | null
           telefone?: string | null
           turma_codigo?: string | null
           turma_letra?: string | null
@@ -3806,6 +3813,8 @@ export type Database = {
           numero_processo?: string | null
           profile_id?: string | null
           raw_data?: Json | null
+          row_number?: number | null
+          sexo?: string | null
           telefone?: string | null
           turma_codigo?: string | null
           turma_letra?: string | null
@@ -4095,7 +4104,7 @@ export type Database = {
       }
       turmas: {
         Row: {
-          ano_letivo: string | null
+          ano_letivo: number | null
           capacidade_maxima: number | null
           classe_id: string | null
           classe_num: number | null
@@ -4115,7 +4124,7 @@ export type Database = {
           turno: string | null
         }
         Insert: {
-          ano_letivo?: string | null
+          ano_letivo?: number | null
           capacidade_maxima?: number | null
           classe_id?: string | null
           classe_num?: number | null
@@ -4135,7 +4144,7 @@ export type Database = {
           turno?: string | null
         }
         Update: {
-          ano_letivo?: string | null
+          ano_letivo?: number | null
           capacidade_maxima?: number | null
           classe_id?: string | null
           classe_num?: number | null
@@ -4699,7 +4708,7 @@ export type Database = {
       }
       vw_turmas_para_matricula: {
         Row: {
-          ano_letivo: string | null
+          ano_letivo: number | null
           capacidade_maxima: number | null
           classe_id: string | null
           classe_nome: string | null
@@ -4798,7 +4807,7 @@ export type Database = {
           p_turma_code: string
         }
         Returns: {
-          ano_letivo: string | null
+          ano_letivo: number | null
           capacidade_maxima: number | null
           classe_id: string | null
           classe_num: number | null
@@ -4846,6 +4855,14 @@ export type Database = {
           table_name: string
         }[]
       }
+      get_staging_alunos_summary: {
+        Args: { p_escola_id: string; p_import_id: string }
+        Returns: {
+          ano_letivo: number
+          total_alunos: number
+          turma_codigo: string
+        }[]
+      }
       get_user_escola_id:
         | { Args: never; Returns: string }
         | { Args: { p_user_id: string }; Returns: string }
@@ -4868,6 +4885,10 @@ export type Database = {
             }
             Returns: Json
           }
+      importar_alunos_v2: {
+        Args: { p_alunos: Json; p_ano_letivo: number; p_escola_id: string }
+        Returns: Json
+      }
       initcap_angola: { Args: { "": string }; Returns: string }
       is_admin_escola: { Args: never; Returns: boolean }
       is_escola_admin: { Args: { p_escola_id: string }; Returns: boolean }
@@ -4925,6 +4946,7 @@ export type Database = {
       }
       normalize_date: { Args: { input_text: string }; Returns: string }
       normalize_text: { Args: { input_text: string }; Returns: string }
+      normalize_turma_code: { Args: { p_code: string }; Returns: string }
       partitions_info: { Args: never; Returns: Json }
       preview_matricula_number: {
         Args: { p_escola_id: string }

@@ -10,10 +10,7 @@ export interface GrupoMatricula {
   import_id: string;
   escola_id: string;
 
-  curso_codigo?: string | null;
-  classe_numero?: number | null;
-  turno_codigo?: string | null;
-  turma_letra?: string | null;
+  turma_codigo?: string | null;
   ano_letivo?: number | null;
 
   count: number;
@@ -23,10 +20,7 @@ export interface GrupoMatricula {
 export interface MatriculaMassaPayload {
   import_id: string;
   escola_id: string;
-  curso_codigo: string;
-  classe_numero: number;
-  turno_codigo: string;
-  turma_letra: string;
-  ano_letivo: number;
+  turma_code?: string;
+  ano_letivo?: number;
   turma_id: string;
 }

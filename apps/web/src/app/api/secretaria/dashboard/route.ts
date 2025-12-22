@@ -198,23 +198,43 @@ export async function GET() {
   }
 }
 
-function normalizeStatus(status: string) {
-  const value = (status || '').toLowerCase();
-  if (["ativa", "ativo", "active"].includes(value)) return { label: "Ativo", context: "success" as const };
-  if (["concluida", "concluido", "graduado"].includes(value)) return { label: "Concluído", context: "muted" as const };
-  if (["transferido", "transferida"].includes(value)) return { label: "Transferido", context: "alert" as const };
-  if (["pendente", "aguardando"].includes(value)) return { label: "Pendente", context: "alert" as const };
-  if (["trancado", "suspenso", "desistente", "inativo"].includes(value)) return { label: "Irregular", context: "alert" as const };
-  return { label: status || 'Indefinido', context: "neutral" as const };
+import { AlunoStatusSchema, AlunoStatus } from '@moxi/tenant-sdk/aluno';
+
+function normalizeStatus(status: string): { label: string; context: 'success' | 'alert' | 'muted' | 'neutral' } {
+  const parsedStatus = AlunoStatusSchema.safeParse(status);
+  if (!parsedStatus.success) {
+    return { label: status || 'Indefinido', context: "neutral" as const };
+  }
+
+  const value = parsedStatus.data;
+
+  switch (value) {
+    case 'ativo':
+      return { label: "Ativo", context: "success" as const };
+    case 'concluido':
+      return { label: "Concluído", context: "muted" as const };
+    case 'transferido':
+      return { label: "Transferido", context: "alert" as const };
+    case 'pendente':
+      return { label: "Pendente", context: "alert" as const };
+    case 'inativo':
+    case 'suspenso':
+    case 'trancado':
+    case 'desistente':
+      return { label: "Irregular", context: "alert" as const };
+    default:
+      return { label: status || 'Indefinido', context: "neutral" as const };
+  }
 }
 
-// Canonical status key used to aggregate duplicates and synonyms
-function canonicalStatus(status: string | null | undefined): string {
-  const v = (status ?? '').trim().toLowerCase();
-  if (["ativa", "ativo", "active"].includes(v)) return "ativo";
-  if (["concluida", "concluido", "graduado"].includes(v)) return "concluido";
-  if (["transferido", "transferida"].includes(v)) return "transferido";
-  if (["pendente", "aguardando"].includes(v)) return "pendente";
-  if (["trancado", "suspenso", "desistente", "inativo"].includes(v)) return "inativo"; // grouped as Irregular
-  return v || "indefinido";
+function canonicalStatus(status: string | null | undefined): AlunoStatus | 'indefinido' {
+  const parsedStatus = AlunoStatusSchema.safeParse((status || '').trim().toLowerCase());
+  if (parsedStatus.success) {
+    if (['ativa', 'active'].includes((status || '').trim().toLowerCase())) return 'ativo';
+    if (['concluida', 'graduado'].includes((status || '').trim().toLowerCase())) return 'concluido';
+    if (['transferida'].includes((status || '').trim().toLowerCase())) return 'transferido';
+    if (['aguardando'].includes((status || '').trim().toLowerCase())) return 'pendente';
+    return parsedStatus.data;
+  }
+  return 'indefinido';
 }

@@ -1,5 +1,28 @@
 BEGIN;
 
+-- Backfill course_code a partir de colunas já existentes para evitar erros em turmas/importação
+UPDATE public.cursos
+   SET course_code = upper(regexp_replace(trim(codigo), '\\s+', '', 'g'))
+ WHERE course_code IS NULL
+   AND codigo IS NOT NULL
+   AND trim(codigo) <> '';
+
+UPDATE public.cursos c
+   SET course_code = CASE
+     WHEN c.curriculum_key IN ('primario_base','primario_avancado') THEN 'EP'
+     WHEN c.curriculum_key IN ('ciclo1') THEN 'ESG'
+     WHEN c.curriculum_key = 'tecnico_informatica' THEN 'TI'
+     WHEN c.curriculum_key = 'tecnico_gestao' THEN 'TG'
+     WHEN c.curriculum_key = 'tecnico_construcao' THEN 'CC'
+     WHEN c.curriculum_key = 'puniv' THEN 'CFB'
+     WHEN c.curriculum_key = 'economicas' THEN 'CEJ'
+     WHEN c.curriculum_key = 'saude_enfermagem' THEN 'ENF'
+     WHEN c.curriculum_key = 'saude_farmacia_analises' THEN 'AC'
+     ELSE c.course_code
+   END
+ WHERE c.course_code IS NULL
+   AND c.curriculum_key IS NOT NULL;
+
 -- Melhora create_or_get_turma_by_code para aceitar códigos de curso legados
 -- (coluna codigo ou curriculum_key), usando a mesma normalização e preenchendo course_code automaticamente.
 CREATE OR REPLACE FUNCTION public.create_or_get_turma_by_code(
@@ -22,9 +45,6 @@ DECLARE
   v_curso_id uuid;
   v_turma public.turmas;
 BEGIN
-  RAISE LOG 'create_or_get_turma_by_code START: p_turma_code=%', p_turma_code;
-  RAISE LOG 'create_or_get_turma_by_code normalized: v_code=%', v_code;
-
   IF p_escola_id IS NULL THEN
     RAISE EXCEPTION 'escola_id é obrigatório' USING ERRCODE = '22023';
   END IF;
@@ -39,7 +59,6 @@ BEGIN
   END IF;
 
   v_parts := string_to_array(v_code, '-');
-  RAISE LOG 'create_or_get_turma_by_code parts: %', v_parts;
 
   IF array_length(v_parts, 1) <> 4 THEN
     RAISE EXCEPTION 'Código da Turma inválido: % (ex: TI-10-M-A)', p_turma_code
@@ -51,23 +70,22 @@ BEGIN
   v_shift       := v_parts[3];
   v_section     := v_parts[4];
 
-  IF v_course_code IS NULL OR length(v_course_code) < 2 OR length(v_course_code) > 10 THEN
-    RAISE EXCEPTION 'Código do Curso inválido no código da turma: %', p_turma_code
+  IF v_course_code IS NULL OR length(v_course_code) < 2 OR length(v_course_code) > 8 THEN
+    RAISE EXCEPTION 'Código da Turma inválido: % (ex: TI-10-M-A)', p_turma_code
       USING ERRCODE = '22023';
   END IF;
 
   IF v_class_num < 1 OR v_class_num > 13 THEN
-    RAISE EXCEPTION 'Classe inválida no código da turma: %', p_turma_code
-      USING ERRCODE = '22023';
+    RAISE EXCEPTION 'Classe inválida no código: %', v_class_num USING ERRCODE = '22023';
   END IF;
 
   IF v_shift NOT IN ('M', 'T', 'N') THEN
-    RAISE EXCEPTION 'Turno inválido no código da turma: %', p_turma_code
+    RAISE EXCEPTION 'Código da Turma inválido: % (ex: TI-10-M-A)', p_turma_code
       USING ERRCODE = '22023';
   END IF;
 
   IF v_section IS NULL OR v_section !~ '^[A-Z]{1,2}$' THEN
-    RAISE EXCEPTION 'Letra/Seção inválida no código da turma: %', p_turma_code
+    RAISE EXCEPTION 'Código da Turma inválido: % (ex: TI-10-M-A)', p_turma_code
       USING ERRCODE = '22023';
   END IF;
 
@@ -82,11 +100,10 @@ BEGIN
 
   -- 2) Fallback para coluna codigo (legado) e preenche course_code
   IF v_curso_id IS NULL THEN
-    RAISE LOG 'Curso não encontrado por course_code=%, tentando fallback para "codigo"', v_course_code;
     SELECT c.id INTO v_curso_id
       FROM public.cursos c
      WHERE c.escola_id = p_escola_id
-       AND upper(regexp_replace(trim(c.codigo), '\s+', '', 'g')) = v_course_code
+       AND upper(regexp_replace(trim(c.codigo), '\\s+', '', 'g')) = v_course_code
      LIMIT 1;
 
     IF v_curso_id IS NOT NULL THEN
@@ -99,7 +116,6 @@ BEGIN
 
   -- 3) Fallback para curriculum_key conhecido (usa o mesmo mapping do backfill)
   IF v_curso_id IS NULL THEN
-    RAISE LOG 'Curso não encontrado por "codigo", tentando fallback para "curriculum_key"';
     SELECT c.id INTO v_curso_id
       FROM public.cursos c
      WHERE c.escola_id = p_escola_id

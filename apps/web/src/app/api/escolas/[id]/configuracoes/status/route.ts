@@ -10,8 +10,9 @@ const supabaseAdmin = createClient<Database>(
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
+  const { params } = context;
   const escolaId = params.id;
 
   if (!escolaId) {

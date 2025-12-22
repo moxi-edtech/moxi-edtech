@@ -17,13 +17,15 @@ Fluxo recomendado (produção)
 1) Backfill Acadêmico (opcional, via Wizard)
    - Analisar e criar Sessões (anos letivos), Classes, Cursos e Turmas em falta a partir do CSV (staging).
 2) Importação de Pessoas
-   - Importa somente “alunos” (dados civis) — sem matrículas/financeiro nesta etapa.
-3) Revisão de Matrícula (por Turma)
-   - Pré-visualiza grupos por turma (status “ready” ou “warning”).
-   - O operador marca os lotes e confirma.
-4) Matrícula em Massa (RPC por Turma)
+   - Importa somente “alunos” (dados civis). Se códigos de curso ou turma no CSV não existirem, o sistema os cria automaticamente: cursos como 'pendente' (aguardando aprovação do admin) e turmas como 'rascunho' (aguardando configuração).
+3) Configuração de Estrutura Pós-Importação (NOVO)
+   - Se cursos pendentes ou turmas rascunho foram criados, esta etapa do wizard permite ao secretário configurá-los (vincular a classes, nomear turmas) e ao admin aprová-los, antes de prosseguir.
+4) Revisão de Matrícula (por Turma)
+   - Após a configuração, pré-visualiza os grupos por turma (status “ready” ou “warning”).
+   - O operador marca os lotes e confirma a matrícula.
+5) Matrícula em Massa (RPC por Turma)
    - O front dispara em loop para cada turma marcada: `POST /api/matriculas/massa/por-turma`.
-5) Rematrícula em Massa (Secretaria)
+6) Rematrícula em Massa (Secretaria)
    - Suporta RPC e geração opcional de mensalidades.
 
 Getting Started (Angola)
@@ -37,7 +39,7 @@ Getting Started (Angola)
 Cadastro de Aluno (Identidade) x Matrícula (Vínculo)
 - Cadastro (UI: `/secretaria/alunos/novo`)
   - Campos obrigatórios: primeiro nome, sobrenome, data de nascimento, género, BI; contacto: email, telefone; encarregado: nome + telefone obrigatório (login do responsável). NIF é copiado do BI se vazio.
-  - Payload: envia `primeiro_nome`, `sobrenome`, `nome` (concat), `bi_numero`, `nif`, `responsavel_nome`, `responsavel_contato`, `encarregado_email` (opcional). Backend salva `nome_completo` e mantém aluno com status pendente.
+  - Payload: envia `primeiro_nome`, `sobrenome`, `nome` (concat), `bi_numero`, `nif`, `responsavel_nome`, `responsavel_contato`, `encarregado_email` (opcional). Backend salva o nome concatenado em `nome` e mantém aluno com status pendente.
 - Matrícula (UI: `/secretaria/matriculas/nova`)
   - Seleciona aluno existente, sessão/ano letivo (deriva `ano_letivo` inteiro), modo Classe ou Curso Técnico, e a Turma (chave mestre). Curso/Classe servem para filtro/UX; validação final é pelo `turma_id`.
   - Payload: `aluno_id`, `turma_id`, `session_id`, `ano_letivo` (derivado), `curso_id`/`classe_id` conforme a turma. Backend gera `numero_matricula` e cria lançamentos financeiros (taxa de matrícula/mensalidades) via tabela de preço.
@@ -45,6 +47,8 @@ Cadastro de Aluno (Identidade) x Matrícula (Vínculo)
 
 APIs principais
 - Backfill Acadêmico (preview/aplicar): `GET/POST /api/migracao/:importId/academico/backfill`
+- Resumo da Importação (para configuração): `GET /api/migracao/:importId/summary`
+- Salvar Configuração da Importação: `PATCH /api/migracao/:importId/configure`
 - Preview de Matrícula: `GET /api/migracao/:importId/matricula/preview`
 - Matrícula por Turma (RPC): `POST /api/matriculas/massa/por-turma`
 

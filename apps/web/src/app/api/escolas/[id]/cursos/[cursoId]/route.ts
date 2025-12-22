@@ -29,9 +29,9 @@ async function authorize(escolaId: string): Promise<AuthResult> {
 // --- PUT: ATUALIZAR CURSO ---
 export async function PUT(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string; cursoId: string }> }
+  context: { params: { id: string; cursoId: string } }
 ) {
-  const { id: escolaId, cursoId } = await params;
+  const { id: escolaId, cursoId } = context.params;
   
   const authz = await authorize(escolaId);
   if (!authz.ok) return NextResponse.json({ ok: false, error: authz.error }, { status: authz.status });
@@ -72,9 +72,9 @@ export async function PUT(
 // --- DELETE: REMOVER CURSO (COM SEGURANÇA) ---
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string; cursoId: string }> }
+  context: { params: { id: string; cursoId: string } }
 ) {
-  const { id: escolaId, cursoId } = await params;
+  const { id: escolaId, cursoId } = context.params;
 
   const hard = ["1", "true", "yes"].includes(
     req.nextUrl.searchParams.get("hard")?.toLowerCase() || ""

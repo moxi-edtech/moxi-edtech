@@ -24,56 +24,16 @@ type FieldOption = {
 };
 
 const PERSONAL_FIELDS: FieldOption[] = [
-  { key: "nome", label: "Nome completo", required: true, hint: "Nome do estudante" },
-  { key: "data_nascimento", label: "Data de nascimento", hint: "Formato flexível: 2005-01-01 ou 01/01/2005" },
-  { key: "telefone", label: "Telefone", hint: "Será normalizado para apenas dígitos" },
-  { key: "bi", label: "BI / Documento", hint: "Ajuda a evitar duplicidades" },
-  { key: "bi_numero", label: "Número do BI (oficial)", hint: "Use se houver coluna específica" },
-  { key: "nif", label: "NIF (opcional)", hint: "Número de identificação fiscal" },
-  { key: "email", label: "Email", hint: "Opcional, mas útil para portal do aluno" },
-  { key: "encarregado_nome", label: "Nome do encarregado", required: true, hint: "Nome do pai/mãe/encarregado" },
-  { key: "encarregado_telefone", label: "Telefone do encarregado", required: true, hint: "Obrigatório para contato" },
-  { key: "encarregado_email", label: "Email do encarregado", hint: "Opcional" },
-  { key: "profile_id", label: "Profile ID (opcional)", hint: "Só use se já tiver IDs de usuário prontos" },
-  { key: "numero_processo", label: "Número de processo (opcional)", hint: "Se vazio, o sistema pode gerar" },
-];
-
-const MATRICULA_FIELDS: FieldOption[] = [
-  {
-    key: "curso_codigo",
-    label: "Curso (código)",
-    required: true,
-    hint: "Ex.: EMG, CTI, EF1, EF2… depende de como a escola nomeia",
-  },
-  {
-    key: "classe_numero",
-    label: "Classe (número)",
-    required: true,
-    hint: "Apenas número: 1, 7, 10, 11, 12…",
-  },
-  {
-    key: "turno_codigo",
-    label: "Turno",
-    required: true,
-    hint: "Ex.: M = Manhã, T = Tarde, N = Noite",
-  },
-  {
-    key: "turma_letra",
-    label: "Turma",
-    required: true,
-    hint: "Ex.: A, B, C, AB, ABNG — exatamente como a escola usa",
-  },
-  {
-    key: "ano_letivo",
-    label: "Ano letivo",
-    required: true,
-    hint: "Ex.: 2025 ou 2025-2026 (será normalizado para 2025)",
-  },
-  {
-    key: "numero_matricula",
-    label: "Número de matrícula (opcional)",
-    hint: "Se não vier, o sistema pode gerar automaticamente por escola",
-  },
+  { key: "nome", label: "NOME_COMPLETO", required: true, hint: "Nome do estudante" },
+  { key: "numero_processo", label: "NUMERO_PROCESSO", hint: "Texto ou número; se vazio fica NULL" },
+  { key: "data_nascimento", label: "DATA_NASCIMENTO", required: true, hint: "Formato: DD/MM/AAAA" },
+  { key: "sexo", label: "GENERO (M/F)", required: true, hint: "Aceita M ou F" },
+  { key: "bi_numero", label: "BI_NUMERO", hint: "Será limpo e upper" },
+  { key: "nif", label: "NIF", hint: "Opcional" },
+  { key: "encarregado_nome", label: "NOME_ENCARREGADO", hint: "Opcional; será TRIM" },
+  { key: "encarregado_telefone", label: "TELEFONE_ENCARREGADO", hint: "Mantém dígitos e +" },
+  { key: "encarregado_email", label: "EMAIL_ENCARREGADO", hint: "lowercase" },
+  { key: "turma_codigo", label: "TURMA_CODIGO", hint: "Ex.: 10A ou CTI-10-M-A" },
 ];
 
 export function ColumnMapper({ headers, mapping, onChange }: ColumnMapperProps) {
@@ -123,26 +83,19 @@ export function ColumnMapper({ headers, mapping, onChange }: ColumnMapperProps) 
       {/* Bloco explicativo */}
       <div className="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2.5 text-[11px] text-slate-600">
         <p className="font-medium text-slate-800 mb-1">
-          Como usar o mapeamento:
+          Como usar o mapeamento (Template v2.0):
         </p>
         <ul className="list-disc list-inside space-y-0.5">
           <li>
-            Mapeie <span className="font-semibold">Nome</span> e, se possível,{" "}
-            <span className="font-semibold">Data de nascimento</span>,{" "}
-            <span className="font-semibold">Telefone</span> e <span className="font-semibold">BI</span>.
+            Mapeie <span className="font-semibold">NOME_COMPLETO</span>, <span className="font-semibold">DATA_NASCIMENTO</span>{" "}
+            e <span className="font-semibold">GENERO</span> (obrigatórios).
           </li>
           <li>
-            Para habilitar <span className="font-semibold">matrícula em massa</span>, é
-            altamente recomendado mapear:{" "}
-            <span className="font-semibold">Curso</span>,{" "}
-            <span className="font-semibold">Classe (número)</span>,{" "}
-            <span className="font-semibold">Turno</span>,{" "}
-            <span className="font-semibold">Turma</span> e{" "}
-            <span className="font-semibold">Ano letivo</span>.
+            Para matrículas automáticas, preencha <span className="font-semibold">TURMA_CODIGO</span>{" "}
+            (ex.: <code>10A</code> ou <code>CTI-10-M-A</code>). O sistema cria/localiza a turma.
           </li>
           <li>
-            Campos marcados com <span className="font-semibold text-red-500">*</span> são
-            críticos para automatizar turmas e matrículas.
+            Os demais campos são opcionais, mas ajudam na qualidade dos dados (responsável, BI, NIF).
           </li>
         </ul>
       </div>
@@ -151,33 +104,15 @@ export function ColumnMapper({ headers, mapping, onChange }: ColumnMapperProps) 
       <div className="space-y-3">
         <div>
           <h3 className="text-xs font-semibold text-slate-800">
-            Dados pessoais
+            Mapeamento (Excel → Banco)
           </h3>
           <p className="text-[11px] text-slate-500">
-            Informações básicas do aluno. Quanto melhor preenchidas, melhor a
-            qualidade do cadastro e a deduplicação.
+            Alinhe cada coluna do Excel à coluna correspondente no Supabase.
           </p>
         </div>
 
         <div className="grid gap-3 md:grid-cols-2">
           {PERSONAL_FIELDS.map(renderSelect)}
-        </div>
-      </div>
-
-      {/* Grupo: Dados para matrícula em massa */}
-      <div className="space-y-3">
-        <div>
-          <h3 className="text-xs font-semibold text-slate-800">
-            Dados para matrícula em massa
-          </h3>
-          <p className="text-[11px] text-slate-500">
-            Esses campos permitem agrupar alunos por curso / classe / turno / turma / ano
-            e matricular todo o grupo de uma vez na turma correta.
-          </p>
-        </div>
-
-        <div className="grid gap-3 md:grid-cols-2">
-          {MATRICULA_FIELDS.map(renderSelect)}
         </div>
       </div>
 

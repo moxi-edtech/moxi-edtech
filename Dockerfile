@@ -8,6 +8,8 @@ WORKDIR /app
 
 COPY . .
 
+RUN ls -la apps/web/src/app/api/escolas/[id]/configuracoes/status/
+
 # Install and build
 RUN pnpm install --frozen-lockfile
 RUN cd apps/web && npx next build

@@ -164,17 +164,16 @@ BEGIN
 
       -- Upsert Aluno
       INSERT INTO public.alunos (
-        escola_id, numero_processo, nome, nome_completo, bi_numero, nif,
+        escola_id, numero_processo, nome, bi_numero, nif,
         encarregado_nome, encarregado_telefone, encarregado_email
       )
       VALUES (
-        p_escola_id, r.numero_processo, v_clean_nome, v_clean_nome,
+        p_escola_id, r.numero_processo, v_clean_nome,
         upper(trim(r.bi_numero)), upper(trim(COALESCE(r.nif, r.bi_numero))),
         public.initcap_angola(r.encarregado_nome), v_clean_telefone, lower(trim(r.encarregado_email))
       )
       ON CONFLICT (escola_id, numero_processo) DO UPDATE SET
         nome = EXCLUDED.nome,
-        nome_completo = EXCLUDED.nome_completo,
         bi_numero = EXCLUDED.bi_numero,
         encarregado_nome = COALESCE(EXCLUDED.encarregado_nome, public.alunos.encarregado_nome),
         encarregado_telefone = EXCLUDED.encarregado_telefone,

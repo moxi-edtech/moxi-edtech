@@ -6,10 +6,10 @@ import { recordAuditServer } from "@/lib/audit";
 
 export async function POST(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  context: { params: { id: string } }
 ) {
   try {
-    const { id } = await params;
+    const { id } = context.params;
     const alunoId = id;
     if (!alunoId) return NextResponse.json({ ok: false, error: "ID do aluno não fornecido" }, { status: 400 });
 
@@ -55,26 +55,6 @@ export async function POST(
     }
     const admin = createAdminClient<Database>(url, service);
 
-    // Opcional: registrar snapshot no histórico antes do hard delete
-    const nowIso = new Date().toISOString();
-    try {
-      await admin.from("alunos_excluidos").insert({
-        escola_id: (aluno as any).escola_id!,
-        aluno_id: (aluno as any).id,
-        profile_id: (aluno as any).profile_id,
-        nome: (aluno as any).nome ?? null,
-        aluno_created_at: (aluno as any).created_at ?? null,
-        aluno_deleted_at: nowIso,
-        exclusao_motivo: "Hard delete",
-        excluido_por: user.id,
-        dados_anonimizados: false,
-        snapshot: { aluno, captured_at: nowIso } as any,
-      } as Database["public"]["Tables"]["alunos_excluidos"]["Insert"]);
-    } catch (e) {
-      // Não bloqueia a operação principal
-      console.warn("[alunos.hard-delete] Falha ao inserir em alunos_excluidos", e);
-    }
-
     // Hard delete
     const { error: delErr } = await admin.from("alunos").delete().eq("id", alunoId);
     if (delErr) {
@@ -101,7 +81,7 @@ export async function POST(
   }
 }
 
-export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  return POST(req, ctx);
+export async function DELETE(req: Request, context: { params: { id: string } }) {
+  return POST(req, context);
 }
 

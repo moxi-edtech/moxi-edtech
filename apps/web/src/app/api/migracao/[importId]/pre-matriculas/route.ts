@@ -22,23 +22,14 @@ export async function GET(
       data_nascimento,
       profile_id,
       numero_matricula,
-      curso_codigo,
-      classe_numero,
-      turno_codigo,
-      turma_letra,
+      turma_codigo,
       ano_letivo
     `
     )
     .eq("import_id", importId)
-    .not("curso_codigo", "is", null)
-    .not("classe_numero", "is", null)
-    .not("turno_codigo", "is", null)
-    .not("turma_letra", "is", null)
-    .not("ano_letivo", "is", null)
+    .not("turma_codigo", "is", null)
     .order("ano_letivo", { ascending: false })
-    .order("curso_codigo", { ascending: true })
-    .order("classe_numero", { ascending: true })
-    .order("turma_letra", { ascending: true });
+    .order("turma_codigo", { ascending: true });
 
   if (error) {
     return NextResponse.json(
@@ -51,10 +42,7 @@ export async function GET(
 
   for (const row of data ?? []) {
     const key = [
-      row.curso_codigo ?? "",
-      row.classe_numero ?? "",
-      row.turno_codigo ?? "",
-      row.turma_letra ?? "",
+      (row.turma_codigo || "").toString().trim().toUpperCase(),
       row.ano_letivo ?? "",
     ].join("|");
 
@@ -62,10 +50,7 @@ export async function GET(
       gruposMap.set(key, {
         import_id: row.import_id,
         escola_id: row.escola_id,
-        curso_codigo: row.curso_codigo,
-        classe_numero: row.classe_numero,
-        turno_codigo: row.turno_codigo,
-        turma_letra: row.turma_letra,
+        turma_codigo: row.turma_codigo,
         ano_letivo: row.ano_letivo,
         count: 0,
         alunos: [],
