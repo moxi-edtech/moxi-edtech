@@ -55,8 +55,8 @@ export function SchoolsFilters({
             className="border rounded px-2 py-2 text-sm"
           >
             <option value="all">Todos planos</option>
-            <option value="Básico">Básico</option>
-            <option value="Standard">Standard</option>
+            <option value="Essencial">Essencial</option>
+            <option value="Profissional">Profissional</option>
             <option value="Premium">Premium</option>
           </select>
         </div>

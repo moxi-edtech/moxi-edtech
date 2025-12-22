@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabaseClient";
 import AlunoShell from "@/components/aluno/AlunoShell";
+import { parsePlanTier, type PlanTier } from "@/config/plans";
 
 type Vínculo = { papel: string | null; escola_id: string } | null;
 type Perfil = { id: string; nome: string | null } | null;
@@ -50,10 +51,11 @@ export default function AlunoLayout({ children }: { children: React.ReactNode })
       // Gate por plano/feature
       let ok = true;
       if (escolaId) {
-        const { data: esc } = await s.from('escolas').select('plano, aluno_portal_enabled').eq('id', escolaId).maybeSingle();
-        const plano = (esc as any)?.plano as string | undefined;
+        const { data: esc } = await (s as any).from('escolas').select('plano_atual, plano, aluno_portal_enabled').eq('id', escolaId).maybeSingle();
+        const planoRaw = (esc as any)?.plano_atual ?? (esc as any)?.plano as string | undefined;
+        const plano: PlanTier = parsePlanTier(planoRaw);
         const enabled = Boolean((esc as any)?.aluno_portal_enabled);
-        ok = Boolean(plano && (plano === 'standard' || plano === 'premium') && enabled);
+        ok = Boolean(plano && (plano === 'profissional' || plano === 'premium') && enabled);
       }
 
       if (!active) return;

@@ -2,6 +2,7 @@ import PortalLayout from "@/components/layout/PortalLayout";
 import AuditPageView from "@/components/audit/AuditPageView";
 import { supabaseServer } from "@/lib/supabaseServer";
 import Link from "next/link";
+import { parsePlanTier, PLAN_NAMES, type PlanTier } from "@/config/plans";
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const awaitedParams = await params;
@@ -26,15 +27,15 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const cursosPendentesPorEscola = (dashboardResumo as any)?.cursosPendentes?.totalPorEscola || {}
   const cursosPendentes = Number(cursosPendentesPorEscola[escolaId] || 0)
 
-  const plan = ((detalhes as any)?.plano || 'basico') as 'basico'|'standard'|'premium'
+  const plan: PlanTier = parsePlanTier((detalhes as any)?.plano);
 
-  const isStandard = plan === 'standard' || plan === 'premium'
-  const isPremium = plan === 'premium'
+  const isStandard = plan === 'profissional' || plan === 'premium';
+  const isPremium = plan === 'premium';
 
   return (
     <PortalLayout>
       <AuditPageView portal="financeiro" acao="PAGE_VIEW" entity="home" />
-      <div className="mb-4 text-sm text-moxinexa-gray">Plano atual: <b className="uppercase">{plan}</b></div>
+      <div className="mb-4 text-sm text-moxinexa-gray">Plano atual: <b className="uppercase">{PLAN_NAMES[plan]}</b></div>
       {cursosPendentes > 0 && (
         <div className="mb-4 rounded-xl border-2 border-amber-500 bg-amber-50 p-4 text-amber-900 shadow-sm">
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -112,11 +113,11 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       </div>
       
       {/* Banner de upgrade */}
-      {(plan === 'basico' || plan === 'standard') && (
+      {(plan === 'essencial' || plan === 'profissional') && (
         <div className="mt-6 p-4 bg-amber-50 border border-amber-300 rounded text-amber-800 text-sm font-sans">
-          {plan === 'basico' ? (
+          {plan === 'essencial' ? (
             <>
-              <div className="font-medium">Desbloqueie recursos do plano Standard:</div>
+              <div className="font-medium">Desbloqueie recursos do plano Profissional:</div>
               <ul className="list-disc ml-5 mt-1">
                 <li>Geração de boletos/links de pagamento</li>
                 <li>Relatórios financeiros detalhados</li>

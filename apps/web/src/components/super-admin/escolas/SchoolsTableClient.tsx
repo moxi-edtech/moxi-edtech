@@ -11,6 +11,7 @@ import { SchoolsFilters } from "./SchoolsFilters";
 import { SchoolsTable } from "./SchoolsTable";
 import { SchoolsPagination } from "./SchoolsPagination";
 import type { SchoolsTableProps, School, OnboardingProgress, EditForm } from "./types";
+import { parsePlanTier, PLAN_NAMES, type PlanTier } from "@/config/plans";
 
 const BillingModal = dynamic(() => import("@/components/super-admin/SchoolBillingModal"))
 const ConfirmModal = dynamic(() => import("@/components/super-admin/ConfirmActionModal"))
@@ -63,18 +64,7 @@ export default function SchoolsTableClient({
       }
 
       // Normalize like server page.tsx does
-      const prettyPlan = (p?: string | null): string => {
-        switch ((p || '').toLowerCase()) {
-          case 'basico':
-            return 'Básico';
-          case 'standard':
-            return 'Standard';
-          case 'premium':
-            return 'Premium';
-          default:
-            return (p as any) || 'Básico';
-        }
-      }
+      const prettyPlan = (p?: string | null): string => PLAN_NAMES[parsePlanTier(p)];
 
       type RawSchool = { id: string; nome: string | null; status: string | null; plano: string | null; last_access: string | null; total_alunos: number; total_professores: number; cidade: string | null; estado: string | null };
       const normalized: School[] = (listJson.items as RawSchool[]).map(d => ({
@@ -216,21 +206,11 @@ export default function SchoolsTableClient({
       setSaving(schoolId);
       setErrorMsg(null);
 
-      const unPrettyPlan = (p?: string | null): string => {
-        switch ((p || '').toLowerCase()) {
-          case 'básico':
-          case 'basico':
-            return 'basico';
-          case 'standard':
-            return 'standard';
-          case 'premium':
-            return 'premium';
-          default:
-            return (p as any) || 'basico';
-        }
-      }
+      const unPrettyPlan = (p?: string | null): PlanTier => parsePlanTier(p);
 
-      const updates = { ...editForm, plan: unPrettyPlan(editForm.plan) };
+      const { plan, ...rest } = editForm;
+      const planTier = unPrettyPlan(plan);
+      const updates = { ...rest, plano: planTier };
 
       const res = await fetch(`/api/super-admin/escolas/${schoolId}/update`, {
         method: 'PATCH',

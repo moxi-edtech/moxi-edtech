@@ -5,12 +5,13 @@ import { createClient } from "@/lib/supabaseClient"
 import { useEffect, useState } from "react"
 import ConfigHealthBanner from "@/components/system/ConfigHealthBanner"
 import BackButton from "@/components/navigation/BackButton"
+import { parsePlanTier, PLAN_NAMES, type PlanTier } from "@/config/plans"
 
 export default function Header() {
   const router = useRouter()
   const supabase = createClient()
   const [userEmail, setUserEmail] = useState<string>("")
-  const [ctxEscola, setCtxEscola] = useState<{ id: string; nome: string | null; plano: 'basico'|'standard'|'premium'|null } | null>(null)
+  const [ctxEscola, setCtxEscola] = useState<{ id: string; nome: string | null; plano: PlanTier | null } | null>(null)
 
   useEffect(() => {
     let mounted = true
@@ -38,14 +39,15 @@ export default function Header() {
           const escolaId = m[1]
           const { data } = await supabase
             .from('escolas')
-            .select('nome, plano')
+            .select('nome, plano_atual, plano')
             .eq('id', escolaId)
             .maybeSingle()
-          const plano = ((data as any)?.plano || null) as any
+          const planoRaw = (data as any)?.plano_atual ?? (data as any)?.plano ?? null
+          const plano = planoRaw ? parsePlanTier(planoRaw) : null
           setCtxEscola({
             id: escolaId,
             nome: (data as any)?.nome ?? null,
-            plano: plano && ['basico','standard','premium'].includes(plano) ? plano : null
+            plano,
           })
         } else {
           setCtxEscola(null)
@@ -101,7 +103,7 @@ export default function Header() {
               </span>
               {ctxEscola.plano && (
                 <span className="text-[10px] uppercase px-2 py-1 rounded-full bg-gray-100 border text-gray-600">
-                  Plano: {ctxEscola.plano}
+                  Plano: {PLAN_NAMES[ctxEscola.plano]}
                 </span>
               )}
               <a

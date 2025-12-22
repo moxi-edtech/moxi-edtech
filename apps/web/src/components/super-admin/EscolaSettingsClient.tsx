@@ -2,16 +2,17 @@
 
 import { useState } from "react"
 import Button from "@/components/ui/Button"
+import { PLAN_NAMES, type PlanTier } from "@/config/plans"
 
 type Props = {
   escolaId: string
   initialAlunoPortalEnabled: boolean
-  initialPlano: 'basico'|'standard'|'premium'
+  initialPlano: PlanTier
 }
 
 export default function EscolaSettingsClient({ escolaId, initialAlunoPortalEnabled, initialPlano }: Props) {
   const [alunoPortalEnabled, setAlunoPortalEnabled] = useState(initialAlunoPortalEnabled)
-  const [plano, setPlano] = useState<'basico'|'standard'|'premium'>(initialPlano)
+  const [plano, setPlano] = useState<PlanTier>(initialPlano)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState('')
 
@@ -21,15 +22,15 @@ export default function EscolaSettingsClient({ escolaId, initialAlunoPortalEnabl
       <div className="grid md:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Plano</label>
-          <select value={plano} onChange={(e)=>setPlano(e.target.value as 'basico'|'standard'|'premium')} className="border rounded px-3 py-2 w-full">
-            <option value="basico">Básico (Financeiro Essencial)</option>
-            <option value="standard">Standard (Financeiro Avançado)</option>
-            <option value="premium">Premium (Financeiro + Fiscal)</option>
+          <select value={plano} onChange={(e)=>setPlano(e.target.value as PlanTier)} className="border rounded px-3 py-2 w-full">
+            <option value="essencial">{PLAN_NAMES.essencial} (Financeiro Essencial)</option>
+            <option value="profissional">{PLAN_NAMES.profissional} (Financeiro Avançado)</option>
+            <option value="premium">{PLAN_NAMES.premium} (Financeiro + Fiscal)</option>
           </select>
           <p className="text-xs text-gray-500 mt-2">
-            - Básico: cobranças internas, registros manuais, relatórios simples, despesas manuais.
+            - Essencial: cobranças internas, registros manuais, relatórios simples, despesas manuais.
             <br/>
-            - Standard: + boletos/links, relatórios detalhados, alertas automáticos, exportações.
+            - Profissional: + boletos/links, relatórios detalhados, alertas automáticos, exportações.
             <br/>
             - Premium: + módulo fiscal, integração contábil, dashboards avançados, multiunidades.
           </p>

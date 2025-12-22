@@ -6,6 +6,7 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { getBranding } from '@/lib/branding'
 import { AcademicCapIcon, UsersIcon, BanknotesIcon, UserGroupIcon } from "@heroicons/react/24/outline";
 import EscolaSettingsClient from "@/components/super-admin/EscolaSettingsClient";
+import { parsePlanTier, PLAN_NAMES, type PlanTier } from "@/config/plans";
 
 export const dynamic = 'force-dynamic'
 
@@ -19,14 +20,14 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   let ok = false
   const { data, error } = await supabase
     .from('escolas_view' as unknown as never)
-    .select('id, nome, status, plano, cidade, estado, total_alunos, total_professores')
+    .select('id, nome, status, plano_atual, plano, cidade, estado, total_alunos, total_professores')
     .eq('id', String(escolaId))
     .maybeSingle()
   if (!error && data) { fetched = data; ok = true }
   if (!ok) {
     const { data: raw } = await supabase
       .from('escolas' as unknown as never)
-      .select('id, nome, status, plano, endereco')
+      .select('id, nome, status, plano_atual, plano, endereco')
       .eq('id', String(escolaId))
       .maybeSingle()
     if (raw) {
@@ -34,7 +35,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         id: (raw as any).id,
         nome: (raw as any).nome,
         status: (raw as any).status,
-        plano: (raw as any).plano,
+        plano: (raw as any).plano_atual ?? (raw as any).plano,
         cidade: (raw as any).endereco ?? null,
         estado: null,
         total_alunos: 0,
@@ -48,14 +49,14 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     return <p className="p-6">Escola não encontrada.</p>
   }
 
-  const flags = await supabase
+  const flags = await (supabase as any)
     .from('escolas')
-    .select('aluno_portal_enabled, plano')
+    .select('aluno_portal_enabled, plano_atual, plano')
     .eq('id', String(fetched.id ?? ''))
     .maybeSingle()
   const alunoPortalEnabled = Boolean((flags.data as any)?.aluno_portal_enabled)
-  const planVal = (flags.data as any)?.plano as string | undefined
-  const plano = (planVal && ['basico','standard','premium'].includes(planVal)) ? (planVal as 'basico'|'standard'|'premium') : 'basico'
+  const planVal = (flags.data as any)?.plano_atual ?? (flags.data as any)?.plano ?? fetched.plano
+  const plano: PlanTier = parsePlanTier(planVal)
 
   const brand = getBranding()
   const waNumber = (brand.financeWhatsApp || '').replace(/\D/g, '')
@@ -89,7 +90,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         {fetched.nome} ({fetched.cidade} - {fetched.estado ?? ''})
       </h1>
       <p className="text-gray-500">
-        Plano: {String(fetched.plano ?? '')} · Status: {String(fetched.status ?? '')}
+        Plano: {PLAN_NAMES[plano]} · Status: {String(fetched.status ?? '')}
       </p>
 
       <EscolaSettingsClient escolaId={String(fetched.id)} initialAlunoPortalEnabled={alunoPortalEnabled} initialPlano={plano} />
