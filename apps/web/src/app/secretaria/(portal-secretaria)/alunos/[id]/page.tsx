@@ -1,282 +1,311 @@
-"use client";
-
-import { useEffect, useMemo, useState } from "react";
+import { notFound } from "next/navigation";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import Button from "@/components/ui/Button";
-import AuditPageView from "@/components/audit/AuditPageView";
-import { ArrowLeftIcon, UserIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
+import {
+  User,
+  MapPin,
+  Phone,
+  Shield,
+  GraduationCap,
+  Calendar,
+  DollarSign,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+} from "lucide-react";
+import { supabaseServer } from "@/lib/supabaseServer";
 
-type AlunoDetails = {
-  id: string;
-  escola_id: string | null;
-  profile_id: string | null;
-  nome: string;
-  email: string | null;
-  telefone: string | null;
-  numero_login?: string | null;
-  status?: string | null;
-  responsavel: string | null;
-  telefone_responsavel: string | null;
-  data_nascimento: string | null;
-  sexo: string | null;
-  bi_numero: string | null;
-  naturalidade: string | null;
-  provincia: string | null;
-  encarregado_relacao: string | null;
-  created_at?: string | null;
+const kwanza = new Intl.NumberFormat("pt-AO", {
+  style: "currency",
+  currency: "AOA",
+});
+
+type Dossier = {
+  perfil: any;
+  historico: any[];
+  financeiro: any;
 };
 
-export default function AlunoDetalhesPage() {
-  const router = useRouter();
-  const params = useParams();
-  const alunoId = useMemo(() => String(params?.id ?? ""), [params]);
+export default async function AlunoDossierPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const supabase = await supabaseServer();
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [aluno, setAluno] = useState<AlunoDetails | null>(null);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showHardDeleteModal, setShowHardDeleteModal] = useState(false);
-  const [deleteReason, setDeleteReason] = useState("");
-  const [deleting, setDeleting] = useState(false);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  useEffect(() => {
-    if (!alunoId) return;
-    let active = true;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const res = await fetch(`/api/secretaria/alunos/${encodeURIComponent(alunoId)}`);
-        const json = await res.json();
-        if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao carregar aluno");
-        if (active) setAluno(json.item as AlunoDetails);
-      } catch (e) {
-        if (active) setError(e instanceof Error ? e.message : String(e));
-      } finally {
-        if (active) setLoading(false);
-      }
-    })();
-    return () => { active = false };
-  }, [alunoId]);
+  const escolaId =
+    (user?.user_metadata as any)?.escola_id ||
+    (user?.app_metadata as any)?.escola_id ||
+    null;
 
-  const handleRestore = async () => {
-    if (!aluno) return;
-    if (!confirm(`Tem certeza que deseja restaurar o aluno ${aluno.nome}?`)) return;
-    try {
-        const res = await fetch(`/api/secretaria/alunos/${encodeURIComponent(aluno.id)}/restore`, {
-            method: 'POST',
-        });
-        const json = await res.json().catch(() => null);
-        if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao restaurar aluno');
-        // reaload page
-        window.location.reload();
-    } catch (e) {
-        alert(e instanceof Error ? e.message : String(e));
+  if (!user || !escolaId) return notFound();
+
+  const { data: dossier, error } = await supabase.rpc<Dossier>(
+    "get_aluno_dossier",
+    {
+      p_escola_id: escolaId,
+      p_aluno_id: id,
     }
-  };
+  );
+
+  if (error || !dossier || !dossier.perfil) {
+    console.error("Erro Dossiê:", error?.message || error);
+    return notFound();
+  }
+
+  const { perfil, historico = [], financeiro = {} } = dossier;
+  const mensalidades: any[] = Array.isArray(financeiro.mensalidades)
+    ? financeiro.mensalidades
+    : [];
+
+  const dataNasc = perfil.data_nascimento
+    ? new Date(perfil.data_nascimento)
+    : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-moxinexa-light to-blue-50 py-8">
-      <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="aluno_detail" entityId={alunoId} />
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-4">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-moxinexa-teal transition-colors"
+    <div className="p-6 max-w-7xl mx-auto space-y-6">
+      {/* Cabeçalho */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row items-start md:items-center gap-6">
+        <div className="h-24 w-24 rounded-full bg-gray-100 flex items-center justify-center border-4 border-white shadow-sm overflow-hidden">
+          {perfil.foto_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={perfil.foto_url}
+              alt={perfil.nome_completo || perfil.nome}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <User className="h-10 w-10 text-gray-400" />
+          )}
+        </div>
+
+        <div className="flex-1">
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-2xl font-bold text-gray-900">
+              {perfil.nome_completo || perfil.nome}
+            </h1>
+            <span
+              className={`px-2 py-0.5 rounded-full text-xs font-semibold uppercase ${
+                perfil.status === "ativo"
+                  ? "bg-green-100 text-green-700"
+                  : "bg-red-100 text-red-700"
+              }`}
+            >
+              {perfil.status || "—"}
+            </span>
+          </div>
+          <p className="text-gray-500 flex flex-wrap items-center gap-4 text-sm">
+            <span className="flex items-center gap-1">
+              <Shield className="w-3 h-3" />
+              Proc: {perfil.numero_processo || "—"}
+            </span>
+            <span className="flex items-center gap-1">
+              <User className="w-3 h-3" />
+              BI: {perfil.bi_numero || "N/A"}
+            </span>
+            {dataNasc && (
+              <span className="flex items-center gap-1">
+                <Calendar className="w-3 h-3" />
+                Nasc: {dataNasc.toLocaleDateString("pt-PT")}
+              </span>
+            )}
+          </p>
+        </div>
+
+        <div className="flex gap-2">
+          <Link
+            href={`/secretaria/alunos/${id}/editar`}
+            className="px-4 py-2 bg-black text-white rounded-md text-sm font-medium hover:bg-gray-800 transition"
           >
-            <ArrowLeftIcon className="w-4 h-4" />
-            Voltar
-          </button>
-        </div>
-
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-12 h-12 rounded-full bg-moxinexa-teal flex items-center justify-center">
-            <UserIcon className="w-7 h-7 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-moxinexa-dark">Detalhes do aluno</h1>
-            <p className="text-moxinexa-gray">Visualize os dados cadastrais</p>
-          </div>
-          <div className="ml-auto flex gap-2">
-            {aluno && (
-              <Link href={`/secretaria/alunos/${aluno.id}/editar`}>
-                <Button tone="teal" size="sm">
-                  <PencilSquareIcon className="w-4 h-4" /> Editar
-                </Button>
-              </Link>
-            )}
-            {aluno && aluno.status !== 'inativo' && (
-              <Button tone="red" size="sm" onClick={() => setShowDeleteModal(true)}>
-                Arquivar
-              </Button>
-            )}
-            {aluno && aluno.status === 'inativo' && (
-                <Button tone="green" size="sm" onClick={handleRestore}>
-                    Restaurar
-                </Button>
-            )}
-            {aluno && aluno.status === 'inativo' && (
-                <Button tone="red" variant="outline" size="sm" onClick={() => setShowHardDeleteModal(true)}>
-                    Excluir
-                </Button>
-            )}
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
-          {loading ? (
-            <div>Carregando…</div>
-          ) : error ? (
-            <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
-          ) : aluno ? (
-            <div className="space-y-8">
-              <section>
-                <h2 className="text-lg font-semibold text-moxinexa-dark mb-3">Dados pessoais</h2>
-                <div className="grid md:grid-cols-2 gap-4 text-sm">
-                  <Field label="Nome" value={aluno.nome} />
-                  <Field label="Email" value={aluno.email ?? '—'} />
-                  <Field label="Telefone" value={aluno.telefone ?? '—'} />
-                  <Field label="Número de login" value={aluno.numero_login ?? '—'} />
-                  <Field label="Status" value={aluno.status ?? '—'} />
-                  <Field label="Data de nascimento" value={aluno.data_nascimento ?? '—'} />
-                  <Field label="Sexo" value={aluno.sexo ?? '—'} />
-                  <Field label="BI" value={aluno.bi_numero ?? '—'} />
-                  <Field label="Naturalidade" value={aluno.naturalidade ?? '—'} />
-                  <Field label="Província" value={aluno.provincia ?? '—'} />
-                </div>
-              </section>
-
-              <section>
-                <h2 className="text-lg font-semibold text-moxinexa-dark mb-3">Encarregado</h2>
-                <div className="grid md:grid-cols-2 gap-4 text-sm">
-                  <Field label="Relação" value={aluno.encarregado_relacao ?? '—'} />
-                  <Field label="Nome do responsável" value={aluno.responsavel ?? '—'} />
-                  <Field label="Telefone do responsável" value={aluno.telefone_responsavel ?? '—'} />
-                </div>
-              </section>
-            </div>
-          ) : null}
+            Editar Dados
+          </Link>
+          <Link
+            href={`/secretaria/alunos/${id}/documentos`}
+            className="px-4 py-2 border border-gray-200 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50 transition"
+          >
+            Documentos
+          </Link>
         </div>
       </div>
 
-      {showDeleteModal && aluno && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
-            <h2 className="text-lg font-semibold text-gray-900">Arquivar aluno</h2>
-            <p className="mt-2 text-sm text-gray-600">
-              Tem certeza que deseja arquivar o aluno <span className="font-semibold">{aluno.nome}</span>?
-              <br />Ele deixará de aparecer nas listagens principais, mas permanecerá no histórico da escola.
-            </p>
-
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700">Motivo da exclusão (obrigatório)</label>
-              <textarea
-                value={deleteReason}
-                onChange={(e) => setDeleteReason(e.target.value)}
-                rows={3}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 text-sm"
-                placeholder="Ex.: Aluno transferido para outra escola, cadastro duplicado, etc."
-              />
-            </div>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                tone="gray"
-                onClick={() => { setShowDeleteModal(false); setDeleteReason(""); }}
-                disabled={deleting}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="button"
-                tone="red"
-                onClick={async () => {
-                  if (!deleteReason.trim()) { alert('Por favor, informe o motivo da exclusão.'); return; }
-                  try {
-                    setDeleting(true);
-                    const res = await fetch(`/api/secretaria/alunos/${encodeURIComponent(aluno.id)}/delete`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ reason: deleteReason.trim() }),
-                    });
-                    const json = await res.json().catch(() => null);
-                    if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao arquivar aluno');
-                    setShowDeleteModal(false);
-                    router.push('/secretaria/alunos');
-                  } catch (e) {
-                    alert(e instanceof Error ? e.message : String(e));
-                  } finally {
-                    setDeleting(false);
-                  }
-                }}
-                disabled={deleting}
-              >
-                {deleting ? 'Arquivando…' : 'Confirmar arquivamento'}
-              </Button>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Coluna Esquerda: Identidade */}
+        <div className="space-y-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 border-b pb-2">
+              Contatos & Família
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs text-gray-400 block mb-0.5">
+                  Encarregado
+                </label>
+                <div className="font-medium text-gray-800">
+                  {perfil.encarregado_nome || perfil.responsavel || "Não informado"}
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-0.5">
+                  Telefone
+                </label>
+                <div className="flex items-center gap-2 text-gray-700">
+                  <Phone className="w-4 h-4" />
+                  {perfil.encarregado_telefone ||
+                    perfil.telefone_responsavel ||
+                    "—"}
+                </div>
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-0.5">
+                  Endereço
+                </label>
+                <div className="flex items-center gap-2 text-gray-700 text-sm">
+                  <MapPin className="w-4 h-4" />
+                  {perfil.endereco ||
+                    perfil.endereco_bairro ||
+                    perfil.provincia ||
+                    perfil.provincia_residencia ||
+                    "Não informado"}
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      )}
 
-        {showHardDeleteModal && aluno && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-                <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
-                    <h2 className="text-lg font-semibold text-gray-900">Excluir aluno permanentemente</h2>
-                    <p className="mt-2 text-sm text-gray-600">
-                        Tem certeza que deseja excluir o aluno <span className="font-semibold">{aluno.nome}</span> permanentemente?
-                        <br />Esta ação não pode ser desfeita.
-                    </p>
+        {/* Coluna Central: Histórico */}
+        <div className="space-y-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 border-b pb-2 flex items-center gap-2">
+              <GraduationCap className="w-4 h-4" /> Vida Acadêmica
+            </h3>
 
-                    <div className="mt-6 flex justify-end gap-3">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            tone="gray"
-                            onClick={() => { setShowHardDeleteModal(false); }}
-                            disabled={deleting}
-                        >
-                            Cancelar
-                        </Button>
-                        <Button
-                            type="button"
-                            tone="red"
-                            onClick={async () => {
-                                try {
-                                    setDeleting(true);
-                                    const res = await fetch(`/api/secretaria/alunos/${encodeURIComponent(aluno.id)}/hard-delete`, {
-                                        method: 'POST',
-                                    });
-                                    const json = await res.json().catch(() => null);
-                                    if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao excluir aluno');
-                                    setShowHardDeleteModal(false);
-                                    router.push('/secretaria/alunos');
-                                } catch (e) {
-                                    alert(e instanceof Error ? e.message : String(e));
-                                } finally {
-                                    setDeleting(false);
-                                }
-                            }}
-                            disabled={deleting}
-                        >
-                            {deleting ? 'Excluindo…' : 'Confirmar exclusão'}
-                        </Button>
+            {historico.length === 0 ? (
+              <div className="text-center py-8 text-gray-400 text-sm">
+                Nenhuma matrícula encontrada.
+              </div>
+            ) : (
+              <div className="relative border-l border-gray-200 ml-2 space-y-6">
+                {historico.map((mat: any, idx: number) => (
+                  <div key={idx} className="ml-4 relative">
+                    <div
+                      className={`absolute -left-[21px] top-1 w-3 h-3 rounded-full border-2 border-white ${
+                        mat.status === "ativa" ? "bg-green-500" : "bg-gray-300"
+                      }`}
+                    />
+                    <div className="bg-gray-50 p-3 rounded-md border border-gray-100">
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="font-bold text-gray-800 text-sm">
+                          {mat.ano_letivo || "—"}
+                        </span>
+                        <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 bg-white border rounded text-gray-500">
+                          {mat.status || "—"}
+                        </span>
+                      </div>
+                      <div className="text-sm text-gray-700 font-medium mb-0.5">
+                        {mat.turma || "Aguardando enturmação"}
+                      </div>
+                      <div className="text-xs text-gray-500 flex gap-2">
+                        {mat.numero_matricula && (
+                          <span>Mat.: {mat.numero_matricula}</span>
+                        )}
+                        {mat.turno && <span>{mat.turno}</span>}
+                      </div>
                     </div>
-                </div>
-            </div>
-        )}
-    </div>
-  );
-}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
 
-function Field({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col">
-      <span className="text-xs text-gray-500">{label}</span>
-      <span className="text-gray-900">{value}</span>
+        {/* Coluna Direita: Financeiro */}
+        <div className="space-y-6">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4 border-b pb-2 flex items-center gap-2">
+              <DollarSign className="w-4 h-4" /> Situação Financeira
+            </h3>
+
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div className="p-3 bg-red-50 rounded-lg border border-red-100">
+                <div className="text-xs text-red-500 uppercase font-bold mb-1">
+                  Dívida Atual
+                </div>
+                <div className="text-lg font-bold text-red-700">
+                  {kwanza.format(financeiro.total_em_atraso ?? 0)}
+                </div>
+              </div>
+              <div className="p-3 bg-green-50 rounded-lg border border-green-100">
+                <div className="text-xs text-green-500 uppercase font-bold mb-1">
+                  Pago (Total)
+                </div>
+                <div className="text-lg font-bold text-green-700">
+                  {kwanza.format(financeiro.total_pago ?? 0)}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs text-gray-400 block">
+                Mensalidades Recentes
+              </label>
+              {mensalidades.slice(0, 5).map((fat: any) => (
+                <div
+                  key={fat.id}
+                  className="flex items-center justify-between p-2 hover:bg-gray-50 rounded border border-transparent hover:border-gray-100 transition text-sm"
+                >
+                  <div className="flex items-center gap-2">
+                    {fat.status === "pago" ? (
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                    ) : (
+                      <Clock className="w-4 h-4 text-yellow-500" />
+                    )}
+                    <span className="text-gray-700 font-medium">
+                      {new Date(0, (fat.mes ?? fat.mes_referencia ?? 1) - 1).toLocaleString(
+                        "pt-PT",
+                        { month: "short" }
+                      )}
+                      /{fat.ano ?? fat.ano_referencia}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-gray-900 font-bold">
+                      {kwanza.format(fat.valor ?? fat.valor_previsto ?? 0)}
+                    </div>
+                    {fat.vencimento || fat.data_vencimento ? (
+                      <div className="text-[10px] text-gray-400">
+                        Venc:{" "}
+                        {new Date(fat.vencimento || fat.data_vencimento).toLocaleDateString(
+                          "pt-PT",
+                          { day: "2-digit", month: "2-digit" }
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+
+              {mensalidades.length === 0 && (
+                <div className="text-center py-4 text-gray-400 text-xs italic">
+                  Nenhuma cobrança gerada.
+                </div>
+              )}
+            </div>
+
+            <div className="mt-4 pt-3 border-t">
+              <Link
+                href={`/financeiro?aluno=${id}`}
+                className="block w-full text-center text-sm text-blue-600 hover:text-blue-800 font-medium"
+              >
+                Ver Extrato Completo →
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
