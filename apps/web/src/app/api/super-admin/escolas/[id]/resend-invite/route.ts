@@ -3,6 +3,7 @@ import { supabaseServer } from "@/lib/supabaseServer"
 import { createClient as createAdminClient } from "@supabase/supabase-js"
 import type { Database } from "~types/supabase"
 import { buildOnboardingEmail, sendMail } from "@/lib/mailer"
+import { parsePlanTier } from "@/config/plans"
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id: escolaId } = await ctx.params
@@ -25,9 +26,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const redirectTo = `${origin}/redirect`
 
     // Fetch escola info
-    const { data: esc } = await admin.from('escolas').select('nome, plano, status').eq('id', escolaId).limit(1)
+    const { data: esc } = await (admin as any).from('escolas').select('nome, plano_atual, plano, status').eq('id', escolaId).limit(1)
     const escolaNome = (esc?.[0] as any)?.nome || ''
-    const escolaPlano = (esc?.[0] as any)?.plano || null
+    const escolaPlanoRaw = (esc?.[0] as any)?.plano_atual ?? (esc?.[0] as any)?.plano ?? null
+    const escolaPlano = escolaPlanoRaw ? parsePlanTier(escolaPlanoRaw) : null
     const escolaStatus = (esc?.[0] as any)?.status as string | undefined
     if (escolaStatus === 'excluida') return NextResponse.json({ ok: false, error: 'Escola excluída não permite reenviar convite.' }, { status: 400 })
     if (escolaStatus === 'suspensa') return NextResponse.json({ ok: false, error: 'Escola suspensa por pagamento. Regularize para reenviar convite.' }, { status: 400 })

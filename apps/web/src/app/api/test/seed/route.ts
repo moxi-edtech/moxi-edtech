@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     // Create school (minimal fields)
     const { data: escolaIns, error: escolaErr } = await (admin as any)
       .from('escolas')
-      .insert({ nome: escolaNome, plano: 'basico', aluno_portal_enabled: true })
+      .insert({ nome: escolaNome, plano: 'essencial', plano_atual: 'essencial', aluno_portal_enabled: true })
       .select('id, nome')
       .single()
     if (escolaErr || !escolaIns) return NextResponse.json({ ok: false, error: escolaErr?.message || 'Falha ao criar escola' }, { status: 400 })
@@ -66,4 +66,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
 }
-

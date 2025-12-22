@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { GlobalSearch } from "@/components/GlobalSearch";
+import type { PlanTier } from "@/config/plans";
+import type { PlanTier } from "@/config/plans";
 
 // --- TIPOS ---
 type DashboardData = {
@@ -28,7 +30,7 @@ type DashboardData = {
   avisos_recentes: Array<{ id: string; titulo: string; resumo: string; data: string }>;
 };
 
-type Plano = "standard" | "premium" | "enterprise" | "basic" | "basico";
+type Plano = PlanTier | "enterprise";
 
 export default function SecretariaDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -37,7 +39,7 @@ export default function SecretariaDashboardPage() {
   const { escolaId, isLoading: escolaLoading } = useEscolaId();
   
   // Mock de permissões e plano (em prod viriam do contexto)
-  const [plan] = useState<Plano>('standard');
+  const [plan] = useState<Plano>('profissional');
   const canCriarMatricula = true;
 
   useEffect(() => {
@@ -249,13 +251,13 @@ export default function SecretariaDashboardPage() {
                             </div>
                         </div>
 
-                        {/* Upgrade (Se Básico) */}
-                        {plan === 'basico' && (
+                        {/* Upgrade (Se Essencial) */}
+                        {plan === 'essencial' && (
                             <div className="border border-dashed border-slate-300 rounded-2xl p-4 text-center hover:bg-slate-50 transition cursor-pointer group">
                                 <div className="w-10 h-10 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition">
                                     <Crown className="w-5 h-5" />
                                 </div>
-                                <p className="text-xs font-bold text-slate-700">Plano Standard</p>
+                                <p className="text-xs font-bold text-slate-700">Plano Profissional</p>
                                 <p className="text-[10px] text-slate-500 mt-1">Ative para ter relatórios financeiros avançados.</p>
                             </div>
                         )}

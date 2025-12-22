@@ -5,7 +5,7 @@ import { recordAuditServer } from '@/lib/audit'
 
 const BodySchema = z.object({
   aluno_portal_enabled: z.boolean().optional(),
-  plano: z.enum(['basico','standard','premium']).optional(),
+  plano: z.enum(['essencial','profissional','premium']).optional(),
 })
 
 export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -28,7 +28,11 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
 
     const patch: Record<string, any> = {}
     if (typeof updates.aluno_portal_enabled === 'boolean') patch.aluno_portal_enabled = updates.aluno_portal_enabled
-    if (updates.plano) patch.plano = updates.plano
+    if (updates.plano) {
+      patch.plano_atual = updates.plano
+      // compat: manter campo legacy se existir
+      patch.plano = updates.plano
+    }
     if (Object.keys(patch).length === 0) return NextResponse.json({ ok: true })
 
     const sAny = s as any

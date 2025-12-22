@@ -18,6 +18,7 @@ import {
   MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 import clsx from "clsx";
+import { parsePlanTier, PLAN_NAMES, type PlanTier } from "@/config/plans";
 
 // Definir tipos específicos
 type MenuItemName = 
@@ -80,7 +81,7 @@ export default function PortalLayout({
 }) {
   const [active, setActive] = useState<MenuItemName>("Dashboard");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [plan, setPlan] = useState<"basico"|"standard"|"premium"|null>(null)
+  const [plan, setPlan] = useState<PlanTier | null>(null)
   const [userName, setUserName] = useState<string | null>(null)
   const [escolaNome, setEscolaNome] = useState<string | null>(null)
 
@@ -123,8 +124,8 @@ export default function PortalLayout({
             setEscolaNome(String(json.nome))
           }
           if (mounted) {
-            const p = (json?.plano || null) as any
-            if (p && ['basico','standard','premium'].includes(p)) setPlan(p)
+            const p = json?.plano ?? null
+            if (p) setPlan(parsePlanTier(p))
           }
         } catch {}
         
@@ -264,7 +265,7 @@ export default function PortalLayout({
                     {active}
                   </h1>
                   {plan && (
-                    <span className="text-[10px] uppercase px-2 py-1 rounded-full bg-gray-100 border text-gray-600">Plano: {plan}</span>
+                    <span className="text-[10px] uppercase px-2 py-1 rounded-full bg-gray-100 border text-gray-600">Plano: {PLAN_NAMES[plan]}</span>
                   )}
                   {escolaNome && (
                     <span className="text-[10px] px-2 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700" title={escolaNome}>

@@ -1,4 +1,5 @@
 import SchoolsTableClient from "@/components/super-admin/escolas/SchoolsTableClient";
+import { parsePlanTier, PLAN_NAMES, type PlanTier } from "@/config/plans";
 
 export const dynamic = 'force-dynamic'
 
@@ -34,16 +35,8 @@ async function fetchInitial() {
   // Normalize on the server to keep client payload small and stable
   type RawSchool = { id: string; nome: string | null; status: string | null; plano: string | null; last_access: string | null; total_alunos: number; total_professores: number; cidade: string | null; estado: string | null }
   const prettyPlan = (p?: string | null): string => {
-    switch ((p || '').toLowerCase()) {
-      case 'basico':
-        return 'Básico'
-      case 'standard':
-        return 'Standard'
-      case 'premium':
-        return 'Premium'
-      default:
-        return (p as any) || 'Básico'
-    }
+    const tier: PlanTier = parsePlanTier(p);
+    return PLAN_NAMES[tier];
   }
   const normalized = (initialSchools as RawSchool[]).map(d => ({
     id: String(d.id),
