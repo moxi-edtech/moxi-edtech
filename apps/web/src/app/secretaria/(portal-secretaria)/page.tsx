@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { 
-  Loader2, Users, FileText, Banknote, CalendarX, FileEdit, 
-  UserCheck, AlertCircle, ChevronRight, Search, Bell, 
-  Check, X, UserPlus, Building, BarChart3, 
+import {
+  Loader2, Users, FileText, Banknote, CalendarX, FileEdit,
+  UserCheck, AlertCircle, ChevronRight, Bell,
+  Check, X, UserPlus, Building, BarChart3,
   Download, Upload, RefreshCcw, Shield, Crown,
   LayoutDashboard, Clock, Megaphone, ArrowRight
 } from "lucide-react";
+import { useEscolaId } from "@/hooks/useEscolaId";
+import { GlobalSearch } from "@/components/GlobalSearch";
 
 // --- TIPOS ---
 type DashboardData = {
@@ -32,6 +34,7 @@ export default function SecretariaDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { escolaId, isLoading: escolaLoading } = useEscolaId();
   
   // Mock de permissões e plano (em prod viriam do contexto)
   const [plan] = useState<Plano>('standard');
@@ -98,15 +101,11 @@ export default function SecretariaDashboardPage() {
              <span className="font-bold text-lg tracking-tight hidden md:block">Secretaria</span>
           </div>
 
-          {/* Barra de Pesquisa Global */}
-          <div className="relative flex-1 max-w-lg group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-teal-600 transition-colors" />
-            <input 
-              type="text" 
-              placeholder="Buscar aluno, matrícula ou documento... ( / )"
-              className="w-full pl-10 pr-4 py-2 bg-slate-100 border-transparent rounded-xl text-sm focus:bg-white focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all outline-none placeholder:text-slate-400"
-            />
-          </div>
+          <GlobalSearch
+            escolaId={escolaId}
+            placeholder="Buscar aluno, matrícula ou documento..."
+            disabledText={escolaLoading ? "Carregando escola..." : "Vincule-se a uma escola para pesquisar"}
+          />
         </div>
 
         <div className="flex items-center gap-4">
