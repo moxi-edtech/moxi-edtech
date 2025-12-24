@@ -32,6 +32,8 @@ type DashboardData = {
 
 type Plano = PlanTier | "enterprise";
 
+type Variant = "default" | "brand" | "warning" | "success" | "neutral";
+
 export default function SecretariaDashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -136,21 +138,21 @@ export default function SecretariaDashboardPage() {
                 
                 {/* 1. KPI CARDS (Resumo do Dia) */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <KpiCard label="Total Alunos" value={data?.counts.alunos} icon={Users} color="blue" />
-                    <KpiCard label="Matrículas Hoje" value={data?.counts.matriculas} icon={UserPlus} color="emerald" />
-                    <KpiCard label="Turmas Ativas" value={data?.counts.turmas} icon={Building} color="purple" />
-                    <KpiCard label="Pendências" value={data?.counts.pendencias} icon={AlertCircle} color="orange" isAlert={true} />
+                    <KpiCard label="Total Alunos" value={data?.counts.alunos} icon={Users} variant="brand" />
+                    <KpiCard label="Matrículas Hoje" value={data?.counts.matriculas} icon={UserPlus} variant="success" />
+                    <KpiCard label="Turmas Ativas" value={data?.counts.turmas} icon={Building} variant="neutral" />
+                    <KpiCard label="Pendências" value={data?.counts.pendencias} icon={AlertCircle} variant="warning" isAlert={true} />
                 </div>
 
                 {/* 2. BALCÃO DE ATENDIMENTO (Ações Rápidas) */}
                 <div>
                     <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 ml-1">Balcão de Atendimento</h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                        <ActionCard title="Matricular" sub="Novo ou Confirmação" icon={UserPlus} href="/secretaria/matriculas?nova=1" color="teal" />
-                        <ActionCard title="Emitir Declaração" sub="Com ou sem notas" icon={FileText} href="/secretaria/documentos" color="blue" />
-                        <ActionCard title="Cobrar Propina" sub="Pagamento Rápido" icon={Banknote} href="/secretaria/financeiro" color="emerald" />
-                        <ActionCard title="Justificar Falta" sub="Registar ausência" icon={CalendarX} href="/secretaria/faltas" color="orange" />
-                        <ActionCard title="Lançar Nota" sub="Pauta Rápida" icon={FileEdit} href="/secretaria/notas" color="purple" />
+                        <ActionCard title="Matricular" sub="Novo ou Confirmação" icon={UserPlus} href="/secretaria/matriculas?nova=1" variant="brand" />
+                        <ActionCard title="Emitir Declaração" sub="Com ou sem notas" icon={FileText} href="/secretaria/documentos" variant="brand" />
+                        <ActionCard title="Cobrar Propina" sub="Pagamento Rápido" icon={Banknote} href="/secretaria/financeiro" variant="success" />
+                        <ActionCard title="Justificar Falta" sub="Registar ausência" icon={CalendarX} href="/secretaria/faltas" variant="warning" />
+                        <ActionCard title="Lançar Nota" sub="Pauta Rápida" icon={FileEdit} href="/secretaria/notas" variant="neutral" />
                     </div>
                 </div>
 
@@ -208,7 +210,7 @@ export default function SecretariaDashboardPage() {
                                 <SecondaryAction icon={Building} label="Turmas" href="/secretaria/turmas" />
                                 <SecondaryAction icon={BarChart3} label="Relatórios" href="/secretaria/relatorios" />
                                 <SecondaryAction icon={RefreshCcw} label="Rematrículas" href="/secretaria/rematricula" />
-                                <SecondaryAction icon={Upload} label="Migração" href="/migracao/alunos" highlight />
+                                <SecondaryAction icon={Upload} label="Migração" href="/migracao/alunos" variant="brand" />
                             </div>
                         </div>
                     </div>
@@ -275,41 +277,54 @@ export default function SecretariaDashboardPage() {
 
 // --- MICRO-COMPONENTES ---
 
-function KpiCard({ label, value, icon: Icon, color, isAlert }: any) {
-    const colors: any = {
-        blue: "bg-blue-50 text-blue-600",
-        emerald: "bg-emerald-50 text-emerald-600",
-        purple: "bg-purple-50 text-purple-600",
-        orange: "bg-orange-50 text-orange-600"
+function KpiCard({ label, value, icon: Icon, variant, isAlert }: {
+    label: string;
+    value: number | undefined;
+    icon: any; // Lucide icon component
+    variant: Variant;
+    isAlert?: boolean;
+}) {
+    const variantClasses: Record<Variant, string> = {
+        default: "bg-slate-50 text-slate-600",
+        brand: "bg-blue-50 text-blue-600", // Mapping blue to brand
+        success: "bg-emerald-50 text-emerald-600", // Mapping emerald to success
+        warning: "bg-orange-50 text-orange-600", // Mapping orange to warning
+        neutral: "bg-purple-50 text-purple-600", // Mapping purple to neutral
     };
     
     return (
-        <div className={`bg-white p-4 rounded-2xl border shadow-sm flex flex-col justify-between h-24 transition-all hover:-translate-y-1 ${isAlert && value > 0 ? 'border-orange-200 bg-orange-50/30' : 'border-slate-200'}`}>
+        <div className={`bg-white p-4 rounded-2xl border shadow-sm flex flex-col justify-between h-24 transition-all hover:-translate-y-1 ${isAlert && value && value > 0 ? 'border-orange-200 bg-orange-50/30' : 'border-slate-200'}`}>
             <div className="flex justify-between items-start">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">{label}</span>
-                <div className={`p-1.5 rounded-lg ${colors[color]}`}>
+                <div className={`p-1.5 rounded-lg ${variantClasses[variant]}`}>
                     <Icon className="w-4 h-4" />
                 </div>
             </div>
-            <span className={`text-2xl font-black ${isAlert && value > 0 ? 'text-orange-600' : 'text-slate-800'}`}>
+            <span className={`text-2xl font-black ${isAlert && value && value > 0 ? 'text-orange-600' : 'text-slate-800'}`}>
                 {value ?? "-"}
             </span>
         </div>
     )
 }
 
-function ActionCard({ title, sub, icon: Icon, color, href }: any) {
-    const colors: any = {
-        teal: "bg-teal-50 text-teal-600 group-hover:bg-teal-100",
-        blue: "bg-blue-50 text-blue-600 group-hover:bg-blue-100",
-        emerald: "bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100",
-        orange: "bg-orange-50 text-orange-600 group-hover:bg-orange-100",
-        purple: "bg-purple-50 text-purple-600 group-hover:bg-purple-100"
+function ActionCard({ title, sub, icon: Icon, variant, href }: {
+    title: string;
+    sub: string;
+    icon: any; // Lucide icon component
+    variant: Variant;
+    href: string;
+}) {
+    const variantClasses: Record<Variant, string> = {
+        default: "bg-slate-50 text-slate-600 group-hover:bg-slate-100",
+        brand: "bg-teal-50 text-teal-600 group-hover:bg-teal-100", // Mapping teal to brand
+        success: "bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100", // Mapping emerald to success
+        warning: "bg-orange-50 text-orange-600 group-hover:bg-orange-100", // Mapping orange to warning
+        neutral: "bg-purple-50 text-purple-600 group-hover:bg-purple-100", // Mapping purple to neutral
     };
 
     return (
         <Link href={href} className="group bg-white p-4 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 transition-all">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-colors ${colors[color]}`}>
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-colors ${variantClasses[variant]}`}>
                 <Icon className="w-5 h-5" />
             </div>
             <h4 className="font-bold text-slate-800 text-sm">{title}</h4>
@@ -318,18 +333,37 @@ function ActionCard({ title, sub, icon: Icon, color, href }: any) {
     )
 }
 
-function SecondaryAction({ icon: Icon, label, href, highlight }: any) {
+function SecondaryAction({ icon: Icon, label, href, variant = "default" }: {
+    icon: any; // Lucide icon component
+    label: string;
+    href: string;
+    variant?: Variant;
+}) {
+    const variantClasses: Record<Variant, string> = {
+        default: 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300',
+        brand: 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100',
+        warning: 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100',
+        success: 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100',
+        neutral: 'bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200',
+    };
+
+    const iconClasses: Record<Variant, string> = {
+        default: 'text-slate-400',
+        brand: 'text-indigo-600',
+        warning: 'text-amber-600',
+        success: 'text-emerald-600',
+        neutral: 'text-slate-500',
+    };
+
     return (
         <Link 
             href={href} 
             className={`
                 flex flex-col items-center justify-center gap-2 p-3 rounded-xl border transition-all hover:shadow-sm
-                ${highlight 
-                    ? 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100' 
-                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:border-slate-300'}
+                ${variantClasses[variant]}
             `}
         >
-            <Icon className={`w-5 h-5 ${highlight ? 'text-indigo-600' : 'text-slate-400'}`} />
+            <Icon className={`w-5 h-5 ${iconClasses[variant]}`} />
             <span className="text-[11px] font-bold">{label}</span>
         </Link>
     )
