@@ -60,17 +60,13 @@ const UserAvatar = ({ initials, name }: { initials: string; name: string }) => (
   </div>
 );
 
+import Image from "next/image";
+import logo from "/Logo Klasse.png";
+
 // Componente de Logo
 const Logo = ({ collapsed = false }: { collapsed?: boolean }) => (
   <div className="px-3 py-3 flex items-center gap-2 overflow-hidden">
-    <div className="h-9 w-9 rounded-lg bg-teal-600 text-white grid place-content-center font-bold">
-      MN
-    </div>
-    {!collapsed && (
-      <span className="truncate text-sm font-semibold text-slate-900">
-        Moxi Nexa
-      </span>
-    )}
+    <Image src={logo} alt="Klasse Logo" width={collapsed ? 40 : 120} height={40} />
   </div>
 );
 

@@ -13,7 +13,9 @@
     "docker:compose": "docker-compose up",
     "docker:compose:build": "docker-compose up --build",
     "docker:compose:down": "docker-compose down",
-    "docker:compose:logs": "docker-compose logs -f"
+    "docker:compose:logs": "docker-compose logs -f",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "@moxi/tenant-sdk": "workspace:*",

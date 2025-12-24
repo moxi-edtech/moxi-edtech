@@ -35,7 +35,7 @@ export async function GET(
       .from('vw_turmas_para_matricula') 
       .select('*')
       .eq('escola_id', escolaId)
-      .order('nome', { ascending: true });
+      .order('turma_nome', { ascending: true });
 
     if (turno && turno !== 'todos') query = query.eq('turno', turno);
     

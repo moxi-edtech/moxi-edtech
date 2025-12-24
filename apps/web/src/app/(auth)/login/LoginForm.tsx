@@ -76,12 +76,7 @@ export default function LoginForm() {
           <SubmitButton />
         </div>
 
-        <div className="pt-2 text-center text-sm text-slate-600 klasse-anim-fade-in klasse-delay-4">
-          Ainda não tem uma conta?{" "}
-          <a href="/signup" className="font-semibold text-[#1F6B3B] hover:underline">
-            Criar conta
-          </a>
-        </div>
+
       </form>
     </div>
   );

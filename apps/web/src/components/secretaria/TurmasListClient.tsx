@@ -180,7 +180,7 @@ export default function TurmasListClient() {
     return itens.filter((item) => {
       if (turno !== "todos" && (item.turno ?? 'sem_turno') !== turno) return false;
       if (!lower) return true;
-      return item.nome.toLowerCase().includes(lower) || 
+      return (item.nome || '').toLowerCase().includes(lower) || 
              (item.sala || '').toLowerCase().includes(lower) ||
              (item.curso_nome || '').toLowerCase().includes(lower) ||
              (item.classe_nome || '').toLowerCase().includes(lower);
@@ -284,10 +284,10 @@ export default function TurmasListClient() {
                                 <td className="px-6 py-4">
                                    <div className="flex items-center gap-3">
                                       <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-sm border border-slate-200">
-                                         {turma.nome.substring(0,2).toUpperCase()}
+                                         {(turma.nome || 'S/N').substring(0,2).toUpperCase()}
                                       </div>
                                       <div>
-                                         <p className="font-bold text-sm text-slate-800">{turma.nome}</p>
+                                         <p className="font-bold text-sm text-slate-800">{turma.nome || 'Turma sem nome'}</p>
                                          <p className="text-xs text-slate-400">{turma.ano_letivo}</p>
                                       </div>
                                    </div>
