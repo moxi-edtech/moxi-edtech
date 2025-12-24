@@ -5,55 +5,56 @@ import { supabaseServer } from "~/lib/supabase/server";
 import { redirect } from "next/navigation";
 
 const LoginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
+  email: z.string().email("Formato de e-mail inválido."),
+  password: z.string().min(1, "A senha não pode estar em branco."),
 });
 
 export async function loginAction(_: any, formData: FormData) {
-  const parsed = LoginSchema.safeParse({
-    email: String(formData.get("email") ?? ""),
-    password: String(formData.get("password") ?? ""),
-  });
+  const parsed = LoginSchema.safeParse(Object.fromEntries(formData));
 
   if (!parsed.success) {
-    return { ok: false, message: "Verifique email e senha." };
+    const errorMessage = parsed.error.errors.map((e) => e.message).join(" ");
+    return { ok: false, message: errorMessage };
   }
 
   const supabase = supabaseServer();
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: parsed.data.email,
+    password: parsed.data.password,
+  });
 
-      email: parsed.data.email,
+  if (error) {
+    console.error("Login error:", error.message);
+    return { ok: false, message: "Credenciais inválidas. Verifique os dados e tente novamente." };
+  }
 
-      password: parsed.data.password,
+  if (data.user) {
+    const { data: escolaUsuarios, error: userError } = await supabase
+      .from("escola_usuarios")
+      .select("papel, escola_id")
+      .eq("user_id", data.user.id)
+      .maybeSingle(); // Use .maybeSingle() if you expect 0 or 1 rows
 
-    });
-
-  
-
-    if (error) return { ok: false, message: "Credenciais inválidas." };
-
-  
-
-    if (data.user) {
-      const { data: escolaUsuario, error: userError } = await supabase
-        .from("escola_usuarios")
-        .select("papel, escola_id")
-        .eq("user_id", data.user.id)
-        .single();
-
-      if (userError || !escolaUsuario) {
-        console.error("Erro ao buscar papel ou escola_id do usuário:", userError);
-        return { ok: false, message: "Não foi possível determinar o seu papel ou escola. Contacte o suporte." };
-      }
-
-      if (escolaUsuario.papel === "secretaria") {
-        redirect("/secretaria");
-      } else if (escolaUsuario.escola_id) {
-        redirect(`/escola/${escolaUsuario.escola_id}`);
-      }
+    if (userError) {
+      console.error("Erro ao buscar papel/escola do usuário:", userError);
+      return { ok: false, message: "Erro ao carregar dados do usuário. Contacte o suporte." };
     }
 
-    // Fallback if no user data or specific redirection rules apply
-    redirect("/");
+    if (escolaUsuarios) {
+      if (escolaUsuarios.papel === "secretaria") {
+        redirect("/secretaria");
+      } else if (escolaUsuarios.escola_id) {
+        redirect(`/escola/${escolaUsuarios.escola_id}`);
+      }
+    }
+    
+    // Fallback case: User is logged in but not associated with a school/role yet,
+    // or doesn't fit the specific roles above. The old code redirected to '/redirect'.
+    // We will mimic that behavior.
+    redirect('/redirect');
+  }
+
+  // This should theoretically not be reached, but as a safeguard:
+  return { ok: false, message: "Ocorreu um erro inesperado." };
 }

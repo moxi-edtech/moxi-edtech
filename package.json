@@ -37,6 +37,12 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "@storybook/addon-essentials": "8.6.15",
+    "@storybook/addon-interactions": "8.6.15",
+    "@storybook/addon-links": "8.6.15",
+    "@storybook/nextjs": "8.6.15",
+    "@storybook/react": "8.6.15",
+    "storybook": "8.6.15",
     "typescript": "5.9.3"
   }
 }

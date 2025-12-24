@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 export default function BrandPanel() {
   return (
     <div className="relative hidden md:block overflow-hidden klasse-anim-left">
@@ -26,10 +28,7 @@ export default function BrandPanel() {
       <div className="relative h-full p-12 flex items-end">
         <div>
           {/* Troque por seu SVG oficial */}
-          <div className="text-white">
-            <div className="text-4xl font-semibold tracking-tight">KLASSE</div>
-            <div className="text-lg opacity-90">gestão escolar</div>
-          </div>
+          <Image src="/Logo Klasse.png" alt="Klasse Logo" width={200} height={50} />
 
           <p className="mt-6 max-w-md text-white/80 text-sm leading-relaxed">
             Local. Autêntico. Orgulhoso. Uma plataforma moderna para gestão escolar em Angola.
