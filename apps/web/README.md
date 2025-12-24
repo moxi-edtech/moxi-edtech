@@ -118,5 +118,58 @@ Open http://localhost:3000 and try the login flow.
 - Run the SQL file at the repository root:
   - Open Supabase Dashboard → SQL Editor.
   - Paste and run `docs/db/2025-09-27-configuracoes_escola.sql`.
+  ## DB migration: configuracoes_escola (onboarding preferences)
+
+- The onboarding preferences API expects `public.configuracoes_escola` to exist.
+- Run the SQL file at the repository root:
+  - Open Supabase Dashboard → SQL Editor.
+  - Paste and run `docs/db/2025-09-27-configuracoes_escola.sql`.
   - After running, reload PostgREST cache (Settings → API → Reload) or restart the service.
   - Ensure env vars are set in this app: `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+
+---
+
+## Storybook
+
+Storybook has been set up for component development and documentation.
+
+### Setup and Configuration
+
+- **Installation**: Storybook packages were manually installed at the monorepo root using `pnpm` to ensure version consistency across all Storybook-related dependencies.
+    - `storybook@8.6.15`
+    - `@storybook/react@8.6.15`
+    - `@storybook/nextjs@8.6.15`
+    - `@storybook/addon-links@8.6.15`
+    - `@storybook/addon-essentials@8.6.15`
+    - `@storybook/addon-interactions@8.6.15`
+- **Configuration Files**:
+    - `.storybook/main.ts`: Configures story paths, addons (links, essentials, interactions), and specifies `@storybook/nextjs` as the framework.
+    - `.storybook/preview.ts`: Sets global parameters like `fullscreen` layout and `controls` matchers, and imports `../src/app/globals.css` to ensure Tailwind CSS and custom fonts (Sora) are loaded.
+
+### Example Stories
+
+Example stories for core components are located in `src/components/`:
+- `Card.stories.tsx`: Demonstrates usage of the `Card` component with different metric and financial data.
+- `Table.stories.tsx`: Shows a basic table structure and styling.
+- `Sidebar.stories.tsx`: Provides an isolated preview of the `Sidebar` navigation component.
+
+### Usage
+
+To run Storybook locally:
+
+```bash
+pnpm --filter web storybook
+```
+
+To build a static Storybook app:
+
+```bash
+pnpm --filter web build-storybook
+```
+
+### Conventions
+
+- **Story Location**: Stories are co-located with their respective components (e.g., `src/components/Button.tsx` and `src/components/Button.stories.tsx`).
+- **Variants**: Different component states or variations are exported as named stories (e.g., `export const Primary: Story = {...}`).
+- **No Business Logic**: Stories should focus solely on component rendering and behavior, without embedding complex business logic.
+- **Design Contract**: Storybook serves as a design contract, ensuring consistency, aiding onboarding, and preventing visual regressions. If a component doesn't have a story, it's not considered ready for use.
