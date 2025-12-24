@@ -3,6 +3,7 @@ import AuditPageView from "@/components/audit/AuditPageView";
 import { supabaseServer } from "@/lib/supabaseServer";
 import Link from "next/link";
 import { parsePlanTier, PLAN_NAMES, type PlanTier } from "@/config/plans";
+import { getAbsoluteUrl } from "@/lib/utils";
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const awaitedParams = await params;
@@ -13,8 +14,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     s.from('pagamentos').select('valor', { head: false }).eq('escola_id', escolaId).eq('status', 'pago'),
     s.from('pagamentos').select('valor', { head: false }).eq('escola_id', escolaId).eq('status', 'pendente'),
     s.from('pagamentos').select('id', { count: 'exact', head: true }).eq('escola_id', escolaId),
-    fetch(`/api/escolas/${escolaId}/nome`, { cache: 'no-store' }).then(r => r.json()).catch(() => null),
-    fetch(`/api/financeiro/dashboard?escolaId=${escolaId}`, { cache: 'no-store' }).then(r => r.json()).catch(() => null),
+    fetch(getAbsoluteUrl(`/api/escolas/${escolaId}/nome`), { cache: 'no-store' }).then(r => r.json()).catch(() => null),
+    fetch(getAbsoluteUrl(`/api/financeiro/dashboard?escolaId=${escolaId}`), { cache: 'no-store' }).then(r => r.json()).catch(() => null),
   ])
 
   const sum = (rows: any[] | null | undefined) => (rows || []).reduce((acc, r) => acc + Number(r.valor || 0), 0)

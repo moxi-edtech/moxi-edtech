@@ -1,4 +1,5 @@
 "use client";
+import { getAbsoluteUrl } from "@/lib/utils";
 
 import { useEffect, useState } from "react";
 import {
@@ -166,8 +167,8 @@ export default function RadarInadimplenciaActive() {
       try {
         setLoading(true);
         const [radarRes, dashRes] = await Promise.all([
-          fetch("/api/financeiro/radar"),
-          fetch("/api/financeiro/dashboard"),
+          fetch(getAbsoluteUrl("/api/financeiro/radar")),
+          fetch(getAbsoluteUrl("/api/financeiro/dashboard")),
         ]);
 
         if (!radarRes.ok) {

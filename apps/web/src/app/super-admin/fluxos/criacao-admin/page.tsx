@@ -10,7 +10,7 @@ export default function Page() {
     <div className="flex h-screen bg-gray-100">
       <Sidebar />
       <div className="flex-1 flex flex-col">
-        <Header />
+        
         <main className="p-6 overflow-y-auto space-y-6">
           <h1 className="text-2xl font-bold">Fluxo: Criação de Escola e Admin</h1>
           <div className="bg-white rounded-2xl shadow-sm p-6 border border-moxinexa-light/30">

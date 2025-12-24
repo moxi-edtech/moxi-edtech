@@ -4,12 +4,6 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 import { recordAuditServer } from "@/lib/audit";
 
-import { NextResponse } from "next/server";
-import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
-import { recordAuditServer } from "@/lib/audit";
-
 export async function POST(req: Request, context: { params: { id: string; alunoId: string } }) {
   const { id: escolaId, alunoId } = context.params;
   try {

@@ -7,48 +7,42 @@ module.exports = {
   ],
   theme: {
     extend: {
+      // ===============================
+      // 🎨 CORES OFICIAIS — KLASSE
+      // ===============================
       colors: {
-        // --- AQUI ESTÁ A MUDANÇA MÁGICA ---
-        // Atualizei o 'brand' para o tom escuro (Slate) que você gostou no HTML
-        brand: {
-          DEFAULT: '#0f172a', // Slate 900
-          50: '#f8fafc',
-          100: '#f1f5f9',
-          200: '#e2e8f0',
-          300: '#cbd5e1',
-          400: '#94a3b8',
-          500: '#64748b',
-          600: '#475569',
-          700: '#334155',
-          800: '#1e293b', // Slate 800 (usado para bordas escuras)
-          900: '#0f172a', // Slate 900 (O Fundo do Sidebar que você gostou)
-          950: '#020617', // Mais escuro ainda, para gradientes profundos
-        },
-        
-        // Cores legadas/específicas da MoxiNexa
-        moxinexa: {
-          teal: {
-            DEFAULT: "#0D9488",
-            50:  "#f0fdfa",
-            100: "#ccfbf1",
-            200: "#99f6e4",
-            300: "#5eead4",
-            400: "#2dd4bf",
-            500: "#14b8a6",
-            600: "#0d9488",
-            700: "#0f766e",
-            800: "#115e59",
-            900: "#134e4a",
-            950: "#042f2e",
+        klasse: {
+          green: {
+            DEFAULT: "#1F6B3B", // Verde bandeira (principal)
+            50:  "#ECF5EF",
+            100: "#D1E7DA",
+            200: "#A3CFB5",
+            300: "#75B791",
+            400: "#479F6C",
+            500: "#1F6B3B",
+            600: "#185732",
+            700: "#124329",
+            800: "#0B2F1F",
+            900: "#061B15",
           },
-          // Mantive o navy original caso precise usar em botões secundários
-          navy: "#0B2C45", 
-          dark: "#1A2B3C",
-          light: "#F9FAFB",
-          gray: "#6C757D",
+          gold: {
+            DEFAULT: "#E3B23C", // Dourado institucional
+            50:  "#FFF7E0",
+            100: "#FDECC1",
+            200: "#FAD883",
+            300: "#F7C445",
+            400: "#E3B23C",
+            500: "#C79A2F",
+            600: "#9E7924",
+            700: "#755819",
+            800: "#4D370E",
+            900: "#261C05",
+          },
         },
 
-        // Redefinindo Slate explicitamente (para garantir compatibilidade)
+        // ===============================
+        // ⚙️ BASE NEUTRA (UI / DASHBOARD)
+        // ===============================
         slate: {
           50: '#f8fafc',
           100: '#f1f5f9',
@@ -60,22 +54,36 @@ module.exports = {
           700: '#334155',
           800: '#1e293b',
           900: '#0f172a',
-        }
+          950: '#020617',
+        },
       },
+
+      // ===============================
+      // ✍🏽 TIPOGRAFIA
+      // ===============================
       fontFamily: {
-        sans: ["Poppins", "sans-serif"],
+        sans: ["Sora", "sans-serif"], // fonte oficial KLASSE
         mono: ["var(--font-geist-mono)", "monospace"],
       },
+
+      // ===============================
+      // 🎬 ANIMAÇÕES (ENTERPRISE)
+      // ===============================
       animation: {
-        'fade-in': 'fadeIn 0.6s ease-out',
-        'pulse': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-        'sidebar-collapse': 'sidebarCollapse 0.2s ease-out',
-        'sidebar-expand': 'sidebarExpand 0.2s ease-out',
+        'klasse-fade-up': 'klasseFadeUp 520ms cubic-bezier(.2,.8,.2,1)',
+        'klasse-fade-in': 'klasseFadeIn 420ms ease-out',
+        'sidebar-collapse': 'sidebarCollapse 200ms ease-out',
+        'sidebar-expand': 'sidebarExpand 200ms ease-out',
       },
+
       keyframes: {
-        fadeIn: {
+        klasseFadeUp: {
           '0%': { opacity: '0', transform: 'translateY(10px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        klasseFadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
         },
         sidebarCollapse: {
           '0%': { width: 'var(--sidebar-expanded, 256px)' },
@@ -86,15 +94,21 @@ module.exports = {
           '100%': { width: 'var(--sidebar-expanded, 256px)' },
         },
       },
-      backdropBlur: {
-        xs: '2px',
-      },
+
+      // ===============================
+      // 🧱 LAYOUT TOKENS
+      // ===============================
       spacing: {
         'sidebar': 'var(--sidebar-w, 256px)',
         'sidebar-collapsed': 'var(--sidebar-collapsed, 80px)',
         'sidebar-expanded': 'var(--sidebar-expanded, 256px)',
       },
+
+      backdropBlur: {
+        xs: '2px',
+      },
     },
   },
   plugins: [],
 };
+

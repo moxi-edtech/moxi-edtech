@@ -1,3 +1,4 @@
+import { getAbsoluteUrl } from "@/lib/utils";
 import {
   Wallet,
   TrendingUp,
@@ -67,7 +68,7 @@ export default async function FinanceiroDashboardPage({
 
   const resumoData: DashboardResumo =
     (cacheResumo as any) ??
-    (await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || ""}/api/financeiro/dashboard`, {
+    (await fetch(getAbsoluteUrl("/api/financeiro/dashboard"), {
       cache: "no-store",
     }).then((r) => r.json()));
 

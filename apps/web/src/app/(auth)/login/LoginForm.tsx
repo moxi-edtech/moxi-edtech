@@ -1,6 +1,7 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { loginAction } from "./actions";
 
 function SubmitButton() {
@@ -19,18 +20,21 @@ function SubmitButton() {
 }
 
 export default function LoginForm() {
-  const [state, formAction] = useFormState(loginAction, { ok: true, message: "" });
+  const [state, formAction] = useActionState(loginAction, { ok: true, message: "" });
 
   return (
     <div>
-      {/* Top logo mini (placeholder) */}
-      <div className="mb-6">
-        <div className="text-2xl font-semibold text-[#1F6B3B] tracking-tight">Bem-vindo ao Klasse</div>
-        <div className="mt-1 text-sm text-slate-600">Faça login para acessar sua conta.</div>
+      <div className="mb-6 klasse-anim-fade-up klasse-delay-1">
+        <div className="text-2xl font-semibold text-[#1F6B3B] tracking-tight">
+          Bem-vindo ao Klasse
+        </div>
+        <div className="mt-1 text-sm text-slate-600">
+          Faça login para acessar sua conta.
+        </div>
       </div>
 
       <form action={formAction} className="space-y-4">
-        <div>
+        <div className="klasse-anim-fade-up klasse-delay-2">
           <label className="text-sm font-medium text-slate-700">Email</label>
           <input
             name="email"
@@ -44,7 +48,7 @@ export default function LoginForm() {
           />
         </div>
 
-        <div>
+        <div className="klasse-anim-fade-up klasse-delay-3">
           <label className="text-sm font-medium text-slate-700">Senha</label>
           <input
             name="password"
@@ -58,20 +62,21 @@ export default function LoginForm() {
           />
         </div>
 
-        {/* Mensagem genérica (anti enumeração) */}
         {state?.ok === false && (
-          <p className="text-sm text-red-600">{state.message}</p>
+          <p className="text-sm text-red-600 klasse-anim-fade-in">{state.message}</p>
         )}
 
-        <div className="flex items-center justify-end">
+        <div className="flex items-center justify-end klasse-anim-fade-in klasse-delay-3">
           <a href="/forgot-password" className="text-sm font-medium text-[#B88712] hover:underline">
             Esqueceu a senha?
           </a>
         </div>
 
-        <SubmitButton />
+        <div className="klasse-anim-fade-up klasse-delay-4">
+          <SubmitButton />
+        </div>
 
-        <div className="pt-2 text-center text-sm text-slate-600">
+        <div className="pt-2 text-center text-sm text-slate-600 klasse-anim-fade-in klasse-delay-4">
           Ainda não tem uma conta?{" "}
           <a href="/signup" className="font-semibold text-[#1F6B3B] hover:underline">
             Criar conta

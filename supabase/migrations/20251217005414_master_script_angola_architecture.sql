@@ -93,7 +93,7 @@ CREATE UNIQUE INDEX idx_alunos_escola_processo ON public.alunos (escola_id, nume
 -- -------------------------------------------------------------
 ALTER TABLE public.turmas
   DROP COLUMN IF EXISTS classe,      
-  DROP COLUMN IF NOT EXISTS capacidade,  
+  DROP COLUMN IF EXISTS capacidade,  
   ADD COLUMN IF NOT EXISTS turma_codigo text;
 
 -- Converter ano

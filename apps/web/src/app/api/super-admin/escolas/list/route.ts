@@ -18,26 +18,35 @@ type EscolaItem = {
 
 export async function GET() {
   try {
+    console.log('[super-admin/escolas/list] API route hit');
     // Auth: only super_admin
     const s = await supabaseServer()
     const { data: sess } = await s.auth.getUser()
     const user = sess?.user
-    if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
+    if (!user) {
+      console.log('[super-admin/escolas/list] Not authenticated');
+      return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
+    }
+    console.log(`[super-admin/escolas/list] User authenticated: ${user.id}`);
     const { data: rows } = await s.from('profiles').select('role').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1)
     const role = (rows?.[0] as any)?.role as string | undefined
     const allowed = ['super_admin', 'global_admin']
+    console.log(`[super-admin/escolas/list] User role: ${role}`);
     if (!allowed.includes(role || '')) {
+      console.log(`[super-admin/escolas/list] User role not allowed: ${role}`);
       return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
     }
 
     // Decide se podemos usar client admin (service-role)
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    const hasServiceKey = !!serviceKey && serviceKey.split('.').length === 3 && !/YOUR-service-role-key/i.test(serviceKey)
+    const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim()
+    const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim()
+    const hasServiceKey = !!serviceKey && (serviceKey.startsWith("ey") || serviceKey.startsWith("sb_secret_")) && !/YOUR-service-role-key/i.test(serviceKey)
+    console.log(`[super-admin/escolas/list] hasServiceKey: ${hasServiceKey}`);
 
     // Função auxiliar para montar resposta a partir de uma consulta
     async function queryWith(client: any) {
       // Tenta via view consolidada
+      console.log('[super-admin/escolas/list] queryWith: Attempting to use escolas_view');
       const { data, error } = await client
         .from('escolas_view' as any)
         .select('id, nome, status, plano_atual, plano, last_access, total_alunos, total_professores, cidade, estado')
@@ -57,9 +66,11 @@ export async function GET() {
           cidade: e.cidade ?? null,
           estado: e.estado ?? null,
         }))
+        console.log(`[super-admin/escolas/list] queryWith: Success with escolas_view. Items found: ${items.length}`);
         return { ok: true as const, items }
       }
 
+      console.error(`[super-admin/escolas/list] queryWith: Error with escolas_view: ${error.message}`);
       const code = (error as any)?.code as string | undefined
       const msg = (error as any)?.message as string | undefined
       const isMissingView = (
@@ -67,17 +78,22 @@ export async function GET() {
         (msg && /does not exist|relation .* does not exist|schema cache|Could not find .* in the schema cache/i.test(msg))
       )
       if (!isMissingView) {
+        console.error(`[super-admin/escolas/list] queryWith: Error is not a missing view. Code: ${code}, Msg: ${msg}`);
         return { ok: false as const, error }
       }
 
       // Fallback: usa tabela 'escolas' com subset de colunas
+      console.log('[super-admin/escolas/list] queryWith: Fallback to escolas table');
       const { data: raw, error: e2 } = await client
         .from('escolas' as any)
         .select('id, nome, status, plano_atual, endereco, plano')
         .neq('status', 'excluida' as any)
         .order('nome', { ascending: true })
         .limit(1000)
-      if (e2) return { ok: false as const, error: e2 }
+      if (e2) {
+        console.error(`[super-admin/escolas/list] queryWith: Error with fallback escolas table: ${e2.message}`);
+        return { ok: false as const, error: e2 }
+      }
 
       const items: EscolaItem[] = (raw || []).map((e: any) => ({
         id: String(e.id),
@@ -94,34 +110,48 @@ export async function GET() {
         const reason = msg || code || 'unknown'
         console.warn(`[super-admin/escolas/list] Fallback ativo: usando tabela 'escolas'. reason=${reason}; items=${items.length}`)
       }
+      console.log(`[super-admin/escolas/list] queryWith: Success with fallback. Items found: ${items.length}`);
       return { ok: true as const, items }
     }
 
     // Caminho 1: usar admin quando possível
     if (!url) {
+      console.error('[super-admin/escolas/list] Missing NEXT_PUBLIC_SUPABASE_URL');
       return NextResponse.json({ ok: false, error: 'Configuração do Supabase ausente' }, { status: 500 })
     }
 
     if (hasServiceKey) {
+      console.log('[super-admin/escolas/list] Attempting to use admin client');
       const admin = createAdminClient<Database>(url, serviceKey!) as any
       const r1 = await queryWith(admin)
       // Se a key for inválida em runtime, faz fallback para client autenticado
       const errMsg = (r1 as any)?.error?.message as string | undefined
       const errCode = (r1 as any)?.error?.code as string | undefined
       const invalidKey = errCode === '401' || (errMsg && /invalid api key/i.test(errMsg))
-      if (r1.ok) return NextResponse.json({ ok: true, items: r1.items })
+      if (r1.ok) {
+        console.log('[super-admin/escolas/list] Admin client succeeded');
+        return NextResponse.json({ ok: true, items: r1.items })
+      }
       if (!invalidKey) {
+        console.error(`[super-admin/escolas/list] Admin client failed with non-key error: ${errMsg}`);
         return NextResponse.json({ ok: false, error: (r1 as any).error?.message || 'Erro ao listar escolas' }, { status: 400 })
       }
+      console.log('[super-admin/escolas/list] Invalid service key, falling back to authenticated client');
       // Continua para fallback com cliente autenticado
     }
 
     // Caminho 2: fallback ao client autenticado (sem service role)
+    console.log('[super-admin/escolas/list] Using authenticated client');
     const r2 = await queryWith(s as any)
-    if (r2.ok) return NextResponse.json({ ok: true, items: r2.items })
+    if (r2.ok) {
+      console.log('[super-admin/escolas/list] Authenticated client succeeded');
+      return NextResponse.json({ ok: true, items: r2.items })
+    }
+    console.error(`[super-admin/escolas/list] Authenticated client failed: ${(r2 as any).error?.message}`);
     return NextResponse.json({ ok: false, error: (r2 as any).error?.message || 'Erro ao listar escolas' }, { status: 400 })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
+    console.error(`[super-admin/escolas/list] Unhandled error: ${message}`);
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
 }
