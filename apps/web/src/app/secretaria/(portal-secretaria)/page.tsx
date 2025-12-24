@@ -1,18 +1,18 @@
-"use client";
-
+import { TaskList } from "@/components/secretaria/tasks/TaskList";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Loader2, Users, FileText, Banknote, CalendarX, FileEdit,
-  UserCheck, AlertCircle, ChevronRight, Bell,
-  Check, X, UserPlus, Building, BarChart3,
+  AlertCircle, ChevronRight, Bell,
+  UserPlus, Building, BarChart3,
   Download, Upload, RefreshCcw, Shield, Crown,
-  LayoutDashboard, Clock, Megaphone, ArrowRight
+  LayoutDashboard, Clock
 } from "lucide-react";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import type { PlanTier } from "@/config/plans";
-import type { PlanTier } from "@/config/plans";
+import { NoticePanel } from "@/components/secretaria/dashboard/NoticePanel";
+import { DashboardHeader } from "@/components/layout/DashboardHeader";
 
 // --- TIPOS ---
 type DashboardData = {
@@ -135,6 +135,30 @@ export default function SecretariaDashboardPage() {
         {/* COLUNA PRINCIPAL (Esquerda + Centro) */}
         <main className="flex-1 overflow-y-auto p-6 lg:p-8 pb-32 custom-scrollbar">
             <div className="max-w-5xl mx-auto space-y-8">
+                <DashboardHeader
+                  title="Secretaria"
+                  description="Resumo operacional do dia"
+                  breadcrumbs={[
+                    { label: "Início", href: "/app" },
+                    { label: "Secretaria" },
+                  ]}
+                  actions={
+                    <>
+                      <Link
+                        href="/secretaria/matriculas?nova=1"
+                        className="
+                          inline-flex items-center gap-2
+                          rounded-xl bg-klasse-gold px-4 py-2
+                          text-sm font-semibold text-white
+                          hover:brightness-95
+                          focus:outline-none focus:ring-4 focus:ring-klasse-gold/20
+                        "
+                      >
+                        Nova Matrícula
+                      </Link>
+                    </>
+                  }
+                />
                 
                 {/* 1. KPI CARDS (Resumo do Dia) */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -169,37 +193,7 @@ export default function SecretariaDashboardPage() {
                             <button className="text-xs font-bold text-teal-600 hover:text-teal-700">Ver tudo</button>
                         </div>
 
-                        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                             {/* Matrículas Online */}
-                             {data?.novas_matriculas.map((m) => (
-                                <div key={m.id} className="p-4 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition group flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 border border-blue-100">
-                                        <UserCheck className="w-5 h-5" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex justify-between items-baseline mb-0.5">
-                                            <p className="text-sm font-bold text-slate-800 truncate">Aprovar Matrícula Online</p>
-                                            <span className="text-[10px] text-slate-400 whitespace-nowrap">{new Date(m.created_at).toLocaleDateString()}</span>
-                                        </div>
-                                        <p className="text-xs text-slate-500 truncate">
-                                            Aluno: <span className="font-medium text-slate-700">{m.aluno.nome}</span> • {m.turma.nome}
-                                        </p>
-                                    </div>
-                                    <div className="flex gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button className="p-2 rounded-lg bg-white border border-slate-200 text-green-600 hover:bg-green-50 hover:border-green-200 transition"><Check className="w-4 h-4"/></button>
-                                        <button className="p-2 rounded-lg bg-white border border-slate-200 text-slate-400 hover:text-red-600 hover:bg-red-50 transition"><X className="w-4 h-4"/></button>
-                                    </div>
-                                </div>
-                             ))}
-
-                             {/* Mock de outras tarefas para encher a UI se estiver vazia */}
-                             {(!data?.novas_matriculas || data.novas_matriculas.length === 0) && (
-                                <div className="p-8 text-center text-slate-400 text-sm">
-                                    <Check className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                                    Tudo limpo! Nenhuma pendência urgente.
-                                </div>
-                             )}
-                        </div>
+                        <TaskList items={data?.novas_matriculas ?? []} />
 
                         {/* Atalhos Secundários */}
                         <div>
@@ -219,23 +213,7 @@ export default function SecretariaDashboardPage() {
                     <div className="space-y-6">
                         
                         {/* Quadro de Avisos */}
-                        <div className="bg-amber-50 rounded-2xl border border-amber-100 p-5">
-                            <div className="flex items-center gap-2 mb-4 text-amber-800">
-                                <Megaphone className="w-4 h-4" />
-                                <h3 className="text-sm font-bold uppercase">Avisos Gerais</h3>
-                            </div>
-                            <div className="space-y-4">
-                                {data?.avisos_recentes?.length ? data.avisos_recentes.map(aviso => (
-                                    <div key={aviso.id} className="bg-white/60 p-3 rounded-xl border border-amber-100/50">
-                                        <p className="text-xs font-bold text-amber-900 mb-1">{aviso.titulo}</p>
-                                        <p className="text-[10px] text-amber-700 leading-snug line-clamp-2">{aviso.resumo}</p>
-                                        <p className="text-[9px] text-amber-600/60 mt-2 text-right">{new Date(aviso.data).toLocaleDateString()}</p>
-                                    </div>
-                                )) : (
-                                    <p className="text-xs text-amber-700/60 italic">Nenhum aviso novo.</p>
-                                )}
-                            </div>
-                        </div>
+                        <NoticePanel items={data?.avisos_recentes ?? []} />
 
                         {/* Lembrete Operacional */}
                         <div className="bg-slate-900 rounded-2xl p-5 text-white shadow-lg">
