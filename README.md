@@ -62,6 +62,13 @@ Documentação detalhada
 
 ---
 
+## Documentação do Projeto
+
+- **Design Tokens**: Consulte as diretrizes de design visual e tokens CSS em [`docs/design-tokens.md`](./docs/design-tokens.md).
+- **Iconografia Oficial**: Veja o mapeamento oficial de ícones em [`docs/icon-map.md`](./docs/icon-map.md).
+
+---
+
 # Supabase CLI (v1)
 
 [![Coverage Status](https://coveralls.io/repos/github/supabase/cli/badge.svg?branch=main)](https://coveralls.io/github/supabase/cli?branch=main)
