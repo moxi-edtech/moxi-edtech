@@ -119,10 +119,11 @@ BEGIN
       t.id AS turma_id,
       t.nome AS turma,
       t.turno,
-      t.classe,
+      c.nome AS classe,
       t.ano_letivo AS turma_ano_letivo
     FROM public.matriculas m
     LEFT JOIN public.turmas t ON t.id = m.turma_id
+    LEFT JOIN public.classes c ON c.id = t.classe_id
     WHERE m.aluno_id = p_aluno_id
       AND m.escola_id = p_escola_id
     ORDER BY m.ano_letivo DESC, m.data_matricula DESC NULLS LAST

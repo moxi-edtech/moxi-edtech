@@ -83,6 +83,10 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
     load();
   }, [turmaId]);
 
+  const handleDownloadPauta = () => {
+    window.location.href = `/api/secretaria/turmas/${turmaId}/pauta`;
+  };
+
   if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-teal-600"/></div>;
   if (error) return <div className="p-8 text-center text-red-600 bg-red-50 rounded-xl m-6">{error}</div>;
   if (!data) return null;
@@ -254,6 +258,7 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
          {activeTab === 'docs' && (
             <div className="bg-white p-8 rounded-2xl border border-slate-200 text-center animate-in fade-in">
                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <DocCard icon={Download} title="Pauta Digital" desc="Planilha Excel com alunos e disciplinas" onClick={handleDownloadPauta} />
                   <DocCard icon={FileText} title="Lista Nominal" desc="PDF oficial com todos os alunos" />
                   <DocCard icon={LayoutGrid} title="Pauta em Branco" desc="Grelha para lançamento manual" />
                   <DocCard icon={BookOpen} title="Mini-Pautas" desc="Fichas individuais por disciplina" />
@@ -266,9 +271,9 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
   );
 }
 
-function DocCard({ icon: Icon, title, desc }: any) {
+function DocCard({ icon: Icon, title, desc, onClick }: any) {
     return (
-        <button className="p-6 rounded-xl border-2 border-dashed border-slate-200 hover:border-teal-500 hover:bg-teal-50/30 transition flex flex-col items-center gap-3 group">
+        <button onClick={onClick} className="p-6 rounded-xl border-2 border-dashed border-slate-200 hover:border-teal-500 hover:bg-teal-50/30 transition flex flex-col items-center gap-3 group text-left">
             <div className="p-3 bg-slate-50 rounded-full text-slate-400 group-hover:bg-teal-100 group-hover:text-teal-600 transition">
                 <Icon className="w-6 h-6"/>
             </div>

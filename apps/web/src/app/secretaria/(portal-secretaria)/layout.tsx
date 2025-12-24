@@ -1,11 +1,11 @@
-import SecretariaShell from "@/components/secretaria/SecretariaShell";
+import AppShell from "@/components/layout/klasse/AppShell";
 import React from "react";
 
 export default function SecretariaPortalLayout({ children }: { children: React.ReactNode }) {
   return (
-    <SecretariaShell>
+    <AppShell>
       {children}
-    </SecretariaShell>
+    </AppShell>
   );
 }
 

@@ -8,6 +8,8 @@ EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
 
+DROP VIEW IF EXISTS public.escolas_view CASCADE;
+
 -- 1.1) Drop legacy constraint that still enforces basico/standard/premium
 DO $$
 BEGIN

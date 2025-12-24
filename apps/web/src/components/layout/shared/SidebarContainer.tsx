@@ -33,7 +33,7 @@ export default function SidebarContainer({
     <SidebarProvider value={{ collapsed, toggle }}>
       <aside
         className={clsx(
-          "group/sidebar sticky top-0 z-40 h-screen transition-[width] duration-300 ease-in-out",
+          "group/sidebar fixed top-0 z-40 h-screen transition-[width] duration-300 ease-in-out",
           "bg-slate-900 border-r border-slate-800 text-white shadow-xl", // Estilo MoxiNexa Dark
           className,
         )}

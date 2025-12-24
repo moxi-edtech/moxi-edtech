@@ -1,6 +1,6 @@
 export default function BrandPanel() {
   return (
-    <div className="relative hidden md:block overflow-hidden">
+    <div className="relative hidden md:block overflow-hidden klasse-anim-left">
       {/* Base verde */}
       <div className="absolute inset-0 bg-[#1F6B3B]" />
 

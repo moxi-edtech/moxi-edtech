@@ -83,7 +83,7 @@ export async function GET(
           responsavel,
           telefone_responsavel,
           encarregado_relacao,
-          profiles!alunos_profile_id_fkey (
+          profiles:profiles!alunos_profile_id_fkey (
             user_id,
             numero_login,
             nome

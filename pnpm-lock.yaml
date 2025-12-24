@@ -67,6 +67,9 @@ importers:
       '@next/eslint-plugin-next':
         specifier: ^16.0.5
         version: 16.0.6
+      '@next/swc-darwin-x64':
+        specifier: 15.5.6
+        version: 15.5.6
       '@next/swc-wasm-nodejs':
         specifier: ^15.5.6
         version: 15.5.6
@@ -2555,8 +2558,7 @@ snapshots:
   '@next/swc-darwin-arm64@15.5.6':
     optional: true
 
-  '@next/swc-darwin-x64@15.5.6':
-    optional: true
+  '@next/swc-darwin-x64@15.5.6': {}
 
   '@next/swc-linux-arm64-gnu@15.5.6':
     optional: true

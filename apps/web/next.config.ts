@@ -18,7 +18,7 @@ function ensureSupabaseEnv() {
     console.warn(`[next.config] ${message}`);
   }
 
-  if (missingServer.length > 0) {
+  if (missingServer.length > 0 && isStrict) {
     const message = `Missing optional Supabase server environment variables: ${missingServer.join(", ")}`;
     console.warn(`[next.config] ${message}. Server-side features that rely on these values may not function until they are configured.`);
   }
@@ -39,13 +39,11 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
-  experimental: {
-    turbo: {
-      rules: {
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-          as: '*.js',
-        },
+  turbopack: {
+    rules: {
+      '*.svg': {
+        loaders: ['@svgr/webpack'],
+        as: '*.js',
       },
     },
   },
