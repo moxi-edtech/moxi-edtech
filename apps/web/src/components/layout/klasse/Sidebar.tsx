@@ -3,36 +3,24 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
-import {
-  LayoutDashboard, Users, GraduationCap, Wallet, BookOpen, Settings, ChevronLeft
-} from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 
-type NavItem = { href: string; label: string; icon: any };
-
-const NAV: NavItem[] = [
-  { href: "/secretaria", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/secretaria/alunos", label: "Alunos", icon: Users },
-  { href: "/secretaria/matriculas", label: "Matrículas", icon: GraduationCap },
-  { href: "/financeiro", label: "Financeiro", icon: Wallet },
-  // TODO: Check correct paths for Academico and Configurações
-  { href: "/academico", label: "Acadêmico", icon: BookOpen },
-  { href: "/configuracoes", label: "Configurações", icon: Settings },
-];
+export type NavItem = { href: string; label: string; icon: any };
 
 function cn(...c: Array<string | false | null | undefined>) {
   return c.filter(Boolean).join(" ");
 }
 
-export default function Sidebar() {
+export default function Sidebar({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
-  const items = useMemo(() => {
-    return NAV.map((it) => ({
+  const sidebarItems = useMemo(() => {
+    return items.map((it) => ({
       ...it,
       active: pathname === it.href || pathname?.startsWith(it.href + "/"),
     }));
-  }, [pathname]);
+  }, [pathname, items]);
 
   return (
     <aside
@@ -77,7 +65,7 @@ export default function Sidebar() {
       {/* Nav */}
       <nav className="px-2 py-3">
         <ul className="space-y-1">
-          {items.map((it) => {
+          {sidebarItems.map((it) => {
             const Icon = it.icon;
             return (
               <li key={it.href}>
