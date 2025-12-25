@@ -210,6 +210,7 @@ export default function AdminTurmasPage() {
 
       const params = new URLSearchParams();
       if (turno !== "todos") params.set("turno", turno);
+      if (statusFilter !== "todos") params.set("status", statusFilter); // NEW: Add statusFilter to params
 
       const url = buildEscolaUrl(escolaId, "/turmas", params);
       const res = await fetch(url, {
@@ -230,7 +231,7 @@ export default function AdminTurmasPage() {
   useEffect(() => {
     if (escolaId) fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [turno, escolaId]);
+  }, [turno, statusFilter, escolaId]); // NEW: Add statusFilter to dependency array
 
   const rascunhosCount = useMemo(() => {
     return data?.items.filter((t) => t.status_validacao === "rascunho").length || 0;
