@@ -4,41 +4,23 @@ import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabaseClient";
 import SignOutButton from "@/components/auth/SignOutButton";
 import BackButton from "@/components/navigation/BackButton";
+import Link from "next/link"; // Add this import
 import {
-  HomeIcon,
-  UsersIcon,
-  AcademicCapIcon,
-  BanknotesIcon,
-  Cog6ToothIcon,
-  ChartBarIcon,
-  LifebuoyIcon,
-  Bars3Icon,
   ChevronDownIcon,
   BellIcon,
   MagnifyingGlassIcon,
-} from "@heroicons/react/24/outline";
+} from "@heroicons/react/24/outline"; // Keep these
+import {
+  LayoutDashboard, Users, GraduationCap, Wallet, BookOpen, Settings, ChevronLeft,
+  User, Building2, TrendingUp, Files, Scale, Megaphone, CalendarDays, BarChart, FileText, BadgeDollarSign, School,
+} from "lucide-react"; // Add Lucide icons
 import clsx from "clsx";
 import { parsePlanTier, PLAN_NAMES, type PlanTier } from "@/config/plans";
+import { useUserRole } from "@/hooks/useUserRole"; // Import useUserRole
+import { sidebarConfig, type NavItem } from "@/lib/sidebarNav"; // Import sidebarConfig and NavItem
 
-// Definir tipos específicos
-type MenuItemName = 
-  | "Dashboard" 
-  | "Alunos & Matrículas" 
-  | "Professores & Notas" 
-  | "Financeiro" 
-  | "Configurações Locais" 
-  | "Relatórios Locais" 
-  | "Suporte Local";
-
-const menuItems = [
-  { name: "Dashboard", icon: HomeIcon },
-  { name: "Alunos & Matrículas", icon: UsersIcon },
-  { name: "Professores & Notas", icon: AcademicCapIcon },
-  { name: "Financeiro", icon: BanknotesIcon },
-  { name: "Configurações Locais", icon: Cog6ToothIcon },
-  { name: "Relatórios Locais", icon: ChartBarIcon },
-  { name: "Suporte Local", icon: LifebuoyIcon },
-];
+import Image from "next/image";
+import { usePathname } from "next/navigation"; // Import usePathname
 
 // Componente de Avatar Reutilizável
 const UserAvatar = ({ initials, name }: { initials: string; name: string }) => (
@@ -60,13 +42,10 @@ const UserAvatar = ({ initials, name }: { initials: string; name: string }) => (
   </div>
 );
 
-import Image from "next/image";
-import logo from "/Logo Klasse.png";
-
 // Componente de Logo
 const Logo = ({ collapsed = false }: { collapsed?: boolean }) => (
   <div className="px-3 py-3 flex items-center gap-2 overflow-hidden">
-    <Image src={logo} alt="Klasse Logo" width={collapsed ? 40 : 120} height={40} />
+    <Image src="/Logo Klasse.png" alt="Klasse Logo" width={collapsed ? 40 : 120} height={40} />
   </div>
 );
 
@@ -75,13 +54,29 @@ export default function PortalLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [active, setActive] = useState<MenuItemName>("Dashboard");
+  const pathname = usePathname(); // Initialize usePathname
+  const { userRole, isLoading: isLoadingRole } = useUserRole(); // Get user role
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [plan, setPlan] = useState<PlanTier | null>(null)
   const [userName, setUserName] = useState<string | null>(null)
   const [escolaNome, setEscolaNome] = useState<string | null>(null)
 
   const [collapsed, setCollapsed] = useState(false);
+  const [escolaIdState, setEscolaIdState] = useState<string | null>(null); // New state for escolaId
+
+  // Derive sidebar items based on user role
+  const navItems = useMemo(() => {
+    if (isLoadingRole || !userRole) return [];
+    const items = sidebarConfig[userRole] || [];
+    // Adjust href for admin/escola roles
+    if (userRole === "admin" && escolaIdState) {
+      return items.map(item => ({
+        ...item,
+        href: item.href.replace("[escolaId]", escolaIdState)
+      }));
+    }
+    return items;
+  }, [userRole, isLoadingRole, escolaIdState]);
 
   useEffect(() => {
     try {
@@ -109,8 +104,9 @@ export default function PortalLayout({
     ;(async () => {
       try {
         const { data: prof } = await supabase.from('profiles').select('escola_id').order('created_at', { ascending: false }).limit(1)
-        const escolaId = (prof?.[0] as any)?.escola_id as string | null
+        const escolaId = (prof?.[0] as { escola_id: string | null })?.escola_id
         if (!mounted || !escolaId) return
+        setEscolaIdState(escolaId); // Set the new state variable
 
         // Carrega nome e plano da escola via API (service role)
         try {
@@ -227,23 +223,32 @@ export default function PortalLayout({
             {/* Navegação */}
             <nav className="mt-2">
               <ul className="space-y-1 px-2">
-                {menuItems.map((item) => (
-                  <li key={item.name}>
-                    <button
-                      onClick={() => {
-                        setActive(item.name as MenuItemName);
-                      }}
-                      className={clsx(
-                        "group flex items-center gap-3 rounded-md px-2 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 w-full",
-                        { "bg-slate-100": active === item.name }
-                      )}
-                      title={item.name}
-                    >
-                      <item.icon className="h-5 w-5 shrink-0" />
-                      {!collapsed && <span className="truncate">{item.name}</span>}
-                    </button>
-                  </li>
-                ))}
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        className={clsx(
+                          "group flex items-center gap-3 rounded-md px-2 py-2 text-sm font-medium w-full",
+                          isActive
+                            ? "bg-moxinexa-teal text-white"
+                            : "text-slate-700 hover:bg-slate-100"
+                        )}
+                        title={item.label}
+                      >
+                        <Icon className={clsx("h-5 w-5 shrink-0", isActive ? "text-white" : "text-slate-500 group-hover:text-slate-700")} />
+                        {!collapsed && <span className="truncate">{item.label}</span>}
+                        {item.badge && !collapsed && (
+                          <span className="ml-auto px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                            {item.badge}
+                          </span>
+                        )}
+                      </Link>
+                    </li>
+                  );
+                })}
               </ul>
             </nav>
           </aside>
@@ -258,7 +263,7 @@ export default function PortalLayout({
               <div className="flex items-center justify-between bg-white rounded-2xl p-4 shadow-sm m-4">
                 <div className="flex items-center gap-4">
                   <h1 className="text-xl font-semibold text-moxinexa-dark">
-                    {active}
+                    {navItems.find(item => pathname === item.href || pathname.startsWith(item.href + "/"))?.label || "Dashboard"}
                   </h1>
                   {plan && (
                     <span className="text-[10px] uppercase px-2 py-1 rounded-full bg-gray-100 border text-gray-600">Plano: {PLAN_NAMES[plan]}</span>
