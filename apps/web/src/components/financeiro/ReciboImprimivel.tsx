@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import QRCode from "react-qr-code";
-import { Eye, Loader2 } from "lucide-react";
+import { Eye } from "lucide-react";
 
 const formatKz = (valor: number) =>
   new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA" }).format(
@@ -19,7 +19,6 @@ type ReciboImprimivelProps = {
 
 type ReciboPayload = {
   doc_id: string;
-  public_id: string;
   url_validacao: string | null;
 };
 
@@ -136,7 +135,6 @@ export function ReciboPrintButton({
 
       setRecibo({
         doc_id: json.doc_id,
-        public_id: json.public_id,
         url_validacao: json.url_validacao ?? null,
       });
       setPrintRequested(true);
@@ -156,12 +154,8 @@ export function ReciboPrintButton({
         disabled={loading}
         className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:brightness-95 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20 disabled:opacity-60"
       >
-        {loading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Eye className="h-4 w-4" />
-        )}
-        <span>Recibo</span>
+        <Eye className="h-4 w-4" />
+        <span>{loading ? "Emitindo..." : "Recibo"}</span>
       </button>
 
       {recibo ? (

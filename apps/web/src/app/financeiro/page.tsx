@@ -19,6 +19,7 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { GerarMensalidadesModal } from "@/components/financeiro/GerarMensalidadesModal";
 import { RegistrarPagamentoButton } from "@/components/financeiro/RegistrarPagamentoButton";
 import { ReciboPrintButton } from "@/components/financeiro/ReciboImprimivel";
+import { EstornarMensalidadeButton } from "@/components/financeiro/EstornarMensalidadeButton";
 import type { Database } from "~types/supabase";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { FinanceiroAlerts } from "@/components/financeiro/FinanceiroAlerts";
@@ -264,13 +265,16 @@ export default async function FinanceiroDashboardPage({
                             valor={mens.valor_previsto ?? (mens as any).valor ?? 0}
                           />
                         ) : (
-                          <ReciboPrintButton
-                            mensalidadeId={mens.id}
-                            escolaNome={escolaNome}
-                            alunoNome={alunoNome}
-                            valor={mens.valor_pago_total ?? mens.valor_previsto ?? (mens as any).valor ?? 0}
-                            dataPagamento={mens.data_pagamento_efetiva ?? new Date().toISOString()}
-                          />
+                          <div className="flex flex-wrap items-center justify-end gap-2">
+                            <ReciboPrintButton
+                              mensalidadeId={mens.id}
+                              escolaNome={escolaNome}
+                              alunoNome={alunoNome}
+                              valor={mens.valor_pago_total ?? mens.valor_previsto ?? (mens as any).valor ?? 0}
+                              dataPagamento={mens.data_pagamento_efetiva ?? new Date().toISOString()}
+                            />
+                            <EstornarMensalidadeButton mensalidadeId={mens.id} />
+                          </div>
                         )}
                       </td>
                     </tr>

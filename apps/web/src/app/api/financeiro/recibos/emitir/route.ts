@@ -11,7 +11,6 @@ const PayloadSchema = z.object({
 type ReciboResponse = {
   ok: true;
   doc_id: string;
-  public_id: string;
   url_validacao: string | null;
 };
 
@@ -78,7 +77,6 @@ export async function POST(req: NextRequest) {
     const response: ReciboResponse = {
       ok: true,
       doc_id: String((data as any).doc_id),
-      public_id: publicId,
       url_validacao: urlValidacao,
     };
 
