@@ -8,10 +8,10 @@ import { recordAuditServer } from "@/lib/audit";
 // DELETE OU POST (estamos usando POST na UI)
 export async function POST(
   req: Request,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = context.params;
+    const { id } = await context.params;
     const alunoId = id;
     if (!alunoId) {
       return NextResponse.json(
@@ -162,6 +162,6 @@ export async function POST(
   }
 }
 
-export async function DELETE(req: Request, context: { params: { id: string } }) {
+export async function DELETE(req: Request, context: { params: Promise<{ id: string }> }) {
   return POST(req, context);
 }

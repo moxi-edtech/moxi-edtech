@@ -10,14 +10,11 @@ import {
   BellIcon,
   MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline"; // Keep these
-import {
-  LayoutDashboard, Users, GraduationCap, Wallet, BookOpen, Settings, ChevronLeft,
-  User, Building2, TrendingUp, Files, Scale, Megaphone, CalendarDays, BarChart, FileText, BadgeDollarSign, School,
-} from "lucide-react"; // Add Lucide icons
+import * as Icons from "lucide-react";
 import clsx from "clsx";
 import { parsePlanTier, PLAN_NAMES, type PlanTier } from "@/config/plans";
 import { useUserRole } from "@/hooks/useUserRole"; // Import useUserRole
-import { sidebarConfig, type NavItem } from "@/lib/sidebarNav"; // Import sidebarConfig and NavItem
+import { sidebarConfig, type IconName } from "@/lib/sidebarNav"; // Import sidebarConfig and IconName
 
 import Image from "next/image";
 import { usePathname } from "next/navigation"; // Import usePathname
@@ -224,7 +221,7 @@ export default function PortalLayout({
             <nav className="mt-2">
               <ul className="space-y-1 px-2">
                 {navItems.map((item) => {
-                  const Icon = item.icon;
+                  const Icon = Icons[item.icon as IconName] ?? Icons.HelpCircle;
                   const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
                   return (
                     <li key={item.href}>

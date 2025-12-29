@@ -41,8 +41,9 @@ export const sidebarConfig: SidebarConfig = {
     { href: "/secretaria/relatorios", label: "Relatórios", icon: "BarChart" },
   ],
   financeiro: [
-    { href: "/financeiro/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
+    { href: "/financeiro", label: "Dashboard", icon: "LayoutDashboard" },
     { href: "/financeiro/mensalidades", label: "Mensalidades", icon: "Wallet" },
+    { href: "/financeiro/configuracoes/precos", label: "Tabelas de Preço", icon: "Table" },
     { href: "/financeiro/faturas", label: "Faturas", icon: "FileText" },
     { href: "/financeiro/cobrancas", label: "Cobranças", icon: "BadgeDollarSign" },
     { href: "/financeiro/plano-contas", label: "Plano de Contas", icon: "Scale" },

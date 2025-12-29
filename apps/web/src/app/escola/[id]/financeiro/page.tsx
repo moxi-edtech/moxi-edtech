@@ -15,7 +15,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     s.from('pagamentos').select('valor', { head: false }).eq('escola_id', escolaId).eq('status', 'pendente'),
     s.from('pagamentos').select('id', { count: 'exact', head: true }).eq('escola_id', escolaId),
     fetch(getAbsoluteUrl(`/api/escolas/${escolaId}/nome`), { cache: 'no-store' }).then(r => r.json()).catch(() => null),
-    fetch(getAbsoluteUrl(`/api/financeiro/dashboard?escolaId=${escolaId}`), { cache: 'no-store' }).then(r => r.json()).catch(() => null),
+    fetch(getAbsoluteUrl(`/api/financeiro?escolaId=${escolaId}`), { cache: 'no-store' }).then(r => r.json()).catch(() => null),
   ])
 
   const sum = (rows: any[] | null | undefined) => (rows || []).reduce((acc, r) => acc + Number(r.valor || 0), 0)
@@ -45,7 +45,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
               <p className="text-sm">{cursosPendentes} curso(s) desta escola precisam de uma tabela de preços para gerar propinas corretamente.</p>
             </div>
             <Link
-              href="/financeiro/tabelas-mensalidade"
+              href="configuracoes/precos"
               className="inline-flex items-center justify-center rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-amber-700"
             >
               Configurar preços agora

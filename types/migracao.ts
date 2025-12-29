@@ -106,3 +106,4 @@ export interface MappedColumns {
 
   // Opcional avançado
   profile_id?: string;
+  }

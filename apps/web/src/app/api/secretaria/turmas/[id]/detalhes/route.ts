@@ -3,7 +3,7 @@ import { supabaseServerTyped } from '@/lib/supabaseServer';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const supabase = await supabaseServerTyped();
     const { data: { user } } = await supabase.auth.getUser();
@@ -12,7 +12,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
     }
 
-    const turmaId = params.id;
+    const { id: turmaId } = await params;
     console.log('Fetching turma ID:', turmaId);
 
     // 1. Query principal da turma - simplificada primeiro

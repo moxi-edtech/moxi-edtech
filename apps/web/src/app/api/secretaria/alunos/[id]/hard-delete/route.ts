@@ -6,10 +6,10 @@ import { recordAuditServer } from "@/lib/audit";
 
 export async function POST(
   req: Request,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = context.params;
+    const { id } = await context.params;
     const alunoId = id;
     if (!alunoId) return NextResponse.json({ ok: false, error: "ID do aluno não fornecido" }, { status: 400 });
 
@@ -81,7 +81,6 @@ export async function POST(
   }
 }
 
-export async function DELETE(req: Request, context: { params: { id: string } }) {
+export async function DELETE(req: Request, context: { params: Promise<{ id: string }> }) {
   return POST(req, context);
 }
-

@@ -4,8 +4,8 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 import { recordAuditServer } from "@/lib/audit";
 
-export async function POST(req: Request, context: { params: { id: string; alunoId: string } }) {
-  const { id: escolaId, alunoId } = context.params;
+export async function POST(req: Request, context: { params: Promise<{ id: string; alunoId: string }> }) {
+  const { id: escolaId, alunoId } = await context.params;
   try {
     const body = await req.json().catch(() => ({} as any));
     const reason: string = (body?.reason as string | undefined)?.trim() || "Aluno arquivado (admin)";
@@ -58,4 +58,3 @@ export async function POST(req: Request, context: { params: { id: string; alunoI
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
-

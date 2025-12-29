@@ -38,18 +38,32 @@ export async function GET() {
       }
     } catch {}
 
-    // Status financeiro (placeholder baseado em mensalidades)
+    // Status financeiro (baseado em mensalidades do aluno)
     let status_financeiro: any = { emDia: true, pendentes: 0 };
     try {
-      if (matriculaId) {
-        const { data: mens } = await supabase
+      const { data: matriculaData, error: matriculaError } = await supabase
+        .from('matriculas')
+        .select('aluno_id')
+        .eq('id', matriculaId)
+        .single();
+
+      if (matriculaError) throw matriculaError;
+
+      if (matriculaData) {
+        const { data: mens, error: mensalidadesError } = await supabase
           .from('mensalidades')
           .select('status')
-          .eq('matricula_id', matriculaId);
+          .eq('aluno_id', matriculaData.aluno_id);
+
+        if (mensalidadesError) throw mensalidadesError;
+
         const pend = (mens || []).filter((m: any) => m.status === 'pendente' || m.status === 'atrasado').length;
         status_financeiro = { emDia: pend === 0, pendentes: pend };
       }
-    } catch {}
+    } catch (e) {
+      console.error('Erro ao buscar status financeiro:', e);
+      status_financeiro = { emDia: false, pendentes: 0, error: 'Falha ao carregar' };
+    }
 
     // Avisos recentes (até 3)
     let avisos_recentes: any[] = [];

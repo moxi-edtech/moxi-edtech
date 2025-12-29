@@ -33,6 +33,8 @@ export async function POST(
         tipo: 'tecnico', // Placeholder
         escola_id: escolaId,
         codigo: payload.presetKey,
+        curriculum_key: payload.presetKey,
+        course_code: payload.presetKey,
       })
       .select('id, nome')
       .single();

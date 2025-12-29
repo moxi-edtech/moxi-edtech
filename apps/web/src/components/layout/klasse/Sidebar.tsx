@@ -4,8 +4,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
 import { ChevronLeft } from "lucide-react";
+import * as Icons from "lucide-react";
 
-export type NavItem = { href: string; label: string; icon: any };
+export type NavItem = {
+  href: string;
+  label: string;
+  icon: keyof typeof Icons; // ✅ string válida do lucide
+  badge?: string;
+};
 
 function cn(...c: Array<string | false | null | undefined>) {
   return c.filter(Boolean).join(" ");
@@ -37,7 +43,6 @@ export default function Sidebar({ items }: { items: NavItem[] }) {
       {/* Header / Brand */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-slate-800/80">
         <Link href="/app" className="flex items-center gap-3 min-w-0">
-          {/* Placeholder do símbolo — troca depois por SVG real */}
           <div className="h-10 w-10 rounded-xl bg-klasse-gold/15 ring-1 ring-klasse-gold/30 flex items-center justify-center">
             <span className="text-klasse-gold font-semibold">K</span>
           </div>
@@ -66,7 +71,8 @@ export default function Sidebar({ items }: { items: NavItem[] }) {
       <nav className="px-2 py-3">
         <ul className="space-y-1">
           {sidebarItems.map((it) => {
-            const Icon = it.icon;
+            const Icon = (Icons as any)[it.icon] ?? Icons.HelpCircle;
+
             return (
               <li key={it.href}>
                 <Link
@@ -78,6 +84,7 @@ export default function Sidebar({ items }: { items: NavItem[] }) {
                       ? "bg-slate-900 text-white ring-1 ring-klasse-gold/25"
                       : "text-slate-200 hover:bg-slate-900/70 hover:text-white"
                   )}
+                  title={collapsed ? it.label : undefined}
                 >
                   <Icon
                     className={cn(
@@ -86,6 +93,12 @@ export default function Sidebar({ items }: { items: NavItem[] }) {
                     )}
                   />
                   {!collapsed && <span className="truncate">{it.label}</span>}
+
+                  {it.badge && !collapsed && (
+                    <span className="ml-auto rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-400">
+                      {it.badge}
+                    </span>
+                  )}
                 </Link>
               </li>
             );

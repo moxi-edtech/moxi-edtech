@@ -58,7 +58,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     // Links
     const origin = new URL(req.url).origin
     const boletoUrl = `${origin}/escola/${escolaId}/financeiro/boletos`
-    const dashboardUrl = `${origin}/escola/${escolaId}/financeiro/dashboards`
+    const dashboardUrl = `${origin}/escola/${escolaId}/financeiro`
 
     // Opcional: payload com valor/vencimento (se vier no body)
     let valor: string | null = null

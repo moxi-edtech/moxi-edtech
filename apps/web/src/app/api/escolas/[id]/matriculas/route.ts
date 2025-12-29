@@ -75,7 +75,7 @@ type ApiDatabase = {
 const querySchema = z
   .object({
     anoLetivoId: z.string().min(1, "anoLetivoId é obrigatório"),
-    classeId: z.string().min(1, "classeId é obrigatório"),
+    classeId: z.string().min(1).optional(),
     courseId: z.string().min(1).optional(),
     turmaId: z.string().min(1).optional(),
     scope: z.enum(["all", "pending", "turma"]).default("all"),
@@ -96,7 +96,7 @@ export async function GET(
     const searchParams = req.nextUrl.searchParams;
     const parsed = querySchema.safeParse({
       anoLetivoId: searchParams.get("anoLetivoId"),
-      classeId: searchParams.get("classeId"),
+      classeId: searchParams.get("classeId") || undefined,
       courseId: searchParams.get("courseId") || undefined,
       turmaId: searchParams.get("turmaId") || undefined,
       scope: (searchParams.get("scope") as "all" | "pending" | "turma" | null) ?? undefined,
@@ -132,9 +132,10 @@ export async function GET(
       )
       .eq("escola_id", escolaId)
       .eq("ano_letivo_id", anoLetivoId)
-      .eq("classe_id", classeId)
       .order("created_at", { ascending: false });
 
+    if (classeId) query = query.eq("classe_id", classeId)
+      
     if (courseId) query = query.eq("course_id", courseId);
 
     if (scope === "pending") {

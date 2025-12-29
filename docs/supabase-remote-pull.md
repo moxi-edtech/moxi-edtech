@@ -15,8 +15,8 @@ Supabase: Pull Remoto – Guia Rápido
     - `SKIP_TOGGLE`: se setado, não altera config.toml (avançado).
 
 - NPM scripts
-  - `npm run db:pull:remote`
-  - `npm run db:pull:remote:schemas` (usa `public,graphql_public`).
+  - `pnpm run db:pull:remote`
+  - `pnpm run db:pull:remote:schemas` (usa `public,graphql_public`).
 
 - O que o script faz
   - Verifica login e link do projeto.

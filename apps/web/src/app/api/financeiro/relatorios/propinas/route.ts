@@ -55,24 +55,7 @@ export async function GET(req: Request) {
 
     // 2) Ranking por turma (para tabela)
     const { data: porTurma, error: turmaError } = await supabase
-      .from("vw_financeiro_propinas_por_turma")
-      .select(
-        `
-        escola_id,
-        ano_letivo,
-        turma_id,
-        turma_nome,
-        classe_label,
-        turno,
-        qtd_mensalidades,
-        qtd_em_atraso,
-        total_previsto,
-        total_pago,
-        total_em_atraso,
-        inadimplencia_pct
-      `
-      )
-      .eq("ano_letivo", anoLetivo)
+      .rpc("get_propinas_por_turma", { p_ano_letivo: anoLetivo })
       .order("inadimplencia_pct", { ascending: false })
       .order("total_em_atraso", { ascending: false });
 

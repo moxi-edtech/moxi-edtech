@@ -4,7 +4,7 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { resolveEscolaIdForUser, authorizeMatriculasManage } from "@/lib/escola/disciplinas";
 import { tryCanonicalFetch } from "@/lib/api/proxyCanonical";
 
-export async function GET(req: Request, context: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, context: { params: Promise<{ matriculaId: string }> }) {
   try {
     const supabase = await supabaseServerTyped<any>();
     const headers = new Headers();
@@ -12,7 +12,7 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
     const user = userRes?.user;
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
 
-    const { id: matricula_id } = await context.params;
+    const { matriculaId: matricula_id } = await context.params;
 
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 });
@@ -23,7 +23,7 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
     headers.set('Deprecation', 'true');
     headers.set('Link', `</api/escolas/${escolaId}/matriculas>; rel="successor-version"`);
 
-    const forwarded = await tryCanonicalFetch(req, `/api/escolas/${escolaId}/matriculas/${matricula_id}/frequencia`);
+    const forwarded = await tryCanonicalFetch(req, `/api/escolas/${escolaId}/matriculas/${matricula_id}/declaracao`);
     if (forwarded) return forwarded;
 
     const { data: matricula, error } = await supabase
@@ -42,12 +42,6 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
       return NextResponse.json({ ok: false, error: 'Matrícula não encontrada' }, { status: 404, headers });
     }
 
-    const { data: frequencias } = await supabase
-      .from('frequencias')
-      .select('*')
-      .eq('matricula_id', matricula_id)
-      .order('data', { ascending: false });
-
     const pdfDoc = await PDFDocument.create();
     const page = pdfDoc.addPage();
     const { width, height } = page.getSize();
@@ -65,39 +59,22 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
     };
 
     drawText(matricula.escolas.nome, 50, height - 50, 18, true);
-    drawText("Declaração de Frequência", 50, height - 100, 16, true);
+    drawText("Declaração de Matrícula", 50, height - 100, 16, true);
 
-    let textY = height - 150;
+    const textY = height - 150;
     drawText(`Declaramos, para os devidos fins, que o(a) aluno(a) ${matricula.alunos.nome},`, 50, textY);
-    drawText(`matriculado(a) na ${matricula.turmas.classe}ª classe, turma ${matricula.turmas.nome},`, 50, textY - 20);
-    drawText(`no ano letivo de ${matricula.turmas.school_sessions.nome}, tem o seguinte registo de frequência:`, 50, textY - 40);
-
-    textY -= 80;
-    drawText("Data", 50, textY, 12, true);
-    drawText("Status", 200, textY, 12, true);
-
-    textY -= 20;
-    for (const freq of frequencias || []) {
-      drawText(new Date(freq.data).toLocaleDateString('pt-BR'), 50, textY);
-      drawText(freq.status, 200, textY);
-      textY -= 20;
-      if (textY < 50) {
-        // Add a new page if the content overflows
-        const newPage = pdfDoc.addPage();
-        page.moveTo(50, height - 50);
-        textY = height - 50;
-      }
-    }
+    drawText(`está regularmente matriculado(a) na ${matricula.turmas.classe}ª classe, turma ${matricula.turmas.nome},`, 50, textY - 20);
+    drawText(`no ano letivo de ${matricula.turmas.school_sessions.nome}.`, 50, textY - 40);
 
     const date = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-    drawText(`Luanda, ${date}.`, 50, textY - 50);
+    drawText(`Luanda, ${date}.`, 50, textY - 100);
 
     const pdfBytes = await pdfDoc.save();
     const buffer = Buffer.from(pdfBytes); // Convert Uint8Array to Node.js Buffer
     const blob = new Blob([buffer], { type: 'application/pdf' });
 
     headers.set('Content-Type', 'application/pdf');
-    headers.set('Content-Disposition', `attachment; filename="declaracao_frequencia_${matricula.alunos.nome}.pdf"`);
+    headers.set('Content-Disposition', `attachment; filename="declaracao_matricula_${matricula.alunos.nome}.pdf"`);
     return new NextResponse(blob, { headers });
 
   } catch (e) {

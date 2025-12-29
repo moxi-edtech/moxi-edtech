@@ -1,14 +1,22 @@
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabaseServer";
+import { supabaseServerTyped } from "@/lib/supabaseServer";
 
 // Radar de Inadimplência
 // Usa a view materializada vw_radar_inadimplencia que já consolida dados.
 export async function GET() {
   try {
-    const s = await supabaseServer();
+    const s = await supabaseServerTyped();
+    const { data: { user } } = await s.auth.getUser();
 
-    // Apenas alunos que ainda existem (sem soft delete) e com aluno_id válido.
-    // Usamos inner join com 'alunos' para garantir existência e filtramos deleted_at IS NULL.
+    if (!user) {
+      return NextResponse.json(
+        { ok: false, error: "Não autenticado" },
+        { status: 401 }
+      );
+    }
+    
+    // A view vw_radar_inadimplencia já filtra por `escola_id = current_tenant_escola_id()`
+    // Apenas precisamos garantir que a chamada é autenticada.
     const { data, error } = await s
       .from("vw_radar_inadimplencia")
       .select(

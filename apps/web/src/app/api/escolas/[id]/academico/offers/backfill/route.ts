@@ -63,9 +63,9 @@ async function authorize(escolaId: string) {
 // das disciplinas existentes e cria cursos_oferta ausentes para todos os semestres.
 export async function POST(
   _req: NextRequest,
-  context: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: escolaId } = context.params;
+  const { id: escolaId } = await params;
   try {
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return NextResponse.json({ ok: false, error: "Configuração Supabase ausente." }, { status: 500 });

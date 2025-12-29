@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('API /api/financeiro/dashboard', () => {
+test.describe('API /api/financeiro', () => {
   test('should return the correct financial summary structure', async ({ request }) => {
-    const response = await request.get('/api/financeiro/dashboard');
+    const response = await request.get('/api/financeiro');
     
     expect(response.ok()).toBeTruthy();
     

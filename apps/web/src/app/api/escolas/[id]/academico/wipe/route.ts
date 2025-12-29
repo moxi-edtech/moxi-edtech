@@ -26,12 +26,11 @@ const schema = z.object({
 
 type Counts = Partial<Record<z.infer<typeof IncludeEnum>, number>>;
 
-// 🔹 Ajuste 1: params NÃO é Promise em route handlers.
 export async function POST(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { id: escolaId } = context.params;
+  const { id: escolaId } = await context.params;
 
   try {
     const parsed = schema.safeParse(await req.json());

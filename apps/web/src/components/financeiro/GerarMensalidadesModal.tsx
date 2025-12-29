@@ -59,7 +59,7 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors shadow-sm"
+        className="bg-klasse-gold-400 text-white hover:brightness-95 focus:ring-4 focus:ring-klasse-gold-400/20 px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 transition-all shadow-sm"
       >
         <Calendar className="w-4 h-4" />
         Gerar Cobranças
@@ -69,30 +69,30 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 relative">
-        <h2 className="text-lg font-bold text-gray-900 mb-1">Gerar Mensalidades em Lote</h2>
-        <p className="text-sm text-gray-500 mb-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 relative">
+        <h2 className="text-lg font-bold text-slate-900 mb-1">Gerar Mensalidades em Lote</h2>
+        <p className="text-sm text-slate-500 mb-4">
           O sistema buscará alunos ativos e gerará a cobrança automaticamente (processo idempotente).
         </p>
 
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase">Ano</label>
+            <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase">Ano</label>
             <input
               type="number"
               value={ano}
               onChange={(e) => setAno(Number(e.target.value))}
-              className="w-full border rounded-md p-2 text-sm"
+              className="w-full border-slate-300 border rounded-xl p-2 text-sm focus:ring-4 focus:ring-klasse-gold-400/20 focus:border-klasse-gold-400"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase">
+            <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase">
               Mês referência
             </label>
             <select
               value={mes}
               onChange={(e) => setMes(Number(e.target.value))}
-              className="w-full border rounded-md p-2 text-sm bg-white"
+              className="w-full border-slate-300 border rounded-xl p-2 text-sm bg-white focus:ring-4 focus:ring-klasse-gold-400/20 focus:border-klasse-gold-400"
             >
               {[...Array(12)].map((_, i) => (
                 <option key={i} value={i + 1}>
@@ -104,12 +104,12 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
         </div>
 
         {status === "success" && (
-          <div className="mb-4 p-3 bg-green-50 text-green-700 rounded-md text-sm flex items-center gap-2">
+          <div className="mb-4 p-3 bg-green-50 text-green-700 rounded-xl text-sm flex items-center gap-2">
             <CheckCircle className="w-4 h-4" /> {msg}
           </div>
         )}
         {status === "error" && (
-          <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-md text-sm flex items-center gap-2">
+          <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-xl text-sm flex items-center gap-2">
             <AlertCircle className="w-4 h-4" /> {msg}
           </div>
         )}
@@ -118,14 +118,14 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
           <button
             onClick={() => setIsOpen(false)}
             disabled={loading}
-            className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md"
+            className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-xl"
           >
             Cancelar
           </button>
           <button
             onClick={handleGerar}
             disabled={loading || status === "success"}
-            className="bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 disabled:opacity-50"
+            className="bg-klasse-gold-400 hover:brightness-95 text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 disabled:opacity-50"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmar geração"}
           </button>

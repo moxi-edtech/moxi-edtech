@@ -1,15 +1,26 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { 
-  Loader2, Search, Filter, Download, UserPlus, ArrowLeft, 
-  Users, BookOpen, BarChart3, RefreshCw, ArrowUpDown, FileText,
-  UserCheck, MoreVertical, CheckCircle2, XCircle
+import {
+  Loader2,
+  Search,
+  Download,
+  UserPlus,
+  ArrowLeft,
+  Users,
+  BookOpen,
+  BarChart3,
+  RefreshCw,
+  ArrowUpDown,
+  FileText,
+  UserCheck,
+  MoreVertical,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 
-// Importa os modais (Assumindo que estão na mesma pasta)
 import StatusForm from "./StatusForm";
 import TransferForm from "./TransferForm";
 
@@ -30,16 +41,43 @@ type Item = {
   created_at: string;
 };
 
-// --- MICRO-COMPONENTES UI ---
-function KpiCard({ title, value, icon: Icon, colorClass, bgClass }: any) {
+function cn(...c: Array<string | false | null | undefined>) {
+  return c.filter(Boolean).join(" ");
+}
+
+// --- MICRO UI (KLASSE) ---
+function KpiCard({
+  title,
+  value,
+  icon: Icon,
+  tone = "slate",
+}: {
+  title: string;
+  value: number | string;
+  icon: React.ElementType;
+  tone?: "slate" | "emerald" | "amber" | "violet";
+}) {
+  const tones: Record<string, { iconWrap: string; iconColor: string }> = {
+    slate: { iconWrap: "bg-slate-100", iconColor: "text-slate-700" },
+    emerald: { iconWrap: "bg-emerald-100/50", iconColor: "text-emerald-700" },
+    amber: { iconWrap: "bg-amber-100/50", iconColor: "text-amber-700" },
+    violet: { iconWrap: "bg-violet-100/50", iconColor: "text-violet-700" },
+  };
+
+  const t = tones[tone] ?? tones.slate;
+
   return (
-    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-start justify-between hover:shadow-md transition-all">
-      <div>
-        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{title}</p>
-        <p className="text-2xl font-black text-slate-800 mt-1">{value}</p>
-      </div>
-      <div className={`p-3 rounded-xl ${bgClass} ${colorClass}`}>
-        <Icon className="h-5 w-5" />
+    <div className="rounded-xl bg-white p-5 ring-1 ring-slate-200 shadow-sm transition hover:shadow-md">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-400 truncate">
+            {title}
+          </p>
+          <p className="mt-1 text-2xl font-black text-slate-900">{value}</p>
+        </div>
+        <div className={cn("rounded-xl p-3 ring-1 ring-slate-200", t.iconWrap)}>
+          <Icon className={cn("h-5 w-5", t.iconColor)} />
+        </div>
       </div>
     </div>
   );
@@ -47,36 +85,56 @@ function KpiCard({ title, value, icon: Icon, colorClass, bgClass }: any) {
 
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    ativa: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    pendente: "bg-amber-50 text-amber-700 border-amber-200",
-    cancelada: "bg-rose-50 text-rose-700 border-rose-200",
-    transferida: "bg-blue-50 text-blue-700 border-blue-200",
+    ativa: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/70",
+    pendente: "bg-amber-50 text-amber-700 ring-1 ring-amber-200/70",
+    cancelada: "bg-red-50 text-red-700 ring-1 ring-red-200/70",
+    transferida: "bg-sky-50 text-sky-700 ring-1 ring-sky-200/70",
   };
-  
-  const style = styles[status.toLowerCase()] || "bg-slate-50 text-slate-600 border-slate-200";
+
+  const key = (status || "").toLowerCase();
+  const style = styles[key] ?? "bg-slate-50 text-slate-700 ring-1 ring-slate-200/70";
 
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${style} capitalize`}>
-      {status === 'ativa' && <CheckCircle2 className="w-3 h-3 mr-1"/>}
-      {status === 'cancelada' && <XCircle className="w-3 h-3 mr-1"/>}
+    <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold capitalize", style)}>
+      {key === "ativa" && <CheckCircle2 className="h-3.5 w-3.5" />}
+      {key === "cancelada" && <XCircle className="h-3.5 w-3.5" />}
       {status}
     </span>
   );
 }
 
-// --- COMPONENTE PRINCIPAL ---
+function ToolbarButton({
+  href,
+  label,
+}: {
+  href: string;
+  label: string;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      className="inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-bold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
+      rel="noreferrer"
+    >
+      <Download className="h-4 w-4 text-slate-500" />
+      {label}
+    </a>
+  );
+}
 
+// --- COMPONENTE PRINCIPAL ---
 export default function MatriculasListClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  
+
   // Filtros URL
-  const turmaIdFromQuery = searchParams.get('turma_id');
-  const statusFromQuery = searchParams.get('status');
-  const statusInFromQuery = searchParams.get('status_in');
+  const turmaIdFromQuery = searchParams.get("turma_id");
+  const statusFromQuery = searchParams.get("status");
+  const statusInFromQuery = searchParams.get("status_in");
   const statusFilters = useMemo(() => {
-    if (statusInFromQuery) return statusInFromQuery.split(',').map(s => s.trim()).filter(Boolean);
+    if (statusInFromQuery) return statusInFromQuery.split(",").map((s) => s.trim()).filter(Boolean);
     if (statusFromQuery) return [statusFromQuery];
     return [] as string[];
   }, [statusFromQuery, statusInFromQuery]);
@@ -100,7 +158,7 @@ export default function MatriculasListClient() {
   const [turmas, setTurmas] = useState<any[]>([]);
   const [selectedTurma, setSelectedTurma] = useState<string>("");
   const [showPendentes, setShowPendentes] = useState<boolean>(false);
-  
+
   // Modais
   const [showStatusForm, setShowStatusForm] = useState(false);
   const [showTransferForm, setShowTransferForm] = useState(false);
@@ -108,20 +166,47 @@ export default function MatriculasListClient() {
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  // --- LÓGICA ---
-  
+  const sessionSelecionada = useMemo(() => sessions.find((s) => s.id === selectedSession), [sessions, selectedSession]);
+
+  const extrairAnoLetivo = (valor?: string | number | null) => {
+    if (valor === null || valor === undefined) return null;
+    if (typeof valor === "number" && Number.isFinite(valor)) return valor;
+    const texto = String(valor);
+    const match = texto.match(/(19|20)\d{2}/);
+    return match ? Number(match[0]) : null;
+  };
+
+  const anoLetivoAtivo = useMemo(() => {
+    const candidatos = [
+      (sessionSelecionada as any)?.ano_letivo,
+      (sessionSelecionada as any)?.nome,
+      (sessionSelecionada as any)?.data_inicio,
+      (sessionSelecionada as any)?.data_fim,
+    ];
+
+    for (const candidato of candidatos) {
+      const ano = extrairAnoLetivo(candidato);
+      if (ano) return ano;
+    }
+    return new Date().getFullYear();
+  }, [sessionSelecionada]);
+
+  // --- LÓGICA (INTACTA) ---
   async function fetchSessions() {
     try {
       const res = await fetch("/api/secretaria/school-sessions");
       const json = await res.json();
       if (json.ok) {
-        setSessions(json.items);
-        const activeSession = json.items.find((s: any) => s.status === 'ativa');
-        if (activeSession) {
-          setSelectedSession(activeSession.id);
-        } else if (json.items.length > 0) {
-          setSelectedSession(json.items[0].id);
-        }
+        const sessionItems = Array.isArray(json.data)
+          ? json.data
+          : Array.isArray(json.items)
+            ? json.items
+            : [];
+
+        setSessions(sessionItems);
+        const activeSession = sessionItems.find((s: any) => s.status === "ativa");
+        if (activeSession) setSelectedSession(activeSession.id);
+        else if (sessionItems.length > 0) setSelectedSession(sessionItems[0].id);
       }
     } catch (error) {
       console.error("Failed to fetch sessions", error);
@@ -132,9 +217,7 @@ export default function MatriculasListClient() {
     try {
       const res = await fetch("/api/secretaria/cursos");
       const json = await res.json();
-      if (json.ok) {
-        setCursos(json.items);
-      }
+      if (json.ok) setCursos(Array.isArray(json.items) ? json.items : []);
     } catch (error) {
       console.error("Failed to fetch cursos", error);
     }
@@ -155,9 +238,7 @@ export default function MatriculasListClient() {
       try {
         const res = await fetch(`/api/secretaria/classes?curso_id=${selectedCurso}`);
         const json = await res.json();
-        if (json.ok) {
-          setClasses(json.items);
-        }
+        if (json.ok) setClasses(Array.isArray(json.items) ? json.items : []);
       } catch (error) {
         console.error("Failed to fetch classes", error);
       }
@@ -173,11 +254,11 @@ export default function MatriculasListClient() {
         return;
       }
       try {
-        const res = await fetch(`/api/secretaria/turmas-simples?classe_id=${selectedClasse}&session_id=${selectedSession}`);
+        const res = await fetch(
+          `/api/secretaria/turmas-simples?classe_id=${selectedClasse}&session_id=${selectedSession}`
+        );
         const json = await res.json();
-        if (json.ok) {
-          setTurmas(json.items);
-        }
+        if (json.ok) setTurmas(Array.isArray(json.items) ? json.items : []);
       } catch (error) {
         console.error("Failed to fetch turmas", error);
       }
@@ -188,30 +269,34 @@ export default function MatriculasListClient() {
   const replaceParams = (fn: (p: URLSearchParams) => void) => {
     const p = new URLSearchParams(Array.from(searchParams.entries()));
     fn(p);
-    const q = p.toString();
-    router.replace(q ? `${pathname}?${q}` : pathname);
+    const qs = p.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname);
   };
 
   const handleRemoveStatus = (s: string) => {
     replaceParams((p) => {
-      const currentIn = p.get('status_in');
-      const current = p.get('status');
+      const currentIn = p.get("status_in");
+      const current = p.get("status");
       if (currentIn) {
-        const arr = currentIn.split(',').map(v => v.trim()).filter(Boolean).filter(v => v !== s);
-        if (arr.length > 0) p.set('status_in', arr.join(','));
-        else p.delete('status_in');
+        const arr = currentIn
+          .split(",")
+          .map((v) => v.trim())
+          .filter(Boolean)
+          .filter((v) => v !== s);
+        if (arr.length > 0) p.set("status_in", arr.join(","));
+        else p.delete("status_in");
       } else if (current === s) {
-        p.delete('status');
+        p.delete("status");
       }
-      p.delete('page');
+      p.delete("page");
     });
   };
 
   const handleClearStatuses = () => {
     replaceParams((p) => {
-      p.delete('status');
-      p.delete('status_in');
-      p.delete('page');
+      p.delete("status");
+      p.delete("status_in");
+      p.delete("page");
     });
   };
 
@@ -222,44 +307,66 @@ export default function MatriculasListClient() {
     }
     setLoading(true);
     try {
-      const params = new URLSearchParams({ 
-        q, 
-        session_id: selectedSession, 
-        page: String(p), 
-        pageSize: String(pageSize) 
+      const params = new URLSearchParams({
+        q,
+        session_id: selectedSession,
+        page: String(p),
+        pageSize: String(pageSize),
       });
-      if (selectedTurma) params.set('turma_id', selectedTurma);
-      else if (showPendentes) params.set('turma_id', 'null');
-      
-      if (selectedClasse) params.set('classe_id', selectedClasse);
-      if (selectedCurso) params.set('curso_id', selectedCurso);
-      if (selectedEnsino) params.set('ensino', selectedEnsino);
 
-      if (statusFromQuery) params.set('status', statusFromQuery);
-      if (statusInFromQuery) params.set('status_in', statusInFromQuery);
-      
-      const res = await fetch(`/api/secretaria/matriculas?${params.toString()}`, { cache: 'no-store' });
+      if (anoLetivoAtivo) params.set("ano", String(anoLetivoAtivo));
+
+      if (selectedTurma) params.set("turma_id", selectedTurma);
+      else if (showPendentes) params.set("turma_id", "null");
+
+      if (selectedClasse) params.set("classe_id", selectedClasse);
+      if (selectedCurso) params.set("curso_id", selectedCurso);
+      if (selectedEnsino) params.set("ensino", selectedEnsino);
+
+      if (statusFromQuery) params.set("status", statusFromQuery);
+      if (statusInFromQuery) params.set("status_in", statusInFromQuery);
+
+      const res = await fetch(`/api/secretaria/matriculas?${params.toString()}`, { cache: "no-store" });
       const json = await res.json();
-      if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao carregar matrículas');
-      
-      setItems(json.items || []);
+      if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao carregar matrículas");
+
+      setItems(Array.isArray(json.items) ? json.items : []);
       setTotal(json.total || 0);
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => { load(1); setPage(1); }, [q, selectedSession, selectedTurma, selectedClasse, selectedCurso, selectedEnsino, showPendentes, statusFromQuery, statusInFromQuery]);
-  useEffect(() => { load(page); }, [page]);
+  useEffect(() => {
+    load(1);
+    setPage(1);
+  }, [
+    q,
+    selectedSession,
+    selectedTurma,
+    selectedClasse,
+    selectedCurso,
+    selectedEnsino,
+    showPendentes,
+    statusFromQuery,
+    statusInFromQuery,
+  ]);
+  useEffect(() => {
+    load(page);
+  }, [page]);
 
-  // Métricas
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    items.forEach(item => { counts[item.status] = (counts[item.status] || 0) + 1; });
+    items.forEach((item) => {
+      counts[item.status] = (counts[item.status] || 0) + 1;
+    });
     return counts;
   }, [items]);
 
-  const turmasUnicas = useMemo(() => new Set(items.map(item => item.turma_nome).filter(Boolean)), [items]);
+  const turmasUnicas = useMemo(
+    () => new Set(items.map((item) => item.turma_nome).filter(Boolean)),
+    [items]
+  );
 
   const handleOpenStatusForm = (matricula: Item) => {
     setSelectedMatricula(matricula);
@@ -274,158 +381,240 @@ export default function MatriculasListClient() {
   // --- RENDER ---
   return (
     <div className="w-full max-w-7xl mx-auto p-6 space-y-8 pb-20">
-      
-      {/* 1. HEADER & AÇÕES */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <button 
+      {/* Header */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="min-w-0">
+          <button
             onClick={() => router.back()}
-            className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors mb-2"
+            className="mb-2 inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-slate-700"
           >
-            <ArrowLeft size={14}/> Voltar
+            <ArrowLeft className="h-4 w-4" />
+            Voltar
           </button>
+
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Gestão de Matrículas</h1>
           <p className="text-sm font-medium text-slate-500">Administre o estado e turmas dos alunos.</p>
         </div>
-        
-        <Link 
+
+        <Link
           href="/secretaria/matriculas/nova"
-          className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 shadow-lg shadow-slate-900/20 transition hover:-translate-y-0.5"
+          className={cn(
+            "inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold",
+            "bg-klasse-gold text-white hover:brightness-95",
+            "focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+          )}
         >
-          <UserPlus size={18} />
+          <UserPlus className="h-4 w-4" />
           Nova Matrícula
         </Link>
       </div>
 
-      {/* 2. KPIS */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard title="Total Matrículas" value={total} icon={Users} colorClass="text-blue-600" bgClass="bg-blue-50" />
-        <KpiCard title="Matrículas Ativas" value={statusCounts['ativa'] || 0} icon={UserCheck} colorClass="text-emerald-600" bgClass="bg-emerald-50" />
-        <KpiCard title="Turmas Envolvidas" value={turmasUnicas.size} icon={BookOpen} colorClass="text-purple-600" bgClass="bg-purple-50" />
-        <KpiCard title="Status Diferentes" value={Object.keys(statusCounts).length} icon={BarChart3} colorClass="text-orange-600" bgClass="bg-orange-50" />
+      {/* KPIs */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard title="Total Matrículas" value={total} icon={Users} tone="slate" />
+        <KpiCard title="Matrículas Ativas" value={statusCounts["ativa"] || 0} icon={UserCheck} tone="emerald" />
+        <KpiCard title="Turmas Envolvidas" value={turmasUnicas.size} icon={BookOpen} tone="violet" />
+        <KpiCard title="Status Diferentes" value={Object.keys(statusCounts).length} icon={BarChart3} tone="amber" />
       </div>
 
-      {/* 3. CONTEÚDO PRINCIPAL */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-        
+      {/* Card Principal */}
+      <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
         {/* Toolbar */}
-        <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex flex-col xl:flex-row gap-4 justify-between items-start xl:items-center">
-          
-          {/* Search & Filters */}
-          <div className="flex flex-col sm:flex-row gap-3 w-full xl:w-auto">
+        <div className="flex flex-col gap-4 border-b border-slate-100 bg-slate-50/50 p-5 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex w-full flex-col gap-3 sm:flex-row xl:w-auto">
+            {/* Search */}
             <div className="relative w-full sm:max-w-xs">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <input 
-                type="text" 
-                placeholder="Buscar por nome, BI..." 
-                value={q} 
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Buscar por nome, BI..."
+                value={q}
                 onChange={(e) => setQ(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-shadow"
+                className={cn(
+                  "w-full rounded-xl border border-slate-200 bg-white py-2 pl-10 pr-4 text-sm outline-none",
+                  "focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+                )}
               />
             </div>
-            
-            <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0">
-              <select
-                value={selectedSession}
-                onChange={(e) => setSelectedSession(e.target.value)}
-                className="w-full sm:w-auto px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-shadow"
-              >
-                {sessions.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.nome}
-                  </option>
-                ))}
-              </select>
-            </div>
+
+            {/* Session */}
+            <select
+              value={selectedSession}
+              onChange={(e) => setSelectedSession(e.target.value)}
+              className={cn(
+                "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none sm:w-auto",
+                "focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+              )}
+            >
+              {sessions.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nome}
+                </option>
+              ))}
+            </select>
           </div>
 
-          {/* Export Actions */}
+          {/* Exports */}
           <div className="flex gap-2">
-            <a href={`/secretaria/matriculas/export?format=csv&session_id=${selectedSession}&q=${q}`} target="_blank" className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 transition">
-              <Download className="h-3 w-3" /> CSV
-            </a>
-            <a href={`/secretaria/matriculas/export?format=json&session_id=${selectedSession}&q=${q}`} target="_blank" className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50 transition">
-              <Download className="h-3 w-3" /> JSON
-            </a>
+            <ToolbarButton
+              href={`/secretaria/matriculas/export?format=csv&session_id=${selectedSession}&ano=${anoLetivoAtivo}&q=${q}`}
+              label="CSV"
+            />
+            <ToolbarButton
+              href={`/secretaria/matriculas/export?format=json&session_id=${selectedSession}&ano=${anoLetivoAtivo}&q=${q}`}
+              label="JSON"
+            />
           </div>
         </div>
 
-        {/* CASCADING FILTERS */}
-        <div className="p-5 border-b border-slate-100 flex flex-wrap items-center gap-3 bg-slate-50/50">
-            <select value={selectedEnsino} onChange={e => setSelectedEnsino(e.target.value)} className="w-full sm:w-auto px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-shadow">
-                <option value="">Ensino/Nível</option>
-                <option value="primario">Ensino Primário</option>
-                <option value="ciclo1">I Ciclo</option>
-                <option value="ciclo2">II Ciclo</option>
-            </select>
-            <select value={selectedCurso} onChange={e => setSelectedCurso(e.target.value)} className="w-full sm:w-auto px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-shadow">
-                <option value="">Curso</option>
-                {cursos.map(curso => (
-                    <option key={curso.id} value={curso.id}>{curso.nome}</option>
-                ))}
-            </select>
-            <select value={selectedClasse} onChange={e => setSelectedClasse(e.target.value)} className="w-full sm:w-auto px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-shadow">
-                <option value="">Classe</option>
-                {classes.map(classe => (
-                    <option key={classe.id} value={classe.id}>{classe.nome}</option>
-                ))}
-            </select>
-            <select value={selectedTurma} onChange={e => setSelectedTurma(e.target.value)} className="w-full sm:w-auto px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-shadow">
-                <option value="">Turma</option>
-                {turmas.map(turma => (
-                    <option key={turma.id} value={turma.id}>{turma.nome}</option>
-                ))}
-            </select>
-            <div className="flex items-center">
-                <input type="checkbox" id="pendentes" checked={showPendentes} onChange={e => setShowPendentes(e.target.checked)} className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"/>
-                <label htmlFor="pendentes" className="ml-2 text-sm font-medium text-slate-700">Pendentes de Enturmação</label>
-            </div>
+        {/* Cascading Filters */}
+        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 bg-slate-50/50 p-5">
+          <select
+            value={selectedEnsino}
+            onChange={(e) => setSelectedEnsino(e.target.value)}
+            className={cn(
+              "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none sm:w-auto",
+              "focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+            )}
+          >
+            <option value="">Ensino/Nível</option>
+            <option value="primario">Ensino Primário</option>
+            <option value="ciclo1">I Ciclo</option>
+            <option value="ciclo2">II Ciclo</option>
+          </select>
+
+          <select
+            value={selectedCurso}
+            onChange={(e) => setSelectedCurso(e.target.value)}
+            className={cn(
+              "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none sm:w-auto",
+              "focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+            )}
+          >
+            <option value="">Curso</option>
+            {cursos.map((curso) => (
+              <option key={curso.id} value={curso.id}>
+                {curso.nome}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={selectedClasse}
+            onChange={(e) => setSelectedClasse(e.target.value)}
+            className={cn(
+              "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none sm:w-auto",
+              "focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+            )}
+          >
+            <option value="">Classe</option>
+            {classes.map((classe) => (
+              <option key={classe.id} value={classe.id}>
+                {classe.nome}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={selectedTurma}
+            onChange={(e) => setSelectedTurma(e.target.value)}
+            className={cn(
+              "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none sm:w-auto",
+              "focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+            )}
+          >
+            <option value="">Turma</option>
+            {turmas.map((turma) => (
+              <option key={turma.id} value={turma.id}>
+                {turma.nome}
+              </option>
+            ))}
+          </select>
+
+          <label className="inline-flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={showPendentes}
+              onChange={(e) => setShowPendentes(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+            />
+            <span className="text-sm font-medium text-slate-700">Pendentes de Enturmação</span>
+          </label>
         </div>
-        
-        {/* Tags de Filtros Ativos */}
+
+        {/* Active Filter Tags */}
         {(statusFilters.length > 0 || turmaIdFromQuery) && (
-          <div className="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center gap-2">
-            <span className="text-xs font-bold text-slate-400 uppercase mr-2">Filtros:</span>
+          <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-5 py-3">
+            <span className="mr-2 text-xs font-bold uppercase text-slate-400">Filtros:</span>
+
             {turmaIdFromQuery && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-violet-50 text-violet-700 text-xs font-bold border border-violet-100">
-                Turma: {items[0]?.turma_nome || turmaIdFromQuery}
-                <button onClick={() => replaceParams(p => { p.delete('turma_id'); p.delete('page'); })} className="hover:text-violet-900 ml-1">×</button>
+              <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2.5 py-1 text-xs font-bold text-violet-700 ring-1 ring-violet-200/70">
+                <span className="truncate max-w-[200px]">Turma: {items[0]?.turma_nome || turmaIdFromQuery}</span>
+                <button
+                  onClick={() => replaceParams((p) => { p.delete("turma_id"); p.delete("page"); })}
+                  className="ml-1 hover:text-violet-900"
+                >
+                  ×
+                </button>
               </span>
             )}
+
             {statusFilters.map((s) => (
-              <span key={s} className="inline-flex items-center gap-1 px-2 py-1 rounded bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">
-                Status: {s}
-                <button onClick={() => handleRemoveStatus(s)} className="hover:text-blue-900 ml-1">×</button>
+              <span
+                key={s}
+                className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-1 text-xs font-bold text-sky-700 ring-1 ring-sky-200/70"
+              >
+                <span className="truncate max-w-[200px]">Status: {s}</span>
+                <button onClick={() => handleRemoveStatus(s)} className="ml-1 hover:text-sky-900">
+                  ×
+                </button>
               </span>
             ))}
-            <button onClick={handleClearStatuses} className="text-xs text-slate-400 hover:text-red-500 hover:underline ml-2">Limpar tudo</button>
+
+            <button
+              onClick={handleClearStatuses}
+              className="ml-2 text-xs font-semibold text-slate-400 hover:text-red-600"
+            >
+              Limpar tudo
+            </button>
           </div>
         )}
 
-        {/* Tabela */}
+        {/* Table */}
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-100">
             <thead className="bg-white">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Matrícula</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Aluno</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Turma</th>
-                <th className="px-6 py-4 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-4 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">Ações</th>
+                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Matrícula
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Aluno
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Turma
+                </th>
+                <th className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Status
+                </th>
+                <th className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Ações
+                </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-slate-50">
+
+            <tbody className="divide-y divide-slate-50 bg-white">
               {loading ? (
                 <tr>
                   <td colSpan={5} className="p-12 text-center text-slate-500">
-                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-teal-600" />
+                    <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-klasse-gold" />
                     A carregar registos...
                   </td>
                 </tr>
               ) : items.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="p-12 text-center text-slate-500">
-                    <Users className="h-10 w-10 mx-auto mb-3 text-slate-300" />
+                    <Users className="mx-auto mb-3 h-10 w-10 text-slate-300" />
                     Nenhuma matrícula encontrada com estes filtros.
                   </td>
                 </tr>
@@ -434,139 +623,203 @@ export default function MatriculasListClient() {
                   const dataMatriculaFmt = (() => {
                     if (!m.data_matricula) return null;
                     const d = new Date(m.data_matricula);
-                    return Number.isNaN(d.getTime()) ? null : d.toLocaleDateString('pt-BR');
+                    return Number.isNaN(d.getTime()) ? null : d.toLocaleDateString("pt-BR");
                   })();
 
                   const fichaHref = m.aluno_id ? `/secretaria/alunos/${m.aluno_id}/ficha` : null;
 
                   return (
-                  <tr key={m.id} className="hover:bg-slate-50/80 transition-colors group">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="font-mono text-xs font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded w-fit border border-slate-200">
-                        {m.numero_matricula !== null && m.numero_matricula !== undefined ? String(m.numero_matricula) : "PENDENTE"}
-                      </div>
-                      <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-400">
-                        <span>ID: {m.id.slice(0, 6)}</span>
-                        {m.numero_chamada ? (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">
-                            Chamada #{m.numero_chamada}
-                          </span>
-                        ) : null}
-                        {dataMatriculaFmt ? (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 font-semibold">
-                            {dataMatriculaFmt}
-                          </span>
-                        ) : null}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {fichaHref ? (
-                        <Link
-                          href={fichaHref}
-                          className="flex items-center gap-3 group-hover:text-teal-700"
-                        >
-                          <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 border border-slate-200">
-                            {m.aluno_nome ? m.aluno_nome.substring(0, 2).toUpperCase() : '?'}
-                          </div>
-                          <div className="font-bold text-sm text-slate-800">{m.aluno_nome || "Aluno Desconhecido"}</div>
-                        </Link>
-                      ) : (
-                        <div className="flex items-center gap-3 text-slate-500">
-                          <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-400 border border-slate-200">
-                            {m.aluno_nome ? m.aluno_nome.substring(0, 2).toUpperCase() : '?'}
-                          </div>
-                          <div className="font-bold text-sm text-slate-400">{m.aluno_nome || "Aluno Desconhecido"}</div>
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {m.turma_nome ? (
-                        <div>
-                          <p className="font-bold text-sm text-slate-800">
-                            <span className="font-bold text-teal-700">{m.classe_nome}</span> / {m.turma_nome}
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            {m.turno && <span>{m.turno}</span>}
-                            {m.sala && <span className="ml-2">Sala: {m.sala}</span>}
-                          </p>
+                    <tr key={m.id} className="group transition-colors hover:bg-slate-50/70">
+                      {/* Matrícula */}
+                      <td className="whitespace-nowrap px-6 py-4">
+                        <div className="w-fit rounded-xl bg-slate-100 px-2 py-1 font-mono text-xs font-bold text-slate-700 ring-1 ring-slate-200">
+                          {m.numero_matricula !== null && m.numero_matricula !== undefined
+                            ? String(m.numero_matricula)
+                            : "PENDENTE"}
                         </div>
 
-                      ) : <span className="text-slate-300 text-xs italic">Sem turma</span>}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <StatusBadge status={m.status} />
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <div className="flex justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => handleOpenStatusForm(m)} title="Alterar Status" className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"><RefreshCw className="w-4 h-4"/></button>
-                        <button onClick={() => handleOpenTransferForm(m)} title="Transferir" className="p-2 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition"><ArrowUpDown className="w-4 h-4"/></button>
-                        <Link href={`/api/secretaria/matriculas/${m.id}/declaracao`} target="_blank" title="Declaração" className="p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition"><FileText className="w-4 h-4"/></Link>
-                        <button className="p-2 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition"><MoreVertical className="w-4 h-4"/></button>
-                      </div>
-                    </td>
-                  </tr>
-                )})
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-slate-400">
+                          <span>ID: {m.id.slice(0, 6)}</span>
+
+                          {m.numero_chamada ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-700 ring-1 ring-emerald-200/70">
+                              Chamada #{m.numero_chamada}
+                            </span>
+                          ) : null}
+
+                          {dataMatriculaFmt ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 font-semibold text-slate-600 ring-1 ring-slate-200">
+                              {dataMatriculaFmt}
+                            </span>
+                          ) : null}
+                        </div>
+                      </td>
+
+                      {/* Aluno */}
+                      <td className="whitespace-nowrap px-6 py-4">
+                        {fichaHref ? (
+                          <Link href={fichaHref} className="flex items-center gap-3 min-w-0">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-600 ring-1 ring-slate-200">
+                              {m.aluno_nome ? m.aluno_nome.substring(0, 2).toUpperCase() : "?"}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="truncate text-sm font-bold text-slate-900 group-hover:text-klasse-gold">
+                                {m.aluno_nome || "Aluno Desconhecido"}
+                              </div>
+                            </div>
+                          </Link>
+                        ) : (
+                          <div className="flex items-center gap-3 text-slate-500">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-400 ring-1 ring-slate-200">
+                              {m.aluno_nome ? m.aluno_nome.substring(0, 2).toUpperCase() : "?"}
+                            </div>
+                            <div className="truncate text-sm font-bold text-slate-400">
+                              {m.aluno_nome || "Aluno Desconhecido"}
+                            </div>
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Turma */}
+                      <td className="whitespace-nowrap px-6 py-4">
+                        {m.turma_nome ? (
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-bold text-slate-900">
+                              <span className="text-klasse-gold">{m.classe_nome}</span> / {m.turma_nome}
+                            </p>
+                            <p className="truncate text-xs text-slate-500">
+                              {m.turno ? <span>{m.turno}</span> : null}
+                              {m.sala ? <span className="ml-2">Sala: {m.sala}</span> : null}
+                            </p>
+                          </div>
+                        ) : (
+                          <span className="text-xs italic text-slate-300">Sem turma</span>
+                        )}
+                      </td>
+
+                      {/* Status */}
+                      <td className="whitespace-nowrap px-6 py-4 text-center">
+                        <StatusBadge status={m.status} />
+                      </td>
+
+                      {/* Ações */}
+                      <td className="whitespace-nowrap px-6 py-4 text-right">
+                        <div className="flex justify-end gap-1 opacity-60 transition-opacity group-hover:opacity-100">
+                          <button
+                            onClick={() => handleOpenStatusForm(m)}
+                            title="Alterar Status"
+                            className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                          </button>
+
+                          <button
+                            onClick={() => handleOpenTransferForm(m)}
+                            title="Transferir"
+                            className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+                          >
+                            <ArrowUpDown className="h-4 w-4" />
+                          </button>
+
+                          <Link
+                            href={`/api/secretaria/matriculas/${m.id}/declaracao`}
+                            target="_blank"
+                            title="Declaração"
+                            className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+                          >
+                            <FileText className="h-4 w-4" />
+                          </Link>
+
+                          <button
+                            title="Mais"
+                            className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
 
         {/* Footer Paginação */}
-        <div className="bg-slate-50 px-6 py-4 border-t border-slate-200 flex items-center justify-between">
-            <p className="text-xs text-slate-500 font-medium">
-                Página {page} de {totalPages} • Total: {total}
-            </p>
-            <div className="flex gap-2">
-                <button 
-                    disabled={page <= 1} 
-                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                    className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                >
-                    Anterior
-                </button>
-                <button 
-                    disabled={page >= totalPages} 
-                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                    className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                >
-                    Próxima
-                </button>
-            </div>
+        <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-6 py-4">
+          <p className="text-xs font-medium text-slate-500">
+            Página {page} de {totalPages} • Total: {total}
+          </p>
+
+          <div className="flex gap-2">
+            <button
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="rounded-xl bg-white px-3 py-1.5 text-xs font-bold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Anterior
+            </button>
+            <button
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              className="rounded-xl bg-white px-3 py-1.5 text-xs font-bold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Próxima
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Modais flutuantes */}
+      {/* Modais */}
       {showStatusForm && selectedMatricula && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-2xl scale-100 animate-in zoom-in-95">
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-slate-900">Alterar Status</h2>
-                <button onClick={() => setShowStatusForm(false)} className="p-2 hover:bg-slate-100 rounded-full"><XCircle className="w-5 h-5 text-slate-400"/></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-2xl animate-in zoom-in-95">
+            <div className="mb-6 flex items-center justify-between gap-4">
+              <h2 className="text-xl font-bold text-slate-900">Alterar Status</h2>
+              <button
+                onClick={() => setShowStatusForm(false)}
+                className="rounded-full p-2 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+              >
+                <XCircle className="h-5 w-5 text-slate-400" />
+              </button>
             </div>
+
             <StatusForm
               matriculaId={selectedMatricula.id}
               currentStatus={selectedMatricula.status}
-              onSuccess={() => { setShowStatusForm(false); load(); }}
+              onSuccess={() => {
+                setShowStatusForm(false);
+                load();
+              }}
             />
           </div>
         </div>
       )}
 
       {showTransferForm && selectedMatricula && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-2xl scale-100 animate-in zoom-in-95">
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-slate-900">Transferir Aluno</h2>
-                <button onClick={() => setShowTransferForm(false)} className="p-2 hover:bg-slate-100 rounded-full"><XCircle className="w-5 h-5 text-slate-400"/></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-8 shadow-2xl animate-in zoom-in-95">
+            <div className="mb-6 flex items-center justify-between gap-4">
+              <h2 className="text-xl font-bold text-slate-900">Transferir Aluno</h2>
+              <button
+                onClick={() => setShowTransferForm(false)}
+                className="rounded-full p-2 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+              >
+                <XCircle className="h-5 w-5 text-slate-400" />
+              </button>
             </div>
+
             <TransferForm
               matriculaId={selectedMatricula.id}
-              onSuccess={() => { setShowTransferForm(false); load(); }}
+              onSuccess={() => {
+                setShowTransferForm(false);
+                load();
+              }}
             />
           </div>
         </div>
       )}
-
     </div>
   );
 }

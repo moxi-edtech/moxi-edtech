@@ -93,7 +93,7 @@ export async function GET(req: Request) {
         classe_nome: t.classe?.nome ?? "",
         
         // Status & Stats
-        status_validacao: t.status_validacao ?? 'ativo',
+        status_validacao: t.status_validacao ?? 'rascunho',
         ocupacao_atual: t.matriculas?.[0]?.count || 0
     })) || [];
 

@@ -14,9 +14,9 @@ const BodySchema = z.object({
 
 export async function PATCH(
   req: Request,
-  context: { params: Promise<{ id: string }> },
+  context: { params: Promise<{ matriculaId: string }> },
 ) {
-  const { id } = await context.params
+  const { matriculaId } = await context.params
 
   try {
     const headers = new Headers()
@@ -36,7 +36,7 @@ export async function PATCH(
     const { data: mat, error: matErr } = await s
       .from('matriculas' as any)
       .select('id, escola_id')
-      .eq('id', id)
+      .eq('id', matriculaId)
       .maybeSingle()
     if (matErr) return NextResponse.json({ ok: false, error: matErr.message }, { status: 400 })
     if (!mat) return NextResponse.json({ ok: false, error: 'Matrícula não encontrada' }, { status: 404 })
@@ -59,7 +59,7 @@ export async function PATCH(
         .select('id')
         .eq('escola_id', (mat as any).escola_id)
         .eq('numero_matricula', numeroMatriculaParsed)
-        .neq('id', id)
+        .neq('id', matriculaId)
         .limit(1)
         .maybeSingle()
       if (conflict) {
@@ -79,7 +79,7 @@ export async function PATCH(
     const { data: updated, error: upErr } = await s
       .from('matriculas' as any)
       .update(payload)
-      .eq('id', id)
+    .eq('id', matriculaId)
       .select()
       .maybeSingle()
 
