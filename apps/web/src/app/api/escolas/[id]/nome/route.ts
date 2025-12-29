@@ -62,7 +62,13 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
           .eq("user_id", user.id)
           .eq("escola_id", escolaId)
           .limit(1);
-        allowed = Boolean(prof && prof.length > 0 && (prof[0] as any).role === "admin");
+
+        if (prof && prof.length > 0) {
+          const role = (prof[0] as any).role as string | undefined;
+          if (role === "admin" || role === "financeiro" || role === "secretaria" || role === "gestor") {
+            allowed = true;
+          }
+        }
       } catch {}
     }
     if (!allowed) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });

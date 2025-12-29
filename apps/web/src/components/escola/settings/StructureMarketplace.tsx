@@ -1,25 +1,42 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { 
-  BookOpen, Trash2, ShoppingBag, CheckCircle2, 
-  Loader2, Layers, Settings, X, Save, PlusCircle,
-  ArrowLeft, GraduationCap, Users, Clock, Plus, AlertCircle
+import {
+  BookOpen,
+  Trash2,
+  ShoppingBag,
+  CheckCircle2,
+  Loader2,
+  Layers,
+  Settings,
+  X,
+  Save,
+  PlusCircle,
+  ArrowLeft,
+  GraduationCap,
+  Users,
+  Plus,
+  AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
 // Importações de dados estáticos
-import { CURRICULUM_PRESETS_META, type CurriculumKey } from "@/lib/onboarding"; 
-import { CURRICULUM_PRESETS } from "@/lib/onboarding"; 
+import {
+  CURRICULUM_PRESETS_META,
+  type CurriculumKey,
+  CURRICULUM_PRESETS,
+} from "@/lib/academico/curriculum-presets"; 
 import { PRESET_TO_TYPE, TYPE_COLORS, getTypeLabel, type CourseType } from "@/lib/courseTypes";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildEscolaUrl } from "@/lib/escola/url";
+import { filterItemsByCourse } from "@/lib/academico/filters";
 
 // --- TIPOS ---
 type ActiveCourse = {
   id: string;
   nome: string;
   codigo: string;
+  curriculum_key?: string | null;
   total_classes: number;
   total_turmas: number;
   total_alunos: number;
@@ -28,9 +45,10 @@ type ActiveCourse = {
 // Detalhes profundos do curso (para o CRUD)
 type CourseDetails = {
   id: string;
-  disciplinas: { id: string; nome: string }[];
+  disciplinas: { id: string; nome: string; classe: string; }[];
   turmas: { id: string; nome: string; classe: string; classe_id?: string; turno: string; total_alunos: number }[];
-  classes: { id: string; nome: string }[]; // ex: ["10ª Classe", "11ª Classe"]
+  classes: { id: string; nome: string }[];
+  alunos: any[];
 };
 
 type CourseDraft = {
@@ -43,6 +61,20 @@ type CourseDraft = {
 
 const ALL_CLASSES = ["7ª", "8ª", "9ª", "10ª", "11ª", "12ª", "13ª"];
 
+const normalize = (val: string) =>
+  val
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .trim();
+
+const resolvePresetKeyForCourse = (course: ActiveCourse | undefined): CurriculumKey | null => {
+  if (!course?.codigo) return null;
+  const code = course.codigo as CurriculumKey;
+  // A regra de negócio é que o `codigo` do curso DEVE ser um `CurriculumKey` válido.
+  return code in CURRICULUM_PRESETS ? code : null;
+};
+
 export default function StructureMarketplace({ escolaId }: { escolaId: string }) {
   // Navegação Principal
   const [activeTab, setActiveTab] = useState<'my_courses' | 'catalog'>('my_courses');
@@ -52,9 +84,9 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   
   // --- ESTADO DO GERENCIADOR (CRUD DETALHADO) ---
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [selectedPresetKey, setSelectedPresetKey] = useState<CurriculumKey | null>(null);
   const [details, setDetails] = useState<CourseDetails | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
-  const [managerTab, setManagerTab] = useState<'turmas' | 'disciplinas'>('turmas');
   const { escolaId: escolaFromHook, isLoading: escolaLoading, error: escolaError } = useEscolaId();
   const resolvedEscolaId = escolaId || escolaFromHook || null;
 
@@ -64,6 +96,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   const [newSubject, setNewSubject] = useState("");
   const [installing, setInstalling] = useState(false);
   const [quickInstallingKey, setQuickInstallingKey] = useState<string | null>(null);
+  
 
   const fetchJson = async (url: string, opts?: RequestInit) => {
     const res = await fetch(url, { ...opts, headers: { ...(opts?.headers || {}), 'X-Proxy-Used': 'canonical' } });
@@ -113,7 +146,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   if (escolaLoading) {
     return (
       <div className="p-6 flex flex-col items-center gap-2 text-slate-500">
-        <Loader2 className="h-6 w-6 animate-spin text-teal-600" />
+        <Loader2 className="h-6 w-6 animate-spin text-klasse-gold" />
         <p>Carregando contexto da escola...</p>
       </div>
     );
@@ -128,42 +161,79 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   }
 
   // --- CARREGAR DETALHES DO CURSO (AO CLICAR) ---
-  const handleOpenManager = async (courseId: string) => {
-    setSelectedCourseId(courseId);
+  const handleOpenManager = async (course: ActiveCourse) => {
     setLoadingDetails(true);
-    try {
-        if (!resolvedEscolaId) throw new Error('Escola não identificada');
-        const [classesRes, turmasRes, disciplinasRes] = await Promise.all([
-          fetchJson(buildEscolaUrl(resolvedEscolaId, '/classes', new URLSearchParams({ curso_id: courseId }))),
-          fetchJson(buildEscolaUrl(resolvedEscolaId, '/turmas')),
-          fetchJson(buildEscolaUrl(resolvedEscolaId, '/disciplinas', new URLSearchParams({ curso_id: courseId })))
-        ]);
+    setSelectedCourseId(course.id);
+    setSelectedPresetKey(null); // Reset before setting
+    setDetails(null);
 
-        const classes = (classesRes.items || classesRes.data || []).map((c: any) => ({ id: c.id, nome: c.nome || c.name || c.id }));
-        const turmasRaw = (turmasRes.items || turmasRes.data || []) as any[];
-        const turmas = turmasRaw
-          .filter((t) => !courseId || String((t as any).curso_id || '') === String(courseId))
-          .map((t) => ({
-            id: t.id,
-            nome: t.turma_nome || t.nome,
-            classe: t.classe_nome || t.classe_id,
-            classe_id: t.classe_id,
-            turno: t.turno,
-            total_alunos: t.ocupacao_atual || 0,
-          }));
-        const disciplinas = (disciplinasRes.items || disciplinasRes.data || []).map((d: any) => ({ id: d.id, nome: d.nome }));
+    try {
+      if (!resolvedEscolaId) throw new Error("Escola não identificada");
+
+      const presetKey = resolvePresetKeyForCourse(course);
+
+      const detailsUrl = buildEscolaUrl(resolvedEscolaId, `/cursos/${course.id}/details`);
+      const detailsRes = await fetchJson(detailsUrl);
+      const turmasApi = detailsRes.data?.turmas || [];
+      const alunosApi = detailsRes.data?.alunos || [];
+
+      // --- Case 1: No preset found ---
+      if (!presetKey) {
+        toast.message('Curso sem preset. Exibindo registros reais.', {
+          description: 'Você pode editar livremente este curso.'
+        });
+
+        const disciplinasParams = new URLSearchParams({ curso_id: course.id, pageSize: '1000' });
+        const disciplinasRes = await fetchJson(buildEscolaUrl(resolvedEscolaId, '/disciplinas', disciplinasParams));
+        const disciplinas = (disciplinasRes.items || disciplinasRes.data || []);
+        
+        const classesParams = new URLSearchParams({ curso_id: course.id, pageSize: '50' });
+        const classesRes = await fetchJson(buildEscolaUrl(resolvedEscolaId, '/classes', classesParams));
+        const classes = (classesRes.items || classesRes.data || []);
 
         setDetails({
-          id: courseId,
-          classes,
+          id: course.id,
           disciplinas,
-          turmas,
+          classes,
+          turmas: turmasApi,
+          alunos: alunosApi
         });
-    } catch (e) {
-        toast.error("Erro ao carregar detalhes.");
-        setSelectedCourseId(null);
+        
+        return; // Early return
+      }
+
+      // --- Case 2: Preset found ---
+      setSelectedPresetKey(presetKey);
+
+      // 1. Disciplinas (do preset)
+      const disciplinas = CURRICULUM_PRESETS[presetKey].map(d => ({
+        id: `${d.classe}-${d.nome}`, // ID virtual
+        nome: d.nome,
+        classe: d.classe,
+      }));
+
+      // 2. Classes (reais da escola, filtradas pelo preset)
+      const classesParams = new URLSearchParams({ curso_id: course.id, pageSize: '50' });
+      const classesRes = await fetchJson(buildEscolaUrl(resolvedEscolaId, '/classes', classesParams));
+      const allClassesForCourse = (classesRes.items || classesRes.data || []);
+      const allowedClassesNomes = new Set(CURRICULUM_PRESETS_META[presetKey]?.classes || []);
+      const classesFiltradas = allClassesForCourse.filter((c: any) => allowedClassesNomes.has(c.nome));
+      
+      // Turmas e alunos já foram buscados e processados
+      setDetails({
+        id: course.id,
+        classes: classesFiltradas,
+        disciplinas,
+        turmas: turmasApi,
+        alunos: alunosApi,
+      });
+
+    } catch (e: any) {
+      toast.error("Erro ao carregar detalhes.", { description: e.message });
+      setSelectedCourseId(null);
+      setSelectedPresetKey(null);
     } finally {
-        setLoadingDetails(false);
+      setLoadingDetails(false);
     }
   };
 
@@ -224,7 +294,8 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       });
 
       toast.success(`Turma ${nome} criada.`);
-      if (selectedCourseId) await handleOpenManager(selectedCourseId);
+      const selectedCourse = courses.find(c => c.id === selectedCourseId);
+      if (selectedCourse) await handleOpenManager(selectedCourse);
     } catch (e: any) {
       toast.error(e?.message || 'Falha ao criar turma');
     }
@@ -249,7 +320,8 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         })
       });
       toast.success('Disciplina criada.');
-      if (selectedCourseId) await handleOpenManager(selectedCourseId);
+      const selectedCourse = courses.find(c => c.id === selectedCourseId);
+      if (selectedCourse) await handleOpenManager(selectedCourse);
     } catch (e: any) {
       toast.error(e?.message || 'Falha ao criar disciplina');
     }
@@ -309,11 +381,11 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         const classes = meta?.classes && meta.classes.length > 0 ? [...meta.classes] : ['10ª Classe'];
         const tipo = PRESET_TO_TYPE[presetKey as CurriculumKey] || 'core';
 
-        const courseResp = await fetchJson(`/api/escolas/${escolaId}/cursos`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nome: meta?.label || 'Novo Curso', tipo, descricao: meta?.description || null })
-        });
+      const courseResp = await fetchJson(`/api/escolas/${escolaId}/cursos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome: meta?.label || 'Novo Curso', tipo, descricao: meta?.description || null, codigo: presetKey, curriculum_key: presetKey, course_code: presetKey })
+      });
         const courseId = courseResp.data?.id || courseResp.id;
 
         const createdClasses: Array<{ id: string; nome: string }> = [];
@@ -382,7 +454,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       const courseResp = await fetchJson(`/api/escolas/${escolaId}/cursos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nome: draft.label || 'Novo Curso', tipo: draft.isCustom ? 'core' : 'tecnico', descricao: draft.baseKey })
+        body: JSON.stringify({ nome: draft.label || 'Novo Curso', tipo: draft.isCustom ? 'core' : 'tecnico', descricao: draft.baseKey, codigo: draft.baseKey, curriculum_key: draft.baseKey, course_code: draft.baseKey })
       });
       const courseId = courseResp.data?.id || courseResp.id;
 
@@ -424,6 +496,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       try {
         await fetchJson(buildEscolaUrl(resolvedEscolaId, `/cursos/${id}`), { method: 'DELETE' });
         toast.success("Curso removido.");
+        if (selectedCourseId === id) setSelectedPresetKey(null);
         setSelectedCourseId((prev) => (prev === id ? null : prev));
         setCourses((prev) => prev.filter((c) => c.id !== id));
         fetchCourses();
@@ -437,6 +510,10 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   // VISTA DO GERENCIADOR (O "CRUD" QUE VOCÊ PEDIU)
   if (selectedCourseId) {
     const cursoAtivo = courses.find(c => c.id === selectedCourseId);
+    const totalClasses = details?.classes.length ?? 0;
+    const totalTurmas = details?.turmas.length ?? 0;
+    const totalDisciplinas = details?.disciplinas.length ?? 0;
+    const totalAlunos = details?.alunos.length ?? 0;
 
     return (
         <div className="bg-white min-h-[500px] rounded-2xl shadow-sm border border-slate-200 animate-in slide-in-from-right-4 fade-in duration-300">
@@ -444,34 +521,39 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
             <div className="border-b border-slate-200 p-6 flex items-center justify-between bg-slate-50/50 rounded-t-2xl">
                 <div className="flex items-center gap-4">
                     <button 
-                        onClick={() => setSelectedCourseId(null)} 
-                        className="p-2 hover:bg-white hover:shadow-sm rounded-full border border-transparent hover:border-slate-200 transition-all text-slate-500"
+                        onClick={() => { setSelectedCourseId(null); setSelectedPresetKey(null); }} 
+                        className="inline-flex items-center gap-2 px-3 py-2 rounded-full border border-slate-200 text-slate-600 hover:text-klasse-gold hover:border-klasse-gold/40 bg-white shadow-sm focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
                     >
-                        <ArrowLeft className="w-5 h-5" />
+                        <ArrowLeft className="h-4 w-4" />
+                        <span className="text-xs font-bold">Voltar</span>
                     </button>
                     <div>
                         <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                             {cursoAtivo?.nome}
-                            <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] uppercase font-bold border border-emerald-200">Ativo</span>
+                            <span className="px-2 py-0.5 rounded-full bg-klasse-gold/15 text-klasse-gold text-[10px] uppercase font-bold border border-klasse-gold/30">Ativo</span>
                         </h2>
                         <p className="text-xs text-slate-400 font-mono mt-0.5">{cursoAtivo?.codigo || "Sem código"}</p>
+                        {selectedPresetKey && (
+                          <p className="text-[11px] text-slate-500 font-semibold mt-1">
+                            Currículo: {CURRICULUM_PRESETS_META[selectedPresetKey]?.label || selectedPresetKey}
+                          </p>
+                        )}
                     </div>
                 </div>
-                <div className="flex gap-2">
-                     {/* Abas internas */}
-                     <div className="bg-slate-100 p-1 rounded-lg flex">
-                        <button 
-                            onClick={() => setManagerTab('turmas')}
-                            className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${managerTab === 'turmas' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                        >
-                            Turmas & Classes
-                        </button>
-                        <button 
-                            onClick={() => setManagerTab('disciplinas')}
-                            className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${managerTab === 'disciplinas' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                        >
-                            Plano Curricular
-                        </button>
+                <div className="flex items-center gap-4">
+                     <div className="hidden sm:flex items-center gap-2 text-xs text-slate-600">
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white border border-slate-200 font-semibold">
+                          <Layers className="w-3 h-3 text-slate-400"/> {totalClasses} classes
+                        </span>
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white border border-slate-200 font-semibold">
+                          <Users className="w-3 h-3 text-slate-400"/> {totalTurmas} turmas
+                        </span>
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white border border-slate-200 font-semibold">
+                          <BookOpen className="w-3 h-3 text-slate-400"/> {totalDisciplinas} disciplinas
+                        </span>
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-white border border-slate-200 font-semibold">
+                          <Users className="w-3 h-3 text-slate-400"/> {totalAlunos} alunos
+                        </span>
                      </div>
                 </div>
             </div>
@@ -479,125 +561,130 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
             {/* Conteúdo do Gerenciador */}
             <div className="p-6">
                 {loadingDetails ? (
-                    <div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-teal-600"/></div>
+                    <div className="py-20 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-klasse-gold"/></div>
                 ) : !details ? (
                     <div className="text-center py-10 text-slate-400">Erro ao carregar dados.</div>
                 ) : (
-                    <>
-                        {/* ABA: TURMAS E CLASSES */}
-                        {managerTab === 'turmas' && (
-                            <div className="space-y-8 animate-in fade-in">
-                                {details.classes.map(classe => {
-                                    const turmasDaClasse = details.turmas.filter(t => (t.classe_id && classe.id) ? t.classe_id === classe.id : t.classe === classe.nome);
-                                    
-                                    return (
-                                        <div key={classe.id} className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden">
-                                            <div className="px-4 py-3 border-b border-slate-200 bg-white flex justify-between items-center">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg"><GraduationCap className="w-4 h-4"/></div>
-                                                    <span className="font-bold text-slate-700 text-sm">{classe.nome}</span>
-                                                </div>
-                                                <button 
-                                                    onClick={() => handleAddTurma(classe)}
-                                                    className="text-xs font-bold text-teal-600 hover:text-teal-700 hover:underline flex items-center gap-1"
-                                                >
-                                                    <Plus className="w-3 h-3"/> Nova Turma
+                    <div className="space-y-10">
+                        <div className="space-y-8 animate-in fade-in">
+                            {details.classes.map(classe => {
+                                const turmasDaClasse = details.turmas.filter(t => (t.classe_id && classe.id) ? t.classe_id === classe.id : t.classe === classe.nome);
+                                const totalTurmasClasse = turmasDaClasse.length;
+                                const totalAlunosClasse = turmasDaClasse.reduce((acc, t) => acc + (Number((t as any).total_alunos) || 0), 0);
+                                
+                                return (
+                                    <div key={classe.id} className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden">
+                                        <div className="px-4 py-3 border-b border-slate-200 bg-white flex justify-between items-center">
+                                            <div className="flex items-center gap-2">
+                                                <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg"><GraduationCap className="w-4 h-4"/></div>
+                                                <span className="font-bold text-slate-700 text-sm">{classe.nome}</span>
+                                                <span className="text-[11px] px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-600 font-semibold">
+                                                    {totalTurmasClasse} turmas · {totalAlunosClasse} alunos
+                                                </span>
+                                            </div>
+                                            <button 
+                                                onClick={() => handleAddTurma(classe)}
+                                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-slate-700 border border-slate-200 rounded-lg bg-white hover:border-klasse-gold/40 hover:text-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+                                            >
+                                                <Plus className="w-3 h-3"/> Nova Turma
+                                            </button>
+                                        </div>
+                                        
+                                        {turmasDaClasse.length === 0 ? (
+                                            <div className="p-8 text-center">
+                                                <p className="text-xs text-slate-400 italic mb-2">Nenhuma turma criada para {classe.nome}.</p>
+                                                <button onClick={() => handleAddTurma(classe)} className="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-600 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20">
+                                                    Criar Primeira Turma
                                                 </button>
                                             </div>
-                                            
-                                            {turmasDaClasse.length === 0 ? (
-                                                <div className="p-8 text-center">
-                                                    <p className="text-xs text-slate-400 italic mb-2">Nenhuma turma criada para {classe.nome}.</p>
-                                                    <button onClick={() => handleAddTurma(classe)} className="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-600 shadow-sm hover:bg-slate-50">
-                                                        Criar Primeira Turma
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-4">
-                                                    {turmasDaClasse.map(turma => (
-                                                        <div key={turma.id} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm hover:border-teal-300 transition-colors group cursor-pointer relative">
-                                                            <div className="flex justify-between items-start mb-2">
-                                                                <span className="font-bold text-slate-800 text-sm">{turma.nome}</span>
-                                                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${turma.turno === 'Manhã' ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700'}`}>
-                                                                    {turma.turno}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex items-center gap-2 text-xs text-slate-500">
-                                                                <Users className="w-3 h-3"/> {turma.total_alunos} Alunos
-                                                            </div>
-                                                            
-                                                            {/* Botão de excluir turma (só aparece no hover) */}
-                                                            <div className="absolute right-2 bottom-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                <button className="p-1.5 text-slate-300 hover:text-red-500 bg-slate-50 hover:bg-red-50 rounded-md">
-                                                                    <Trash2 className="w-3 h-3"/>
-                                                                </button>
-                                                            </div>
+                                        ) : (
+                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-4">
+                                                {turmasDaClasse.map(turma => (
+                                                    <div key={turma.id} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm hover:border-klasse-gold/50 transition-colors group cursor-pointer relative">
+                                                        <div className="flex justify-between items-start mb-2">
+                                                            <span className="font-bold text-slate-800 text-sm">{turma.nome}</span>
+                                                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${turma.turno === 'Manhã' ? 'bg-klasse-gold/15 text-klasse-gold' : 'bg-slate-100 text-slate-600'}`}>
+                                                                {turma.turno}
+                                                            </span>
                                                         </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                        )}
-
-                        {/* ABA: DISCIPLINAS (CRUD) */}
-                        {managerTab === 'disciplinas' && (
-                            <div className="animate-in fade-in max-w-3xl mx-auto">
-                                <div className="flex justify-between items-center mb-4">
-                                    <div>
-                                        <h3 className="font-bold text-slate-800">Grade Curricular</h3>
-                                        <p className="text-xs text-slate-400">Disciplinas leccionadas neste curso.</p>
+                                                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                                                            <Users className="w-3 h-3"/> {turma.total_alunos} Alunos
+                                                        </div>
+                                                        
+                                                        {/* Botão de excluir turma (só aparece no hover) */}
+                                                        <div className="absolute right-2 bottom-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-slate-400 hover:text-red-500 bg-slate-50 hover:bg-red-50 rounded-md focus:outline-none focus:ring-4 focus:ring-red-100">
+                                                                <Trash2 className="h-3 w-3"/>
+                                                                <span className="hidden md:inline">Remover</span>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
-                                    <button 
-                                        onClick={handleAddDisciplinaDetails}
-                                        className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-slate-800 shadow-lg"
-                                    >
-                                        <Plus className="w-4 h-4"/> Adicionar Disciplina
-                                    </button>
-                                </div>
+                                )
+                            })}
+                        </div>
 
-                                <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
-                                    <table className="w-full text-left text-sm">
-                                        <thead className="bg-white border-b border-slate-200 text-xs uppercase text-slate-400 font-bold">
-                                            <tr>
-                                                <th className="px-4 py-3">Nome da Disciplina</th>
-                                                <th className="px-4 py-3 text-right">Ações</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100">
-                                            {details.disciplinas.map((disc, idx) => (
-                                                <tr key={disc.id} className="hover:bg-white transition-colors group">
-                                                    <td className="px-4 py-3 font-medium text-slate-700 flex items-center gap-3">
-                                                        <span className="text-slate-300 font-mono text-xs w-4">{(idx + 1).toString().padStart(2, '0')}</span>
-                                                        {disc.nome}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-right">
-                                                        <button 
-                                                            onClick={() => handleRemoveDisciplina(disc.id)}
-                                                            className="text-slate-300 hover:text-red-500 p-2 rounded-lg hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                    {details.disciplinas.length === 0 && (
-                                        <div className="p-8 text-center text-slate-400 text-sm">
-                                            Nenhuma disciplina cadastrada.
-                                        </div>
-                                    )}
+                        <div className="animate-in fade-in max-w-3xl mx-auto">
+                            <div className="flex justify-between items-center mb-4">
+                                <div>
+                                    <h3 className="font-bold text-slate-800">Grade Curricular</h3>
+                                    <p className="text-xs text-slate-400">Disciplinas leccionadas neste curso, conforme o currículo oficial.</p>
                                 </div>
-                                <div className="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-lg flex gap-2 text-xs text-amber-800">
-                                    <AlertCircle className="w-4 h-4 shrink-0"/>
-                                    <p>Alterações nas disciplinas afectam todas as classes e turmas vinculadas a este curso.</p>
-                                </div>
+                                <button
+                                    onClick={handleAddDisciplinaDetails}
+                                    disabled={!!selectedPresetKey}
+                                    className="inline-flex items-center gap-2 bg-klasse-gold text-white px-4 py-2 rounded-xl text-xs font-bold hover:brightness-95 shadow-sm focus:outline-none focus:ring-4 focus:ring-klasse-gold/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <Plus className="w-4 h-4"/> Adicionar Disciplina
+                                </button>
                             </div>
-                        )}
-                    </>
+
+                            <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
+                                <table className="w-full text-left text-sm">
+                                    <thead className="bg-white border-b border-slate-200 text-xs uppercase text-slate-400 font-bold">
+                                        <tr>
+                                            <th className="px-4 py-3">Nome da Disciplina</th>
+                                            <th className="px-4 py-3">Classe</th>
+                                            <th className="px-4 py-3 text-right">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {details.disciplinas.map((disc, idx) => (
+                                            <tr key={disc.id} className="hover:bg-white transition-colors group">
+                                                <td className="px-4 py-3 font-medium text-slate-700 flex items-center gap-3">
+                                                    <span className="text-slate-300 font-mono text-xs w-4">{(idx + 1).toString().padStart(2, '0')}</span>
+                                                    {disc.nome}
+                                                </td>
+                                                <td className="px-4 py-3 font-mono text-slate-500 text-xs">{disc.classe}</td>
+                                                <td className="px-4 py-3 text-right">
+                                                    <button
+                                                        onClick={() => handleRemoveDisciplina(disc.id)}
+                                                        disabled={!!selectedPresetKey}
+                                                        className="inline-flex items-center gap-1 text-slate-400 hover:text-red-500 px-2 py-1 rounded-lg hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100 focus:outline-none focus:ring-4 focus:ring-red-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                        <span className="hidden sm:inline text-xs font-bold">Remover</span>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                                {details.disciplinas.length === 0 && (
+                                    <div className="p-8 text-center text-slate-400 text-sm">
+                                        Nenhuma disciplina cadastrada.
+                                    </div>
+                                )}
+                            </div>
+                            <div className="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-lg flex gap-2 text-xs text-amber-800">
+                                <AlertCircle className="w-4 h-4 shrink-0"/>
+                                <p>A grade curricular é definida pelo preset <strong>({selectedPresetKey})</strong> e não pode ser alterada directamente. Para um currículo flexível, crie um curso "do zero".</p>
+                            </div>
+                        </div>
+                    </div>
                 )}
             </div>
         </div>
@@ -615,7 +702,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         <button onClick={() => setActiveTab('my_courses')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'my_courses' ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
           <Layers className="w-4 h-4" /> Cursos Ativos ({courses.length})
         </button>
-        <button onClick={() => setActiveTab('catalog')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'catalog' ? 'border-teal-500 text-teal-600' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
+        <button onClick={() => setActiveTab('catalog')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'catalog' ? 'border-klasse-gold text-klasse-gold' : 'border-transparent text-slate-400 hover:text-slate-600'}`}>
           <ShoppingBag className="w-4 h-4" /> Catálogo
         </button>
       </div>
@@ -627,34 +714,35 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                 <div className="col-span-3 text-center py-16 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
                     <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-3"/>
                     <h3 className="text-slate-900 font-bold">Nenhum curso ativo</h3>
-                    <button onClick={() => setActiveTab('catalog')} className="mt-4 text-teal-600 font-bold underline">Ir ao Catálogo</button>
+                    <button onClick={() => setActiveTab('catalog')} className="mt-4 text-klasse-gold font-bold underline">Ir ao Catálogo</button>
                 </div>
             )}
             {courses.map(curso => (
                 <div 
                     key={curso.id} 
-                    onClick={() => handleOpenManager(curso.id)}
-                    className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-lg hover:border-teal-400 hover:-translate-y-1 transition-all group cursor-pointer relative"
+                    onClick={() => handleOpenManager(curso)}
+                    className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-lg hover:border-klasse-gold/50 hover:-translate-y-1 transition-all group cursor-pointer relative"
                 >
                     <div className="flex justify-between items-start mb-4">
                         <div className="p-3 bg-slate-100 text-slate-600 rounded-lg group-hover:bg-slate-900 group-hover:text-white transition-colors"><BookOpen className="w-6 h-6"/></div>
                         {/* Botão delete propagação parada para não abrir o modal */}
                         <button 
                             onClick={(e) => { e.stopPropagation(); handleRemove(curso.id, curso.total_alunos); }} 
-                            className="p-2 text-slate-300 hover:text-red-500 transition z-10" 
+                            className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition z-10 focus:outline-none focus:ring-4 focus:ring-red-100" 
                             title="Remover"
                         >
-                            <Trash2 className="w-4 h-4"/>
+                            <Trash2 className="h-4 w-4"/>
+                            <span className="hidden sm:inline">Remover</span>
                         </button>
                     </div>
-                    <h3 className="font-bold text-slate-800 mb-1 truncate group-hover:text-teal-600 transition-colors" title={curso.nome}>{curso.nome}</h3>
-                    <p className="text-xs text-slate-400 font-mono mb-4">{curso.codigo}</p>
+                    <h3 className="font-bold text-slate-800 mb-1 truncate group-hover:text-klasse-gold transition-colors" title={curso.nome}>{curso.nome}</h3>
+                    <p className="text-xs text-slate-400 font-mono mb-4">{curso.codigo || 'Sem código'}</p>
                     <div className="grid grid-cols-2 gap-2 text-xs border-t border-slate-100 pt-4">
                         <div><span className="block text-slate-400">Classes</span><span className="font-bold text-slate-700">{curso.total_classes}</span></div>
                         <div><span className="block text-slate-400">Turmas</span><span className="font-bold text-slate-700">{curso.total_turmas}</span></div>
                     </div>
                     
-                    <div className="absolute inset-0 bg-teal-500/5 opacity-0 group-hover:opacity-100 rounded-xl transition-opacity pointer-events-none" />
+                    <div className="absolute inset-0 bg-klasse-gold/10 opacity-0 group-hover:opacity-100 rounded-xl transition-opacity pointer-events-none" />
                 </div>
             ))}
         </div>
@@ -663,8 +751,8 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       {/* ABA: CATÁLOGO */}
       {activeTab === 'catalog' && (
         <div className="animate-in fade-in">
-             <div className="mb-6 flex justify-end">
-                <button onClick={openCustomConfig} className="flex items-center gap-2 bg-slate-900 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-lg hover:-translate-y-0.5 transition-all">
+                <div className="mb-6 flex justify-end">
+                <button onClick={openCustomConfig} className="flex items-center gap-2 bg-klasse-gold text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:brightness-95 transition-all focus:outline-none focus:ring-4 focus:ring-klasse-gold/20">
                     <PlusCircle className="w-4 h-4" /> Criar Curso do Zero
                 </button>
             </div>
@@ -725,7 +813,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                 <div className="p-6 overflow-y-auto custom-scrollbar space-y-6">
                     <div>
                         <label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Nome do Curso</label>
-                        <input value={draft.label} onChange={e => setDraft({...draft, label: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-teal-500 outline-none font-bold text-slate-700" placeholder="Ex: Técnico de Gestão Empresarial" />
+                        <input value={draft.label} onChange={e => setDraft({...draft, label: e.target.value})} className="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold outline-none font-bold text-slate-700" placeholder="Ex: Técnico de Gestão Empresarial" />
                     </div>
                     <div>
                         <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Classes Abrangidas</label>
@@ -746,7 +834,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                             <label className="text-xs font-bold text-slate-500 uppercase">Disciplinas ({draft.subjects.length})</label>
                         </div>
                         <div className="flex gap-2 mb-3">
-                            <input value={newSubject} onChange={e => setNewSubject(e.target.value)} onKeyDown={e => e.key === 'Enter' && addSubject()} placeholder="Digite o nome da disciplina..." className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:border-teal-500" />
+                            <input value={newSubject} onChange={e => setNewSubject(e.target.value)} onKeyDown={e => e.key === 'Enter' && addSubject()} placeholder="Digite o nome da disciplina..." className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-lg outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20" />
                             <button onClick={addSubject} className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-bold text-xs flex items-center gap-1"><Plus className="w-3 h-3"/> Adicionar</button>
                         </div>
                         <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-1 bg-slate-50/50 rounded-xl border border-slate-100">
@@ -761,7 +849,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                 </div>
                 <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
                     <button onClick={() => setShowModal(false)} className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700">Cancelar</button>
-                    <button onClick={handleSave} disabled={installing} className="px-6 py-2 bg-teal-600 text-white text-sm font-bold rounded-xl hover:bg-teal-700 shadow-lg transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed">
+                    <button onClick={handleSave} disabled={installing} className="px-6 py-2 bg-klasse-gold text-white text-sm font-bold rounded-xl hover:brightness-95 shadow-sm transition-all flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed focus:outline-none focus:ring-4 focus:ring-klasse-gold/20">
                         {installing ? <Loader2 className="w-4 h-4 animate-spin"/> : <Save className="w-4 h-4"/>} {installing ? "Instalando..." : "Salvar e Criar"}
                     </button>
                 </div>

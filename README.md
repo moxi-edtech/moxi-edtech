@@ -27,6 +27,10 @@ Fluxo recomendado (produção)
    - O front dispara em loop para cada turma marcada: `POST /api/matriculas/massa/por-turma`.
 6) Rematrícula em Massa (Secretaria)
    - Suporta RPC e geração opcional de mensalidades.
+7) Contexto Financeiro em Migração/Aprovação (NOVO)
+   - Wizard de importação captura “ignorar matrícula” e “mês inicial da mensalidade” e aplica isenção automática de matrículas e mensalidades retroativas ao importar em turmas ativas.
+   - Turma rascunho com alunos exibe bloco financeiro no TurmaForm; ao aprovar, aplica as mesmas regras para evitar cobranças indevidas.
+   - Notificações direcionadas: rascunhos → admin/pedagógico; ativações/importações em turmas ativas → financeiro.
 
 Getting Started (Angola)
 - Migrations: rode as migrations do Supabase (inclui RPCs e índices críticos).
@@ -59,6 +63,49 @@ Banco de Dados (pontos críticos)
 
 Documentação detalhada
 - Leia `README-IMP.md` para o fluxo completo com diagramas Mermaid, endpoints e exemplos.
+
+---
+
+## Gestão e Funcionalidades Chave
+
+### Aprovação de Turmas Pendentes
+
+Durante a importação de alunos, turmas que não existem no sistema são criadas automaticamente com o status "rascunho". Para que essas turmas possam ser utilizadas, um administrador da escola precisa aprová-las.
+
+-   **Visualização Detalhada**: A view `vw_turmas_para_matricula` foi atualizada para incluir a coluna `status_validacao`, permitindo que o frontend filtre e exiba corretamente as turmas pendentes e aprovadas.
+-   **Correção de Rota API**: O endpoint `/api/escolas/[id]/turmas` foi ajustado para resolver um erro de acesso aos parâmetros da rota (`context.params`), garantindo o carregamento correto das informações da turma.
+-   **Localização**: Portal do Administrador → Gestão de Turmas → Aba "Pendentes".
+-   **Funcionalidade**: A aba "Pendentes" lista todas as turmas em estado de "rascunho".
+-   **Aprovação em Lote**: Administradores podem selecionar múltiplas turmas através de checkboxes e aprová-las de uma só vez clicando no botão "Aprovar Selecionadas".
+-   **Aprovação Individual**: Alternativamente, cada turma pode ser revisada e aprovada individualmente clicando no botão "Revisar".
+-   **Componentes Técnicos**: A funcionalidade é suportada pelas funções RPC `get_pending_turmas` (para buscar) e `aprovar_turmas` (para aprovar).
+
+### Correções e Melhorias
+
+-   **Controle de Acesso**: O guarda de rota `RequireSecretaria` foi atualizado para permitir que usuários com o papel de `admin` também possam acessar as páginas da secretaria. Isso corrige um problema onde um administrador era redirecionado para a página de login ao tentar navegar de uma página de administração para uma página de secretaria.
+-   **Autopreenchimento e criação "lazy" de Turmas**: O `TurmaForm` agora reconhece códigos de curso criados pelo onboarding (via `curriculum_key`/`presetKey`) e preenche curso/classe/turno/letra automaticamente em rascunhos e novas turmas. Ao salvar, o backend cria curso/classe sob demanda se ainda não existirem, usando o preset como fonte (ex.: `TG-10` cria Técnico de Gestão + 10ª Classe se faltarem). Para planilhas que não trazem turno, o auto-fill ignora placeholders ("N/D") e infere M/T/N direto do código (inclusive se o código vier apenas no `nome`, como "TI-10-M-A (Imp. Auto)").
+-   **Rascunhos vindos da importação**: Turmas sem `status_validacao` agora são tratadas como rascunho no `TurmaForm`, disparando automaticamente o preenchimento sugerido (detetive) e mantendo o fluxo de aprovação/ativação sem bloquear o usuário.
+-   **Listagens com fallback consistente**: As APIs `/api/secretaria/turmas` e `/api/escolas/[id]/turmas` devolvem `status_validacao` com fallback para `rascunho` e enriquecem com `turma_codigo`, garantindo que turmas importadas apareçam como rascunho e acionem as sugestões automáticas ao abrir.
+-   **Formulário limpo ao reabrir**: Ao editar ou criar novas turmas, o `TurmaForm` reseta todos os campos a cada troca de turma carregada, evitando resíduos de estado entre revisões.
+-   **Ações de Turma (server)**: O `saveAndValidateTurma` garante `await createClient()` antes de chamar `.from(...)`, eliminando erros de tipagem e garantindo execução correta no Supabase.
+
+### Filtragem Determinística de Currículo para Cursos Ativos
+
+Para garantir consistência e previsibilidade na estrutura acadêmica, a exibição dos detalhes de um curso ativo (currículo, turmas, alunos) é governada por um mecanismo de filtragem determinístico.
+
+**Princípio Central:** O `CurriculumKey` é a única fonte da verdade.
+
+-   **Fonte do `CurriculumKey`**: A `CurriculumKey` para qualquer curso é derivada exclusivamente de sua propriedade `codigo` (ex: `curso.codigo`). Esta chave deve corresponder a uma entrada válida no objeto `CURRICULUM_PRESETS` (`/src/lib/academico/curriculum-presets.ts`).
+-   **Derivação Estrita**: A aplicação não tentará inferir a `CurriculumKey` a partir do nome do curso (`nome`) ou de qualquer outra propriedade. Se `curso.codigo` não for uma `CurriculumKey` válida, a visualização detalhada será desativada para esse curso, e um aviso será registrado.
+
+**Fluxo de Dados:**
+
+1.  **Currículo (Disciplinas)**: A lista de disciplinas e suas respectivas classes são extraídas diretamente dos `CURRICULUM_PRESETS` usando a `CurriculumKey`. Não há chamadas de API envolvidas para buscar disciplinas para um curso orientado por preset.
+2.  **Classes**: As classes reais oferecidas pela escola são buscadas no banco de dados, mas são então filtradas para mostrar apenas aquelas que fazem parte do currículo definido pelo preset.
+3.  **Turmas**: As turmas são filtradas com base no `curso_id` do curso selecionado.
+4.  **Alunos**: A lista de alunos é derivada das turmas filtradas. A aplicação obtém todas as matrículas para as turmas filtradas e, em seguida, extrai as informações dos alunos.
+
+Isso garante que o que é exibido no componente `StructureMarketplace` seja sempre uma representação fiel do preset de currículo selecionado.
 
 ---
 

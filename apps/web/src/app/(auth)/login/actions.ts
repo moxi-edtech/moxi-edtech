@@ -42,10 +42,16 @@ export async function loginAction(_: any, formData: FormData) {
     }
 
     if (escolaUsuarios) {
-      if (escolaUsuarios.papel === "secretaria") {
+      const { papel, escola_id } = escolaUsuarios;
+
+      if ((papel === "admin" || papel === "staff_admin") && escola_id) {
+        redirect(`/escola/${escola_id}/admin/dashboard`);
+      } else if (papel === "secretaria") {
         redirect("/secretaria");
-      } else if (escolaUsuarios.escola_id) {
-        redirect(`/escola/${escolaUsuarios.escola_id}`);
+      } else if (papel === "financeiro") {
+        redirect("/financeiro");
+      } else if (escola_id) {
+        redirect(`/escola/${escola_id}`);
       }
     }
     

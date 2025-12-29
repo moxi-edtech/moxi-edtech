@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseServerTyped } from '@/lib/supabaseServer';
 import * as XLSX from 'xlsx';
 
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const supabase = await supabaseServerTyped();
     const { data: { user } } = await supabase.auth.getUser();
@@ -11,7 +11,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    const turmaId = params.id;
+    const { id: turmaId } = await params;
 
     // 1. Fetch Turma, Alunos, and Disciplinas
     const { data: turmaData, error: turmaError } = await supabase

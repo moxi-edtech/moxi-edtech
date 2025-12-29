@@ -2748,6 +2748,57 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string
+          escola_id: string
+          id: string
+          lida: boolean
+          link_acao: string | null
+          mensagem: string | null
+          target_role: Database["public"]["Enums"]["user_role"]
+          tipo: string
+          titulo: string
+        }
+        Insert: {
+          created_at?: string
+          escola_id: string
+          id?: string
+          lida?: boolean
+          link_acao?: string | null
+          mensagem?: string | null
+          target_role?: Database["public"]["Enums"]["user_role"]
+          tipo: string
+          titulo: string
+        }
+        Update: {
+          created_at?: string
+          escola_id?: string
+          id?: string
+          lida?: boolean
+          link_acao?: string | null
+          mensagem?: string | null
+          target_role?: Database["public"]["Enums"]["user_role"]
+          tipo?: string
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notas: {
         Row: {
           aluno_id: string

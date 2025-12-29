@@ -54,7 +54,7 @@ export function RegistrarPagamentoButton({
     <button
       onClick={handlePay}
       disabled={loading}
-      className="bg-black text-white px-3 py-1.5 rounded text-xs font-medium hover:bg-gray-800 transition disabled:opacity-50"
+      className="bg-klasse-gold-400 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:brightness-95 transition disabled:opacity-50 focus:ring-4 focus:ring-klasse-gold-400/20 focus:outline-none"
     >
       {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : "Receber"}
     </button>

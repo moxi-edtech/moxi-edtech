@@ -482,6 +482,8 @@ export default function AdminTurmasPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input
                 type="text"
+                id="search-turma"
+                name="search-turma"
                 placeholder="Buscar turma..."
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
@@ -822,6 +824,7 @@ export default function AdminTurmasPage() {
             </div>
 
             <TurmaForm
+              escolaId={escolaId || ""}
               initialData={editingTurma}
               onSuccess={() => {
                 setShowForm(false);

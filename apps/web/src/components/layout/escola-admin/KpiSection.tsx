@@ -1,139 +1,150 @@
+// apps/web/src/components/layout/escola-admin/KpiSection.tsx
 "use client";
 
 import Link from "next/link";
-import { Building2, Users, GraduationCap, FileBarChart2, ArrowRight, Wallet } from "lucide-react";
+import { 
+  UsersRound, // Turmas
+  Users,      // Alunos
+  UserCheck,  // Professores (Substituindo GraduationCap)
+  Wallet,     // Financeiro
+  ArrowRight,
+  AlertCircle 
+} from "lucide-react";
 
 export type KpiStats = {
   turmas: number;
   alunos: number;
   professores: number;
   avaliacoes: number;
-  financeiro?: number; // Ex: % de pagamentos
+  financeiro?: number;
 };
 
-interface KpiSectionProps {
-  escolaId?: string;
-  stats?: KpiStats;
+type Props = {
+  escolaId: string;
+  stats: KpiStats;
   loading?: boolean;
   error?: string | null;
-  onboardingComplete?: boolean; // Define se mostramos dados reais ou placeholders
-}
+  onboardingComplete: boolean;
+};
 
-export default function KpiSection({ 
-  escolaId, 
-  stats, 
-  loading, 
-  error, 
-  onboardingComplete = false 
-}: KpiSectionProps) {
+export default function KpiSection({
+  escolaId,
+  stats,
+  loading = false,
+  error,
+  onboardingComplete,
+}: Props) {
+  
+  // Tratamento de Erro (Clean)
+  if (error) {
+    return (
+      <div className="flex items-center gap-2 p-4 text-sm text-red-600 bg-red-50 rounded-xl border border-red-100 font-medium">
+        <AlertCircle className="w-4 h-4" />
+        Não foi possível carregar os indicadores.
+      </div>
+    );
+  }
 
   const safeStats: KpiStats = stats ?? { turmas: 0, alunos: 0, professores: 0, avaliacoes: 0 };
+  const getHref = (path: string) => `/escola/${escolaId}/admin/${path}`;
 
-  // Função auxiliar para gerar links
-  const getHref = (path: string) => escolaId ? `/escola/${escolaId}/admin/${path}` : '#';
-
-  // Configuração dos KPIs
   const kpis = [
     {
-      title: "Turmas Criadas",
-      // Se carregando: tralha. Se onboarding completo: valor real. Se não: valor do setup (ex: 12)
-      value: loading ? "—" : (onboardingComplete ? safeStats.turmas : 12),
-      icon: Building2,
-      theme: "blue",
-      status: onboardingComplete ? "Ativas" : "Estrutura Pronta",
+      title: "Turmas",
+      value: safeStats.turmas,
+      icon: UsersRound, // Icon token correto
+      status: onboardingComplete ? "Ativas" : "Estrutura",
       href: getHref("turmas"),
+      disabled: false, 
     },
     {
       title: "Alunos",
-      value: loading ? "—" : (onboardingComplete ? safeStats.alunos : 0),
-      icon: Users,
-      theme: "emerald",
-      // Lógica visual crítica: Se não tem onboarding, mostra alerta
-      status: onboardingComplete ? "Matriculados" : "A aguardar importação",
-      isPending: !onboardingComplete, 
+      value: safeStats.alunos,
+      icon: Users, // Icon token correto
+      status: onboardingComplete ? "Matriculados" : "Aguardando",
       href: getHref("alunos"),
+      disabled: !onboardingComplete,
     },
     {
       title: "Professores",
-      value: loading ? "—" : (onboardingComplete ? safeStats.professores : 0),
-      icon: GraduationCap,
-      theme: "orange",
-      status: onboardingComplete ? "Contratados" : "Pendente",
-      isPending: !onboardingComplete,
+      value: safeStats.professores,
+      icon: UserCheck, // Icon token correto
+      status: onboardingComplete ? "Docentes" : "Pendente",
       href: getHref("professores"),
+      disabled: !onboardingComplete,
     },
     {
-      title: "Pagamentos",
-      value: loading ? "—" : (onboardingComplete ? "98%" : "0%"),
+      title: "Financeiro", // Alterado título para consistência
+      value: (safeStats.financeiro ?? 0) + "%",
       icon: Wallet,
-      theme: "purple",
-      status: onboardingComplete ? "Em dia" : "Configurar",
-      isPending: !onboardingComplete,
+      status: onboardingComplete ? "Arrecadação" : "Configurar",
       href: getHref("financeiro"),
+      disabled: !onboardingComplete,
     },
-  ];
-
-  // Mapas de cores (Design System)
-  const styles: Record<string, string> = {
-    blue: "bg-blue-50 text-blue-600 ring-blue-100",
-    emerald: "bg-emerald-50 text-emerald-600 ring-emerald-100",
-    orange: "bg-orange-50 text-orange-600 ring-orange-100",
-    purple: "bg-purple-50 text-purple-600 ring-purple-100",
-  };
-
-  if (error) return (
-    <div className="p-4 text-sm text-red-600 bg-red-50 rounded-xl border border-red-100">
-      Não foi possível carregar os indicadores.
-    </div>
-  );
+  ] as const;
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {kpis.map((item, idx) => {
-        const themeClass = styles[item.theme];
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 font-sora">
+      {kpis.map((item) => {
+        const Icon = item.icon;
         
+        // Se estiver disabled, bloqueia clique, mas mantém visual clean (não "quebrado")
+        const Component = item.disabled ? 'div' : Link;
+
         return (
-          <Link 
-            key={idx} 
+          <Component
+            key={item.title}
             href={item.href}
             className={`
-              group relative flex flex-col justify-between overflow-hidden rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 transition-all 
-              hover:-translate-y-1 hover:shadow-md
-              ${item.isPending ? "opacity-70 grayscale-[0.5]" : "opacity-100"}
+              group relative flex flex-col justify-between overflow-hidden rounded-xl bg-white p-5 shadow-sm border border-slate-200 transition-all duration-200
+              ${!item.disabled ? 'hover:border-[#E3B23C]/50 hover:shadow-md cursor-pointer' : 'opacity-75 cursor-default bg-slate-50/50'}
             `}
           >
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">{item.title}</p>
-                <div className="mt-2 flex items-baseline gap-2">
-                  <span className="text-2xl font-black text-slate-800">
-                    {item.value}
-                  </span>
-                </div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  {item.title}
+                </p>
                 
-                {/* Status Badge */}
+                <div className="mt-1.5 flex items-baseline gap-2">
+                  {loading ? (
+                    <div className="h-8 w-16 bg-slate-100 animate-pulse rounded-md" />
+                  ) : (
+                    <span className="text-2xl font-bold text-slate-900 tracking-tight">
+                      {item.value}
+                    </span>
+                  )}
+                </div>
+
+                {/* Badge Status */}
                 <span className={`
-                  mt-2 inline-block rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide
-                  ${item.isPending 
-                    ? "bg-slate-100 text-slate-500" 
-                    : "bg-teal-50 text-teal-700"}
+                    mt-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border
+                    ${item.disabled 
+                        ? 'bg-slate-100 text-slate-400 border-slate-200' 
+                        : 'bg-[#1F6B3B]/5 text-[#1F6B3B] border-[#1F6B3B]/10'} 
                 `}>
                   {item.status}
                 </span>
               </div>
 
-              <div className={`rounded-xl p-3 ring-1 ${themeClass}`}>
-                <item.icon className="h-6 w-6" />
+              {/* Icon Container */}
+              <div className={`
+                p-2.5 rounded-xl transition-colors
+                ${item.disabled 
+                    ? 'bg-slate-100 text-slate-300' 
+                    : 'bg-slate-50 text-slate-400 group-hover:text-[#E3B23C] group-hover:bg-[#E3B23C]/10'}
+              `}>
+                <Icon size={20} />
               </div>
             </div>
-            
-            {/* Hover Action */}
-            {!item.isPending && (
-              <div className="mt-4 flex items-center text-xs font-medium text-slate-400 group-hover:text-slate-600">
-                Ver detalhes <ArrowRight className="ml-1 h-3 w-3 transition-transform group-hover:translate-x-1" />
+
+            {/* Footer Action (Só aparece se ativo e não loading) */}
+            {!item.disabled && !loading && (
+              <div className="mt-4 flex items-center text-[10px] font-bold text-slate-400 group-hover:text-slate-600 transition-colors">
+                Gerenciar <ArrowRight className="ml-1 h-3 w-3 transition-transform group-hover:translate-x-1" />
               </div>
             )}
-          </Link>
+          </Component>
         );
       })}
     </div>

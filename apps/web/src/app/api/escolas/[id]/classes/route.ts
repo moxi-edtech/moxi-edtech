@@ -13,6 +13,8 @@ export async function GET(
 ) {
   const { id: escolaId } = await context.params;
   try {
+    const url = new URL(_req.url);
+    const cursoId = url.searchParams.get('curso_id');
     const s = await supabaseServer();
     const { data: auth } = await s.auth.getUser();
     const user = auth?.user;
@@ -30,11 +32,15 @@ export async function GET(
 
     let rows: any[] = [];
     {
-      const { data, error } = await (admin as any)
+      let query = (admin as any)
         .from('classes')
         .select('id, nome, descricao, ordem, nivel, curso_id') // Adicionei curso_id
         .eq('escola_id', escolaId)
         .order('ordem', { ascending: true });
+
+      if (cursoId) query = query.eq('curso_id', cursoId);
+
+      const { data, error } = await query;
       
       if (!error) rows = data || [];
       else {
@@ -95,8 +101,8 @@ export async function POST(
       nome: z.string().trim().min(1),
       nivel: z.string().trim().nullable().optional(),
       descricao: z.string().trim().nullable().optional(),
-      curso_id: z.string().uuid().optional().nullable(), 
-      ordem: z.number().optional(), // Opcional, se vier usamos, senão calculamos
+      curso_id: z.string().uuid(),
+      ordem: z.number().optional(),
     });
 
     const parsed = schema.safeParse(body);
@@ -125,7 +131,7 @@ export async function POST(
       escola_id: escolaId,
       nome: parsed.data.nome,
       ordem,
-      curso_id: parsed.data.curso_id || null // [IMPORTANTE] Passar o curso para o insert
+      curso_id: parsed.data.curso_id,
     };
     if (parsed.data.nivel !== undefined) payload.nivel = parsed.data.nivel;
     if (parsed.data.descricao !== undefined) payload.descricao = parsed.data.descricao;

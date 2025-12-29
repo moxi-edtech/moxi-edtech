@@ -1,9 +1,10 @@
 'use client'
 
-import { FormEvent, useEffect, useMemo, useState } from "react"
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
- 
-type Catalogo = { id: string; nome: string }
+import { CURRICULUM_PRESETS_META } from "@/lib/academico/curriculum-presets"
+
+type Catalogo = { id: string; nome: string; codigo?: string; curso_id?: string }
 
 type TabelaPrecoItem = {
   id?: string
@@ -53,8 +54,16 @@ const initialForm: FormState = {
   dia_vencimento: "",
 }
 
+function formatCurrencyInput(val: string) {
+  if (val === "") return null
+  const num = parseFloat(val)
+  return Number.isFinite(num) ? num : null
+}
+
 export default function PrecosClient({ escolaId }: { escolaId: string }) {
-  const [anoLetivo, setAnoLetivo] = useState<number>(new Date().getFullYear())
+  const [sessions, setSessions] = useState<any[]>([])
+  const [selectedSession, setSelectedSession] = useState<string>("")
+  const [anoLetivoFallback, setAnoLetivoFallback] = useState<number>(new Date().getFullYear())
   const [cursos, setCursos] = useState<Catalogo[]>([])
   const [classes, setClasses] = useState<Catalogo[]>([])
   const [tabelas, setTabelas] = useState<TabelaPrecoItem[]>([])
@@ -64,28 +73,123 @@ export default function PrecosClient({ escolaId }: { escolaId: string }) {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [resolving, setResolving] = useState(false)
+  const tabelasRequestRef = useRef(0)
+  const simulacaoRequestRef = useRef(0)
+  const [classesFiltradas, setClassesFiltradas] = useState<Catalogo[]>([])
+
+  const deduplicarClassesPorNome = (lista: Catalogo[]) => {
+    const unicas = lista.filter((cls, index, self) => index === self.findIndex((t) => t.nome === cls.nome))
+    return [...unicas].sort((a, b) => a.nome.localeCompare(b.nome, undefined, { numeric: true }))
+  }
+
+  const cursoIds = useMemo(() => new Set(cursos.map((c) => c.id)), [cursos])
+  const classeIds = useMemo(() => new Set(classes.map((c) => c.id)), [classes])
+
+  const extrairAnoLetivo = (valor?: string | number | null) => {
+    if (valor === null || valor === undefined) return null
+    if (typeof valor === "number" && Number.isFinite(valor)) return valor
+    const texto = String(valor)
+    const match = texto.match(/(19|20)\d{2}/)
+    if (!match) return null
+    return Number(match[0])
+  }
+
+  const sessionSelecionada = useMemo(() => sessions.find((s) => s.id === selectedSession), [sessions, selectedSession])
+
+  const anoLetivo = useMemo(() => {
+    const candidatos = [
+      (sessionSelecionada as any)?.ano_letivo,
+      (sessionSelecionada as any)?.nome,
+      (sessionSelecionada as any)?.data_inicio,
+      (sessionSelecionada as any)?.data_fim,
+    ]
+
+    for (const candidato of candidatos) {
+      const ano = extrairAnoLetivo(candidato)
+      if (ano) return ano
+    }
+    return anoLetivoFallback
+  }, [sessionSelecionada, anoLetivoFallback])
 
   useEffect(() => {
     carregarCatalogos()
   }, [])
 
   useEffect(() => {
+    carregarSessions()
+  }, [])
+
+  useEffect(() => {
     carregarTabelas()
   }, [anoLetivo])
 
+  const filtrarClassesPorCurso = (cursoId: string) => {
+    const vinculadasAoCurso = classes.filter((cls) => cls.curso_id === cursoId)
+    if (vinculadasAoCurso.length > 0) return deduplicarClassesPorNome(vinculadasAoCurso)
+
+    const cursoSelecionado = cursos.find((c) => c.id === cursoId)
+    const cursoCodigo = cursoSelecionado?.codigo as keyof typeof CURRICULUM_PRESETS_META | undefined
+
+    if (cursoCodigo && CURRICULUM_PRESETS_META[cursoCodigo]) {
+      const nomesPermitidos = CURRICULUM_PRESETS_META[cursoCodigo].classes || []
+      const filtradas = classes.filter((cls) => nomesPermitidos.includes(cls.nome))
+      return deduplicarClassesPorNome(filtradas)
+    }
+
+    return deduplicarClassesPorNome(classes)
+  }
+
   useEffect(() => {
-    if (!simulacao.curso_id && !simulacao.classe_id) return
+    if (!form.curso_id) {
+      setClassesFiltradas([])
+      return
+    }
+
+    const filtradas = filtrarClassesPorCurso(form.curso_id)
+    setClassesFiltradas(filtradas)
+    if (form.classe_id && !filtradas.some((c) => c.id === form.classe_id)) {
+      setForm((prev) => ({ ...prev, classe_id: "" }))
+    }
+  }, [form.curso_id, classes, cursos])
+
+  useEffect(() => {
+    const cursoValido = simulacao.curso_id && cursoIds.has(simulacao.curso_id)
+    const classeValida = simulacao.classe_id && classeIds.has(simulacao.classe_id)
+    const filtradas = filtrarClassesPorCurso(simulacao.curso_id)
+    if (simulacao.classe_id && !filtradas.some((c) => c.id === simulacao.classe_id)) {
+      setSimulacao((prev) => ({ ...prev, classe_id: "" }))
+      return
+    }
+    if (!cursoValido && !classeValida) return
     simular()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [simulacao.curso_id, simulacao.classe_id, anoLetivo])
+  }, [simulacao.curso_id, simulacao.classe_id, anoLetivo, cursoIds, classeIds, classes, cursos])
+
+  const classesFiltradasSimulacao = useMemo(
+    () => {
+      if (!simulacao.curso_id) return deduplicarClassesPorNome(classes)
+      return filtrarClassesPorCurso(simulacao.curso_id)
+    },
+    [simulacao.curso_id, classes, cursos]
+  )
+
+  const tabelasFiltradas = useMemo(
+    () =>
+      tabelas.filter((item) => {
+        const cursoValido = !item.curso_id || cursoIds.has(item.curso_id)
+        const classeValida = !item.classe_id || classeIds.has(item.classe_id)
+        return cursoValido && classeValida
+      }),
+    [tabelas, cursoIds, classeIds]
+  )
 
   const destinosOrdenados = useMemo(() => {
-    return [...tabelas].sort((a, b) => {
+    return [...tabelasFiltradas].sort((a, b) => {
       const aKey = `${a.curso_id || ''}-${a.classe_id || ''}`
       const bKey = `${b.curso_id || ''}-${b.classe_id || ''}`
       return aKey.localeCompare(bKey)
     })
-  }, [tabelas])
+  }, [tabelasFiltradas])
 
   async function carregarCatalogos() {
     try {
@@ -96,59 +200,106 @@ export default function PrecosClient({ escolaId }: { escolaId: string }) {
 
       const cursosJson = await cursosRes.json().catch(() => null)
       const classesJson = await classesRes.json().catch(() => null)
-      if (cursosRes.ok && Array.isArray(cursosJson?.data)) setCursos(cursosJson.data as Catalogo[])
+      if (cursosRes.ok && Array.isArray(cursosJson?.data)) {
+        const cursosData = cursosJson.data as Catalogo[]
+        setCursos(cursosData)
+        const faltandoCodigo = cursosData.filter((c) => !c.codigo)
+        if (faltandoCodigo.length > 0) {
+          console.warn("[Precos] Cursos sem codigo retornado", faltandoCodigo)
+        }
+      }
       if (classesRes.ok && Array.isArray(classesJson?.data)) setClasses(classesJson.data as Catalogo[])
     } catch (e) {
       console.error(e)
     }
   }
 
+  async function carregarSessions() {
+    try {
+      const res = await fetch("/api/secretaria/school-sessions")
+      const json = await res.json().catch(() => null)
+      if (!res.ok || !json) return
+
+      const sessionItems = Array.isArray(json.data)
+        ? json.data
+        : Array.isArray(json.items)
+          ? json.items
+          : []
+
+      setSessions(sessionItems)
+      const active = sessionItems.find((s: any) => s.status === "ativa")
+      if (active) setSelectedSession(active.id)
+      else if (sessionItems.length > 0) setSelectedSession(sessionItems[0].id)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
   async function carregarTabelas() {
+    const requestId = ++tabelasRequestRef.current
     setLoading(true)
+    setTabelas([])
+    setResolved(null)
     try {
       const res = await fetch(
         `/api/financeiro/tabelas?escola_id=${encodeURIComponent(escolaId)}&ano_letivo=${encodeURIComponent(anoLetivo)}`,
         { cache: "no-store" }
       )
       const json = await res.json().catch(() => null)
+      if (tabelasRequestRef.current !== requestId) return
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Erro ao carregar preços")
       setTabelas((json.items as TabelaPrecoItem[]) || [])
       setResolved(json.resolved || null)
     } catch (e: any) {
       toast.error(e?.message || "Erro ao carregar tabelas")
     } finally {
-      setLoading(false)
+      if (tabelasRequestRef.current === requestId) {
+        setLoading(false)
+      }
     }
   }
 
   async function simular() {
+    const requestId = ++simulacaoRequestRef.current
     setResolving(true)
+    const cursoIdValido = simulacao.curso_id && cursoIds.has(simulacao.curso_id) ? simulacao.curso_id : ""
+    const classeIdValido = simulacao.classe_id && classeIds.has(simulacao.classe_id) ? simulacao.classe_id : ""
+    if (!cursoIdValido && !classeIdValido) {
+      setResolved(null)
+      setResolving(false)
+      return
+    }
     try {
       const res = await fetch(
         `/api/financeiro/tabelas?escola_id=${encodeURIComponent(escolaId)}&ano_letivo=${encodeURIComponent(
           anoLetivo
-        )}&curso_id=${encodeURIComponent(simulacao.curso_id || "")}&classe_id=${encodeURIComponent(simulacao.classe_id || "")}`,
+        )}&curso_id=${encodeURIComponent(cursoIdValido)}&classe_id=${encodeURIComponent(classeIdValido)}`,
         { cache: "no-store" }
       )
       const json = await res.json().catch(() => null)
+      if (simulacaoRequestRef.current !== requestId) return
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Erro ao resolver preços")
       setResolved(json.resolved || null)
     } catch (e: any) {
       toast.error(e?.message || "Erro ao simular preço")
     } finally {
-      setResolving(false)
+      if (simulacaoRequestRef.current === requestId) {
+        setResolving(false)
+      }
     }
   }
 
   const destinoAtual = useMemo(() => {
-    if (!form.curso_id && !form.classe_id) return "Regra geral"
-    const cursoNome = cursos.find((c) => c.id === form.curso_id)?.nome
-    const classeNome = classes.find((c) => c.id === form.classe_id)?.nome
-    if (form.curso_id && form.classe_id) return `${cursoNome || 'Curso'} • ${classeNome || 'Classe'}`
-    if (form.curso_id) return cursoNome || "Curso"
-    if (form.classe_id) return classeNome || "Classe"
+    const cursoIdValido = form.curso_id && cursoIds.has(form.curso_id) ? form.curso_id : ""
+    const classeIdValido = form.classe_id && classeIds.has(form.classe_id) ? form.classe_id : ""
+    if (!cursoIdValido && !classeIdValido) return "Regra geral"
+    const cursoNome = cursos.find((c) => c.id === cursoIdValido)?.nome
+    const classeNome = classes.find((c) => c.id === classeIdValido)?.nome
+    if (cursoIdValido && classeIdValido) return `${cursoNome || 'Curso'} • ${classeNome || 'Classe'}`
+    if (cursoIdValido) return cursoNome || "Curso"
+    if (classeIdValido) return classeNome || "Classe"
     return "—"
-  }, [form.curso_id, form.classe_id, cursos, classes])
+  }, [form.curso_id, form.classe_id, cursos, classes, cursoIds, classeIds])
 
   async function salvar(e: FormEvent) {
     e.preventDefault()
@@ -156,11 +307,11 @@ export default function PrecosClient({ escolaId }: { escolaId: string }) {
     try {
       const payload: any = {
         ano_letivo: anoLetivo,
-        curso_id: form.curso_id || null,
-        classe_id: form.classe_id || null,
-        valor_matricula: form.valor_matricula ? Number(form.valor_matricula) : undefined,
-        valor_mensalidade: form.valor_mensalidade ? Number(form.valor_mensalidade) : undefined,
-        dia_vencimento: form.dia_vencimento ? Number(form.dia_vencimento) : undefined,
+        curso_id: form.curso_id && cursoIds.has(form.curso_id) ? form.curso_id : null,
+        classe_id: form.classe_id && classeIds.has(form.classe_id) ? form.classe_id : null,
+        valor_matricula: formatCurrencyInput(form.valor_matricula),
+        valor_mensalidade: formatCurrencyInput(form.valor_mensalidade),
+        dia_vencimento: form.dia_vencimento === "" ? null : Number(form.dia_vencimento),
       }
 
       let method: "POST" | "PATCH" = "POST"
@@ -192,8 +343,8 @@ export default function PrecosClient({ escolaId }: { escolaId: string }) {
   function editar(item: TabelaPrecoItem) {
     setForm({
       id: item.id,
-      curso_id: item.curso_id || "",
-      classe_id: item.classe_id || "",
+      curso_id: item.curso_id && cursoIds.has(item.curso_id) ? item.curso_id : "",
+      classe_id: item.classe_id && classeIds.has(item.classe_id) ? item.classe_id : "",
       valor_matricula: item.valor_matricula?.toString() || "",
       valor_mensalidade: item.valor_mensalidade?.toString() || "",
       dia_vencimento: item.dia_vencimento?.toString() || "",
@@ -209,14 +360,28 @@ export default function PrecosClient({ escolaId }: { escolaId: string }) {
         </div>
         <div className="flex items-center gap-2">
           <label className="text-sm text-gray-700">Ano letivo</label>
-          <input
-            type="number"
-            value={anoLetivo}
-            onChange={(e) => setAnoLetivo(Number(e.target.value) || new Date().getFullYear())}
-            className="w-28 rounded border border-gray-300 px-3 py-1.5 text-sm"
-            min={1900}
-            max={3000}
-          />
+          {sessions.length > 0 ? (
+            <select
+              value={selectedSession}
+              onChange={(e) => setSelectedSession(e.target.value)}
+              className="w-52 rounded border border-gray-300 px-3 py-2 text-sm"
+            >
+              {sessions.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nome}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="number"
+              value={anoLetivo}
+              onChange={(e) => setAnoLetivoFallback(Number(e.target.value) || new Date().getFullYear())}
+              className="w-28 rounded border border-gray-300 px-3 py-1.5 text-sm"
+              min={1900}
+              max={3000}
+            />
+          )}
         </div>
       </div>
 
@@ -251,8 +416,12 @@ export default function PrecosClient({ escolaId }: { escolaId: string }) {
                 onChange={(e) => setForm((prev) => ({ ...prev, classe_id: e.target.value }))}
                 className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
               >
-                <option value="">Regra geral ou por curso</option>
-                {classes.map((c) => (
+                <option value="">
+                  {form.curso_id
+                    ? "Todas as classes deste curso (Regra Geral)"
+                    : "Regra Geral (Independente de Classe)"}
+                </option>
+                {classesFiltradas.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.nome}
                   </option>
@@ -400,8 +569,12 @@ export default function PrecosClient({ escolaId }: { escolaId: string }) {
               onChange={(e) => setSimulacao((prev) => ({ ...prev, classe_id: e.target.value }))}
               className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
             >
-              <option value="">Nenhuma</option>
-              {classes.map((c) => (
+              <option value="">
+                {simulacao.curso_id
+                  ? "Todas as classes deste curso (Regra Geral)"
+                  : "Regra Geral (Independente de Classe)"}
+              </option>
+              {classesFiltradasSimulacao.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.nome}
                 </option>
@@ -438,4 +611,4 @@ export default function PrecosClient({ escolaId }: { escolaId: string }) {
       </div>
     </div>
   )
- }
+}

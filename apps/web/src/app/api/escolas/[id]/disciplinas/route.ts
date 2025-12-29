@@ -12,6 +12,8 @@ export async function GET(
 ) {
   const { id: escolaId } = await context.params;
   try {
+    const url = new URL(_req.url);
+    const cursoId = url.searchParams.get('curso_id');
     const s = await supabaseServer();
     const { data: auth } = await s.auth.getUser();
     const user = auth?.user;
@@ -28,11 +30,15 @@ export async function GET(
     if (!allowed) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
 
     const rows = await (async () => {
-      const { data, error } = await (admin as any)
+      let query = (admin as any)
         .from("disciplinas")
         .select("id, nome, tipo, curso_escola_id, classe_nome, classe_id, nivel_ensino, carga_horaria, sigla")
         .eq("escola_id", escolaId)
         .order("nome", { ascending: true });
+
+      if (cursoId) query = query.eq('curso_escola_id', cursoId);
+
+      const { data, error } = await query;
 
       if (!error) return data || [];
 

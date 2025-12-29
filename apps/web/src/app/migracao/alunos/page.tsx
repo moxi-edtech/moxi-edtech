@@ -50,6 +50,8 @@ export default function AlunoMigrationWizard() {
   const [userId, setUserId] = useState<string | null>(null);
   const [importErrors, setImportErrors] = useState<ErroImportacao[]>([]);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [skipMatricula, setSkipMatricula] = useState(false);
+  const [startMonth, setStartMonth] = useState<number>(new Date().getMonth() + 1);
   
   // State for the new configuration step
   const [configSummary, setConfigSummary] = useState<any | null>(null);
@@ -137,6 +139,8 @@ export default function AlunoMigrationWizard() {
         if (st.importId) setImportId(st.importId);
         if (st.step && Number.isFinite(st.step)) setStep(st.step);
         if (st.mapping) setMapping(st.mapping);
+        if (typeof st.skipMatricula === 'boolean') setSkipMatricula(st.skipMatricula);
+        if (st.startMonth && Number.isFinite(st.startMonth)) setStartMonth(Number(st.startMonth));
       }
     } catch {}
   }, [escolaId]);
@@ -151,10 +155,10 @@ export default function AlunoMigrationWizard() {
         matriculaBatches.forEach((b, idx) => { if (selectedBatches[idx]) keys.push(batchKey(b)); });
         selectedBatchKeys = keys;
       } catch {}
-      const payload = { step, importId, escolaId, mapping, selectedBatchKeys } as any;
+      const payload = { step, importId, escolaId, mapping, selectedBatchKeys, skipMatricula, startMonth } as any;
       if (typeof window !== 'undefined') window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch {}
-  }, [step, importId, escolaId, mapping, selectedBatches, matriculaBatches]);
+  }, [step, importId, escolaId, mapping, selectedBatches, matriculaBatches, skipMatricula, startMonth]);
 
   // Deep link: ?importId=...&step=review|<n>
   useEffect(() => {
@@ -312,18 +316,19 @@ export default function AlunoMigrationWizard() {
       const response = await fetch("/api/migracao/alunos/importar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ importId, escolaId, anoLetivo }),
+        body: JSON.stringify({ importId, escolaId, anoLetivo, skipMatricula, startMonth }),
       });
 
       const payload = await response.json();
+      const normalizedResult = payload?.result ? payload.result : payload;
       if (!response.ok) {
-        throw new Error(payload.error || "Erro na importação");
+        throw new Error(payload.error || normalizedResult?.error || "Erro na importação");
       }
-      setImportResult(payload); // Guarda o resultado completo
+      setImportResult(normalizedResult); // Guarda o resultado completo
 
       // 2. Verifica se há necessidade de configuração
-      const turmasCriadas = (payload.turmas_created as number | undefined) ?? 0;
-      const cursosCriados = (payload.cursos_created as number | undefined) ?? 0;
+      const turmasCriadas = (normalizedResult.turmas_created as number | undefined) ?? 0;
+      const cursosCriados = (normalizedResult.cursos_created as number | undefined) ?? 0;
 
       if (turmasCriadas > 0 || cursosCriados > 0) {
         // 2.1 Busca os detalhes dos itens criados
@@ -407,6 +412,8 @@ export default function AlunoMigrationWizard() {
     setHeaders([]);
     setImportId(null);
     setConfigSummary(null);
+    setSkipMatricula(false);
+    setStartMonth(new Date().getMonth() + 1);
     try { if (typeof window !== 'undefined') window.localStorage.removeItem(STORAGE_KEY); } catch {}
   };
 
@@ -844,6 +851,57 @@ export default function AlunoMigrationWizard() {
             description="Crie/atualize os alunos na escola a partir dos dados validados."
           >
             <div className="space-y-4">
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-amber-900">Definição Financeira do Lote</h3>
+                  <p className="text-xs text-amber-800">Evite dívidas retroativas para alunos migrados.</p>
+                </div>
+
+                <label className="flex items-start gap-2 text-sm text-amber-900">
+                  <input
+                    type="checkbox"
+                    className="mt-1 h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                    checked={skipMatricula}
+                    onChange={(e) => setSkipMatricula(e.target.checked)}
+                  />
+                  <span className="leading-tight">
+                    Ignorar cobrança de Matrícula/Confirmação
+                    <span className="block text-xs text-amber-700">
+                      Alunos já pagaram a confirmação fora do sistema (Migração).
+                    </span>
+                  </span>
+                </label>
+
+                <div className="space-y-1">
+                  <label className="text-sm font-semibold text-amber-900 block">Iniciar cobrança de mensalidade em:</label>
+                  <select
+                    className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    value={startMonth}
+                    onChange={(e) => setStartMonth(Number(e.target.value) || new Date().getMonth() + 1)}
+                  >
+                    {[
+                      { label: "Mês Atual", value: new Date().getMonth() + 1 },
+                      { label: "Próximo Mês", value: ((new Date().getMonth() + 1) % 12) + 1 },
+                      { label: "Fevereiro", value: 2 },
+                      { label: "Março", value: 3 },
+                      { label: "Abril", value: 4 },
+                      { label: "Maio", value: 5 },
+                      { label: "Junho", value: 6 },
+                      { label: "Julho", value: 7 },
+                      { label: "Agosto", value: 8 },
+                      { label: "Setembro", value: 9 },
+                      { label: "Outubro", value: 10 },
+                      { label: "Novembro", value: 11 },
+                      { label: "Dezembro", value: 12 },
+                    ].map((opt) => (
+                      <option key={`${opt.label}-${opt.value}`} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
                 <p className="text-[11px] text-slate-500">
                   Ao confirmar, os alunos serão criados/atualizados.

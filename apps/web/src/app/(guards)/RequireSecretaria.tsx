@@ -23,7 +23,7 @@ export default function RequireSecretaria({ children }: { children: React.ReactN
         .limit(10);
       const hasSecretaria = (vinculos || []).some((v: any) => {
         const papel = (v as any)?.papel ?? (v as any)?.role ?? null;
-        return papel === "secretaria";
+        return papel === "secretaria" || papel === "admin";
       });
       if (error || !hasSecretaria) { router.replace("/"); return; }
 

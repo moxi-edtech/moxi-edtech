@@ -319,6 +319,11 @@ export default function CurriculumBuilder({
     const tipo = getSafeTypeFromPreset(baseKey);
     const meta =
       !isCustom && presetKey ? CURRICULUM_PRESETS_META[presetKey] : null;
+    const associatedPreset =
+      (isCustom && (preset.associatedPreset as CurriculumKey | undefined)) || null;
+    const associatedMeta = associatedPreset
+      ? CURRICULUM_PRESETS_META[associatedPreset]
+      : null;
 
     const label: string =
       preset.label ||
@@ -328,12 +333,18 @@ export default function CurriculumBuilder({
       "";
 
     const defaultClasses: string[] =
-      (preset.classes || meta?.classes || []).map(normalizeClassLabel);
+      (preset.classes || meta?.classes || associatedMeta?.classes || []).map(
+        normalizeClassLabel
+      );
 
-    const subjects: string[] =
-      isCustom && preset.subjects
-        ? preset.subjects
-        : getSubjectsFromPreset(presetKey);
+    const subjects: string[] = (() => {
+      if (isCustom) {
+        if (preset.subjects && preset.subjects.length > 0) return preset.subjects;
+        if (associatedPreset) return getSubjectsFromPreset(associatedPreset);
+        return [];
+      }
+      return getSubjectsFromPreset(presetKey);
+    })();
 
     setConfig(prev => ({
       ...prev,
@@ -344,7 +355,7 @@ export default function CurriculumBuilder({
       subjects,
       isCustom,
       associatedPreset: isCustom
-        ? ((preset.associatedPreset as CurriculumKey | undefined) || null)
+        ? associatedPreset || presetKey
         : (presetKey as CurriculumKey | null),
     }));
   };

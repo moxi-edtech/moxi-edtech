@@ -10,9 +10,9 @@ const supabaseAdmin = createClient<Database>(
 
 export async function GET(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const { params } = context;
+  const params = await context.params;
   const escolaId = params.id;
 
   if (!escolaId) {

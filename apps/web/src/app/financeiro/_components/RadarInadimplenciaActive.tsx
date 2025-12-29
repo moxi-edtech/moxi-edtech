@@ -168,7 +168,7 @@ export default function RadarInadimplenciaActive() {
         setLoading(true);
         const [radarRes, dashRes] = await Promise.all([
           fetch(getAbsoluteUrl("/api/financeiro/radar")),
-          fetch(getAbsoluteUrl("/api/financeiro/dashboard")),
+          fetch(getAbsoluteUrl("/api/financeiro")),
         ]);
 
         if (!radarRes.ok) {

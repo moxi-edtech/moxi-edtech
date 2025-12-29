@@ -13,6 +13,7 @@ import {
   AcademicCapIcon,
   BanknotesIcon,
 } from "@heroicons/react/24/outline"
+import Link from 'next/link'
 
 export default async function Page() {
   try {
@@ -26,7 +27,12 @@ export default async function Page() {
 
     const kpis = [
       { title: "Escolas", value: data.escolas, icon: BuildingLibraryIcon },
-      { title: "Usuários Globais", value: data.usuarios, icon: UsersIcon },
+      {
+        title: "Usuários Globais",
+        value: data.usuarios,
+        icon: UsersIcon,
+        href: "/super-admin/usuarios",
+      },
       { title: "Matrículas", value: data.matriculas, icon: AcademicCapIcon },
       {
         title: "Financeiro",
@@ -39,20 +45,22 @@ export default async function Page() {
       <>
         <h1 className="text-2xl font-bold">Dashboard Super Admin</h1>
         
-        {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {kpis.map((kpi) => (
-            <div
-              key={kpi.title}
-              className="bg-white shadow rounded-lg p-4 flex items-center"
-            >
-              <kpi.icon className="w-10 h-10 text-blue-600 mr-4" />
-              <div>
-                <p className="text-sm text-gray-500">{kpi.title}</p>
-                <p className="text-xl font-bold">{kpi.value}</p>
+          {kpis.map((kpi) => {
+            const content = (
+              <div
+                key={kpi.title}
+                className="bg-white shadow rounded-lg p-4 flex items-center"
+              >
+                <kpi.icon className="w-10 h-10 text-blue-600 mr-4" />
+                <div>
+                  <p className="text-sm text-gray-500">{kpi.title}</p>
+                  <p className="text-xl font-bold">{kpi.value}</p>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+            return kpi.href ? <Link href={kpi.href}>{content}</Link> : content
+          })}
         </div>
 
         {/* Charts Section (server-rendered, no client JS) */}
@@ -87,18 +95,21 @@ export default async function Page() {
         <div className="text-red-500">Erro ao carregar dados</div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {kpis.map((kpi) => (
-            <div
-              key={kpi.title}
-              className="bg-white shadow rounded-lg p-4 flex items-center"
-            >
-              <kpi.icon className="w-10 h-10 text-blue-600 mr-4" />
-              <div>
-                <p className="text-sm text-gray-500">{kpi.title}</p>
-                <p className="text-xl font-bold">{kpi.value}</p>
+          {kpis.map((kpi) => {
+            const content = (
+              <div
+                key={kpi.title}
+                className="bg-white shadow rounded-lg p-4 flex items-center"
+              >
+                <kpi.icon className="w-10 h-10 text-blue-600 mr-4" />
+                <div>
+                  <p className="text-sm text-gray-500">{kpi.title}</p>
+                  <p className="text-xl font-bold">{kpi.value}</p>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+            return kpi.href ? <Link href={kpi.href}>{content}</Link> : content
+          })}
         </div>
 
         {/* Sections vazias em caso de erro */}

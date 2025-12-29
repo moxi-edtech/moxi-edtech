@@ -9,8 +9,8 @@ const sora = Sora({
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt">
-      <body className={sora.className}>{children}</body>
+    <html lang="pt" className="h-full">
+      <body className={`h-full ${sora.className}`}>{children}</body>
     </html>
   );
 }

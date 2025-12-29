@@ -19,6 +19,8 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { GerarMensalidadesModal } from "@/components/financeiro/GerarMensalidadesModal";
 import { RegistrarPagamentoButton } from "@/components/financeiro/RegistrarPagamentoButton";
 import type { Database } from "~types/supabase";
+import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { FinanceiroAlerts } from "@/components/financeiro/FinanceiroAlerts";
 
 const kwanza = new Intl.NumberFormat("pt-AO", {
   style: "currency",
@@ -31,6 +33,8 @@ type DashboardResumo = {
   confirmados: { total: number };
   pendentes: { total: number };
 };
+
+type Notification = Database["public"]["Tables"]["notifications"]["Row"];
 
 export default async function FinanceiroDashboardPage({
   searchParams,
@@ -68,12 +72,13 @@ export default async function FinanceiroDashboardPage({
 
   const resumoData: DashboardResumo =
     (cacheResumo as any) ??
-    (await fetch(getAbsoluteUrl("/api/financeiro/dashboard"), {
+    (await fetch(getAbsoluteUrl("/api/financeiro"), {
       cache: "no-store",
     }).then((r) => r.json()));
 
   let mensalidades: Database["public"]["Tables"]["mensalidades"]["Row"][] = [];
   let alunoNome = "";
+  let financeNotifications: Notification[] = [];
 
   if (aluno) {
     const { data } = await supabase
@@ -92,96 +97,101 @@ export default async function FinanceiroDashboardPage({
     alunoNome = (alunoRow as any)?.nome_completo || (alunoRow as any)?.nome || "Aluno";
   }
 
+  if (escolaId) {
+    const { data } = await supabase
+      .from("notifications")
+      .select("id, titulo, mensagem, link_acao, lida, created_at, tipo, target_role")
+      .eq("escola_id", escolaId)
+      .eq("target_role", "financeiro")
+      .eq("lida", false)
+      .order("created_at", { ascending: false })
+      .limit(5);
+
+    financeNotifications = (data as Notification[]) || [];
+  }
+
   return (
-    <main className="space-y-8 p-4 md:p-8">
+    <main className="space-y-8 p-4 md:p-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-moxinexa-navy">Financeiro</h1>
-          <p className="text-slate-500 text-sm">
-            Gestão completa de receita, cobranças e fluxo financeiro da escola.
-          </p>
-        </div>
-        {escolaId ? (
-          <GerarMensalidadesModal escolaId={escolaId} />
-        ) : (
-          <div className="text-xs text-slate-500">Associe-se a uma escola para gerar cobranças.</div>
-        )}
-      </div>
+      <DashboardHeader
+        title="Financeiro"
+        description="Gestão completa de receita, cobranças e fluxo financeiro da escola."
+        actions={
+          escolaId ? (
+            <GerarMensalidadesModal escolaId={escolaId} />
+          ) : (
+            <div className="text-xs text-slate-500">Associe-se a uma escola para gerar cobranças.</div>
+          )
+        }
+      />
+
+      <FinanceiroAlerts notifications={financeNotifications} />
 
       {/* Cards Principais */}
       <section className="grid gap-4 md:grid-cols-4">
         <Card
           title="Taxa de Inadimplência"
           value={(resumoData.inadimplencia?.percentual ?? 0).toFixed(1) + "%"}
-          icon={<TrendingUp className="text-red-500" />}
-          color="bg-red-50"
+          icon={<TrendingUp />}
         />
         <Card
           title="Total em Risco"
           value={(resumoData?.risco?.total ?? 0).toLocaleString("pt-AO") + " Kz"}
-          icon={<Wallet className="text-orange-600" />}
-          color="bg-orange-50"
+          icon={<Wallet />}
         />
         <Card
           title="Pagamentos Confirmados"
           value={resumoData?.confirmados?.total ?? 0}
-          icon={<TrendingUp className="text-moxinexa-teal" />}
-          color="bg-teal-50"
+          icon={<TrendingUp />}
         />
         <Card
           title="Alunos Pendentes"
           value={resumoData.inadimplencia?.total ?? 0}
-          icon={<Users className="text-moxinexa-navy" />}
-          color="bg-slate-100"
+          icon={<Users />}
         />
       </section>
 
       {/* Acessos Rápidos */}
       <section className="space-y-4">
-        <h2 className="text-lg font-bold text-moxinexa-navy">Acessos Rápidos</h2>
+        <h2 className="text-lg font-semibold text-slate-900">Acessos Rápidos</h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <QuickLink
             href="/financeiro/radar"
             title="Radar de Inadimplência"
             description="Acompanhe alunos em atraso e envie cobranças automáticas."
             icon={<Radar className="h-6 w-6" />}
-            color="text-red-600"
           />
           <QuickLink
             href="/financeiro/cobrancas"
             title="Histórico de Cobranças"
             description="Veja respostas, pagamentos e eficiência das mensagens."
             icon={<Receipt className="h-6 w-6" />}
-            color="text-orange-500"
           />
           <QuickLink
             href="/financeiro/conciliacao"
             title="Conciliação TPA"
             description="Confirme pagamentos Multicaixa/TPA com total precisão."
             icon={<Scale className="h-6 w-6" />}
-            color="text-moxinexa-teal"
           />
           <QuickLink
             href="/financeiro/relatorios"
             title="Relatórios Financeiros"
             description="Taxas, gráficos, projeções e análise completa."
             icon={<BarChart3 className="h-6 w-6" />}
-            color="text-moxinexa-navy"
           />
         </div>
       </section>
 
       {/* Extrato do aluno */}
       <section className="space-y-4">
-        <h2 className="text-lg font-bold text-moxinexa-navy flex items-center gap-2">
+        <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
           <DollarSign className="w-5 h-5" /> Extrato por aluno
         </h2>
         {!aluno ? (
-          <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-            <Search className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-            <h3 className="text-lg font-medium text-gray-900">Nenhum aluno selecionado</h3>
-            <p className="text-gray-500">
+          <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-200/70">
+            <Search className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+            <h3 className="text-lg font-medium text-slate-800">Nenhum aluno selecionado</h3>
+            <p className="text-slate-500">
               Use a Busca Global (Ctrl+K) e vá ao Dossiê para ver o financeiro detalhado.
             </p>
           </div>
@@ -189,37 +199,37 @@ export default async function FinanceiroDashboardPage({
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <div>
-                <h3 className="text-lg font-bold">Extrato de: {alunoNome}</h3>
-                <p className="text-sm text-gray-500">Histórico completo de cobranças</p>
+                <h3 className="text-lg font-bold text-slate-900">Extrato de: {alunoNome}</h3>
+                <p className="text-sm text-slate-500">Histórico completo de cobranças</p>
               </div>
             </div>
 
-            <div className="bg-white shadow-sm rounded-lg border overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50">
+            <div className="bg-white shadow-sm rounded-xl border border-slate-200/70 overflow-hidden">
+              <table className="min-w-full divide-y divide-slate-200/70 text-sm">
+                <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase">Referência</th>
-                    <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase">Vencimento</th>
-                    <th className="px-6 py-3 text-left font-medium text-gray-500 uppercase">Valor</th>
-                    <th className="px-6 py-3 text-center font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-6 py-3 text-right font-medium text-gray-500 uppercase">Ação</th>
+                    <th className="px-6 py-3 text-left font-medium text-slate-500 uppercase">Referência</th>
+                    <th className="px-6 py-3 text-left font-medium text-slate-500 uppercase">Vencimento</th>
+                    <th className="px-6 py-3 text-left font-medium text-slate-500 uppercase">Valor</th>
+                    <th className="px-6 py-3 text-center font-medium text-slate-500 uppercase">Status</th>
+                    <th className="px-6 py-3 text-right font-medium text-slate-500 uppercase">Ação</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-slate-200/70">
                   {mensalidades.map((mens) => (
-                    <tr key={mens.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 font-medium text-gray-900">
+                    <tr key={mens.id} className="hover:bg-slate-50">
+                      <td className="px-6 py-4 font-medium text-slate-800">
                         {new Date(0, (mens.mes_referencia || 1) - 1).toLocaleString("pt-PT", {
                           month: "long",
                         })}{" "}
                         / {mens.ano_referencia}
                       </td>
-                      <td className="px-6 py-4 text-gray-500">
+                      <td className="px-6 py-4 text-slate-500">
                         {mens.data_vencimento
                           ? new Date(mens.data_vencimento).toLocaleDateString("pt-PT")
                           : "—"}
                       </td>
-                      <td className="px-6 py-4 font-bold text-gray-900">
+                      <td className="px-6 py-4 font-bold text-slate-800">
                         {kwanza.format(mens.valor_previsto ?? (mens as any).valor ?? 0)}
                       </td>
                       <td className="px-6 py-4 text-center">
@@ -244,7 +254,7 @@ export default async function FinanceiroDashboardPage({
                             valor={mens.valor_previsto ?? (mens as any).valor ?? 0}
                           />
                         ) : (
-                          <button className="text-blue-600 hover:underline text-xs">Ver Recibo</button>
+                          <button className="text-sm text-klasse-gold-500 hover:underline">Ver Recibo</button>
                         )}
                       </td>
                     </tr>
@@ -258,15 +268,14 @@ export default async function FinanceiroDashboardPage({
 
       {/* Resumo da semana (placeholder) */}
       <section className="space-y-4">
-        <h2 className="text-lg font-bold text-moxinexa-navy">Resumo da Semana</h2>
+        <h2 className="text-lg font-semibold text-slate-900">Resumo da Semana</h2>
         <div className="grid gap-4 md:grid-cols-3">
-          <MiniStat label="Cobranças Enviadas" value={0} color="text-moxinexa-teal" />
+          <MiniStat label="Cobranças Enviadas" value={0} />
           <MiniStat
             label="Pagamentos Confirmados"
             value={resumoData?.confirmados?.total ?? 0}
-            color="text-green-600"
           />
-          <MiniStat label="Conciliações Pendentes" value={resumoData?.pendentes?.total ?? 0} color="text-orange-600" />
+          <MiniStat label="Conciliações Pendentes" value={resumoData?.pendentes?.total ?? 0} />
         </div>
       </section>
     </main>
@@ -281,22 +290,20 @@ function Card({
   title,
   value,
   icon,
-  color,
 }: {
   title: string;
   value: string | number;
   icon: React.ReactNode;
-  color: string;
 }) {
   return (
     <div
-      className={`p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-2 ${color}`}
+      className="p-4 rounded-xl border border-slate-200/70 bg-white shadow-sm flex flex-col gap-2"
     >
       <div className="flex items-center justify-between">
         <span className="text-sm text-slate-600">{title}</span>
-        <div>{icon}</div>
+        <div className="text-klasse-gold-400">{icon}</div>
       </div>
-      <div className="text-xl font-bold text-moxinexa-navy">{value}</div>
+      <div className="text-2xl font-bold text-slate-900">{value}</div>
     </div>
   );
 }
@@ -306,29 +313,27 @@ function QuickLink({
   title,
   description,
   icon,
-  color,
 }: {
   href: string;
   title: string;
   description: string;
   icon: React.ReactNode;
-  color: string;
 }) {
   return (
     <Link
       href={href}
-      className="group bg-white border border-slate-200 p-5 rounded-xl shadow-sm hover:shadow-md transition-all flex flex-col gap-3"
+      className="group bg-white border border-slate-200/70 p-5 rounded-xl shadow-sm hover:shadow-md transition-all flex flex-col gap-3"
     >
-      <div className={`w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center ${color}`}>
+      <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-klasse-gold-500">
         {icon}
       </div>
 
       <div>
-        <h3 className="text-moxinexa-navy font-bold text-sm">{title}</h3>
+        <h3 className="text-slate-800 font-semibold text-sm">{title}</h3>
         <p className="text-slate-500 text-xs leading-relaxed">{description}</p>
       </div>
 
-      <div className="flex items-center gap-1 text-moxinexa-teal text-sm font-medium group-hover:underline">
+      <div className="flex items-center gap-1 text-klasse-green-500 text-sm font-medium group-hover:underline mt-auto pt-2">
         Aceder
         <ArrowRight className="h-4 w-4" />
       </div>
@@ -339,15 +344,13 @@ function QuickLink({
 function MiniStat({
   label,
   value,
-  color,
 }: {
   label: string;
   value: number;
-  color: string;
 }) {
   return (
-    <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-sm">
-      <div className={`text-2xl font-bold ${color}`}>{value}</div>
+    <div className="p-4 rounded-xl border border-slate-200/70 bg-white shadow-sm">
+      <div className="text-2xl font-bold text-slate-900">{value}</div>
       <div className="text-slate-500 text-xs mt-1">{label}</div>
     </div>
   );

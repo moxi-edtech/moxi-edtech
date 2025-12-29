@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser, authorizeMatriculasManage } from "@/lib/escola/disciplinas";
 
-export async function PUT(req: Request, context: { params: Promise<{ id: string }> }) {
+export async function PUT(req: Request, context: { params: Promise<{ matriculaId: string }> }) {
   try {
     const supabase = await supabaseServerTyped<any>();
     const headers = new Headers();
@@ -23,7 +23,7 @@ export async function PUT(req: Request, context: { params: Promise<{ id: string 
 
     const body = await req.json();
     const { status } = body;
-    const { id: matricula_id } = await context.params;
+    const { matriculaId: matricula_id } = await context.params;
 
     if (!status) {
       return NextResponse.json({ ok: false, error: 'status é obrigatório' }, { status: 400 });

@@ -1,65 +1,111 @@
+// apps/web/src/components/layout/escola-admin/AcademicSection.tsx
 "use client";
 
-import { Settings, TrendingUp, CreditCard, Users, BookOpen, ArrowRight } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Settings, TrendingUp, CreditCard, Users, BookOpen, Lock } from "lucide-react";
 
-export default function AcademicSection() {
-  const items = [
+type Item = {
+  title: string;
+  description: string;
+  icon: React.ElementType;
+  href: string;
+  locked?: boolean;
+};
+
+function cn(...c: Array<string | false | null | undefined>) {
+  return c.filter(Boolean).join(" ");
+}
+
+export default function AcademicSection({ escolaId }: { escolaId: string }) {
+  const items: Item[] = [
     {
       title: "Configurações Acadêmicas",
+      description: "Disciplinas, calendário e regras",
       icon: Settings,
-      description: "Gerir disciplinas e calendário"
-    },
-    {
-      title: "Promoção",
-      icon: TrendingUp,
-      description: "Progressão de alunos"
-    },
-    {
-      title: "Pagamentos",
-      icon: CreditCard,
-      description: "Gestão financeira"
+      href: `/escola/${escolaId}/admin/configuracoes-academicas`,
+      locked: false,
     },
     {
       title: "Funcionários",
+      description: "Equipe, acessos e permissões",
       icon: Users,
-      description: "Equipe e professores"
+      href: `/escola/${escolaId}/admin/funcionarios`,
+      locked: false,
+    },
+    {
+      title: "Pagamentos",
+      description: "Gestão financeira e cobranças",
+      icon: CreditCard,
+      href: `/escola/${escolaId}/admin/financeiro`,
+      locked: true,
+    },
+    {
+      title: "Promoção",
+      description: "Progressão de alunos",
+      icon: TrendingUp,
+      href: `/escola/${escolaId}/admin/promocao`,
+      locked: true,
     },
     {
       title: "Biblioteca",
+      description: "Acervo e empréstimos",
       icon: BookOpen,
-      description: "Acervo e empréstimos"
+      href: `/escola/${escolaId}/admin/biblioteca`,
+      locked: true,
     },
   ];
 
   return (
-    <div className="bg-white rounded-2xl p-6 border border-gray-200">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h3 className="text-xl font-semibold text-gray-900">Gestão Acadêmica</h3>
-          <p className="text-gray-500 text-sm mt-1">Configure todos os aspectos acadêmicos</p>
+    <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <header className="mb-6 flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h3 className="text-lg font-bold text-slate-900">Gestão Acadêmica</h3>
+          {/* ✅ 1 linha */}
+          <p className="text-sm text-slate-500 truncate">Configure e opere os módulos principais</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors">
-          Ver tudo
-          <ArrowRight className="w-4 h-4" />
-        </button>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {items.map((item, idx) => (
-          <button
-            key={idx}
-            className="flex items-start gap-4 p-4 rounded-xl border border-gray-100 hover:border-gray-300 hover:bg-gray-50 transition-all duration-200 text-left w-full"
-          >
-            <div className="flex-shrink-0 w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-              <item.icon className="w-5 h-5 text-gray-600" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-medium text-gray-900 text-sm mb-1">{item.title}</div>
-              <div className="text-gray-500 text-xs">{item.description}</div>
-            </div>
-          </button>
-        ))}
+        <Link
+          href={`/escola/${escolaId}/admin`}
+          className="shrink-0 inline-flex items-center gap-2 text-sm font-semibold text-teal-700 hover:text-teal-800"
+        >
+          Ver tudo <ArrowRight className="h-4 w-4" />
+        </Link>
+      </header>
+
+      <div className="grid grid-cols-2 gap-3">
+        {items.map((it) => {
+          const Icon = it.icon;
+
+          return (
+            <Link
+              key={it.href}
+              href={it.href}
+              aria-disabled={it.locked}
+              className={cn(
+                "group rounded-xl border border-slate-100 p-3 transition-all hover:border-slate-200 hover:bg-slate-50",
+                it.locked && "opacity-60 grayscale pointer-events-none"
+              )}
+            >
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+                  {it.locked ? <Lock className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  {/* ✅ 1 linha */}
+                  <div className="text-sm font-bold text-slate-900 truncate">{it.title}</div>
+                  {/* ✅ 1 linha */}
+                  <div className="text-xs text-slate-500 truncate">{it.description}</div>
+
+                  {it.locked && (
+                    <div className="mt-1 text-[10px] font-bold text-slate-500">Bloqueado</div>
+                  )}
+                </div>
+              </div>
+            </Link>
+          );
+        })}
       </div>
-    </div>
+    </section>
   );
 }

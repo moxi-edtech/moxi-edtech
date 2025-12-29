@@ -16,6 +16,7 @@ Toda a arquitetura foi projetada para:
 - Suportar alunos **sem `profile_id`** (opcional).
 - Gerar documentos institucionais com **QR Code + validação online**.
 - Suportar turmas com **classe, turno, capacidade e ocupação**.
+- Tratar contexto financeiro de migração: isenção opcional de matrícula e corte de mensalidades retroativas na importação e na aprovação de turmas rascunho.
 
 ---
 
@@ -163,6 +164,7 @@ Chama a RPC `public.importar_alunos`. A função:
 	•	Cria/atualiza `public.alunos`.
 	•	**Lazy Creation**: Se `curso_codigo` ou `turma_codigo` não existem, cria-os com status `pendente` ou `rascunho`, respectivamente, e associa o `import_id`.
 	•	Retorna o número de alunos importados, erros, e a contagem de `turmas_created` e `cursos_created`.
+	•	Captura flags de migração financeira (ignorar matrícula, mês inicial); se turmas já forem ativas, aplica isenção de matrícula e mensalidades retroativas, e direciona notificações (rascunhos → admin; ativa → financeiro).
 
 Retorno típico:
 

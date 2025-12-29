@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 
 type Mensal = {
   anoLetivo: number;
@@ -33,17 +33,67 @@ type PorTurma = {
 export default function Page() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [ano, setAno] = useState<number>(new Date().getFullYear());
   const [mensal, setMensal] = useState<Mensal[]>([]);
   const [porTurma, setPorTurma] = useState<PorTurma[]>([]);
 
+  // --- Alinhamento com Sessão Acadêmica ---
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [selectedSession, setSelectedSession] = useState<string>("");
+
+  const sessionSelecionada = useMemo(() => sessions.find((s) => s.id === selectedSession), [sessions, selectedSession]);
+
+  const extrairAnoLetivo = (valor?: string | number | null) => {
+    if (valor === null || valor === undefined) return null;
+    if (typeof valor === "number" && Number.isFinite(valor)) return valor;
+    const texto = String(valor);
+    const match = texto.match(/(19|20)\d{2}/);
+    return match ? Number(match[0]) : null;
+  };
+
+  const anoLetivoAtivo = useMemo(() => {
+    const candidatos = [
+      (sessionSelecionada as any)?.ano_letivo,
+      (sessionSelecionada as any)?.nome,
+      (sessionSelecionada as any)?.data_inicio,
+      (sessionSelecionada as any)?.data_fim,
+    ];
+
+    for (const candidato of candidatos) {
+      const ano = extrairAnoLetivo(candidato);
+      if (ano) return ano;
+    }
+    return new Date().getFullYear();
+  }, [sessionSelecionada]);
+
   useEffect(() => {
+    async function fetchSessions() {
+      try {
+        const res = await fetch("/api/secretaria/school-sessions");
+        const json = await res.json();
+        if (json.ok) {
+          const sessionItems = Array.isArray(json.data) ? json.data : Array.isArray(json.items) ? json.items : [];
+          setSessions(sessionItems);
+          const activeSession = sessionItems.find((s: any) => s.status === "ativa");
+          if (activeSession) setSelectedSession(activeSession.id);
+          else if (sessionItems.length > 0) setSelectedSession(sessionItems[0].id);
+        }
+      } catch (error) {
+        console.error("Failed to fetch sessions", error);
+      }
+    }
+    fetchSessions();
+  }, []);
+  // --- Fim do alinhamento ---
+
+  useEffect(() => {
+    if (!selectedSession) return;
+
     let cancelled = false;
     async function load() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/financeiro/relatorios/propinas?ano=${encodeURIComponent(ano)}`, { cache: 'no-store' });
+        const res = await fetch(`/api/financeiro/relatorios/propinas?ano=${encodeURIComponent(anoLetivoAtivo)}`, { cache: 'no-store' });
         if (!res.ok) {
           const j = await res.json().catch(() => ({}));
           throw new Error(j?.error || `Erro ${res.status}`);
@@ -61,7 +111,7 @@ export default function Page() {
     }
     load();
     return () => { cancelled = true; }
-  }, [ano]);
+  }, [selectedSession, anoLetivoAtivo]);
 
   return (
     <div className="space-y-6">
@@ -71,13 +121,18 @@ export default function Page() {
           <p className="text-sm text-gray-600">Resumo mensal e ranking por turma</p>
         </div>
         <div className="flex items-center gap-2 text-sm">
-          <label className="text-gray-600">Ano letivo</label>
-          <input
-            type="number"
-            className="w-28 border rounded px-2 py-1"
-            value={ano}
-            onChange={(e) => setAno(parseInt(e.target.value || `${new Date().getFullYear()}`, 10))}
-          />
+          <label className="text-gray-600">Sessão Acadêmica</label>
+          <select
+              value={selectedSession}
+              onChange={(e) => setSelectedSession(e.target.value)}
+              className="w-48 border rounded px-2 py-1 bg-white"
+            >
+              {sessions.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nome}
+                </option>
+              ))}
+            </select>
         </div>
       </div>
 
@@ -91,7 +146,7 @@ export default function Page() {
       {!loading && !error && (
         <>
           <div className="bg-white rounded-xl shadow border p-4 overflow-x-auto">
-            <h2 className="text-base font-semibold mb-3">Série mensal</h2>
+            <h2 className="text-base font-semibold mb-3">Série mensal ({anoLetivoAtivo})</h2>
             <table className="min-w-full text-sm align-middle">
               <thead>
                 <tr className="text-left text-gray-500 border-b">
@@ -113,14 +168,14 @@ export default function Page() {
                   </tr>
                 ))}
                 {mensal.length === 0 && (
-                  <tr><td className="py-4 text-gray-500" colSpan={5}>Sem dados.</td></tr>
+                  <tr><td className="py-4 text-gray-500" colSpan={5}>Sem dados para o ano letivo de {anoLetivoAtivo}.</td></tr>
                 )}
               </tbody>
             </table>
           </div>
 
           <div className="bg-white rounded-xl shadow border p-4 overflow-x-auto">
-            <h2 className="text-base font-semibold mb-3">Ranking por turma</h2>
+            <h2 className="text-base font-semibold mb-3">Ranking por turma ({anoLetivoAtivo})</h2>
             <table className="min-w-full text-sm align-middle">
               <thead>
                 <tr className="text-left text-gray-500 border-b">
@@ -146,7 +201,7 @@ export default function Page() {
                   </tr>
                 ))}
                 {porTurma.length === 0 && (
-                  <tr><td className="py-4 text-gray-500" colSpan={7}>Sem dados.</td></tr>
+                  <tr><td className="py-4 text-gray-500" colSpan={7}>Sem dados para o ano letivo de {anoLetivoAtivo}.</td></tr>
                 )}
               </tbody>
             </table>

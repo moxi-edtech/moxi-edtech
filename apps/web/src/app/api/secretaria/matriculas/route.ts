@@ -96,7 +96,8 @@ export async function GET(req: Request) {
       query = query.gte('created_at', sinceDate);
     }
 
-    if (turmaId) query = query.eq("turma_id", turmaId);
+    if (turmaId === "null") query = query.is("turma_id", null);
+    else if (turmaId) query = query.eq("turma_id", turmaId);
     if (statusIn.length > 0) {
       query = query.in('status', statusIn);
     } else if (status) {

@@ -163,8 +163,19 @@ export default function ConfigurationStep({
     );
   }
 
-  const hasCursosToApprove = cursosToConfigure.some(c => c.status_aprovacao === 'pendente');
-  const hasTurmasToActivate = turmasToConfigure.some(t => t.status_validacao === 'rascunho');
+  const handleActivateAllTurmas = () => {
+    setTurmasToConfigure((prev) =>
+      prev.map((turma) =>
+        turma.status_validacao === 'rascunho'
+          ? { ...turma, status_validacao: 'ativo' }
+          : turma
+      )
+    );
+    toast.info("Todas as turmas em rascunho foram marcadas para ativação ao salvar.");
+  };
+
+  const hasCursosToApprove = useMemo(() => cursosToConfigure.some(c => c.status_aprovacao === 'pendente'), [cursosToConfigure]);
+  const hasTurmasToActivate = useMemo(() => turmasToConfigure.some(t => t.status_validacao === 'rascunho'), [turmasToConfigure]);
 
   return (
     <div className="space-y-6">
@@ -227,7 +238,27 @@ export default function ConfigurationStep({
 
       {turmasToConfigure.length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-slate-800">Turmas em Rascunho</h2>
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="text-lg font-semibold text-slate-800">Turmas em Rascunho</h2>
+            {hasTurmasToActivate && (
+              <button
+                onClick={handleActivateAllTurmas}
+                disabled={loading}
+                className={`
+                  inline-flex items-center justify-center gap-2
+                  rounded-lg px-4 py-2.5 text-sm font-medium
+                  bg-blue-600 text-white
+                  hover:bg-blue-700
+                  disabled:opacity-50 disabled:cursor-not-allowed
+                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                  transition-colors
+                `}
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                <span>{loading ? "Ativando..." : "Ativar Todas as Turmas Rascunho"}</span>
+              </button>
+            )}
+          </div>
           {turmasToConfigure.map((turma) => (
             <div key={turma.id} className="border border-slate-200 rounded-lg p-4 space-y-2">
               <div className="flex items-center justify-between">

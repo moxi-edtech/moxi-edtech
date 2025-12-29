@@ -15,8 +15,16 @@ export async function canManageEscolaResources(
       .maybeSingle();
 
     const role = (profile as any)?.role as string | undefined;
+
+    // Perfis com privilégios globais
     if (role === "super_admin" || role === "global_admin") return true;
-    if (role === "admin" && (profile as any)?.escola_id === escolaId) return true;
+
+    // Perfis vinculados à escola com funções operacionais
+    if (
+      (role === "admin" || role === "financeiro" || role === "secretaria" || role === "gestor") &&
+      (profile as any)?.escola_id === escolaId
+    )
+      return true;
   } catch {}
 
   try {

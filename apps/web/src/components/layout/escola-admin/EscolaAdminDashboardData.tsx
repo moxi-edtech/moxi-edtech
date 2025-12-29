@@ -1,55 +1,125 @@
-"use client";
+// apps/web/src/components/layout/escola-admin/EscolaAdminDashboardData.tsx
+import "server-only";
 
-import { useEffect, useState } from "react";
 import EscolaAdminDashboardContent from "./EscolaAdminDashboardContent";
+import { supabaseServer } from "@/lib/supabaseServer";
 import type { KpiStats } from "./KpiSection";
 
-// ... (teus types existentes)
+/**
+ * Padrão KLASSE:
+ * - Server component busca tudo
+ * - Passa apenas plain objects para o client component (Content)
+ * - Zero fetch() no client para dados do dashboard
+ */
+type Aviso = { id: string; titulo: string; dataISO: string };
+type Evento = { id: string; titulo: string; dataISO: string };
 
-export default function EscolaAdminDashboardData({ escolaId }: { escolaId: string; escolaNome?: string }) {
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<any>(null); // Armazena tudo
-  const [error, setError] = useState<string | null>(null);
+type DashboardPayload = {
+  kpis: KpiStats;
+  avisos: Aviso[];
+  eventos: Evento[];
+  charts?: {
+    meses: string[];
+    alunosPorMes: number[];
+    pagamentos: any; // depois tipamos direito (PagamentosResumo)
+  };
+};
 
-  useEffect(() => {
-    let mounted = true;
-    async function load() {
-      try {
-        setLoading(true);
-        const res = await fetch(`/api/escolas/${escolaId}/admin/dashboard`, { cache: 'no-store' });
-        if (!res.ok) throw new Error('Falha na API');
-        const json = await res.json();
-        
-        if (mounted) {
-            // Assumindo que a tua API retorna algo como { avisos, eventos, charts, kpis }
-            // Se a tua API atual não retorna 'kpis' diretos com contagens totais, 
-            // precisas adicionar isso ao endpoint ou calcular aqui.
-            // Vou simular mapeamento:
-            setData(json);
-        }
-      } catch (e: any) {
-        if (mounted) setError(e.message);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    }
-    load();
-    return () => { mounted = false };
-  }, [escolaId]);
+type Props = {
+  escolaId: string;
+  escolaNome?: string;
+};
 
-  // Fallback stats se a API falhar ou estiver loading
-  const stats: KpiStats = data?.kpis || { turmas: 0, alunos: 0, professores: 0, avaliacoes: 0 };
+export default async function EscolaAdminDashboardData({ escolaId, escolaNome }: Props) {
+  const s = await supabaseServer();
 
-  return (
-    <EscolaAdminDashboardContent
-      escolaId={escolaId}
-      loading={loading}
-      error={error}
-      stats={stats} // <--- O IMPORTANTE ESTÁ AQUI
-      pagamentosKpis={data?.charts?.pagamentos}
-      notices={data?.avisos}
-      events={data?.eventos}
-      charts={data?.charts}
-    />
-  );
+  try {
+    // ✅ 1) KPIs (ajusta nomes de tabela/coluna conforme teu schema real)
+    // Vou manter isso “agnóstico”: você substitui pelas tuas views/funcs.
+    // O objetivo aqui é o padrão: tudo no server, nada de componente client buscando.
+    const [
+  alunosCount,
+  turmasCount,
+  professoresCount,
+  avaliacoesCount,
+  pendingTurmasCount,
+] = await Promise.all([
+  s.from("alunos")
+    .select("id", { count: "exact", head: true })
+    .eq("escola_id", escolaId),
+
+  s.from("turmas")
+    .select("id", { count: "exact", head: true })
+    .eq("escola_id", escolaId),
+
+  s.from("professores")
+    .select("id", { count: "exact", head: true })
+    .eq("escola_id", escolaId),
+
+  s.from("avaliacoes")
+    .select("id", { count: "exact", head: true })
+    .eq("escola_id", escolaId),
+
+  // 🔥 AQUI ESTÁ O FIX REAL
+  s.from("turmas")
+    .select("id", { count: "exact", head: true })
+    .eq("escola_id", escolaId)
+    .neq("status_validacao", "ativo"),
+]);
+
+    // Se alguma tabela não existir ainda, isso vai dar erro.
+    // Por isso: normaliza fallback seguro.
+    const stats: KpiStats = {
+      alunos: alunosCount.count ?? 0,
+      turmas: turmasCount.count ?? 0,
+      professores: professoresCount.count ?? 0,
+      avaliacoes: avaliacoesCount.count ?? 0,
+    };
+
+    const pendingCount = pendingTurmasCount.count ?? 0;
+
+    // ✅ 2) Avisos / Eventos (placeholder, ajusta origem real)
+    const avisos: Aviso[] = [];
+    const eventos: Evento[] = [];
+
+    const payload: DashboardPayload = {
+      kpis: stats,
+      avisos,
+      eventos,
+      charts: undefined,
+    };
+
+    return (
+      <EscolaAdminDashboardContent
+        escolaId={escolaId}
+        escolaNome={escolaNome}
+        loading={false}
+        error={null}
+        stats={payload.kpis}
+        pendingTurmasCount={pendingCount}
+        notices={payload.avisos}
+        events={payload.eventos}
+        charts={payload.charts as any}
+        pagamentosKpis={payload.charts?.pagamentos as any}
+      />
+    );
+  } catch (e: any) {
+    // ✅ fallback forte, sem quebrar UI
+    const stats: KpiStats = { alunos: 0, turmas: 0, professores: 0, avaliacoes: 0 };
+
+    return (
+      <EscolaAdminDashboardContent
+        escolaId={escolaId}
+        escolaNome={escolaNome}
+        loading={false}
+        error={e?.message ?? "Falha ao carregar dashboard"}
+        stats={stats}
+        pendingTurmasCount={0}
+        notices={[]}
+        events={[]}
+        charts={undefined}
+        pagamentosKpis={undefined}
+      />
+    );
+  }
 }
