@@ -110,6 +110,10 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
     window.location.href = `/api/secretaria/turmas/${turmaId}/pauta`;
   };
 
+  const handleListaPdf = () => {
+    window.open(`/api/secretaria/turmas/${turmaId}/alunos/lista?format=pdf`, "_blank");
+  };
+
   if (loading) return (
     <div className="h-[60vh] flex flex-col items-center justify-center gap-3 text-slate-400">
       <Loader2 className="w-8 h-8 animate-spin text-[#1F6B3B]"/>
@@ -346,7 +350,12 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
                     highlight={true} 
                   />
                   
-                  <DocCard icon={FileText} title="Lista Nominal" desc="Relatório PDF oficial da turma." />
+                  <DocCard
+                    icon={FileText}
+                    title="Lista Nominal"
+                    desc="Relatório PDF oficial da turma."
+                    onClick={handleListaPdf}
+                  />
                   <DocCard icon={LayoutDashboard} title="Pauta em Branco" desc="Grelha vazia para preenchimento." />
                   <DocCard icon={BookOpen} title="Mini-Pautas" desc="Fichas individuais por disciplina." />
                </div>

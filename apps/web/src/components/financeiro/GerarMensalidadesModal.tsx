@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Calendar, CheckCircle, AlertCircle } from "lucide-react";
 
 type Status = "idle" | "success" | "error";
+type TurmaOption = { id: string; nome: string };
 
 export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
   const router = useRouter();
@@ -12,6 +13,8 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
   const [msg, setMsg] = useState("");
+  const [turmas, setTurmas] = useState<TurmaOption[]>([]);
+  const [turmaId, setTurmaId] = useState<string>("todas");
 
   const today = new Date();
   const defaultMes = today.getMonth() + 2;
@@ -19,6 +22,27 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
     defaultMes > 12 ? today.getFullYear() + 1 : today.getFullYear()
   );
   const [mes, setMes] = useState(defaultMes > 12 ? 1 : defaultMes);
+
+  async function loadTurmas() {
+    try {
+      const res = await fetch("/api/secretaria/turmas?status=ativo", { cache: "no-store" });
+      const json = await res.json();
+      if (!res.ok || !json?.ok) return;
+      const items = (json.items || []).map((t: any) => ({
+        id: String(t.id),
+        nome: String(t.nome ?? "Turma"),
+      }));
+      setTurmas(items);
+    } catch {
+      setTurmas([]);
+    }
+  }
+
+  useEffect(() => {
+    if (isOpen) {
+      loadTurmas();
+    }
+  }, [isOpen]);
 
   async function handleGerar() {
     setLoading(true);
@@ -34,6 +58,7 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
           ano,
           mes,
           diaVencimento: 10,
+          turmaId: turmaId === "todas" ? null : turmaId,
         }),
       });
 
@@ -101,6 +126,30 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
               ))}
             </select>
           </div>
+        </div>
+
+        <div className="mb-6">
+          <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase">
+            Turma (opcional)
+          </label>
+          <select
+            value={turmaId}
+            onChange={(e) => setTurmaId(e.target.value)}
+            onFocus={() => {
+              if (turmas.length === 0) loadTurmas();
+            }}
+            className="w-full border-slate-300 border rounded-xl p-2 text-sm bg-white focus:ring-4 focus:ring-klasse-gold-400/20 focus:border-klasse-gold-400"
+          >
+            <option value="todas">Todas as turmas</option>
+            {turmas.map((turma) => (
+              <option key={turma.id} value={turma.id}>
+                {turma.nome}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-slate-400">
+            Selecione uma turma para gerar apenas para esse grupo.
+          </p>
         </div>
 
         {status === "success" && (

@@ -18,6 +18,8 @@ import Link from "next/link";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { GerarMensalidadesModal } from "@/components/financeiro/GerarMensalidadesModal";
 import { RegistrarPagamentoButton } from "@/components/financeiro/RegistrarPagamentoButton";
+import { ReciboPrintButton } from "@/components/financeiro/ReciboImprimivel";
+import { EstornarMensalidadeButton } from "@/components/financeiro/EstornarMensalidadeButton";
 import type { Database } from "~types/supabase";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { FinanceiroAlerts } from "@/components/financeiro/FinanceiroAlerts";
@@ -79,6 +81,7 @@ export default async function FinanceiroDashboardPage({
   let mensalidades: Database["public"]["Tables"]["mensalidades"]["Row"][] = [];
   let alunoNome = "";
   let financeNotifications: Notification[] = [];
+  let escolaNome = "Escola";
 
   if (aluno) {
     const { data } = await supabase
@@ -98,6 +101,14 @@ export default async function FinanceiroDashboardPage({
   }
 
   if (escolaId) {
+    const { data: escolaRow } = await supabase
+      .from("escolas")
+      .select("nome")
+      .eq("id", escolaId)
+      .maybeSingle();
+
+    escolaNome = (escolaRow as any)?.nome ?? escolaNome;
+
     const { data } = await supabase
       .from("notifications")
       .select("id, titulo, mensagem, link_acao, lida, created_at, tipo, target_role")
@@ -254,7 +265,16 @@ export default async function FinanceiroDashboardPage({
                             valor={mens.valor_previsto ?? (mens as any).valor ?? 0}
                           />
                         ) : (
-                          <button className="text-sm text-klasse-gold-500 hover:underline">Ver Recibo</button>
+                          <div className="flex flex-wrap items-center justify-end gap-2">
+                            <ReciboPrintButton
+                              mensalidadeId={mens.id}
+                              escolaNome={escolaNome}
+                              alunoNome={alunoNome}
+                              valor={mens.valor_pago_total ?? mens.valor_previsto ?? (mens as any).valor ?? 0}
+                              dataPagamento={mens.data_pagamento_efetiva ?? new Date().toISOString()}
+                            />
+                            <EstornarMensalidadeButton mensalidadeId={mens.id} />
+                          </div>
                         )}
                       </td>
                     </tr>
