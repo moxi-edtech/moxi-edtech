@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
     const ano = Number(body?.ano);
     const mes = Number(body?.mes);
     const diaVencimento = body?.diaVencimento ? Number(body.diaVencimento) : undefined;
+    const turmaId = body?.turmaId ? String(body.turmaId) : undefined;
 
     if (!escolaId || !Number.isFinite(ano) || !Number.isFinite(mes)) {
       return NextResponse.json(
@@ -39,6 +40,7 @@ export async function POST(req: NextRequest) {
       p_ano_letivo: ano,
       p_mes_referencia: mes,
       p_dia_vencimento_default: diaVencimento,
+      p_turma_id: turmaId ?? null,
     });
 
     if (error) {
