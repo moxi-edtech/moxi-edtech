@@ -35,8 +35,9 @@ import { filterItemsByCourse } from "@/lib/academico/filters";
 type ActiveCourse = {
   id: string;
   nome: string;
-  codigo: string;
+  codigo?: string | null;
   curriculum_key?: string | null;
+  course_code?: string | null;
   total_classes: number;
   total_turmas: number;
   total_alunos: number;
@@ -57,9 +58,12 @@ type CourseDraft = {
     subjects: string[];
     isCustom: boolean;
     baseKey: string;
+    turnos: string[];
 };
 
 const ALL_CLASSES = ["7ª", "8ª", "9ª", "10ª", "11ª", "12ª", "13ª"];
+const DEFAULT_TURNOS = ["Manhã"];
+const TURNOS_OPTIONS = ["Manhã", "Tarde", "Noite"];
 
 const normalize = (val: string) =>
   val
@@ -68,9 +72,12 @@ const normalize = (val: string) =>
     .toLowerCase()
     .trim();
 
+const normalizeClasseLabel = (val: string) =>
+  normalize(val).replace(/classe/g, "").replace(/[^a-z0-9]/g, "");
+
 const resolvePresetKeyForCourse = (course: ActiveCourse | undefined): CurriculumKey | null => {
-  if (!course?.codigo) return null;
-  const code = course.codigo as CurriculumKey;
+  const code = (course?.curriculum_key || course?.course_code || course?.codigo) as CurriculumKey | undefined;
+  if (!code) return null;
   // A regra de negócio é que o `codigo` do curso DEVE ser um `CurriculumKey` válido.
   return code in CURRICULUM_PRESETS ? code : null;
 };
@@ -351,6 +358,30 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     });
   };
 
+  const buildPresetDisciplinas = (
+    presetKey: CurriculumKey,
+    classes: Array<{ id: string; nome: string }>
+  ) => {
+    const classMap = new Map(
+      classes.map((c) => [normalizeClasseLabel(c.nome), c.id])
+    );
+    return CURRICULUM_PRESETS[presetKey]
+      .map((disc) => {
+        const classId = classMap.get(normalizeClasseLabel(disc.classe));
+        if (!classId) return null;
+        return { classeId: classId, nome: disc.nome };
+      })
+      .filter(Boolean) as Array<{ classeId: string; nome: string }>;
+  };
+
+  const buildCustomDisciplinas = (
+    classes: Array<{ id: string; nome: string }>,
+    subjects: string[]
+  ) =>
+    classes.flatMap((cls) =>
+      subjects.map((nome) => ({ classeId: cls.id, nome }))
+    );
+
   // --- CRUD: REMOVER DISCIPLINA ---
   const handleRemoveDisciplina = (id: string) => {
       if(!confirm("Remover esta disciplina do curso?")) return;
@@ -377,14 +408,13 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       setQuickInstallingKey(presetKey);
       try {
         const meta = CURRICULUM_PRESETS_META[presetKey as CurriculumKey];
-        const subjects = extractSubjectsFromPreset(presetKey as CurriculumKey);
         const classes = meta?.classes && meta.classes.length > 0 ? [...meta.classes] : ['10ª Classe'];
-        const tipo = PRESET_TO_TYPE[presetKey as CurriculumKey] || 'core';
+        const tipo = PRESET_TO_TYPE[presetKey as CurriculumKey] || 'geral';
 
       const courseResp = await fetchJson(`/api/escolas/${escolaId}/cursos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nome: meta?.label || 'Novo Curso', tipo, descricao: meta?.description || null, codigo: presetKey, curriculum_key: presetKey, course_code: presetKey })
+        body: JSON.stringify({ nome: meta?.label || 'Novo Curso', tipo, descricao: meta?.description || null, curriculum_key: presetKey, course_code: presetKey })
       });
         const courseId = courseResp.data?.id || courseResp.id;
 
@@ -398,16 +428,16 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
           }
         }
 
-        // Disciplinas (vincula na primeira classe criada)
-        if (createdClasses[0]) {
-          for (const subj of subjects) {
-            try { await createDisciplinaRecord(courseId, createdClasses[0].id, subj); } catch (e) { console.warn('Disciplina', subj, e); }
-          }
+        const disciplinas = buildPresetDisciplinas(presetKey, createdClasses);
+        for (const disc of disciplinas) {
+          try { await createDisciplinaRecord(courseId, disc.classeId, disc.nome); } catch (e) { console.warn('Disciplina', disc.nome, e); }
         }
 
-        // Turma padrão "A" turno manhã
+        const turnos = DEFAULT_TURNOS;
         for (const cls of createdClasses) {
-          try { await createTurmaRecord({ classeId: cls.id, classeNome: cls.nome, cursoId: courseId, turno: 'Manhã' }); } catch (e) { console.warn('Turma classe', cls.nome, e); }
+          for (const turno of turnos) {
+            try { await createTurmaRecord({ classeId: cls.id, classeNome: cls.nome, cursoId: courseId, turno }); } catch (e) { console.warn('Turma classe', cls.nome, e); }
+          }
         }
 
         toast.success('Estrutura criada com sucesso.');
@@ -423,12 +453,12 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     const meta = CURRICULUM_PRESETS_META[presetKey as CurriculumKey];
     const subjects = extractSubjectsFromPreset(presetKey as CurriculumKey);
     const classes = meta?.classes && meta.classes.length > 0 ? [...meta.classes] : ['10ª Classe', '11ª Classe', '12ª Classe'];
-    setDraft({ label: meta?.label || "Novo Curso", classes, subjects, isCustom: false, baseKey: presetKey });
+    setDraft({ label: meta?.label || "Novo Curso", classes, subjects, isCustom: false, baseKey: presetKey, turnos: DEFAULT_TURNOS });
     setShowModal(true);
   };
 
   const openCustomConfig = () => {
-      setDraft({ label: "", classes: ['10ª Classe'], subjects: ["Língua Portuguesa"], isCustom: true, baseKey: "custom_builder" });
+      setDraft({ label: "", classes: ['10ª Classe'], subjects: ["Língua Portuguesa"], isCustom: true, baseKey: "custom_builder", turnos: DEFAULT_TURNOS });
       setShowModal(true);
   };
 
@@ -451,10 +481,17 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     if (!draft) return;
     setInstalling(true);
     try {
+      const isPreset = !draft.isCustom && draft.baseKey in CURRICULUM_PRESETS;
       const courseResp = await fetchJson(`/api/escolas/${escolaId}/cursos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nome: draft.label || 'Novo Curso', tipo: draft.isCustom ? 'core' : 'tecnico', descricao: draft.baseKey, codigo: draft.baseKey, curriculum_key: draft.baseKey, course_code: draft.baseKey })
+        body: JSON.stringify({
+          nome: draft.label || 'Novo Curso',
+          tipo: draft.isCustom ? 'geral' : 'tecnico',
+          descricao: draft.baseKey,
+          curriculum_key: isPreset ? draft.baseKey : null,
+          course_code: isPreset ? draft.baseKey : null,
+        })
       });
       const courseId = courseResp.data?.id || courseResp.id;
 
@@ -468,14 +505,19 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         }
       }
 
-      if (createdClasses[0]) {
-        for (const subj of draft.subjects) {
-          try { await createDisciplinaRecord(courseId, createdClasses[0].id, subj); } catch (e) { console.warn('Disciplina', subj, e); }
-        }
+      const disciplinas = isPreset
+        ? buildPresetDisciplinas(draft.baseKey as CurriculumKey, createdClasses)
+        : buildCustomDisciplinas(createdClasses, draft.subjects);
+
+      for (const disc of disciplinas) {
+        try { await createDisciplinaRecord(courseId, disc.classeId, disc.nome); } catch (e) { console.warn('Disciplina', disc.nome, e); }
       }
 
+      const turnos = draft.turnos?.length ? draft.turnos : DEFAULT_TURNOS;
       for (const cls of createdClasses) {
-        try { await createTurmaRecord({ classeId: cls.id, classeNome: cls.nome, cursoId: courseId, turno: 'Manhã' }); } catch (e) { console.warn('Turma classe', cls.nome, e); }
+        for (const turno of turnos) {
+          try { await createTurmaRecord({ classeId: cls.id, classeNome: cls.nome, cursoId: courseId, turno }); } catch (e) { console.warn('Turma classe', cls.nome, e); }
+        }
       }
 
       toast.success('Curso criado com sucesso');
@@ -824,6 +866,29 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                                 return (
                                     <button key={clsKey} onClick={() => toggleClass(clsKey)} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${isSelected ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}`}>
                                         {clsKey}
+                                    </button>
+                                )
+                            })}
+                        </div>
+                    </div>
+                    <div>
+                        <label className="text-xs font-bold text-slate-500 uppercase mb-2 block">Turnos do Curso</label>
+                        <div className="flex flex-wrap gap-2">
+                            {TURNOS_OPTIONS.map((turno) => {
+                                const isSelected = draft.turnos.includes(turno);
+                                return (
+                                    <button
+                                        key={turno}
+                                        type="button"
+                                        onClick={() => {
+                                            const next = isSelected
+                                              ? draft.turnos.filter((t) => t !== turno)
+                                              : [...draft.turnos, turno];
+                                            setDraft({ ...draft, turnos: next.length ? next : DEFAULT_TURNOS });
+                                        }}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${isSelected ? 'bg-klasse-gold text-white border-klasse-gold' : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'}`}
+                                    >
+                                        {turno}
                                     </button>
                                 )
                             })}
