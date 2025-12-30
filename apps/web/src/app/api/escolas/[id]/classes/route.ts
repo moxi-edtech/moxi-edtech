@@ -4,6 +4,26 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 import { canManageEscolaResources } from "../permissions";
+import { CURRICULUM_PRESETS_META, type CurriculumKey } from "@/lib/academico/curriculum-presets";
+
+const CURRICULUM_CLASS_RANGES: Record<CurriculumKey, { min: number; max: number }> = {
+  primario_base: { min: 1, max: 6 },
+  primario_avancado: { min: 1, max: 6 },
+  ciclo1: { min: 7, max: 9 },
+  puniv: { min: 10, max: 12 },
+  economicas: { min: 10, max: 12 },
+  tecnico_informatica: { min: 10, max: 13 },
+  tecnico_gestao: { min: 10, max: 13 },
+  tecnico_construcao: { min: 10, max: 13 },
+  tecnico_base: { min: 10, max: 13 },
+  saude_enfermagem: { min: 10, max: 13 },
+  saude_farmacia_analises: { min: 10, max: 13 },
+};
+
+const parseClasseNumero = (nome: string) => {
+  const match = nome.match(/\d{1,2}/);
+  return match ? Number(match[0]) : null;
+};
 
 // GET /api/escolas/[id]/classes
 // Lista classes da escola (usa service role com autorização)
@@ -135,6 +155,38 @@ export async function POST(
     };
     if (parsed.data.nivel !== undefined) payload.nivel = parsed.data.nivel;
     if (parsed.data.descricao !== undefined) payload.descricao = parsed.data.descricao;
+
+    const { data: cursoInfo, error: cursoErr } = await (admin as any)
+      .from("cursos")
+      .select("id, curriculum_key, course_code")
+      .eq("id", parsed.data.curso_id)
+      .eq("escola_id", escolaId)
+      .maybeSingle();
+
+    if (cursoErr) {
+      return NextResponse.json({ ok: false, error: cursoErr.message }, { status: 400 });
+    }
+
+    if (!cursoInfo) {
+      return NextResponse.json({ ok: false, error: "Curso não encontrado para validar classe." }, { status: 404 });
+    }
+
+    if (cursoInfo.curriculum_key && (cursoInfo.curriculum_key in CURRICULUM_PRESETS_META)) {
+      const classNum = parseClasseNumero(parsed.data.nome);
+      if (!classNum) {
+        return NextResponse.json(
+          { ok: false, error: "Classe inválida para curso com currículo definido." },
+          { status: 400 }
+        );
+      }
+      const range = CURRICULUM_CLASS_RANGES[cursoInfo.curriculum_key as CurriculumKey];
+      if (!range || classNum < range.min || classNum > range.max) {
+        return NextResponse.json(
+          { ok: false, error: `Classe fora do intervalo permitido (${range?.min}ª–${range?.max}ª).` },
+          { status: 400 }
+        );
+      }
+    }
 
     const { data: ins, error } = await (admin as any)
       .from('classes')
