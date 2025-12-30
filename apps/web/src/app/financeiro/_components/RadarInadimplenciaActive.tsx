@@ -33,6 +33,7 @@ type RadarRowFromApi = {
 // --- Tipos usados no componente ---
 type RadarEntry = {
   id: string;
+  aluno_id: string;
   nome_aluno: string;
   responsavel: string;
   telefone: string;
@@ -52,7 +53,7 @@ type Relatorio = {
   taxaConversao: number;
   valorRecuperado: number;
   historico: Array<{
-    data: Date;
+    data: string;
     enviadas: number;
     respondidas: number;
     pagos: number;
@@ -147,18 +148,13 @@ export default function RadarInadimplenciaActive() {
   const [enviando, setEnviando] = useState(false);
   const [mostrarRelatorio, setMostrarRelatorio] = useState(false);
   const [relatorio, setRelatorio] = useState<Relatorio>({
-    totalEnviadas: 142,
-    totalRespondidas: 89,
-    totalPagos: 67,
-    taxaResposta: 62.7,
-    taxaConversao: 47.2,
-    valorRecuperado: 1675000,
-    historico: [
-      { data: new Date("2024-01-01"), enviadas: 45, respondidas: 28, pagos: 21 },
-      { data: new Date("2024-01-08"), enviadas: 38, respondidas: 24, pagos: 18 },
-      { data: new Date("2024-01-15"), enviadas: 32, respondidas: 20, pagos: 15 },
-      { data: new Date("2024-01-22"), enviadas: 27, respondidas: 17, pagos: 13 },
-    ],
+    totalEnviadas: 0,
+    totalRespondidas: 0,
+    totalPagos: 0,
+    taxaResposta: 0,
+    taxaConversao: 0,
+    valorRecuperado: 0,
+    historico: [],
   });
 
   // Carregar dados reais da API
@@ -166,9 +162,10 @@ export default function RadarInadimplenciaActive() {
     const fetchDados = async () => {
       try {
         setLoading(true);
-        const [radarRes, dashRes] = await Promise.all([
+        const [radarRes, dashRes, cobrancasRes] = await Promise.all([
           fetch(getAbsoluteUrl("/api/financeiro/radar")),
           fetch(getAbsoluteUrl("/api/financeiro")),
+          fetch(getAbsoluteUrl("/api/financeiro/cobrancas/resumo")),
         ]);
 
         if (!radarRes.ok) {
@@ -183,6 +180,7 @@ export default function RadarInadimplenciaActive() {
           const rows: RadarRowFromApi[] = json.items ?? json.data ?? [];
           const mapped: RadarEntry[] = rows.map((row) => ({
             id: row.mensalidade_id,
+            aluno_id: row.aluno_id,
             nome_aluno: row.nome_aluno,
             responsavel: row.responsavel ?? "—",
             telefone: row.telefone ?? "",
@@ -207,6 +205,21 @@ export default function RadarInadimplenciaActive() {
             confirmados: r?.confirmados ?? { total: 0 },
             pendentes: r?.pendentes ?? { total: 0 },
           });
+        }
+
+        if (cobrancasRes.ok) {
+          const cobrancasJson = await cobrancasRes.json();
+          if (cobrancasJson?.ok && cobrancasJson?.resumo) {
+            setRelatorio({
+              totalEnviadas: cobrancasJson.resumo.totalEnviadas ?? 0,
+              totalRespondidas: cobrancasJson.resumo.totalRespondidas ?? 0,
+              totalPagos: cobrancasJson.resumo.totalPagos ?? 0,
+              taxaResposta: cobrancasJson.resumo.taxaResposta ?? 0,
+              taxaConversao: cobrancasJson.resumo.taxaConversao ?? 0,
+              valorRecuperado: cobrancasJson.resumo.valorRecuperado ?? 0,
+              historico: cobrancasJson.historico ?? [],
+            });
+          }
         }
       } catch (err) {
         console.error("Erro ao buscar Radar:", err);
@@ -233,6 +246,43 @@ export default function RadarInadimplenciaActive() {
     } else {
       setSelectedIds(new Set(dados.map((d) => d.id)));
     }
+  };
+
+  const carregarResumoCobrancas = async () => {
+    const res = await fetch(getAbsoluteUrl("/api/financeiro/cobrancas/resumo"));
+    if (!res.ok) return;
+    const json = await res.json();
+    if (!json?.ok || !json?.resumo) return;
+    setRelatorio({
+      totalEnviadas: json.resumo.totalEnviadas ?? 0,
+      totalRespondidas: json.resumo.totalRespondidas ?? 0,
+      totalPagos: json.resumo.totalPagos ?? 0,
+      taxaResposta: json.resumo.taxaResposta ?? 0,
+      taxaConversao: json.resumo.taxaConversao ?? 0,
+      valorRecuperado: json.resumo.valorRecuperado ?? 0,
+      historico: json.historico ?? [],
+    });
+  };
+
+  const registrarCobrancas = async (
+    entries: Array<{ aluno_id: string; id: string; mensagem: string }>,
+    status: "enviada" | "falha"
+  ) => {
+    if (entries.length === 0) return;
+    await fetch("/api/financeiro/cobrancas", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        items: entries.map((entry) => ({
+          aluno_id: entry.aluno_id,
+          mensalidade_id: entry.id,
+          canal: "whatsapp",
+          status,
+          mensagem: entry.mensagem,
+          enviado_em: new Date().toISOString(),
+        })),
+      }),
+    }).catch(() => null);
   };
 
   // --- INTEGRAÇÃO WHATSAPP (demo/front) ---
@@ -271,27 +321,26 @@ export default function RadarInadimplenciaActive() {
       return {
         telefone: item.telefone,
         mensagem: template(args),
+        aluno_id: item.aluno_id,
+        mensalidade_id: item.id,
       };
     });
 
     try {
       const resultado = await WhatsAppService.enviarMensagemEmMassa(mensagens);
 
-      setRelatorio((prev) => ({
-        ...prev,
-        totalEnviadas: prev.totalEnviadas + resultado.sucesso,
-        totalRespondidas:
-          prev.totalRespondidas + Math.floor(resultado.sucesso * 0.6),
-        totalPagos: prev.totalPagos + Math.floor(resultado.sucesso * 0.4),
-        valorRecuperado:
-          prev.valorRecuperado + Math.floor(totalRecuperavel * 0.4),
-      }));
+      await registrarCobrancas(
+        mensagens.map((msg) => ({
+          aluno_id: msg.aluno_id,
+          id: msg.mensalidade_id,
+          mensagem: msg.mensagem,
+        })),
+        resultado.falhas > 0 ? "falha" : "enviada"
+      );
+      await carregarResumoCobrancas();
 
       alert(
         `✅ ${resultado.sucesso} mensagens enviadas com sucesso!\n` +
-          `💬 ${Math.floor(
-            resultado.sucesso * 0.6
-          )} respostas esperadas\n` +
           `💰 Potencial de recuperação: ${Math.floor(
             totalRecuperavel * 0.4
           ).toLocaleString("pt-AO")} Kz`
@@ -330,6 +379,17 @@ export default function RadarInadimplenciaActive() {
 
     try {
       await WhatsAppService.enviarMensagemIndividual(item.telefone, mensagem);
+      await registrarCobrancas(
+        [
+          {
+            aluno_id: item.aluno_id,
+            id: item.id,
+            mensagem,
+          },
+        ],
+        "enviada"
+      );
+      await carregarResumoCobrancas();
 
       setDados((prev) =>
         prev.map((d) =>
