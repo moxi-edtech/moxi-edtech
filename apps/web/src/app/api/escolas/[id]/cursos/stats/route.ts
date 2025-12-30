@@ -47,7 +47,7 @@ export async function GET(
     {
       const { data, error } = await (admin as any)
         .from('cursos')
-        .select('id, nome, nivel, descricao')
+        .select('id, nome, nivel, descricao, codigo, course_code, curriculum_key, tipo')
         .eq('escola_id', escolaId)
         .order('nome', { ascending: true });
       if (!error) rows = data || [];
@@ -55,7 +55,7 @@ export async function GET(
         // Retry com menos colunas se falhar
         const retry = await (admin as any)
           .from('cursos')
-          .select('id, nome')
+          .select('id, nome, codigo')
           .eq('escola_id', escolaId)
           .order('nome', { ascending: true });
         if (retry.error) return NextResponse.json({ ok: false, error: retry.error.message }, { status: 400 });
@@ -67,12 +67,14 @@ export async function GET(
     const payload = rows.map((r: any) => ({
       id: r.id,
       nome: r.nome,
-      tipo: 'core',
+      tipo: r.tipo ?? "geral",
       periodo_id: undefined,
       semestre_id: undefined,
       professor_id: undefined,
       nivel: r.nivel ?? undefined,
       descricao: r.descricao ?? undefined,
+      codigo: r.course_code || r.codigo || undefined,
+      curriculum_key: r.curriculum_key ?? undefined,
     }));
     return NextResponse.json({ ok: true, data: payload });
   } catch (e) {
@@ -111,6 +113,8 @@ export async function POST(
       nivel: z.string().trim().nullable().optional(),
       descricao: z.string().trim().nullable().optional(),
       codigo: z.string().trim().nullable().optional(),
+      course_code: z.string().trim().nullable().optional(),
+      curriculum_key: z.string().trim().nullable().optional(),
       tipo: z.string().trim().nullable().optional(),
     });
     const parsed = schema.safeParse(body);
@@ -122,6 +126,9 @@ export async function POST(
     // Se o código não veio, gera automaticamente
     const codigoFinal = parsed.data.codigo || makeCursoCodigo(parsed.data.nome, escolaId);
 
+    const courseCodeFinal =
+      parsed.data.course_code || parsed.data.curriculum_key || null;
+
     const payload: any = {
       escola_id: escolaId,
       nome: parsed.data.nome,
@@ -130,11 +137,13 @@ export async function POST(
     if (parsed.data.nivel !== undefined) payload.nivel = parsed.data.nivel;
     if (parsed.data.descricao !== undefined) payload.descricao = parsed.data.descricao;
     if (parsed.data.tipo !== undefined) payload.tipo = parsed.data.tipo;
+    if (parsed.data.curriculum_key !== undefined) payload.curriculum_key = parsed.data.curriculum_key;
+    if (courseCodeFinal !== null) payload.course_code = courseCodeFinal;
 
     const { data: ins, error } = await (admin as any)
       .from('cursos')
       .insert(payload)
-      .select('id, nome, nivel, descricao, codigo, tipo')
+      .select('id, nome, nivel, descricao, codigo, course_code, curriculum_key, tipo')
       .single();
 
     if (error) {
@@ -146,6 +155,19 @@ export async function POST(
         );
       }
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+    }
+
+    try {
+      await (admin as any).from("notifications").insert({
+        escola_id: escolaId,
+        target_role: "financeiro",
+        tipo: "curso_precos_pendentes",
+        titulo: `Novo curso criado: ${ins?.nome || parsed.data.nome}`,
+        mensagem: "Configure a tabela de preços para liberar matrículas e propinas.",
+        link_acao: "/financeiro/configuracoes/precos",
+      });
+    } catch (notifyError) {
+      console.warn("Falha ao notificar financeiro:", notifyError);
     }
 
     return NextResponse.json({ ok: true, data: ins });
