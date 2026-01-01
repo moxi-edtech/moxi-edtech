@@ -23,14 +23,15 @@ import {
 type Props = {
   escolaId: string;
   onComplete?: () => void;
+  initialSchoolName?: string;
 };
 
-export default function AcademicSetupWizard({ escolaId, onComplete }: Props) {
+export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoolName }: Props) {
   const router = useRouter();
   const [step, setStep] = useState(1);
 
   // STEP 1
-  const [schoolDisplayName, setSchoolDisplayName] = useState<string>("");
+  const [schoolDisplayName, setSchoolDisplayName] = useState<string>(initialSchoolName || "");
   const [regime, setRegime] = useState<"trimestral" | "semestral" | "bimestral">("trimestral");
   const [anoLetivo, setAnoLetivo] = useState<number>(new Date().getFullYear());
   const [turnos, setTurnos] = useState<TurnosState>({
@@ -49,13 +50,55 @@ export default function AcademicSetupWizard({ escolaId, onComplete }: Props) {
   const [applyingPreset, setApplyingPreset] = useState(false);
   const [padraoNomenclatura, setPadraoNomenclatura] = useState<PadraoNomenclatura>('descritivo_completo');
 
+  useEffect(() => {
+    if (initialSchoolName) {
+      setSchoolDisplayName((prev) => prev || initialSchoolName);
+    }
+  }, [initialSchoolName]);
+
+  // Carrega sessão ativa + períodos existentes
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchSession() {
+      try {
+        const res = await fetch(`/api/escolas/${escolaId}/onboarding/core/session`, { cache: "no-store" });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || "Erro ao carregar sessão.");
+
+        const list = Array.isArray(json?.data) ? json.data : [];
+        const ativa = list.find((s: any) => s.status === "ativa") || null;
+        if (!cancelled && ativa) {
+          setSessaoAtiva(ativa);
+          if (ativa?.ano_letivo) setAnoLetivo(Number(ativa.ano_letivo));
+        }
+
+        if (!cancelled && Array.isArray(json?.periodos)) {
+          setPeriodos(json.periodos);
+          const tipo = json.periodos[0]?.tipo;
+          if (tipo === "SEMESTRE") setRegime("semestral");
+          else if (tipo === "BIMESTRE") setRegime("bimestral");
+          else if (tipo === "TRIMESTRE") setRegime("trimestral");
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+    if (escolaId) fetchSession();
+    return () => {
+      cancelled = true;
+    };
+  }, [escolaId]);
+
   // Load School Name
   useEffect(() => {
     async function fetchSchoolName() {
       try {
         const res = await fetch(`/api/escolas/${escolaId}/nome`, { cache: "no-store" });
         const json = await res.json();
-        if (json?.nome) setSchoolDisplayName(json.nome);
+        const nome = (json?.nome as string | undefined) ?? (json?.data?.nome as string | undefined);
+        if (nome) {
+          setSchoolDisplayName((prev) => (prev === nome ? prev : nome));
+        }
       } catch (error) { console.error(error); }
     }
     if (escolaId) fetchSchoolName();
@@ -78,6 +121,13 @@ export default function AcademicSetupWizard({ escolaId, onComplete }: Props) {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Erro ao criar sessão.");
       setSessaoAtiva(json.data);
+      if (Array.isArray(json?.periodos)) {
+        setPeriodos(json.periodos);
+        const tipo = json.periodos[0]?.tipo;
+        if (tipo === "SEMESTRE") setRegime("semestral");
+        else if (tipo === "BIMESTRE") setRegime("bimestral");
+        else if (tipo === "TRIMESTRE") setRegime("trimestral");
+      }
       toast.success("Sessão criada.", { id: toastId });
     } catch (e: any) {
       toast.error(e.message, { id: toastId });
@@ -139,6 +189,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete }: Props) {
         const payload = {
           presetKey: cursoKey,
           customData: { label: cursoNome },
+          anoLetivo,
           advancedConfig: {
             classesNomes: rows.map(r => r.nome),
             turnos: {
@@ -159,6 +210,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete }: Props) {
             padraoNomenclatura: padraoNomenclatura,
             subjects: allSubjectsForCourse, 
             disciplinasPorClasse: disciplinesByClass,
+            anoLetivo,
           },
         };
 
@@ -237,6 +289,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete }: Props) {
           applyingPreset={applyingPreset}
           padraoNomenclatura={padraoNomenclatura}
           onPadraoNomenclaturaChange={setPadraoNomenclatura}
+          anoLetivo={anoLetivo}
         />
       )}
 

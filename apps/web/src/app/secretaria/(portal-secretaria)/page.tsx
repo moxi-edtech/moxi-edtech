@@ -6,7 +6,7 @@ import {
   AlertCircle, Bell,
   UserPlus, Building, BarChart3,
   RefreshCcw, Upload, Crown,
-  LayoutDashboard, Clock, UserCheck
+  LayoutDashboard, Clock, UserCheck, KeyRound
 } from "lucide-react";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { GlobalSearch } from "@/components/GlobalSearch";
@@ -208,6 +208,7 @@ export default function SecretariaDashboardPage() {
                                 <SecondaryAction icon={Building} label="Turmas" href="/secretaria/turmas" />
                                 <SecondaryAction icon={BarChart3} label="Relatórios" href="/secretaria/relatorios" />
                                 <SecondaryAction icon={RefreshCcw} label="Rematrículas" href="/secretaria/rematricula" />
+                                <SecondaryAction icon={KeyRound} label="Acesso Alunos" href="/secretaria/acesso-alunos" />
                                 <SecondaryAction icon={Upload} label="Migração" href="/migracao/alunos" highlight={true} />
                                 <SecondaryAction icon={Users} label="Usuários Globais" href="/secretaria/usuarios/globais" />
                             </div>

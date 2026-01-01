@@ -17,7 +17,7 @@ import {
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
-import { gerarNomeTurma } from "@/lib/turmaNaming";
+import { gerarNomeTurma } from "@/lib/turma";
 
 import {
   CURRICULUM_PRESETS,

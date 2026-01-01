@@ -6,6 +6,7 @@ import { Loader2, Calendar, CheckCircle, AlertCircle } from "lucide-react";
 
 type Status = "idle" | "success" | "error";
 type TurmaOption = { id: string; nome: string };
+type SessionOption = { id: string; nome: string; ano_letivo?: number | null; status?: string | null };
 
 export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
   const router = useRouter();
@@ -15,6 +16,8 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
   const [msg, setMsg] = useState("");
   const [turmas, setTurmas] = useState<TurmaOption[]>([]);
   const [turmaId, setTurmaId] = useState<string>("todas");
+  const [sessions, setSessions] = useState<SessionOption[]>([]);
+  const [selectedSession, setSelectedSession] = useState<string>("");
 
   const today = new Date();
   const defaultMes = today.getMonth() + 2;
@@ -23,9 +26,35 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
   );
   const [mes, setMes] = useState(defaultMes > 12 ? 1 : defaultMes);
 
-  async function loadTurmas() {
+  async function loadSessions() {
     try {
-      const res = await fetch("/api/secretaria/turmas?status=ativo", { cache: "no-store" });
+      const res = await fetch("/api/secretaria/school-sessions");
+      const json = await res.json();
+      if (!res.ok || !json?.ok) return;
+      const items: SessionOption[] = Array.isArray(json.data) ? json.data : [];
+      setSessions(items);
+      const ativa = items.find((s) => (s.status || "").toLowerCase() === "ativa") || items[0];
+      if (ativa) {
+        setSelectedSession(ativa.id);
+        if (typeof ativa.ano_letivo === "number" && Number.isFinite(ativa.ano_letivo)) {
+          setAno(ativa.ano_letivo as number);
+        }
+      }
+    } catch {
+      setSessions([]);
+    }
+  }
+
+  async function loadTurmas(sessionId?: string) {
+    if (!sessionId) {
+      setTurmas([]);
+      return;
+    }
+    try {
+      const res = await fetch(
+        `/api/secretaria/turmas-simples?session_id=${encodeURIComponent(sessionId)}`,
+        { cache: "no-store" }
+      );
       const json = await res.json();
       if (!res.ok || !json?.ok) return;
       const items = (json.items || []).map((t: any) => ({
@@ -40,11 +69,26 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
 
   useEffect(() => {
     if (isOpen) {
-      loadTurmas();
+      loadSessions();
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    if (isOpen && selectedSession) {
+      const session = sessions.find((s) => s.id === selectedSession);
+      if (session && typeof session.ano_letivo === "number" && Number.isFinite(session.ano_letivo)) {
+        setAno(session.ano_letivo as number);
+      }
+      loadTurmas(selectedSession);
+    }
+  }, [selectedSession, isOpen]);
+
   async function handleGerar() {
+    if (!selectedSession) {
+      setStatus("error");
+      setMsg("Selecione um ano letivo antes de gerar.");
+      return;
+    }
     setLoading(true);
     setStatus("idle");
     setMsg("");
@@ -59,6 +103,7 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
           mes,
           diaVencimento: 10,
           turmaId: turmaId === "todas" ? null : turmaId,
+          sessionId: selectedSession,
         }),
       });
 
@@ -99,6 +144,27 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
         <p className="text-sm text-slate-500 mb-4">
           O sistema buscará alunos ativos e gerará a cobrança automaticamente (processo idempotente).
         </p>
+
+        <div className="mb-4">
+          <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase">Ano letivo</label>
+          <select
+            value={selectedSession}
+            onChange={(e) => setSelectedSession(e.target.value)}
+            className="w-full border-slate-300 border rounded-xl p-2 text-sm bg-white focus:ring-4 focus:ring-klasse-gold-400/20 focus:border-klasse-gold-400"
+          >
+            <option value="">Selecione uma sessão/ano</option>
+            {sessions.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.nome || `Sessão ${s.id}`} {s.ano_letivo ? `(${s.ano_letivo})` : ""}
+              </option>
+            ))}
+          </select>
+          {!selectedSession && (
+            <p className="mt-1 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-2">
+              Escolha o ano letivo para filtrar as turmas e gerar cobranças corretamente.
+            </p>
+          )}
+        </div>
 
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div>

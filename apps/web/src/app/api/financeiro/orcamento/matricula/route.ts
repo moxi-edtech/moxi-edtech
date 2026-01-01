@@ -137,7 +137,7 @@ function parseAnoLetivoStrict(value: number | string | null | undefined): number
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const sessionId = searchParams.get("session_id");
+  const sessionId = searchParams.get("session_id"); // compat: agora mapeado para anos_letivos.id
   const cursoId = (searchParams.get("curso_id") || "").trim() || undefined;
   const classeId = (searchParams.get("classe_id") || "").trim() || undefined;
   // O ano letivo idealmente vem da sessão ativa, mas aceitamos parâmetro manual
@@ -154,8 +154,8 @@ export async function GET(req: NextRequest) {
     if (sessionId && isUUID(sessionId)) {
       try {
         const { data } = await supabase
-          .from("school_sessions")
-          .select("id, escola_id, nome, data_inicio, data_fim, ano_letivo, ano")
+          .from("anos_letivos")
+          .select("id, escola_id, ano, data_inicio, data_fim, ativo")
           .eq("id", sessionId)
           .maybeSingle();
         session = data || null;
@@ -175,13 +175,26 @@ export async function GET(req: NextRequest) {
 
     // Prioriza ano fornecido explicitamente; se não houver, tenta derivar da sessão
     const anoDerivadoDaSessao =
-      parseAnoLetivoStrict(session?.ano_letivo) ||
       parseAnoLetivoStrict(session?.ano) ||
-      parseAnoLetivoStrict(session?.nome) ||
       (session?.data_inicio ? new Date(session.data_inicio).getFullYear() : null) ||
       (session?.data_fim ? new Date(session.data_fim).getFullYear() : null);
 
-    const anoLetivo = anoParam || anoDerivadoDaSessao || normalizeAnoLetivo(null);
+    let anoLetivo = anoParam || anoDerivadoDaSessao || null;
+
+    if (!anoLetivo && escolaId) {
+      try {
+        const { data: ativo } = await supabase
+          .from('anos_letivos')
+          .select('ano')
+          .eq('escola_id', escolaId)
+          .eq('ativo', true)
+          .order('ano', { ascending: false })
+          .maybeSingle();
+        if (ativo?.ano) anoLetivo = Number(ativo.ano);
+      } catch {}
+    }
+
+    anoLetivo = anoLetivo || normalizeAnoLetivo(null);
 
     const pricingParams = {
       escolaId,

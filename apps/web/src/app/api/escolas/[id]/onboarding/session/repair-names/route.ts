@@ -5,7 +5,7 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 
 // POST /api/escolas/[id]/onboarding/session/repair-names
-// Admin-only: Renames existing sessions to the canonical format YYYY/YYYY+1 based on data_inicio
+// Admin-only: Ajusta anos_letivos para o formato canônico (datas coerentes)
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -79,10 +79,10 @@ export async function POST(
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    // Load sessions
+    // Load academic years
     const { data: sessions, error } = await (admin as any)
-      .from("school_sessions")
-      .select("id, nome, data_inicio, data_fim, status")
+      .from("anos_letivos")
+      .select("id, ano, data_inicio, data_fim, ativo")
       .eq("escola_id", escolaId);
     if (error)
       return NextResponse.json(
@@ -90,27 +90,22 @@ export async function POST(
         { status: 400 }
       );
 
-    const toUpdate: Array<{ id: string; novo: string; antigo: string }> = [];
+    const toUpdate: Array<{ id: string; data_inicio: string; data_fim: string; ano: number }> = [];
     for (const sRow of (sessions || []) as any[]) {
-      const di = new Date(String(sRow.data_inicio));
-      const year = di.getFullYear();
-      if (!Number.isFinite(year)) continue;
-      const canonical = `${year}/${year + 1}`;
-      if (typeof sRow.nome !== "string") {
-        toUpdate.push({ id: sRow.id, novo: canonical, antigo: String(sRow.nome ?? "") });
-        continue;
-      }
-      // If already canonical, skip; otherwise schedule update
-      if (sRow.nome.trim() !== canonical) {
-        toUpdate.push({ id: sRow.id, novo: canonical, antigo: sRow.nome.trim() });
+      const ano = Number(sRow.ano ?? new Date(String(sRow.data_inicio)).getFullYear());
+      if (!Number.isFinite(ano)) continue;
+      const start = `${ano}-01-01`;
+      const end = `${ano + 1}-12-31`;
+      if (String(sRow.data_inicio).slice(0, 10) !== start || String(sRow.data_fim).slice(0, 10) !== end) {
+        toUpdate.push({ id: sRow.id, data_inicio: start, data_fim: end, ano });
       }
     }
 
     let updated = 0;
     for (const patch of toUpdate) {
       const { error: updErr } = await (admin as any)
-        .from("school_sessions")
-        .update({ nome: patch.novo } as any)
+        .from("anos_letivos")
+        .update({ data_inicio: patch.data_inicio, data_fim: patch.data_fim, ano: patch.ano } as any)
         .eq("id", patch.id);
       if (!updErr) updated++;
     }
@@ -127,4 +122,3 @@ export async function POST(
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
 }
-

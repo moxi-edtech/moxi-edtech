@@ -13,13 +13,15 @@ export async function GET() {
       if (turmaId) {
         const now = new Date();
         const weekday = now.getDay(); // 0..6
-        const { data: rs } = await supabase
+        let rotinasQuery = supabase
           .from('rotinas')
           .select('weekday, inicio, fim, sala')
           .eq('turma_id', turmaId)
           .gte('weekday', weekday)
           .order('weekday', { ascending: true })
           .limit(1);
+        if (escolaId) rotinasQuery = rotinasQuery.eq('escola_id', escolaId);
+        const { data: rs } = await rotinasQuery;
         proxima_aula = rs?.[0] ?? null;
       }
     } catch {}
@@ -27,10 +29,11 @@ export async function GET() {
     // Última nota lançada (placeholder: depende de schema de notas)
     let ultima_nota: any = null;
     try {
-      if (matriculaId) {
+      if (matriculaId && escolaId) {
         const { data: ns } = await supabase
           .from('notas')
           .select('valor, created_at')
+          .eq('escola_id', escolaId)
           .eq('matricula_id', matriculaId)
           .order('created_at', { ascending: false })
           .limit(1);
@@ -41,18 +44,22 @@ export async function GET() {
     // Status financeiro (baseado em mensalidades do aluno)
     let status_financeiro: any = { emDia: true, pendentes: 0 };
     try {
-      const { data: matriculaData, error: matriculaError } = await supabase
-        .from('matriculas')
-        .select('aluno_id')
-        .eq('id', matriculaId)
-        .single();
+      const { data: matriculaData, error: matriculaError } = escolaId
+        ? await supabase
+            .from('matriculas')
+            .select('aluno_id')
+            .eq('id', matriculaId)
+            .eq('escola_id', escolaId)
+            .single()
+        : { data: null, error: null };
 
       if (matriculaError) throw matriculaError;
 
-      if (matriculaData) {
+      if (matriculaData && escolaId) {
         const { data: mens, error: mensalidadesError } = await supabase
           .from('mensalidades')
           .select('status')
+          .eq('escola_id', escolaId)
           .eq('aluno_id', matriculaData.aluno_id);
 
         if (mensalidadesError) throw mensalidadesError;
@@ -91,4 +98,3 @@ export async function GET() {
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
-

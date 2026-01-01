@@ -86,4 +86,5 @@ export interface AcademicStep2Props {
   applyingPreset: boolean;
   padraoNomenclatura: PadraoNomenclatura;
   onPadraoNomenclaturaChange: (value: PadraoNomenclatura) => void;
+  anoLetivo: number;
 }

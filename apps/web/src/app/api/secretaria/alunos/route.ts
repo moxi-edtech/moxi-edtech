@@ -133,101 +133,24 @@ export async function GET(req: Request) {
       };
     };
 
-    // --- Alunos com matrícula ativa ---
-    if (status === 'ativo') {
-      let query = admin
-        .from('alunos')
-        .select(`${selectFields}, matriculas!inner(id, session_id, numero_matricula, status)`, { count: 'exact' })
-        .eq('escola_id', escolaId)
-        .eq('matriculas.escola_id', escolaId)
-        .is('deleted_at', null)
-        .not('status', 'eq', 'inativo')
-        .order('created_at', { ascending: false })
-        .not('matriculas.numero_matricula', 'is', null);
-
-      if (activeSessionId) {
-        query = query.eq('matriculas.session_id', activeSessionId);
-      } else {
-        query = query.in('matriculas.status', ['ativo', 'ativa']);
-      }
-
-      if (q) {
-        const uuidRe = /^[0-9a-fA-F-]{36}$/;
-        if (uuidRe.test(q)) {
-          query = query.or(`id.eq.${q}`);
-        } else {
-          let profileIds: string[] = [];
-          try {
-            let profQuery = admin
-              .from("profiles")
-              .select("user_id, numero_login")
-              .ilike("numero_login", `%${q}%`)
-              .or(`escola_id.eq.${escolaId},current_escola_id.eq.${escolaId}`)
-              .limit(500);
-            const { data: profRows } = await profQuery;
-            profileIds = (profRows ?? []).map((r: any) => r.user_id).filter(Boolean);
-          } catch {
-            // ignore
-          }
-
-          const orParts = [
-            `nome.ilike.%${q}%`,
-            `responsavel.ilike.%${q}%`,
-          ];
-          if (profileIds.length > 0) {
-            const inList = profileIds.map((id) => `"${id}"`).join(",");
-            orParts.push(`profile_id.in.(${inList})`);
-          }
-          query = query.or(orParts.join(","));
-        }
-      }
-
-      const { data, error, count } = await query.range(
-        offset,
-        offset + pageSize - 1
-      );
-
-      if (error) {
-        return NextResponse.json(
-          { ok: false, error: error.message },
-          { status: 400 }
-        );
-      }
-
-      const seen = new Set<string>();
-      const items = (data ?? []).reduce((acc: any[], row: any) => {
-        if (!seen.has(row.id)) {
-          seen.add(row.id);
-          acc.push(mapAlunoRow(row));
-        }
-        return acc;
-      }, []);
-
-      return NextResponse.json({
-        ok: true,
-        items,
-        total: count ?? items.length,
-        page,
-        pageSize,
-      });
-    }
+    const targetSessionId = sessionIdParam || activeSessionId;
 
     // Se existe sessão (selecionada ou ativa), coletar alunos com matrícula nesta sessão para excluí-los do resultado
     let alunosComMatriculaAtual: string[] = [];
-    if (escolaId && activeSessionId) {
+    if (escolaId && targetSessionId) {
       try {
         const { data: mats } = await admin
           .from('matriculas')
           .select('aluno_id')
           .eq('escola_id', escolaId)
-          .eq('session_id', activeSessionId);
+          .eq('session_id', targetSessionId);
         alunosComMatriculaAtual = (mats ?? [])
           .map((m: any) => m.aluno_id)
           .filter((v: any) => !!v);
       } catch {
         // silencioso
       }
-    } else if (escolaId && !activeSessionId) {
+    } else if (escolaId && !targetSessionId) {
       // Fallback: excluir alunos com matrícula ativa na escola, sem filtrar por sessão
       try {
         const { data: mats } = await admin
@@ -244,6 +167,7 @@ export async function GET(req: Request) {
     }
 
     // Blindagem extra: exclui qualquer aluno que já possua numero_matricula atribuído na escola, independentemente da sessão
+    let alunosComNumero: string[] = [];
     if (escolaId) {
       try {
         const { data: matsComNumero } = await admin
@@ -252,41 +176,38 @@ export async function GET(req: Request) {
           .eq('escola_id', escolaId)
           .not('numero_matricula', 'is', null);
 
-        const withNumero = (matsComNumero ?? [])
+        alunosComNumero = (matsComNumero ?? [])
           .map((m: any) => m.aluno_id)
           .filter((v: any) => !!v);
-
-        alunosComMatriculaAtual = Array.from(new Set([...(alunosComMatriculaAtual || []), ...withNumero]));
       } catch {
         // silencioso
       }
     }
+
+    const alunosMatriculados = Array.from(new Set([...(alunosComMatriculaAtual || []), ...(alunosComNumero || [])]));
+    const shouldFilterMatriculados = Boolean(sessionIdParam) && alunosMatriculados.length > 0;
 
     // Demais status
     // Agora com relacionamento para profiles(numero_login)
     let query = admin
       .from("alunos")
       .select(selectFields, { count: "exact" })
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .eq("escola_id", escolaId);
 
-    const alunosMatriculados = Array.from(new Set(alunosComMatriculaAtual)).filter(Boolean);
-
-    // Garante escopo da escola atual
-    query = query.eq("escola_id", escolaId);
+    const idsMatriculados = alunosMatriculados.map((id) => `"${id}"`).join(',');
 
     switch (status) {
+      case 'ativo':
+        query = query.eq('status', 'ativo').is('deleted_at', null);
+        break;
+
       case 'inativo':
-        query = query.eq('status', 'inativo');
-        if (alunosMatriculados.length > 0) {
-          const list = alunosMatriculados.map((id) => `"${id}"`).join(',');
-          query = query.not('id', 'in', `(${list})`);
-        }
-        query = query.is('deleted_at', null);
+        query = query.eq('status', 'inativo').is('deleted_at', null);
         break;
 
       case 'pendente':
-        query = query.eq('status', 'pendente');
-        query = query.is('deleted_at', null);
+        query = query.eq('status', 'pendente').is('deleted_at', null);
         break;
 
       case 'arquivado':
@@ -297,7 +218,19 @@ export async function GET(req: Request) {
       default:
         // Por padrão, 'todos' deve incluir tanto alunos ativos quanto arquivados.
         // Nenhuma condição adicional de deleted_at aqui.
+        // Quando estiver filtrando por sessão (cadastro de matrícula), ocultamos arquivados.
+        if (sessionIdParam) {
+          query = query.is('deleted_at', null);
+        }
         break;
+    }
+
+    const shouldHideMatriculados =
+      idsMatriculados &&
+      ((shouldFilterMatriculados && status !== 'arquivado') || (!shouldFilterMatriculados && status === 'inativo'));
+
+    if (shouldHideMatriculados) {
+      query = query.not('id', 'in', `(${idsMatriculados})`);
     }
 
     if (q) {

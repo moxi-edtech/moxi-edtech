@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-import DashboardHero from "./DashboardHero";
 import KpiSection, { type KpiStats } from "./KpiSection";
 import NoticesSection from "./NoticesSection";
 import EventsSection from "./EventsSection";
@@ -38,11 +37,6 @@ export default function EscolaAdminDashboardContent({
   stats,
   pendingTurmasCount,
 }: Props) {
-  const isStartMode = (stats?.alunos || 0) < 5;
-
-  const manualAlunoHref = `/escola/${escolaId}/admin/alunos/novo`;
-  const importCsvHref = `/secretaria/alunos`; // import é da secretaria
-
   return (
     <div className="space-y-8 pb-10">
       {/* Header & KPIs */}
@@ -88,43 +82,25 @@ export default function EscolaAdminDashboardContent({
         )}
       </div>
 
-      {/* Start mode vs Cruzeiro */}
-      {isStartMode ? (
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <DashboardHero importHref={importCsvHref} manualHref={manualAlunoHref} />
+      <div className="space-y-8 animate-in fade-in duration-500">
+        {/* Charts */}
+        <ChartsSection meses={charts?.meses} alunosPorMes={charts?.alunosPorMes} pagamentos={charts?.pagamentos} />
 
-          <div className="mt-8 grid gap-6 opacity-60 pointer-events-none filter grayscale">
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <NoticesSection notices={[]} />
-              <EventsSection events={[]} />
-            </div>
+        {/* ✅ Layout anti-gap: duas colunas “stackadas” */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
+          {/* esquerda 2/3 */}
+          <div className="lg:col-span-2 space-y-6">
+            <QuickActionsSection escolaId={escolaId} />
+            <NoticesSection notices={notices} />
+          </div>
+
+          {/* direita 1/3 */}
+          <div className="space-y-6">
+            <AcademicSection escolaId={escolaId} />
+            <EventsSection events={events} />
           </div>
         </div>
-      ) : (
-        <div className="space-y-8 animate-in fade-in duration-500">
-          {/* Charts */}
-          <ChartsSection
-            meses={charts?.meses}
-            alunosPorMes={charts?.alunosPorMes}
-            pagamentos={charts?.pagamentos}
-          />
-
-          {/* ✅ Layout anti-gap: duas colunas “stackadas” */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
-            {/* esquerda 2/3 */}
-            <div className="lg:col-span-2 space-y-6">
-              <QuickActionsSection escolaId={escolaId} />
-              <NoticesSection notices={notices} />
-            </div>
-
-            {/* direita 1/3 */}
-            <div className="space-y-6">
-              <AcademicSection escolaId={escolaId} />
-              <EventsSection events={events} />
-            </div>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

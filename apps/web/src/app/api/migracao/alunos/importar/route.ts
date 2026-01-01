@@ -56,10 +56,20 @@ export async function POST(request: Request) {
   const sameEscola = await importBelongsToEscola(supabase, importId, escolaId);
   if (!sameEscola) return NextResponse.json({ error: "Importação não pertence à escola" }, { status: 403 });
 
-  const { data, error } = await supabase.rpc("importar_alunos", {
-    p_import_id: importId,
+  // Usa o RPC novo se existir; fallback para o antigo
+  const { data, error } = await supabase.rpc("importar_alunos_v2", {
     p_escola_id: escolaId,
-    p_ano_letivo: Number(anoLetivo), // Vital!
+    p_ano_letivo: Number(anoLetivo),
+    p_import_id: importId,
+  }).catch(async (err) => {
+    // fallback para o RPC legado
+    const legacy = await supabase.rpc("importar_alunos", {
+      p_import_id: importId,
+      p_escola_id: escolaId,
+      p_ano_letivo: Number(anoLetivo),
+    });
+    if (legacy.error) throw legacy.error;
+    return legacy;
   });
 
   if (error) {

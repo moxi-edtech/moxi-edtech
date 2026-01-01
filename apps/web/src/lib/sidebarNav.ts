@@ -17,7 +17,7 @@ type SidebarConfig = {
 
 export const sidebarConfig: SidebarConfig = {
   superadmin: [
-    { href: "/super-admin/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
+    { href: "/super-admin", label: "Dashboard", icon: "LayoutDashboard" },
     { href: "/super-admin/escolas", label: "Escolas", icon: "Building2" },
     { href: "/super-admin/usuarios", label: "Usuários", icon: "Users" },
     { href: "/super-admin/planos", label: "Planos", icon: "TrendingUp" },

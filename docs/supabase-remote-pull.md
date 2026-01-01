@@ -27,3 +27,8 @@ Supabase: Pull Remoto – Guia Rápido
 - Saídas
   - Migrações em `supabase/migrations/*.sql`. O arquivo mais recente é impresso ao final.
 
+- Dicas avançadas (erros de histórico)
+  - Se o pull falhar com "Remote migration versions not found...", liste o histórico: `supabase migration list --db-url "$DB_URL"`.
+  - Marque versões remotas inexistentes localmente como `reverted`: `supabase migration repair --status reverted <ids...> --db-url "$DB_URL"`.
+  - Prefira usar `DB_URL` na porta **5432** com o CLI para evitar o erro de prepared statement duplicado visto no pooler 6543.
+  - Se um `remote_schema` for gerado e falhar, reverta o ID no histórico e remova o arquivo local correspondente.

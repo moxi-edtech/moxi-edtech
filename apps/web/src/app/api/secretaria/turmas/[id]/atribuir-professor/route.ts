@@ -5,7 +5,7 @@ import { resolveEscolaIdForUser, authorizeTurmasManage } from '@/lib/escola/disc
 import { tryCanonicalFetch } from '@/lib/api/proxyCanonical'
 
 const Body = z.object({
-  disciplina_id: z.string().uuid(),
+  disciplina_id: z.string().uuid(), // agora espera curso_matriz_id
   // aceita professor_id (tabela professores.id) ou professor_user_id (profiles.user_id)
   professor_id: z.string().uuid().optional(),
   professor_user_id: z.string().uuid().optional(),
@@ -42,11 +42,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const forwarded = await tryCanonicalFetch(req, `/api/escolas/${escolaId}/turmas/${turmaId}/atribuir-professor`)
     if (forwarded) return forwarded
 
-    // Upsert unique by (turma_id, disciplina_id)
-    // Ensure disciplina and professor exist and belong to escola
-    // Resolver professor por professor_id ou professor_user_id (profiles.user_id)
-    const [discQ, profByIdQ, profByUserQ, turmaQ] = await Promise.all([
-      supabase.from('disciplinas').select('id').eq('id', body.disciplina_id).eq('escola_id', escolaId).maybeSingle(),
+    // Upsert unique by (turma_id, curso_matriz_id)
+    // Ensure curso_matriz entry and professor exist and belong to escola
+    const [matrizQ, profByIdQ, profByUserQ, turmaQ] = await Promise.all([
+      supabase.from('curso_matriz').select('id, escola_id').eq('id', body.disciplina_id).eq('escola_id', escolaId).maybeSingle(),
       body.professor_id
         ? supabase.from('professores').select('id, profile_id').eq('id', body.professor_id).eq('escola_id', escolaId).maybeSingle()
         : Promise.resolve({ data: null } as any),
@@ -55,23 +54,23 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         : Promise.resolve({ data: null } as any),
       supabase.from('turmas').select('id').eq('id', turmaId).eq('escola_id', escolaId).maybeSingle(),
     ])
-    if (!discQ.data) return NextResponse.json({ ok: false, error: 'Disciplina não encontrada' }, { status: 404, headers })
+    if (!matrizQ.data) return NextResponse.json({ ok: false, error: 'Disciplina/Matriz não encontrada' }, { status: 404, headers })
     const profResolved = (profByIdQ.data || profByUserQ.data) as any | null
     if (!profResolved) return NextResponse.json({ ok: false, error: 'Professor não encontrado' }, { status: 404, headers })
     if (!turmaQ.data) return NextResponse.json({ ok: false, error: 'Turma não encontrada' }, { status: 404, headers })
 
-    // If exists, update; else insert
+    // If exists, update; else insert (unique escola+turma+curso_matriz_id)
     const { data: existing } = await supabase
-      .from('turma_disciplinas_professores')
+      .from('turma_disciplinas')
       .select('id')
       .eq('escola_id', escolaId)
       .eq('turma_id', turmaId)
-      .eq('disciplina_id', body.disciplina_id)
+      .eq('curso_matriz_id', body.disciplina_id)
       .maybeSingle()
 
     if (existing?.id) {
       const { error: updErr } = await supabase
-        .from('turma_disciplinas_professores')
+        .from('turma_disciplinas')
         .update({ professor_id: profResolved.id, horarios: body.horarios ?? null, planejamento: body.planejamento ?? null })
         .eq('id', existing.id)
       if (updErr) return NextResponse.json({ ok: false, error: updErr.message }, { status: 400, headers })
@@ -79,11 +78,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     }
 
     const { error: insErr } = await supabase
-      .from('turma_disciplinas_professores')
+      .from('turma_disciplinas')
       .insert({
         escola_id: escolaId,
         turma_id: turmaId,
-        disciplina_id: body.disciplina_id,
+        curso_matriz_id: body.disciplina_id,
         professor_id: profResolved.id,
         horarios: body.horarios ?? null,
         planejamento: body.planejamento ?? null,

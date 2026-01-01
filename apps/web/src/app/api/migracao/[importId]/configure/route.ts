@@ -5,13 +5,13 @@ import { Database } from "@/types/supabase";
 
 export const dynamic = "force-dynamic";
 
-type TParams = {
+type RouteContext = {
   params: {
     importId: string;
   };
 };
 
-export async function PATCH(request: Request, { params }: TParams) {
+export async function PATCH(request: Request, { params }: RouteContext) {
   const { importId } = params;
 
   if (!importId) {

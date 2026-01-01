@@ -34,11 +34,7 @@ interface TurmaRow {
   nome?: string | null;
   classe?: string | null;
   turno?: string | null;
-  school_sessions?: {
-    id: string;
-    nome?: string | null;
-    ano?: number | null;
-  } | null;
+  ano_letivo?: number | null;
 }
 
 interface MatriculaRow {
@@ -137,11 +133,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ alunoId
             nome,
             classe,
             turno,
-            school_sessions (
-              id,
-              nome,
-              ano
-            )
+            ano_letivo
           )
         ),
         escolas:escolas (
@@ -329,10 +321,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ alunoId
           draw(`Turma: ${turmaAtual?.nome ?? "—"} • Classe: ${turmaAtual?.classe ?? "—"}`);
           draw(
             `Ano letivo: ${
-              turmaAtual?.school_sessions?.nome ??
-              turmaAtual?.school_sessions?.ano ??
-              matriculaAtual.ano_letivo ??
-              "—"
+              turmaAtual?.ano_letivo != null
+                ? `${turmaAtual.ano_letivo}/${(turmaAtual.ano_letivo as number) + 1}`
+                : matriculaAtual.ano_letivo ??
+                  "—"
             }`
           );
           draw(`Status da matrícula: ${matriculaAtual.status ?? "—"}`);

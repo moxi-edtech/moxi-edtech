@@ -21,24 +21,33 @@ export default function ConfiguracoesPage({ params }: Props) {
   const [loading, setLoading] = useState(true);
   const [setupComplete, setSetupComplete] = useState(false);
   const [forceWizard, setForceWizard] = useState(false); // Para edição manual
+  const [schoolDisplayName, setSchoolDisplayName] = useState("");
 
   // 1. Verificar Estado da Escola
   useEffect(() => {
     async function checkStatus() {
       try {
         const supabase = createClient();
-        
-        // Verifica se já existem turmas criadas
-        const { count, error } = await supabase
-          .from('turmas')
-          .select('*', { count: 'exact', head: true })
-          .eq('escola_id', escolaId);
+        const [turmasResult, escolaNomeResult] = await Promise.all([
+          supabase
+            .from('turmas')
+            .select('*', { count: 'exact', head: true })
+            .eq('escola_id', escolaId),
+          supabase
+            .from('escolas')
+            .select('nome')
+            .eq('id', escolaId)
+            .maybeSingle(),
+        ]);
 
-        if (!error && count && count > 0) {
+        if (!turmasResult.error && turmasResult.count && turmasResult.count > 0) {
           setSetupComplete(true);
         } else {
           setSetupComplete(false);
         }
+
+        const nome = (escolaNomeResult.data as any)?.nome as string | undefined;
+        if (nome) setSchoolDisplayName(nome);
       } catch (error) {
         console.error("Erro ao verificar status:", error);
         // Em caso de erro, assumimos incompleto para não bloquear
@@ -84,6 +93,7 @@ export default function ConfiguracoesPage({ params }: Props) {
         
         <AcademicSetupWizard 
           escolaId={escolaId} 
+          initialSchoolName={schoolDisplayName}
           onComplete={() => {
              // Quando terminar, atualizamos o estado local
              setSetupComplete(true);

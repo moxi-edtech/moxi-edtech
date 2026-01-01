@@ -12,6 +12,13 @@ Variáveis de ambiente (Web/API)
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY` (obrigatória para rotas RPC server-side)
+- (novo) Credenciais/Notificações: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_NUMBER`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, opcional `TWILIO_SMS_NUMBER` (fallback SMS) e `CRON_SECRET` para o worker do outbox.
+
+Liberação de acesso de alunos (novo)
+- UI: `/secretaria/acesso-alunos` lista alunos sem acesso, gera códigos e envia credenciais em lote; página pública de ativação: `/ativar-acesso` (código + BI).
+- APIs: `/api/secretaria/alunos/sem-acesso`, `/metricas-acesso`, `/liberar-acesso` (cria usuário/profile, enfileira notificação) e `/api/alunos/ativar-acesso` (self-service).
+- Infra: migration adiciona colunas de acesso em `alunos`, tabela `outbox_notificacoes`, RPC `liberar_acesso_alunos_v2` com códigos e idempotência; habilita realtime para monitorar o outbox.
+- Envio: depende de worker/cron lendo `outbox_notificacoes` e enviando via Twilio (WhatsApp, fallback SMS opcional) ou Resend (email). Configure as envs acima e o webhook do Twilio para atualizar status.
 
 Fluxo recomendado (produção)
 1) Backfill Acadêmico (opcional, via Wizard)

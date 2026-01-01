@@ -5,6 +5,7 @@ import { AlertCircle, Loader2 } from "lucide-react";
 
 interface TransferFormProps {
   matriculaId: string;
+  sessionId?: string;
   onSuccess: () => void;
 }
 
@@ -30,7 +31,7 @@ interface ImpactoTransferencia {
   };
 }
 
-export default function TransferForm({ matriculaId, onSuccess }: TransferFormProps) {
+export default function TransferForm({ matriculaId, sessionId, onSuccess }: TransferFormProps) {
   const [turmaId, setTurmaId] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,8 +41,12 @@ export default function TransferForm({ matriculaId, onSuccess }: TransferFormPro
 
   useEffect(() => {
     const fetchTurmas = async () => {
+      if (!sessionId) {
+        setTurmas([]);
+        return;
+      }
       try {
-        const res = await fetch("/api/secretaria/turmas-simples");
+        const res = await fetch(`/api/secretaria/turmas-simples?session_id=${encodeURIComponent(sessionId)}`);
         const json = await res.json();
         if (json.ok) setTurmas(json.items);
       } catch (e) {
@@ -49,7 +54,7 @@ export default function TransferForm({ matriculaId, onSuccess }: TransferFormPro
       }
     };
     fetchTurmas();
-  }, []);
+  }, [sessionId]);
 
   useEffect(() => {
     if (!turmaId) {
@@ -108,6 +113,7 @@ export default function TransferForm({ matriculaId, onSuccess }: TransferFormPro
           onChange={(e) => setTurmaId(e.target.value)}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
           required
+          disabled={!sessionId}
         >
           <option value="">Selecione uma turma</option>
           {turmas.map((turma) => {
@@ -126,6 +132,12 @@ export default function TransferForm({ matriculaId, onSuccess }: TransferFormPro
         <div className="flex items-center gap-2 text-sm text-slate-600">
           <Loader2 className="h-4 w-4 animate-spin" /> Calculando impacto...
         </div>
+      )}
+
+      {!sessionId && (
+        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-3">
+          Selecione um ano letivo para listar as turmas disponíveis.
+        </p>
       )}
 
       {impacto && !checking && (

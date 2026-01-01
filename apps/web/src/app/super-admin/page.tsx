@@ -48,10 +48,7 @@ export default async function Page() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {kpis.map((kpi) => {
             const content = (
-              <div
-                key={kpi.title}
-                className="bg-white shadow rounded-lg p-4 flex items-center"
-              >
+              <div className="bg-white shadow rounded-lg p-4 flex items-center">
                 <kpi.icon className="w-10 h-10 text-blue-600 mr-4" />
                 <div>
                   <p className="text-sm text-gray-500">{kpi.title}</p>
@@ -59,7 +56,13 @@ export default async function Page() {
                 </div>
               </div>
             )
-            return kpi.href ? <Link href={kpi.href}>{content}</Link> : content
+            return kpi.href ? (
+              <Link key={kpi.title} href={kpi.href}>
+                {content}
+              </Link>
+            ) : (
+              <div key={kpi.title}>{content}</div>
+            )
           })}
         </div>
 
@@ -97,10 +100,7 @@ export default async function Page() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {kpis.map((kpi) => {
             const content = (
-              <div
-                key={kpi.title}
-                className="bg-white shadow rounded-lg p-4 flex items-center"
-              >
+              <div className="bg-white shadow rounded-lg p-4 flex items-center">
                 <kpi.icon className="w-10 h-10 text-blue-600 mr-4" />
                 <div>
                   <p className="text-sm text-gray-500">{kpi.title}</p>
@@ -108,7 +108,13 @@ export default async function Page() {
                 </div>
               </div>
             )
-            return kpi.href ? <Link href={kpi.href}>{content}</Link> : content
+            return kpi.href ? (
+              <Link key={kpi.title} href={kpi.href}>
+                {content}
+              </Link>
+            ) : (
+              <div key={kpi.title}>{content}</div>
+            )
           })}
         </div>
 

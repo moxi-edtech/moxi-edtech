@@ -37,6 +37,7 @@ import {
   type CurriculumCategory,
   type PadraoNomenclatura,
 } from "./academicSetupTypes";
+import { gerarNomeTurma } from "@/lib/turma";
 
 // Mapeamento de presets → categorias de UI do Step2
 const PRESET_CATEGORY_MAP: Record<CurriculumKey, CurriculumCategory> = {
@@ -80,6 +81,7 @@ export default function AcademicStep2({
   applyingPreset,
   padraoNomenclatura,
   onPadraoNomenclaturaChange,
+  anoLetivo,
 }: AcademicStep2Props) {
   const [selectedPresetKey, setSelectedPresetKey] = useState<CurriculumKey | "">("");
   const [addedCourses, setAddedCourses] = useState<AddedCourse[]>([]);
@@ -185,6 +187,14 @@ export default function AcademicStep2({
 
     return groups;
   }, [matrix]);
+
+  const sampleNomeTurma = useMemo(() => {
+    const primeiraClasse = matrix[0];
+    const cursoNome = primeiraClasse?.cursoNome || "Curso";
+    const classeNome = primeiraClasse?.nome || "7ª Classe";
+    const turnoAtivo = turnos["Manhã"] ? "manha" : turnos["Tarde"] ? "tarde" : "noite";
+    return gerarNomeTurma(cursoNome, classeNome, turnoAtivo, 1, padraoNomenclatura, anoLetivo);
+  }, [matrix, turnos, padraoNomenclatura, anoLetivo]);
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -345,6 +355,9 @@ export default function AcademicStep2({
                   {opt.label}
                 </button>
               ))}
+            </div>
+            <div className="text-[11px] text-slate-500 font-semibold">
+              Exemplo: <span className="text-slate-700">{sampleNomeTurma}</span>
             </div>
         </div>
 

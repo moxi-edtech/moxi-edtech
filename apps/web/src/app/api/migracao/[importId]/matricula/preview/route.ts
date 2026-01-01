@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
+import { normalizeTurmaCode } from '@/lib/turma'
 
 type Batch = {
   turma_nome: string
@@ -58,7 +59,7 @@ export async function GET(
 
     const codeSet = new Set<string>();
     groups.forEach((g) => {
-      const code = (g.turma_codigo || '').toString().trim().toUpperCase().replace(/\s+/g, '')
+      const code = normalizeTurmaCode(String(g.turma_codigo ?? ''))
       if (code) codeSet.add(code)
     })
 
@@ -74,10 +75,10 @@ export async function GET(
 
     const batches: Batch[] = []
     for (const g of groups) {
-      const code = (g.turma_codigo || '').toString().trim().toUpperCase().replace(/\s+/g, '')
+      const code = normalizeTurmaCode(String(g.turma_codigo ?? ''))
       if (!code) continue
       const ready = (turmas || []).find((t: any) => {
-        const sameCode = (t.turma_code || '').toString().toUpperCase().replace(/\s+/g, '') === code
+        const sameCode = normalizeTurmaCode(String(t.turma_code ?? '')) === code
         const sameYear = g.ano_letivo != null ? String(t.ano_letivo) === String(g.ano_letivo) : true
         return sameCode && sameYear
       })

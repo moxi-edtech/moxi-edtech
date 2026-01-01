@@ -10,6 +10,8 @@ import {
   AlertTriangle,
 } from "lucide-react";
 
+import { normalizeTurmaCode } from "@/lib/turma";
+
 import type { GrupoMatricula, MatriculaMassaPayload } from "~types/matricula";
 import type { Turma } from "~types/turma";
 
@@ -34,7 +36,7 @@ export function MatriculasEmMassa({
   // key única por grupo
   const grupoKey = (g: GrupoMatricula) =>
     [
-      (g.turma_codigo || "").toString().trim().toUpperCase(),
+      normalizeTurmaCode(String(g.turma_codigo ?? "")),
       g.ano_letivo ?? "",
     ].join("|");
 
@@ -93,12 +95,10 @@ export function MatriculasEmMassa({
       const key = grupoKey(g);
 
       const list = (turmas ?? []).filter((t) => {
-        const code = (g.turma_codigo || "").toString().trim().toUpperCase();
+        const code = normalizeTurmaCode(String(g.turma_codigo ?? ""));
         if (!code) return false;
-        const turmaCode = (t as any)?.turma_code
-          ? (t as any).turma_code.toString().toUpperCase().replace(/\s+/g, "")
-          : '';
-        const matchesCode = turmaCode === code.replace(/\s+/g, "");
+        const turmaCode = normalizeTurmaCode(String((t as any)?.turma_code ?? ""));
+        const matchesCode = turmaCode === code;
         const matchesYear = g.ano_letivo && t.ano_letivo ? String(t.ano_letivo) === String(g.ano_letivo) : true;
         return matchesCode && matchesYear;
       });
@@ -115,9 +115,7 @@ export function MatriculasEmMassa({
     setMatriculandoKey(grupoKey(grupo));
 
     try {
-      const turmaCode = [
-        (grupo.turma_codigo || '').toString().trim().toUpperCase(),
-      ].filter(Boolean).join('-');
+      const turmaCode = normalizeTurmaCode(String(grupo.turma_codigo ?? ""));
 
       const payload = {
         import_id: grupo.import_id,

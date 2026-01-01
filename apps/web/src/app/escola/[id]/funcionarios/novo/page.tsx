@@ -42,17 +42,17 @@ export default function NovoFuncionarioPage() {
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao criar funcionário");
-      
+
       const { numero_login, senha_temp } = json as { numero_login?: string; senha_temp?: string };
-      
-      let successText = "Funcionário convidado com sucesso!";
+
+      let successText = `Funcionário criado com sucesso! Email: ${form.email.trim().toLowerCase()}.`;
       if (numero_login) {
         successText += ` Número de login: ${numero_login}.`;
       }
       if (senha_temp) {
         successText += ` Senha temporária: ${senha_temp}.`;
       }
-      
+
       setMsg({ ok: true, text: successText });
       // Não redireciona automaticamente para permitir copiar credenciais
     } catch (e) {
@@ -82,7 +82,7 @@ export default function NovoFuncionarioPage() {
             <UserPlusIcon className="w-7 h-7 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-moxinexa-dark">Cadastrar Funcionário</h1>
-          <p className="text-moxinexa-gray mt-1">Convide secretaria, financeiro ou administradores da escola</p>
+          <p className="text-moxinexa-gray mt-1">Crie secretaria, financeiro ou administradores da escola</p>
         </div>
 
         <form onSubmit={onSubmit} className="bg-white rounded-2xl shadow p-6 border border-gray-100 space-y-6">
@@ -155,13 +155,13 @@ export default function NovoFuncionarioPage() {
               Voltar
             </Button>
             <Button type="submit" tone="teal" disabled={submitting}>
-              {submitting ? "Enviando Convite..." : "Convidar Funcionário"}
+              {submitting ? "Criando Funcionário..." : "Criar Funcionário"}
             </Button>
           </div>
         </form>
 
         <div className="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-900">
-          • O convidado receberá um e-mail com instruções de acesso, incluindo uma senha temporária. Para Secretaria, também enviamos o número de login.
+          • Após criar, copie o e-mail e a senha temporária exibidos acima. Para Secretaria, também exibimos o número de login.
         </div>
       </div>
     </div>

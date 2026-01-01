@@ -73,22 +73,27 @@ export async function POST(
 
     // Validate current and target sessions belong to the escola
     const [fromRes, toRes] = await Promise.all([
-      (admin as any).from('school_sessions').select('id, escola_id, status').eq('id', sessionId).limit(1),
-      (admin as any).from('school_sessions').select('id, escola_id, status').eq('id', targetSessionId).limit(1),
+      (admin as any).from('anos_letivos').select('id, escola_id, ano').eq('id', sessionId).limit(1),
+      (admin as any).from('anos_letivos').select('id, escola_id, ano').eq('id', targetSessionId).limit(1),
     ]);
     const fromSess = Array.isArray(fromRes.data) ? fromRes.data[0] : undefined;
     const toSess = Array.isArray(toRes.data) ? toRes.data[0] : undefined;
     if (!fromSess || String(fromSess.escola_id) !== String(escolaId)) {
-      return NextResponse.json({ ok: false, error: 'Sessão de origem não encontrada' }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'Ano letivo de origem não encontrado' }, { status: 404 });
     }
     if (!toSess || String(toSess.escola_id) !== String(escolaId)) {
-      return NextResponse.json({ ok: false, error: 'Sessão de destino não encontrada' }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'Ano letivo de destino não encontrado' }, { status: 404 });
     }
 
     // Count current dependents to report
+    const anoOrigem = fromSess.ano ? String(fromSess.ano) : null;
+    const anoDestino = toSess.ano ? String(toSess.ano) : null;
+
     const [turmasCountRes, matriculasCountRes] = await Promise.all([
-      (admin as any).from('turmas').select('id', { count: 'exact', head: true }).eq('session_id', sessionId),
-      (admin as any).from('matriculas').select('id', { count: 'exact', head: true }).eq('session_id', sessionId),
+      anoOrigem
+        ? (admin as any).from('turmas').select('id', { count: 'exact', head: true }).eq('ano_letivo', anoOrigem)
+        : Promise.resolve({ count: 0 }),
+      (admin as any).from('matriculas').select('id', { count: 'exact', head: true }).eq('ano_letivo_id', sessionId),
     ]);
     const before = {
       turmas: turmasCountRes?.count ?? 0,
@@ -97,8 +102,10 @@ export async function POST(
 
     // Reassign
     const updErrors: string[] = [];
-    try { await (admin as any).from('turmas').update({ session_id: targetSessionId } as any).eq('session_id', sessionId).eq('escola_id', escolaId) } catch (e) { updErrors.push(e instanceof Error ? e.message : String(e)) }
-    try { await (admin as any).from('matriculas').update({ session_id: targetSessionId } as any).eq('session_id', sessionId).eq('escola_id', escolaId) } catch (e) { updErrors.push(e instanceof Error ? e.message : String(e)) }
+    if (anoOrigem && anoDestino) {
+      try { await (admin as any).from('turmas').update({ ano_letivo: anoDestino } as any).eq('ano_letivo', anoOrigem).eq('escola_id', escolaId) } catch (e) { updErrors.push(e instanceof Error ? e.message : String(e)) }
+    }
+    try { await (admin as any).from('matriculas').update({ ano_letivo_id: targetSessionId } as any).eq('ano_letivo_id', sessionId).eq('escola_id', escolaId) } catch (e) { updErrors.push(e instanceof Error ? e.message : String(e)) }
     if (updErrors.length) {
       return NextResponse.json({ ok: false, error: `Falha ao mover registros: ${updErrors.join(' | ')}` }, { status: 400 });
     }
@@ -109,4 +116,3 @@ export async function POST(
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
 }
-

@@ -8,6 +8,9 @@ import { buildEscolaUrl } from "@/lib/escola/url";
 type Disciplina = {
   id: string;
   nome: string;
+  sigla?: string;
+  carga_horaria?: number;
+  ordem?: number;
 };
 
 export default function ClasseDetailClient({ classeId }: { classeId: string }) {
@@ -60,17 +63,19 @@ export default function ClasseDetailClient({ classeId }: { classeId: string }) {
             <table className="min-w-full divide-y divide-slate-200">
                 <thead className="bg-slate-50">
                 <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Nome
-                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Nome</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Sigla</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Carga</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Ordem</th>
                 </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-200">
                 {disciplinas.map((disciplina) => (
                     <tr key={disciplina.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
-                        {disciplina.nome}
-                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{disciplina.nome}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-600">{disciplina.sigla ?? '—'}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-600">{disciplina.carga_horaria ?? '—'}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-600">{disciplina.ordem ?? '—'}</td>
                     </tr>
                 ))}
                 </tbody>

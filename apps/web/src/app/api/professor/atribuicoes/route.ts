@@ -20,29 +20,41 @@ export async function GET() {
     if (!escolaId) return NextResponse.json({ ok: true, items: [] })
 
     const { data: tdp, error } = await supabase
-      .from('turma_disciplinas_professores')
-      .select('id, turma_id, disciplina_id')
+      .from('turma_disciplinas')
+      .select('id, turma_id, curso_matriz_id')
       .eq('escola_id', escolaId)
       .in('professor_id', (
-        await supabase.from('professores').select('id').eq('profile_id', user.id)
+        await supabase.from('professores').select('id').eq('profile_id', user.id).eq('escola_id', escolaId)
       ).data?.map((r: any) => r.id) || [] )
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
 
     const turmaIds = Array.from(new Set((tdp || []).map((r: any) => r.turma_id).filter(Boolean)))
-    const discIds = Array.from(new Set((tdp || []).map((r: any) => r.disciplina_id).filter(Boolean)))
+    const matrizIds = Array.from(new Set((tdp || []).map((r: any) => r.curso_matriz_id).filter(Boolean)))
 
-    const [turmasRes, discsRes] = await Promise.all([
-      turmaIds.length ? supabase.from('turmas').select('id, nome').in('id', turmaIds) : Promise.resolve({ data: [] as any[] }),
-      discIds.length ? supabase.from('disciplinas').select('id, nome').in('id', discIds) : Promise.resolve({ data: [] as any[] }),
+    const [turmasRes, matrizRes] = await Promise.all([
+      turmaIds.length
+        ? supabase
+            .from('turmas')
+            .select('id, nome')
+            .in('id', turmaIds)
+            .eq('escola_id', escolaId)
+        : Promise.resolve({ data: [] as any[] }),
+      matrizIds.length
+        ? supabase
+            .from('curso_matriz')
+            .select('id, disciplina:disciplinas_catalogo(id, nome)')
+            .in('id', matrizIds)
+            .eq('escola_id', escolaId)
+        : Promise.resolve({ data: [] as any[] }),
     ])
     const turmaMap = new Map<string, string>(); for (const t of (turmasRes as any).data || []) turmaMap.set(t.id, t.nome)
-    const discMap = new Map<string, string>(); for (const d of (discsRes as any).data || []) discMap.set(d.id, d.nome)
+    const discMap = new Map<string, string>(); for (const d of (matrizRes as any).data || []) discMap.set(d.id, (d as any)?.disciplina?.nome)
 
     const items = (tdp || []).map((r: any) => ({
       id: r.id,
       turma: { id: r.turma_id, nome: turmaMap.get(r.turma_id) || null },
-      disciplina: { id: r.disciplina_id, nome: discMap.get(r.disciplina_id) || null },
+      disciplina: { id: r.curso_matriz_id, nome: discMap.get(r.curso_matriz_id) || null },
     }))
     return NextResponse.json({ ok: true, items })
   } catch (e) {
@@ -50,4 +62,3 @@ export async function GET() {
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
 }
-

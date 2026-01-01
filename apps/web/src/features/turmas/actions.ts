@@ -3,7 +3,7 @@
 import { hydrateCourseCurriculum } from "@/features/curriculum/actions";
 import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
-import { parseTurmaCode } from "@/utils/turmaParser";
+import { parseTurmaCode } from "@/lib/turma";
 
 // Tipos do Payload que vem do Formulário
 interface ValidateTurmaPayload {

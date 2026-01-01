@@ -31,12 +31,23 @@ export async function GET(req: Request) {
     const classeId = searchParams.get('classe_id')
 
     let query = supabase
-        .from('disciplinas')
-        .select('*') // Retornar tudo para ter acesso a curso_id e classe_nome
+        .from('curso_matriz')
+        .select(`
+          id,
+          curso_id,
+          classe_id,
+          disciplina_id,
+          obrigatoria,
+          ordem,
+          carga_horaria,
+          disciplina:disciplinas_catalogo(id, nome, sigla),
+          classe:classes(id, nome),
+          curso:cursos(id, nome)
+        `)
         .eq('escola_id', escolaId)
-        .order('nome', { ascending: true });
+        .order('classe_id', { ascending: true });
 
-    if (cursoId) query = query.eq('curso_escola_id', cursoId)
+    if (cursoId) query = query.eq('curso_id', cursoId)
     if (classeId) query = query.eq('classe_id', classeId)
 
     const { data, error } = await query
@@ -45,7 +56,21 @@ export async function GET(req: Request) {
         return NextResponse.json({ ok: false, error: error.message }, { status: 400, headers });
     }
 
-    return NextResponse.json({ ok: true, items: data }, { headers });
+    const items = (data || []).map((r: any) => ({
+      id: r.id,
+      nome: r.disciplina?.nome ?? '',
+      sigla: r.disciplina?.sigla ?? null,
+      curso_id: r.curso_id,
+      curso_nome: r.curso?.nome ?? null,
+      classe_id: r.classe_id,
+      classe_nome: r.classe?.nome ?? null,
+      carga_horaria: r.carga_horaria ?? null,
+      obrigatoria: r.obrigatoria !== false,
+      ordem: r.ordem ?? null,
+      disciplina_id: r.disciplina_id,
+    }));
+
+    return NextResponse.json({ ok: true, items }, { headers });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
@@ -77,28 +102,52 @@ export async function POST(req: Request) {
     const body = await req.json()
     const { 
       nome, 
-      curso_id, // Front deve mandar o ID do curso
-      classe_id, // NOVO CAMPO
-      nivel_ensino, // Ex: "secundario1"
-      tipo // Ex: "core"
+      curso_id, // ID do curso
+      classe_id, // ID da classe
+      obrigatoria = true,
+      carga_horaria = null,
+      ordem = null,
+      sigla = null,
     } = body
 
     if (!nome || !curso_id || !classe_id) {
         return NextResponse.json({ ok: false, error: "Nome, Curso e Classe são obrigatórios" }, { status: 400 })
     }
 
-    // 3. Insert com tratamento de erro
+    // Resolve/insere no catálogo
+    let disciplinaId: string | null = null;
+    {
+      const { data: exist } = await supabase
+        .from('disciplinas_catalogo')
+        .select('id')
+        .eq('escola_id', escolaId)
+        .eq('nome', nome)
+        .maybeSingle();
+      if (exist?.id) disciplinaId = exist.id;
+      else {
+        const { data: nova, error: discErr } = await supabase
+          .from('disciplinas_catalogo')
+          .insert({ escola_id: escolaId, nome, sigla } as any)
+          .select('id')
+          .single();
+        if (discErr) return NextResponse.json({ ok: false, error: discErr.message }, { status: 400, headers });
+        disciplinaId = (nova as any)?.id ?? null;
+      }
+    }
+
+    // Upsert na matriz
     const { data, error } = await supabase
-        .from('disciplinas')
-        .insert({
+        .from('curso_matriz')
+        .upsert({
             escola_id: escolaId,
-            nome,
-            curso_escola_id: curso_id, // Mapeando curso_id do front para curso_escola_id do banco
-            classe_id, // USANDO O ID
-            nivel_ensino: nivel_ensino || 'geral',
-            tipo: tipo || 'core'
-        })
-        .select()
+            curso_id,
+            classe_id,
+            disciplina_id: disciplinaId,
+            obrigatoria,
+            carga_horaria,
+            ordem,
+        } as any, { onConflict: 'escola_id,curso_id,classe_id,disciplina_id' } as any)
+        .select('id, curso_id, classe_id, disciplina_id, obrigatoria, carga_horaria, ordem')
         .single()
 
     if (error) {

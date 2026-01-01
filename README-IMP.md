@@ -135,6 +135,10 @@ Agrupa alunos por turma e efetua a matrícula em lotes, de forma idempotente e s
 
 Documentos oficiais gerados com cabeçalho, QR Code de validação, assinatura digital e rodapé padrão.
 
+✔ 6. Liberação de acesso de alunos (novo)
+
+Alunos importados ou cadastrados podem ter credenciais emitidas em lote pela secretaria: `/secretaria/acesso-alunos` lista pendentes e chama `/api/secretaria/alunos/liberar-acesso`, que cria usuários/profiles se necessário, gera códigos em `alunos`, enfileira notificações em `outbox_notificacoes` e usa Twilio/Resend para envio (worker externo). Ativação self-service via `/api/alunos/ativar-acesso` (código + BI).
+
 ⸻
 
 2. Fluxo Completo de Importação

@@ -49,3 +49,5 @@ export const PLAN_FEATURES: Record<PlanTier, Record<FeatureKey, boolean>> = {
     suporte_prioritario: true,
   },
 };
+
+

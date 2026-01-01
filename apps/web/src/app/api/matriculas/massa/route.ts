@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 
+import { buildTurmaCode } from "@/lib/turma";
 import type { Database } from "~types/supabase";
 import type { MatriculaMassaPayload } from "~types/matricula";
 
@@ -53,7 +54,17 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const turmaCode = `${String(curso_codigo).toUpperCase()}-${String(classe_numero)}-${String(turno_codigo).toUpperCase()}-${String(turma_letra).toUpperCase()}`;
+  let turmaCode: string;
+  try {
+    turmaCode = buildTurmaCode({
+      courseCode: String(curso_codigo),
+      classNum: classe_numero,
+      shift: turno_codigo,
+      section: String(turma_letra),
+    });
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || "TurmaCode inválido" }, { status: 400 });
+  }
 
   let resolvedTurmaId = turma_id;
   try {

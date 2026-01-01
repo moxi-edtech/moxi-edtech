@@ -7,3 +7,4 @@ export function Table({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+

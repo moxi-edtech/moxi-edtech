@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, AlertCircle, Wand2, Check, Save } from "lucide-react";
 import { toast } from "sonner";
-import { parseTurmaCode, findCursoBySigla, findClasseByNum } from "@/utils/turmaParser";
+import { parseTurmaCode, findCursoIdByFuzzy as findCursoBySigla, findClasseByNum, normalizeTurmaCode } from "@/lib/turma";
 import { saveAndValidateTurma } from "@/features/turmas/actions";
 
 // Tipos
@@ -43,10 +43,7 @@ interface TurmaFormProps {
 }
 
 function normalizeCodigo(input: string) {
-  return (input || "")
-    .trim()
-    .replace(/\s+/g, "")
-    .toUpperCase();
+  return normalizeTurmaCode(input || "");
 }
 
 function normalizeTurno(input: string) {

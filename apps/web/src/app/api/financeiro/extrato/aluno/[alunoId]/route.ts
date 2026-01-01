@@ -35,11 +35,7 @@ interface TurmaRow {
   nome?: string | null;
   classe?: string | null;
   turno?: string | null;
-  school_sessions?: {
-    id: string;
-    nome?: string | null;
-    ano?: number | null;
-  } | null;
+  ano_letivo?: number | null;
 }
 
 interface MatriculaRow {
@@ -131,11 +127,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ alunoId
             nome,
             classe,
             turno,
-            school_sessions (
-              id,
-              nome,
-              ano
-            )
+            ano_letivo
           )
         ),
         escolas:escolas (
@@ -297,7 +289,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ alunoId
                     classe: turmaNormalized.classe ?? null,
                     turno: turmaNormalized.turno ?? null,
                     anoLetivoLabel:
-                      turmaNormalized.school_sessions?.nome ?? turmaNormalized.school_sessions?.ano ?? null,
+                      turmaNormalized.ano_letivo != null
+                        ? `${turmaNormalized.ano_letivo}/${(turmaNormalized.ano_letivo as number) + 1}`
+                        : null,
                   }
                 : null,
             }

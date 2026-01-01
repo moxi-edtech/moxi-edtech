@@ -6,7 +6,8 @@ import { createClient as createAdminClient } from "@supabase/supabase-js"
 import type { Database } from "~types/supabase"
 
 // POST /api/escolas/[id]/onboarding/session
-// Creates or updates the active school session (school_sessions) for the escola.
+// Alinha com o novo modelo acadêmico (anos_letivos + periodos_letivos)
+// e substitui o uso de school_sessions/semestres legacy.
 export async function POST(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -182,38 +183,102 @@ export async function POST(
       }
     }
 
-    // Upsert active session: update if existing active session, else insert
-    const { data: existing } = await admin
-      .from('school_sessions')
-      .select('id')
+    // Upsert ano letivo ativo
+    const anoLetivo = Number(String(data_inicio).slice(0, 4))
+    const { data: existingAno } = await admin
+      .from('anos_letivos')
+      .select('id, ativo, ano')
       .eq('escola_id', escolaId)
-      .eq('status', 'ativa')
+      .eq('ano', anoLetivo)
       .maybeSingle()
 
-    if (existing?.id) {
+    let anoLetivoId: string | null = null
+    if (existingAno?.id) {
       const { error: updErr } = await admin
-        .from('school_sessions')
+        .from('anos_letivos')
         .update({
-          nome,
           data_inicio,
           data_fim,
+          ativo: true,
         } as any)
-        .eq('id', existing.id)
+        .eq('id', existingAno.id)
       if (updErr) return NextResponse.json({ ok: false, error: updErr.message }, { status: 400 })
+      anoLetivoId = existingAno.id
     } else {
-      const { error: insErr } = await admin
-        .from('school_sessions')
+      const { data: ins, error: insErr } = await admin
+        .from('anos_letivos')
         .insert({
           escola_id: escolaId,
-          nome,
+          ano: anoLetivo,
           data_inicio,
           data_fim,
-          status: 'ativa',
+          ativo: true,
         } as any)
+        .select('id')
+        .single()
       if (insErr) return NextResponse.json({ ok: false, error: insErr.message }, { status: 400 })
+      anoLetivoId = (ins as any)?.id ?? null
     }
 
-    // Reset onboarding drafts; NÃO desmarca conclusão do onboarding.
+    // Desativa outros anos letivos da escola
+    try {
+      await (admin as any)
+        .from('anos_letivos')
+        .update({ ativo: false } as any)
+        .eq('escola_id', escolaId)
+        .neq('id', anoLetivoId)
+    } catch (_) {}
+
+    // Autogerar períodos_letivos para o ano ativo
+    const tipoUpper = rawEsquema === 'semestral' ? 'SEMESTRE' : rawEsquema === 'bimestral' ? 'BIMESTRE' : 'TRIMESTRE'
+    const parts = tipoUpper === 'SEMESTRE' ? 2 : tipoUpper === 'BIMESTRE' ? 4 : 3
+
+    const splitRanges = (startISO: string, endISO: string, parts: number): Array<{ start: string; end: string }> => {
+      const toDate = (s: string) => new Date(`${s}T00:00:00Z`)
+      const toISO = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+      const start = toDate(String(startISO).slice(0, 10))
+      const end = toDate(String(endISO).slice(0, 10))
+      const totalDays = Math.floor((end.getTime() - start.getTime()) / (24 * 3600 * 1000)) + 1
+      const chunk = Math.floor(totalDays / parts)
+      const remainder = totalDays % parts
+      const ranges: Array<{ start: string; end: string }> = []
+      let cursor = new Date(start)
+      for (let i = 0; i < parts; i++) {
+        const len = chunk + (i < remainder ? 1 : 0)
+        const segStart = new Date(cursor)
+        const segEnd = new Date(cursor)
+        segEnd.setUTCDate(segEnd.getUTCDate() + (len - 1))
+        ranges.push({ start: toISO(segStart), end: toISO(segEnd) })
+        cursor.setUTCDate(cursor.getUTCDate() + len)
+      }
+      return ranges
+    }
+
+    if (anoLetivoId) {
+      try {
+        await (admin as any)
+          .from('periodos_letivos')
+          .delete()
+          .eq('ano_letivo_id', anoLetivoId)
+
+        const ranges = splitRanges(data_inicio, data_fim, parts)
+        const rows = ranges.map((r, idx) => ({
+          escola_id: escolaId,
+          ano_letivo_id: anoLetivoId,
+          tipo: tipoUpper,
+          numero: idx + 1,
+          data_inicio: r.start,
+          data_fim: r.end,
+        }))
+        await (admin as any)
+          .from('periodos_letivos')
+          .insert(rows)
+      } catch (_) {
+        // Não bloqueia a criação do ano letivo
+      }
+    }
+
+    // Reset drafts para este ano/escola; mantém conclusão do onboarding
     try {
       await (admin as any)
         .from('onboarding_drafts')
@@ -221,121 +286,47 @@ export async function POST(
         .eq('escola_id', escolaId)
     } catch (_) {}
 
-    // Retorna sessão ativa atualizada/criada e lista resumida para o cliente atualizar o estado
+    // Monta resposta compatível com o wizard atual
     let active: any = null
     let all: any[] = []
+    let periodos: any[] = []
     try {
-      const { data: sessList } = await (admin as any)
-        .from('school_sessions')
-        .select('id, nome, data_inicio, data_fim, status')
+      const { data: anos } = await (admin as any)
+        .from('anos_letivos')
+        .select('id, ano, data_inicio, data_fim, ativo')
         .eq('escola_id', escolaId)
-        .order('data_inicio', { ascending: false })
-      all = sessList || []
+        .order('ano', { ascending: false })
+      all = (anos || []).map((row: any) => ({
+        id: row.id,
+        nome: `${row.ano}/${row.ano + 1}`,
+        data_inicio: row.data_inicio,
+        data_fim: row.data_fim,
+        status: row.ativo ? 'ativa' : 'arquivada',
+        ano_letivo: String(row.ano),
+      }))
       active = (all || []).find((s: any) => s.status === 'ativa') || null
     } catch {}
 
-    // Autogerar períodos conforme preferências, se habilitado e ainda não existirem períodos.
-    // Fallback: se não houver configuracoes_escola (ou colunas), usa o esquema enviado no payload (rawEsquema)
-    try {
-      if (active && active.id) {
-        // Lê preferências
-        let auto = false as boolean
-        let periodoTipo = undefined as 'semestre' | 'trimestre' | 'bimestre' | undefined
-        let tipoPresenca = undefined as 'secao' | 'curso' | undefined
-
-        try {
-          const { data: cfg } = await (admin as any)
-            .from('configuracoes_escola')
-            .select('autogerar_periodos, periodo_tipo, tipo_presenca')
-            .eq('escola_id', escolaId)
-            .maybeSingle()
-          auto = Boolean((cfg as any)?.autogerar_periodos)
-          periodoTipo = (cfg as any)?.periodo_tipo as ('semestre' | 'trimestre' | 'bimestre' | undefined)
-          tipoPresenca = (cfg as any)?.tipo_presenca as ('secao' | 'curso' | undefined)
-        } catch (_) {
-          // Se a tabela/coluna não existir, seguimos com fallback abaixo
-        }
-
-        // Fallback baseado no payload: se recebemos esquemaPeriodos, forçamos autogerar e derivamos o periodoTipo
-        if (!auto && rawEsquema) auto = true
-        if (!periodoTipo && rawEsquema) {
-          periodoTipo = rawEsquema === 'semestral' ? 'semestre' : rawEsquema === 'bimestral' ? 'bimestre' : 'trimestre'
-        }
-        if (!tipoPresenca) tipoPresenca = 'secao'
-
-        if (auto) {
-          // Já existem períodos para esta sessão?
-          const { count } = await (admin as any)
-            .from('semestres')
-            .select('id', { count: 'exact', head: true })
-            .eq('session_id', active.id)
-
-          if (!count || count === 0) {
-            // Define quantidade e rótulo
-            const n = periodoTipo === 'semestre' ? 2 : periodoTipo === 'bimestre' ? 6 : 3
-            const label = periodoTipo === 'semestre' ? 'Semestre' : periodoTipo === 'bimestre' ? 'Bimestre' : 'Trimestre'
-            const tipoUpper = periodoTipo === 'semestre' ? 'SEMESTRE' : periodoTipo === 'bimestre' ? 'BIMESTRE' : 'TRIMESTRE'
-            const attendance = tipoPresenca === 'curso' ? 'course' : 'section'
-
-            // Utilitário para dividir o intervalo em N partes contíguas (inclusivo)
-            const splitRanges = (startISO: string, endISO: string, parts: number): Array<{ start: string; end: string }> => {
-              const toDate = (s: string) => new Date(`${s}T00:00:00Z`)
-              const toISO = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`
-              const start = toDate(String(startISO).slice(0,10))
-              const end = toDate(String(endISO).slice(0,10))
-              const totalDays = Math.floor((end.getTime() - start.getTime()) / (24*3600*1000)) + 1
-              const chunk = Math.floor(totalDays / parts)
-              const remainder = totalDays % parts
-              const ranges: Array<{ start: string; end: string }> = []
-              let cursor = new Date(start)
-              for (let i = 0; i < parts; i++) {
-                const len = chunk + (i < remainder ? 1 : 0)
-                const segStart = new Date(cursor)
-                const segEnd = new Date(cursor)
-                segEnd.setUTCDate(segEnd.getUTCDate() + (len - 1))
-                ranges.push({ start: toISO(segStart), end: toISO(segEnd) })
-                cursor.setUTCDate(cursor.getUTCDate() + len)
-              }
-              return ranges
-            }
-
-            const ranges = splitRanges(active.data_inicio, active.data_fim, n)
-            const rows = ranges.map((r, idx) => ({
-              escola_id: escolaId,
-              session_id: active.id,
-              nome: `${idx+1}º ${label}`,
-              data_inicio: r.start,
-              data_fim: r.end,
-              attendance_type: attendance,
-              permitir_submissao_final: false,
-              tipo: tipoUpper,
-            }))
-
-            // Tenta inserir com coluna opcional 'tipo'; se falhar por coluna ausente, remove e tenta novamente
-            let insErr: any | null = null
-            {
-              const { error } = await (admin as any)
-                .from('semestres')
-                .insert(rows)
-              insErr = error
-            }
-            if (insErr && String(insErr.message || '').toLowerCase().includes('column') && String(insErr.message || '').includes('tipo')) {
-              const rowsNoTipo = rows.map(({ tipo, ...rest }) => rest)
-              const { error: err2 } = await (admin as any)
-                .from('semestres')
-                .insert(rowsNoTipo)
-              if (err2) {
-                // não é fatal para salvar sessão; apenas segue
-              }
-            }
-          }
-        }
-      }
-    } catch {
-      // silencioso: não bloqueia salvar sessão
+    if (anoLetivoId) {
+      try {
+        const { data: per } = await (admin as any)
+          .from('periodos_letivos')
+          .select('id, tipo, numero, data_inicio, data_fim')
+          .eq('ano_letivo_id', anoLetivoId)
+          .order('numero', { ascending: true })
+        periodos = (per || []).map((p: any) => ({
+          id: p.id,
+          tipo: p.tipo,
+          numero: p.numero,
+          nome: `${p.numero}º ${p.tipo === 'SEMESTRE' ? 'Semestre' : p.tipo === 'BIMESTRE' ? 'Bimestre' : 'Trimestre'}`,
+          data_inicio: p.data_inicio,
+          data_fim: p.data_fim,
+          sessao_id: anoLetivoId,
+        }))
+      } catch {}
     }
 
-    return NextResponse.json({ ok: true, data: active, sessoes: all })
+    return NextResponse.json({ ok: true, data: active, sessoes: all, periodos })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erro inesperado'
     return NextResponse.json({ ok: false, error: msg }, { status: 500 })
@@ -400,14 +391,42 @@ export async function GET(
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    const { data, error } = await (admin as any)
-      .from('school_sessions')
-      .select('id, nome, data_inicio, data_fim, status')
+    const { data: anos, error } = await (admin as any)
+      .from('anos_letivos')
+      .select('id, ano, data_inicio, data_fim, ativo')
       .eq('escola_id', escolaId)
-      .order('data_inicio', { ascending: false });
+      .order('ano', { ascending: false });
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
 
-    return NextResponse.json({ ok: true, data: data || [] });
+    const list = (anos || []).map((row: any) => ({
+      id: row.id,
+      nome: `${row.ano}/${row.ano + 1}`,
+      data_inicio: row.data_inicio,
+      data_fim: row.data_fim,
+      status: row.ativo ? 'ativa' : 'arquivada',
+      ano_letivo: String(row.ano),
+    }))
+
+    let periodos: any[] = []
+    const ativo = (anos || []).find((r: any) => r.ativo)
+    if (ativo) {
+      const { data: per } = await (admin as any)
+        .from('periodos_letivos')
+        .select('id, tipo, numero, data_inicio, data_fim')
+        .eq('ano_letivo_id', ativo.id)
+        .order('numero', { ascending: true })
+      periodos = (per || []).map((p: any) => ({
+        id: p.id,
+        tipo: p.tipo,
+        numero: p.numero,
+        nome: `${p.numero}º ${p.tipo === 'SEMESTRE' ? 'Semestre' : p.tipo === 'BIMESTRE' ? 'Bimestre' : 'Trimestre'}`,
+        data_inicio: p.data_inicio,
+        data_fim: p.data_fim,
+        sessao_id: ativo.id,
+      }))
+    }
+
+    return NextResponse.json({ ok: true, data: list, periodos });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erro inesperado';
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });

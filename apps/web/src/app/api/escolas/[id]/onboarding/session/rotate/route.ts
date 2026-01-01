@@ -110,24 +110,77 @@ export async function POST(
       process.env.SUPABASE_SERVICE_ROLE_KEY
     )
 
-    // 1) Archive existing active session (if any)
+    // 1) Desativar anos letivos atuais
     await (admin as any)
-      .from('school_sessions')
-      .update({ status: 'arquivada' })
+      .from('anos_letivos')
+      .update({ ativo: false } as any)
       .eq('escola_id', escolaId)
-      .eq('status', 'ativa')
 
-    // 2) Create new active session
-    const { error: insErr } = await (admin as any)
-      .from('school_sessions')
-      .insert({
+    const anoLetivoNumero = Number(String(data_inicio).slice(0, 4))
+
+    // 2) Upsert do novo ano letivo ativo
+    const { data: anoLetivoRow, error: anoErr } = await (admin as any)
+      .from('anos_letivos')
+      .upsert({
         escola_id: escolaId,
-        nome,
+        ano: anoLetivoNumero,
         data_inicio,
         data_fim,
-        status: 'ativa',
-      } as any)
-    if (insErr) return NextResponse.json({ ok: false, error: insErr.message }, { status: 400 })
+        ativo: true,
+      } as any, { onConflict: 'escola_id,ano' } as any)
+      .select('id')
+      .single()
+    if (anoErr) return NextResponse.json({ ok: false, error: anoErr.message }, { status: 400 })
+
+    const anoLetivoId = (anoLetivoRow as any)?.id as string | null
+
+    // 3) Gerar periodos_letivos conforme preferências
+    const { data: cfg } = await (admin as any)
+      .from('configuracoes_escola')
+      .select('periodo_tipo')
+      .eq('escola_id', escolaId)
+      .maybeSingle()
+
+    const periodoTipo = ((cfg as any)?.periodo_tipo as string | undefined)?.toLowerCase() || 'trimestre'
+    const tipoUpper = periodoTipo === 'semestre' ? 'SEMESTRE' : periodoTipo === 'bimestre' ? 'BIMESTRE' : 'TRIMESTRE'
+    const parts = tipoUpper === 'SEMESTRE' ? 2 : tipoUpper === 'BIMESTRE' ? 4 : 3
+
+    const splitRanges = (startISO: string, endISO: string, parts: number): Array<{ start: string; end: string }> => {
+      const toDate = (s: string) => new Date(`${s}T00:00:00Z`)
+      const toISO = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+      const start = toDate(String(startISO).slice(0, 10))
+      const end = toDate(String(endISO).slice(0, 10))
+      const totalDays = Math.floor((end.getTime() - start.getTime()) / (24 * 3600 * 1000)) + 1
+      const chunk = Math.floor(totalDays / parts)
+      const remainder = totalDays % parts
+      const ranges: Array<{ start: string; end: string }> = []
+      let cursor = new Date(start)
+      for (let i = 0; i < parts; i++) {
+        const len = chunk + (i < remainder ? 1 : 0)
+        const segStart = new Date(cursor)
+        const segEnd = new Date(cursor)
+        segEnd.setUTCDate(segEnd.getUTCDate() + (len - 1))
+        ranges.push({ start: toISO(segStart), end: toISO(segEnd) })
+        cursor.setUTCDate(cursor.getUTCDate() + len)
+      }
+      return ranges
+    }
+
+    if (anoLetivoId) {
+      try {
+        await (admin as any).from('periodos_letivos').delete().eq('ano_letivo_id', anoLetivoId)
+        const ranges = splitRanges(data_inicio, data_fim, parts)
+        const rows = ranges.map((r, idx) => ({
+          escola_id: escolaId,
+          ano_letivo_id: anoLetivoId,
+          tipo: tipoUpper,
+          numero: idx + 1,
+          data_inicio: r.start,
+          data_fim: r.end,
+        }))
+        await (admin as any).from('periodos_letivos').insert(rows)
+      } catch (_) {}
+    }
 
     // Reset onboarding drafts; NÃO desmarca conclusão do onboarding.
     try {
@@ -138,7 +191,6 @@ export async function POST(
     } catch (_) {}
 
     // Sinaliza que ajustes acadêmicos são necessários após rotacionar sessão
-    // Caso a coluna não exista neste schema, ignora silenciosamente
     try {
       const { error: flagErr } = await (admin as any)
         .from('escolas')
@@ -147,23 +199,28 @@ export async function POST(
       if (flagErr) {
         const msg = String(flagErr.message || '').toLowerCase()
         if (msg.includes('needs_academic_setup') || msg.includes('schema cache') || msg.includes('column')) {
-          // Coluna ausente em alguns ambientes: apenas ignore
-        } else {
-          // Mantém comportamento original: não bloquear fluxo por esse aviso
+          // ignora
         }
       }
     } catch (_) {}
 
-    // Carrega sessões após rotação para retornar nova sessão ativa e histórico
+    // Carrega anos letivos após rotação para retornar nova sessão ativa e histórico
     let active: any = null
     let all: any[] = []
     try {
       const { data: sessList } = await (admin as any)
-        .from('school_sessions')
-        .select('id, nome, data_inicio, data_fim, status')
+        .from('anos_letivos')
+        .select('id, ano, data_inicio, data_fim, ativo')
         .eq('escola_id', escolaId)
-        .order('data_inicio', { ascending: false })
-      all = sessList || []
+        .order('ano', { ascending: false })
+      all = (sessList || []).map((row: any) => ({
+        id: row.id,
+        nome: `${row.ano}/${row.ano + 1}`,
+        data_inicio: row.data_inicio,
+        data_fim: row.data_fim,
+        status: row.ativo ? 'ativa' : 'arquivada',
+        ano_letivo: String(row.ano),
+      }))
       active = (all || []).find((s: any) => s.status === 'ativa') || null
     } catch {}
 

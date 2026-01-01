@@ -51,7 +51,9 @@ export default function TabelasMensalidadeClient() {
         ]);
         
         const j0: { ok?: boolean; items?: Item[] } = await r0.json();
-        const j1: { ok?: boolean; items?: any[] } = await r1.json();
+        const j1: {
+            data: any[] | undefined; ok?: boolean; items?: any[] 
+} = await r1.json();
 
         if (j0.ok) setItems(j0.items || []);
         if (j1.ok) {

@@ -39,3 +39,6 @@ Relatórios:
 Mini-Pauta: Filtra por Turma (para o Professor entregar).
 
 Pauta Geral / Termo: Filtra por Classe/Curso (para a Secretaria publicar).
+
+6. Liberação de acesso (novo)
+- Após cadastro ou importação, a secretaria pode liberar credenciais em lote em `/secretaria/acesso-alunos` (gera código de ativação, cria usuário/profile se preciso e notifica via WhatsApp/Email). Ativação self-service: `/ativar-acesso` com código + BI.
