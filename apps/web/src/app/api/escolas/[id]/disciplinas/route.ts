@@ -31,37 +31,35 @@ export async function GET(
 
     const rows = await (async () => {
       let query = (admin as any)
-        .from("disciplinas")
-        .select("id, nome, tipo, curso_escola_id, classe_nome, classe_id, nivel_ensino, carga_horaria, sigla")
+        .from("curso_matriz")
+        .select(
+          `id, curso_id, classe_id, disciplina_id, carga_horaria, obrigatoria, ordem,
+           disciplina:disciplinas_catalogo(id, nome, sigla),
+           classe:classes(id, nome),
+           curso:cursos(id, nome)
+          `
+        )
         .eq("escola_id", escolaId)
-        .order("nome", { ascending: true });
+        .order("classe_id", { ascending: true });
 
-      if (cursoId) query = query.eq('curso_escola_id', cursoId);
+      if (cursoId) query = query.eq('curso_id', cursoId);
 
       const { data, error } = await query;
-
-      if (!error) return data || [];
-
-      // Retry with minimal shape if schema differs
-      const fallback = await (admin as any)
-        .from("disciplinas")
-        .select("id, nome")
-        .eq("escola_id", escolaId)
-        .order("nome", { ascending: true });
-      if (fallback.error) throw fallback.error;
-      return fallback.data || [];
+      if (error) throw error;
+      return data || [];
     })();
 
     const payload = rows.map((r: any) => ({
       id: r.id,
-      nome: r.nome,
-      tipo: r.tipo ?? "core",
-      curso_id: r.curso_escola_id ?? r.curso_id ?? undefined,
-      classe_id: r.classe_id ?? undefined,
-      classe_nome: r.classe_nome ?? undefined,
-      nivel_ensino: r.nivel_ensino ?? undefined,
+      nome: r.disciplina?.nome ?? '',
+      sigla: r.disciplina?.sigla ?? undefined,
+      tipo: r.obrigatoria === false ? 'eletivo' : 'core',
+      curso_id: r.curso_id,
+      classe_id: r.classe_id,
+      classe_nome: r.classe?.nome ?? undefined,
       carga_horaria: r.carga_horaria ?? undefined,
-      sigla: r.sigla ?? undefined,
+      ordem: r.ordem ?? undefined,
+      disciplina_id: r.disciplina_id,
     }));
 
     return NextResponse.json({ ok: true, data: payload });
@@ -97,12 +95,11 @@ export async function POST(
     const body = await req.json().catch(() => ({}));
     const schema = z.object({
       nome: z.string().trim().min(1),
-      tipo: z.enum(["core", "eletivo"]).optional().default("core"),
       curso_id: z.string().uuid(),
-      classe_nome: z.string().trim(),
-      classe_id: z.string().uuid().nullable().optional(),
-      nivel_ensino: z.string().trim().nullable().optional(),
+      classe_id: z.string().uuid(),
+      obrigatoria: z.boolean().optional().default(true),
       carga_horaria: z.number().int().nullable().optional(),
+      ordem: z.number().int().nullable().optional(),
       sigla: z.string().trim().nullable().optional(),
     });
     const parsed = schema.safeParse(body);
@@ -111,22 +108,41 @@ export async function POST(
       return NextResponse.json({ ok: false, error: msg }, { status: 400 });
     }
 
+    // Resolve/insere disciplina no catálogo
+    let disciplinaId: string | null = null;
+    {
+      const { data: exist } = await (admin as any)
+        .from('disciplinas_catalogo')
+        .select('id')
+        .eq('escola_id', escolaId)
+        .eq('nome', parsed.data.nome)
+        .maybeSingle();
+      if (exist?.id) disciplinaId = exist.id;
+      else {
+        const { data: nova, error: discErr } = await (admin as any)
+          .from('disciplinas_catalogo')
+          .insert({ escola_id: escolaId, nome: parsed.data.nome, sigla: parsed.data.sigla ?? null } as any)
+          .select('id')
+          .single();
+        if (discErr) return NextResponse.json({ ok: false, error: discErr.message }, { status: 400 });
+        disciplinaId = (nova as any)?.id ?? null;
+      }
+    }
+
     const payload: any = {
       escola_id: escolaId,
-      nome: parsed.data.nome,
-      tipo: parsed.data.tipo,
-      curso_escola_id: parsed.data.curso_id,
-      classe_nome: parsed.data.classe_nome,
+      curso_id: parsed.data.curso_id,
+      classe_id: parsed.data.classe_id,
+      disciplina_id: disciplinaId,
+      obrigatoria: parsed.data.obrigatoria,
     };
-    if (parsed.data.classe_id !== undefined) payload.classe_id = parsed.data.classe_id;
-    if (parsed.data.nivel_ensino !== undefined) payload.nivel_ensino = parsed.data.nivel_ensino;
     if (parsed.data.carga_horaria !== undefined) payload.carga_horaria = parsed.data.carga_horaria;
-    if (parsed.data.sigla !== undefined) payload.sigla = parsed.data.sigla;
+    if (parsed.data.ordem !== undefined) payload.ordem = parsed.data.ordem;
 
     const { data: ins, error } = await (admin as any)
-      .from("disciplinas")
-      .insert(payload)
-      .select("id, nome, tipo, curso_escola_id, classe_nome, classe_id, nivel_ensino, carga_horaria, sigla")
+      .from("curso_matriz")
+      .upsert(payload as any, { onConflict: 'escola_id,curso_id,classe_id,disciplina_id' } as any)
+      .select("id, curso_id, classe_id, disciplina_id, obrigatoria, carga_horaria, ordem")
       .single();
 
     if (error) {

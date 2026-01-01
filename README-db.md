@@ -169,6 +169,28 @@ pnpm gen:types
 supabase db pull --db-url "$DB_URL"
 ```
 
+### Desalinhamento de histórico (reparo)
+```bash
+# 1) Se aparecer "Remote migration versions not found...", liste as versões faltantes
+supabase migration list --db-url "$DB_URL"
+
+# 2) Marque como reverted as versões que não existem localmente (exemplo real usado):
+supabase migration repair --db-url "$DB_URL" --status reverted $(cat tmp/missing_versions.txt)
+
+# 3) Marque a baseline atual como aplicada (se precisar)
+supabase migration repair --db-url "$DB_URL" --status applied 20251231163837
+
+# 4) Use sempre a porta 5432 no CLI para evitar o erro de prepared statement duplicado do pooler 6543
+export DB_URL="postgresql://...@aws-1-eu-north-1.pooler.supabase.com:5432/postgres?sslmode=require"
+supabase db push --db-url "$DB_URL"
+supabase db pull --db-url "$DB_URL"
+```
+
+Notas:
+- A baseline atual é `supabase/migrations/20251231163837_baseline.sql` (idempotente, com CREATE SCHEMA IF NOT EXISTS + extensões `uuid-ossp`, `pg_trgm`, `pgcrypto`).
+- `supabase db pull` agora gera `20251231200952_remote_schema.sql` e marca como aplicada; o histórico remoto está limpo.
+- Se aparecer um migration `remote_schema` quebrado, reverta com `supabase migration repair --status reverted <id>` e remova o arquivo local correspondente.
+
 ### Testar:
 ```bash
 pnpm test:rls

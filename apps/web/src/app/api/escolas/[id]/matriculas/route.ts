@@ -2,74 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import type { Database } from "~types/supabase";
 
-type EnrollmentRow = {
-  id: string;
-  escola_id: string;
-  ano_letivo_id: string;
-  classe_id: string;
-  course_id: string | null;
-  turma_id: string | null;
-  aluno_id: string;
-  status: string | null;
-  created_at: string | null;
-};
-
-type StudentRow = {
-  id: string;
-  nome: string;
-  email?: string | null;
-};
-
-type GradeRow = {
-  id: string;
-  nome: string;
-};
-
-type CourseRow = {
-  id: string;
-  nome: string;
-  type?: string | null;
-  duration?: number | null;
-};
-
-type SchoolClassRow = {
-  id: string;
-  nome: string;
-  shift?: string | null;
-};
-
-type EnrollmentWithRelations = EnrollmentRow & {
-  aluno: StudentRow | null;
-  turma: SchoolClassRow | null;
-  classe: GradeRow | null;
-  curso: CourseRow | null;
-};
-
-type ApiDatabase = {
-  public: {
-    Tables: {
-      matriculas: {
-        Row: EnrollmentRow;
-        Insert: EnrollmentRow;
-        Update: Partial<EnrollmentRow>;
-        Relationships: unknown[];
-      };
-      alunos: { Row: StudentRow; Insert: StudentRow; Update: Partial<StudentRow>; Relationships: unknown[] };
-      school_classes: {
-        Row: SchoolClassRow;
-        Insert: SchoolClassRow;
-        Update: Partial<SchoolClassRow>;
-        Relationships: unknown[];
-      };
-      grades: { Row: GradeRow; Insert: GradeRow; Update: Partial<GradeRow>; Relationships: unknown[] };
-      courses: { Row: CourseRow; Insert: CourseRow; Update: Partial<CourseRow>; Relationships: unknown[] };
-    };
-    Views: {};
-    Functions: {};
-    Enums: {};
-    CompositeTypes: {};
-  };
+type MatriculaRow = Database["public"]["Tables"]["matriculas"]["Row"];
+type MatriculaWithRelations = MatriculaRow & {
+  aluno: { id: string; nome: string; email: string | null } | null;
+  turma: (Database["public"]["Tables"]["turmas"]["Row"] & {
+    curso: Pick<Database["public"]["Tables"]["cursos"]["Row"], "id" | "nome" | "tipo"> | null;
+    classe: Pick<Database["public"]["Tables"]["classes"]["Row"], "id" | "nome"> | null;
+  }) | null;
 };
 
 const querySchema = z
@@ -109,7 +50,7 @@ export async function GET(
 
     const { anoLetivoId, classeId, courseId, turmaId, scope } = parsed.data;
 
-    const supabase = await supabaseServerTyped<ApiDatabase>();
+    const supabase = await supabaseServerTyped<Database>();
 
     let query = supabase
       .from("matriculas")
@@ -118,25 +59,20 @@ export async function GET(
         id,
         escola_id,
         ano_letivo_id,
-        classe_id,
-        course_id,
         turma_id,
         aluno_id,
         status,
         created_at,
         aluno:alunos(id, nome, email),
-        turma:school_classes(id, nome, shift),
-        classe:grades(id, nome),
-        curso:courses(id, nome, type, duration)
+        turma:turmas(id, nome, turno, ano_letivo, curso_id, classe_id,
+          curso:cursos(id, nome, tipo),
+          classe:classes(id, nome)
+        )
       `
       )
       .eq("escola_id", escolaId)
       .eq("ano_letivo_id", anoLetivoId)
       .order("created_at", { ascending: false });
-
-    if (classeId) query = query.eq("classe_id", classeId)
-      
-    if (courseId) query = query.eq("course_id", courseId);
 
     if (scope === "pending") {
       query = query.is("turma_id", null);
@@ -144,21 +80,25 @@ export async function GET(
       query = query.eq("turma_id", turmaId);
     }
 
-    const { data, error } = await query.returns<EnrollmentWithRelations[]>();
+    const { data, error } = await query.returns<MatriculaWithRelations[]>();
 
     if (error) {
       console.error("[matriculas:list]", error.message);
       return NextResponse.json({ ok: false, error: "Falha ao carregar matrículas" }, { status: 500 });
     }
 
-    const total = data?.length ?? 0;
-    const pendentes = data?.filter((row) => row.turma_id === null).length ?? 0;
+    let rows = data || [];
+    if (classeId) rows = rows.filter((row) => row.turma?.classe_id === classeId);
+    if (courseId) rows = rows.filter((row) => row.turma?.curso_id === courseId);
+
+    const total = rows.length;
+    const pendentes = rows.filter((row) => row.turma_id === null).length;
 
     return NextResponse.json({
       ok: true,
       filters: { escolaId, anoLetivoId, classeId, courseId: courseId ?? null, scope, turmaId: turmaId ?? null },
       meta: { total, pendentes },
-      matriculas: data ?? [],
+      matriculas: rows,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro inesperado";

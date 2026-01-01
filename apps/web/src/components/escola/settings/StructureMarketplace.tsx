@@ -87,7 +87,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   const [activeTab, setActiveTab] = useState<'my_courses' | 'catalog'>('my_courses');
   const [courses, setCourses] = useState<ActiveCourse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sessions, setSessions] = useState<Array<{ id: string; nome: string; status?: string }>>([]);
+  const [sessions, setSessions] = useState<Array<{ id: string; nome: string; status?: string; ano?: number }>>([]);
   
   // --- ESTADO DO GERENCIADOR (CRUD DETALHADO) ---
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
@@ -244,143 +244,76 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     }
   };
 
-  // --- CRUD: ADICIONAR TURMA NO GERENCIADOR ---
-  const createTurmaRecord = async (params: {
-    classeId: string;
-    classeNome: string;
-    cursoId: string | null;
-    turno: string;
+  // --- Utilitário: aplica currículo via endpoint de onboarding (novo modelo)
+  const applyCurriculum = async (args: {
+    presetKey: string;
+    label: string;
+    classes: string[];
+    subjects: string[];
+    turnos: string[];
   }) => {
     const sessionObj = activeSession;
-    const anoLetivoLabel = sessionObj?.nome;
-    const anoLetivoInt = anoLetivoLabel ? parseInt(anoLetivoLabel.replace(/\D/g, ''), 10) : new Date().getFullYear();
+    const anoLetivoInt = sessionObj?.ano ?? (() => {
+      const label = sessionObj?.nome;
+      const parsed = label ? parseInt(label.replace(/\D/g, ''), 10) : NaN;
+      return Number.isFinite(parsed) ? parsed : new Date().getFullYear();
+    })();
 
-    let suggested = '';
-    try {
-      const search = new URLSearchParams({ classe_id: params.classeId, turno: params.turno });
-      if (anoLetivoLabel) search.set('ano_letivo', anoLetivoLabel);
-      if (sessionObj?.id) search.set('session_id', sessionObj.id);
-      if (!resolvedEscolaId) throw new Error('Escola não identificada');
-      const sJson = await fetchJson(buildEscolaUrl(resolvedEscolaId, '/turmas/sugestao-nome', search));
-      suggested = (sJson.suggested || '').toString();
-    } catch {}
+    const turnosFlags = {
+      manha: args.turnos.includes('Manhã'),
+      tarde: args.turnos.includes('Tarde'),
+      noite: args.turnos.includes('Noite'),
+    };
 
-    const turma_codigo = suggested || 'A';
-    const nome = `${params.classeNome} ${turma_codigo}`;
+    const turmasPorCombinacao = args.classes.reduce((acc, classe) => {
+      acc[classe] = {
+        manha: turnosFlags.manha ? 1 : 0,
+        tarde: turnosFlags.tarde ? 1 : 0,
+        noite: turnosFlags.noite ? 1 : 0,
+      };
+      return acc;
+    }, {} as Record<string, { manha: number; tarde: number; noite: number }>);
+
+    const disciplinasPorClasse = args.classes.reduce((acc, classe) => {
+      acc[classe] = args.subjects;
+      return acc;
+    }, {} as Record<string, string[]>);
 
     const payload = {
-      nome,
-      turma_codigo,
-      turno: params.turno,
-      session_id: sessionObj?.id || null,
-      ano_letivo: anoLetivoInt,
-      classe_id: params.classeId,
-      curso_id: params.cursoId,
-      capacidade_maxima: 35,
+      presetKey: args.presetKey,
+      customData: { label: args.label },
+      anoLetivo: anoLetivoInt,
+      advancedConfig: {
+        classesNomes: args.classes,
+        turnos: turnosFlags,
+        turmasPorCombinacao,
+        padraoNomenclatura: 'descritivo_completo' as const,
+        subjects: args.subjects,
+        disciplinasPorClasse,
+        anoLetivo: anoLetivoInt,
+      },
     };
 
     if (!resolvedEscolaId) throw new Error('Escola não identificada');
-    const created = await fetchJson(buildEscolaUrl(resolvedEscolaId, '/turmas'), {
+    await fetchJson(`/api/escolas/${resolvedEscolaId}/onboarding/curriculum/apply`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    return { nome, data: created };
   };
 
-  const handleAddTurma = async (classe: { id: string; nome: string }) => {
-    try {
-      const turno = prompt(`Turno da nova turma para ${classe.nome} (ex: Manhã, Tarde, Noite):`, 'Manhã');
-      if (!turno) return;
-
-      const { nome } = await createTurmaRecord({
-        classeId: classe.id,
-        classeNome: classe.nome,
-        cursoId: selectedCourseId,
-        turno,
-      });
-
-      toast.success(`Turma ${nome} criada.`);
-      const selectedCourse = courses.find(c => c.id === selectedCourseId);
-      if (selectedCourse) await handleOpenManager(selectedCourse);
-    } catch (e: any) {
-      toast.error(e?.message || 'Falha ao criar turma');
-    }
+  const handleAddTurma = async () => {
+    toast.error('Criação manual de turmas aqui foi descontinuada. Use o fluxo de aplicar currículo.');
   };
 
   // --- CRUD: ADICIONAR DISCIPLINA NO GERENCIADOR ---
   const handleAddDisciplinaDetails = async () => {
-    if (!details?.classes?.[0]) return toast.error('Selecione uma classe para vincular a disciplina');
-    const nome = prompt('Nome da nova disciplina:');
-    if(!nome || !selectedCourseId) return;
-
-    try {
-      const classeId = details.classes[0].id; // USAR O ID
-      await fetchJson('/api/secretaria/disciplinas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nome,
-          curso_id: selectedCourseId,
-          classe_id: classeId, // ENVIAR O ID
-          tipo: 'core'
-        })
-      });
-      toast.success('Disciplina criada.');
-      const selectedCourse = courses.find(c => c.id === selectedCourseId);
-      if (selectedCourse) await handleOpenManager(selectedCourse);
-    } catch (e: any) {
-      toast.error(e?.message || 'Falha ao criar disciplina');
-    }
+    toast.error('Use a aplicação de currículo para incluir disciplinas (novo modelo).');
   };
 
-  const createClasseRecord = async (cursoId: string, nome: string) => {
-    if (!resolvedEscolaId) throw new Error('Escola não identificada');
-    const cls = await fetchJson(buildEscolaUrl(resolvedEscolaId, '/classes'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nome, curso_id: cursoId })
-    });
-    return cls.data || cls;
+  const buildPresetSubjects = (presetKey: CurriculumKey): string[] => {
+    return Array.from(new Set(CURRICULUM_PRESETS[presetKey]?.map((d) => d.nome) || []));
   };
-
-  const createDisciplinaRecord = async (cursoId: string, classeId: string, nome: string) => {
-    if (!resolvedEscolaId) throw new Error('Escola não identificada');
-    await fetchJson(buildEscolaUrl(resolvedEscolaId, '/disciplinas'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        nome,
-        curso_id: cursoId,
-        classe_id: classeId,
-        tipo: 'core'
-      })
-    });
-  };
-
-  const buildPresetDisciplinas = (
-    presetKey: CurriculumKey,
-    classes: Array<{ id: string; nome: string }>
-  ) => {
-    const classMap = new Map(
-      classes.map((c) => [normalizeClasseLabel(c.nome), c.id])
-    );
-    return CURRICULUM_PRESETS[presetKey]
-      .map((disc) => {
-        const classId = classMap.get(normalizeClasseLabel(disc.classe));
-        if (!classId) return null;
-        return { classeId: classId, nome: disc.nome };
-      })
-      .filter(Boolean) as Array<{ classeId: string; nome: string }>;
-  };
-
-  const buildCustomDisciplinas = (
-    classes: Array<{ id: string; nome: string }>,
-    subjects: string[]
-  ) =>
-    classes.flatMap((cls) =>
-      subjects.map((nome) => ({ classeId: cls.id, nome }))
-    );
 
   // --- CRUD: REMOVER DISCIPLINA ---
   const handleRemoveDisciplina = (id: string) => {
@@ -409,36 +342,16 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       try {
         const meta = CURRICULUM_PRESETS_META[presetKey as CurriculumKey];
         const classes = meta?.classes && meta.classes.length > 0 ? [...meta.classes] : ['10ª Classe'];
-        const tipo = PRESET_TO_TYPE[presetKey as CurriculumKey] || 'geral';
-
-      const courseResp = await fetchJson(`/api/escolas/${escolaId}/cursos`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nome: meta?.label || 'Novo Curso', tipo, descricao: meta?.description || null, curriculum_key: presetKey, course_code: presetKey })
-      });
-        const courseId = courseResp.data?.id || courseResp.id;
-
-        const createdClasses: Array<{ id: string; nome: string }> = [];
-        for (const cls of classes) {
-          try {
-            const c = await createClasseRecord(courseId, cls);
-            if (c?.id) createdClasses.push({ id: c.id, nome: c.nome || cls });
-          } catch (e) {
-            console.warn('Falha ao criar classe', cls, e);
-          }
-        }
-
-        const disciplinas = buildPresetDisciplinas(presetKey, createdClasses);
-        for (const disc of disciplinas) {
-          try { await createDisciplinaRecord(courseId, disc.classeId, disc.nome); } catch (e) { console.warn('Disciplina', disc.nome, e); }
-        }
-
+        const subjects = buildPresetSubjects(presetKey as CurriculumKey);
         const turnos = DEFAULT_TURNOS;
-        for (const cls of createdClasses) {
-          for (const turno of turnos) {
-            try { await createTurmaRecord({ classeId: cls.id, classeNome: cls.nome, cursoId: courseId, turno }); } catch (e) { console.warn('Turma classe', cls.nome, e); }
-          }
-        }
+
+        await applyCurriculum({
+          presetKey,
+          label: meta?.label || 'Novo Curso',
+          classes,
+          subjects,
+          turnos,
+        });
 
         toast.success('Estrutura criada com sucesso.');
         fetchCourses();
@@ -482,43 +395,16 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     setInstalling(true);
     try {
       const isPreset = !draft.isCustom && draft.baseKey in CURRICULUM_PRESETS;
-      const courseResp = await fetchJson(`/api/escolas/${escolaId}/cursos`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nome: draft.label || 'Novo Curso',
-          tipo: draft.isCustom ? 'geral' : 'tecnico',
-          descricao: draft.baseKey,
-          curriculum_key: isPreset ? draft.baseKey : null,
-          course_code: isPreset ? draft.baseKey : null,
-        })
-      });
-      const courseId = courseResp.data?.id || courseResp.id;
-
-      const createdClasses: Array<{ id: string; nome: string }> = [];
-      for (const cls of draft.classes) {
-        try {
-          const c = await createClasseRecord(courseId, cls);
-          if (c?.id) createdClasses.push({ id: c.id, nome: c.nome || cls });
-        } catch (e) {
-          console.warn('Falha ao criar classe', cls, e);
-        }
-      }
-
-      const disciplinas = isPreset
-        ? buildPresetDisciplinas(draft.baseKey as CurriculumKey, createdClasses)
-        : buildCustomDisciplinas(createdClasses, draft.subjects);
-
-      for (const disc of disciplinas) {
-        try { await createDisciplinaRecord(courseId, disc.classeId, disc.nome); } catch (e) { console.warn('Disciplina', disc.nome, e); }
-      }
-
+      const subjects = isPreset ? buildPresetSubjects(draft.baseKey as CurriculumKey) : draft.subjects;
       const turnos = draft.turnos?.length ? draft.turnos : DEFAULT_TURNOS;
-      for (const cls of createdClasses) {
-        for (const turno of turnos) {
-          try { await createTurmaRecord({ classeId: cls.id, classeNome: cls.nome, cursoId: courseId, turno }); } catch (e) { console.warn('Turma classe', cls.nome, e); }
-        }
-      }
+
+      await applyCurriculum({
+        presetKey: draft.baseKey,
+        label: draft.label || 'Novo Curso',
+        classes: draft.classes,
+        subjects,
+        turnos,
+      });
 
       toast.success('Curso criado com sucesso');
       setShowModal(false);

@@ -83,7 +83,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
 
     const { data, error } = await (admin as any)
       .from("escolas")
-      .select("nome, plano_atual, plano, status")
+      .select("nome, plano_atual, status")
       .eq("id", escolaId)
       .maybeSingle();
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
@@ -92,7 +92,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
     return NextResponse.json({
       ok: true,
       nome: row?.nome ?? null,
-      plano: row?.plano_atual ? parsePlanTier(row.plano_atual) : row?.plano ? parsePlanTier(row.plano) : null,
+      plano: row?.plano_atual ? parsePlanTier(row.plano_atual) : null,
       status: row?.status ?? null,
     });
   } catch (e) {

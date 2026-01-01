@@ -36,6 +36,17 @@ function CriarEscolaForm() {
 
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<null | { type: "ok" | "err"; text: string }>(null);
+  const [creationResult, setCreationResult] = useState<
+    | {
+        escolaId: string | null;
+        adminEmail?: string | null;
+        adminPassword?: string | null;
+        adminUserCreated?: boolean | null;
+        adminNumero?: number | null;
+        mensagemAdmin?: string | null;
+      }
+    | null
+  >(null);
   const [currentStep, setCurrentStep] = useState(1);
 
   const handleInputChange = (field: string, value: string) => {
@@ -45,6 +56,7 @@ function CriarEscolaForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMsg(null);
+    setCreationResult(null);
 
     try {
       setLoading(true);
@@ -70,16 +82,25 @@ function CriarEscolaForm() {
         throw new Error(data.error || "Erro desconhecido ao criar escola.");
       }
 
-      const adminNumero = data.adminNumero ? ` Admin nº ${data.adminNumero}.` : "";
-      const extra = data.mensagemAdmin ? ` ${data.mensagemAdmin}` : "";
-      setMsg({
-        type: "ok",
-        text: `Escola "${formData.nome}" criada com sucesso!${adminNumero} Redirecionando para o onboarding...${extra}`,
+      const escolaId = data.escolaId || data.escola_id || null;
+      const adminEmail = data.adminEmail || formData.adminEmail.trim();
+
+      setCreationResult({
+        escolaId,
+        adminEmail,
+        adminPassword: data.adminPassword ?? null,
+        adminUserCreated: data.adminUserCreated ?? null,
+        adminNumero: data.adminNumero ?? null,
+        mensagemAdmin: data.mensagemAdmin ?? null,
       });
 
-      setTimeout(() => {
-        router.push(`/escola/${data.escolaId}/onboarding`);
-      }, 2000);
+      const adminNumero = data.adminNumero ? ` Admin nº ${data.adminNumero}.` : "";
+      const extra = data.mensagemAdmin ? ` ${data.mensagemAdmin}` : "";
+      const senhaInfo = data.adminPassword ? " Anote as credenciais abaixo." : "";
+      setMsg({
+        type: "ok",
+        text: `Escola "${formData.nome}" criada com sucesso!${adminNumero}${extra}${senhaInfo}`,
+      });
     } catch (err: any) {
       setMsg({ type: "err", text: err.message || String(err) });
     } finally {
@@ -431,14 +452,59 @@ function CriarEscolaForm() {
                   ? "bg-green-50 text-green-800 border-green-200"
                   : "bg-red-50 text-red-800 border-red-200"
               }`}
-            >
-              <div className="flex items-center gap-2">
-                {msg.type === "ok" ? (
-                  <CheckCircleIcon className="w-5 h-5" />
-                ) : (
-                  <ExclamationTriangleIcon className="w-5 h-5" />
+              >
+                <div className="flex items-center gap-2">
+                  {msg.type === "ok" ? (
+                    <CheckCircleIcon className="w-5 h-5" />
+                  ) : (
+                    <ExclamationTriangleIcon className="w-5 h-5" />
+                  )}
+                  <span>{msg.text}</span>
+                </div>
+              </div>
+          )}
+
+          {creationResult && (
+            <div className="mt-4 space-y-3">
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <h4 className="font-semibold text-moxinexa-dark mb-3">Credenciais do administrador</h4>
+                <div className="grid md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-gray-600">Email de login</p>
+                    <p className="font-semibold text-moxinexa-dark break-all">{creationResult.adminEmail || "Não informado"}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">Senha temporária</p>
+                    <p className="font-semibold text-moxinexa-dark break-all">
+                      {creationResult.adminPassword || "Usuário já existia; nenhuma senha nova foi gerada."}
+                    </p>
+                    {creationResult.adminUserCreated === false && (
+                      <p className="text-xs text-gray-600 mt-1">
+                        Solicite redefinição de senha caso o administrador não lembre a atual.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {creationResult.escolaId && (
+                  <div className="flex flex-wrap gap-3 mt-4">
+                    <Button
+                      type="button"
+                      tone="teal"
+                      onClick={() => router.push(`/escola/${creationResult.escolaId}/admin`)}
+                    >
+                      Ir para painel da escola
+                    </Button>
+                    <Button
+                      type="button"
+                      tone="blue"
+                      variant="outline"
+                      onClick={() => router.push(`/escola/${creationResult.escolaId}/onboarding`)}
+                    >
+                      Abrir onboarding
+                    </Button>
+                  </div>
                 )}
-                <span>{msg.text}</span>
               </div>
             </div>
           )}
@@ -452,8 +518,8 @@ function CriarEscolaForm() {
           </h3>
           <ul className="text-amber-800 text-sm space-y-2">
             <li>• O NIF é obrigatório e deve ser único no sistema</li>
-            <li>• O administrador receberá credenciais de acesso por email</li>
-            <li>• Após a criação, você será redirecionado para o onboarding da escola</li>
+            <li>• O administrador receberá credenciais de acesso por email e nesta tela</li>
+            <li>• Após a criação, copie as credenciais e acesse o onboarding quando preferir</li>
             <li>• Você pode configurar planos e recursos adicionais posteriormente</li>
           </ul>
         </div>

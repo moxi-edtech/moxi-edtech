@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 
+import { SHIFT_MAP, removeAccents } from "@/lib/turma";
 import { CURRICULUM_PRESETS, CURRICULUM_PRESETS_META, type CurriculumKey } from "@/lib/onboarding";
 import { PRESET_TO_TYPE } from "@/lib/courseTypes";
 
@@ -28,6 +29,11 @@ const mapCourseTypeToNivel = (tipo: string): string => {
     case "geral":
     default: return "geral"; // fallback seguro
   }
+};
+
+const normalizeTurno = (turno: string): "M" | "T" | "N" | null => {
+  const key = removeAccents(turno || "").toUpperCase();
+  return (SHIFT_MAP as Record<string, "M" | "T" | "N">)[key] ?? null;
 };
 
 // Schema
@@ -81,6 +87,7 @@ export async function POST(
 
     // Agrupar por cursoKey
     const cursosMap = new Map();
+    const catalogCache = new Map<string, string>();
     for (const row of matrix) {
       if (!cursosMap.has(row.cursoKey)) cursosMap.set(row.cursoKey, []);
       cursosMap.get(row.cursoKey).push(row);
@@ -148,6 +155,8 @@ export async function POST(
       }
 
       // 3. CLASSES & DISCIPLINAS & TURMAS
+      const matrizPorClasse = new Map<string, string[]>();
+      const turmasCriadas: Array<{ id: string; classe_id: string }> = [];
       for (const row of rows) {
         // --- CLASSE ---
         let classeId: string;
@@ -187,27 +196,61 @@ export async function POST(
           }
         }
 
-        // --- DISCIPLINAS (Lógica mantida, pois já usa upsert/onConflict) ---
+        // --- DISCIPLINAS (novo modelo: disciplinas_catalogo + curso_matriz) ---
         const blueprint = CURRICULUM_PRESETS[cursoKey as keyof typeof CURRICULUM_PRESETS];
         if (blueprint?.length) {
           const disciplinasDaClasse = blueprint.filter(d => d.classe === row.nome);
           if (disciplinasDaClasse.length) {
-             const nivel = mapCourseTypeToNivel(courseType);
-             const discRows = disciplinasDaClasse.map(d => ({
-               escola_id: escolaId,
-               curso_escola_id: cursoId,
-               nome: d.nome,
-               classe_nome: row.nome,
-               nivel_ensino: nivel,
-               tipo: 'core'
-             }));
+            const nomes = Array.from(new Set(disciplinasDaClasse.map(d => d.nome)));
 
-             // Upsert é seguro aqui
-             await admin.from('disciplinas').upsert(discRows as any, { 
-                onConflict: 'curso_escola_id,classe_nome,nome',
-                ignoreDuplicates: false 
-             });
-             summary.disciplinas.created += disciplinasDaClasse.length; // Simplificado para estatística
+            // Busca no cache/banco disciplinas do catálogo
+            const paraResolver = nomes.filter((n) => !catalogCache.has(n));
+            if (paraResolver.length) {
+              const { data: existentes } = await admin
+                .from('disciplinas_catalogo')
+                .select('id, nome')
+                .eq('escola_id', escolaId)
+                .in('nome', paraResolver);
+              for (const d of existentes || []) catalogCache.set(d.nome, d.id);
+
+              const toInsert = paraResolver.filter((n) => !catalogCache.has(n)).map((nome) => ({ escola_id: escolaId, nome }));
+              if (toInsert.length) {
+                const { data: inserted } = await admin
+                  .from('disciplinas_catalogo')
+                  .insert(toInsert)
+                  .select('id, nome');
+                for (const d of inserted || []) catalogCache.set(d.nome, d.id);
+              }
+            }
+
+            // Cria/atualiza curso_matriz
+            const matrizRows = disciplinasDaClasse
+              .map((d) => {
+                const discId = catalogCache.get(d.nome);
+                if (!discId) return null;
+                return {
+                  escola_id: escolaId,
+                  curso_id: cursoId,
+                  classe_id: classeId,
+                  disciplina_id: discId,
+                  obrigatoria: true,
+                  ordem: (d as any)?.ordem ?? null,
+                };
+              })
+              .filter(Boolean) as any[];
+
+            if (matrizRows.length) {
+              const { data: matrizData } = await admin
+                .from('curso_matriz')
+                .upsert(matrizRows as any, { onConflict: 'escola_id,curso_id,classe_id,disciplina_id' } as any)
+                .select('id, classe_id');
+              for (const mr of matrizData || []) {
+                const list = matrizPorClasse.get(mr.classe_id) ?? [];
+                list.push(mr.id);
+                matrizPorClasse.set(mr.classe_id, list);
+              }
+              summary.disciplinas.created += matrizRows.length;
+            }
           }
         }
 
@@ -222,13 +265,16 @@ export async function POST(
         for (const turno of turnos) {
           if (turno.qtd <= 0) continue;
 
+          const turnoCode = normalizeTurno(turno.nome);
+          if (!turnoCode) continue;
+
           // Descobre quantas JÁ existem para saber a próxima letra
           const { count } = await admin
             .from('turmas')
             .select('*', { count: 'exact', head: true })
             .eq('escola_id', escolaId)
             .eq('classe_id', classeId)
-            .eq('turno', turno.nome)
+            .eq('turno', turnoCode)
             .eq('ano_letivo', anoLetivo); // Importante filtrar pelo ano!
 
           let nextIndex = count || 0;
@@ -240,18 +286,18 @@ export async function POST(
             const suffix = Math.floor(nextIndex / letras.length);
             const nomeTurma = suffix > 0 ? `${letra}${suffix}` : letra;
 
-            const { error: insertTurmaError } = await admin.from('turmas').insert({
+            const { data: turmaInserida, error: insertTurmaError } = await admin.from('turmas').insert({
               escola_id: escolaId,
-              // session_id: sessionId, // Removi para usar ano_letivo, ou mantenha ambos se sua tabela tiver ambos
-              ano_letivo: anoLetivo, // OBRIGATÓRIO para a constraint funcionar
+              ano_letivo: anoLetivo,
               classe_id: classeId,
               curso_id: cursoId,
               nome: nomeTurma,
-              turno: turno.nome,
+              turno: turnoCode,
               capacidade_maxima: 35,
-            });
+            }).select('id, classe_id').single();
 
             if (!insertTurmaError) {
+              if (turmaInserida) turmasCriadas.push(turmaInserida as any);
               summary.turmas.created++;
               criadasNesseLoop++;
               nextIndex++;
@@ -270,6 +316,20 @@ export async function POST(
               break; // Sai do loop dessa turma se for erro técnico
             }
           }
+        }
+      }
+
+      // Após criar turmas, vincular turma_disciplinas conforme matriz
+      if (turmasCriadas.length && matrizPorClasse.size) {
+        const tdRows: any[] = [];
+        for (const turma of turmasCriadas) {
+          const mids = matrizPorClasse.get(turma.classe_id) || [];
+          for (const mid of mids) {
+            tdRows.push({ escola_id: escolaId, turma_id: turma.id, curso_matriz_id: mid, professor_id: null });
+          }
+        }
+        if (tdRows.length) {
+          await admin.from('turma_disciplinas').upsert(tdRows as any, { onConflict: 'escola_id,turma_id,curso_matriz_id' } as any);
         }
       }
     }

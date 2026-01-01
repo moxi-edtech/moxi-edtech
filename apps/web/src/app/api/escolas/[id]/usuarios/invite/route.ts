@@ -5,9 +5,8 @@ import { createClient as createAdminClient } from '@supabase/supabase-js'
 import type { Database, TablesInsert } from '~types/supabase'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { recordAuditServer } from '@/lib/audit'
-import { hasPermission, mapPapelToGlobalRole } from '@/lib/permissions'
+import { hasPermission, mapPapelToGlobalRole, normalizePapel } from '@/lib/permissions'
 import { sanitizeEmail } from '@/lib/sanitize'
-import { buildCredentialsEmail, sendMail } from '@/lib/mailer'
 
 // ❌ REMOVIDO: generateNumeroLogin
 
@@ -47,24 +46,42 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
     const { data: vinc } = await s
       .from('escola_users')
-      .select('papel')
+      .select('papel, role')
       .eq('user_id', requesterId)
       .eq('escola_id', escolaId)
       .limit(1)
 
-    const papelReq = vinc?.[0]?.papel
-    if (!hasPermission(papelReq as any, 'criar_usuario'))
-      return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
+    const papelReq = normalizePapel(vinc?.[0]?.papel ?? (vinc?.[0] as any)?.role)
 
     const profCheckRes = await s
       .from('profiles' as any)
-      .select('escola_id')
+      .select('escola_id, role')
       .eq('user_id', requesterId)
       .maybeSingle()
 
-    const profCheck = profCheckRes.data as { escola_id?: string | null } | null
+    const profCheck = profCheckRes.data as { escola_id?: string | null; role?: string | null } | null
+    const profilePapel = profCheck?.escola_id === escolaId ? normalizePapel(profCheck?.role) : null
 
-    if (!profCheck || profCheck.escola_id !== escolaId)
+    let allowed = hasPermission(papelReq, 'criar_usuario') || hasPermission(profilePapel, 'criar_usuario')
+    let adminLink: { user_id: string }[] | null = null
+
+    if (!allowed) {
+      const { data } = await s
+        .from('escola_administradores')
+        .select('user_id')
+        .eq('escola_id', escolaId)
+        .eq('user_id', requesterId)
+        .limit(1)
+
+      adminLink = data
+      allowed = Boolean(adminLink && adminLink.length > 0)
+    }
+
+    if (!allowed)
+      return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
+
+    const hasVinculo = Boolean(vinc && vinc.length > 0) || Boolean(adminLink && adminLink.length > 0) || profCheck?.escola_id === escolaId
+    if (!hasVinculo)
       return NextResponse.json({ ok: false, error: 'Perfil não vinculado à escola' }, { status: 403 })
 
     // -------------------------------
@@ -123,8 +140,13 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     let tempPassword: string | null = null
 
     if (!userId) {
-      const { data: inv, error: invErr } = await admin.auth.admin.inviteUserByEmail(email, {
-        data: { nome, role: roleEnum, must_change_password: true }
+      tempPassword = generateStrongPassword(12)
+
+      const { data: inv, error: invErr } = await admin.auth.admin.createUser({
+        email,
+        password: tempPassword,
+        email_confirm: true,
+        user_metadata: { nome, role: roleEnum, must_change_password: true },
       })
 
       if (invErr)
@@ -132,13 +154,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
       userId = inv?.user?.id
       if (!userId)
-        return NextResponse.json({ ok: false, error: 'Falha ao convidar usuário' }, { status: 400 })
-
-      tempPassword = generateStrongPassword(12)
-      await admin.auth.admin.updateUserById(userId, {
-        password: tempPassword,
-        user_metadata: { must_change_password: true }
-      })
+        return NextResponse.json({ ok: false, error: 'Falha ao criar usuário' }, { status: 400 })
 
       // Create profile
       await admin.from('profiles').insert({
@@ -200,38 +216,6 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         numero_login: existingNumeroLogin,
       }
     }).catch(() => null)
-
-    // -------------------------------
-    // 9) Email: enviar numero_login só SE existir!
-    // -------------------------------
-    try {
-      const { data: esc2 } = await admin
-        .from('escolas')
-        .select('nome')
-        .eq('id', escolaId)
-        .maybeSingle()
-
-      const escolaNome = esc2?.nome ?? null
-      const loginUrl = process.env.NEXT_PUBLIC_BASE_URL
-        ? `${process.env.NEXT_PUBLIC_BASE_URL}/login`
-        : null
-
-      const mail = buildCredentialsEmail({
-        nome,
-        email,
-        numero_login: existingNumeroLogin ?? undefined,
-        senha_temp: tempPassword ?? undefined,
-        escolaNome,
-        loginUrl,
-      })
-
-      await sendMail({
-        to: email,
-        subject: mail.subject,
-        html: mail.html,
-        text: mail.text,
-      })
-    } catch {}
 
     return NextResponse.json({
       ok: true,

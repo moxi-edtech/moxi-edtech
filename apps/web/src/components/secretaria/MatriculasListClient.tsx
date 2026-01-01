@@ -812,6 +812,7 @@ export default function MatriculasListClient() {
 
             <TransferForm
               matriculaId={selectedMatricula.id}
+              sessionId={selectedSession}
               onSuccess={() => {
                 setShowTransferForm(false);
                 load();

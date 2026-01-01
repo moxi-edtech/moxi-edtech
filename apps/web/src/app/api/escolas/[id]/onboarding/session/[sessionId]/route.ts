@@ -62,73 +62,77 @@ export async function DELETE(
       process.env.SUPABASE_SERVICE_ROLE_KEY
     );
 
-    // Ensure the session exists, belongs to this escola, and is archived
+    // Ensure the academic year exists, belongs to this escola, and is not active
     const { data: sess, error: selErr } = await (admin as any)
-      .from('school_sessions')
-      .select('id, escola_id, status')
+      .from('anos_letivos')
+      .select('id, escola_id, ativo, ano')
       .eq('id', sessionId)
       .limit(1);
     if (selErr) return NextResponse.json({ ok: false, error: selErr.message }, { status: 400 });
 
     const found = Array.isArray(sess) ? sess[0] : undefined;
     if (!found || String(found.escola_id) !== String(escolaId)) {
-      return NextResponse.json({ ok: false, error: 'Sessão não encontrada' }, { status: 404 });
+      return NextResponse.json({ ok: false, error: 'Ano letivo não encontrado' }, { status: 404 });
     }
-    if (found.status === 'ativa') {
-      return NextResponse.json({ ok: false, error: 'Não é possível deletar a sessão ativa' }, { status: 400 });
+    if (found.ativo) {
+      return NextResponse.json({ ok: false, error: 'Não é possível deletar o ano letivo ativo' }, { status: 400 });
     }
 
     // Guard: block deletion if there are dependent records (unless force=1)
     const url = new URL(_req.url);
     const force = ['1','true','yes'].includes(String(url.searchParams.get('force') || '').toLowerCase());
+    const anoLetivoNome = found.ano ? String(found.ano) : null;
     try {
-      const [semestresRes, turmasRes, matriculasRes] = await Promise.all([
+      const [periodosRes, turmasRes, matriculasRes] = await Promise.all([
         (admin as any)
-          .from('semestres')
+          .from('periodos_letivos')
           .select('id', { count: 'exact', head: true })
-          .eq('session_id', sessionId),
-        (admin as any)
-          .from('turmas')
-          .select('id', { count: 'exact', head: true })
-          .eq('session_id', sessionId),
+          .eq('ano_letivo_id', sessionId),
+        anoLetivoNome
+          ? (admin as any)
+              .from('turmas')
+              .select('id', { count: 'exact', head: true })
+              .eq('ano_letivo', anoLetivoNome)
+          : Promise.resolve({ count: 0 }),
         (admin as any)
           .from('matriculas')
           .select('id', { count: 'exact', head: true })
-          .eq('session_id', sessionId),
+          .eq('ano_letivo_id', sessionId),
       ]);
 
-      const semestresCount = semestresRes?.count ?? 0;
+      const periodosCount = periodosRes?.count ?? 0;
       const turmasCount = turmasRes?.count ?? 0;
       const matriculasCount = matriculasRes?.count ?? 0;
 
-      if (!force && (semestresCount > 0 || turmasCount > 0 || matriculasCount > 0)) {
+      if (!force && (periodosCount > 0 || turmasCount > 0 || matriculasCount > 0)) {
         const parts: string[] = [];
-        if (semestresCount > 0) parts.push(`${semestresCount} período(s)`);
+        if (periodosCount > 0) parts.push(`${periodosCount} período(s)`);
         if (turmasCount > 0) parts.push(`${turmasCount} turma(s)`);
         if (matriculasCount > 0) parts.push(`${matriculasCount} matrícula(s)`);
         const detalhes = parts.join(', ');
-        return NextResponse.json({ ok: false, error: `Não é possível deletar esta sessão pois existem registros vinculados: ${detalhes}. Exclua/mova-os ou use ?force=1 para forçar a exclusão (cascata).` }, { status: 400 });
+        return NextResponse.json({ ok: false, error: `Não é possível deletar este ano letivo pois existem registros vinculados: ${detalhes}. Exclua/mova-os ou use ?force=1 para forçar a exclusão (cascata).` }, { status: 400 });
       }
 
       if (force) {
-        // Delete dependents in safe order: matriculas -> turmas -> semestres
+        // Delete dependents: matriculas -> turmas -> periodos
         const depErrors: string[] = [];
-        try { await (admin as any).from('matriculas').delete().eq('session_id', sessionId) } catch (e) { depErrors.push(e instanceof Error ? e.message : String(e)) }
-        try { await (admin as any).from('turmas').delete().eq('session_id', sessionId) } catch (e) { depErrors.push(e instanceof Error ? e.message : String(e)) }
-        try { await (admin as any).from('semestres').delete().eq('session_id', sessionId) } catch (e) { depErrors.push(e instanceof Error ? e.message : String(e)) }
+        try { await (admin as any).from('matriculas').delete().eq('ano_letivo_id', sessionId) } catch (e) { depErrors.push(e instanceof Error ? e.message : String(e)) }
+        if (anoLetivoNome) {
+          try { await (admin as any).from('turmas').delete().eq('ano_letivo', anoLetivoNome) } catch (e) { depErrors.push(e instanceof Error ? e.message : String(e)) }
+        }
+        try { await (admin as any).from('periodos_letivos').delete().eq('ano_letivo_id', sessionId) } catch (e) { depErrors.push(e instanceof Error ? e.message : String(e)) }
         if (depErrors.length) {
           return NextResponse.json({ ok: false, error: `Falha ao excluir dependências: ${depErrors.join(' | ')}` }, { status: 400 });
         }
       }
     } catch (depErr) {
-      // If dependency check fails unexpectedly, surface a friendly error
       const msg = depErr instanceof Error ? depErr.message : 'Falha ao verificar dependências';
       return NextResponse.json({ ok: false, error: `Não foi possível verificar dependências antes da exclusão: ${msg}` }, { status: 500 });
     }
 
     // Attempt deletion (safe after dependency checks)
     const { error: delErr } = await (admin as any)
-      .from('school_sessions')
+      .from('anos_letivos')
       .delete()
       .eq('id', sessionId)
       .eq('escola_id', escolaId);

@@ -8,7 +8,7 @@ interface AtribuirProfessorFormProps {
 }
 
 interface Disciplina {
-  id: string;
+  id: string; // curso_matriz_id
   nome: string;
 }
 

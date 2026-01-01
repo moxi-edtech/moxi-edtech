@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { recordAuditServer } from "@/lib/audit";
-import { normalizeAnoLetivo } from "@/lib/financeiro/tabela-preco";
 import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
 import { hasPermission, type Papel } from "@/lib/permissions";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
@@ -11,7 +10,7 @@ import type { Database } from "~types/supabase";
 // Schema validation
 const BodySchema = z.object({
   aluno_id: z.string().uuid("aluno_id inválido"),
-  ano_letivo_id: z.string().min(1, "ano_letivo_id é obrigatório"),
+  ano_letivo_id: z.string().uuid("ano_letivo_id é obrigatório"),
   turma_id: z.string().uuid("turma_id inválido"),
   status: z.string().trim().default("ativa"),
 });
@@ -71,16 +70,37 @@ export async function POST(
     if (esc?.status === "suspensa")
       return NextResponse.json({ ok: false, error: "Escola suspensa. Regularize pagamentos." }, { status: 400 });
 
-    // 6. Normalize ano_letivo and insert enrollment
-    const anoLetivoInt = normalizeAnoLetivo(body.ano_letivo_id);
+    // 4.1 Validar ano_letivo_id pertence à escola
+    const { data: anoRow, error: anoErr } = await supabase
+      .from("anos_letivos")
+      .select("id, escola_id, ano")
+      .eq("id", body.ano_letivo_id)
+      .maybeSingle();
+    if (anoErr || !anoRow || String(anoRow.escola_id) !== String(escolaId)) {
+      return NextResponse.json({ ok: false, error: "Ano letivo inválido para esta escola" }, { status: 400 });
+    }
+
+    // 4.2 Validar turma pertence à escola (e opcionalmente ao mesmo ano)
+    const { data: turmaRow, error: turmaErr } = await supabase
+      .from("turmas")
+      .select("id, escola_id, ano_letivo")
+      .eq("id", body.turma_id)
+      .maybeSingle();
+    if (turmaErr || !turmaRow || String(turmaRow.escola_id) !== String(escolaId)) {
+      return NextResponse.json({ ok: false, error: "Turma inválida para esta escola" }, { status: 400 });
+    }
 
     const insertPayload: MatriculaInsert = {
       escola_id: escolaId,
       aluno_id: body.aluno_id,
-      ano_letivo: Number.isFinite(anoLetivoInt) ? anoLetivoInt : null,
+      ano_letivo_id: body.ano_letivo_id,
       turma_id: body.turma_id,
       status: body.status ?? "ativa",
-    };
+    } as any;
+
+    // Preenche ano_letivo numérico se a coluna existir no schema
+    const anoLetivoInt = Number(anoRow.ano);
+    if (Number.isFinite(anoLetivoInt)) (insertPayload as any).ano_letivo = anoLetivoInt;
 
     const { data: created, error: insertError } = await supabase
       .from("matriculas")

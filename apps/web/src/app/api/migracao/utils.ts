@@ -1,5 +1,7 @@
 import crypto from "node:crypto";
 import * as XLSX from "xlsx";
+
+import { normalizeTurmaCode } from "@/lib/turma";
 import type { AlunoCSV, AlunoStagingRecord, MappedColumns } from "~types/migracao";
 
 export const MAX_UPLOAD_SIZE = 12 * 1024 * 1024; // 12 MB
@@ -263,8 +265,9 @@ export function mapAlunoFromCsv(
   mapped.numero_processo = rawNumeroProcesso ? rawNumeroProcesso : undefined; // NOVO: Número de Processo
 
   // --- DADOS ACADÊMICOS (Normalizados) ---
-  const rawTurma = getVal(columnMap.turma_codigo)?.trim();
-  mapped.turma_codigo = rawTurma ? rawTurma.toUpperCase().replace(/\s+/g, '') : undefined; // NOVO: Turma Código
+  const rawTurma = getVal(columnMap.turma_codigo);
+  const turmaCodigo = normalizeTurmaCode(rawTurma ?? "");
+  mapped.turma_codigo = turmaCodigo || undefined; // NOVO: Turma Código
   const anoLetivoFromCsv = normalizeAnoLetivo(getVal(columnMap.ano_letivo));
   mapped.ano_letivo = anoLetivoFromCsv ?? explicitAnoLetivo;
   mapped.numero_matricula = getVal(columnMap.numero_matricula)?.trim();

@@ -6,14 +6,15 @@ export async function GET(_req: Request, context: { params: Promise<{ disciplina
     const { disciplinaId } = await context.params;
     const { supabase, ctx } = await getAlunoContext();
     if (!ctx) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
-    const { matriculaId } = ctx;
+    const { matriculaId, escolaId } = ctx;
 
-    if (!matriculaId) return NextResponse.json({ ok: true, notas: [] });
+    if (!matriculaId || !escolaId) return NextResponse.json({ ok: true, notas: [] });
 
     // Schema de notas pode variar; tentativa genérica.
     const { data: notas } = await supabase
       .from('notas')
       .select('id, avaliacao, valor, peso, created_at')
+      .eq('escola_id', escolaId)
       .eq('matricula_id', matriculaId)
       .eq('disciplina_id', disciplinaId)
       .order('created_at', { ascending: false });

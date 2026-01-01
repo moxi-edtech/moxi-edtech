@@ -34,31 +34,39 @@ export async function GET(req: Request) {
     const escolaId = await resolveEscolaIdForUser(supabase, user.id);
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 });
 
-    // 3. Query Corrigida (Schema Real)
-    // Removemos 'is_active' e focamos em 'status'
-    const { data, error } = await supabase
-      .from('school_sessions')
-      .select('id, nome, status, data_inicio, data_fim')
-      .eq('escola_id', escolaId)
-      .order('data_inicio', { ascending: false });
+    // 3. Source of truth: anos_letivos
+    const mapAnosLetivos = (rows: any[]) =>
+      (rows || []).map((s: any) => {
+        const anoNumber = typeof s.ano === 'string' ? Number(s.ano) : s.ano;
+        const ano = Number.isFinite(anoNumber) ? anoNumber : inferirAnoLetivo(s);
+        const nome = Number.isFinite(ano)
+          ? `${ano}/${Number(ano) + 1}`
+          : s.nome ?? String(s.ano ?? '');
 
-    if (error) {
-      console.error("Erro SQL Sessions:", error);
-      throw error;
+        return {
+          id: s.id,
+          nome,
+          status: s.ativo ? 'ativa' : 'arquivada',
+          data_inicio: s.data_inicio,
+          data_fim: s.data_fim,
+          ano_letivo: ano ?? inferirAnoLetivo({ ...s, nome }),
+        };
+      });
+
+    // Única fonte: anos_letivos
+    const { data: anoLetivoData, error: anoLetivoError } = await (supabase as any)
+      .from('anos_letivos')
+      .select('id, ano, data_inicio, data_fim, ativo')
+      .eq('escola_id', escolaId)
+      .order('ano', { ascending: false });
+
+    if (!anoLetivoError) {
+      const items = mapAnosLetivos(anoLetivoData || []);
+      return NextResponse.json({ ok: true, data: items });
     }
 
-    // 4. Formatação para o Frontend
-    // O frontend espera que o campo 'status' seja 'ativa' para selecionar automaticamente
-    const items = (data || []).map((s: any) => ({
-      id: s.id,
-      nome: s.nome,
-      status: s.status, // Passamos o valor direto do banco ('ativa', 'encerrada', etc.)
-      data_inicio: s.data_inicio,
-      data_fim: s.data_fim,
-      ano_letivo: inferirAnoLetivo(s),
-    }));
-
-    return NextResponse.json({ ok: true, data: items });
+    console.error("Erro SQL anos_letivos:", anoLetivoError);
+    throw anoLetivoError;
 
   } catch (e: any) {
     console.error("Erro API Sessions:", e);

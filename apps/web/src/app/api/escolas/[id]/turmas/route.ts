@@ -50,40 +50,51 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const cursoId = url.searchParams.get('curso_id');
     const status = url.searchParams.get('status');
 
-    // 4. Query à VIEW
+    // 4. Query usando a view que resolve curso/classe
     let query = admin
-      .from('turmas') 
-      .select(`
-        *,
-        curso:cursos(nome, tipo),
-        classe:classes(nome),
-        matriculas(count)
-      `)
+      .from('vw_turmas_para_matricula')
+      .select('*')
       .eq('escola_id', escolaId)
-      .order('nome', { ascending: true });
+      .order('turma_nome', { ascending: true });
 
-    if (turno && turno !== 'todos') query = query.eq('turno', turno);
+    const normalizedTurno = turno && turno !== 'todos' ? turno.toUpperCase() : null;
+    if (normalizedTurno) query = query.eq('turno', normalizedTurno);
     if (cursoId) query = query.eq('curso_id', cursoId);
     if (status && status !== 'todos') query = query.eq('status_validacao', status);
     
     const { data: rows, error } = await query;
 
     if (error) {
-        console.error("Erro na tabela turmas:", error);
+        console.error("Erro na view vw_turmas_para_matricula:", error);
         throw error;
+    }
+
+    // Busca turma_codigo original para rótulos de rascunho
+    let codigoMap: Record<string, string | null> = {};
+    const turmaIds = (rows || []).map((r) => r.id).filter(Boolean);
+    if (turmaIds.length > 0) {
+      const { data: codigoRows } = await admin
+        .from('turmas')
+        .select('id, turma_codigo')
+        .in('id', turmaIds as string[]);
+      codigoRows?.forEach((c) => {
+        codigoMap[c.id] = c.turma_codigo;
+      });
     }
 
     // Enriquecimento para o frontend exibir Curso/Classe corretamente
     const items = (rows || []).map((t: any) => ({
       ...t,
-      nome: t.nome ?? 'Sem Nome',
+      nome: t.turma_nome ?? t.nome ?? 'Sem Nome',
       turno: t.turno ?? 'sem_turno',
       sala: t.sala ?? '',
       capacidade_maxima: t.capacidade_maxima ?? 35,
-      curso_nome: t.curso?.nome ?? '',
-      classe_nome: t.classe?.nome ?? '',
+      curso_nome: t.curso_nome ?? '',
+      classe_nome: t.classe_nome ?? '',
       status_validacao: t.status_validacao ?? 'ativo',
-      ocupacao_atual: t.matriculas?.[0]?.count ?? 0,
+      ocupacao_atual: t.ocupacao_atual ?? 0,
+      ultima_matricula: t.ultima_matricula ?? null,
+      turma_codigo: codigoMap[t.id] ?? '',
     }));
 
     const porTurnoMap: Record<string, number> = {};
@@ -146,7 +157,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       turno: turnoRaw, 
       sala, 
       ano_letivo, // OBRIGATÓRIO PARA A CONSTRAINT
-      session_id, 
       capacidade_maxima, 
       curso_id, 
       classe_id,
@@ -160,6 +170,21 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         return NextResponse.json({ ok: false, error: "Nome, Turno, Ano Letivo e curso_id são obrigatórios" }, { status: 400 });
     }
 
+    // Valida ano_letivo contra anos_letivos da escola
+    try {
+      const { data: anoRow } = await (admin as any)
+        .from('anos_letivos')
+        .select('ano')
+        .eq('escola_id', escolaId)
+        .eq('ano', Number(ano_letivo))
+        .maybeSingle()
+      if (!anoRow) {
+        return NextResponse.json({ ok: false, error: 'Ano letivo não encontrado para esta escola' }, { status: 400 })
+      }
+    } catch (err) {
+      // se a tabela não existir neste ambiente, deixa seguir
+    }
+
     // Insert direto na tabela
     const { data, error } = await (admin as any)
       .from('turmas')
@@ -168,7 +193,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         nome,
         turno,
         ano_letivo, // Importante para diferenciar Turma A 2024 de Turma A 2025
-        session_id: session_id || null,
         sala: sala || null,
         capacidade_maxima: capacidade_maxima || 35,
         curso_id: curso_id || null,

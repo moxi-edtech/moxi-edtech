@@ -23,6 +23,7 @@ import { EstornarMensalidadeButton } from "@/components/financeiro/EstornarMensa
 import type { Database } from "~types/supabase";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { FinanceiroAlerts } from "@/components/financeiro/FinanceiroAlerts";
+import { MissingPricingAlert } from "@/components/financeiro/MissingPricingAlert";
 
 const kwanza = new Intl.NumberFormat("pt-AO", {
   style: "currency",
@@ -135,6 +136,10 @@ export default async function FinanceiroDashboardPage({
           )
         }
       />
+
+      {escolaId ? (
+        <MissingPricingAlert escolaId={escolaId} anoLetivo={new Date().getFullYear()} />
+      ) : null}
 
       <FinanceiroAlerts notifications={financeNotifications} />
 

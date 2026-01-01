@@ -1,6 +1,8 @@
 // apps/web/next.config.ts
 import path from 'path';
 
+const LUCIDE_SOURCEMAP_STRIPPER = path.join(__dirname, "loaders", "strip-lucide-sourcemap.js");
+
 const REQUIRED_PUBLIC_ENV = ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"];
 const OPTIONAL_SERVER_ENV = ["SUPABASE_SERVICE_ROLE_KEY"];
 
@@ -46,6 +48,18 @@ const nextConfig = {
         as: '*.js',
       },
     },
+  },
+  webpack: (config) => {
+    config.module.rules.push({
+      test: /node_modules[\\/]+lucide-react[\\/]dist[\\/]esm[\\/].*\.js$/,
+      use: [
+        {
+          loader: LUCIDE_SOURCEMAP_STRIPPER,
+        },
+      ],
+    });
+
+    return config;
   },
 };
 

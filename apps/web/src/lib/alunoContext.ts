@@ -31,23 +31,31 @@ export async function getAlunoContext() {
     }) as any;
     escolaId = vincAluno?.escola_id ?? null;
 
-    const { data: alunos } = await supabase
+    let alunoQuery = supabase
       .from('alunos')
-      .select('id')
+      .select('id, escola_id')
       .eq('profile_id', user.id)
       .limit(1);
+    if (escolaId) alunoQuery = alunoQuery.eq('escola_id', escolaId);
+
+    const { data: alunos } = await alunoQuery;
     alunoId = (alunos?.[0] as any)?.id ?? null;
+    escolaId = escolaId ?? ((alunos?.[0] as any)?.escola_id ?? null);
 
     if (alunoId) {
-      const { data: mats } = await supabase
+      let matQuery = supabase
         .from('matriculas')
-        .select('id, turma_id')
+        .select('id, turma_id, escola_id')
         .eq('aluno_id', alunoId)
         .order('created_at', { ascending: false })
         .limit(1);
+      if (escolaId) matQuery = matQuery.eq('escola_id', escolaId);
+
+      const { data: mats } = await matQuery;
       const mat = mats?.[0] as any;
       matriculaId = mat?.id ?? null;
       turmaId = mat?.turma_id ?? null;
+      escolaId = escolaId ?? (mat?.escola_id ?? null);
     }
   } catch {}
 
