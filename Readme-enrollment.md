@@ -11,6 +11,25 @@ turmas: "10ª A - Manhã", "10ª B - Tarde" (Vinculadas à Classe).
 
 matriculas: Vincula Aluno -> Turma.
 
+### Funil de Admissão (novo)
+- Cadastro (lead): cria `alunos` com número de processo automático e registra a intenção em `candidaturas` (curso/ano_letivo). Nenhuma matrícula ou profile é criada aqui.
+- Conversão: a matrícula oficial acontece ao confirmar a candidatura via endpoint dedicado, que insere em `matriculas`, gera `numero_matricula` (e login) e marca a candidatura como `matriculado`.
+- Identificadores: `numero_processo` vive em `alunos` (fixo por escola); `numero_matricula` nasce em `matriculas` no momento da conversão.
+
+#### Preferência de Turma (melhor UX)
+- Passo 4 (Interesse Académico): secretaria escolhe Curso → Classe → Turno; o sistema lista automaticamente turmas ativas do ano letivo e permite marcar uma preferência.
+- Salva em `candidaturas.turma_preferencial_id` (novo campo). Na conversão da matrícula essa turma é pré-selecionada se ainda estiver disponível.
+- Benefício: a secretária enxerga turno, código da turma e vagas restantes antes do pagamento, mas pode optar por decidir depois.
+
+#### Nota de correção recente
+- Problema: dropdown de “Turma Final” vazio porque o fetch usava apenas `session_id` e a view não filtrava corretamente o ano letivo.
+- Medida: o front agora envia o ano derivado da sessão e a rota `/api/secretaria/turmas-simples` resolve `ano/ano_letivo` a partir do `session_id`, filtrando por ano ou sessão; as turmas voltam a aparecer de acordo com o ano selecionado.
+
+#### Ponte de Recebimento (Financeiro)
+- Cadastro envia método/ref/comprovativo de pagamento e gera notificação `target_role=financeiro`.
+- Inbox em `/financeiro/candidaturas` lista candidaturas `pendente/aguardando_compensacao` com ação de Compensar/Rejeitar.
+- A confirmação chama a RPC oficial `confirmar_matricula` (gera número via trigger) e conclui o funil end-to-end.
+
 4. Exemplo Prático (SQL)
 Quando quiseres ver "Todos os alunos da 10ª de Informática" (o cenário que descreveste), tu não precisas de mudar a matrícula. Basta fazeres a query certa.
 

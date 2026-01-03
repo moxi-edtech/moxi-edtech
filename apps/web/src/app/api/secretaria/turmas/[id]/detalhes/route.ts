@@ -81,6 +81,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       .select(`
         id,
         numero_chamada,
+        numero_matricula,
+        status,
         alunos!inner ( id, nome, bi_numero, foto_url, status )
       `)
       .eq('turma_id', turmaId)
@@ -134,7 +136,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       nome: m.alunos?.nome || 'Nome Desconhecido',
       bi: m.alunos?.bi_numero || 'N/A',
       foto: m.alunos?.foto_url || undefined,
-      status_matricula: m.alunos?.status || 'desconhecido',
+      numero_matricula: m.numero_matricula,
+      status_matricula: m.status || m.alunos?.status || 'desconhecido',
     }));
 
     const disciplinas = (disciplinasData || []).map(td => ({

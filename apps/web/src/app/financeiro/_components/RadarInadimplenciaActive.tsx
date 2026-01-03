@@ -18,6 +18,7 @@ type RadarRowFromApi = {
   mensalidade_id: string;
   aluno_id: string;
   nome_aluno: string;
+  numero_matricula?: string | null;
   responsavel: string | null;
   telefone: string | null;
   nome_turma: string | null;
@@ -35,6 +36,7 @@ type RadarEntry = {
   id: string;
   aluno_id: string;
   nome_aluno: string;
+  numero_matricula: string | null;
   responsavel: string;
   telefone: string;
   turma: string;
@@ -182,6 +184,7 @@ export default function RadarInadimplenciaActive() {
             id: row.mensalidade_id,
             aluno_id: row.aluno_id,
             nome_aluno: row.nome_aluno,
+            numero_matricula: row.numero_matricula ?? null,
             responsavel: row.responsavel ?? "—",
             telefone: row.telefone ?? "",
             turma: row.nome_turma ?? "—",
@@ -621,6 +624,9 @@ export default function RadarInadimplenciaActive() {
                       <div className="text-xs text-slate-500 flex items-center gap-1">
                         {item.responsavel} •{" "}
                         <span className="font-mono">{item.telefone}</span>
+                      </div>
+                      <div className="text-[10px] text-slate-400 font-mono">
+                        Mat.: {item.numero_matricula ?? "—"}
                       </div>
                     </td>
                     <td className="px-4 py-3">

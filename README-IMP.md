@@ -47,6 +47,8 @@ flowchart TD
       B4[/GET  /api/migracao/:importId/erros/]
       B5[/GET  /api/migracao/historico/]
       B7[/GET  /api/secretaria/matriculas/:id/declaracao/]
+      B8[/GET  /api/financeiro/candidaturas]
+      B9[/POST /api/financeiro/candidaturas/rejeitar]
     end
 
     subgraph DB ["Supabase / Postgres"]
@@ -62,6 +64,7 @@ flowchart TD
       C8c[[RPC update_import_configuration]]
       C9[[RPC matricular_em_massa_por_turma]]
       C10[[FN generate_matricula_number (trigger)]]
+      C11[[FN confirmar_matricula (RPC)]]
     end
 
     subgraph DOCS ["PDF Engine"]
@@ -82,7 +85,7 @@ flowchart TD
 
     %% Matrícula em Massa por Turma
     A6 --> B3b --> C2
-    A7 --> B6b --> C9 --> C5 --> C10
+    A7 --> B6b --> C9 --> C5 --> C10 --> C11
 
     %% Erros e Histórico
     A4 --> B4 --> C3

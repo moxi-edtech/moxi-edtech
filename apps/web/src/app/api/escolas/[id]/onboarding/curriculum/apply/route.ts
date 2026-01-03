@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 import { SHIFT_MAP, gerarNomeTurma, removeAccents } from "@/lib/turma";
+import { PRESET_TO_TYPE, type CourseType } from "@/lib/courseTypes";
 
 const supabaseAdmin = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -21,6 +22,7 @@ export async function POST(
   const payload = await req.json();
 
   const advancedConfig = payload?.advancedConfig ?? {};
+  const sessionId = payload?.sessionId || advancedConfig?.sessionId || advancedConfig?.session_id || null;
   const classesNomes =
     advancedConfig.classes ??
     advancedConfig.classesNomes ??
@@ -38,8 +40,10 @@ export async function POST(
     );
   }
 
-  const anoLetivo = String(payload.anoLetivo ?? advancedConfig.anoLetivo ?? new Date().getFullYear());
+  const anoLetivoRaw = payload.anoLetivo ?? advancedConfig.anoLetivo ?? new Date().getFullYear();
+  const anoLetivo = Number.isFinite(Number(anoLetivoRaw)) ? Number(anoLetivoRaw) : Number(new Date().getFullYear());
 
+  const desiredType: CourseType = PRESET_TO_TYPE[payload.presetKey as keyof typeof PRESET_TO_TYPE] ?? "geral";
   let cursoCriadoId: string | null = null;
 
   try {
@@ -57,12 +61,17 @@ export async function POST(
     if (cursoExistente?.id) {
       cursoId = cursoExistente.id;
       cursoNome = cursoExistente.nome;
+
+      // Corrige tipo se vier diferente do esperado
+      if (desiredType && cursoExistente?.tipo !== desiredType) {
+        await supabaseAdmin.from('cursos').update({ tipo: desiredType }).eq('id', cursoId);
+      }
     } else {
       const { data: curso, error: erroCurso } = await supabaseAdmin
         .from('cursos')
         .insert({
           nome: payload.customData?.label || payload.presetKey,
-          tipo: 'tecnico', // placeholder
+          tipo: desiredType,
           escola_id: escolaId,
           codigo: payload.presetKey,
           curriculum_key: payload.presetKey,
@@ -178,6 +187,7 @@ export async function POST(
             capacidade_maxima: 30,
             escola_id: escolaId,
           };
+          if (sessionId) row.session_id = sessionId;
           turmasParaInserir.push(row);
         }
       }

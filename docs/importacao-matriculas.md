@@ -8,6 +8,11 @@ Este guia descreve o fluxo ponta a ponta de importação de alunos via wizard, v
 3. **Importação**: `/api/migracao/alunos/importar` chama a RPC `importar_alunos` usando `importId/escolaId`, marca a importação como `imported` e retorna um resumo (`imported`, `skipped`, `errors`).
 4. **Acompanhamento**: a tela de finalização busca `/api/migracao/[importId]/erros` para listar erros linha a linha e a página de histórico consome `/api/migracao/historico` para exibir as últimas 50 importações.
 
+## Funil de Admissão (cadastro → candidatura → matrícula)
+- Cadastro rápido cria apenas `alunos` (gera `numero_processo` automático) e registra a intenção em `candidaturas` com `curso_id`/`ano_letivo`; não cria `matriculas` nem `profiles` neste passo.
+- Conversão para matrícula ocorre via endpoint dedicado `/api/secretaria/candidaturas/[id]/confirmar`, que insere em `matriculas` (gera `numero_matricula` e sincroniza login/profile) e marca a candidatura como `matriculado`.
+- UI de matrícula agora seleciona uma candidatura pendente/paga e, a partir dela, aloca a turma e chama o endpoint de confirmação; orçamento usa `curso_id/ano_letivo` da candidatura.
+
 ## Wizard de migração (frontend)
 - **Contexto autenticado**: o wizard carrega `userId` e resolve `escolaId` no `useEffect` a partir de `app_metadata.escola_id` ou, em fallback, via `profiles.current_escola_id` → `profiles.escola_id` → `escola_usuarios.escola_id`. O upload é bloqueado sem escola válida.【F:apps/web/src/app/migracao/alunos/page.tsx†L22-L147】
 - **Upload (passo 1)**: envia `file`, `escolaId` e opcionalmente `userId` para `/api/migracao/upload`; guarda `importId` retornado, limpa erros anteriores e extrai cabeçalhos do CSV para mapeamento.【F:apps/web/src/app/migracao/alunos/page.tsx†L89-L118】
@@ -55,3 +60,4 @@ A página `/migracao/historico` consome a rota de histórico e renderiza cards c
 - Não pular a etapa de validação: ela popula `staging_alunos`, limpa tentativas anteriores e salva o mapeamento.
 - Após importar, consulte erros detalhados para corrigir linhas com problemas e reprocessar se necessário (o fluxo é idempotente por `importId`).
 - Ao matricular, reusar `numero_matricula` sugerido ou já presente do aluno evita duplicidade e mantém o login alinhado ao cadastro.
+- Dropdown de “Turma Final” vazio: ajustamos o front para enviar o ano letivo derivado da sessão e a rota `/api/secretaria/turmas-simples` agora aceita `ano/ano_letivo` (derivado de `session_id`) e filtra pela view com esses parâmetros; turmas voltam a aparecer conforme o ano selecionado.

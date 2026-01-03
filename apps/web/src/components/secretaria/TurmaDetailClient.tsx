@@ -15,6 +15,7 @@ type Aluno = {
   aluno_id: string;
   nome: string;
   bi: string;
+  numero_matricula?: string | number | null;
   status_matricula: string;
   status_financeiro?: 'em_dia' | 'atraso';
 };
@@ -265,8 +266,8 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
                  <table className="w-full text-left text-sm">
                     <thead className="bg-slate-50 border-b border-slate-100">
                        <tr>
-                          <th className="px-6 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Nº</th>
-                          <th className="px-6 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Estudante</th>
+                         <th className="px-6 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Nº</th>
+                         <th className="px-6 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Estudante</th>
                           <th className="px-6 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Matrícula</th>
                           <th className="px-6 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Situação</th>
                           <th className="px-6 py-3 text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider">Ações</th>
@@ -290,7 +291,12 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
                                 </div>
                              </td>
                              <td className="px-6 py-4">
-                                <StatusBadge status={aluno.status_matricula} />
+                               <div className="flex flex-col gap-1">
+                                  <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 font-mono text-[11px] font-bold text-slate-700 ring-1 ring-slate-200">
+                                     Mat.: {aluno.numero_matricula ? aluno.numero_matricula : '—'}
+                                  </span>
+                                  <StatusBadge status={aluno.status_matricula || 'indefinido'} />
+                               </div>
                              </td>
                              <td className="px-6 py-4">
                                 <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-100 uppercase">

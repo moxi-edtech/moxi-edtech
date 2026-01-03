@@ -39,6 +39,10 @@ Fluxo recomendado (produção)
    - Turma rascunho com alunos exibe bloco financeiro no TurmaForm; ao aprovar, aplica as mesmas regras para evitar cobranças indevidas.
    - Notificações direcionadas: rascunhos → admin/pedagógico; ativações/importações em turmas ativas → financeiro.
 
+Correção recente (turmas por ano letivo)
+- Problema: o dropdown de “Turma Final” ficava vazio porque o fetch considerava só `session_id` e a view não retornava turmas sem filtrar pelo ano letivo correto.
+- Ação: o front passou a enviar o ano derivado da sessão e `/api/secretaria/turmas-simples` agora resolve `ano/ano_letivo` a partir do `session_id`, filtrando por ano ou sessão; as turmas voltam a aparecer conforme o ano selecionado.
+
 Getting Started (Angola)
 - Migrations: rode as migrations do Supabase (inclui RPCs e índices críticos).
 - Envs: configure `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
