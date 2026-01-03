@@ -49,7 +49,39 @@ export async function GET() {
     }
 
     const items = data ?? [];
-    return NextResponse.json({ ok: true, items });
+
+    const alunoIds = Array.from(
+      new Set((items as any[]).map((i) => i.aluno_id).filter(Boolean))
+    );
+
+    let numeroPorAluno: Record<string, string | null> = {};
+
+    if (alunoIds.length > 0) {
+      const { data: mats, error: matsError } = await s
+        .from("matriculas")
+        .select("aluno_id, numero_matricula, created_at")
+        .in("aluno_id", alunoIds)
+        .order("created_at", { ascending: false });
+
+      if (matsError) {
+        console.error("Erro ao buscar numeros de matrícula:", matsError.message);
+      } else {
+        for (const m of mats || []) {
+          if (!m.aluno_id) continue;
+          if (numeroPorAluno[m.aluno_id]) continue;
+          if (m.numero_matricula) {
+            numeroPorAluno[m.aluno_id] = m.numero_matricula;
+          }
+        }
+      }
+    }
+
+    const enriched = (items as any[]).map((item) => ({
+      ...item,
+      numero_matricula: item.numero_matricula ?? numeroPorAluno[item.aluno_id] ?? null,
+    }));
+
+    return NextResponse.json({ ok: true, items: enriched });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("Erro inesperado no radar financeiro:", message);

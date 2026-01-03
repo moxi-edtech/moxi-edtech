@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { normalizeAnoLetivo } from "@/lib/financeiro/tabela-preco";
+import { findClassesSemPreco } from "@/lib/financeiro/missing-pricing";
 
 export const dynamic = "force-dynamic";
 
@@ -105,25 +106,39 @@ export async function GET(req: Request) {
     if (!autorizado)
       return NextResponse.json({ ok: false, error: "Sem permissão para consultar preços" }, { status: 403 });
 
-    const anoLetivo = normalizeAnoLetivo(anoParam);
+    let anoLetivo = normalizeAnoLetivo(anoParam);
+    let items: any[] = [];
 
-    const { data, error } = await (supabase as any).rpc("get_classes_sem_preco", {
-      p_escola_id: escolaId,
-      p_ano_letivo: anoLetivo,
-    });
+    try {
+      const { data, error } = await (supabase as any).rpc("get_classes_sem_preco", {
+        p_escola_id: escolaId,
+        p_ano_letivo: anoLetivo,
+      });
 
-    if (error)
-      return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+      if (error) throw error;
+
+      items = (data as any[]) || [];
+    } catch (rpcError: any) {
+      console.warn("⚠️ RPC get_classes_sem_preco falhou, usando fallback:", rpcError?.message || rpcError);
+
+      try {
+        const fallback = await findClassesSemPreco(supabase as any, escolaId, anoLetivo);
+        anoLetivo = fallback.anoLetivo;
+        items = fallback.items;
+      } catch (fallbackError: any) {
+        const message = fallbackError?.message || String(fallbackError);
+        return NextResponse.json({ ok: false, error: message }, { status: 500 });
+      }
+    }
 
     return NextResponse.json({
       ok: true,
       escolaId,
       anoLetivo,
-      items: (data as any[]) || [],
+      items,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
-

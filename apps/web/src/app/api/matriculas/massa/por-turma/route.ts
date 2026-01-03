@@ -43,10 +43,30 @@ export async function POST(request: NextRequest) {
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   const row = Array.isArray(data) && data.length ? data[0] : data;
+
+  // Confirma matrículas criadas para o import/turma pelo fluxo oficial
+  const { data: matriculasCriadas } = await (supabase as any)
+    .from('matriculas')
+    .select('id')
+    .eq('escola_id', escola_id)
+    .eq('import_id', import_id)
+    .eq('turma_id', finalTurmaId);
+
+  let confirm_errors: Array<{ id: string; error: string }> = [];
+  if (matriculasCriadas && matriculasCriadas.length > 0) {
+    for (const m of matriculasCriadas) {
+      const { error: cErr } = await (supabase as any).rpc('confirmar_matricula', {
+        p_matricula_id: m.id,
+      });
+      if (cErr) confirm_errors.push({ id: m.id as string, error: cErr.message });
+    }
+  }
+
   return NextResponse.json({
     ok: true,
     success_count: row?.success_count ?? 0,
     error_count: row?.error_count ?? 0,
     errors: row?.errors ?? [],
+    confirm_errors,
   });
 }

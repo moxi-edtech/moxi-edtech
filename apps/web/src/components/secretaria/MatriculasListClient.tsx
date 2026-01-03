@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -11,7 +11,6 @@ import {
   ArrowLeft,
   Users,
   BookOpen,
-  BarChart3,
   RefreshCw,
   ArrowUpDown,
   FileText,
@@ -27,7 +26,7 @@ import TransferForm from "./TransferForm";
 // --- TIPOS ---
 type Item = {
   id: string;
-  numero_matricula?: number | null;
+  numero_matricula?: string | null;
   numero_chamada?: number | null;
   aluno_id: string;
   turma_id: string;
@@ -142,12 +141,15 @@ export default function MatriculasListClient() {
   // Estados Locais
   const [q, setQ] = useState("");
   const [sessions, setSessions] = useState<any[]>([]);
-  const [selectedSession, setSelectedSession] = useState<string>("");
+  const [selectedAno, setSelectedAno] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
   const [items, setItems] = useState<Item[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  const activeRequestRef = useRef(0);
+  const abortRef = useRef<AbortController | null>(null);
 
   // Estados dos Filtros em Cascata
   const [selectedEnsino, setSelectedEnsino] = useState<string>("");
@@ -166,8 +168,6 @@ export default function MatriculasListClient() {
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  const sessionSelecionada = useMemo(() => sessions.find((s) => s.id === selectedSession), [sessions, selectedSession]);
-
   const extrairAnoLetivo = (valor?: string | number | null) => {
     if (valor === null || valor === undefined) return null;
     if (typeof valor === "number" && Number.isFinite(valor)) return valor;
@@ -176,20 +176,7 @@ export default function MatriculasListClient() {
     return match ? Number(match[0]) : null;
   };
 
-  const anoLetivoAtivo = useMemo(() => {
-    const candidatos = [
-      (sessionSelecionada as any)?.ano_letivo,
-      (sessionSelecionada as any)?.nome,
-      (sessionSelecionada as any)?.data_inicio,
-      (sessionSelecionada as any)?.data_fim,
-    ];
-
-    for (const candidato of candidatos) {
-      const ano = extrairAnoLetivo(candidato);
-      if (ano) return ano;
-    }
-    return new Date().getFullYear();
-  }, [sessionSelecionada]);
+  const anoLetivoAtivo = useMemo(() => selectedAno ?? new Date().getFullYear(), [selectedAno]);
 
   // --- LÓGICA (INTACTA) ---
   async function fetchSessions() {
@@ -203,10 +190,17 @@ export default function MatriculasListClient() {
             ? json.items
             : [];
 
-        setSessions(sessionItems);
-        const activeSession = sessionItems.find((s: any) => s.status === "ativa");
-        if (activeSession) setSelectedSession(activeSession.id);
-        else if (sessionItems.length > 0) setSelectedSession(sessionItems[0].id);
+        const resolved = sessionItems.map((s: any) => ({
+          ...s,
+          ano_resolvido: extrairAnoLetivo((s as any)?.ano_letivo ?? s?.nome ?? s?.data_inicio ?? s?.data_fim),
+        }));
+
+        setSessions(resolved);
+
+        const activeSession = resolved.find((s: any) => s.status === "ativa" && s.ano_resolvido);
+        const firstWithAno = resolved.find((s: any) => s.ano_resolvido);
+
+        setSelectedAno((prev) => prev ?? activeSession?.ano_resolvido ?? firstWithAno?.ano_resolvido ?? new Date().getFullYear());
       }
     } catch (error) {
       console.error("Failed to fetch sessions", error);
@@ -254,9 +248,9 @@ export default function MatriculasListClient() {
         return;
       }
       try {
-        const res = await fetch(
-          `/api/secretaria/turmas-simples?classe_id=${selectedClasse}&session_id=${selectedSession}`
-        );
+        const params = new URLSearchParams({ classe_id: selectedClasse });
+        if (anoLetivoAtivo) params.set('ano', String(anoLetivoAtivo));
+        const res = await fetch(`/api/secretaria/turmas-simples?${params.toString()}`);
         const json = await res.json();
         if (json.ok) setTurmas(Array.isArray(json.items) ? json.items : []);
       } catch (error) {
@@ -264,7 +258,7 @@ export default function MatriculasListClient() {
       }
     }
     fetchTurmas();
-  }, [selectedClasse, selectedSession]);
+  }, [selectedClasse, anoLetivoAtivo]);
 
   const replaceParams = (fn: (p: URLSearchParams) => void) => {
     const p = new URLSearchParams(Array.from(searchParams.entries()));
@@ -301,15 +295,17 @@ export default function MatriculasListClient() {
   };
 
   async function load(p = page) {
-    if (!selectedSession) {
-      setLoading(false);
-      return;
-    }
+    const requestId = activeRequestRef.current + 1;
+    activeRequestRef.current = requestId;
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
     try {
       const params = new URLSearchParams({
         q,
-        session_id: selectedSession,
         page: String(p),
         pageSize: String(pageSize),
       });
@@ -326,23 +322,37 @@ export default function MatriculasListClient() {
       if (statusFromQuery) params.set("status", statusFromQuery);
       if (statusInFromQuery) params.set("status_in", statusInFromQuery);
 
-      const res = await fetch(`/api/secretaria/matriculas?${params.toString()}`, { cache: "no-store" });
+      const res = await fetch(`/api/secretaria/matriculas?${params.toString()}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
       const json = await res.json();
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao carregar matrículas");
 
-      setItems(Array.isArray(json.items) ? json.items : []);
-      setTotal(json.total || 0);
+      if (activeRequestRef.current === requestId) {
+        setItems(Array.isArray(json.items) ? json.items : []);
+        setTotal(json.total || 0);
+      }
+    } catch (error: any) {
+      if (controller.signal.aborted) return;
+      console.error(error);
     } finally {
-      setLoading(false);
+      if (activeRequestRef.current === requestId) setLoading(false);
     }
   }
+
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
 
   useEffect(() => {
     load(1);
     setPage(1);
   }, [
     q,
-    selectedSession,
+    selectedAno,
     selectedTurma,
     selectedClasse,
     selectedCurso,
@@ -413,8 +423,8 @@ export default function MatriculasListClient() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard title="Total Matrículas" value={total} icon={Users} tone="slate" />
         <KpiCard title="Matrículas Ativas" value={statusCounts["ativa"] || 0} icon={UserCheck} tone="emerald" />
+        <KpiCard title="Pendentes (a ativar)" value={statusCounts["pendente"] || 0} icon={Loader2} tone="amber" />
         <KpiCard title="Turmas Envolvidas" value={turmasUnicas.size} icon={BookOpen} tone="violet" />
-        <KpiCard title="Status Diferentes" value={Object.keys(statusCounts).length} icon={BarChart3} tone="amber" />
       </div>
 
       {/* Card Principal */}
@@ -439,29 +449,37 @@ export default function MatriculasListClient() {
 
             {/* Session */}
             <select
-              value={selectedSession}
-              onChange={(e) => setSelectedSession(e.target.value)}
+              value={selectedAno ?? ""}
+              onChange={(e) => {
+                const newAno = Number(e.target.value);
+                setSelectedAno(Number.isFinite(newAno) ? newAno : null);
+                setSelectedTurma("");
+              }}
               className={cn(
                 "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none sm:w-auto",
                 "focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
               )}
             >
-              {sessions.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.nome}
-                </option>
-              ))}
+              <option value="">Ano letivo</option>
+              {sessions
+                .map((s) => ({ ...s, ano_resolvido: extrairAnoLetivo((s as any)?.ano_letivo ?? s?.nome ?? s?.data_inicio ?? s?.data_fim) }))
+                .filter((s) => s.ano_resolvido)
+                .map((s) => (
+                  <option key={s.id} value={s.ano_resolvido as number}>
+                    {s.nome || `${s.ano_resolvido}/${(s.ano_resolvido as number) + 1}`}
+                  </option>
+                ))}
             </select>
           </div>
 
           {/* Exports */}
           <div className="flex gap-2">
             <ToolbarButton
-              href={`/secretaria/matriculas/export?format=csv&session_id=${selectedSession}&ano=${anoLetivoAtivo}&q=${q}`}
+              href={`/secretaria/matriculas/export?format=csv&ano=${anoLetivoAtivo}&q=${q}`}
               label="CSV"
             />
             <ToolbarButton
-              href={`/secretaria/matriculas/export?format=json&session_id=${selectedSession}&ano=${anoLetivoAtivo}&q=${q}`}
+              href={`/secretaria/matriculas/export?format=json&ano=${anoLetivoAtivo}&q=${q}`}
               label="JSON"
             />
           </div>
@@ -627,15 +645,18 @@ export default function MatriculasListClient() {
                   })();
 
                   const fichaHref = m.aluno_id ? `/secretaria/alunos/${m.aluno_id}/ficha` : null;
+                  const statusKey = (m.status || "").toLowerCase();
+                  const numeroMatriculaVisivel =
+                    statusKey === "ativa" && m.numero_matricula
+                      ? m.numero_matricula
+                      : "Gerado ao ativar";
 
                   return (
                     <tr key={m.id} className="group transition-colors hover:bg-slate-50/70">
                       {/* Matrícula */}
                       <td className="whitespace-nowrap px-6 py-4">
                         <div className="w-fit rounded-xl bg-slate-100 px-2 py-1 font-mono text-xs font-bold text-slate-700 ring-1 ring-slate-200">
-                          {m.numero_matricula !== null && m.numero_matricula !== undefined
-                            ? String(m.numero_matricula)
-                            : "PENDENTE"}
+                          {numeroMatriculaVisivel}
                         </div>
 
                         <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-slate-400">
@@ -652,6 +673,12 @@ export default function MatriculasListClient() {
                               {dataMatriculaFmt}
                             </span>
                           ) : null}
+
+                          {statusKey !== "ativa" && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 font-semibold text-amber-700 ring-1 ring-amber-200/70">
+                              Número só é gerado em status ativa
+                            </span>
+                          )}
                         </div>
                       </td>
 
@@ -812,7 +839,7 @@ export default function MatriculasListClient() {
 
             <TransferForm
               matriculaId={selectedMatricula.id}
-              sessionId={selectedSession}
+              anoLetivo={anoLetivoAtivo}
               onSuccess={() => {
                 setShowTransferForm(false);
                 load();

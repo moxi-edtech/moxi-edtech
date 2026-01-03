@@ -97,12 +97,11 @@ export default async function AlunoDossierPage({
             >
               {perfil.status || "—"}
             </span>
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200">
+              Proc. {perfil.numero_processo || "—"}
+            </span>
           </div>
           <p className="text-gray-500 flex flex-wrap items-center gap-4 text-sm">
-            <span className="flex items-center gap-1">
-              <Shield className="w-3 h-3" />
-              Proc: {perfil.numero_processo || "—"}
-            </span>
             <span className="flex items-center gap-1">
               <User className="w-3 h-3" />
               BI: {perfil.bi_numero || "N/A"}

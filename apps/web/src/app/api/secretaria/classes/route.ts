@@ -54,17 +54,6 @@ export async function GET(req: NextRequest) {
         })
 
         if (classeIdsSet.size === 0) {
-          const { data: turmasData } = await s
-            .from('cursos_oferta')
-            .select('classe_id')
-            .eq('curso_id', cursoId)
-            .not('classe_id', 'is', null)
-          ;(turmasData || []).forEach((row: any) => {
-            if (row?.classe_id) classeIdsSet.add(row.classe_id)
-          })
-        }
-
-        if (classeIdsSet.size === 0) {
             // Se a lógica complexa não achou nada, tentamos buscar direto na tabela classes
             // Caso as classes tenham sido criadas mas ainda não tenham turmas/ofertas
             const { data: directClasses } = await s

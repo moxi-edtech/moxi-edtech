@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { 
   Loader2, Search, Filter, UserPlus, ArrowLeft, 
-  Users, Mail, Phone, Shield, Calendar, 
-  Archive, Eye, Edit, AlertCircle, MoreVertical 
+  Users, Mail, Phone, Shield, 
+  Archive, Eye, Edit 
 } from "lucide-react";
 
 // --- TIPOS ---
@@ -18,6 +18,7 @@ type Aluno = {
   status?: string | null;
   created_at: string;
   numero_login?: string | null;
+  numero_processo?: string | null;
 };
 
 // --- MICRO-COMPONENTES ---
@@ -41,7 +42,7 @@ function StatusBadge({ status }: { status?: string | null }) {
     ativo: "bg-emerald-50 text-emerald-700 border-emerald-200",
     suspenso: "bg-amber-50 text-amber-700 border-amber-200",
     inativo: "bg-red-50 text-red-700 border-red-200",
-    pendente: "bg-blue-50 text-blue-700 border-blue-200",
+    pendente: "bg-amber-50 text-amber-700 border-amber-200",
   };
   return (
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border capitalize ${styles[st] || styles.pendente}`}>
@@ -54,7 +55,7 @@ function StatusBadge({ status }: { status?: string | null }) {
 export default function AlunosListClient() {
   // Estados de Filtro
   const [q, setQ] = useState("");
-  const [status, setStatus] = useState("ativo");
+  const [status, setStatus] = useState("pendente");
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
   
@@ -127,6 +128,7 @@ export default function AlunosListClient() {
 
   // --- MÉTRICAS ---
   const stats = useMemo(() => ({
+    pendentes: items.filter(a => a.status === 'pendente').length,
     ativos: items.filter(a => a.status === 'ativo').length,
     comEmail: items.filter(a => a.email).length,
     comResp: items.filter(a => a.responsavel).length
@@ -145,7 +147,7 @@ export default function AlunosListClient() {
             <ArrowLeft size={14}/> Voltar
           </button>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Gestão de Alunos</h1>
-          <p className="text-sm font-medium text-slate-500">Administre o corpo discente e matrículas.</p>
+          <p className="text-sm font-medium text-slate-500">Cadastros começam como pendentes (lead) e viram ativos ao matricular.</p>
         </div>
         
         <Link 
@@ -160,8 +162,8 @@ export default function AlunosListClient() {
       {/* 2. KPIS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <KpiCard title="Total Alunos" value={total} icon={Users} colorClass="text-blue-600" bgClass="bg-blue-50" />
-        <KpiCard title="Ativos" value={stats.ativos} icon={Shield} colorClass="text-emerald-600" bgClass="bg-emerald-50" />
-        <KpiCard title="Com E-mail" value={stats.comEmail} icon={Mail} colorClass="text-purple-600" bgClass="bg-purple-50" />
+        <KpiCard title="Leads Pendentes" value={stats.pendentes} icon={Filter} colorClass="text-amber-600" bgClass="bg-amber-50" />
+        <KpiCard title="Matriculados (Ativos)" value={stats.ativos} icon={Shield} colorClass="text-emerald-600" bgClass="bg-emerald-50" />
         <KpiCard title="Com Responsável" value={stats.comResp} icon={Users} colorClass="text-orange-600" bgClass="bg-orange-50" />
       </div>
 
@@ -184,9 +186,10 @@ export default function AlunosListClient() {
 
           <div className="flex gap-2 w-full sm:w-auto overflow-x-auto">
             {[
-              { label: 'Ativos', value: 'ativo' },
-              { label: 'Inativos', value: 'inativo' },
-              { label: 'Potenciais', value: 'pendente' },
+              { label: 'Leads (pendente)', value: 'pendente' },
+              { label: 'Matriculados (ativo)', value: 'ativo' },
+              { label: 'Inativos/Cancelados', value: 'inativo' },
+              { label: 'Arquivados', value: 'arquivado' },
               { label: 'Todos', value: 'todos' },
             ].map((s) => (
               <button 
@@ -220,49 +223,59 @@ export default function AlunosListClient() {
               {loading ? (
                  <tr><td colSpan={5} className="p-12 text-center text-slate-500"><Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-teal-600"/>Carregando...</td></tr>
               ) : items.length === 0 ? (
-                 <tr><td colSpan={5} className="p-12 text-center text-slate-500">Nenhum aluno encontrado.</td></tr>
+                 <tr><td colSpan={5} className="p-12 text-center text-slate-500">Nenhum aluno encontrado. Cadastros nascem como pendentes até gerar matrícula.</td></tr>
               ) : (
-                items.map((aluno) => (
-                  <tr key={aluno.id} className="hover:bg-slate-50/80 transition-colors group">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                         <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs border border-slate-200">
-                            {aluno.nome.substring(0,2).toUpperCase()}
-                         </div>
-                         <div>
-                            <p className="font-bold text-sm text-slate-800">{aluno.nome}</p>
-                            <p className="text-xs text-slate-400 font-mono">{aluno.numero_login || "—"}</p>
-                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-slate-600">
-                        {aluno.email ? <div className="flex items-center gap-1"><Mail className="w-3 h-3"/> {aluno.email}</div> : <span className="text-slate-300 text-xs">—</span>}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-slate-600">
-                        {aluno.responsavel ? (
-                            <div>
-                                <p className="font-medium">{aluno.responsavel}</p>
-                                <p className="text-xs text-slate-400 flex items-center gap-1"><Phone className="w-3 h-3"/> {aluno.telefone_responsavel}</p>
-                            </div>
-                        ) : <span className="text-slate-300 text-xs">—</span>}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                        <StatusBadge status={aluno.status} />
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                            {aluno.status !== 'ativo' && (
-                              <Link href={`/secretaria/matriculas/nova?alunoId=${aluno.id}`} className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition" title="Matricular Aluno">
-                                <UserPlus className="w-4 h-4"/>
-                              </Link>
-                            )}
-                            <Link href={`/secretaria/alunos/${aluno.id}`} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"><Eye className="w-4 h-4"/></Link>
-                            <Link href={`/secretaria/alunos/${aluno.id}/editar`} className="p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition"><Edit className="w-4 h-4"/></Link>
-                            <button onClick={() => handleOpenDelete(aluno)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"><Archive className="w-4 h-4"/></button>
+                items.map((aluno) => {
+                  const identificador = aluno.numero_processo || aluno.numero_login || "—";
+                  const identificadorLabel = aluno.numero_processo ? "Proc." : aluno.numero_login ? "Login" : "—";
+
+                  return (
+                    <tr key={aluno.id} className="hover:bg-slate-50/80 transition-colors group">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                           <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs border border-slate-200">
+                              {aluno.nome.substring(0,2).toUpperCase()}
+                           </div>
+                           <div>
+                              <p className="font-bold text-sm text-slate-800">{aluno.nome}</p>
+                              <p className="text-xs text-slate-400 font-mono">
+                                {identificadorLabel !== "—" ? `${identificadorLabel}: ${identificador}` : "—"}
+                              </p>
+                              {aluno.numero_processo && aluno.numero_login && (
+                                <p className="text-[10px] text-slate-400 font-mono">Login: {aluno.numero_login}</p>
+                              )}
+                           </div>
                         </div>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-600">
+                          {aluno.email ? <div className="flex items-center gap-1"><Mail className="w-3 h-3"/> {aluno.email}</div> : <span className="text-slate-300 text-xs">—</span>}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-600">
+                          {aluno.responsavel ? (
+                              <div>
+                                  <p className="font-medium">{aluno.responsavel}</p>
+                                  <p className="text-xs text-slate-400 flex items-center gap-1"><Phone className="w-3 h-3"/> {aluno.telefone_responsavel}</p>
+                              </div>
+                          ) : <span className="text-slate-300 text-xs">—</span>}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                          <StatusBadge status={aluno.status} />
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                          <div className="flex justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                              {aluno.status !== 'ativo' && (
+                                <Link href={`/secretaria/matriculas/nova?alunoId=${aluno.id}`} className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition" title="Matricular Aluno">
+                                  <UserPlus className="w-4 h-4"/>
+                                </Link>
+                              )}
+                              <Link href={`/secretaria/alunos/${aluno.id}`} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"><Eye className="w-4 h-4"/></Link>
+                              <Link href={`/secretaria/alunos/${aluno.id}/editar`} className="p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition"><Edit className="w-4 h-4"/></Link>
+                              <button onClick={() => handleOpenDelete(aluno)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"><Archive className="w-4 h-4"/></button>
+                          </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

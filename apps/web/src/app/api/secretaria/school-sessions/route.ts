@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { resolveEscolaIdForUser } from "@/lib/escola/disciplinas"; 
+import { authorizeEscolaAction, resolveEscolaIdForUser } from "@/lib/escola/disciplinas"; 
+import type { Database } from "~types/supabase";
 
 export const dynamic = 'force-dynamic';
 
@@ -30,9 +32,15 @@ export async function GET(req: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
 
+    const { searchParams } = new URL(req.url);
+    const escolaIdFromQuery = searchParams.get('escolaId') || searchParams.get('escola_id') || undefined;
+
     // 2. Escola ID
-    const escolaId = await resolveEscolaIdForUser(supabase, user.id);
+    const escolaId = escolaIdFromQuery || await resolveEscolaIdForUser(supabase, user.id);
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 });
+
+    const authz = await authorizeEscolaAction(supabase as any, escolaId, user.id, []);
+    if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 });
 
     // 3. Source of truth: anos_letivos
     const mapAnosLetivos = (rows: any[]) =>
@@ -49,24 +57,47 @@ export async function GET(req: Request) {
           status: s.ativo ? 'ativa' : 'arquivada',
           data_inicio: s.data_inicio,
           data_fim: s.data_fim,
+          escola_id: s.escola_id,
           ano_letivo: ano ?? inferirAnoLetivo({ ...s, nome }),
         };
       });
 
     // Única fonte: anos_letivos
-    const { data: anoLetivoData, error: anoLetivoError } = await (supabase as any)
-      .from('anos_letivos')
-      .select('id, ano, data_inicio, data_fim, ativo')
-      .eq('escola_id', escolaId)
-      .order('ano', { ascending: false });
+    const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    if (!anoLetivoError) {
+    const fetchAnosLetivos = async (client: any) =>
+      client
+        .from('anos_letivos')
+        .select('id, ano, data_inicio, data_fim, ativo, escola_id')
+        .eq('escola_id', escolaId)
+        .order('ano', { ascending: false });
+
+    const { data: anoLetivoData, error: anoLetivoError } = await fetchAnosLetivos(supabase as any);
+
+    if (!anoLetivoError && (anoLetivoData?.length ?? 0) > 0) {
       const items = mapAnosLetivos(anoLetivoData || []);
       return NextResponse.json({ ok: true, data: items });
     }
 
-    console.error("Erro SQL anos_letivos:", anoLetivoError);
-    throw anoLetivoError;
+    if (adminUrl && serviceRole) {
+      const admin = createClient<Database>(adminUrl, serviceRole);
+      const { data: adminData, error: adminError } = await fetchAnosLetivos(admin as any);
+      if (adminError) {
+        console.error("Erro SQL anos_letivos (admin):", adminError);
+        throw adminError;
+      }
+
+      const items = mapAnosLetivos(adminData || []);
+      return NextResponse.json({ ok: true, data: items });
+    }
+
+    if (anoLetivoError) {
+      console.error("Erro SQL anos_letivos:", anoLetivoError);
+      throw anoLetivoError;
+    }
+
+    return NextResponse.json({ ok: true, data: [] });
 
   } catch (e: any) {
     console.error("Erro API Sessions:", e);

@@ -3,6 +3,16 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 
+function inferAno(...valores: Array<string | number | null | undefined>): number | null {
+  for (const valor of valores) {
+    if (valor === null || valor === undefined) continue;
+    if (typeof valor === "number" && Number.isFinite(valor)) return valor;
+    const match = String(valor).match(/(19|20)\d{2}/);
+    if (match?.[0]) return Number(match[0]);
+  }
+  return null;
+}
+
 // Lista alunos (portal secretaria)
 // Agora trazendo numero_login via relacionamento alunos -> profiles
 export async function GET(req: Request) {
@@ -67,6 +77,9 @@ export async function GET(req: Request) {
     const q = url.searchParams.get("q")?.trim() || "";
     const status = (url.searchParams.get("status") || 'ativo').toLowerCase();
     const sessionIdParam = url.searchParams.get("session_id")?.trim() || undefined;
+    const anoParamRaw = url.searchParams.get("ano") || url.searchParams.get("ano_letivo");
+    const anoParam = anoParamRaw ? Number(anoParamRaw) : null;
+    const anoFromQuery = Number.isFinite(anoParam) ? (anoParam as number) : null;
     const page = Math.max(
       1,
       parseInt(url.searchParams.get("page") || "1", 10) || 1
@@ -78,30 +91,49 @@ export async function GET(req: Request) {
     const offset = (page - 1) * pageSize;
 
     // Tentar usar a sessão enviada na query; se não houver ou não pertencer à escola, cai para a ativa
-    let activeSessionId: string | undefined = undefined;
-    if (sessionIdParam) {
+    let targetAno: number | null = anoFromQuery;
+    let targetLegacySessionId: string | undefined = undefined;
+
+    if (!targetAno && sessionIdParam) {
+      const { data: anoRow } = await admin
+        .from('anos_letivos')
+        .select('ano, id')
+        .eq('id', sessionIdParam)
+        .eq('escola_id', escolaId)
+        .maybeSingle();
+      const anoNumero = typeof (anoRow as any)?.ano === 'string' ? Number((anoRow as any)?.ano) : (anoRow as any)?.ano;
+      if (Number.isFinite(anoNumero)) targetAno = anoNumero as number;
+    }
+
+    if (!targetAno && sessionIdParam) {
       const { data: sessParam } = await admin
         .from('school_sessions')
-        .select('id')
+        .select('id, nome, data_inicio, data_fim')
         .eq('id', sessionIdParam)
         .eq('escola_id', escolaId)
         .limit(1);
-      activeSessionId = (sessParam?.[0] as any)?.id as string | undefined;
+      const sessRow = sessParam?.[0] as any;
+      if (sessRow) {
+        targetLegacySessionId = sessRow.id as string;
+        const anoDerived = inferAno(sessRow?.nome, sessRow?.data_inicio, sessRow?.data_fim);
+        if (anoDerived !== null) targetAno = anoDerived;
+      }
     }
 
-    // Descobrir sessão ativa da escola (para filtrar alunos já matriculados)
-    if (!activeSessionId) {
-      const { data: sess } = await admin
-        .from('school_sessions')
-        .select('id, status')
+    if (targetAno === null) {
+      const { data: anoAtivo } = await admin
+        .from('anos_letivos')
+        .select('ano')
         .eq('escola_id', escolaId)
-        .eq('status', 'ativa')
-        .order('data_inicio', { ascending: false })
+        .eq('ativo', true)
+        .order('ano', { ascending: false })
         .limit(1);
-      activeSessionId = (sess?.[0] as any)?.id as string | undefined;
+      const anoResolved = anoAtivo?.[0]?.ano;
+      const anoNumber = typeof anoResolved === 'string' ? Number(anoResolved) : anoResolved;
+      if (Number.isFinite(anoNumber)) targetAno = anoNumber as number;
     }
 
-    const selectFields = "id, nome, bi_numero, responsavel, telefone_responsavel, status, created_at, profile_id, escola_id, profiles!alunos_profile_id_fkey ( numero_login, email, bi_numero )";
+    const selectFields = "id, nome, bi_numero, responsavel, telefone_responsavel, status, created_at, profile_id, escola_id, numero_processo, profiles!alunos_profile_id_fkey ( numero_login, email, bi_numero )";
 
     const mapAlunoRow = (row: any) => {
       let numero_login: string | null = null;
@@ -128,29 +160,31 @@ export async function GET(req: Request) {
         status: row.status,
         created_at: row.created_at,
         numero_login,
+        numero_processo: row.numero_processo,
         bi_numero,
         bilhete: bi_numero,
       };
     };
 
-    const targetSessionId = sessionIdParam || activeSessionId;
-
     // Se existe sessão (selecionada ou ativa), coletar alunos com matrícula nesta sessão para excluí-los do resultado
     let alunosComMatriculaAtual: string[] = [];
-    if (escolaId && targetSessionId) {
+    if (escolaId && (targetAno !== null || targetLegacySessionId)) {
       try {
         const { data: mats } = await admin
           .from('matriculas')
           .select('aluno_id')
           .eq('escola_id', escolaId)
-          .eq('session_id', targetSessionId);
+          .or([
+            targetAno !== null ? `ano_letivo.eq.${targetAno}` : null,
+            targetLegacySessionId ? `session_id.eq.${targetLegacySessionId}` : null,
+          ].filter(Boolean).join(','));
         alunosComMatriculaAtual = (mats ?? [])
           .map((m: any) => m.aluno_id)
           .filter((v: any) => !!v);
       } catch {
         // silencioso
       }
-    } else if (escolaId && !targetSessionId) {
+    } else if (escolaId && targetAno === null) {
       // Fallback: excluir alunos com matrícula ativa na escola, sem filtrar por sessão
       try {
         const { data: mats } = await admin
@@ -185,7 +219,7 @@ export async function GET(req: Request) {
     }
 
     const alunosMatriculados = Array.from(new Set([...(alunosComMatriculaAtual || []), ...(alunosComNumero || [])]));
-    const shouldFilterMatriculados = Boolean(sessionIdParam) && alunosMatriculados.length > 0;
+    const shouldFilterMatriculados = Boolean(targetAno !== null) && alunosMatriculados.length > 0;
 
     // Demais status
     // Agora com relacionamento para profiles(numero_login)

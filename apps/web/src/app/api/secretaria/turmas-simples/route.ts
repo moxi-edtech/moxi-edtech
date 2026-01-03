@@ -14,7 +14,10 @@ export async function GET(req: Request) {
     const user = userRes?.user;
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
 
-    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
+    const url = new URL(req.url);
+    const escolaIdFromQuery = url.searchParams.get('escolaId') || url.searchParams.get('escola_id');
+
+    const escolaId = escolaIdFromQuery || await resolveEscolaIdForUser(supabase as any, user.id);
     if (!escolaId) return NextResponse.json({ ok: true, items: [], total: 0 }, { headers });
 
     const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id);
@@ -24,12 +27,33 @@ export async function GET(req: Request) {
     headers.set('Link', `</api/escolas/${escolaId}/turmas>; rel="successor-version"`);
 
     // 3. Parâmetros
-    const url = new URL(req.url);
     const sessionId = url.searchParams.get('session_id');
     const turno = url.searchParams.get('turno');
     const alunoId = url.searchParams.get('aluno_id');
+    const anoParam = url.searchParams.get('ano') || url.searchParams.get('ano_letivo');
 
-    if (!sessionId) {
+    let anoLetivo = anoParam ? Number(anoParam) : null;
+    if (!Number.isFinite(anoLetivo)) anoLetivo = null;
+
+    if (!anoLetivo && sessionId) {
+      try {
+        const { data: sessionRow } = await supabase
+          .from('anos_letivos')
+          .select('ano')
+          .eq('id', sessionId)
+          .maybeSingle();
+
+        const anoResolved = sessionRow?.ano;
+        if (anoResolved !== undefined && anoResolved !== null) {
+          const anoNumber = typeof anoResolved === 'string' ? Number(anoResolved) : anoResolved;
+          if (Number.isFinite(anoNumber)) anoLetivo = anoNumber as number;
+        }
+      } catch (err) {
+        console.warn('Falha ao resolver ano letivo pela sessão', err);
+      }
+    }
+
+    if (!sessionId && !anoLetivo) {
        // Sem sessão (ano letivo), não há turmas para listar neste contexto
        return NextResponse.json({ ok: true, items: [], total: 0 }, { headers });
     }
@@ -39,9 +63,16 @@ export async function GET(req: Request) {
       .from('vw_turmas_para_matricula')
       .select('*')
       .eq('escola_id', escolaId)
-      .eq('session_id', sessionId)
       // [CORREÇÃO] A view usa 'turma_nome', não 'nome'
       .order('turma_nome', { ascending: true });
+
+    if (sessionId && anoLetivo) {
+      query = query.eq('ano_letivo', anoLetivo).or(`session_id.eq.${sessionId},session_id.is.null`);
+    } else if (sessionId) {
+      query = query.eq('session_id', sessionId);
+    } else if (anoLetivo) {
+      query = query.eq('ano_letivo', anoLetivo);
+    }
 
     if (turno) query = query.eq('turno', turno);
 
@@ -53,26 +84,6 @@ export async function GET(req: Request) {
     }
 
     let items = turmasView || [];
-
-    // Enriquecer apenas quando necessário (fallback para cursos_oferta)
-    let ofertaMap: Record<string, { curso_id?: string | null; classe_id?: string | null }> = {};
-    const precisaOferta = (items || []).some((t: any) => !(t as any).curso_id || !(t as any).classe_id);
-    if (precisaOferta) {
-      const turmaIds = items.map((t: any) => t.id).filter(Boolean);
-      if (turmaIds.length > 0) {
-        const { data: ofertas } = await supabase
-          .from('cursos_oferta')
-          .select('turma_id, curso_id, classe_id')
-          .in('turma_id', turmaIds as string[]);
-
-        if (ofertas) {
-          ofertaMap = ofertas.reduce((acc: typeof ofertaMap, o: any) => {
-            acc[o.turma_id] = { curso_id: o.curso_id, classe_id: o.classe_id };
-            return acc;
-          }, {} as typeof ofertaMap);
-        }
-      }
-    }
 
     // 5. Filtrar se aluno já está matriculado (Lógica de Negócio)
     if (alunoId && items.length > 0) {
@@ -90,8 +101,8 @@ export async function GET(req: Request) {
     // 6. Mapeamento para Frontend (Opcional, mas recomendado para consistência)
     // Garante que o frontend receba 'nome' se estiver esperando isso, mapeando de 'turma_nome'
     const itemsFormatados = items.map((t: any) => {
-      const resolvedCursoId = (t as any).curso_id || ofertaMap[t.id]?.curso_id || null;
-      const resolvedClasseId = (t as any).classe_id || ofertaMap[t.id]?.classe_id || null;
+      const resolvedCursoId = (t as any).curso_id || null;
+      const resolvedClasseId = (t as any).classe_id || null;
       return {
         ...t,
         curso_id: resolvedCursoId,

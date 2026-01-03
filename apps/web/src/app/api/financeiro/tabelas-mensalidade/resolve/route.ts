@@ -56,14 +56,8 @@ export async function GET(req: Request) {
       }
     }
 
-    if (!efetivoCursoId && turmaId) {
-      const { data: co } = await s.from('cursos_oferta').select('curso_id, classe_id').eq('turma_id', turmaId).limit(1)
-      efetivoCursoId = (co?.[0] as any)?.curso_id as string | undefined
-      if (!efetivaClasseId) efetivaClasseId = (co?.[0] as any)?.classe_id as string | undefined
-    }
-
     if (!efetivoCursoId || !efetivaClasseId) {
-      return NextResponse.json({ ok: false, error: 'Curso ou classe não encontrados' }, { status: 400 })
+      return NextResponse.json({ ok: false, error: 'Curso ou classe não encontrados para a turma' }, { status: 400 })
     }
 
     const resolved = await resolveMensalidade(s as any, escolaId as string, {

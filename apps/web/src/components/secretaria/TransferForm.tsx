@@ -5,7 +5,7 @@ import { AlertCircle, Loader2 } from "lucide-react";
 
 interface TransferFormProps {
   matriculaId: string;
-  sessionId?: string;
+  anoLetivo?: number | null;
   onSuccess: () => void;
 }
 
@@ -31,7 +31,7 @@ interface ImpactoTransferencia {
   };
 }
 
-export default function TransferForm({ matriculaId, sessionId, onSuccess }: TransferFormProps) {
+export default function TransferForm({ matriculaId, anoLetivo, onSuccess }: TransferFormProps) {
   const [turmaId, setTurmaId] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,12 +41,14 @@ export default function TransferForm({ matriculaId, sessionId, onSuccess }: Tran
 
   useEffect(() => {
     const fetchTurmas = async () => {
-      if (!sessionId) {
+      if (!anoLetivo) {
         setTurmas([]);
         return;
       }
       try {
-        const res = await fetch(`/api/secretaria/turmas-simples?session_id=${encodeURIComponent(sessionId)}`);
+        const params = new URLSearchParams();
+        params.set('ano', String(anoLetivo));
+        const res = await fetch(`/api/secretaria/turmas-simples?${params.toString()}`);
         const json = await res.json();
         if (json.ok) setTurmas(json.items);
       } catch (e) {
@@ -54,7 +56,7 @@ export default function TransferForm({ matriculaId, sessionId, onSuccess }: Tran
       }
     };
     fetchTurmas();
-  }, [sessionId]);
+  }, [anoLetivo]);
 
   useEffect(() => {
     if (!turmaId) {
@@ -113,7 +115,7 @@ export default function TransferForm({ matriculaId, sessionId, onSuccess }: Tran
           onChange={(e) => setTurmaId(e.target.value)}
           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
           required
-          disabled={!sessionId}
+          disabled={!anoLetivo}
         >
           <option value="">Selecione uma turma</option>
           {turmas.map((turma) => {
@@ -134,7 +136,7 @@ export default function TransferForm({ matriculaId, sessionId, onSuccess }: Tran
         </div>
       )}
 
-      {!sessionId && (
+      {!anoLetivo && (
         <p className="text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-3">
           Selecione um ano letivo para listar as turmas disponíveis.
         </p>

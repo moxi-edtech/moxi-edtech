@@ -101,9 +101,28 @@ export async function POST(request: NextRequest) {
   type RpcResult = { success_count: number; error_count: number; errors: unknown };
   const result = (Array.isArray(data) && data.length ? data[0] : data) as Partial<RpcResult> | null;
 
+  // Confirma todas as matrículas criadas para este import/turma pelo caminho canônico
+  const { data: matriculasCriadas } = await supabase
+    .from('matriculas')
+    .select('id')
+    .eq('escola_id', escola_id)
+    .eq('import_id', import_id)
+    .eq('turma_id', resolvedTurmaId);
+
+  let confirm_errors: Array<{ id: string; error: string }> = [];
+  if (matriculasCriadas && matriculasCriadas.length > 0) {
+    for (const row of matriculasCriadas) {
+      const { error: cErr } = await (supabase as any).rpc('confirmar_matricula', {
+        p_matricula_id: row.id,
+      });
+      if (cErr) confirm_errors.push({ id: row.id as string, error: cErr.message });
+    }
+  }
+
   return NextResponse.json({
     success_count: result?.success_count ?? 0,
     error_count: result?.error_count ?? 0,
     errors: (result?.errors as unknown[]) ?? [],
+    confirm_errors,
   });
 }

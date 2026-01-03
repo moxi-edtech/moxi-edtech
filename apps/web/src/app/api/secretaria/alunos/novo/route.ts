@@ -9,8 +9,9 @@ const BodySchema = z.object({
   nome: z.string().trim().min(1, 'Informe o nome'),
   primeiro_nome: z.string().trim().optional().nullable(),
   sobrenome: z.string().trim().optional().nullable(),
-  email: z.string().email('Email inválido'),
+  email: z.string().email('Email inválido').optional().nullable(),
   telefone: z.string().trim().optional().nullable(),
+  endereco: z.string().trim().optional().nullable(),
   data_nascimento: z.string().optional().nullable(),
   sexo: z.enum(['M', 'F', 'O', 'N']).optional().nullable(),
   bi_numero: z.string().optional().nullable(),
@@ -18,18 +19,23 @@ const BodySchema = z.object({
   naturalidade: z.string().optional().nullable(),
   provincia: z.string().optional().nullable(),
   responsavel_nome: z.string().optional().nullable(),
-  responsavel_contato: z.string().trim().min(1, 'Telefone do encarregado é obrigatório'),
+  responsavel_contato: z.string().trim().optional().nullable(),
   encarregado_relacao: z.string().optional().nullable(),
   encarregado_email: z.string().email().optional().nullable(),
+  curso_id: z.string().uuid({ message: 'Curso obrigatório' }),
+  classe_id: z.string().uuid().optional().nullable(),
+  ano_letivo: z.coerce.number().int().optional(),
+  turno: z.string().trim().optional().nullable(),
+  turma_preferencial_id: z.string().uuid().optional().nullable(),
+  pagamento_metodo: z.string().trim().optional().nullable(),
+  pagamento_referencia: z.string().trim().optional().nullable(),
+  pagamento_comprovativo_url: z.string().url().optional().nullable(),
 })
 
 // Removi o segundo argumento 'context' pois a rota não tem [id]
 export async function POST(req: Request) {
-  // Variável para rastrear se criamos um usuário novo (para rollback)
-  let userCreatedNow = false
-  let targetUserId: string | null = null
   let escolaId: string | null = null
-  
+
   // Cliente Admin (Service Role)
   const admin = createClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -76,115 +82,92 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Usuário não vinculado a nenhuma escola.' }, { status: 403 })
     }
     
-    const nomeCompleto = `${body.primeiro_nome || ''} ${body.sobrenome || ''}`.replace(/\s+/g, ' ').trim() || body.nome.trim();
+    const nomeCompleto = `${body.primeiro_nome || ''} ${body.sobrenome || ''}`.replace(/\s+/g, ' ').trim() || body.nome.trim()
+    const anoLetivo = body.ano_letivo ?? new Date().getFullYear()
 
-    // 2. Lógica de Auth IDEMPOTENTE
-    const tempPassword = Math.random().toString(36).slice(-12) + "A1!"
-    
-    const { data: createdUser, error: authErr } = await admin.auth.admin.createUser({
-      email: body.email,
-      password: tempPassword,
-      email_confirm: true,
-      user_metadata: { nome: nomeCompleto, role: 'aluno' },
-      app_metadata: { role: 'aluno', escola_id: escolaId }
-    })
-
-    if (authErr) {
-      // Se o email já existe, recuperamos o usuário.
-      if (authErr.message?.includes('registered') || authErr.status === 422) {
-        const { data: list } = await admin.auth.admin.listUsers()
-        const existing = list.users.find(u => u.email?.toLowerCase() === body.email.toLowerCase())
-        
-        if (!existing) {
-           return NextResponse.json({ ok: false, error: 'Email já registrado, mas usuário não encontrado.' }, { status: 409 })
-        }
-        targetUserId = existing.id
-        userCreatedNow = false 
-      } else {
-        return NextResponse.json({ ok: false, error: authErr.message }, { status: 400 })
-      }
-    } else {
-      targetUserId = createdUser.user.id
-      userCreatedNow = true
-    }
-
-    if (!targetUserId) throw new Error("Falha ao definir ID do usuário")
-
-    // 3. Atualizar Profile e Vínculos (UPSERT)
-    const profileData = {
-      user_id: targetUserId,
+    const dadosCandidato = {
+      nome: nomeCompleto,
+      nome_completo: nomeCompleto,
+      primeiro_nome: body.primeiro_nome,
+      sobrenome: body.sobrenome,
       email: body.email,
       telefone: body.telefone ?? null,
-      nome: nomeCompleto,
-      role: 'aluno',
-      escola_id: escolaId,
+      endereco: body.endereco ?? null,
       data_nascimento: body.data_nascimento ?? null,
       sexo: body.sexo ?? null,
       bi_numero: body.bi_numero ?? null,
-      naturalidade: body.naturalidade ?? null,
-      provincia: body.provincia ?? null,
-      encarregado_relacao: body.encarregado_relacao ?? null,
-    }
-
-    const { error: profErr } = await admin.from('profiles').upsert(profileData as any, { onConflict: 'user_id' })
-    if (profErr) throw new Error(`Erro no perfil: ${profErr.message}`)
-
-    const { error: linkErr } = await admin.from('escola_users').upsert(
-      { escola_id: escolaId, user_id: targetUserId, papel: 'aluno' } as any,
-      { onConflict: 'escola_id,user_id' }
-    )
-    if (linkErr) throw new Error(`Erro no vínculo: ${linkErr.message}`)
-
-    // 4. TABELA ALUNOS (UPSERT + REATIVAÇÃO)
-    const alunoInsert: any = {
-      profile_id: targetUserId,
-      escola_id: escolaId,
-      nome: nomeCompleto,
-      email: body.email,
-      telefone: body.telefone ?? null,
-      bi_numero: body.bi_numero ?? null,
       nif: body.nif ?? body.bi_numero ?? null,
-      responsavel: body.responsavel_nome ?? null,
+      responsavel_nome: body.responsavel_nome ?? null,
       responsavel_contato: body.responsavel_contato ?? null,
-      telefone_responsavel: body.responsavel_contato ?? null,
-      encarregado_nome: body.responsavel_nome ?? null,
-      encarregado_telefone: body.responsavel_contato ?? null,
       encarregado_email: body.encarregado_email ?? null,
-      status: 'pendente', // Definir status inicial como 'pendente'
-      deleted_at: null, // Reativa soft-deleted
+      curso_id: body.curso_id,
+      classe_id: body.classe_id ?? null,
+      ano_letivo: anoLetivo,
+      turno: body.turno ?? null,
+      turma_preferencial_id: body.turma_preferencial_id ?? null,
+      pagamento: {
+        metodo: body.pagamento_metodo ?? null,
+        referencia: body.pagamento_referencia ?? null,
+        comprovativo_url: body.pagamento_comprovativo_url ?? null,
+      },
     }
 
-    const { data: aluno, error: alunoErr } = await admin
-      .from('alunos')
-      .upsert(alunoInsert as any, { 
-        onConflict: 'profile_id, escola_id', 
-        ignoreDuplicates: false 
+    const { data: candidatura, error: candErr } = await admin
+      .from('candidaturas')
+      .insert({
+        escola_id: escolaId,
+        aluno_id: null,
+        curso_id: body.curso_id,
+        ano_letivo: anoLetivo,
+        status: 'pendente',
+        turma_preferencial_id: body.turma_preferencial_id ?? null,
+        dados_candidato: dadosCandidato as any,
+        nome_candidato: nomeCompleto,
+        classe_id: body.classe_id ?? null,
+        turno: body.turno ?? null,
       })
       .select('id')
       .single()
 
-    if (alunoErr) {
-      throw new Error(`Erro ao salvar aluno: ${alunoErr.message}`)
+    if (candErr) {
+      throw new Error(`Erro ao salvar candidatura: ${candErr.message}`)
     }
 
-    // 5. Auditoria
     recordAuditServer({
       escolaId,
       portal: 'secretaria',
-      acao: userCreatedNow ? 'ALUNO_CRIADO' : 'ALUNO_REATIVADO',
-      entity: 'aluno',
-      entityId: String(aluno.id),
-      details: { email: body.email },
+      acao: 'CANDIDATURA_CRIADA',
+      entity: 'candidaturas',
+      entityId: String(candidatura?.id),
+      details: { email: body.email, nome: nomeCompleto },
     }).catch(() => null)
 
-    return NextResponse.json({ ok: true, id: aluno.id }, { status: 200 })
+    // Notifica Financeiro se houver informação de pagamento anexada
+    const hasPagamentoInfo = body.pagamento_metodo || body.pagamento_referencia || body.pagamento_comprovativo_url
+    if (hasPagamentoInfo) {
+      const titulo = 'Nova candidatura com pagamento informado'
+      const mensagemParts = [
+        `Método: ${body.pagamento_metodo || 'não informado'}`,
+        body.pagamento_referencia ? `Ref: ${body.pagamento_referencia}` : null,
+      ].filter(Boolean)
+      const mensagem = mensagemParts.join(' | ')
 
-  } catch (err) {
-    // Rollback apenas se criamos o usuário agora
-    if (userCreatedNow && targetUserId) {
-      await admin.auth.admin.deleteUser(targetUserId).catch(() => null)
+      await admin
+        .from('notifications')
+        .insert({
+          escola_id: escolaId,
+          target_role: 'financeiro' as any,
+          tipo: 'candidatura_pagamento',
+          titulo,
+          mensagem: mensagem || null,
+          link_acao: `/financeiro/candidaturas/${candidatura?.id ?? ''}`,
+        })
+        .catch(() => null)
     }
 
+    return NextResponse.json({ ok: true, candidatura_id: candidatura?.id }, { status: 200 })
+
+  } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }

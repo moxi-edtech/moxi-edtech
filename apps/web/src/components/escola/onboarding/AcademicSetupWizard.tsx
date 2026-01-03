@@ -190,7 +190,9 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
           presetKey: cursoKey,
           customData: { label: cursoNome },
           anoLetivo,
+          sessionId: sessaoAtiva?.id,
           advancedConfig: {
+            sessionId: sessaoAtiva?.id,
             classesNomes: rows.map(r => r.nome),
             turnos: {
               manha: turnos["Manhã"],
