@@ -93,9 +93,8 @@ SELECT
   cl.nome             AS classe_nome,
   c.id                AS curso_id,
   c.nome              AS curso_nome,
-  c.tipo              AS curso_tipo,
-  m.created_at,
-  m.updated_at
+  c.tipo              AS curso_tipo
+
 FROM public.matriculas m
 JOIN public.alunos a
   ON a.id = m.aluno_id

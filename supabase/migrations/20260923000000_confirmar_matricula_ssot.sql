@@ -102,6 +102,7 @@ END;
 $$;
 
 -- 2) Wrapper compatível (2 params), mas o front não precisa usar
+drop function if exists public.confirmar_matricula(uuid, boolean);
 create or replace function public.confirmar_matricula(
   p_matricula_id uuid,
   p_force boolean default false
@@ -136,6 +137,7 @@ end;
 $$;
 
 -- 3) Assinatura final recomendada pro front (1 param)
+drop function if exists public.confirmar_matricula(uuid);
 create or replace function public.confirmar_matricula(p_matricula_id uuid)
 returns bigint
 language sql
