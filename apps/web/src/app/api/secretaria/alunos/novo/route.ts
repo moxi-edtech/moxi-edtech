@@ -105,6 +105,10 @@ export async function POST(req: Request) {
       ano_letivo: anoLetivo,
       turno: body.turno ?? null,
       turma_preferencial_id: body.turma_preferencial_id ?? null,
+      origem_portal: 'secretaria',
+      registrado_por_user_id: user.id,
+      registrado_por_email: user.email ?? (user as any)?.user_metadata?.email ?? null,
+      registrado_por_nome: (user as any)?.user_metadata?.nome || user.email || null,
       pagamento: {
         metodo: body.pagamento_metodo ?? null,
         referencia: body.pagamento_referencia ?? null,
@@ -139,7 +143,7 @@ export async function POST(req: Request) {
       acao: 'CANDIDATURA_CRIADA',
       entity: 'candidaturas',
       entityId: String(candidatura?.id),
-      details: { email: body.email, nome: nomeCompleto },
+      details: { email: body.email, nome: nomeCompleto, registrado_por: user.id, portal: 'secretaria' },
     }).catch(() => null)
 
     // Notifica Financeiro se houver informação de pagamento anexada
@@ -152,9 +156,8 @@ export async function POST(req: Request) {
       ].filter(Boolean)
       const mensagem = mensagemParts.join(' | ')
 
-      await admin
-        .from('notifications')
-        .insert({
+      try {
+        await admin.from('notifications').insert({
           escola_id: escolaId,
           target_role: 'financeiro' as any,
           tipo: 'candidatura_pagamento',
@@ -162,7 +165,9 @@ export async function POST(req: Request) {
           mensagem: mensagem || null,
           link_acao: `/financeiro/candidaturas/${candidatura?.id ?? ''}`,
         })
-        .catch(() => null)
+      } catch (_) {
+        /* ignore */
+      }
     }
 
     return NextResponse.json({ ok: true, candidatura_id: candidatura?.id }, { status: 200 })

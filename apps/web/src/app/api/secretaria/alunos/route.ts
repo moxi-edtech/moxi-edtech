@@ -261,7 +261,8 @@ export async function GET(req: Request) {
 
     const shouldHideMatriculados =
       idsMatriculados &&
-      ((shouldFilterMatriculados && status !== 'arquivado') || (!shouldFilterMatriculados && status === 'inativo'));
+      shouldFilterMatriculados &&
+      status === 'pendente';
 
     if (shouldHideMatriculados) {
       query = query.not('id', 'in', `(${idsMatriculados})`);

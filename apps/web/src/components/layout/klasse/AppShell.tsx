@@ -21,6 +21,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { userRole, isLoading: isLoadingRole } = useUserRole();
   const [escolaIdState, setEscolaIdState] = useState<string | null>(null);
+  const [financeBadges, setFinanceBadges] = useState<Record<string, string>>({});
 
   // Extract escolaId from the pathname if available
   useEffect(() => {
@@ -45,7 +46,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const navItems = useMemo(() => {
     if (isLoadingRole || !inferredRole) return [];
-    const items = sidebarConfig[inferredRole] || [];
+    let items = sidebarConfig[inferredRole] || [];
 
     if (inferredRole === "admin" && escolaIdState) {
       return items.map((item) => ({
@@ -53,8 +54,45 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         href: item.href.replace("[escolaId]", escolaIdState),
       }));
     }
+    if (inferredRole === "financeiro" && Object.keys(financeBadges).length) {
+      items = items.map((item) => ({ ...item, badge: financeBadges[item.href] || item.badge }));
+    }
     return items;
-  }, [inferredRole, isLoadingRole, escolaIdState]);
+  }, [inferredRole, isLoadingRole, escolaIdState, financeBadges]);
+
+  useEffect(() => {
+    if (inferredRole !== "financeiro") return;
+
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const res = await fetch("/api/financeiro/sidebar-badges", { cache: "no-store" });
+        const json = await res.json().catch(() => null);
+
+        if (cancelled) return;
+
+        if (!res.ok || !json?.ok) {
+          setFinanceBadges({});
+          return;
+        }
+
+        const badges: Record<string, string> = {};
+        if (json.candidaturasPendentes > 0) badges["/financeiro/candidaturas"] = String(Math.min(json.candidaturasPendentes, 99));
+        if (json.cobrancasPendentes > 0) badges["/financeiro/cobrancas"] = String(Math.min(json.cobrancasPendentes, 99));
+
+        setFinanceBadges(badges);
+      } catch {
+        if (!cancelled) setFinanceBadges({});
+      }
+    };
+
+    load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [inferredRole]);
 
 
   if (isLoadingRole) {

@@ -15,11 +15,14 @@ const ALUNO_SELECT_FIELDS =
 const findAlunoExistente = async (
   admin: SupabaseClient<Database>,
   escolaId: string,
-  payload: { bi_numero?: string | null; nif?: string | null }
+  payload: { bi_numero?: string | null; nif?: string | null; numero_processo?: string | null },
+  extraNumeroProcesso?: string | null
 ) => {
   const matchFilters: string[] = [];
   if (payload.bi_numero) matchFilters.push(`bi_numero.eq.${payload.bi_numero}`);
   if (payload.nif) matchFilters.push(`nif.eq.${payload.nif}`);
+  if (payload.numero_processo) matchFilters.push(`numero_processo.eq.${payload.numero_processo}`);
+  if (extraNumeroProcesso) matchFilters.push(`numero_processo.eq.${extraNumeroProcesso}`);
 
   if (matchFilters.length === 0) return null;
 
@@ -36,6 +39,42 @@ const findAlunoExistente = async (
   if (sameSchool) return sameSchool as any;
 
   return null;
+};
+
+const extractNumeroProcessoFromError = (message?: string | null) => {
+  if (!message) return null;
+  const match = message.match(/numero_processo\)=\([^,]+,\s*([^\)]+)\)/i) || message.match(/numero_processo\)=\(([^\)]+)\)/i);
+  return match?.[1]?.trim() || null;
+};
+
+const extractSequencial = (numero?: string | null) => {
+  if (!numero) return null;
+  const match = `${numero}`.match(/(\d+)(?!.*\d)/);
+  return match ? Number(match[1]) : null;
+};
+
+const syncAlunoProcessoCounter = async (admin: SupabaseClient<Database>, escolaId: string) => {
+  const { data, error } = await admin
+    .from("alunos")
+    .select("numero_processo")
+    .eq("escola_id", escolaId)
+    .order("numero_processo", { ascending: false })
+    .limit(20);
+
+  if (error || !data?.length) return null;
+
+  const maxSeq = data.reduce((max, row) => {
+    const seq = extractSequencial((row as any).numero_processo);
+    return seq !== null && seq > max ? seq : max;
+  }, 0);
+
+  if (maxSeq === 0) return null;
+
+  await admin
+    .from("aluno_processo_counters")
+    .upsert({ escola_id: escolaId, last_value: maxSeq, updated_at: new Date().toISOString() });
+
+  return maxSeq;
 };
 
 export async function POST(
@@ -138,6 +177,7 @@ export async function POST(
         encarregado_email: payload.encarregado_email ?? null,
         bi_numero: payload.bi_numero ?? null,
         nif: payload.nif ?? payload.bi_numero ?? null,
+        numero_processo: payload.numero_processo ?? null,
         data_nascimento: payload.data_nascimento ?? null,
         sexo: payload.sexo ?? null,
         status: "pendente",
@@ -156,14 +196,56 @@ export async function POST(
           .single();
 
         if (error) {
+          const numeroConflito = extractNumeroProcessoFromError(error.details || error.message);
           if (
             error.message?.includes("idx_alunos_escola_processo") ||
             error.message?.includes("alunos_bi_key")
           ) {
-            const existente = await findAlunoExistente(admin, escolaId, basePayload);
+            const existente = await findAlunoExistente(
+              admin,
+              escolaId,
+              basePayload,
+              numeroConflito
+            );
             if (existente) {
               alunoId = (existente as any).id as string;
               alunoPerfil = existente;
+            } else if (error.message?.includes("idx_alunos_escola_processo")) {
+              // Se a numeração de processo estiver desatualizada, sincroniza o contador e tenta novamente
+              await syncAlunoProcessoCounter(admin, escolaId);
+
+              const retryPayload = { ...basePayload, numero_processo: null };
+
+              const { data: retryData, error: retryErr } = await admin
+                .from("alunos")
+                .insert(retryPayload)
+                .select(ALUNO_SELECT_FIELDS)
+                .single();
+
+              if (retryErr) {
+                const retryNumero = extractNumeroProcessoFromError(retryErr.details || retryErr.message);
+                if (retryNumero) {
+                  const retryExisting = await findAlunoExistente(
+                    admin,
+                    escolaId,
+                    retryPayload,
+                    retryNumero
+                  );
+                  if (retryExisting) {
+                    alunoId = (retryExisting as any).id as string;
+                    alunoPerfil = retryExisting;
+                  } else {
+                    return NextResponse.json({ ok: false, error: retryErr.message }, { status: 400 });
+                  }
+                } else {
+                  return NextResponse.json({ ok: false, error: retryErr.message }, { status: 400 });
+                }
+              }
+
+              if (retryData) {
+                alunoId = retryData?.id || null;
+                alunoPerfil = retryData || {};
+              }
             } else {
               return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
             }

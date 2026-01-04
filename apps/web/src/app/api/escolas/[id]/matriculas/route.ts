@@ -47,7 +47,7 @@ export async function GET(
       .from('vw_matriculas_validas')
       .select(
         `
-        id:matricula_id,
+        id,
         escola_id,
         aluno_id,
         aluno_nome,
