@@ -45,6 +45,12 @@ function isMatriculasViewMissing(error: any) {
   );
 }
 
+const ACTIVE_STATUS_VALUES = ["ativa", "ativo", "active"];
+
+function isActiveStatus(value?: string | null) {
+  return ACTIVE_STATUS_VALUES.includes(String(value || "").toLowerCase());
+}
+
 async function fetchMatriculasFallback(
   admin: SupabaseClient<Database>,
   opts: {
@@ -63,13 +69,6 @@ async function fetchMatriculasFallback(
     end: number;
   }
 ) {
-  if (opts.statusIn.length > 0 && !opts.statusIn.some((s) => s.toLowerCase() === "ativa")) {
-    return { items: [], total: 0 };
-  }
-  if (opts.status && opts.status.toLowerCase() !== "ativa") {
-    return { items: [], total: 0 };
-  }
-
   if (opts.turmaId === "null") return { items: [], total: 0 };
 
   let query = admin
@@ -83,7 +82,6 @@ async function fetchMatriculasFallback(
         numero_matricula,
         numero_chamada,
         ano_letivo,
-        ano_letivo_id,
         session_id,
         data_matricula,
         status,
@@ -103,10 +101,7 @@ async function fetchMatriculasFallback(
       `,
       { count: "exact" }
     )
-    .eq("escola_id", opts.escolaId)
-    .eq("status", "ativa")
-    .not("numero_matricula", "is", null)
-    .neq("numero_matricula", "");
+    .eq("escola_id", opts.escolaId);
 
   if (opts.sessionAno !== null) query = query.eq("ano_letivo", opts.sessionAno);
   if (opts.sessionId) query = query.eq("session_id", opts.sessionId);
@@ -115,6 +110,12 @@ async function fetchMatriculasFallback(
   if (opts.cursoId) query = query.eq("turmas.curso_id", opts.cursoId);
   if (opts.classeIdsForNivel.length > 0) query = query.in("turmas.classe_id", opts.classeIdsForNivel);
   if (opts.sinceDate) query = query.gte("created_at", opts.sinceDate);
+
+  if (opts.statusIn.length > 0) {
+    query = query.in('status', opts.statusIn.map((s) => s.toLowerCase()));
+  } else if (opts.status) {
+    query = query.eq('status', opts.status.toLowerCase());
+  }
 
   if (opts.q) {
     const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(
@@ -140,9 +141,11 @@ async function fetchMatriculasFallback(
   const items = (data || [])
     .filter((row: any) => {
       const turma = Array.isArray((row as any)?.turmas) ? (row as any).turmas?.[0] : (row as any).turmas;
-      return !turma?.status_validacao || turma.status_validacao === "ativa";
+      return !turma?.status_validacao || turma.status_validacao === "ativo" || turma.status_validacao === "ativa";
     })
     .map((row: any) => {
+      const status = isActiveStatus(row.status) ? "ativa" : row.status ?? "ativa";
+
       const aluno = Array.isArray(row.alunos) ? row.alunos?.[0] : row.alunos;
       const turma = Array.isArray(row.turmas) ? row.turmas?.[0] : row.turmas;
       const classe = turma && (Array.isArray((turma as any).classes) ? (turma as any).classes?.[0] : (turma as any).classes);
@@ -158,7 +161,7 @@ async function fetchMatriculasFallback(
         sala: turma?.sala ?? null,
         turno: turma?.turno ?? null,
         classe_nome: classe?.nome ?? null,
-        status: row.status ?? "ativa",
+        status,
         data_matricula: row.data_matricula ?? null,
         created_at: row.created_at,
       } as any;
@@ -294,7 +297,7 @@ export async function GET(req: Request) {
       .from('vw_matriculas_validas')
       .select(
         `
-        id:matricula_id,
+        id,
         escola_id,
         aluno_id,
         aluno_nome,
@@ -336,13 +339,6 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: true, items: [], total: 0 }, { headers });
     } else if (turmaId) query = query.eq("turma_id", turmaId);
 
-    if (statusIn.length > 0 && !statusIn.some((s) => s.toLowerCase() === 'ativa')) {
-      return NextResponse.json({ ok: true, items: [], total: 0 }, { headers });
-    }
-    if (status && status.toLowerCase() !== 'ativa') {
-      return NextResponse.json({ ok: true, items: [], total: 0 }, { headers });
-    }
-
     if (q) {
       const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(q);
       const conditions: string[] = [
@@ -356,8 +352,48 @@ export async function GET(req: Request) {
       query = query.or(conditions.join(','));
     }
 
+    const normalizedStatusIn = statusIn.map((s) => s.toLowerCase());
+    const normalizedStatus = status ? status.toLowerCase() : "";
+
+    const statusFiltersForQuery = normalizedStatusIn.length > 0 ? normalizedStatusIn : normalizedStatus ? [normalizedStatus] : [];
+    const wantsAllStatuses = statusFiltersForQuery.length === 0;
+    const wantsNonActiveStatuses = statusFiltersForQuery.some((s) => !isActiveStatus(s));
+
+    if (!wantsAllStatuses) {
+      if (normalizedStatusIn.length > 0) {
+        query = query.in('status', normalizedStatusIn);
+      } else if (normalizedStatus) {
+        query = query.eq('status', normalizedStatus);
+      }
+    }
+
     const start = (page - 1) * pageSize;
     const end = start + pageSize - 1;
+
+    if (wantsNonActiveStatuses) {
+      try {
+        const { items, total } = await fetchMatriculasFallback(admin, {
+          escolaId,
+          sessionAno,
+          sessionId,
+          classeId,
+          cursoId,
+          classeIdsForNivel,
+          turmaId,
+          status: normalizedStatus,
+          statusIn: statusFiltersForQuery,
+          q,
+          sinceDate,
+          start,
+          end,
+        });
+
+        return NextResponse.json({ ok: true, items, total }, { headers });
+      } catch (fallbackError) {
+        console.error("Fallback matriculas query failed:", fallbackError);
+      }
+    }
+
     query = query.range(start, end).order("created_at", { ascending: false });
 
     const { data, error, count } = await query;
@@ -373,8 +409,8 @@ export async function GET(req: Request) {
             cursoId,
             classeIdsForNivel,
             turmaId,
-            status,
-            statusIn,
+            status: normalizedStatus,
+            statusIn: statusFiltersForQuery,
             q,
             sinceDate,
             start,
@@ -392,6 +428,7 @@ export async function GET(req: Request) {
     }
 
     const items = (data || []).map((row: any) => {
+      const status = isActiveStatus(row.status) ? "ativa" : row.status ?? "ativa";
       return {
         id: row.id,
         numero_matricula: row.numero_matricula ?? null,
@@ -403,7 +440,7 @@ export async function GET(req: Request) {
         sala: row.sala ?? null,
         turno: row.turno ?? null,
         classe_nome: row.classe_nome ?? null,
-        status: row.status ?? 'ativa',
+        status,
         data_matricula: row.data_matricula ?? null,
         created_at: row.created_at,
       } as any;
