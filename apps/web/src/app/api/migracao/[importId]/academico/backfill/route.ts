@@ -27,7 +27,7 @@ function generateTurmaName(classeNumero: number, letra?: string | null): string 
 type BackfillPreview = {
   cursos: Array<{ codigo: string; nome: string }>;
   classes: Array<{ numero: number; nome: string }>;
-  sessions: Array<{ nome: string; status: "ativa" | "arquivada"; data_inicio: string; data_fim: string }>;
+  sessions: Array<{ ano: number; ativo: boolean; data_inicio: string; data_fim: string }>;
   turmas: Array<{ 
     nome: string; 
     ano_letivo: string; 
@@ -81,7 +81,6 @@ async function runBackfill(apply: boolean, req: NextRequest, importId: string) {
     if (!sameEscola) return NextResponse.json({ ok: false, error: "Importação não pertence a esta escola." }, { status: 403 });
 
     // 3. Coletar Dados do Staging (Fonte da Verdade)
-    // Adicionamos curso_codigo aqui para poder vincular a turma ao curso se necessário
     const { data: staged, error: stageError } = await (admin as any)
       .from("staging_alunos")
       .select("curso_codigo, classe_numero, turno_codigo, turma_letra, ano_letivo")
@@ -100,7 +99,6 @@ async function runBackfill(apply: boolean, req: NextRequest, importId: string) {
 
     // Processar linhas do CSV
     for (const r of (staged || []) as any[]) {
-      // Normalização
       const curso = normalizeCode(r.curso_codigo);
       const turno = mapTurnoCodigoToLabel(r.turno_codigo);
       const letra = normalizeCode(r.turma_letra);
@@ -111,7 +109,6 @@ async function runBackfill(apply: boolean, req: NextRequest, importId: string) {
       if (Number.isFinite(classeNum)) classesSet.add(classeNum);
       if (Number.isFinite(ano)) sessionsSet.add(ano);
 
-      // Identificar Turmas Únicas
       if (ano && classeNum) {
         const key = `${ano}::${classeNum}::${turno || 'N/A'}::${letra || 'N/A'}::${curso || 'GERAL'}`;
         
@@ -132,14 +129,12 @@ async function runBackfill(apply: boolean, req: NextRequest, importId: string) {
       }
     }
 
-    // 4. Buscar Dados Existentes na Escola (Para calcular o delta)
-    // Buscamos tudo para evitar N+1 queries, assumindo que uma escola não tem dados infinitos.
-
-    const [cursosRes, classesRes, sessRes, turmasRes] = await Promise.all([
+    // 4. Buscar Dados Existentes na Escola
+    const [cursosRes, classesRes, anosLetivosRes, turmasRes] = await Promise.all([
       (admin as any).from("cursos").select("id, codigo").eq("escola_id", escolaId),
       (admin as any).from("classes").select("id, numero").eq("escola_id", escolaId),
-      (admin as any).from("school_sessions").select("id, nome, status").eq("escola_id", escolaId),
-      (admin as any).from("turmas").select("id, nome, ano_letivo, session_id, classe_id, turno, curso_id").eq("escola_id", escolaId)
+      (admin as any).from("anos_letivos").select("id, ano, ativo").eq("escola_id", escolaId),
+      (admin as any).from("turmas").select("id, nome, ano_letivo, classe_id, turno, curso_id").eq("escola_id", escolaId)
     ]);
 
     const existingCursos = new Map<string, string>(); // Codigo -> ID
@@ -150,21 +145,17 @@ async function runBackfill(apply: boolean, req: NextRequest, importId: string) {
         if (Number.isFinite(Number(c.numero))) existingClasses.set(Number(c.numero), c.id);
     });
 
-    const existingSessions = new Map<string, string>(); // Nome (Ano) -> ID
-    let hasActiveSession = false;
-    (sessRes.data || []).forEach((s: any) => {
-        const nome = String(s.nome).trim();
-        existingSessions.set(nome, s.id);
-        if (String(s.status).trim() === "ativa") hasActiveSession = true;
+    const existingAnosLetivos = new Map<string, string>(); // Ano -> ID
+    let hasActiveAnoLetivo = false;
+    (anosLetivosRes.data || []).forEach((s: any) => {
+        const ano = String(s.ano).trim();
+        existingAnosLetivos.set(ano, s.id);
+        if (s.ativo === true) hasActiveAnoLetivo = true;
     });
 
-    // Turmas existentes: Chave composta para comparação
-    // Nota: Comparamos por Nome + Sessão (Ano) para simplificar, ou podemos ser mais estritos.
-    // Aqui usamos uma lógica fuzzy para encontrar "10ª A" no ano "2025".
     const existingTurmas = (turmasRes.data || []) as any[];
 
     // 5. Montar o Preview (O que falta criar?)
-    
     const preview: BackfillPreview = {
       cursos: [],
       classes: [],
@@ -172,89 +163,66 @@ async function runBackfill(apply: boolean, req: NextRequest, importId: string) {
       turmas: []
     };
 
-    // Cursos Faltantes
     cursosSet.forEach(codigo => {
       if (!existingCursos.has(codigo)) {
-        preview.cursos.push({ codigo, nome: codigo }); // Usa código como nome provisório
+        preview.cursos.push({ codigo, nome: codigo });
       }
     });
 
-    // Classes Faltantes
     classesSet.forEach(num => {
       if (!existingClasses.has(num)) {
         preview.classes.push({ numero: num, nome: `${num}ª Classe` });
       }
     });
 
-    // Sessões Faltantes
-    const missingSessionYears = Array.from(sessionsSet).filter(ano => {
+    const missingAnos = Array.from(sessionsSet).filter(ano => {
       const anoStr = String(ano);
-      return !existingSessions.has(anoStr);
+      return !existingAnosLetivos.has(anoStr);
     }).sort((a, b) => Number(a) - Number(b));
 
-    let alreadyHasActive = hasActiveSession;
-
-    missingSessionYears.forEach((ano, idx) => {
-      const anoStr = String(ano);
-      const shouldBeActive = !alreadyHasActive && idx === missingSessionYears.length - 1;
-      const status: "ativa" | "arquivada" = shouldBeActive ? "ativa" : "arquivada";
-
+    let alreadyHasActive = hasActiveAnoLetivo;
+    missingAnos.forEach((ano, idx) => {
+      const shouldBeActive = !alreadyHasActive && idx === missingAnos.length - 1;
+      
       preview.sessions.push({
-        nome: anoStr,
-        status,
-        data_inicio: `${ano}-02-01`, // Data padrão Angola (Fev)
-        data_fim: `${ano}-12-20`     // Data padrão Angola (Dez)
+        ano: ano,
+        ativo: shouldBeActive,
+        data_inicio: `${ano}-02-01`,
+        data_fim: `${ano}-12-20`
       });
 
-      if (status === "ativa") alreadyHasActive = true;
+      if (shouldBeActive) alreadyHasActive = true;
     });
 
-    // Turmas Faltantes
     for (const t of turmasDesired) {
-      const sessId = existingSessions.get(t.ano_letivo); // Pode ser undefined se a sessão tbm for nova
+      const anoLetivoId = existingAnosLetivos.get(t.ano_letivo);
       
-      // Verifica se já existe uma turma com este nome nesta sessão (se a sessão existir)
-      const exists = sessId && existingTurmas.some(et => 
-        et.session_id === sessId && 
+      const exists = anoLetivoId && existingTurmas.some(et => 
+        et.ano_letivo === Number(t.ano_letivo) && 
         normalizeCode(et.nome) === normalizeCode(t.nome)
       );
 
-      // Se não existe (ou se a sessão é nova), adiciona ao preview
       if (!exists) {
         preview.turmas.push(t);
       }
     }
 
-    // --- RETORNO PREVIEW ---
     if (!apply) {
-      return NextResponse.json({
-        ok: true,
-        preview,
-        create: {
-          cursos: preview.cursos.length,
-          classes: preview.classes.length,
-          sessions: preview.sessions.length,
-          turmas: preview.turmas.length
-        }
-      });
+      return NextResponse.json({ ok: true, preview });
     }
 
     // --- EXECUÇÃO (APPLY) ---
-    // Ordem crítica: Sessões -> Classes -> Cursos -> Turmas (dependentes)
-
-    // 1. Criar Sessões
     for (const s of preview.sessions) {
       const { data, error } = await (admin as any)
-        .from("school_sessions")
-        .insert({ escola_id: escolaId, nome: s.nome, data_inicio: s.data_inicio, data_fim: s.data_fim, status: s.status })
+        .from("anos_letivos")
+        .insert({ escola_id: escolaId, ano: s.ano, data_inicio: s.data_inicio, data_fim: s.data_fim, ativo: s.ativo })
         .select("id")
         .single();
       
-      if (error) throw new Error(`Erro ao criar sessão ${s.nome}: ${error.message}`);
-      existingSessions.set(s.nome, data.id); // Atualiza mapa para uso nas turmas
+      if (error) throw new Error(`Erro ao criar ano letivo ${s.ano}: ${error.message}`);
+      existingAnosLetivos.set(String(s.ano), data.id);
     }
 
-    // 2. Criar Classes
     for (const c of preview.classes) {
       const { data, error } = await (admin as any)
         .from("classes")
@@ -266,11 +234,10 @@ async function runBackfill(apply: boolean, req: NextRequest, importId: string) {
       existingClasses.set(c.numero, data.id);
     }
 
-    // 3. Criar Cursos
     for (const c of preview.cursos) {
       const { data, error } = await (admin as any)
         .from("cursos")
-        .insert({ escola_id: escolaId, codigo: c.codigo, nome: c.nome }) // Nome = Código por padrão
+        .insert({ escola_id: escolaId, codigo: c.codigo, nome: c.nome })
         .select("id")
         .single();
 
@@ -278,36 +245,27 @@ async function runBackfill(apply: boolean, req: NextRequest, importId: string) {
       existingCursos.set(c.codigo, data.id);
     }
 
-    // 4. Criar Turmas
     for (const t of preview.turmas) {
-      const sessionId = existingSessions.get(t.ano_letivo);
       const classeId = existingClasses.get(t.classe_numero);
       const cursoId = t.curso_codigo ? existingCursos.get(t.curso_codigo) : null;
-
-      if (!sessionId) {
-        console.warn(`Ignorando turma ${t.nome}: Sessão ${t.ano_letivo} não resolvida.`);
+      
+      if (t.curso_codigo && !cursoId) {
+        console.warn(`Ignorando turma ${t.nome}: Curso ${t.curso_codigo} não encontrado.`);
         continue;
       }
-      if (t.curso_codigo && !cursoId) {
-        throw new Error(`Curso não encontrado para course_code=${t.curso_codigo} na escola`);
-      }
 
-
-      // Prepara objeto de inserção
       const payload: any = {
         escola_id: escolaId,
         nome: t.nome,
         ano_letivo: t.ano_letivo,
         turno: t.turno,
-        session_id: sessionId,
-        classe_id: classeId || null, // Pode ser null se não conseguimos mapear a classe
-        curso_id: cursoId || null,   // Vincula ao curso se houver
-        capacidade_maxima: 35        // Padrão seguro
+        classe_id: classeId || null,
+        curso_id: cursoId || null,
+        capacidade_maxima: 35
       };
 
       const { error } = await (admin as any).from("turmas").insert(payload);
       if (error) {
-        // Não aborta tudo por uma turma, mas loga
         console.error(`Falha ao criar turma ${t.nome}: ${error.message}`);
       }
     }
