@@ -52,39 +52,15 @@ export function GlobalSearch({ escolaId, placeholder, disabledText }: Props) {
           {results.map((aluno) => (
             <button
               key={aluno.id}
-              onClick={() => router.push(`/secretaria/alunos/${aluno.id}`)}
+              onClick={() => router.push(aluno.href)}
               className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 transition-colors text-left group"
             >
               <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden shrink-0 border border-slate-200">
-                {aluno.foto_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={aluno.foto_url}
-                    alt={aluno.nome}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <User className="h-5 w-5 text-slate-400 group-hover:text-teal-600" />
-                )}
+                <User className="h-5 w-5 text-slate-400 group-hover:text-teal-600" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-semibold text-slate-900 truncate">{aluno.nome}</div>
-                <div className="text-[12px] text-slate-500 flex items-center gap-2">
-                  {aluno.processo && (
-                    <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
-                      Proc. {aluno.processo}
-                    </span>
-                  )}
-                  <span
-                    className={
-                      aluno.turma === "Sem turma"
-                        ? "text-rose-500 font-medium"
-                        : "text-emerald-600"
-                    }
-                  >
-                    {aluno.turma}
-                  </span>
-                </div>
+                <div className="font-semibold text-slate-900 truncate">{aluno.label}</div>
+                <div className="text-[12px] text-slate-500">{aluno.meta}</div>
               </div>
               <div
                 className={`text-[11px] px-2 py-1 rounded-full ${
