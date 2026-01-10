@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { supabaseServer } from "@/lib/supabaseServer";
-import { GerarMensalidadesModal } from "@/components/financeiro/GerarMensalidadesModal";
+import { GerarMensalidadesDialog } from "./_components/GerarMensalidadesDialog";
 import { RegistrarPagamentoButton } from "@/components/financeiro/RegistrarPagamentoButton";
 import { ReciboPrintButton } from "@/components/financeiro/ReciboImprimivel";
 import { EstornarMensalidadeButton } from "@/components/financeiro/EstornarMensalidadeButton";
@@ -76,7 +76,7 @@ export default async function FinanceiroDashboardPage({
   const resumoData: DashboardResumo =
     (cacheResumo as any) ??
     (await fetch(getAbsoluteUrl("/api/financeiro"), {
-      cache: "no-store",
+      cache: "force-cache",
     }).then((r) => r.json()));
 
   let mensalidades: Database["public"]["Tables"]["mensalidades"]["Row"][] = [];
@@ -130,7 +130,7 @@ export default async function FinanceiroDashboardPage({
         description="Gestão completa de receita, cobranças e fluxo financeiro da escola."
         actions={
           escolaId ? (
-            <GerarMensalidadesModal escolaId={escolaId} />
+            <GerarMensalidadesDialog />
           ) : (
             <div className="text-xs text-slate-500">Associe-se a uma escola para gerar cobranças.</div>
           )

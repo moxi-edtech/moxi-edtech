@@ -1,5 +1,6 @@
 import "./globals.css";
 import { Sora } from "next/font/google";
+import { ServiceWorkerRegister } from "@/components/system/ServiceWorkerRegister";
 
 const sora = Sora({
   subsets: ["latin"],
@@ -10,7 +11,14 @@ const sora = Sora({
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt" className="h-full">
-      <body className={`h-full ${sora.className}`}>{children}</body>
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#1F6B3B" />
+      </head>
+      <body className={`h-full ${sora.className}`}>
+        <ServiceWorkerRegister />
+        {children}
+      </body>
     </html>
   );
 }

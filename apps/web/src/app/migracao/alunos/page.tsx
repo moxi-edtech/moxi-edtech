@@ -18,6 +18,7 @@ import {
   Info,
   Settings, // Importado
 } from "lucide-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import BackfillStep from "@/components/escola/importacao/wizard/steps/BackfillStep";
 import ConfigurationStep from "@/components/escola/importacao/wizard/steps/ConfigurationStep"; // Importado
 
@@ -52,6 +53,9 @@ export default function AlunoMigrationWizard() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [skipMatricula, setSkipMatricula] = useState(false);
   const [startMonth, setStartMonth] = useState<number>(new Date().getMonth() + 1);
+  const [modo, setModo] = useState<'migracao' | 'onboarding'>('migracao');
+  const [dataInicioFinanceiro, setDataInicioFinanceiro] = useState<string | null>(null);
+  
   
   // State for the new configuration step
   const [configSummary, setConfigSummary] = useState<any | null>(null);
@@ -65,10 +69,18 @@ export default function AlunoMigrationWizard() {
   const [matriculaSummary, setMatriculaSummary] = useState<Array<{ turma_nome: string; turma_id: string | null; success: number; errors: number }>>([]);
   const [loading, setLoading] = useState(false);
   const [anoLetivo, setAnoLetivo] = useState<number>(new Date().getFullYear());
+  const summaryScrollRef = useRef<HTMLDivElement | null>(null);
 
   const supabase = useMemo(() => createClient(), []);
   const searchParams = useSearchParams();
   const deepApplied = useRef(false);
+  const hasSummary = matriculaSummary.length > 0;
+  const summaryVirtualizer = useVirtualizer({
+    count: matriculaSummary.length,
+    getScrollElement: () => summaryScrollRef.current,
+    estimateSize: () => 40,
+    overscan: 6,
+  });
 
   const batchKey = (b: any) =>
     [
@@ -303,8 +315,8 @@ export default function AlunoMigrationWizard() {
   };
 
   const handleImport = async () => {
-    if (!importId || !escolaId || !anoLetivo) {
-      setApiErrors(["Importação inválida ou ano letivo não definido. Tente reiniciar o processo."]);
+    if (!importId || !escolaId) {
+      setApiErrors(["Importação inválida. Tente reiniciar o processo."]);
       return;
     }
 
@@ -316,7 +328,7 @@ export default function AlunoMigrationWizard() {
       const response = await fetch("/api/migracao/alunos/importar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ importId, escolaId, anoLetivo, skipMatricula, startMonth }),
+        body: JSON.stringify({ importId, escolaId, skipMatricula, startMonth, modo, dataInicioFinanceiro }),
       });
 
       const payload = await response.json();
@@ -366,7 +378,7 @@ export default function AlunoMigrationWizard() {
   const fetchMatriculaPreview = async () => {
     try {
       if (!importId || !escolaId) return;
-      const res = await fetch(`/api/migracao/${encodeURIComponent(importId)}/matricula/preview?escola_id=${encodeURIComponent(escolaId)}`, { cache: 'no-store' });
+      const res = await fetch(`/api/migracao/${encodeURIComponent(importId)}/matricula/preview?escola_id=${encodeURIComponent(escolaId)}`, { cache: 'force-cache' });
       const json = await res.json();
       if (res.ok && json?.ok) {
         setMatriculaBatches(json.batches || []);
@@ -873,6 +885,43 @@ export default function AlunoMigrationWizard() {
                 </label>
 
                 <div className="space-y-1">
+                  <label className="text-sm font-semibold text-amber-900 block">Modo de Importação:</label>
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 text-sm text-amber-900">
+                      <input
+                        type="radio"
+                        name="modo"
+                        value="migracao"
+                        checked={modo === 'migracao'}
+                        onChange={() => setModo('migracao')}
+                        className="h-4 w-4 text-amber-600 focus:ring-amber-500 border-amber-300"
+                      />
+                      <span>Migração</span>
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-amber-900">
+                      <input
+                        type="radio"
+                        name="modo"
+                        value="onboarding"
+                        checked={modo === 'onboarding'}
+                        onChange={() => setModo('onboarding')}
+                        className="h-4 w-4 text-amber-600 focus:ring-amber-500 border-amber-300"
+                      />
+                      <span>Onboarding</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-sm font-semibold text-amber-900 block">Data de Início Financeiro:</label>
+                  <input
+                    type="date"
+                    className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    onChange={(e) => setDataInicioFinanceiro(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-1">
                   <label className="text-sm font-semibold text-amber-900 block">Iniciar cobrança de mensalidade em:</label>
                   <select
                     className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
@@ -957,29 +1006,67 @@ export default function AlunoMigrationWizard() {
                 <div className="space-y-2">
                   <div className="text-sm font-semibold text-slate-900">Resumo das matrículas por turma</div>
                   <div className="rounded-md border border-slate-200 overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead className="bg-slate-50">
+                    <div ref={summaryScrollRef} className="max-h-[320px] overflow-y-auto">
+                    <table className="w-full table-fixed text-sm">
+                      <thead className="bg-slate-50 sticky top-0 z-10" style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                         <tr>
                           <th className="text-left px-3 py-2 text-slate-600 font-medium">Turma</th>
                           <th className="text-right px-3 py-2 text-slate-600 font-medium">Inseridos</th>
                           <th className="text-right px-3 py-2 text-slate-600 font-medium">Erros</th>
                         </tr>
                       </thead>
-                      <tbody>
-                        {matriculaSummary.map((it, i) => (
-                          <tr key={i} className="border-t border-slate-100">
-                            <td className="px-3 py-2">{it.turma_nome}</td>
-                            <td className="px-3 py-2 text-right text-emerald-700 font-medium">{it.success}</td>
-                            <td className="px-3 py-2 text-right text-red-600">{it.errors}</td>
-                          </tr>
-                        ))}
-                        <tr className="border-t border-slate-200 bg-slate-50">
+                      <tbody
+                        style={
+                          hasSummary
+                            ? {
+                                position: "relative",
+                                display: "block",
+                                height: summaryVirtualizer.getTotalSize() + 40,
+                              }
+                            : undefined
+                        }
+                      >
+                        {summaryVirtualizer.getVirtualItems().map((virtualRow) => {
+                          const it = matriculaSummary[virtualRow.index];
+                          return (
+                            <tr
+                              key={virtualRow.key}
+                              className="border-t border-slate-100"
+                              style={{
+                                position: "absolute",
+                                top: 0,
+                                left: 0,
+                                transform: `translateY(${virtualRow.start}px)`,
+                                width: "100%",
+                                display: "table",
+                                tableLayout: "fixed",
+                              }}
+                            >
+                              <td className="px-3 py-2">{it.turma_nome}</td>
+                              <td className="px-3 py-2 text-right text-emerald-700 font-medium">{it.success}</td>
+                              <td className="px-3 py-2 text-right text-red-600">{it.errors}</td>
+                            </tr>
+                          );
+                        })}
+                        <tr
+                          className="border-t border-slate-200 bg-slate-50"
+                          style={{
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
+                            transform: `translateY(${summaryVirtualizer.getTotalSize()}px)`,
+                            width: "100%",
+                            display: "table",
+                            tableLayout: "fixed",
+                          }}
+                        >
                           <td className="px-3 py-2 font-semibold">Totais</td>
                           <td className="px-3 py-2 text-right font-semibold text-emerald-800">{matriculaSummary.reduce((a, b) => a + b.success, 0)}</td>
                           <td className="px-3 py-2 text-right font-semibold text-red-700">{matriculaSummary.reduce((a, b) => a + b.errors, 0)}</td>
                         </tr>
                       </tbody>
                     </table>
+                    </div>
                   </div>
                 </div>
               )}

@@ -120,7 +120,7 @@ export function useMatriculaLogic() {
           }
         };
 
-        const candRes = await fetch(`/api/secretaria/candidaturas`, { cache: "no-store" }).catch(
+        const candRes = await fetch(`/api/secretaria/candidaturas`, { cache: "force-cache" }).catch(
           () => undefined
         );
         const candJson = await parseDirectJson(candRes);

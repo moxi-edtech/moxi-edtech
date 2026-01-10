@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   BookOpen,
   Layers,
@@ -35,24 +35,31 @@ import {
   type AcademicStep2Props,
   type MatrixRow,
   type CurriculumCategory,
-  type PadraoNomenclatura,
 } from "./academicSetupTypes";
-import { gerarNomeTurma } from "@/lib/turma";
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 // Mapeamento de presets → categorias de UI do Step2
 const PRESET_CATEGORY_MAP: Record<CurriculumKey, CurriculumCategory> = {
   primario_base: "geral",
   primario_avancado: "geral",
   ciclo1: "geral",
-  puniv: "geral",
-  economicas: "geral",
+  puniv_fisicas: "geral",
+  puniv_economicas: "geral",
+  puniv_humanas: "geral",
+  puniv_artes: "geral",
   tecnico_informatica: "tecnico_ind",
   tecnico_construcao: "tecnico_ind",
+  tecnico_electricidade: "tecnico_ind",
+  tecnico_mecanica: "tecnico_ind",
+  tecnico_electronica: "tecnico_ind",
+  tecnico_petroleos: "tecnico_ind",
   tecnico_base: "tecnico_ind",
   tecnico_gestao: "tecnico_serv",
-  saude_enfermagem: "tecnico_serv",          // saúde tratado como técnico/serviços
+  saude_enfermagem: "tecnico_serv",
   saude_farmacia_analises: "tecnico_serv",
+  magisterio_primario: "tecnico_serv",
 };
+
 
 // Tipo local para opções de preset já enriquecidas
 interface PresetOption {
@@ -68,6 +75,137 @@ interface AddedCourse {
   id: CurriculumKey;
   label: string;
   tipo: CourseType;
+}
+
+function CourseMatrixTable({
+  rows,
+  turnos,
+  onMatrixUpdate,
+}: {
+  rows: MatrixRow[];
+  turnos: Record<string, boolean>;
+  onMatrixUpdate: (rowId: string, field: "manha" | "tarde" | "noite", value: string) => void;
+}) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const hasRows = rows.length > 0;
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 56,
+    overscan: 6,
+  });
+
+  return (
+    <div className="overflow-x-auto">
+      <div ref={scrollRef} className="max-h-[420px] overflow-y-auto">
+        <table className="w-full table-fixed text-sm text-left">
+          <thead
+            className="text-xs text-slate-400 uppercase bg-white sticky top-0 z-10"
+            style={{ display: "table", width: "100%", tableLayout: "fixed" }}
+          >
+            <tr>
+              <th className="px-6 py-3 font-semibold text-slate-500">Classe</th>
+              {turnos["Manhã"] && (
+                <th className="px-6 py-3 font-semibold text-center w-32 bg-orange-50/50 text-orange-600 border-l border-slate-100">
+                  Manhã
+                </th>
+              )}
+              {turnos["Tarde"] && (
+                <th className="px-6 py-3 font-semibold text-center w-32 bg-amber-50/50 text-amber-600 border-l border-slate-100">
+                  Tarde
+                </th>
+              )}
+              {turnos["Noite"] && (
+                <th className="px-6 py-3 font-semibold text-center w-32 bg-indigo-50/50 text-indigo-600 border-l border-slate-100">
+                  Noite
+                </th>
+              )}
+            </tr>
+          </thead>
+          <tbody
+            className="divide-y divide-slate-100"
+            style={
+              hasRows
+                ? {
+                    position: "relative",
+                    display: "block",
+                    height: rowVirtualizer.getTotalSize(),
+                  }
+                : undefined
+            }
+          >
+            {!hasRows ? (
+              <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
+                <td colSpan={4} className="px-6 py-6 text-center text-sm text-slate-400">
+                  Nenhuma classe configurada.
+                </td>
+              </tr>
+            ) : (
+              rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                const row = rows[virtualRow.index];
+                return (
+                  <tr
+                    key={row.id}
+                    className="hover:bg-slate-50 transition group"
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      transform: `translateY(${virtualRow.start}px)`,
+                      width: "100%",
+                      display: "table",
+                      tableLayout: "fixed",
+                    }}
+                  >
+                    <td className="px-6 py-4 font-bold text-slate-700">{row.nome}</td>
+
+                    {turnos["Manhã"] && (
+                      <td className="px-6 py-2 text-center bg-orange-50/10 border-l border-slate-100">
+                        <input
+                          type="number"
+                          min={0}
+                          className="w-12 h-9 text-center font-bold text-slate-700 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition-shadow"
+                          value={row.manha ?? ""}
+                          placeholder="0"
+                          onChange={(e) => onMatrixUpdate(row.id, "manha", e.target.value)}
+                        />
+                      </td>
+                    )}
+
+                    {turnos["Tarde"] && (
+                      <td className="px-6 py-2 text-center bg-amber-50/10 border-l border-slate-100">
+                        <input
+                          type="number"
+                          min={0}
+                          className="w-12 h-9 text-center font-bold text-slate-700 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition-shadow"
+                          value={row.tarde ?? ""}
+                          placeholder="0"
+                          onChange={(e) => onMatrixUpdate(row.id, "tarde", e.target.value)}
+                        />
+                      </td>
+                    )}
+
+                    {turnos["Noite"] && (
+                      <td className="px-6 py-2 text-center bg-indigo-50/10 border-l border-slate-100">
+                        <input
+                          type="number"
+                          min={0}
+                          className="w-12 h-9 text-center font-bold text-slate-700 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition-shadow"
+                          value={row.noite ?? ""}
+                          placeholder="0"
+                          onChange={(e) => onMatrixUpdate(row.id, "noite", e.target.value)}
+                        />
+                      </td>
+                    )}
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
 }
 
 export default function AcademicStep2({
@@ -189,11 +327,31 @@ export default function AcademicStep2({
   }, [matrix]);
 
   const sampleNomeTurma = useMemo(() => {
+    if (!matrix[0]) return "";
     const primeiraClasse = matrix[0];
     const cursoNome = primeiraClasse?.cursoNome || "Curso";
     const classeNome = primeiraClasse?.nome || "7ª Classe";
     const turnoAtivo = turnos["Manhã"] ? "manha" : turnos["Tarde"] ? "tarde" : "noite";
-    return gerarNomeTurma(cursoNome, classeNome, turnoAtivo, 1, padraoNomenclatura, anoLetivo);
+
+    const meta = CURRICULUM_PRESETS_META[primeiraClasse.cursoKey];
+    const sigla = meta?.course_code || cursoNome.substring(0,3).toUpperCase();
+
+    const ano = anoLetivo ? `(${anoLetivo})` : "";
+    const turnoCode = turnoAtivo.toUpperCase().charAt(0);
+    const turnoLabel = turnoCode === "M" ? "Manhã" : turnoCode === "T" ? "Tarde" : "Noite";
+    const classeLimpa = `${classeNome.replace(/\D/g, "")}ª`;
+    const letra = "A";
+
+    switch (padraoNomenclatura) {
+      case "descritivo_completo":
+        return `${cursoNome} ${classeLimpa} Turma ${letra} ${ano}`.trim();
+      case "descritivo_simples":
+        return `${sigla} - ${classeLimpa} Turma ${letra} - ${turnoLabel}`;
+      case "abreviado":
+        return `${sigla}-${classeLimpa.replace("ª", "")}-${turnoCode}-${letra}`;
+      default:
+        return `${cursoNome} ${classeLimpa}`;
+    }
   }, [matrix, turnos, padraoNomenclatura, anoLetivo]);
 
   return (
@@ -462,90 +620,7 @@ export default function AcademicStep2({
                 </div>
               </div>
 
-              {/* Tabela do curso */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <thead className="text-xs text-slate-400 uppercase bg-white">
-                    <tr>
-                      <th className="px-6 py-3 font-semibold text-slate-500">
-                        Classe
-                      </th>
-                      {turnos["Manhã"] && (
-                        <th className="px-6 py-3 font-semibold text-center w-32 bg-orange-50/50 text-orange-600 border-l border-slate-100">
-                          Manhã
-                        </th>
-                      )}
-                      {turnos["Tarde"] && (
-                        <th className="px-6 py-3 font-semibold text-center w-32 bg-amber-50/50 text-amber-600 border-l border-slate-100">
-                          Tarde
-                        </th>
-                      )}
-                      {turnos["Noite"] && (
-                        <th className="px-6 py-3 font-semibold text-center w-32 bg-indigo-50/50 text-indigo-600 border-l border-slate-100">
-                          Noite
-                        </th>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {rows.map((row) => (
-                      <tr
-                        key={row.id}
-                        className="hover:bg-slate-50 transition group"
-                      >
-                        <td className="px-6 py-4 font-bold text-slate-700">
-                          {row.nome}
-                        </td>
-
-                        {turnos["Manhã"] && (
-                          <td className="px-6 py-2 text-center bg-orange-50/10 border-l border-slate-100">
-                            <input
-                              type="number"
-                              min={0}
-                              className="w-12 h-9 text-center font-bold text-slate-700 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition-shadow"
-                              value={row.manha ?? ""}
-                              placeholder="0"
-                              onChange={(e) =>
-                                onMatrixUpdate(row.id, "manha", e.target.value)
-                              }
-                            />
-                          </td>
-                        )}
-
-                        {turnos["Tarde"] && (
-                          <td className="px-6 py-2 text-center bg-amber-50/10 border-l border-slate-100">
-                            <input
-                              type="number"
-                              min={0}
-                              className="w-12 h-9 text-center font-bold text-slate-700 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition-shadow"
-                              value={row.tarde ?? ""}
-                              placeholder="0"
-                              onChange={(e) =>
-                                onMatrixUpdate(row.id, "tarde", e.target.value)
-                              }
-                            />
-                          </td>
-                        )}
-
-                        {turnos["Noite"] && (
-                          <td className="px-6 py-2 text-center bg-indigo-50/10 border-l border-slate-100">
-                            <input
-                              type="number"
-                              min={0}
-                              className="w-12 h-9 text-center font-bold text-slate-700 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition-shadow"
-                              value={row.noite ?? ""}
-                              placeholder="0"
-                              onChange={(e) =>
-                                onMatrixUpdate(row.id, "noite", e.target.value)
-                              }
-                            />
-                          </td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <CourseMatrixTable rows={rows} turnos={turnos} onMatrixUpdate={onMatrixUpdate} />
             </div>
           );
         })}

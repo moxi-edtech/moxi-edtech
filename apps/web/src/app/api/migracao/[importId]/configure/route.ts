@@ -5,14 +5,8 @@ import { Database } from "@/types/supabase";
 
 export const dynamic = "force-dynamic";
 
-type RouteContext = {
-  params: {
-    importId: string;
-  };
-};
-
-export async function PATCH(request: Request, { params }: RouteContext) {
-  const { importId } = params;
+export async function PATCH(request: Request, context: any) {
+  const { importId } = context.params;
 
   if (!importId) {
     return NextResponse.json(

@@ -13,7 +13,7 @@ export function AvisosList() {
     (async () => {
       try {
         setLoading(true);
-        const res = await fetch('/api/aluno/avisos', { cache: 'no-store' });
+        const res = await fetch('/api/aluno/avisos', { cache: 'force-cache' });
         const json = await res.json();
         if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao carregar avisos');
         if (mounted) setItems(json.avisos || []);

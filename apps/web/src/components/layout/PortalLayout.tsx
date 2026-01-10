@@ -107,7 +107,7 @@ export default function PortalLayout({
 
         // Carrega nome e plano da escola via API (service role)
         try {
-          const res = await fetch(`/api/escolas/${escolaId}/nome`, { cache: 'no-store' })
+          const res = await fetch(`/api/escolas/${escolaId}/nome`, { cache: 'force-cache' })
           const json = await res.json().catch(() => null)
           if (mounted && res.ok && json?.ok && json?.nome) {
             setEscolaNome(String(json.nome))

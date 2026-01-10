@@ -16,7 +16,7 @@ export default function ProfessorNotasPage() {
 
   useEffect(() => {
     (async () => {
-      const res = await fetch('/api/professor/atribuicoes', { cache: 'no-store' })
+      const res = await fetch('/api/professor/atribuicoes', { cache: 'force-cache' })
       const json = await res.json().catch(()=>null)
       if (res.ok && json?.ok) setAtribs(json.items || [])
     })()
@@ -25,7 +25,7 @@ export default function ProfessorNotasPage() {
   useEffect(() => {
     (async () => {
       if (!turmaId) { setAlunos([]); return }
-      const res = await fetch(`/api/secretaria/turmas/${turmaId}/alunos`, { cache: 'no-store' })
+      const res = await fetch(`/api/secretaria/turmas/${turmaId}/alunos`, { cache: 'force-cache' })
       const json = await res.json().catch(()=>null)
       if (res.ok && json?.ok) setAlunos((json.items||[]).map((r:any)=>({ id: r.id || r.aluno_id || r.profile_id, nome: r.nome || r.aluno_nome || 'Aluno' })))
     })()
@@ -112,4 +112,3 @@ export default function ProfessorNotasPage() {
     </div>
   )
 }
-

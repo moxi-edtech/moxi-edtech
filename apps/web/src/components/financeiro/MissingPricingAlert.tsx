@@ -29,7 +29,7 @@ export function MissingPricingAlert({
       try {
         const res = await fetch(
           `/api/financeiro/missing-pricing?escola_id=${escolaId}&ano_letivo=${anoLetivo}`,
-          { cache: "no-store" }
+          { cache: "force-cache" }
         );
 
         if (!res.ok) throw new Error(`Request failed (${res.status})`);
@@ -112,4 +112,3 @@ export function MissingPricingAlert({
     </div>
   );
 }
-

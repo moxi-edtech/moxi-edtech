@@ -71,7 +71,7 @@ export default function ProfessoresPage() {
         // Turmas agora via API com service role (evita RLS vazio)
         let turmasLista: { id: string; nome: string }[] = []
         try {
-          const res = await fetch(`/api/escolas/${escolaId}/turmas`, { cache: 'no-store' })
+          const res = await fetch(`/api/escolas/${escolaId}/turmas`, { cache: 'force-cache' })
           const json = await res.json().catch(() => null)
           if (res.ok && Array.isArray(json?.data)) {
             turmasLista = json.data as any
@@ -81,7 +81,7 @@ export default function ProfessoresPage() {
         // Disciplinas (apelidadas de Cursos na UI) agora via API com service role (evita RLS vazio)
         let cursosLista: { id: string; nome: string }[] = []
         try {
-          const res = await fetch(`/api/escolas/${escolaId}/cursos`, { cache: 'no-store' })
+          const res = await fetch(`/api/escolas/${escolaId}/cursos`, { cache: 'force-cache' })
           const json = await res.json().catch(() => null)
           if (res.ok && Array.isArray(json?.data)) {
             cursosLista = (json.data as any[]).map((c: any) => ({ id: c.id, nome: c.nome }))
@@ -118,7 +118,7 @@ export default function ProfessoresPage() {
   const loadTurmaAssignments = async (turmaId: string) => {
     if (!turmaId) { setTurmaAssignments(null); return }
     try {
-      const res = await fetch(`/api/escolas/${escolaId}/turmas/${turmaId}/disciplinas`, { cache: 'no-store' })
+      const res = await fetch(`/api/escolas/${escolaId}/turmas/${turmaId}/disciplinas`, { cache: 'force-cache' })
       const json = await res.json().catch(() => null)
       if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao carregar atribuições')
       setTurmaAssignments(json.items || [])

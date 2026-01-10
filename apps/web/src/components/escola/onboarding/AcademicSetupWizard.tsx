@@ -61,7 +61,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
     let cancelled = false;
     async function fetchSession() {
       try {
-        const res = await fetch(`/api/escolas/${escolaId}/onboarding/core/session`, { cache: "no-store" });
+        const res = await fetch(`/api/escolas/${escolaId}/onboarding/core/session`, { cache: "force-cache" });
         const json = await res.json();
         if (!res.ok) throw new Error(json?.error || "Erro ao carregar sessão.");
 
@@ -93,7 +93,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   useEffect(() => {
     async function fetchSchoolName() {
       try {
-        const res = await fetch(`/api/escolas/${escolaId}/nome`, { cache: "no-store" });
+        const res = await fetch(`/api/escolas/${escolaId}/nome`, { cache: "force-cache" });
         const json = await res.json();
         const nome = (json?.nome as string | undefined) ?? (json?.data?.nome as string | undefined);
         if (nome) {

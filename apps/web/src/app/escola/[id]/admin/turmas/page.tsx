@@ -214,7 +214,7 @@ export default function AdminTurmasPage() {
 
       const url = buildEscolaUrl(escolaId, "/turmas", params);
       const res = await fetch(url, {
-        cache: "no-store",
+        cache: "force-cache",
         headers: { "X-Proxy-Used": "canonical" },
       });
       const json = await res.json();

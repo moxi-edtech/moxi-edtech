@@ -1,0 +1,92 @@
+{
+  "priorities": {
+    "P0": {
+      "description": "Fundação obrigatória antes de escalar ou vender",
+      "features": [
+        {
+          "code": "GF1",
+          "name": "PWA Offline-First",
+          "scope": [
+            "Service Worker",
+            "Cache estratégico (read-only)",
+            "Offline fallback",
+            "Sync seguro quando online"
+          ],
+          "status": "OBRIGATORIO_V1"
+        },
+        {
+          "code": "GF4",
+          "name": "Audit Trail Forense",
+          "scope": [
+            "Logs imutáveis",
+            "IP, timestamp, actor",
+            "Before/After state",
+            "Operações financeiras e críticas"
+          ],
+          "status": "OBRIGATORIO_V1"
+        },
+        {
+          "code": "PERF_BASE",
+          "name": "Base de Performance",
+          "scope": [
+            "pg_trgm",
+            "GIN indexes",
+            "LIMIT + paginação",
+            "Debounce frontend",
+            "Virtualização de listas",
+            "Bundle split"
+          ],
+          "status": "OBRIGATORIO_V1"
+        }
+      ]
+    },
+    "P1": {
+      "description": "Diferenciais ativos e UX de velocidade",
+      "features": [
+        {
+          "code": "KF2",
+          "name": "Pesquisa Global (Command Palette)",
+          "status": "IMPLEMENTADO_VALIDAR"
+        },
+        {
+          "code": "F09",
+          "name": "Radar de Inadimplência",
+          "requires": ["MATERIALIZED_VIEW"],
+          "status": "IMPLEMENTADO_VALIDAR"
+        },
+        {
+          "code": "F18",
+          "name": "Relatório de Caixa/Propinas",
+          "requires": ["MATERIALIZED_VIEW"],
+          "status": "IMPLEMENTADO_VALIDAR"
+        }
+      ]
+    },
+    "P2": {
+      "description": "Crescimento e monetização",
+      "features": [
+        {
+          "code": "KF1",
+          "name": "Matrícula Sem Filas",
+          "status": "PLANEADO"
+        },
+        {
+          "code": "KF3",
+          "name": "Notificações WhatsApp",
+          "status": "PLANEADO"
+        },
+        {
+          "code": "F12",
+          "name": "Recibos com QR Code",
+          "status": "BAIXA_PRIORIDADE"
+        }
+      ]
+    }
+  },
+  "global_invariants": [
+    "Nunca gerar código redundante",
+    "Nunca assumir que algo está correto sem validar",
+    "Performance > Feature nova",
+    "Relatório antes de ação"
+  ]
+}

@@ -9,12 +9,13 @@ export async function canManageEscolaResources(
   try {
     const { data: profile } = await (admin as any)
       .from("profiles")
-      .select("role, escola_id")
+      .select("role, escola_id, current_escola_id")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .maybeSingle();
 
     const role = (profile as any)?.role as string | undefined;
+    const escolaFromProfile = (profile as any)?.escola_id || (profile as any)?.current_escola_id;
 
     // Perfis com privilégios globais
     if (role === "super_admin" || role === "global_admin") return true;
@@ -22,7 +23,7 @@ export async function canManageEscolaResources(
     // Perfis vinculados à escola com funções operacionais
     if (
       (role === "admin" || role === "financeiro" || role === "secretaria" || role === "gestor") &&
-      (profile as any)?.escola_id === escolaId
+      escolaFromProfile === escolaId
     )
       return true;
   } catch {}

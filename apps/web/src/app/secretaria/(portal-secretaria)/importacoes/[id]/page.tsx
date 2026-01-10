@@ -31,7 +31,7 @@ async function getHistorico(): Promise<ImportItem[]> {
     : `http://localhost:${process.env.PORT || 3000}`;
     
   const res = await fetch(`${baseUrl}/api/migracao/historico`, {
-    cache: 'no-store',
+    cache: 'force-cache',
     headers: { cookie },
   });
   if (!res.ok) return [];
@@ -48,7 +48,7 @@ async function getErros(importId: string): Promise<ErrorRow[]> {
     : `http://localhost:${process.env.PORT || 3000}`;
 
   const res = await fetch(`${baseUrl}/api/migracao/${importId}/erros`, {
-    cache: 'no-store',
+    cache: 'force-cache',
     headers: { cookie },
   });
   if (!res.ok) return [];

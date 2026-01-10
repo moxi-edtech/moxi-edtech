@@ -64,11 +64,11 @@ export default function RedirectPage() {
           if (escola_id && (role === "admin" || role === "staff_admin")) {
             const { data: esc } = await supabase
               .from("escolas")
-              .select("onboarding_finalizado, onboarding_completed_at")
+              .select("onboarding_finalizado")
               .eq("id", escola_id)
               .limit(1);
             const e0 = (esc?.[0] as any) || {}
-            const done = Boolean(e0.onboarding_finalizado) || Boolean(e0.onboarding_completed_at);
+            const done = Boolean(e0.onboarding_finalizado);
             router.replace(done ? `/escola/${escola_id}/admin` : `/escola/${escola_id}/onboarding`);
             return;
           }
@@ -81,11 +81,11 @@ export default function RedirectPage() {
               if (escola_id) {
                 const { data: esc } = await supabase
                   .from("escolas")
-                  .select("onboarding_finalizado, onboarding_completed_at")
+                  .select("onboarding_finalizado")
                   .eq("id", escola_id)
                   .limit(1);
                 const e0 = (esc?.[0] as any) || {}
-                const done = Boolean(e0.onboarding_finalizado) || Boolean(e0.onboarding_completed_at);
+                const done = Boolean(e0.onboarding_finalizado);
                 router.replace(done ? `/escola/${escola_id}/admin` : `/escola/${escola_id}/onboarding`);
               } else {
                 router.replace("/admin");

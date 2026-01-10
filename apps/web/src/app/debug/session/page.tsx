@@ -23,7 +23,7 @@ export default function DebugSessionPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/debug/session?verbose=1', { cache: 'no-store' });
+      const res = await fetch('/api/debug/session?verbose=1', { cache: 'force-cache' });
       const json = (await res.json()) as ApiResponse;
       if (!res.ok || !json.ok) {
         throw new Error('Falha ao buscar sessão.');
@@ -142,4 +142,3 @@ export default function DebugSessionPage() {
     </main>
   );
 }
-

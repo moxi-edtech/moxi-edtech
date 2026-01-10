@@ -29,7 +29,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
       const url = new URL(`/api/secretaria/alunos`, window.location.origin);
       url.searchParams.set("status", tab === "ativos" ? "active" : "archived");
       if (q.trim()) url.searchParams.set("q", q.trim());
-      const res = await fetch(url.toString(), { cache: "no-store" });
+      const res = await fetch(url.toString(), { cache: "force-cache" });
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "Falha ao listar");
       setAlunos(json.items || []);

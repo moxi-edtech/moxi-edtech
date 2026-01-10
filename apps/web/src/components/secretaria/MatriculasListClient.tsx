@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   XCircle,
 } from "lucide-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 import StatusForm from "./StatusForm";
 import TransferForm from "./TransferForm";
@@ -167,6 +168,14 @@ export default function MatriculasListClient() {
   const [selectedMatricula, setSelectedMatricula] = useState<Item | null>(null);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const scrollParentRef = useRef<HTMLDivElement | null>(null);
+  const hasRows = !loading && items.length > 0;
+  const rowVirtualizer = useVirtualizer({
+    count: items.length,
+    getScrollElement: () => scrollParentRef.current,
+    estimateSize: () => 96,
+    overscan: 6,
+  });
 
   const extrairAnoLetivo = (valor?: string | number | null) => {
     if (valor === null || valor === undefined) return null;
@@ -323,7 +332,7 @@ export default function MatriculasListClient() {
       if (statusInFromQuery) params.set("status_in", statusInFromQuery);
 
       const res = await fetch(`/api/secretaria/matriculas?${params.toString()}`, {
-        cache: "no-store",
+        cache: "force-cache",
         signal: controller.signal,
       });
       const json = await res.json();
@@ -600,8 +609,9 @@ export default function MatriculasListClient() {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-100">
-            <thead className="bg-white">
+          <div ref={scrollParentRef} className="max-h-[560px] overflow-y-auto">
+            <table className="min-w-full table-fixed divide-y divide-slate-100">
+            <thead className="bg-white sticky top-0 z-10" style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-slate-400">
                   Matrícula
@@ -621,23 +631,35 @@ export default function MatriculasListClient() {
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-slate-50 bg-white">
+            <tbody
+              className="divide-y divide-slate-50 bg-white"
+              style={
+                hasRows
+                  ? {
+                      position: "relative",
+                      display: "block",
+                      height: rowVirtualizer.getTotalSize(),
+                    }
+                  : undefined
+              }
+            >
               {loading ? (
-                <tr>
+                <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                   <td colSpan={5} className="p-12 text-center text-slate-500">
                     <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-klasse-gold" />
                     A carregar registos...
                   </td>
                 </tr>
               ) : items.length === 0 ? (
-                <tr>
+                <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                   <td colSpan={5} className="p-12 text-center text-slate-500">
                     <Users className="mx-auto mb-3 h-10 w-10 text-slate-300" />
                     Nenhuma matrícula encontrada com estes filtros.
                   </td>
                 </tr>
               ) : (
-                items.map((m) => {
+                rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                  const m = items[virtualRow.index];
                   const dataMatriculaFmt = (() => {
                     if (!m.data_matricula) return null;
                     const d = new Date(m.data_matricula);
@@ -652,7 +674,19 @@ export default function MatriculasListClient() {
                       : "Gerado ao ativar";
 
                   return (
-                    <tr key={m.id} className="group transition-colors hover:bg-slate-50/70">
+                    <tr
+                      key={m.id}
+                      className="group transition-colors hover:bg-slate-50/70"
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        transform: `translateY(${virtualRow.start}px)`,
+                        width: "100%",
+                        display: "table",
+                        tableLayout: "fixed",
+                      }}
+                    >
                       {/* Matrícula */}
                       <td className="whitespace-nowrap px-6 py-4">
                         <div className="w-fit rounded-xl bg-slate-100 px-2 py-1 font-mono text-xs font-bold text-slate-700 ring-1 ring-slate-200">
@@ -771,6 +805,7 @@ export default function MatriculasListClient() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
 
         {/* Footer Paginação */}

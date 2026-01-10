@@ -11,10 +11,16 @@ turmas: "10ª A - Manhã", "10ª B - Tarde" (Vinculadas à Classe).
 
 matriculas: Vincula Aluno -> Turma.
 
-### Funil de Admissão (novo)
+### Funil de Admissão (para novos candidatos)
 - Cadastro (lead): cria `alunos` com número de processo automático e registra a intenção em `candidaturas` (curso/ano_letivo). Nenhuma matrícula ou profile é criada aqui.
 - Conversão: a matrícula oficial acontece ao confirmar a candidatura via endpoint dedicado, que insere em `matriculas`, gera `numero_matricula` (e login) e marca a candidatura como `matriculado`.
 - Identificadores: `numero_processo` vive em `alunos` (fixo por escola); `numero_matricula` nasce em `matriculas` no momento da conversão.
+
+### Fluxo de Matrícula via Importação (Modo 'migracao')
+Para alunos existentes que são migrados para o sistema via planilha, o fluxo é diferente e mais direto:
+
+1.  **Criação Pendente**: A importação (`importar_alunos_v4`) cria a `matricula` diretamente com `status = 'pendente'`, sem passar pelo funil de `candidaturas`.
+2.  **Ativação em Lote**: A matrícula só se torna `'ativa'` e recebe um `numero_matricula` depois que um administrador aprova a `turma` correspondente na tela de "Gestão de Turmas".
 
 #### Preferência de Turma (melhor UX)
 - Passo 4 (Interesse Académico): secretaria escolhe Curso → Classe → Turno; o sistema lista automaticamente turmas ativas do ano letivo e permite marcar uma preferência.

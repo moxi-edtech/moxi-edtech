@@ -62,11 +62,14 @@ export async function GET(
       try {
         const { data: prof } = await supabase
           .from("profiles")
-          .select("role, escola_id")
+          .select("role, escola_id, current_escola_id")
           .eq("user_id", user.id)
-          .eq("escola_id", escolaId)
           .limit(1);
-        allowed = Boolean(prof && prof.length > 0 && (prof[0] as any).role === "admin");
+
+        const profRow = prof?.[0] as any;
+        const escolaFromProfile = profRow?.escola_id || profRow?.current_escola_id;
+
+        allowed = Boolean(profRow && profRow.role === "admin" && escolaFromProfile === escolaId);
       } catch {}
     }
 

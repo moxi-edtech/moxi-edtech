@@ -46,13 +46,11 @@ export async function GET(
     if (!escolaId) return NextResponse.json({ ok: true, batches: [] })
 
     // Carregar staging agrupado
-    const { data: staged, error: stagedError } = await supabase.rpc(
-      'get_staging_alunos_summary',
-      {
-        p_import_id: importId,
-        p_escola_id: escolaId,
-      }
-    )
+    const { data: staged, error: stagedError } = await supabase
+      .from('vw_staging_alunos_summary')
+      .select('turma_codigo, ano_letivo, total_alunos')
+      .eq('import_id', importId)
+      .eq('escola_id', escolaId)
     if (stagedError) throw stagedError;
 
     const groups = staged || []
@@ -66,7 +64,7 @@ export async function GET(
     let turmas: any[] | null = []
     if (codeSet.size > 0) {
       const { data } = await supabase
-        .from('turmas')
+        .from('vw_migracao_turmas_lookup')
         .select('id, nome, ano_letivo, turma_code')
         .eq('escola_id', escolaId)
         .in('turma_code', Array.from(codeSet))

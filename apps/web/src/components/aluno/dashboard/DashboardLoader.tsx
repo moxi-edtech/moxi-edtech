@@ -26,7 +26,7 @@ export default function DashboardLoader() {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch("/api/aluno/dashboard", { cache: "no-store" });
+        const res = await fetch("/api/aluno/dashboard", { cache: "force-cache" });
         const json = (await res.json()) as DashboardData;
         if (!res.ok || !json?.ok) throw new Error(json && (json as any).error ? (json as any).error : "Falha ao carregar dashboard");
         if (mounted) setData(json);
@@ -53,4 +53,3 @@ export default function DashboardLoader() {
     </div>
   );
 }
-

@@ -53,7 +53,7 @@ export default function SecretariaDashboardPage() {
     (async () => {
       try {
         setLoading(true);
-        const res = await fetch('/api/secretaria/dashboard', { cache: 'no-store' });
+        const res = await fetch('/api/secretaria/dashboard', { cache: 'force-cache' });
         const json = await res.json();
         if (mounted) {
             if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao carregar');

@@ -25,7 +25,7 @@ export const sidebarConfig: SidebarConfig = {
     { href: "/super-admin/configuracoes", label: "Configurações", icon: "Settings" },
   ],
   admin: [
-    { href: "/escola/bb4b4278-3403-4f2f-8a73-dd4917fd1fde/admin/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
+    { href: "/escola/[escolaId]/admin/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
     { href: "/escola/[escolaId]/admin/alunos", label: "Alunos", icon: "Users" },
     { href: "/escola/[escolaId]/admin/professores", label: "Professores", icon: "User" },
     { href: "/escola/[escolaId]/admin/turmas", label: "Turmas", icon: "GraduationCap" },
@@ -40,6 +40,7 @@ export const sidebarConfig: SidebarConfig = {
     { href: "/secretaria/turmas", label: "Turmas", icon: "BookOpen" },
     { href: "/secretaria/calendario", label: "Calendário", icon: "CalendarDays" },
     { href: "/secretaria/relatorios", label: "Relatórios", icon: "BarChart" },
+    { href: "/secretaria/importacoes", label: "Histórico de Importações", icon: "History" },
   ],
   financeiro: [
     { href: "/financeiro", label: "Dashboard", icon: "LayoutDashboard" },

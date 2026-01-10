@@ -1,7 +1,16 @@
-## Resumo Atual
+## Resumo das Novas Funcionalidades
 
-- Notificações direcionadas: rascunhos gerados na importação avisam admin/pedagógico; importações em turmas ativas e ativações de turma pingam o financeiro (tabela `notifications`, `target_role`).
-- Contexto financeiro em migração/aprovação: wizard de importação captura “ignorar matrícula” e “mês inicial”, aplica isenção de matrícula e corta mensalidades retroativas ao importar em turmas ativas; a aprovação de turmas rascunho com alunos repete as mesmas regras para evitar cobranças indevidas.
-- TurmaForm (rascunhos) exibe bloco “Definição Financeira”, hidrata metadata de importação e envia `migracao_financeira` no submit; o backend aplica abatimento e isenção quando ativa.
-- Dashboard Financeiro exibe alertas pendentes; aprovações/importações ativas geram avisos para o tesoureiro auditar preços/lançamentos, enquanto rascunhos notificam apenas quem pode aprovar.
-- Liberação de acesso de alunos: UI `/secretaria/acesso-alunos` lista pendentes, usa `/liberar-acesso` (cria usuário/profile se faltar, gera código, enfileira notificação) e `/ativar-acesso` (código + BI). Depende de outbox + worker com Twilio/Resend (WhatsApp/SMS/email).
+- **Fluxo de Importação Híbrido (v4)**: O wizard de importação agora suporta dois modos: `migracao` (para alunos existentes) e `onboarding` (para novos candidatos). Em modo `migracao`, o sistema cria `turmas` como `'rascunho'` e `matriculas` como `'pendente'`, aguardando aprovação.
+
+- **Aprovação Centralizada e Implícita**: A página de "Gestão de Turmas" agora é o ponto central para ativação. Ao aprovar uma turma em `'rascunho'`, o sistema automaticamente:
+    1.  **"Materializa" o Curso**: Cria (ou aprova) o curso inferido do código da turma.
+    2.  **Ativa a Turma**: Muda o status da turma para `'aprovado'`.
+    3.  **Ativa as Matrículas**: Converte todas as matrículas `'pendentes'` daquela turma para `'ativas'`, gerando o número de matrícula oficial.
+
+- **"Escudo Financeiro" na Geração de Mensalidades**: A função `gerar_mensalidades_lote` foi atualizada para respeitar a `data_inicio_financeiro` definida na importação, evitando a geração de cobranças retroativas para alunos migrados.
+
+- **Controle Manual de Geração de Mensalidades**: Foi adicionado um novo componente (`GerarMensalidadesDialog`) ao Dashboard Financeiro, permitindo que a equipe financeira dispare a geração de mensalidades em lote para um mês/ano específico.
+
+- **Busca por Nº de Processo Legado**: Alunos importados mantêm seu número de processo antigo no campo `numero_processo_legado`, que agora é indexado e incluído na busca global, facilitando a transição para a secretaria.
+
+- **Notificações Direcionadas**: O sistema continua a notificar os roles corretos (`admin`, `financeiro`) sobre ações que requerem sua atenção, como turmas em rascunho ou a conclusão de importações.

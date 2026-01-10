@@ -3,19 +3,13 @@ import { z } from "zod";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 
-import { SHIFT_MAP, removeAccents } from "@/lib/turma";
-import { CURRICULUM_PRESETS, CURRICULUM_PRESETS_META, type CurriculumKey } from "@/lib/onboarding";
+import { removeAccents } from "@/lib/turma";
+import { CURRICULUM_PRESETS, CURRICULUM_PRESETS_META, type CurriculumKey } from "@/lib/academico/curriculum-presets";
 import { PRESET_TO_TYPE } from "@/lib/courseTypes";
 
 // Helpers
 const normalizeNome = (nome: string): string =>
   nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "_");
-
-const makeGlobalHash = (nome: string, tipo: string): string => `${tipo}_${normalizeNome(nome)}`;
-const makeCursoCodigo = (nome: string, escolaId: string): string => {
-  const prefix = escolaId.replace(/-/g, "").slice(0, 8);
-  return `${prefix}_${normalizeNome(nome)}`;
-};
 
 const mapCourseTypeToNivel = (tipo: string): string => {
   switch (tipo) {
@@ -33,12 +27,17 @@ const mapCourseTypeToNivel = (tipo: string): string => {
 
 const normalizeTurno = (turno: string): "M" | "T" | "N" | null => {
   const key = removeAccents(turno || "").toUpperCase();
-  return (SHIFT_MAP as Record<string, "M" | "T" | "N">)[key] ?? null;
+  const SHIFT_MAP: Record<string, "M" | "T" | "N"> = {
+    MANHA: "M", MATUTINO: "M", M: "M",
+    TARDE: "T", VESPERTINO: "T", T: "T",
+    NOITE: "N", NOTURNO: "N", N: "N",
+  };
+  return SHIFT_MAP[key] ?? null;
 };
 
 // Schema
 const matrixSchema = z.object({
-  sessionId: z.string(), // CUIDADO: Isso deve ser compatível com 'ano_letivo' se for o que usamos na constraint
+  sessionId: z.string(),
   matrix: z.array(
     z.object({
       id: z.string(),
@@ -49,6 +48,10 @@ const matrixSchema = z.object({
       cursoKey: z.string(),
       cursoTipo: z.string().optional(),
       cursoNome: z.string().optional(),
+      // This allows the frontend to send custom course data, including which preset it's based on
+      customData: z.object({
+        associatedPreset: z.string()
+      }).optional(),
     })
   ),
 });
@@ -70,8 +73,10 @@ export async function POST(
     const { sessionId, matrix } = parsed.data;
     
     // Assumindo que sessionId é o Ano Letivo (ex: "2024"). 
-    // Se sessionId for um UUID, você precisará buscar o ano correspondente no banco antes.
-    const anoLetivo = sessionId; 
+    const anoLetivo = parseInt(sessionId, 10);
+    if (isNaN(anoLetivo)) {
+      return NextResponse.json({ ok: false, error: "Ano letivo (sessionId) inválido." }, { status: 400 });
+    }
 
     const admin = createAdminClient<Database>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -95,30 +100,28 @@ export async function POST(
 
     // Processamento
     for (const [cursoKey, rows] of cursosMap.entries()) {
-      const meta = CURRICULUM_PRESETS_META[cursoKey as keyof typeof CURRICULUM_PRESETS_META];
-      if (!meta) continue;
+      const firstRow = rows[0];
+      const isCustom = Boolean(firstRow.customData);
+      
+      const basePresetKey = firstRow.customData?.associatedPreset ?? cursoKey;
+      const baseMeta = CURRICULUM_PRESETS_META[basePresetKey as keyof typeof CURRICULUM_PRESETS_META];
 
-      const courseType = PRESET_TO_TYPE[cursoKey as CurriculumKey] || 'geral';
-      const courseName = meta.label;
+      const desiredCourseCode = baseMeta?.course_code?.trim();
+      if (!desiredCourseCode) {
+        console.warn(`Skipping cursoKey ${cursoKey} due to missing course_code in preset meta.`);
+        continue; // Pula para o próximo curso do mapa
+      }
 
-      // 1. GLOBAL CURSO (Cache)
-      const globalHash = makeGlobalHash(courseName, courseType);
-      const { error: globalErr } = await admin.from('cursos_globais_cache').upsert({
-         hash: globalHash,
-         nome: courseName,
-         tipo: courseType,
-         created_by_escola: escolaId,
-         last_used_at: new Date().toISOString(),
-         // usage_count incrementa via trigger ou lógica separada, mas upsert simples garante existência
-      }, { onConflict: 'hash' });
+      const courseType = PRESET_TO_TYPE[basePresetKey as CurriculumKey] || 'geral';
+      const courseName = firstRow.cursoNome || baseMeta.label;
 
-      // 2. CURSO DA ESCOLA
+      // 2. CURSO DA ESCOLA (Refatorado para usar SSOT course_code)
       let cursoId: string;
       const { data: existingCurso } = await admin
         .from('cursos')
         .select('id')
         .eq('escola_id', escolaId)
-        .eq('curso_global_id', globalHash) // Simplificando a busca pela hash global que é única
+        .eq('course_code', desiredCourseCode)
         .maybeSingle();
 
       if (existingCurso) {
@@ -131,22 +134,29 @@ export async function POST(
             escola_id: escolaId,
             nome: courseName,
             tipo: courseType,
-            codigo: makeCursoCodigo(courseName, escolaId),
-            curso_global_id: globalHash,
-            is_custom: false,
+            codigo: desiredCourseCode,       // ✅ SSOT
+            course_code: desiredCourseCode,  // ✅ SSOT
+            curriculum_key: basePresetKey,   // ✅ SSOT
+            is_custom: isCustom,
+            status_aprovacao: 'aprovado',
           })
           .select('id')
           .single();
 
-        // Se der erro de duplicidade aqui (race condition), tentamos buscar de novo
         if (cursoError) {
-             const retry = await admin.from('cursos').select('id').eq('escola_id', escolaId).eq('curso_global_id', globalHash).maybeSingle();
-             if (retry.data) {
-                 cursoId = retry.data.id;
-                 summary.cursos.reused++;
+             // Handle race condition: if it already exists now, another request created it.
+             if (cursoError.code === '23505') { // unique_violation
+                const retry = await admin.from('cursos').select('id').eq('escola_id', escolaId).eq('course_code', desiredCourseCode).single();
+                if (retry.data) {
+                    cursoId = retry.data.id;
+                    summary.cursos.reused++;
+                } else {
+                    console.error(`Erro fatal (race condition) para curso ${courseName}:`, cursoError);
+                    continue; // Próximo curso
+                }
              } else {
-                 console.error(`Erro fatal curso ${courseName}:`, cursoError);
-                 continue;
+                console.error(`Erro fatal ao criar curso ${courseName}:`, cursoError);
+                continue; // Próximo curso
              }
         } else {
             summary.cursos.created++;
