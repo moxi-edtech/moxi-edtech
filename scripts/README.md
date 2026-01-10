@@ -5,6 +5,8 @@ Principais utilitários neste diretório:
 - `supabase-pull-remote.sh` — desabilita serviços conflitantes, roda `supabase db pull` com os schemas definidos (padrão: `public,graphql_public`). Use via `pnpm run db:pull:remote`.
 - `db-dump-remote.sh` — gera dump do remoto (usa `DB_URL`, pode setar `SCHEMAS` ou `SCHEMA_ONLY=1`). Alvo padrão: `tmp/remote_public_<timestamp>.sql`.
 - `db-restore-local.sh` — restaura um dump SQL no Postgres local do Supabase (porta 54322).
+- `db-select-remote.sh` — executa SELECT no remoto (carrega `DB_URL` de `.env.db` se existir).
+- `db-select-local.sh` — executa SELECT no Postgres local (porta 54322, pode sobrescrever `LOCAL_URL`).
 
 Fluxo rápido para desalinhamento de histórico de migrations (caso o pull/push acuse versões faltantes):
 

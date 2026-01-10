@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import twilio from "twilio";
-import { createClient } from "@/lib/supabase/route-client";
+import { createRouteClient } from "@/lib/supabase/route-client";
 
 export async function POST(request: NextRequest) {
   try {

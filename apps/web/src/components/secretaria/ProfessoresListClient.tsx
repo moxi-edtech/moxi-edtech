@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { 
   Loader2, 
@@ -18,6 +18,7 @@ import {
   Edit,
   IdCard
 } from "lucide-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 type Professor = {
   id: string;
@@ -39,8 +40,16 @@ export default function ProfessoresListClient() {
   const [items, setItems] = useState<Professor[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const scrollParentRef = useRef<HTMLDivElement | null>(null);
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total, pageSize]);
+  const hasRows = !loading && items.length > 0;
+  const rowVirtualizer = useVirtualizer({
+    count: items.length,
+    getScrollElement: () => scrollParentRef.current,
+    estimateSize: () => 88,
+    overscan: 6,
+  });
 
   async function load(p = page) {
     setLoading(true);
@@ -53,7 +62,7 @@ export default function ProfessoresListClient() {
         pageSize: String(pageSize) 
       });
       
-      const res = await fetch(`/api/secretaria/professores?${params.toString()}`, { cache: 'no-store' });
+      const res = await fetch(`/api/secretaria/professores?${params.toString()}`, { cache: 'force-cache' });
       const json = await res.json();
       
       if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao carregar professores');
@@ -256,8 +265,9 @@ export default function ProfessoresListClient() {
       {/* --- TABELA DE PROFESSORES --- */}
       <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50">
+          <div ref={scrollParentRef} className="max-h-[560px] overflow-y-auto">
+          <table className="min-w-full table-fixed divide-y divide-slate-200 text-sm">
+            <thead className="bg-slate-50 sticky top-0 z-10" style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
               <tr>
                 <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
                   Professor
@@ -277,16 +287,27 @@ export default function ProfessoresListClient() {
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-slate-100">
+            <tbody
+              className="divide-y divide-slate-100"
+              style={
+                hasRows
+                  ? {
+                      position: "relative",
+                      display: "block",
+                      height: rowVirtualizer.getTotalSize(),
+                    }
+                  : undefined
+              }
+            >
               {loading ? (
-                <tr>
+                <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                   <td colSpan={5} className="p-8 text-center text-slate-500">
                     <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
                     Carregando professores...
                   </td>
                 </tr>
               ) : items.length === 0 ? (
-                <tr>
+                <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                   <td colSpan={5} className="p-8 text-center text-slate-500">
                     <Users className="h-12 w-12 mx-auto mb-3 text-slate-300" />
                     Nenhum professor encontrado.
@@ -296,13 +317,26 @@ export default function ProfessoresListClient() {
                   </td>
                 </tr>
               ) : (
-                items.map((professor) => {
+                rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                  const professor = items[virtualRow.index];
                   const numeroLogin = Array.isArray(professor.profiles)
                     ? (professor.profiles?.[0]?.numero_login ?? null)
                     : (professor.profiles as any)?.numero_login ?? null;
 
                   return (
-                    <tr key={professor.user_id || professor.id} className="hover:bg-slate-50 transition-colors">
+                    <tr
+                      key={professor.user_id || professor.id}
+                      className="hover:bg-slate-50 transition-colors"
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        transform: `translateY(${virtualRow.start}px)`,
+                        width: "100%",
+                        display: "table",
+                        tableLayout: "fixed",
+                      }}
+                    >
                       <td className="px-4 py-4 text-slate-900">
                         <div className="font-bold text-moxinexa-navy">
                           {professor.nome}
@@ -376,6 +410,7 @@ export default function ProfessoresListClient() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
       </section>
 

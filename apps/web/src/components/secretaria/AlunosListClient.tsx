@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { 
   Loader2, Search, Filter, UserPlus, ArrowLeft, 
   Users, Mail, Phone, Shield, 
   Archive, Eye, Edit 
 } from "lucide-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 // --- TIPOS ---
 type Aluno = {
@@ -64,6 +65,7 @@ export default function AlunosListClient() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const scrollParentRef = useRef<HTMLDivElement | null>(null);
 
   // Estados de Ação (Modal)
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -72,6 +74,14 @@ export default function AlunosListClient() {
   const [alunoSelecionado, setAlunoSelecionado] = useState<Aluno | null>(null);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const hasRows = !loading && items.length > 0;
+
+  const rowVirtualizer = useVirtualizer({
+    count: items.length,
+    getScrollElement: () => scrollParentRef.current,
+    estimateSize: () => 72,
+    overscan: 6,
+  });
 
   // --- DATA FETCHING ---
   async function load(p = page) {
@@ -79,7 +89,7 @@ export default function AlunosListClient() {
     setError(null);
     try {
       const params = new URLSearchParams({ q, status, page: String(p), pageSize: String(pageSize) });
-      const res = await fetch(`/api/secretaria/alunos?${params.toString()}`, { cache: "no-store" });
+      const res = await fetch(`/api/secretaria/alunos?${params.toString()}`, { cache: "force-cache" });
       const json = await res.json();
 
       if (!res.ok || !json.ok) throw new Error(json?.error || "Falha ao carregar");
@@ -209,8 +219,9 @@ export default function AlunosListClient() {
 
         {/* Lista */}
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-100">
-            <thead className="bg-white">
+          <div ref={scrollParentRef} className="max-h-[560px] overflow-y-auto">
+            <table className="min-w-full table-fixed divide-y divide-slate-100">
+              <thead className="bg-white sticky top-0 z-10" style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Aluno</th>
                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Contato</th>
@@ -219,18 +230,50 @@ export default function AlunosListClient() {
                 <th className="px-6 py-4 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">Ações</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-slate-50">
+            <tbody
+              className="bg-white divide-y divide-slate-50"
+              style={
+                hasRows
+                  ? {
+                      position: "relative",
+                      display: "block",
+                      height: rowVirtualizer.getTotalSize(),
+                    }
+                  : undefined
+              }
+            >
               {loading ? (
-                 <tr><td colSpan={5} className="p-12 text-center text-slate-500"><Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-teal-600"/>Carregando...</td></tr>
+                 <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
+                   <td colSpan={5} className="p-12 text-center text-slate-500">
+                     <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-teal-600"/>Carregando...
+                   </td>
+                 </tr>
               ) : items.length === 0 ? (
-                 <tr><td colSpan={5} className="p-12 text-center text-slate-500">Nenhum aluno encontrado. Cadastros nascem como pendentes até gerar matrícula.</td></tr>
+                 <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
+                   <td colSpan={5} className="p-12 text-center text-slate-500">
+                     Nenhum aluno encontrado. Cadastros nascem como pendentes até gerar matrícula.
+                   </td>
+                 </tr>
               ) : (
-                items.map((aluno) => {
+                rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                  const aluno = items[virtualRow.index];
                   const identificador = aluno.numero_processo || aluno.numero_login || "—";
                   const identificadorLabel = aluno.numero_processo ? "Proc." : aluno.numero_login ? "Login" : "—";
 
                   return (
-                    <tr key={aluno.id} className="hover:bg-slate-50/80 transition-colors group">
+                    <tr
+                      key={aluno.id}
+                      className="hover:bg-slate-50/80 transition-colors group"
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        transform: `translateY(${virtualRow.start}px)`,
+                        width: "100%",
+                        display: "table",
+                        tableLayout: "fixed",
+                      }}
+                    >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs border border-slate-200">
@@ -279,6 +322,7 @@ export default function AlunosListClient() {
               )}
             </tbody>
           </table>
+          </div>
         </div>
 
         {/* Paginacao */}

@@ -198,6 +198,27 @@ pnpm test:rls
 
 ---
 
+# 🔍 **11. SELECT rápido (local e remoto)**
+
+Scripts rápidos para rodar SELECT (com `LIMIT 100` automático se você não informar):
+
+```bash
+# Remoto (usa DB_URL ou .env.db)
+pnpm db:select:remote -- "SELECT * FROM sua_tabela LIMIT 10;"
+
+# Local (Supabase local na porta 54322)
+pnpm db:select:local -- "SELECT * FROM sua_tabela LIMIT 10;"
+
+# Se realmente quiser sem LIMIT
+pnpm db:select:remote -- --no-limit "SELECT * FROM sua_tabela;"
+```
+
+Observações:
+- Aceita apenas `SELECT`.
+- Para local, use `supabase start` antes.
+
+---
+
 Fim.
 
 ---

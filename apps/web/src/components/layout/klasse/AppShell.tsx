@@ -67,7 +67,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
     const load = async () => {
       try {
-        const res = await fetch("/api/financeiro/sidebar-badges", { cache: "no-store" });
+        const res = await fetch("/api/financeiro/sidebar-badges", { cache: "force-cache" });
         const json = await res.json().catch(() => null);
 
         if (cancelled) return;

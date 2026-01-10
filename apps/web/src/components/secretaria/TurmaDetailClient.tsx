@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { 
   Loader2, UsersRound, BookOpen, UserCheck, Download, 
   MoreVertical, UserPlus, FileText, CalendarCheck, Settings, 
   School, LayoutDashboard, GraduationCap, MapPin
 } from "lucide-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 // --- TYPES (Mantidos e Refinados) ---
 type Aluno = {
@@ -89,6 +90,7 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
   const [data, setData] = useState<TurmaData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const alunosScrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -127,6 +129,13 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
 
   const { turma, alunos, disciplinas } = data;
   const ocupacaoPct = Math.min((turma.ocupacao / Math.max(turma.capacidade, 1)) * 100, 100);
+  const hasAlunos = alunos.length > 0;
+  const alunosVirtualizer = useVirtualizer({
+    count: alunos.length,
+    getScrollElement: () => alunosScrollRef.current,
+    estimateSize: () => 64,
+    overscan: 6,
+  });
 
   return (
     <div className="min-h-screen bg-slate-50/50 pb-20 font-sora">
@@ -260,11 +269,12 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
          </div>
 
          {/* CONTENT: ALUNOS */}
-         {activeTab === 'alunos' && (
+        {activeTab === 'alunos' && (
             <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
                <div className="overflow-x-auto">
-                 <table className="w-full text-left text-sm">
-                    <thead className="bg-slate-50 border-b border-slate-100">
+                 <div ref={alunosScrollRef} className="max-h-[560px] overflow-y-auto">
+                 <table className="w-full table-fixed text-left text-sm">
+                    <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-10" style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                        <tr>
                          <th className="px-6 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Nº</th>
                          <th className="px-6 py-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Estudante</th>
@@ -273,11 +283,38 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
                           <th className="px-6 py-3 text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider">Ações</th>
                        </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-50">
+                    <tbody
+                      className="divide-y divide-slate-50"
+                      style={
+                        hasAlunos
+                          ? {
+                              position: "relative",
+                              display: "block",
+                              height: alunosVirtualizer.getTotalSize(),
+                            }
+                          : undefined
+                      }
+                    >
                        {alunos.length === 0 ? (
-                          <tr><td colSpan={5} className="p-12 text-center text-slate-400 text-sm">Nenhum aluno matriculado nesta turma.</td></tr>
-                       ) : alunos.map(aluno => (
-                          <tr key={aluno.aluno_id} className="hover:bg-slate-50/80 transition group">
+                          <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
+                            <td colSpan={5} className="p-12 text-center text-slate-400 text-sm">Nenhum aluno matriculado nesta turma.</td>
+                          </tr>
+                       ) : alunosVirtualizer.getVirtualItems().map((virtualRow) => {
+                          const aluno = alunos[virtualRow.index];
+                          return (
+                          <tr
+                            key={aluno.aluno_id}
+                            className="hover:bg-slate-50/80 transition group"
+                            style={{
+                              position: "absolute",
+                              top: 0,
+                              left: 0,
+                              transform: `translateY(${virtualRow.start}px)`,
+                              width: "100%",
+                              display: "table",
+                              tableLayout: "fixed",
+                            }}
+                          >
                              <td className="px-6 py-4 font-mono text-slate-400 text-xs">{String(aluno.numero).padStart(2, '0')}</td>
                              <td className="px-6 py-4">
                                 <div className="flex items-center gap-3">
@@ -309,9 +346,11 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
                                 </button>
                              </td>
                           </tr>
-                       ))}
+                          );
+                       })}
                     </tbody>
                  </table>
+                 </div>
                </div>
             </div>
          )}

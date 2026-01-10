@@ -1,63 +1,94 @@
-# Fluxo de importação de alunos e matrícula em massa
+# Fluxo de importação de alunos e matrícula em massa (v2.0)
 
-Este guia descreve o fluxo ponta a ponta de importação de alunos via wizard, validação em staging, disparo da função de importação e acompanhamento de histórico/erros. Também resume como matricular os alunos importados (ou existentes) pela API/UX atual.
+Este guia descreve o fluxo ponta a ponta de importação de alunos via wizard, validação em staging, disparo da função de importação, acompanhamento de histórico/erros e o **novo fluxo de aprovação e ativação de matrículas**.
 
-## Visão geral
-1. **Upload autenticado**: o wizard obtém `escolaId` e `userId` da sessão Supabase e envia o CSV para `/api/migracao/upload`, que salva no bucket `migracoes` e cria um registro em `import_migrations` com `importId` real.
-2. **Mapeamento + validação**: o usuário mapeia colunas no passo 2; `/api/migracao/alunos/validar` lê o arquivo, converte linhas para `staging_alunos`, limpa erros anteriores e salva `column_map`/`total_rows` na mesma `import_migrations`.
-3. **Importação**: `/api/migracao/alunos/importar` chama a RPC `importar_alunos` usando `importId/escolaId`, marca a importação como `imported` e retorna um resumo (`imported`, `skipped`, `errors`).
-4. **Acompanhamento**: a tela de finalização busca `/api/migracao/[importId]/erros` para listar erros linha a linha e a página de histórico consome `/api/migracao/historico` para exibir as últimas 50 importações.
+## Visão geral do novo fluxo
+1.  **Upload autenticado**: O wizard obtém `escolaId` e `userId` da sessão Supabase e envia o CSV para `/api/migracao/upload`, que salva no bucket `migracoes` e cria um registro em `import_migrations` com `importId` real.
+2.  **Mapeamento + validação**: O usuário mapeia colunas no passo 2 e seleciona o "Ano Letivo de Importação". `/api/migracao/alunos/validar` lê o arquivo, converte linhas para `staging_alunos` (incluindo o `ano_letivo` selecionado), limpa erros anteriores e salva `column_map`/`total_rows` na mesma `import_migrations`.
+3.  **Importação (`importar_alunos_v4`)**: Disparada por `/api/migracao/alunos/importar` com os novos parâmetros `modo` e `data_inicio_financeiro`. Esta função:
+    *   Deduplica alunos (por `BI_NUMERO` ou `NOME_COMPLETO` + `DATA_NASCIMENTO`).
+    *   Cria `alunos` e `turmas` (se necessário) em estado de `rascunho` ou `'pendente'`, e `matriculas` como `'pendente'`.
+    *   Grava `numero_processo_legado` para busca histórica.
+    *   Retorna um resumo detalhado (`imported`, `turmas_created`, `matriculas_pendentes`, `errors`).
+4.  **Configuração e Aprovação**: Administradores revisam e aprovam os cursos/turmas criados como `rascunho` na página de gestão de turmas. A aprovação da turma ativa automaticamente o curso e as matrículas pendentes.
+5.  **Acompanhamento**: A tela de finalização busca `/api/migracao/[importId]/erros` para listar erros linha a linha e a página de histórico consome `/api/migracao/historico` para exibir as últimas importações.
 
 ## Funil de Admissão (cadastro → candidatura → matrícula)
-- Cadastro rápido cria apenas `alunos` (gera `numero_processo` automático) e registra a intenção em `candidaturas` com `curso_id`/`ano_letivo`; não cria `matriculas` nem `profiles` neste passo.
-- Conversão para matrícula ocorre via endpoint dedicado `/api/secretaria/candidaturas/[id]/confirmar`, que insere em `matriculas` (gera `numero_matricula` e sincroniza login/profile) e marca a candidatura como `matriculado`.
-- UI de matrícula agora seleciona uma candidatura pendente/paga e, a partir dela, aloca a turma e chama o endpoint de confirmação; orçamento usa `curso_id/ano_letivo` da candidatura.
+-   O processo de importação agora atende a dois modos principais: `onboarding` (para novos candidatos) e `migracao` (para alunos existentes com matrícula direta).
+-   A conversão para matrícula (para candidatos do modo `onboarding`) continua ocorrendo via endpoint dedicado `/api/secretaria/candidaturas/[id]/confirmar`, que insere em `matriculas` e marca a candidatura como `matriculado`.
 
 ## Wizard de migração (frontend)
-- **Contexto autenticado**: o wizard carrega `userId` e resolve `escolaId` no `useEffect` a partir de `app_metadata.escola_id` ou, em fallback, via `profiles.current_escola_id` → `profiles.escola_id` → `escola_usuarios.escola_id`. O upload é bloqueado sem escola válida.【F:apps/web/src/app/migracao/alunos/page.tsx†L22-L147】
-- **Upload (passo 1)**: envia `file`, `escolaId` e opcionalmente `userId` para `/api/migracao/upload`; guarda `importId` retornado, limpa erros anteriores e extrai cabeçalhos do CSV para mapeamento.【F:apps/web/src/app/migracao/alunos/page.tsx†L89-L118】
-- **Mapeamento + validação (passo 2)**: envia `importId`, `escolaId` e `columnMap` para `/api/migracao/alunos/validar`; na resposta, popula a pré-visualização das primeiras linhas e avança ao passo 3.【F:apps/web/src/app/migracao/alunos/page.tsx†L62-L87】
-- **Importação (passo 3)**: dispara `/api/migracao/alunos/importar` com os IDs reais; após sucesso, carrega erros detalhados via `/api/migracao/[importId]/erros` e mostra o resumo retornado pela API.【F:apps/web/src/app/migracao/alunos/page.tsx†L120-L215】
+-   **Contexto autenticado**: O wizard carrega `userId` e resolve `escolaId`. O upload é bloqueado sem escola válida.
+-   **Upload (passo 1)**: Envia o arquivo para `/api/migracao/upload`; guarda `importId` e extrai cabeçalhos do CSV.
+-   **Mapeamento + validação (passo 2)**: Envia `importId`, `escolaId`, `columnMap` e **`anoLetivo`** para `/api/migracao/alunos/validar`. O `anoLetivo` é persistido na `staging_alunos`.
+-   **Pré-visualização (passo 3)**: Exibe amostra dos dados validados.
+-   **Estrutura Acadêmica (passo 4)**: Processo de backfill para garantir que a estrutura acadêmica base está pronta.
+-   **Importação (passo 5)**: Dispara `/api/migracao/alunos/importar` com `importId`, `escolaId`, `modo` e `data_inicio_financeiro`.
+    *   **`modo: 'migracao'`**: Cria alunos e matrículas `pendentes`.
+    *   **`modo: 'onboarding'`**: Apenas cria alunos com status `pendente`.
+-   **Configuração (passo 6)**: Administradores podem visualizar e aprovar cursos e turmas em rascunho criados pela importação.
+-   **Finalização (passo 7)**: Exibe resumo e erros.
 
 ## APIs do fluxo de importação
-- **Upload** (`POST /api/migracao/upload`)
-  - Campos obrigatórios: `file` (CSV), `escolaId`; opcional `userId` para `created_by`.
-  - Valida tamanho máximo, calcula hash, garante bucket `migracoes`, salva o arquivo e insere em `import_migrations` com status `uploaded`; devolve `importId` para o frontend.【F:apps/web/src/app/api/migracao/upload/route.ts†L11-L79】
+-   **Upload** (`POST /api/migracao/upload`)
+    -   Campos obrigatórios: `file` (CSV), `escolaId`; opcional `userId`.
+    -   Salva o arquivo e insere em `import_migrations` com status `uploaded`; devolve `importId`.
 
-- **Validação** (`POST /api/migracao/alunos/validar`)
-  - Corpo: `{ importId, escolaId, columnMap }`.
-  - Baixa o CSV salvo, converte para staging com `mapAlunoFromCsv`, limpa `staging_alunos` e `import_errors` do `importId`, faz `upsert` do staging, atualiza `import_migrations` com `status: "validado"`, `total_rows` e `column_map`, e retorna `preview` + total de linhas.【F:apps/web/src/app/api/migracao/alunos/validar/route.ts†L10-L74】
+-   **Validação** (`POST /api/migracao/alunos/validar`)
+    -   Corpo: `{ importId, escolaId, columnMap, anoLetivo }`.
+    -   Converte o CSV para `staging_alunos` (persistindo `anoLetivo` por linha), limpa erros anteriores, faz `upsert` do staging, atualiza `import_migrations` para `validado`.
 
-- **Importação** (`POST /api/migracao/alunos/importar`)
-  - Corpo: `{ importId, escolaId }`.
-  - Executa a função `importar_alunos` passando o `importId` validado e atualiza `import_migrations` para `imported` com `processed_at`; responde com o resumo de importação para o wizard.【F:apps/web/src/app/api/migracao/alunos/importar/route.ts†L9-L52】
+-   **Importação** (`POST /api/migracao/alunos/importar`)
+    -   Corpo: `{ importId, escolaId, modo, dataInicioFinanceiro }`.
+    -   **Chama a RPC `importar_alunos_v4`** para processar o staging.
 
-- **Erros de importação** (`GET /api/migracao/[importId]/erros`)
-  - Retorna `row_number`, `column_name`, `message` e `raw_value` de `import_errors` ordenados por linha, usados no passo 4 para exibição detalhada.【F:apps/web/src/app/api/migracao/[importId]/erros/route.ts†L5-L19】
+-   **Erros de importação** (`GET /api/migracao/[importId]/erros`)
+    -   Retorna erros de `import_errors`.
 
-- **Histórico** (`GET /api/migracao/historico`)
-  - Lista até 50 registros de `import_migrations` (arquivo, status, contagens, timestamps) para a página de histórico da UI.【F:apps/web/src/app/api/migracao/historico/route.ts†L5-L30】
+-   **Histórico** (`GET /api/migracao/historico`)
+    -   Lista registros de `import_migrations`.
 
-## Persistência do mapeamento de colunas
-Há uma migração que adiciona o campo `column_map` em `import_migrations`, permitindo auditar ou reutilizar o mapeamento usado em cada importação.【F:supabase/migrations/20251125120000_import_migrations_add_column_map.sql†L1-L2】
+-   **Aprovação de Turmas** (`POST /api/escolas/[id]/admin/turmas/aprovar`)
+    -   Corpo: `{ turma_ids: string[] }`.
+    -   **Chama a RPC `aprovar_turmas`** que, para cada turma:
+        *   Inferere o curso do `turma_codigo`.
+        *   Cria/aprova o curso (se não existir, ou se estiver `rascunho`).
+        *   Aprova a turma (`status_validacao = 'aprovado'`) e vincula ao `curso_id`.
+        *   Ativa todas as matrículas pendentes vinculadas a essa turma.
 
-## Histórico e erros na UI
-A página `/migracao/historico` consome a rota de histórico e renderiza cards com status, contagens e timestamps das importações recentes, substituindo os placeholders anteriores.【F:apps/web/src/app/migracao/historico/page.tsx†L1-L49】 Use essa tela para acompanhar progresso e verificar rapidamente quantos registros foram importados ou falharam.
-
-## Matrícula de alunos (criação e atualização)
-- **Listagem e filtros**: `GET /api/secretaria/matriculas` aplica escopo da escola do usuário (profiles/escola_usuarios), suporta filtros por texto, turma, status ou múltiplos status e paginação; retorna `items` e `total` para a página `/secretaria/matriculas`.【F:apps/web/src/app/api/secretaria/matriculas/route.ts†L8-L150】
-- **Criação de matrícula**: `POST /api/secretaria/matriculas` resolve a escola via aluno ou perfil, valida campos obrigatórios, garante/gera `numero_login` do aluno quando necessário, cria a matrícula com status `ativo` e, se parâmetros de preço/dia não forem fornecidos, resolve mensalidade via `resolveMensalidade` antes de gerar os lançamentos financeiros.【F:apps/web/src/app/api/secretaria/matriculas/route.ts†L152-L400】
-- **Atualização de status**: use `PUT /api/secretaria/matriculas/[id]/status` (não mostrado aqui) para alterar status com escopo de escola; combine com confirmações na UI para operações sensíveis.
+-   **Geração de Mensalidades** (`POST /api/financeiro/mensalidades/gerar`)
+    -   Corpo: `{ ano_letivo, mes_referencia, dia_vencimento }`.
+    -   **Chama a RPC `gerar_mensalidades_lote`** que gera as cobranças para o mês/ano especificados, respeitando o "Escudo Financeiro".
 
 ## Formato do Código da Turma
-- Use `<CURSO>-<CLASSE>-<TURNO>-<TURMA>` (ex.: `TI-10-M-A`).
-- CURSO: sigla configurada pela escola (`EP`, `ESG`, `TI`, `CFB`, etc.).
-- CLASSE: número 1–13. TURNO: `M` manhã, `T` tarde, `N` noite. TURMA: letra(s) (`A`, `B`, `C`...).
-- Ao importar com turma preenchida, o backend resolve `course_code` da escola, usa `create_or_get_turma_by_code` para criar/pegar a turma (único por escola+ano) e então matricula. Se a sigla do curso não estiver configurada na escola, retorna erro de validação.
+-   **Estrutura Obrigatória:** `CURSO-CLASSE-TURNO-LETRA` (ex.: `TI-10-M-A`).
+-   **CURSO**: Sigla configurada pela escola (ex: `EP`, `TI`). Usado para inferir o `curso`.
+-   **CLASSE**: Número 1–13. **TURNO**: `M` (manhã), `T` (tarde), `N` (noite). **LETRA**: Letra(s) (ex: `A`, `B`).
+
+## Fluxo de Aprovação e Ativação
+Este é o "gate" de controle administrativo:
+
+1.  **Importação (`importar_alunos_v4`)**:
+    *   Cria `turmas` com `status_validacao = 'rascunho'`.
+    *   Cria `matriculas` com `status = 'pendente'`, `ativo = false`, e `numero_matricula = NULL`.
+
+2.  **Aprovação na Gestão de Turmas (`aprovar_turmas` via `/admin/turmas/aprovar`)**:
+    *   O administrador revisa e seleciona as turmas em rascunho.
+    *   Ao aprovar uma turma, a RPC `aprovar_turmas` é acionada:
+        *   Ela **cria ou aprova o curso** inferido do `turma_codigo`.
+        *   Ela atualiza a `turma` para `status_validacao = 'aprovado'` e vincula o `curso_id` correto.
+        *   Ela **ativa todas as matrículas pendentes** associadas a essa turma (status `'ativa'`, `ativo=true`, gera `numero_matricula`).
+
+3.  **Controle Financeiro ("Escudo Financeiro")**:
+    *   A `data_inicio_financeiro` (definida na importação) é gravada na matrícula.
+    *   A função `gerar_mensalidades_lote` (chamada via `/financeiro/mensalidades/gerar`) só gerará mensalidades para um aluno se a data de vencimento da mensalidade for **igual ou posterior** à sua `data_inicio_financeiro`.
 
 ## Boas práticas ao operar o fluxo
-- Sempre iniciar o wizard autenticado para garantir `escolaId` válido.
-- Não pular a etapa de validação: ela popula `staging_alunos`, limpa tentativas anteriores e salva o mapeamento.
-- Após importar, consulte erros detalhados para corrigir linhas com problemas e reprocessar se necessário (o fluxo é idempotente por `importId`).
-- Ao matricular, reusar `numero_matricula` sugerido ou já presente do aluno evita duplicidade e mantém o login alinhado ao cadastro.
-- Dropdown de “Turma Final” vazio: ajustamos o front para enviar o ano letivo derivado da sessão e a rota `/api/secretaria/turmas-simples` agora aceita `ano/ano_letivo` (derivado de `session_id`) e filtra pela view com esses parâmetros; turmas voltam a aparecer conforme o ano selecionado.
+-   **Validação rigorosa do CSV**: Use a estrutura `CURSO-CLASSE-TURNO-LETRA` para `turma_codigo`.
+-   **Modo de Importação**: Escolha `migracao` para alunos existentes e `onboarding` para novos candidatos.
+-   **Data de Início Financeiro**: Defina-a com cuidado para evitar cobranças indevidas.
+-   **Não pular a validação**: Ela popula a `staging_alunos` com dados essenciais, como o `anoLetivo` por linha.
+-   **Acompanhamento Pós-Importação**:
+    *   Consulte erros detalhados.
+    *   Vá à tela de "Gestão de Turmas" (`/escolas/[id]/admin/turmas`) para **aprovar os rascunhos de turmas**. Este é um passo crucial para ativar as matrículas e permitir o fluxo financeiro.
+-   **Geração de Cobranças**: Após a aprovação das turmas, use o botão "Gerar Cobranças em Lote" no Dashboard Financeiro para iniciar o ciclo de cobrança.

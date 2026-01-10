@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, Fragment, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef, type CSSProperties } from "react";
 import Link from "next/link"; 
 import { 
   Loader2, Search, ArrowLeft,
@@ -13,6 +13,7 @@ import {
   AlertTriangle, CheckCircle2, MoreVertical,
   GraduationCap
 } from "lucide-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 import TurmaForm from "./TurmaForm"; 
 import AtribuirProfessorForm from "./AtribuirProfessorForm"; 
@@ -100,9 +101,9 @@ function KpiCard({ title, value, icon: Icon, active, onClick }: any) {
 
 // --- COMPONENT: Row ---
 function TurmaRow({ 
-    turma, isExpanded, onToggleExpand, onEdit 
+    turma, isExpanded, onToggleExpand, onEdit, style 
 }: { 
-    turma: TurmaItem, isExpanded: boolean, onToggleExpand: () => void, onEdit: (t: TurmaItem) => void 
+    turma: TurmaItem, isExpanded: boolean, onToggleExpand: () => void, onEdit: (t: TurmaItem) => void, style?: CSSProperties 
 }) {
     // 1. BLINDAGEM VISUAL: Garante que existam valores antes de processar
     const safeNome = turma.nome || "Sem Nome";
@@ -119,12 +120,14 @@ function TurmaRow({
     const isDraft = turma.status_validacao === 'rascunho';
 
     return (
-        <Fragment>
-            <tr className={`
+            <tr
+                className={`
                 border-b border-slate-100 transition-colors group
                 ${isDraft ? 'bg-amber-50/30' : 'hover:bg-slate-50'}
                 ${isExpanded ? 'bg-slate-50' : ''}
-            `}>
+            `}
+                style={style}
+            >
                 <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                         <div className={`
@@ -208,17 +211,6 @@ function TurmaRow({
                     </div>
                 </td>
             </tr>
-            
-            {isExpanded && (
-                <tr className="bg-slate-50/50">
-                    <td colSpan={5} className="px-6 py-4">
-                         <div className="ml-12 p-4 bg-white border border-slate-200 rounded-xl shadow-sm text-center text-sm text-slate-500">
-                            <p>Detalhes avançados ou lista rápida de professores apareceriam aqui.</p>
-                         </div>
-                    </td>
-                </tr>
-            )}
-        </Fragment>
     );
 }
 
@@ -234,6 +226,7 @@ export default function TurmasListClient() {
   const [showForm, setShowForm] = useState(false);
   const [editingTurma, setEditingTurma] = useState<TurmaItem | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const scrollParentRef = useRef<HTMLDivElement | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!escolaId) return;
@@ -274,6 +267,24 @@ export default function TurmasListClient() {
   }, [data, busca]);
 
   const rascunhos = useMemo(() => data?.items.filter(t => t.status_validacao === 'rascunho').length || 0, [data]);
+  const displayRows = useMemo(() => {
+    const rows: Array<{ key: string; type: "turma" | "expanded"; turma: TurmaItem }> = [];
+    filteredItems.forEach((turma) => {
+      rows.push({ key: turma.id, type: "turma", turma });
+      if (expandedId === turma.id) {
+        rows.push({ key: `${turma.id}-expanded`, type: "expanded", turma });
+      }
+    });
+    return rows;
+  }, [filteredItems, expandedId]);
+
+  const hasRows = !loading && displayRows.length > 0;
+  const rowVirtualizer = useVirtualizer({
+    count: displayRows.length,
+    getScrollElement: () => scrollParentRef.current,
+    estimateSize: (index) => (displayRows[index]?.type === "expanded" ? 140 : 88),
+    overscan: 6,
+  });
 
   return (
     <div className="w-full max-w-7xl mx-auto p-6 space-y-8 pb-24 font-sora">
@@ -334,8 +345,9 @@ export default function TurmasListClient() {
         </div>
 
         <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-100">
-                <thead className="bg-slate-50">
+            <div ref={scrollParentRef} className="max-h-[560px] overflow-y-auto">
+            <table className="min-w-full table-fixed divide-y divide-slate-100">
+                <thead className="bg-slate-50 sticky top-0 z-10" style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                     <tr>
                         <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">Nome da Turma</th>
                         <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">Acadêmico</th>
@@ -344,10 +356,21 @@ export default function TurmasListClient() {
                         <th className="px-6 py-3 text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider">Ações</th>
                     </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50 bg-white">
+                <tbody
+                    className="divide-y divide-slate-50 bg-white"
+                    style={
+                      hasRows
+                        ? {
+                            position: "relative",
+                            display: "block",
+                            height: rowVirtualizer.getTotalSize(),
+                          }
+                        : undefined
+                    }
+                >
                     {loading ? (
                         [...Array(5)].map((_, i) => (
-                            <tr key={i} className="animate-pulse">
+                            <tr key={i} className="animate-pulse" style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                                 <td className="px-6 py-4"><div className="h-10 w-10 bg-slate-100 rounded-xl mb-1"></div></td>
                                 <td className="px-6 py-4"><div className="h-4 w-32 bg-slate-100 rounded"></div></td>
                                 <td className="px-6 py-4"><div className="h-4 w-20 bg-slate-100 rounded"></div></td>
@@ -356,7 +379,7 @@ export default function TurmasListClient() {
                             </tr>
                         ))
                     ) : filteredItems.length === 0 ? (
-                        <tr>
+                        <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                             <td colSpan={5} className="py-20 text-center">
                                 <div className="flex flex-col items-center justify-center text-slate-400">
                                     <div className="bg-slate-50 p-4 rounded-full mb-3">
@@ -368,18 +391,59 @@ export default function TurmasListClient() {
                             </td>
                         </tr>
                     ) : (
-                        filteredItems.map(turma => (
-                            <TurmaRow 
-                                key={turma.id} 
-                                turma={turma} 
-                                isExpanded={expandedId === turma.id}
-                                onToggleExpand={() => setExpandedId(expandedId === turma.id ? null : turma.id)}
-                                onEdit={(t) => { setEditingTurma(t); setShowForm(true); }}
+                        rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                          const row = displayRows[virtualRow.index];
+                          if (!row) return null;
+                          if (row.type === "expanded") {
+                            return (
+                              <tr
+                                key={row.key}
+                                className="bg-slate-50/50"
+                                style={{
+                                  position: "absolute",
+                                  top: 0,
+                                  left: 0,
+                                  transform: `translateY(${virtualRow.start}px)`,
+                                  width: "100%",
+                                  display: "table",
+                                  tableLayout: "fixed",
+                                }}
+                              >
+                                <td colSpan={5} className="px-6 py-4">
+                                  <div className="ml-12 p-4 bg-white border border-slate-200 rounded-xl shadow-sm text-center text-sm text-slate-500">
+                                    <p>Detalhes avançados ou lista rápida de professores apareceriam aqui.</p>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          }
+
+                          return (
+                            <TurmaRow
+                              key={row.key}
+                              turma={row.turma}
+                              isExpanded={expandedId === row.turma.id}
+                              onToggleExpand={() => setExpandedId(expandedId === row.turma.id ? null : row.turma.id)}
+                              onEdit={(t) => {
+                                setEditingTurma(t);
+                                setShowForm(true);
+                              }}
+                              style={{
+                                position: "absolute",
+                                top: 0,
+                                left: 0,
+                                transform: `translateY(${virtualRow.start}px)`,
+                                width: "100%",
+                                display: "table",
+                                tableLayout: "fixed",
+                              }}
                             />
-                        ))
+                          );
+                        })
                     )}
                 </tbody>
             </table>
+            </div>
         </div>
       </div>
 

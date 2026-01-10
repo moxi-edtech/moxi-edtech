@@ -14,8 +14,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     s.from('pagamentos').select('valor', { head: false }).eq('escola_id', escolaId).eq('status', 'pago'),
     s.from('pagamentos').select('valor', { head: false }).eq('escola_id', escolaId).eq('status', 'pendente'),
     s.from('pagamentos').select('id', { count: 'exact', head: true }).eq('escola_id', escolaId),
-    fetch(getAbsoluteUrl(`/api/escolas/${escolaId}/nome`), { cache: 'no-store' }).then(r => r.json()).catch(() => null),
-    fetch(getAbsoluteUrl(`/api/financeiro?escolaId=${escolaId}`), { cache: 'no-store' }).then(r => r.json()).catch(() => null),
+    fetch(getAbsoluteUrl(`/api/escolas/${escolaId}/nome`), { cache: 'force-cache' }).then(r => r.json()).catch(() => null),
+    fetch(getAbsoluteUrl(`/api/financeiro?escolaId=${escolaId}`), { cache: 'force-cache' }).then(r => r.json()).catch(() => null),
   ])
 
   const sum = (rows: any[] | null | undefined) => (rows || []).reduce((acc, r) => acc + Number(r.valor || 0), 0)

@@ -24,7 +24,7 @@ export default async function CredenciaisPage() {
   let escolaNome: string | null = null;
   if (escolaId) {
     try {
-      const res = await fetch(`/api/escolas/${escolaId}/nome`, { cache: 'no-store' })
+      const res = await fetch(`/api/escolas/${escolaId}/nome`, { cache: 'force-cache' })
       const json = await res.json().catch(() => null)
       escolaNome = res.ok && json?.ok ? (json?.nome ?? null) : null
     } catch {

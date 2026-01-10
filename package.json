@@ -27,11 +27,19 @@
     "db:dump:remote:public": "SCHEMAS=public bash scripts/db-dump-remote.sh",
     "db:dump:remote:all": "SCHEMAS='*' bash scripts/db-dump-remote.sh",
     "db:restore:local": "bash scripts/db-restore-local.sh",
-    "test:rls": "psql -f supabase/tests/assert_tenant_rls.sql"
+    "db:select:remote": "bash scripts/db-select-remote.sh",
+    "db:select:local": "bash scripts/db-select-local.sh",
+    "test:rls": "psql -f supabase/tests/assert_tenant_rls.sql",
+    "agent:scan": "tsx agents/scripts/codex-scan-v2.ts --repo . --contracts agents/contracts --out agents/outputs",
+    "agents:scan": "tsx agents/scripts/codex-scan-v2.ts --repo . --contracts agents/contracts --out agents/outputs",
+    "agents:gate": "tsx agents/scripts/perf-gate.ts --scan agents/outputs/REPORT_SCAN.json --contracts agents/contracts --out agents/outputs",
+    "agents:apply": "tsx agents/scripts/apply-agent.ts --plan agents/outputs/PLAN_PATCHES.json --gate agents/outputs/PERF_GATE.json --repo . --mode safe"
   },
   "devDependencies": {
     "@types/node": "^24.10.0",
-    "autoprefixer": "^10.4.22"
+    "autoprefixer": "^10.4.22",
+    "fast-glob": "^3.3.3",
+    "tsx": "^4.21.0"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -42,7 +50,10 @@
     "@storybook/addon-links": "8.6.15",
     "@storybook/nextjs": "8.6.15",
     "@storybook/react": "8.6.15",
+    "diff": "^5.2.0",
     "storybook": "8.6.15",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "yargs": "^17.7.2",
+    "zod": "^3.23.8"
   }
 }

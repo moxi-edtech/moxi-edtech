@@ -3,17 +3,14 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 
 type MatriculaResumo = {
   status: string | null;
-  count: number;
+  total: number;
 };
 
 type TurmaResumo = {
   turma_id: string;
   status: string | null;
-  count: number;
+  total: number;
 };
-
-const withGroup = (group: string) =>
-  ({ group } as unknown as { head?: boolean; count?: 'exact' | 'planned' | 'estimated' });
 
 export async function GET() {
   try {
@@ -50,23 +47,20 @@ export async function GET() {
       });
     }
 
-    const [alunosAtivosRes, turmasRes, matsRes, matsStatusRes, matsTurmaStatusRes, avisosRes, ultimasMatriculasRes] = await Promise.all([
-      // Número de alunos com matrícula ativa (distinto por aluno_id)
+    const [countsRes, turmasRes, matsStatusRes, matsTurmaStatusRes, avisosRes, ultimasMatriculasRes] = await Promise.all([
       supabase
-        .from('matriculas')
-        .select('aluno_id, count:aluno_id', withGroup('aluno_id'))
+        .from('vw_secretaria_dashboard_counts')
+        .select('alunos_ativos, matriculas_total, turmas_total')
         .eq('escola_id', escolaId)
-        .in('status', ['ativa', 'ativo', 'active'])
-        .not('aluno_id', 'is', null),
+        .maybeSingle(),
       supabase.from('turmas').select('id, nome, turno, ano_letivo, professor_id').eq('escola_id', escolaId).order('nome'),
-      supabase.from('matriculas').select('*', { count: 'exact', head: true }).eq('escola_id', escolaId),
       supabase
-        .from('matriculas')
-        .select('status, count:status', withGroup('status'))
+        .from('vw_secretaria_matriculas_status')
+        .select('status, total')
         .eq('escola_id', escolaId),
       supabase
-        .from('matriculas')
-        .select('turma_id, status, count:turma_id', withGroup('turma_id,status'))
+        .from('vw_secretaria_matriculas_turma_status')
+        .select('turma_id, status, total')
         .eq('escola_id', escolaId),
       supabase
         .from('avisos')
@@ -86,7 +80,7 @@ export async function GET() {
     const resumoAgg = new Map<string, number>();
     for (const row of (matsStatusRes.data || [])) {
       const key = canonicalStatus((row as MatriculaResumo).status);
-      const total = Number((row as any)?.count ?? (row as MatriculaResumo).count ?? 0);
+      const total = Number((row as any)?.total ?? (row as MatriculaResumo).total ?? 0);
       resumoAgg.set(key, (resumoAgg.get(key) ?? 0) + total);
     }
     const resumoStatus = Array.from(resumoAgg.entries()).map(([status, total]) => ({ status, total }));
@@ -96,7 +90,7 @@ export async function GET() {
       const turmaId = (row as TurmaResumo).turma_id;
       if (!turmaId) continue;
       const statusKey = canonicalStatus((row as TurmaResumo).status);
-      const total = Number((row as any)?.count ?? (row as TurmaResumo).count ?? 0);
+      const total = Number((row as any)?.total ?? (row as TurmaResumo).total ?? 0);
       if (!turmaStatus.has(turmaId)) turmaStatus.set(turmaId, {});
       turmaStatus.get(turmaId)![statusKey] = (turmaStatus.get(turmaId)![statusKey] ?? 0) + total;
     }
@@ -182,9 +176,9 @@ export async function GET() {
     return NextResponse.json({
       ok: true,
       counts: {
-        alunos: (alunosAtivosRes.data?.length ?? 0),
-        matriculas: matsRes.count ?? 0,
-        turmas: turmasRes.data?.length ?? 0,
+        alunos: countsRes.data?.alunos_ativos ?? 0,
+        matriculas: countsRes.data?.matriculas_total ?? 0,
+        turmas: countsRes.data?.turmas_total ?? 0,
         pendencias,
       },
       resumo_status: resumoStatus,

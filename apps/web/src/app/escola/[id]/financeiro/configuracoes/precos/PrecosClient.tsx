@@ -1,612 +1,339 @@
 'use client'
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react"
-import { toast } from "sonner"
-import { CURRICULUM_PRESETS_META } from "@/lib/academico/curriculum-presets"
+import { Calculator, CalendarDays, CheckCircle2, Edit3, Loader2, Search, Banknote } from "lucide-react"
+import React from "react"
 
-type Catalogo = { id: string; nome: string; codigo?: string; curso_id?: string }
-
-type TabelaPrecoItem = {
-  id?: string
-  escola_id?: string
-  ano_letivo: number
-  curso_id: string | null
-  classe_id: string | null
-  valor_matricula: number | null
-  valor_mensalidade: number | null
-  dia_vencimento: number | null
-}
-
-type ResolvedPreco = {
-  tabela: TabelaPrecoItem | null
-  origem?: string
-}
+import { initialForm, usePrecosLogic } from "./usePrecosLogic"
+import type { TabelaPrecoItem } from "./usePrecosLogic"
 
 function formatarMoeda(valor: number | null | undefined) {
   if (valor === null || valor === undefined) return "—"
-  return `AOA ${Number(valor).toFixed(2)}`
+  return new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA" }).format(valor)
 }
 
-function destinoLabel(item: TabelaPrecoItem, cursos: Catalogo[], classes: Catalogo[]) {
-  if (!item.curso_id && !item.classe_id) return "Regra geral da escola"
-  const cursoNome = cursos.find((c) => c.id === item.curso_id)?.nome
-  const classeNome = classes.find((c) => c.id === item.classe_id)?.nome
-  if (item.curso_id && item.classe_id) return `${cursoNome || 'Curso'} • ${classeNome || 'Classe'}`
-  if (item.curso_id) return cursoNome || "Curso"
-  if (item.classe_id) return classeNome || "Classe"
-  return "—"
-}
+const InputGroup = ({ label, children }: { label: string; children: React.ReactNode }) => (
+  <div className="space-y-1.5">
+    <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">{label}</label>
+    {children}
+  </div>
+)
 
-type FormState = {
-  id?: string
-  curso_id: string
-  classe_id: string
-  valor_matricula: string
-  valor_mensalidade: string
-  dia_vencimento: string
-}
-
-const initialForm: FormState = {
-  curso_id: "",
-  classe_id: "",
-  valor_matricula: "",
-  valor_mensalidade: "",
-  dia_vencimento: "",
-}
-
-function formatCurrencyInput(val: string) {
-  if (val === "") return null
-  const num = parseFloat(val)
-  return Number.isFinite(num) ? num : null
-}
+const Card = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
+  <div className={`bg-white rounded-xl border border-slate-200 shadow-sm ${className}`}>{children}</div>
+)
 
 export default function PrecosClient({ escolaId }: { escolaId: string }) {
-  const [sessions, setSessions] = useState<any[]>([])
-  const [selectedSession, setSelectedSession] = useState<string>("")
-  const [anoLetivoFallback, setAnoLetivoFallback] = useState<number>(new Date().getFullYear())
-  const [cursos, setCursos] = useState<Catalogo[]>([])
-  const [classes, setClasses] = useState<Catalogo[]>([])
-  const [tabelas, setTabelas] = useState<TabelaPrecoItem[]>([])
-  const [resolved, setResolved] = useState<ResolvedPreco | null>(null)
-  const [simulacao, setSimulacao] = useState<{ curso_id: string; classe_id: string }>({ curso_id: "", classe_id: "" })
-  const [form, setForm] = useState<FormState>(initialForm)
-  const [loading, setLoading] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [resolving, setResolving] = useState(false)
-  const tabelasRequestRef = useRef(0)
-  const simulacaoRequestRef = useRef(0)
-  const [classesFiltradas, setClassesFiltradas] = useState<Catalogo[]>([])
-
-  const deduplicarClassesPorNome = (lista: Catalogo[]) => {
-    const unicas = lista.filter((cls, index, self) => index === self.findIndex((t) => t.nome === cls.nome))
-    return [...unicas].sort((a, b) => a.nome.localeCompare(b.nome, undefined, { numeric: true }))
-  }
-
-  const cursoIds = useMemo(() => new Set(cursos.map((c) => c.id)), [cursos])
-  const classeIds = useMemo(() => new Set(classes.map((c) => c.id)), [classes])
-
-  const extrairAnoLetivo = (valor?: string | number | null) => {
-    if (valor === null || valor === undefined) return null
-    if (typeof valor === "number" && Number.isFinite(valor)) return valor
-    const texto = String(valor)
-    const match = texto.match(/(19|20)\d{2}/)
-    if (!match) return null
-    return Number(match[0])
-  }
-
-  const sessionSelecionada = useMemo(() => sessions.find((s) => s.id === selectedSession), [sessions, selectedSession])
-
-  const anoLetivo = useMemo(() => {
-    const candidatos = [
-      (sessionSelecionada as any)?.ano_letivo,
-      (sessionSelecionada as any)?.nome,
-      (sessionSelecionada as any)?.data_inicio,
-      (sessionSelecionada as any)?.data_fim,
-    ]
-
-    for (const candidato of candidatos) {
-      const ano = extrairAnoLetivo(candidato)
-      if (ano) return ano
-    }
-    return anoLetivoFallback
-  }, [sessionSelecionada, anoLetivoFallback])
-
-  useEffect(() => {
-    carregarCatalogos()
-  }, [])
-
-  useEffect(() => {
-    carregarSessions()
-  }, [])
-
-  useEffect(() => {
-    carregarTabelas()
-  }, [anoLetivo])
-
-  const filtrarClassesPorCurso = (cursoId: string) => {
-    const vinculadasAoCurso = classes.filter((cls) => cls.curso_id === cursoId)
-    if (vinculadasAoCurso.length > 0) return deduplicarClassesPorNome(vinculadasAoCurso)
-
-    const cursoSelecionado = cursos.find((c) => c.id === cursoId)
-    const cursoCodigo = cursoSelecionado?.codigo as keyof typeof CURRICULUM_PRESETS_META | undefined
-
-    if (cursoCodigo && CURRICULUM_PRESETS_META[cursoCodigo]) {
-      const nomesPermitidos = CURRICULUM_PRESETS_META[cursoCodigo].classes || []
-      const filtradas = classes.filter((cls) => nomesPermitidos.includes(cls.nome))
-      return deduplicarClassesPorNome(filtradas)
-    }
-
-    return deduplicarClassesPorNome(classes)
-  }
-
-  useEffect(() => {
-    if (!form.curso_id) {
-      setClassesFiltradas([])
-      return
-    }
-
-    const filtradas = filtrarClassesPorCurso(form.curso_id)
-    setClassesFiltradas(filtradas)
-    if (form.classe_id && !filtradas.some((c) => c.id === form.classe_id)) {
-      setForm((prev) => ({ ...prev, classe_id: "" }))
-    }
-  }, [form.curso_id, classes, cursos])
-
-  useEffect(() => {
-    const cursoValido = simulacao.curso_id && cursoIds.has(simulacao.curso_id)
-    const classeValida = simulacao.classe_id && classeIds.has(simulacao.classe_id)
-    const filtradas = filtrarClassesPorCurso(simulacao.curso_id)
-    if (simulacao.classe_id && !filtradas.some((c) => c.id === simulacao.classe_id)) {
-      setSimulacao((prev) => ({ ...prev, classe_id: "" }))
-      return
-    }
-    if (!cursoValido && !classeValida) return
-    simular()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [simulacao.curso_id, simulacao.classe_id, anoLetivo, cursoIds, classeIds, classes, cursos])
-
-  const classesFiltradasSimulacao = useMemo(
-    () => {
-      if (!simulacao.curso_id) return deduplicarClassesPorNome(classes)
-      return filtrarClassesPorCurso(simulacao.curso_id)
+  const {
+    state: {
+      sessions,
+      selectedSession,
+      anoLetivo,
+      cursos,
+      classes,
+      resolved,
+      simulacao,
+      form,
+      loading,
+      saving,
+      resolving,
+      classesFiltradasForm,
+      classesFiltradasSimulacao,
+      destinosOrdenados,
+      destinoAtualLabel,
     },
-    [simulacao.curso_id, classes, cursos]
-  )
+    actions: { setSelectedSession, setAnoLetivoFallback, setForm, setSimulacao, carregarTabelas, salvar, editar },
+  } = usePrecosLogic(escolaId)
 
-  const tabelasFiltradas = useMemo(
-    () =>
-      tabelas.filter((item) => {
-        const cursoValido = !item.curso_id || cursoIds.has(item.curso_id)
-        const classeValida = !item.classe_id || classeIds.has(item.classe_id)
-        return cursoValido && classeValida
-      }),
-    [tabelas, cursoIds, classeIds]
-  )
-
-  const destinosOrdenados = useMemo(() => {
-    return [...tabelasFiltradas].sort((a, b) => {
-      const aKey = `${a.curso_id || ''}-${a.classe_id || ''}`
-      const bKey = `${b.curso_id || ''}-${b.classe_id || ''}`
-      return aKey.localeCompare(bKey)
-    })
-  }, [tabelasFiltradas])
-
-  async function carregarCatalogos() {
-    try {
-      const [cursosRes, classesRes] = await Promise.all([
-        fetch(`/api/escolas/${escolaId}/cursos`, { cache: "no-store" }),
-        fetch(`/api/escolas/${escolaId}/classes`, { cache: "no-store" }),
-      ])
-
-      const cursosJson = await cursosRes.json().catch(() => null)
-      const classesJson = await classesRes.json().catch(() => null)
-      if (cursosRes.ok && Array.isArray(cursosJson?.data)) {
-        const cursosData = cursosJson.data as Catalogo[]
-        setCursos(cursosData)
-        const faltandoCodigo = cursosData.filter((c) => !c.codigo)
-        if (faltandoCodigo.length > 0) {
-          console.warn("[Precos] Cursos sem codigo retornado", faltandoCodigo)
-        }
-      }
-      if (classesRes.ok && Array.isArray(classesJson?.data)) setClasses(classesJson.data as Catalogo[])
-    } catch (e) {
-      console.error(e)
-    }
-  }
-
-  async function carregarSessions() {
-    try {
-      const res = await fetch("/api/secretaria/school-sessions")
-      const json = await res.json().catch(() => null)
-      if (!res.ok || !json) return
-
-      const sessionItems = Array.isArray(json.data)
-        ? json.data
-        : Array.isArray(json.items)
-          ? json.items
-          : []
-
-      setSessions(sessionItems)
-      const active = sessionItems.find((s: any) => s.status === "ativa")
-      if (active) setSelectedSession(active.id)
-      else if (sessionItems.length > 0) setSelectedSession(sessionItems[0].id)
-    } catch (e) {
-      console.error(e)
-    }
-  }
-
-  async function carregarTabelas() {
-    const requestId = ++tabelasRequestRef.current
-    setLoading(true)
-    setTabelas([])
-    setResolved(null)
-    try {
-      const res = await fetch(
-        `/api/financeiro/tabelas?escola_id=${encodeURIComponent(escolaId)}&ano_letivo=${encodeURIComponent(anoLetivo)}`,
-        { cache: "no-store" }
-      )
-      const json = await res.json().catch(() => null)
-      if (tabelasRequestRef.current !== requestId) return
-      if (!res.ok || !json?.ok) throw new Error(json?.error || "Erro ao carregar preços")
-      setTabelas((json.items as TabelaPrecoItem[]) || [])
-      setResolved(json.resolved || null)
-    } catch (e: any) {
-      toast.error(e?.message || "Erro ao carregar tabelas")
-    } finally {
-      if (tabelasRequestRef.current === requestId) {
-        setLoading(false)
-      }
-    }
-  }
-
-  async function simular() {
-    const requestId = ++simulacaoRequestRef.current
-    setResolving(true)
-    const cursoIdValido = simulacao.curso_id && cursoIds.has(simulacao.curso_id) ? simulacao.curso_id : ""
-    const classeIdValido = simulacao.classe_id && classeIds.has(simulacao.classe_id) ? simulacao.classe_id : ""
-    if (!cursoIdValido && !classeIdValido) {
-      setResolved(null)
-      setResolving(false)
-      return
-    }
-    try {
-      const res = await fetch(
-        `/api/financeiro/tabelas?escola_id=${encodeURIComponent(escolaId)}&ano_letivo=${encodeURIComponent(
-          anoLetivo
-        )}&curso_id=${encodeURIComponent(cursoIdValido)}&classe_id=${encodeURIComponent(classeIdValido)}`,
-        { cache: "no-store" }
-      )
-      const json = await res.json().catch(() => null)
-      if (simulacaoRequestRef.current !== requestId) return
-      if (!res.ok || !json?.ok) throw new Error(json?.error || "Erro ao resolver preços")
-      setResolved(json.resolved || null)
-    } catch (e: any) {
-      toast.error(e?.message || "Erro ao simular preço")
-    } finally {
-      if (simulacaoRequestRef.current === requestId) {
-        setResolving(false)
-      }
-    }
-  }
-
-  const destinoAtual = useMemo(() => {
-    const cursoIdValido = form.curso_id && cursoIds.has(form.curso_id) ? form.curso_id : ""
-    const classeIdValido = form.classe_id && classeIds.has(form.classe_id) ? form.classe_id : ""
-    if (!cursoIdValido && !classeIdValido) return "Regra geral"
-    const cursoNome = cursos.find((c) => c.id === cursoIdValido)?.nome
-    const classeNome = classes.find((c) => c.id === classeIdValido)?.nome
-    if (cursoIdValido && classeIdValido) return `${cursoNome || 'Curso'} • ${classeNome || 'Classe'}`
-    if (cursoIdValido) return cursoNome || "Curso"
-    if (classeIdValido) return classeNome || "Classe"
-    return "—"
-  }, [form.curso_id, form.classe_id, cursos, classes, cursoIds, classeIds])
-
-  async function salvar(e: FormEvent) {
-    e.preventDefault()
-    setSaving(true)
-    try {
-      const payload: any = {
-        ano_letivo: anoLetivo,
-        curso_id: form.curso_id && cursoIds.has(form.curso_id) ? form.curso_id : null,
-        classe_id: form.classe_id && classeIds.has(form.classe_id) ? form.classe_id : null,
-        valor_matricula: formatCurrencyInput(form.valor_matricula),
-        valor_mensalidade: formatCurrencyInput(form.valor_mensalidade),
-        dia_vencimento: form.dia_vencimento === "" ? null : Number(form.dia_vencimento),
-      }
-
-      let method: "POST" | "PATCH" = "POST"
-      if (form.id) {
-        method = "PATCH"
-        payload.id = form.id
-      } else {
-        payload.escola_id = escolaId
-      }
-
-      const res = await fetch("/api/financeiro/tabelas", {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
-      const json = await res.json().catch(() => null)
-      if (!res.ok || !json?.ok) throw new Error(json?.error || "Erro ao salvar preços")
-
-      toast.success("Tabela salva com sucesso")
-      setForm(initialForm)
-      carregarTabelas()
-    } catch (e: any) {
-      toast.error(e?.message || "Falha ao salvar")
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  function editar(item: TabelaPrecoItem) {
-    setForm({
-      id: item.id,
-      curso_id: item.curso_id && cursoIds.has(item.curso_id) ? item.curso_id : "",
-      classe_id: item.classe_id && classeIds.has(item.classe_id) ? item.classe_id : "",
-      valor_matricula: item.valor_matricula?.toString() || "",
-      valor_mensalidade: item.valor_mensalidade?.toString() || "",
-      dia_vencimento: item.dia_vencimento?.toString() || "",
-    })
-  }
+  const destinoAtualLabelSafe = React.useMemo(() => destinoAtualLabel || "—", [destinoAtualLabel])
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div className="max-w-7xl mx-auto p-6 space-y-8 font-sans text-slate-900">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200 pb-6">
         <div>
-          <h1 className="text-xl font-semibold">Tabelas de Preços</h1>
-          <p className="text-sm text-gray-600">Defina matrícula, mensalidade e vencimento por curso e classe.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Configuração de Preços</h1>
+          <p className="text-slate-500 mt-1 text-sm">Defina as regras de cobrança para matrículas e mensalidades.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-700">Ano letivo</label>
-          {sessions.length > 0 ? (
-            <select
-              value={selectedSession}
-              onChange={(e) => setSelectedSession(e.target.value)}
-              className="w-52 rounded border border-gray-300 px-3 py-2 text-sm"
-            >
-              {sessions.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.nome}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <input
-              type="number"
-              value={anoLetivo}
-              onChange={(e) => setAnoLetivoFallback(Number(e.target.value) || new Date().getFullYear())}
-              className="w-28 rounded border border-gray-300 px-3 py-1.5 text-sm"
-              min={1900}
-              max={3000}
-            />
-          )}
+
+        <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
+          <div className="p-2 bg-white rounded-lg shadow-sm">
+            <CalendarDays className="w-4 h-4 text-slate-500" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ano Letivo</span>
+            {sessions.length > 0 ? (
+              <select
+                value={selectedSession}
+                onChange={(e) => setSelectedSession(e.target.value)}
+                className="bg-transparent text-sm font-semibold text-slate-900 outline-none cursor-pointer"
+              >
+                {sessions.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.nome}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                type="number"
+                value={anoLetivo}
+                onChange={(e) => setAnoLetivoFallback(Number(e.target.value) || new Date().getFullYear())}
+                className="bg-transparent text-sm font-semibold w-20 outline-none"
+              />
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        <form onSubmit={salvar} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm space-y-4">
-          <div>
-            <h2 className="font-semibold text-gray-800">Criar/editar regra</h2>
-            <p className="text-sm text-gray-500">Selecione curso/classe e informe os valores.</p>
-          </div>
-
-          <div className="grid sm:grid-cols-2 gap-3">
-            <label className="text-sm text-gray-700 space-y-1">
-              <span>Curso (opcional)</span>
-              <select
-                value={form.curso_id}
-                onChange={(e) => setForm((prev) => ({ ...prev, curso_id: e.target.value }))}
-                className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-              >
-                <option value="">Regra geral ou por classe</option>
-                {cursos.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nome}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="text-sm text-gray-700 space-y-1">
-              <span>Classe (opcional)</span>
-              <select
-                value={form.classe_id}
-                onChange={(e) => setForm((prev) => ({ ...prev, classe_id: e.target.value }))}
-                className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-              >
-                <option value="">
-                  {form.curso_id
-                    ? "Todas as classes deste curso (Regra Geral)"
-                    : "Regra Geral (Independente de Classe)"}
-                </option>
-                {classesFiltradas.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nome}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <div className="grid sm:grid-cols-3 gap-3">
-            <label className="text-sm text-gray-700 space-y-1">
-              <span>Valor da matrícula</span>
-              <input
-                type="number"
-                step="0.01"
-                min={0}
-                placeholder="AOA"
-                value={form.valor_matricula}
-                onChange={(e) => setForm((prev) => ({ ...prev, valor_matricula: e.target.value }))}
-                className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-              />
-            </label>
-
-            <label className="text-sm text-gray-700 space-y-1">
-              <span>Valor da mensalidade</span>
-              <input
-                type="number"
-                step="0.01"
-                min={0}
-                placeholder="AOA"
-                value={form.valor_mensalidade}
-                onChange={(e) => setForm((prev) => ({ ...prev, valor_mensalidade: e.target.value }))}
-                className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-              />
-            </label>
-
-            <label className="text-sm text-gray-700 space-y-1">
-              <span>Dia de vencimento</span>
-              <input
-                type="number"
-                min={1}
-                max={31}
-                placeholder="Ex: 10"
-                value={form.dia_vencimento}
-                onChange={(e) => setForm((prev) => ({ ...prev, dia_vencimento: e.target.value }))}
-                className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-              />
-            </label>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
-            <span className="px-2 py-1 bg-gray-100 rounded-md">Destino: {destinoAtual}</span>
-            {form.id && <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-md">Editando regra existente</span>}
-          </div>
-
-          <div className="flex gap-3">
-            <button
-              type="submit"
-              disabled={saving}
-              className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-semibold hover:bg-teal-700 disabled:opacity-60"
-            >
-              {saving ? "Salvando..." : "Salvar tabela"}
-            </button>
-            {form.id && (
-              <button
-                type="button"
-                onClick={() => setForm(initialForm)}
-                className="text-sm text-gray-600 hover:text-gray-800"
-              >
-                Cancelar edição
-              </button>
-            )}
-          </div>
-        </form>
-
-        <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="font-semibold text-gray-800">Preços configurados</h2>
-              <p className="text-sm text-gray-500">Regras cadastradas para {anoLetivo}.</p>
-            </div>
+      <div className="grid lg:grid-cols-12 gap-8 items-start">
+        <div className="lg:col-span-4 space-y-4 order-2 lg:order-1">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-slate-900 flex items-center gap-2">
+              <Banknote className="w-4 h-4 text-slate-500" /> Regras Ativas ({destinosOrdenados.length})
+            </h3>
             <button
               onClick={carregarTabelas}
-              className="text-sm px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-50"
               disabled={loading}
+              className="text-xs font-medium text-slate-500 hover:text-emerald-600 transition-colors"
             >
-              {loading ? "Atualizando..." : "Recarregar"}
+              {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : "Atualizar"}
             </button>
           </div>
 
-          <div className="space-y-2 max-h-[540px] overflow-auto pr-1">
-            {destinosOrdenados.map((item) => (
-              <div
-                key={item.id || `${item.curso_id}-${item.classe_id}`}
-                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border border-gray-100 rounded-lg p-3"
-              >
-                <div>
-                  <div className="font-medium text-gray-800">{destinoLabel(item, cursos, classes)}</div>
-                  <div className="text-xs text-gray-500">Vencimento: {item.dia_vencimento || "—"}</div>
+          <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
+            {destinosOrdenados.map((item: TabelaPrecoItem) => {
+              const isGeral = !item.curso_id && !item.classe_id
+              const cursoNome = cursos.find((c) => c.id === item.curso_id)?.nome
+              const classeNome = classes.find((c) => c.id === item.classe_id)?.nome
+
+              return (
+                <div
+                  key={item.id || `${item.curso_id || 'geral'}-${item.classe_id || 'geral'}`}
+                  onClick={() => editar(item)}
+                  className={`group relative p-4 rounded-xl border transition-all cursor-pointer hover:shadow-md ${
+                    form.id === item.id
+                      ? "bg-emerald-50/50 border-emerald-500 ring-1 ring-emerald-500"
+                      : "bg-white border-slate-200 hover:border-emerald-300"
+                  }`}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      {isGeral ? (
+                        <span className="inline-flex items-center px-2 py-1 rounded-md bg-slate-100 text-slate-600 text-xs font-bold uppercase tracking-wide">
+                          Regra Geral
+                        </span>
+                      ) : (
+                        <div className="flex flex-col">
+                          {cursoNome && <span className="font-semibold text-sm text-slate-900">{cursoNome}</span>}
+                          {classeNome && <span className="text-xs text-slate-500">{classeNome}</span>}
+                        </div>
+                      )}
+                    </div>
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Edit3 className="w-4 h-4 text-emerald-600" />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 text-sm mt-3 pt-3 border-t border-slate-100 border-dashed">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block uppercase">Mensalidade</span>
+                      <span className="font-mono font-medium text-slate-700">{formatarMoeda(item.valor_mensalidade)}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 block uppercase">Matrícula</span>
+                      <span className="font-mono font-medium text-slate-700">{formatarMoeda(item.valor_matricula)}</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-3 text-sm text-gray-700">
-                  <span className="px-2 py-1 bg-gray-100 rounded">{formatarMoeda(item.valor_matricula)}</span>
-                  <span className="px-2 py-1 bg-gray-100 rounded">{formatarMoeda(item.valor_mensalidade)}</span>
-                  <button
-                    onClick={() => editar(item)}
-                    className="px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-50"
-                  >
-                    Editar
-                  </button>
-                </div>
+              )
+            })}
+
+            {destinosOrdenados.length === 0 && !loading && (
+              <div className="text-center p-8 border border-dashed border-slate-200 rounded-xl bg-slate-50">
+                <p className="text-sm text-slate-500">Nenhuma regra definida para {anoLetivo}.</p>
               </div>
-            ))}
-            {destinosOrdenados.length === 0 && (
-              <p className="text-sm text-gray-500">Nenhuma regra cadastrada ainda.</p>
             )}
           </div>
         </div>
-      </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm space-y-3">
-        <div>
-          <h2 className="font-semibold text-gray-800">Simular preço atual</h2>
-          <p className="text-sm text-gray-500">Use a cascata de regras para ver o preço efetivo.</p>
-        </div>
-        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
-          <label className="text-sm text-gray-700 space-y-1">
-            <span>Curso</span>
-            <select
-              value={simulacao.curso_id}
-              onChange={(e) => setSimulacao((prev) => ({ ...prev, curso_id: e.target.value }))}
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-            >
-              <option value="">Nenhum</option>
-              {cursos.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nome}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="text-sm text-gray-700 space-y-1">
-            <span>Classe</span>
-            <select
-              value={simulacao.classe_id}
-              onChange={(e) => setSimulacao((prev) => ({ ...prev, classe_id: e.target.value }))}
-              className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-            >
-              <option value="">
-                {simulacao.curso_id
-                  ? "Todas as classes deste curso (Regra Geral)"
-                  : "Regra Geral (Independente de Classe)"}
-              </option>
-              {classesFiltradasSimulacao.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nome}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div className="flex items-end">
-            <button
-              onClick={simular}
-              disabled={resolving}
-              className="w-full px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-60"
-            >
-              {resolving ? "Calculando..." : "Calcular preço"}
-            </button>
-          </div>
-        </div>
-
-        <div className="border border-dashed border-gray-200 rounded-lg p-4 bg-gray-50">
-          {resolved?.tabela ? (
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <div>
-                <div className="text-sm text-gray-600">Origem: {resolved.origem || "—"}</div>
-                <div className="text-lg font-semibold text-gray-900">{formatarMoeda(resolved.tabela.valor_mensalidade)}</div>
-                <div className="text-sm text-gray-600">Matrícula: {formatarMoeda(resolved.tabela.valor_matricula)}</div>
-                <div className="text-sm text-gray-600">Vencimento: {resolved.tabela.dia_vencimento || "—"}</div>
+        <div className="lg:col-span-8 space-y-6 order-1 lg:order-2">
+          <Card className="p-1 overflow-hidden">
+            <div className="bg-slate-50/50 p-6 border-b border-slate-100">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">{form.id ? "Editar Regra" : "Nova Regra de Preço"}</h2>
+                  <p className="text-sm text-slate-500 mt-1">Configure os valores aplicáveis. Regras específicas sobrescrevem a geral.</p>
+                </div>
+                {form.id && (
+                  <button
+                    onClick={() => setForm(initialForm)}
+                    className="text-xs bg-white border border-slate-200 px-3 py-1.5 rounded-lg text-slate-600 hover:text-red-600 hover:border-red-200 transition-colors"
+                  >
+                    Cancelar Edição
+                  </button>
+                )}
               </div>
-              <div className="text-xs text-gray-500">Ano letivo {resolved.tabela.ano_letivo}</div>
             </div>
-          ) : (
-            <p className="text-sm text-gray-500">Selecione curso ou classe para ver o preço calculado.</p>
-          )}
+
+            <form onSubmit={salvar} className="p-6 space-y-8">
+              <div className="grid md:grid-cols-2 gap-6">
+                <InputGroup label="Aplicar ao Curso">
+                  <select
+                    value={form.curso_id}
+                    onChange={(e) => setForm((prev) => ({ ...prev, curso_id: e.target.value }))}
+                    className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                  >
+                    <option value="">(Todos os cursos)</option>
+                    {cursos.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nome}
+                      </option>
+                    ))}
+                  </select>
+                </InputGroup>
+
+                <InputGroup label="Aplicar à Classe">
+                  <select
+                    value={form.classe_id}
+                    onChange={(e) => setForm((prev) => ({ ...prev, classe_id: e.target.value }))}
+                    className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                  >
+                    <option value="">{form.curso_id ? "(Todas as classes deste curso)" : "(Todas as classes)"}</option>
+                    {classesFiltradasForm.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nome}
+                      </option>
+                    ))}
+                  </select>
+                </InputGroup>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-6">
+                <InputGroup label="Valor da Matrícula">
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-slate-400 text-sm">Kz</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0,00"
+                      value={form.valor_matricula}
+                      onChange={(e) => setForm((prev) => ({ ...prev, valor_matricula: e.target.value }))}
+                      className="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-200 rounded-lg font-mono text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+                    />
+                  </div>
+                </InputGroup>
+
+                <InputGroup label="Mensalidade (Propina)">
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-slate-400 text-sm">Kz</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0,00"
+                      value={form.valor_mensalidade}
+                      onChange={(e) => setForm((prev) => ({ ...prev, valor_mensalidade: e.target.value }))}
+                      className="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-200 rounded-lg font-mono text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+                    />
+                  </div>
+                </InputGroup>
+
+                <InputGroup label="Dia de Vencimento">
+                  <input
+                    type="number"
+                    min="1"
+                    max="31"
+                    placeholder="Ex: 5"
+                    value={form.dia_vencimento}
+                    onChange={(e) => setForm((prev) => ({ ...prev, dia_vencimento: e.target.value }))}
+                    className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+                  />
+                </InputGroup>
+              </div>
+
+              <div className="flex items-center justify-between pt-6 border-t border-slate-100">
+                <div className="flex items-center gap-2 text-sm text-slate-500">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  Salvando para: <span className="font-medium text-slate-900">{destinoAtualLabelSafe}</span>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm transition-all shadow-sm shadow-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  {form.id ? "Atualizar Regra" : "Criar Regra"}
+                </button>
+              </div>
+            </form>
+          </Card>
+
+          <Card className="bg-slate-50 border-slate-200">
+            <div className="p-4 flex flex-col md:flex-row gap-6 items-center">
+              <div className="flex-1 w-full space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Calculator className="w-4 h-4 text-slate-400" />
+                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider">Simulador de Preço Final</h4>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <select
+                    value={simulacao.curso_id}
+                    onChange={(e) => setSimulacao((prev) => ({ ...prev, curso_id: e.target.value }))}
+                    className="bg-white border border-slate-200 text-sm rounded-lg p-2 outline-none focus:border-emerald-500"
+                  >
+                    <option value="">Selecione um curso...</option>
+                    {cursos.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={simulacao.classe_id}
+                    onChange={(e) => setSimulacao((prev) => ({ ...prev, classe_id: e.target.value }))}
+                    className="bg-white border border-slate-200 text-sm rounded-lg p-2 outline-none focus:border-emerald-500"
+                  >
+                    <option value="">Selecione uma classe...</option>
+                    {classesFiltradasSimulacao.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="hidden md:block w-px h-16 bg-slate-200 mx-4"></div>
+
+              <div className="flex-1 w-full">
+                {resolving ? (
+                  <div className="text-sm text-slate-400 flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Calculando...
+                  </div>
+                ) : resolved?.tabela ? (
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-baseline">
+                      <span className="text-sm text-slate-500">Mensalidade</span>
+                      <span className="text-xl font-bold text-slate-900">{formatarMoeda(resolved.tabela.valor_mensalidade)}</span>
+                    </div>
+                    <div className="flex justify-between items-baseline text-xs text-slate-500">
+                      <span>Matrícula</span>
+                      <span>{formatarMoeda(resolved.tabela.valor_matricula)}</span>
+                    </div>
+                    <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-50 text-[10px] font-medium text-blue-700 border border-blue-100">
+                      <Search className="w-3 h-3" />
+                      Fonte: {resolved.origem || "Regra Definida"}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center text-sm text-slate-400 py-2">
+                    Selecione curso e classe para simular o valor final.
+                  </div>
+                )}
+              </div>
+            </div>
+          </Card>
         </div>
       </div>
     </div>

@@ -18,7 +18,7 @@ export async function GET() {
     // Fetch basic schools
     let escolas: any[] | null = null
     {
-      const sel = 'id, nome, onboarding_finalizado, onboarding_completed_at, needs_academic_setup'
+      const sel = 'id, nome, onboarding_finalizado, needs_academic_setup'
       const { data, error } = await admin
         .from('escolas')
         .select(sel)
@@ -29,7 +29,7 @@ export async function GET() {
         if (msg.includes('needs_academic_setup') || msg.toLowerCase().includes('schema cache')) {
           const { data: data2, error: err2 } = await admin
             .from('escolas')
-            .select('id, nome, onboarding_finalizado, onboarding_completed_at')
+            .select('id, nome, onboarding_finalizado')
             .order('nome', { ascending: true })
             .limit(500)
           if (err2) {
@@ -62,7 +62,7 @@ export async function GET() {
     const result = (escolas || []).map((e: any) => {
       const id = String(e.id)
       const latest = latestByEscola.get(id) || { step: null, updated_at: null }
-      const done = Boolean(e.onboarding_finalizado) || Boolean((e as any).onboarding_completed_at)
+      const done = Boolean(e.onboarding_finalizado)
       return {
         escola_id: id,
         nome: e.nome as string | null,

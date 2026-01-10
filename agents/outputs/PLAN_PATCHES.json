@@ -1,0 +1,20 @@
+[
+  {
+    "id": "PLAN_AUDIT_TRAIL",
+    "priority": 2,
+    "type": "DOC",
+    "title": "Plano de revisão do audit trail",
+    "rationale": "Planejar ajustes com revisão manual.",
+    "files": [
+      {
+        "path": "agents/outputs/PLAN_AUDIT_TRAIL.md",
+        "action": "CREATE",
+        "content": "# Plano — Audit Trail\n\nAção recomendada:\n- Validar cobertura before/after nas mutações críticas (financeiro/matrículas).\n- Confirmar campos mínimos: actor, action, entity, before, after, ip, created_at."
+      }
+    ],
+    "safety": {
+      "destructive": false,
+      "requires_manual_review": true
+    }
+  }
+]

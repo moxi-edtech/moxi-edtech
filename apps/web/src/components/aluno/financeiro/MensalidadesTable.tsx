@@ -22,7 +22,7 @@ export function MensalidadesTable() {
     (async () => {
       try {
         setLoading(true);
-        const res = await fetch('/api/aluno/financeiro', { cache: 'no-store' });
+        const res = await fetch('/api/aluno/financeiro', { cache: 'force-cache' });
         const json = await res.json();
         if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao carregar mensalidades');
         if (mounted) setRows(json.mensalidades || []);

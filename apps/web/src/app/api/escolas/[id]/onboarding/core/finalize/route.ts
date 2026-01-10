@@ -196,6 +196,7 @@ export async function POST(
     {
       const escolaUpdate1 = {
         ...escolaUpdateBase,
+        onboarding_finalizado: true,
         onboarding_completed_at: new Date().toISOString(),
         onboarding_completed_by: user.id,
         needs_academic_setup: false,

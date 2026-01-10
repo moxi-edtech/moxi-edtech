@@ -15,7 +15,7 @@ const supabaseAdmin = createClient<Database>(
 );
 
 // -----------------------------
-// 1. Tipagens
+// 1) Tipagens
 // -----------------------------
 
 type BuilderTurnos = {
@@ -47,20 +47,33 @@ interface CurriculumApplyPayload {
   advancedConfig?: AdvancedConfigPayload;
 }
 
+// -----------------------------
+// 2) Utils (SSOT)
+// -----------------------------
+
+// Normaliza para bater com o generated column:
+// lower(regexp_replace(immutable_unaccent(trim(nome)), '\s+', ' ', 'g'))
+function normalizeNomeNorm(s: string): string {
+  return (s ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // remove acentos
+    .trim()
+    .replace(/\s+/g, " ") // colapsa espaços
+    .toLowerCase();
+}
+
+function turnosAtivos(
+  turnos: BuilderTurnos
+): Array<"M" | "T" | "N"> {
+  const out: Array<"M" | "T" | "N"> = [];
+  if (turnos?.manha) out.push("M");
+  if (turnos?.tarde) out.push("T");
+  if (turnos?.noite) out.push("N");
+  return out;
+}
 
 // -----------------------------
-// Helpers de normalização
-// -----------------------------
-const removeAccents = (s: string) =>
-  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-
-const nomeNorm = (s: string) =>
-  removeAccents(s).toLowerCase().trim().replace(/\s+/g, " ");
-
-
-// -----------------------------
-// CORE: Criação de Curso (SSOT & Idempotente)
-// This function is from the original file and is used by the new POST handler.
+// 3) CORE: Curso SSOT (idempotente + race-safe)
 // -----------------------------
 
 async function findOrCreateCursoEscolaSSOT(args: {
@@ -72,12 +85,9 @@ async function findOrCreateCursoEscolaSSOT(args: {
 }) {
   const { escolaId, presetKey, presetMeta, tipo, isCustom } = args;
 
-  // Normalização defensiva: SSOT é Uppercase sem espaços
-  const code = presetMeta.course_code?.trim().toUpperCase();
+  const code = (presetMeta.course_code ?? "").trim().toUpperCase();
   if (!code) throw new Error("Preset inválido: course_code ausente.");
 
-  // 1) LEITURA OTIMISTA: Busca por qualquer variação do código
-  // (OR ajuda a pegar dados legados onde codigo != course_code)
   const { data: existing, error: selErr } = await supabaseAdmin
     .from("cursos")
     .select("*")
@@ -91,14 +101,13 @@ async function findOrCreateCursoEscolaSSOT(args: {
   }
   if (existing) return existing;
 
-  // 2) ESCRITA CANÔNICA
   const payload = {
     escola_id: escolaId,
     nome: presetMeta.label,
     tipo,
-    codigo: code,              // ✅ SSOT: codigo == course_code
-    course_code: code,         // ✅ SSOT: Chave do Importador
-    curriculum_key: presetKey, // ✅ Metadado técnico
+    codigo: code,
+    course_code: code,
+    curriculum_key: presetKey,
     status_aprovacao: "aprovado",
     is_custom: isCustom,
     created_at: new Date().toISOString(),
@@ -113,9 +122,6 @@ async function findOrCreateCursoEscolaSSOT(args: {
 
   if (!insErr && created) return created;
 
-  // 3) RACE CONDITION HANDLER (O Padrão Big Tech)
-  // Se bateu na trave (23505), outro request criou milissegundos antes.
-  // Em vez de explodir erro 500, recuperamos o vencedor.
   if (insErr?.code === "23505") {
     console.warn(`[SSOT] Race condition em ${code}. Recuperando...`);
     const { data: retry, error: retryErr } = await supabaseAdmin
@@ -134,7 +140,10 @@ async function findOrCreateCursoEscolaSSOT(args: {
   throw new Error(insErr?.message || "Erro ao criar curso.");
 }
 
-// This is the original helper, used by the new findOrCreateClassesForCursoMap
+// -----------------------------
+// 4) Classes (idempotente)
+// -----------------------------
+
 async function findOrCreateClassesForCurso(
   escolaId: string,
   cursoId: string,
@@ -142,69 +151,101 @@ async function findOrCreateClassesForCurso(
 ) {
   const classesCriadas: { id: string; nome: string }[] = [];
 
-  for (const nome of classNames) {
-    // Tenta criar direto (Optimistic Lock pattern)
+  for (const raw of classNames ?? []) {
+    const nome = (raw ?? "").trim();
+    if (!nome) continue;
+
     const { data: created, error } = await supabaseAdmin
       .from("classes")
-      .insert({ escola_id: escolaId, curso_id: cursoId, nome })
+      .insert({ escola_id: escolaId, curso_id: cursoId, nome } as any)
       .select("id, nome")
       .maybeSingle();
 
     if (created) {
       classesCriadas.push(created);
-    } else if (error?.code === "23505") {
-      // Já existe, busca o ID
-      const { data: existing } = await supabaseAdmin
+      continue;
+    }
+
+    if (error?.code === "23505") {
+      const { data: existing, error: selErr } = await supabaseAdmin
         .from("classes")
         .select("id, nome")
         .eq("escola_id", escolaId)
         .eq("curso_id", cursoId)
         .eq("nome", nome)
         .single();
+
+      if (selErr) {
+        console.error("[CLASSES] select existing error:", selErr);
+        throw new Error(`Falha ao buscar classe existente: ${nome}`);
+      }
       if (existing) classesCriadas.push(existing);
-    } else if (error) {
-        // Handle other potential errors during insert
-        console.error(`[findOrCreateClassesForCurso] Error inserting class '${nome}':`, error);
-        throw new Error(`Falha ao criar ou buscar a classe: ${nome}`);
+      continue;
+    }
+
+    if (error) {
+      console.error(`[CLASSES] insert error (${nome}):`, error);
+      throw new Error(`Falha ao criar ou buscar a classe: ${nome}`);
     }
   }
+
   return classesCriadas;
 }
 
+async function findOrCreateClassesForCursoMap(
+  escolaId: string,
+  cursoId: string,
+  classNames: string[]
+) {
+  const created = await findOrCreateClassesForCurso(escolaId, cursoId, classNames);
+  const map = new Map<string, { id: string; nome: string }>();
+  for (const c of created) map.set(c.nome, c);
+  return map;
+}
+
 // -----------------------------
-// NEW IMPLEMENTATION from user
+// 5) Disciplinas (disciplinas_catalogo)
 // -----------------------------
 
-// 2.1) Upsert catálogo e retornar disciplina_id por nome
 async function upsertDisciplinasCatalogo(escolaId: string, subjects: string[]) {
-  const unique = Array.from(
-    new Map(subjects.map((n) => [nomeNorm(n), n.trim()])).entries()
-  ).map(([norm, raw]) => ({ norm, raw }));
-
-  if (unique.length === 0) return new Map<string, string>();
-
-  // Upsert em massa
-  const { error } = await supabaseAdmin
-    .from("disciplinas_catalogo")
-    .upsert(
-      unique.map((x) => ({
-        escola_id: escolaId,
-        nome: x.raw,
-        nome_norm: x.norm,
-      })),
-      { onConflict: "escola_id,nome_norm", ignoreDuplicates: false }
-    );
-
-  if (error) {
-    console.error("[CAT] upsert error:", error);
-    throw new Error(error.message ?? "Falha ao upsert disciplinas_catalogo");
+  const byNorm = new Map<string, string>(); // norm -> nome original
+  for (const raw of subjects ?? []) {
+    const nome = (raw ?? "").trim();
+    if (!nome) continue;
+    const norm = normalizeNomeNorm(nome);
+    if (!norm) continue;
+    if (!byNorm.has(norm)) byNorm.set(norm, nome);
   }
 
-  // Nem sempre o upsert retorna tudo dependendo do driver; faz um select garantido
-  const norms = unique.map((x) => x.norm);
-  const { data: rows, error: selErr } = await supabaseAdmin
+  if (byNorm.size === 0) return new Map<string, string>();
+
+  const rows = Array.from(byNorm.entries()).map(([_, nome]) => ({
+    escola_id: escolaId,
+    nome,
+  }));
+
+  const { error: upErr } = await supabaseAdmin
     .from("disciplinas_catalogo")
-    .select("id,nome_norm")
+    .upsert(rows as any, {
+      onConflict: "escola_id,nome_norm",
+      ignoreDuplicates: false,
+    });
+
+  if (upErr) {
+    console.error("[CAT] upsert error:", {
+      message: upErr.message,
+      code: upErr.code,
+      details: upErr.details,
+      hint: upErr.hint,
+    });
+    throw new Error(upErr.message ?? "Falha ao upsert disciplinas_catalogo");
+  }
+
+  const norms = Array.from(byNorm.keys());
+
+  const { data: got, error: selErr } = await supabaseAdmin
+    .from("disciplinas_catalogo")
+    .select("id, nome_norm")
     .eq("escola_id", escolaId)
     .in("nome_norm", norms);
 
@@ -213,12 +254,26 @@ async function upsertDisciplinasCatalogo(escolaId: string, subjects: string[]) {
     throw new Error(selErr.message ?? "Falha ao ler disciplinas_catalogo");
   }
 
-  const map = new Map<string, string>();
-  for (const r of rows ?? []) map.set((r as any).nome_norm, (r as any).id);
-  return map; // nome_norm -> disciplina_id
+  const idByNorm = new Map<string, string>();
+  for (const row of got ?? []) {
+    if (row?.nome_norm && row?.id) idByNorm.set(row.nome_norm, row.id);
+  }
+
+  if (idByNorm.size !== byNorm.size) {
+    console.warn("[CAT] mismatch norm count", {
+      expected: byNorm.size,
+      got: idByNorm.size,
+      missing: norms.filter((n) => !idByNorm.has(n)),
+    });
+  }
+
+  return idByNorm;
 }
 
-// 2.2) Upsert curso_matriz a partir da matriz do builder
+// -----------------------------
+// 6) Matriz (curso_matriz)
+// -----------------------------
+
 async function upsertCursoMatriz(args: {
   escolaId: string;
   cursoId: string;
@@ -232,15 +287,24 @@ async function upsertCursoMatriz(args: {
   const rows: any[] = [];
   let ordem = 1;
 
-  for (const subject of subjects) {
-    const norm = nomeNorm(subject);
+  // A matriz do builder usa subject raw no key: `${subject}::${cls}::${T}`
+  // Então a gente usa subject raw pra leitura do matrix, mas norm pra achar disciplina_id.
+  for (const subjectRaw of subjects ?? []) {
+    const subject = (subjectRaw ?? "").trim();
+    if (!subject) continue;
+
+    const norm = normalizeNomeNorm(subject);
     const disciplinaId = disciplinaIdByNorm.get(norm);
     if (!disciplinaId) continue;
 
     for (const clsNome of classesByNome.keys()) {
-      const cls = classesByNome.get(clsNome)!;
+      const cls = classesByNome.get(clsNome);
+      if (!cls?.id) continue;
 
-      const ativo = ["M", "T", "N"].some((t) => Boolean(matrix[`${subject}::${clsNome}::${t}`]));
+      const ativo = (["M", "T", "N"] as const).some((t) =>
+        Boolean(matrix?.[`${subject}::${clsNome}::${t}`])
+      );
+
       if (!ativo) continue;
 
       rows.push({
@@ -260,7 +324,7 @@ async function upsertCursoMatriz(args: {
 
   const { error } = await supabaseAdmin
     .from("curso_matriz")
-    .upsert(rows, {
+    .upsert(rows as any, {
       onConflict: "escola_id,curso_id,classe_id,disciplina_id",
       ignoreDuplicates: false,
     });
@@ -273,30 +337,15 @@ async function upsertCursoMatriz(args: {
   return { insertedOrUpdated: rows.length };
 }
 
-// 3) Classes do curso (precisa de ids para curso_matriz)
-async function findOrCreateClassesForCursoMap(escolaId: string, cursoId: string, classNames: string[]) {
-  const created = await findOrCreateClassesForCurso(escolaId, cursoId, classNames);
-  const map = new Map<string, { id: string; nome: string }>();
-  for (const c of created) map.set(c.nome, c);
-  return map; // nome -> {id,nome}
-}
-
-// 4) Turmas e população de turma_disciplinas (sem depender de trigger)
-
-// 4.1) Criar turmas
-function turnosAtivos(turnos: { manha: boolean; tarde: boolean; noite: boolean }): ("M"|"T"|"N")[] {
-  const out: ("M"|"T"|"N")[] = [];
-  if (turnos.manha) out.push("M");
-  if (turnos.tarde) out.push("T");
-  if (turnos.noite) out.push("N");
-  return out;
-}
+// -----------------------------
+// 7) Turmas (turmas) + vínculo (turma_disciplinas)
+// -----------------------------
 
 async function createTurmasPadrao(args: {
   escolaId: string;
   cursoId: string;
   classes: { id: string; nome: string }[];
-  turnos: { manha: boolean; tarde: boolean; noite: boolean };
+  turnos: BuilderTurnos;
   anoLetivo: number;
 }) {
   const { escolaId, cursoId, classes, turnos, anoLetivo } = args;
@@ -304,7 +353,8 @@ async function createTurmasPadrao(args: {
   if (shifts.length === 0) return [];
 
   const inserts: any[] = [];
-  for (const cls of classes) {
+  for (const cls of classes ?? []) {
+    if (!cls?.id) continue;
     for (const turno of shifts) {
       inserts.push({
         escola_id: escolaId,
@@ -312,7 +362,7 @@ async function createTurmasPadrao(args: {
         classe_id: cls.id,
         ano_letivo: anoLetivo,
         nome: "A",
-        turno,
+        turno, // ✅ "M" | "T" | "N"
         capacidade_maxima: 35,
         status_validacao: "ativo",
       });
@@ -323,31 +373,30 @@ async function createTurmasPadrao(args: {
 
   const { data, error } = await supabaseAdmin
     .from("turmas")
-    .upsert(inserts, {
-      onConflict: "escola_id,curso_id,classe_id,ano_letivo,turno,nome",
+    .upsert(inserts as any, {
+      onConflict: "escola_id,curso_id,classe_id,ano_letivo,nome,turno",
       ignoreDuplicates: false,
     })
-    .select("id,classe_id,turno");
+    .select("id,classe_id");
 
   if (error) {
     console.error("[TURMAS] upsert error:", error);
     throw new Error(error.message ?? "Falha ao criar turmas");
   }
 
-  return (data ?? []) as any[];
+  return (data ?? []) as Array<{ id: string; classe_id: string }>;
 }
 
-// 4.2) Popular turma_disciplinas com base na curso_matriz
 async function syncTurmaDisciplinasFromMatriz(args: {
   escolaId: string;
   cursoId: string;
-  turmas: { id: string; classe_id: string }[];
+  turmas: Array<{ id: string; classe_id: string }>;
 }) {
   const { escolaId, cursoId, turmas } = args;
-  if (turmas.length === 0) return 0;
+  if (!turmas?.length) return 0;
 
-  // Busca matriz por classe
-  const classeIds = Array.from(new Set(turmas.map((t) => t.classe_id)));
+  const classeIds = Array.from(new Set(turmas.map((t) => t.classe_id).filter(Boolean)));
+
   const { data: matriz, error } = await supabaseAdmin
     .from("curso_matriz")
     .select("id,classe_id")
@@ -363,14 +412,14 @@ async function syncTurmaDisciplinasFromMatriz(args: {
 
   const byClasse = new Map<string, string[]>();
   for (const m of (matriz ?? []) as any[]) {
-    if(!m.classe_id) continue;
+    if (!m?.classe_id || !m?.id) continue;
     const arr = byClasse.get(m.classe_id) ?? [];
     arr.push(m.id);
     byClasse.set(m.classe_id, arr);
   }
 
   const inserts: any[] = [];
-  for (const turma of turmas as any[]) {
+  for (const turma of turmas) {
     const matrizIds = byClasse.get(turma.classe_id) ?? [];
     for (const cursoMatrizId of matrizIds) {
       inserts.push({
@@ -386,7 +435,7 @@ async function syncTurmaDisciplinasFromMatriz(args: {
 
   const { error: upErr } = await supabaseAdmin
     .from("turma_disciplinas")
-    .upsert(inserts, {
+    .upsert(inserts as any, {
       onConflict: "escola_id,turma_id,curso_matriz_id",
       ignoreDuplicates: true,
     });
@@ -400,12 +449,16 @@ async function syncTurmaDisciplinasFromMatriz(args: {
 }
 
 // -----------------------------
-// HANDLER PRINCIPAL (Refactored)
+// 8) Handler principal
+// Next 15: params podem ser async -> await ctx.params
 // -----------------------------
 
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(
+  req: NextRequest,
+  ctx: { params: Promise<{ id: string }> }
+) {
   try {
-    const escolaId = params.id;
+    const { id: escolaId } = await ctx.params;
     const body = (await req.json()) as CurriculumApplyPayload;
 
     if (!escolaId || !body?.presetKey) {
@@ -414,46 +467,64 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
     const presetKey = body.presetKey;
     const presetMeta = CURRICULUM_PRESETS_META[presetKey];
+
     if (!presetMeta?.course_code) {
       return NextResponse.json({ ok: false, error: "Preset sem course_code" }, { status: 400 });
     }
 
-    // Fallback logic for advancedConfig
+    // Fallback robusto do advancedConfig (para quick install do marketplace)
     const incoming = body.advancedConfig;
     let advancedConfig: AdvancedConfigPayload;
 
-    if (incoming && Array.isArray(incoming.classes) && incoming.classes.length > 0) {
-        advancedConfig = incoming;
+    if (
+      incoming &&
+      Array.isArray(incoming.classes) &&
+      incoming.classes.length > 0 &&
+      Array.isArray(incoming.subjects) &&
+      incoming.subjects.length > 0 &&
+      incoming.turnos
+    ) {
+      advancedConfig = incoming as AdvancedConfigPayload;
     } else {
-        const presetClasses = presetMeta.classes ?? [];
-        const presetSubjects = Array.from(new Set(CURRICULUM_PRESETS[presetKey]?.map((d: any) => d.nome) || []));
-        const defaultTurnos = { manha: true, tarde: false, noite: false };
+      const presetClasses = (presetMeta.classes ?? []).filter(Boolean);
 
-        const defaultMatrix: Record<string, boolean> = {};
-        for (const subject of presetSubjects) {
-            for (const cls of presetClasses) {
-                if (defaultTurnos.manha) defaultMatrix[`${subject}::${cls}::M`] = true;
-                if (defaultTurnos.tarde) defaultMatrix[`${subject}::${cls}::T`] = true;
-                if (defaultTurnos.noite) defaultMatrix[`${subject}::${cls}::N`] = true;
-            }
+      const presetSubjects = Array.from(
+        new Set((CURRICULUM_PRESETS[presetKey] ?? []).map((d: any) => String(d?.nome ?? "").trim()).filter(Boolean))
+      );
+
+      const defaultTurnos: BuilderTurnos = { manha: true, tarde: false, noite: false };
+
+      const defaultMatrix: Record<string, boolean> = {};
+      for (const subject of presetSubjects) {
+        for (const cls of presetClasses) {
+          // default liga só manhã
+          defaultMatrix[`${subject}::${cls}::M`] = true;
         }
-        
-        advancedConfig = {
-            classes: presetClasses,
-            subjects: presetSubjects,
-            matrix: defaultMatrix,
-            turnos: defaultTurnos,
-        };
+      }
+
+      advancedConfig = {
+        classes: presetClasses,
+        subjects: presetSubjects,
+        matrix: defaultMatrix,
+        turnos: defaultTurnos,
+      };
     }
 
-    if (!advancedConfig.classes || advancedConfig.classes.length === 0) {
-        return NextResponse.json(
-            { ok: false, error: "Preset sem classes default e advancedConfig ausente" },
-            { status: 400 }
-        );
+    if (!advancedConfig.classes?.length) {
+      return NextResponse.json(
+        { ok: false, error: "Sem classes para instalar (preset/advancedConfig vazio)" },
+        { status: 400 }
+      );
     }
 
-    // Curso SSOT
+    if (!advancedConfig.subjects?.length) {
+      return NextResponse.json(
+        { ok: false, error: "Sem disciplinas para instalar (preset/advancedConfig vazio)" },
+        { status: 400 }
+      );
+    }
+
+    // 1) Curso SSOT
     const tipo = PRESET_TO_TYPE[presetKey] || "geral";
     const labelFinal = body.customData?.label?.trim() || presetMeta.label;
 
@@ -465,28 +536,30 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       isCustom: Boolean(body.customData),
     });
 
-    // 1) Classes
+    // 2) Classes
     const classesMap = await findOrCreateClassesForCursoMap(
       escolaId,
       curso.id,
       advancedConfig.classes
     );
 
-    // 2) Catálogo
-    const subjects = advancedConfig.subjects ?? [];
-    const discIdByNorm = await upsertDisciplinasCatalogo(escolaId, subjects);
+    // 3) Catálogo
+    const discIdByNorm = await upsertDisciplinasCatalogo(
+      escolaId,
+      advancedConfig.subjects
+    );
 
-    // 3) Matriz
+    // 4) Matriz
     const matrizStats = await upsertCursoMatriz({
       escolaId,
       cursoId: curso.id,
       classesByNome: classesMap,
       matrix: advancedConfig.matrix ?? {},
-      subjects,
+      subjects: advancedConfig.subjects ?? [],
       disciplinaIdByNorm: discIdByNorm,
     });
 
-    // 4) Turmas
+    // 5) Turmas
     const anoLetivo = new Date().getFullYear();
     const turmas = await createTurmasPadrao({
       escolaId,
@@ -496,11 +569,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       anoLetivo,
     });
 
-    // 5) Turma_disciplinas (derivada da matriz)
+    // 6) turma_disciplinas
     const turmaDiscCount = await syncTurmaDisciplinasFromMatriz({
       escolaId,
       cursoId: curso.id,
-      turmas: (turmas as any[]).map((t) => ({ id: t.id, classe_id: t.classe_id })),
+      turmas,
     });
 
     return NextResponse.json({
@@ -515,8 +588,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     });
   } catch (e: any) {
     console.error("[INSTALL] fatal:", e);
-    return NextResponse.json({ ok: false, error: e.message ?? "Erro interno" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: e?.message ?? "Erro interno" },
+      { status: 500 }
+    );
   }
 }
-
-

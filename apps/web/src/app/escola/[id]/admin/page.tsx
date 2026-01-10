@@ -8,7 +8,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   // Fetch escola nome via API (service role), ensures it renders for admins
   let escolaNome: string | undefined = undefined
   try {
-    const res = await fetch(`/api/escolas/${id}/nome`, { cache: 'no-store' })
+    const res = await fetch(`/api/escolas/${id}/nome`, { cache: 'force-cache' })
     const json = await res.json().catch(() => null)
     if (res.ok && json?.ok && json?.nome) escolaNome = String(json.nome)
   } catch {}

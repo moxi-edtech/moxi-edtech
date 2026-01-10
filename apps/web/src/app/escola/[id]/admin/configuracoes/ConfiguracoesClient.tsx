@@ -135,7 +135,7 @@ export default function ConfiguracoesAcademicasPage() {
       try {
         const res = await fetch(
           `/api/escolas/${escolaId}/onboarding/core/session`,
-          { cache: "no-store" }
+          { cache: "force-cache" }
         );
         const json = await res.json().catch(() => null);
         const rows = res.ok && Array.isArray(json?.data) ? json.data : [];
@@ -166,7 +166,7 @@ export default function ConfiguracoesAcademicasPage() {
             `/api/escolas/${escolaId}/semestres?session_id=${encodeURIComponent(
               ativa.id
             )}`,
-            { cache: "no-store" }
+            { cache: "force-cache" }
           );
           const json = await res.json().catch(() => null);
           const rows: any[] =
@@ -198,7 +198,7 @@ export default function ConfiguracoesAcademicasPage() {
       let cursosRows: Course[] = [] as any;
       try {
         const res = await fetch(`/api/escolas/${escolaId}/cursos`, {
-          cache: "no-store",
+          cache: "force-cache",
         });
         const json = await res.json().catch(() => null);
         if (res.ok) cursosRows = (json?.data as any) || [];
@@ -210,7 +210,7 @@ export default function ConfiguracoesAcademicasPage() {
       let classesRows: Class[] = [] as any;
       try {
         const res = await fetch(`/api/escolas/${escolaId}/classes`, {
-          cache: "no-store",
+          cache: "force-cache",
         });
         const json = await res.json().catch(() => null);
         let rows: any[] = Array.isArray(json?.data) ? json.data : [];
@@ -227,7 +227,7 @@ export default function ConfiguracoesAcademicasPage() {
       let disciplinasRows: Discipline[] = [] as any;
       try {
         const res = await fetch(`/api/escolas/${escolaId}/disciplinas`, {
-          cache: "no-store",
+          cache: "force-cache",
         });
         const json = await res.json().catch(() => null);
         if (res.ok) disciplinasRows = (json?.data as any) || [];
@@ -240,7 +240,7 @@ export default function ConfiguracoesAcademicasPage() {
       try {
         const res = await fetch(
           `/api/escolas/${escolaId}/onboarding/preferences`,
-          { cache: "no-store" }
+          { cache: "force-cache" }
         );
         const json = await res.json().catch(() => null);
         if (mounted && res.ok && json?.data) {
@@ -331,9 +331,9 @@ const handleApplyCurriculumPreset = async () => {
 
     // 2) Recarrega cursos, classes e disciplinas usando as APIs oficiais
     const [cursosRes, classesRes, disciplinasRes] = await Promise.all([
-      fetch(`/api/escolas/${escolaId}/cursos`, { cache: "no-store" }),
-      fetch(`/api/escolas/${escolaId}/classes`, { cache: "no-store" }),
-      fetch(`/api/escolas/${escolaId}/disciplinas`, { cache: "no-store" }),
+      fetch(`/api/escolas/${escolaId}/cursos`, { cache: "force-cache" }),
+      fetch(`/api/escolas/${escolaId}/classes`, { cache: "force-cache" }),
+      fetch(`/api/escolas/${escolaId}/disciplinas`, { cache: "force-cache" }),
     ]);
 
     const cursosJson = await cursosRes.json().catch(() => null);
@@ -689,7 +689,7 @@ const handleApplyCurriculumPreset = async () => {
                     if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao criar classe');
                     toast.success('Classe criada');
                     // reload classes
-                    const r = await fetch(`/api/escolas/${escolaId}/classes`, { cache: 'no-store' });
+                    const r = await fetch(`/api/escolas/${escolaId}/classes`, { cache: 'force-cache' });
                     const j = await r.json().catch(() => null);
                     if (r.ok && Array.isArray(j?.data)) setClasses(j.data as any);
                   } catch (e: any) {
@@ -719,7 +719,7 @@ const handleApplyCurriculumPreset = async () => {
                     const json = await res.json().catch(() => null);
                     if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao criar curso');
                     toast.success('Curso criado');
-                    const r = await fetch(`/api/escolas/${escolaId}/cursos`, { cache: 'no-store' });
+                    const r = await fetch(`/api/escolas/${escolaId}/cursos`, { cache: 'force-cache' });
                     const j = await r.json().catch(() => null);
                     if (r.ok && Array.isArray(j?.data)) setCursos(j.data as any);
                   } catch (e: any) {
@@ -749,7 +749,7 @@ const handleApplyCurriculumPreset = async () => {
                     const json = await res.json().catch(() => null);
                     if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao criar disciplina');
                     toast.success('Disciplina criada');
-                    const r = await fetch(`/api/escolas/${escolaId}/disciplinas`, { cache: 'no-store' });
+                    const r = await fetch(`/api/escolas/${escolaId}/disciplinas`, { cache: 'force-cache' });
                     const j = await r.json().catch(() => null);
                     if (r.ok && Array.isArray(j?.data)) setDisciplinas(j.data as any);
                   } catch (e: any) {

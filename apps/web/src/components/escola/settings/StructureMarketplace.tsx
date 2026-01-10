@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   BookOpen,
   Trash2,
@@ -19,6 +19,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 // Importações de dados estáticos
 import {
@@ -96,6 +97,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   const [loadingDetails, setLoadingDetails] = useState(false);
   const { escolaId: escolaFromHook, isLoading: escolaLoading, error: escolaError } = useEscolaId();
   const resolvedEscolaId = escolaId || escolaFromHook || null;
+  const disciplinasScrollRef = useRef<HTMLDivElement | null>(null);
 
   // --- ESTADOS DE CRIAÇÃO (MODAL DE NOVO CURSO) ---
   const [showModal, setShowModal] = useState(false);
@@ -103,6 +105,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   const [newSubject, setNewSubject] = useState("");
   const [installing, setInstalling] = useState(false);
   const [quickInstallingKey, setQuickInstallingKey] = useState<string | null>(null);
+  const [deletingCourseId, setDeletingCourseId] = useState<string | null>(null);
   
 
   const fetchJson = async (url: string, opts?: RequestInit) => {
@@ -118,6 +121,15 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     const active = sessions.find((s) => s.status === 'ativa');
     return active || sessions[0];
   }, [sessions]);
+
+  const disciplinas = details?.disciplinas ?? [];
+  const hasDisciplinas = disciplinas.length > 0;
+  const disciplinasVirtualizer = useVirtualizer({
+    count: disciplinas.length,
+    getScrollElement: () => disciplinasScrollRef.current,
+    estimateSize: () => 56,
+    overscan: 6,
+  });
 
   // --- CARREGAR CURSOS ATIVOS ---
   const fetchCourses = async () => {
@@ -265,32 +277,24 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       noite: args.turnos.includes('Noite'),
     };
 
-    const turmasPorCombinacao = args.classes.reduce((acc, classe) => {
-      acc[classe] = {
-        manha: turnosFlags.manha ? 1 : 0,
-        tarde: turnosFlags.tarde ? 1 : 0,
-        noite: turnosFlags.noite ? 1 : 0,
-      };
-      return acc;
-    }, {} as Record<string, { manha: number; tarde: number; noite: number }>);
-
-    const disciplinasPorClasse = args.classes.reduce((acc, classe) => {
-      acc[classe] = args.subjects;
-      return acc;
-    }, {} as Record<string, string[]>);
+    const matrix: Record<string, boolean> = {};
+    for (const subject of args.subjects) {
+      for (const cls of args.classes) {
+        if (turnosFlags.manha) matrix[`${subject}::${cls}::M`] = true;
+        if (turnosFlags.tarde) matrix[`${subject}::${cls}::T`] = true;
+        if (turnosFlags.noite) matrix[`${subject}::${cls}::N`] = true;
+      }
+    }
 
     const payload = {
       presetKey: args.presetKey,
       customData: { label: args.label },
       anoLetivo: anoLetivoInt,
       advancedConfig: {
-        classesNomes: args.classes,
-        turnos: turnosFlags,
-        turmasPorCombinacao,
-        padraoNomenclatura: 'descritivo_completo' as const,
+        classes: args.classes,
         subjects: args.subjects,
-        disciplinasPorClasse,
-        anoLetivo: anoLetivoInt,
+        turnos: turnosFlags,
+        matrix: matrix,
       },
     };
 
@@ -389,7 +393,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       setDraft({...draft, subjects: [...draft.subjects, newSubject.trim()]});
       setNewSubject("");
   };
-
+  
   const handleSave = async () => {
     if (!draft) return;
     setInstalling(true);
@@ -416,20 +420,25 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     }
   };
   
-  const handleRemove = async (id: string, total: number) => {
-      if (total > 0) return toast.error("Curso tem alunos.");
-      if (!resolvedEscolaId) return toast.error("Escola não identificada.");
-      if (!confirm("Remover este curso? Classes, turmas e disciplinas vinculadas serão apagadas.")) return;
-
+  const handleRemove = async (id: string) => {
+      if (!resolvedEscolaId) {
+        toast.error("Escola não identificada.");
+        return;
+      }
+      
       try {
         await fetchJson(buildEscolaUrl(resolvedEscolaId, `/cursos/${id}`), { method: 'DELETE' });
         toast.success("Curso removido.");
-        if (selectedCourseId === id) setSelectedPresetKey(null);
-        setSelectedCourseId((prev) => (prev === id ? null : prev));
+        if (selectedCourseId === id) {
+          setSelectedCourseId(null);
+          setSelectedPresetKey(null);
+        }
         setCourses((prev) => prev.filter((c) => c.id !== id));
-        fetchCourses();
+        // fetchCourses(); // Opcional: pode recarregar tudo para garantir consistência
       } catch (e: any) {
         toast.error(e?.message || "Falha ao remover curso");
+      } finally {
+        setDeletingCourseId(null);
       }
   };
 
@@ -511,7 +520,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                                                 </span>
                                             </div>
                                             <button 
-                                                onClick={() => handleAddTurma(classe)}
+                                                onClick={() => handleAddTurma()}
                                                 className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-slate-700 border border-slate-200 rounded-lg bg-white hover:border-klasse-gold/40 hover:text-klasse-gold focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
                                             >
                                                 <Plus className="w-3 h-3"/> Nova Turma
@@ -521,7 +530,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                                         {turmasDaClasse.length === 0 ? (
                                             <div className="p-8 text-center">
                                                 <p className="text-xs text-slate-400 italic mb-2">Nenhuma turma criada para {classe.nome}.</p>
-                                                <button onClick={() => handleAddTurma(classe)} className="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-600 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20">
+                                                <button onClick={() => handleAddTurma()} className="px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-600 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20">
                                                     Criar Primeira Turma
                                                 </button>
                                             </div>
@@ -571,19 +580,45 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                             </div>
 
                             <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
-                                <table className="w-full text-left text-sm">
-                                    <thead className="bg-white border-b border-slate-200 text-xs uppercase text-slate-400 font-bold">
+                                <div ref={disciplinasScrollRef} className="max-h-[520px] overflow-y-auto">
+                                <table className="w-full table-fixed text-left text-sm">
+                                    <thead className="bg-white border-b border-slate-200 text-xs uppercase text-slate-400 font-bold sticky top-0 z-10" style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                                         <tr>
                                             <th className="px-4 py-3">Nome da Disciplina</th>
                                             <th className="px-4 py-3">Classe</th>
                                             <th className="px-4 py-3 text-right">Ações</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {details.disciplinas.map((disc, idx) => (
-                                            <tr key={disc.id} className="hover:bg-white transition-colors group">
+                                    <tbody
+                                      className="divide-y divide-slate-100"
+                                      style={
+                                        hasDisciplinas
+                                          ? {
+                                              position: "relative",
+                                              display: "block",
+                                              height: disciplinasVirtualizer.getTotalSize(),
+                                            }
+                                          : undefined
+                                      }
+                                    >
+                                        {disciplinasVirtualizer.getVirtualItems().map((virtualRow) => {
+                                          const disc = disciplinas[virtualRow.index];
+                                          return (
+                                            <tr
+                                                key={disc.id}
+                                                className="hover:bg-white transition-colors group"
+                                                style={{
+                                                  position: "absolute",
+                                                  top: 0,
+                                                  left: 0,
+                                                  transform: `translateY(${virtualRow.start}px)`,
+                                                  width: "100%",
+                                                  display: "table",
+                                                  tableLayout: "fixed",
+                                                }}
+                                            >
                                                 <td className="px-4 py-3 font-medium text-slate-700 flex items-center gap-3">
-                                                    <span className="text-slate-300 font-mono text-xs w-4">{(idx + 1).toString().padStart(2, '0')}</span>
+                                                    <span className="text-slate-300 font-mono text-xs w-4">{(virtualRow.index + 1).toString().padStart(2, '0')}</span>
                                                     {disc.nome}
                                                 </td>
                                                 <td className="px-4 py-3 font-mono text-slate-500 text-xs">{disc.classe}</td>
@@ -598,19 +633,21 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                                                     </button>
                                                 </td>
                                             </tr>
-                                        ))}
+                                          );
+                                        })}
                                     </tbody>
                                 </table>
+                                </div>
                                 {details.disciplinas.length === 0 && (
                                     <div className="p-8 text-center text-slate-400 text-sm">
                                         Nenhuma disciplina cadastrada.
                                     </div>
                                 )}
                             </div>
-                            <div className="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-lg flex gap-2 text-xs text-amber-800">
+                           {selectedPresetKey && <div className="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-lg flex gap-2 text-xs text-amber-800">
                                 <AlertCircle className="w-4 h-4 shrink-0"/>
                                 <p>A grade curricular é definida pelo preset <strong>({selectedPresetKey})</strong> e não pode ser alterada directamente. Para um currículo flexível, crie um curso "do zero".</p>
-                            </div>
+                            </div>}
                         </div>
                     </div>
                 )}
@@ -645,34 +682,44 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                     <button onClick={() => setActiveTab('catalog')} className="mt-4 text-klasse-gold font-bold underline">Ir ao Catálogo</button>
                 </div>
             )}
-            {courses.map(curso => (
-                <div 
-                    key={curso.id} 
-                    onClick={() => handleOpenManager(curso)}
-                    className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-lg hover:border-klasse-gold/50 hover:-translate-y-1 transition-all group cursor-pointer relative"
-                >
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="p-3 bg-slate-100 text-slate-600 rounded-lg group-hover:bg-slate-900 group-hover:text-white transition-colors"><BookOpen className="w-6 h-6"/></div>
-                        {/* Botão delete propagação parada para não abrir o modal */}
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); handleRemove(curso.id, curso.total_alunos); }} 
-                            className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition z-10 focus:outline-none focus:ring-4 focus:ring-red-100" 
-                            title="Remover"
-                        >
-                            <Trash2 className="h-4 w-4"/>
-                            <span className="hidden sm:inline">Remover</span>
-                        </button>
-                    </div>
-                    <h3 className="font-bold text-slate-800 mb-1 truncate group-hover:text-klasse-gold transition-colors" title={curso.nome}>{curso.nome}</h3>
-                    <p className="text-xs text-slate-400 font-mono mb-4">{curso.codigo || 'Sem código'}</p>
-                    <div className="grid grid-cols-2 gap-2 text-xs border-t border-slate-100 pt-4">
-                        <div><span className="block text-slate-400">Classes</span><span className="font-bold text-slate-700">{curso.total_classes}</span></div>
-                        <div><span className="block text-slate-400">Turmas</span><span className="font-bold text-slate-700">{curso.total_turmas}</span></div>
-                    </div>
-                    
-                    <div className="absolute inset-0 bg-klasse-gold/10 opacity-0 group-hover:opacity-100 rounded-xl transition-opacity pointer-events-none" />
-                </div>
-            ))}
+            {courses.map(curso => {
+                const hasAlunos = curso.total_alunos > 0;
+                return (
+                  <div 
+                      key={curso.id} 
+                      onClick={() => handleOpenManager(curso)}
+                      className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:shadow-lg hover:border-klasse-gold/50 hover:-translate-y-1 transition-all group cursor-pointer relative"
+                  >
+                      <div className="flex justify-between items-start mb-4">
+                          <div className="p-3 bg-slate-100 text-slate-600 rounded-lg group-hover:bg-slate-900 group-hover:text-white transition-colors"><BookOpen className="w-6 h-6"/></div>
+                          
+                          <div className="relative" title={hasAlunos ? "Curso possui alunos vinculados" : "Remover curso"}>
+                            <button 
+                                onClick={(e) => { 
+                                  e.stopPropagation(); 
+                                  if (!hasAlunos) {
+                                    setDeletingCourseId(curso.id);
+                                  }
+                                }} 
+                                disabled={hasAlunos}
+                                className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition z-10 focus:outline-none focus:ring-4 focus:ring-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <Trash2 className="h-4 w-4"/>
+                                <span className="hidden sm:inline">Remover</span>
+                            </button>
+                          </div>
+                      </div>
+                      <h3 className="font-bold text-slate-800 mb-1 truncate group-hover:text-klasse-gold transition-colors" title={curso.nome}>{curso.nome}</h3>
+                      <p className="text-xs text-slate-400 font-mono mb-4">{curso.codigo || 'Sem código'}</p>
+                      <div className="grid grid-cols-2 gap-2 text-xs border-t border-slate-100 pt-4">
+                          <div><span className="block text-slate-400">Classes</span><span className="font-bold text-slate-700">{curso.total_classes}</span></div>
+                          <div><span className="block text-slate-400">Turmas</span><span className="font-bold text-slate-700">{curso.total_turmas}</span></div>
+                      </div>
+                      
+                      <div className="absolute inset-0 bg-klasse-gold/10 opacity-0 group-hover:opacity-100 rounded-xl transition-opacity pointer-events-none" />
+                  </div>
+                )
+            })}
         </div>
       )}
 
@@ -724,6 +771,37 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                         </div>
                     )
                 })}
+            </div>
+        </div>
+      )}
+
+      {/* MODAL DE CONFIRMAÇÃO DE REMOÇÃO */}
+      {deletingCourseId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm animate-in fade-in p-4">
+            <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+                <div className="p-6">
+                    <div className="flex justify-center mb-4">
+                        <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
+                            <AlertCircle className="w-8 h-8 text-red-600" />
+                        </div>
+                    </div>
+                    <h3 className="text-center font-bold text-lg text-slate-800 mb-2">Remover curso?</h3>
+                    <p className="text-center text-sm text-slate-500">
+                        Essa ação é irreversível e apagará todas as turmas e classes associadas que não possuam alunos.
+                    </p>
+                </div>
+                <div className="p-4 bg-slate-50 grid grid-cols-2 gap-3">
+                    <button onClick={() => setDeletingCourseId(null)} className="px-4 py-2.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-100">
+                        Cancelar
+                    </button>
+                    <button onClick={() => {
+                        if (deletingCourseId) {
+                            handleRemove(deletingCourseId)
+                        }
+                    }} className="px-4 py-2.5 text-sm font-bold text-white bg-red-600 rounded-xl hover:bg-red-700">
+                        Remover
+                    </button>
+                </div>
             </div>
         </div>
       )}

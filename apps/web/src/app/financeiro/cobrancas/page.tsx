@@ -42,7 +42,7 @@ export default function CobrancasPage() {
       try {
         setLoading(true);
         const res = await fetch(`/api/financeiro/cobrancas?q=${encodeURIComponent(search)}`, {
-          cache: "no-store",
+          cache: "force-cache",
         });
         const json = await res.json();
         if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao carregar cobranças");

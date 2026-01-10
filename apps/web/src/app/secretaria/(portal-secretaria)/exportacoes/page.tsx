@@ -30,7 +30,7 @@ export default async function Page() {
   const eid: string = escolaId
   let plan: PlanTier = 'essencial'
   try {
-    const res = await fetch(`/api/escolas/${eid}/nome`, { cache: 'no-store' })
+    const res = await fetch(`/api/escolas/${eid}/nome`, { cache: 'force-cache' })
     const json = await res.json().catch(() => null)
     plan = parsePlanTier(json?.plano)
   } catch {}

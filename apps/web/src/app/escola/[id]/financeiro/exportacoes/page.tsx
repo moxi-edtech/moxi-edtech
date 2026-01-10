@@ -20,7 +20,7 @@ export default async function Page() {
   }
   let plan: PlanTier = 'essencial'
   try {
-    const res = await fetch(`/api/escolas/${escolaId}/nome`, { cache: 'no-store' })
+    const res = await fetch(`/api/escolas/${escolaId}/nome`, { cache: 'force-cache' })
     const json = await res.json().catch(() => null)
     plan = parsePlanTier(json?.plano)
   } catch {}

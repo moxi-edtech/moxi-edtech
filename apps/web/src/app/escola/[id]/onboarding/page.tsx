@@ -9,11 +9,11 @@ export default async function OnboardingPage({ params }: { params: Promise<{ id:
     const s = await supabaseServer()
     const { data } = await s
       .from('escolas')
-      .select('onboarding_finalizado, onboarding_completed_at')
+      .select('onboarding_finalizado')
       .eq('id', id)
       .limit(1)
     const e0 = (data?.[0] as any) || {}
-    const done = Boolean(e0.onboarding_finalizado) || Boolean(e0.onboarding_completed_at)
+    const done = Boolean(e0.onboarding_finalizado)
     if (done) {
       redirect(`/escola/${id}/admin`)
     }

@@ -76,8 +76,17 @@ export async function POST(request: Request) {
       mimeType: (fileData as any).type,
     });
     const entries = csvToJsonLines(text);
-    const staged: AlunoStagingRecord[] = entries.map((entry, index) =>
+    const mappedStaged: AlunoStagingRecord[] = entries.map((entry, index) =>
       mapAlunoFromCsv(entry, columnMap, importId, escolaId, anoLetivo, index + 2)
+    );
+
+    // Filter out effectively empty rows after mapping
+    const staged = mappedStaged.filter(
+      (record) =>
+        record.nome ||
+        record.bi_numero ||
+        record.encarregado_nome ||
+        record.turma_codigo
     );
 
     if (!staged.length) {

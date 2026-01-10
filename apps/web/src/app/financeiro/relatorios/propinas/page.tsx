@@ -93,7 +93,7 @@ export default function Page() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/financeiro/relatorios/propinas?ano=${encodeURIComponent(anoLetivoAtivo)}`, { cache: 'no-store' });
+        const res = await fetch(`/api/financeiro/relatorios/propinas?ano=${encodeURIComponent(anoLetivoAtivo)}`, { cache: 'force-cache' });
         if (!res.ok) {
           const j = await res.json().catch(() => ({}));
           throw new Error(j?.error || `Erro ${res.status}`);
@@ -211,4 +211,3 @@ export default function Page() {
     </div>
   );
 }
-

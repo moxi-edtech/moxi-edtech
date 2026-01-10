@@ -53,7 +53,7 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
     try {
       const res = await fetch(
         `/api/secretaria/turmas-simples?session_id=${encodeURIComponent(sessionId)}`,
-        { cache: "no-store" }
+          { cache: "force-cache" }
       );
       const json = await res.json();
       if (!res.ok || !json?.ok) return;

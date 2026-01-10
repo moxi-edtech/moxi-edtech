@@ -10,7 +10,7 @@ async function fetchInitial() {
   let fallbackSource: string | null = null
 
   try {
-    const res = await fetch('/api/super-admin/escolas/list', { cache: 'no-store' })
+    const res = await fetch('/api/super-admin/escolas/list', { cache: 'force-cache' })
     const json = await res.json().catch(() => ({ ok: false }))
     if (json?.ok && Array.isArray(json.items)) {
       initialSchools = json.items
@@ -23,7 +23,7 @@ async function fetchInitial() {
   }
 
   try {
-    const p = await fetch('/api/super-admin/escolas/onboarding/progress', { cache: 'no-store' })
+    const p = await fetch('/api/super-admin/escolas/onboarding/progress', { cache: 'force-cache' })
       .then(r => r.json()).catch(() => ({ ok: false }))
     if (p?.ok && Array.isArray(p.items)) {
       const map: Record<string, any> = {}

@@ -1,0 +1,270 @@
+{
+  "timestamp": "2026-01-10T02:07:47.294Z",
+  "repoRoot": "/Users/gundja/moxi-edtech",
+  "summary": {
+    "critical": 0,
+    "high": 0,
+    "medium": 2,
+    "low": 3,
+    "total": 5
+  },
+  "findings": [
+    {
+      "id": "KF2",
+      "title": "KF2 — Pesquisa Global (Command Palette) invariants",
+      "severity": "MEDIUM",
+      "status": "PARTIAL",
+      "evidence": [
+        {
+          "file": "apps/web/src/components/GlobalSearch.tsx",
+          "note": "debounce detectado (hook/client): sim"
+        },
+        {
+          "file": "apps/web/src/hooks/useGlobalSearch.ts",
+          "note": "useGlobalSearch encontrado"
+        }
+      ],
+      "recommendation": "KF2 deve ter debounce 250–400ms, limit<=50, orderBy estável e payload mínimo."
+    },
+    {
+      "id": "GF4",
+      "title": "GF4 — Audit Trail (parcial/validar cobertura before/after)",
+      "severity": "MEDIUM",
+      "status": "PARTIAL",
+      "evidence": [
+        {
+          "file": "types/database.ts",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "types/supabase.ts",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "supabase/migrations/20251231163837_baseline.sql",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "supabase/migrations/20251231200952_remote_schema.sql",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "supabase/migrations/20261017000000_create_hard_delete_curso_rpc.sql",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "supabase/migrations/20261019002000_audit_trail_hardening.sql",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "supabase/.branches/remote/schema.sql",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations/20250915000000_remote_schema.sql",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations/20250917060400_audit_redaction.sql",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations/20250917060500_audit_triggers.sql",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations/20250917060600_audit_user_default.sql",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations/20250917060700_create_audit_logs.sql",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations/20251108141000_fix_rls_initplan_policies.sql",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations/20251116195500_normalize_auth_uid_in_policies.sql",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations/20251116211500_fix_audit_trigger_columns.sql",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations/20251116212500_secretaria_audit_view.sql",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations/20251214120000_add_rls_policies.sql",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations/20251217232511_optimize_rls_policies_v2.sql",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations/20251218000104_refactor_finance_and_admin_rls.sql",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations/20251218004218_comprehensive_rls_unification_v2.sql",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations/20251218004525_final_rls_policy_cleanup.sql",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations_backup/20250917060400_audit_redaction.sql",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations_backup/20250917060500_audit_triggers.sql",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations_backup/20250917060600_audit_user_default.sql",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations_backup/20250917060700_create_audit_logs.sql",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        }
+      ],
+      "recommendation": "Padronizar schema: actor, action, entity, before, after, ip, created_at; garantir coverage financeiro/matrícula."
+    },
+    {
+      "id": "F09_MV",
+      "title": "F09 — Radar de Inadimplência com MATERIALIZED VIEW",
+      "severity": "LOW",
+      "status": "VALIDATED",
+      "evidence": [
+        {
+          "file": "supabase/migrations/20260109_000001_mv_financeiro_dashboards.sql",
+          "note": "match: /CREATE\\s+MATERIALIZED\\s+VIEW\\s+public\\.mv_radar_inadimplencia/i"
+        },
+        {
+          "file": "supabase/migrations/20260109_000001_mv_financeiro_dashboards.sql",
+          "note": "match: /CREATE\\s+UNIQUE\\s+INDEX\\s+.*ux_mv_radar_inadimplencia/i"
+        },
+        {
+          "file": "supabase/migrations/20260109_000001_mv_financeiro_dashboards.sql",
+          "note": "match: /refresh_mv_radar_inadimplencia\\s*\\(/i"
+        },
+        {
+          "file": "supabase/migrations/20261019003000_mv_admin_secretaria_dashboards.sql",
+          "note": "match: /refresh_mv_radar_inadimplencia\\s*\\(/i"
+        },
+        {
+          "file": "supabase/migrations/20260109_000001_mv_financeiro_dashboards.sql",
+          "note": "match: /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\.vw_radar_inadimplencia/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations/20251120100000_create_financial_module.sql",
+          "note": "match: /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\.vw_radar_inadimplencia/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations/20251123230000_replace_vw_radar_inadimplencia.sql",
+          "note": "match: /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\.vw_radar_inadimplencia/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations/20251124133000_align_financeiro_schema.sql",
+          "note": "match: /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\.vw_radar_inadimplencia/i"
+        }
+      ],
+      "recommendation": "Garantir MV + UNIQUE INDEX + refresh function + cron job + view wrapper."
+    },
+    {
+      "id": "F18_MV",
+      "title": "F18 — Caixa/Propinas com MATERIALIZED VIEW",
+      "severity": "LOW",
+      "status": "VALIDATED",
+      "evidence": [
+        {
+          "file": "supabase/migrations/20260109_000001_mv_financeiro_dashboards.sql",
+          "note": "match: /CREATE\\s+MATERIALIZED\\s+VIEW\\s+public\\.mv_pagamentos_status/i"
+        },
+        {
+          "file": "supabase/migrations/20260109_000001_mv_financeiro_dashboards.sql",
+          "note": "match: /CREATE\\s+UNIQUE\\s+INDEX\\s+.*ux_mv_pagamentos_status/i"
+        },
+        {
+          "file": "supabase/migrations/20260109_000001_mv_financeiro_dashboards.sql",
+          "note": "match: /refresh_mv_pagamentos_status\\s*\\(/i"
+        },
+        {
+          "file": "supabase/migrations/20261019003000_mv_admin_secretaria_dashboards.sql",
+          "note": "match: /refresh_mv_pagamentos_status\\s*\\(/i"
+        },
+        {
+          "file": "supabase/migrations/20260109_000001_mv_financeiro_dashboards.sql",
+          "note": "match: /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\.pagamentos_status/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations/20250916000100_create_views.sql",
+          "note": "match: /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\.pagamentos_status/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations_backup/20250916000100_create_views.sql",
+          "note": "match: /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\.pagamentos_status/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations_backup/migrations/20250916000100_create_views.sql",
+          "note": "match: /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\.pagamentos_status/i"
+        }
+      ],
+      "recommendation": "Garantir MV + UNIQUE INDEX + refresh function + cron job + view wrapper."
+    },
+    {
+      "id": "P0_3_MV_DASHBOARDS",
+      "title": "P0.3 — Dashboards Secretaria/Admin em MATERIALIZED VIEW",
+      "severity": "LOW",
+      "status": "VALIDATED",
+      "evidence": [
+        {
+          "file": "supabase/migrations/20261019003000_mv_admin_secretaria_dashboards.sql",
+          "note": "match: /mv_secretaria_dashboard_counts/i"
+        },
+        {
+          "file": "supabase/migrations/20261019003000_mv_admin_secretaria_dashboards.sql",
+          "note": "match: /ux_mv_secretaria_dashboard_counts/i"
+        },
+        {
+          "file": "supabase/migrations/20261019003000_mv_admin_secretaria_dashboards.sql",
+          "note": "match: /refresh_mv_secretaria_dashboard_counts/i"
+        },
+        {
+          "file": "supabase/migrations/20261019003000_mv_admin_secretaria_dashboards.sql",
+          "note": "match: /vw_secretaria_dashboard_counts/i"
+        },
+        {
+          "file": "supabase/migrations/20261019003000_mv_admin_secretaria_dashboards.sql",
+          "note": "match: /cron\\.schedule\\(['\"]refresh_mv_secretaria_dashboard_counts['\"]/i"
+        },
+        {
+          "file": "supabase/migrations/20261019003000_mv_admin_secretaria_dashboards.sql",
+          "note": "match: /mv_secretaria_matriculas_status/i"
+        },
+        {
+          "file": "supabase/migrations/20261019003000_mv_admin_secretaria_dashboards.sql",
+          "note": "match: /ux_mv_secretaria_matriculas_status/i"
+        },
+        {
+          "file": "supabase/migrations/20261019003000_mv_admin_secretaria_dashboards.sql",
+          "note": "match: /refresh_mv_secretaria_matriculas_status/i"
+        },
+        {
+          "file": "supabase/migrations/20261019003000_mv_admin_secretaria_dashboards.sql",
+          "note": "match: /vw_secretaria_matriculas_status/i"
+        },
+        {
+          "file": "supabase/migrations/20261019003000_mv_admin_secretaria_dashboards.sql",
+          "note": "match: /cron\\.schedule\\(['\"]refresh_mv_secretaria_matriculas_status['\"]/i"
+        }
+      ],
+      "recommendation": "Garantir MV + UNIQUE INDEX + refresh function + cron job + view wrapper para secretária e admin (sem cálculo ao vivo)."
+    }
+  ]
+}

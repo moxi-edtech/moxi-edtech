@@ -262,7 +262,12 @@ export function mapAlunoFromCsv(
   mapped.encarregado_email = getVal(columnMap.encarregado_email)?.trim().toLowerCase();
   mapped.profile_id = getVal(columnMap.profile_id)?.trim();
   const rawNumeroProcesso = getVal(columnMap.numero_processo)?.trim();
-  mapped.numero_processo = rawNumeroProcesso ? rawNumeroProcesso : undefined; // NOVO: Número de Processo
+  // BUGFIX: Previne que numero_processo seja mapeado para a mesma coluna que o nome (bug na UI de mapeamento)
+  if (columnMap.numero_processo && columnMap.numero_processo === columnMap.nome) {
+    mapped.numero_processo = undefined;
+  } else {
+    mapped.numero_processo = rawNumeroProcesso ? rawNumeroProcesso : undefined;
+  }
 
   // --- DADOS ACADÊMICOS (Normalizados) ---
   const rawTurma = getVal(columnMap.turma_codigo);

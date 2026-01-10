@@ -12,9 +12,10 @@ export const dynamic = "force-dynamic";
 interface ImportBody {
   importId: string;
   escolaId: string;
-  anoLetivo: number;
   skipMatricula?: boolean;
   startMonth?: number;
+  modo?: 'migracao' | 'onboarding';
+  dataInicioFinanceiro?: string;
 }
 
 export async function POST(request: Request) {
@@ -38,9 +39,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
   }
 
-  const { importId, escolaId, anoLetivo } = body;
-  if (!importId || !escolaId || !anoLetivo) {
-    return NextResponse.json({ error: "importId, escolaId e anoLetivo são obrigatórios" }, { status: 400 });
+  const { importId, escolaId } = body;
+  if (!importId || !escolaId) {
+    return NextResponse.json({ error: "importId e escolaId são obrigatórios" }, { status: 400 });
   }
 
   const skipMatricula = Boolean(body.skipMatricula);
@@ -56,31 +57,93 @@ export async function POST(request: Request) {
   const sameEscola = await importBelongsToEscola(supabase, importId, escolaId);
   if (!sameEscola) return NextResponse.json({ error: "Importação não pertence à escola" }, { status: 403 });
 
-  // Usa o RPC novo se existir; fallback para o antigo
-  const { data, error } = await supabase.rpc("importar_alunos_v2", {
-    p_escola_id: escolaId,
-    p_ano_letivo: Number(anoLetivo),
+  type ImportModo = "migracao" | "onboarding";
+  const modoFinal: ImportModo = body.modo === "onboarding" ? "onboarding" : "migracao";
+
+  const dataInicioFinal: string | null = body.dataInicioFinanceiro
+    ? new Date(body.dataInicioFinanceiro).toISOString().slice(0, 10)
+    : null;
+
+  const params = {
     p_import_id: importId,
-  });
+    p_escola_id: escolaId,
+    p_modo: modoFinal,
+    p_data_inicio_financeiro: dataInicioFinal, // null intencional
+  };
+
+  // Usa o RPC com `as any` para contornar a incompatibilidade de tipos entre o esquema local e o remoto
+  const { data, error } = await (supabase as any).rpc("importar_alunos_v4", params);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("[importar_alunos_v4] rpc error", error);
+    return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   }
 
-  const result = (Array.isArray(data) && data.length ? data[0] : data) as ImportResult;
+  // Define o tipo de resultado esperado da RPC
+  type RpcResult = {
+    ok: boolean;
+    imported: number;
+    turmas_created: number;
+    matriculas_pendentes: number;
+    errors: number;
+  };
 
-  await supabase
+  const row = Array.isArray(data) ? data[0] : data;
+  const result = row as unknown as RpcResult;
+  const isNum = (v: any) => typeof v === "number" && Number.isFinite(v);
+
+  // Valida o shape da resposta da RPC, incluindo números
+  if (!result || typeof result.ok !== "boolean" || !isNum(result.imported) || !isNum(result.errors)) {
+    console.error("[importar_alunos_v4] resposta inesperada", { importId, data });
+    return NextResponse.json({ ok: false, error: "Resposta inesperada da importação" }, { status: 500 });
+  }
+
+  const { error: updateErr } = await supabase
     .from("import_migrations")
-    .update({ status: "imported", processed_at: new Date().toISOString() })
+    .update({
+      status: "imported", // CORRIGIDO: usa "imported"
+      imported_rows: result.imported ?? 0,
+      error_rows: result.errors ?? 0,
+      processed_at: new Date().toISOString(),
+    })
     .eq("id", importId);
+
+  if (updateErr) {
+    // Não quebra a request, mas loga o erro de atualização
+    console.error("[import_migrations] update error", { importId, error: updateErr });
+  }
 
   let financeActiveCount = 0;
   try {
+    // 1) Pegar ano_letivo do staging, garantindo que é único para o import
+    const { data: years, error: stagingYearErr } = await supabase
+      .from("staging_alunos")
+      .select("ano_letivo")
+      .eq("import_id", importId)
+      .eq("escola_id", escolaId)
+      .not("ano_letivo", "is", null);
+
+    if (stagingYearErr) {
+      throw new Error(stagingYearErr.message);
+    }
+
+    const uniq = Array.from(new Set((years ?? []).map(r => Number(r.ano_letivo)).filter(Boolean)));
+    if (uniq.length !== 1) {
+      return NextResponse.json(
+        { ok: false, error: `Importação inconsistente: ano_letivo múltiplo no staging (${uniq.join(", ")})` },
+        { status: 400 }
+      );
+    }
+    const anoLetivoFromStaging = uniq[0];
+    if (!anoLetivoFromStaging || Number.isNaN(anoLetivoFromStaging)) {
+      throw new Error("ano_letivo não encontrado na staging_alunos para este importId");
+    }
+
     financeActiveCount = await aplicarContextoFinanceiro({
       supabase,
       escolaId,
       importId,
-      anoLetivo: Number(anoLetivo),
+      anoLetivo: anoLetivoFromStaging,
       skipMatricula,
       startMonth,
     });
@@ -124,7 +187,7 @@ async function aplicarContextoFinanceiro(params: {
     .eq("import_id", importId);
 
   const alunoIds = (alunos || []).map((a) => (a as any).id).filter(Boolean);
-  if (!alunoIds.length) return;
+  if (!alunoIds.length) return 0;
 
   const { data: matriculas } = await supabase
     .from("matriculas")
