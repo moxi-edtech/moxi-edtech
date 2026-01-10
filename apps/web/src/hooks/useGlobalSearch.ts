@@ -16,11 +16,19 @@ type SearchResult = {
   foto_url?: string | null;
 };
 
+type MinimalResult = {
+  id: string;
+  label: string;
+  meta?: string | null;
+  href: string;
+  status?: string | null;
+};
+
 type CacheEntry = { ts: number; data: SearchResult[] };
 
 export function useGlobalSearch(escolaId?: string | null) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
+  const [results, setResults] = useState<MinimalResult[]>([]);
   const [loading, setLoading] = useState(false);
 
   const normalizedQuery = useMemo(() => query.trim().replace(/\s+/g, " "), [query]);
@@ -32,7 +40,7 @@ export function useGlobalSearch(escolaId?: string | null) {
   const cacheRef = useRef<Map<string, CacheEntry>>(new Map());
 
   useEffect(() => {
-    const q = debouncedQuery;
+    const q = debouncedQuery.trim();
     if (!escolaId || !q || q.length < 2) {
       setResults([]);
       setLoading(false);
@@ -45,18 +53,29 @@ export function useGlobalSearch(escolaId?: string | null) {
 
     // TTL 45s
     if (cached && now - cached.ts < 45_000) {
-      setResults(cached.data);
+      const items = ((cached.data as SearchResult[]) ?? []).map((a) => ({
+        id: a.id,
+        label: a.nome,
+        meta: [a.processo ? `Proc. ${a.processo}` : null, a.turma].filter(Boolean).join(" • "),
+        href: `/secretaria/alunos/${a.id}`,
+        status: a.status ?? a.aluno_status ?? null,
+      })) satisfies MinimalResult[];
+
+      // @ts-expect-error: troca o tipo do state pra MinimalResult[]
+      setResults(items);
       return;
     }
 
     const ac = new AbortController();
     setLoading(true);
 
+    const limit = Math.min(8, 50);
+
     (async () => {
       try {
         const { data, error } = await supabase.rpc(
-          "search_alunos_global",
-          { p_escola_id: escolaId, p_query: q, p_limit: 8 },
+          "search_alunos_global_min",
+          { p_escola_id: escolaId, p_query: q, p_limit: limit },
           { signal: ac.signal }
         );
 
@@ -65,7 +84,16 @@ export function useGlobalSearch(escolaId?: string | null) {
         const payload = ((data as SearchResult[]) ?? []);
         cacheRef.current.set(cacheKey, { ts: now, data: payload });
 
-        setResults(payload);
+        const items = payload.map((a) => ({
+          id: a.id,
+          label: a.nome,
+          meta: [a.processo ? `Proc. ${a.processo}` : null, a.turma].filter(Boolean).join(" • "),
+          href: `/secretaria/alunos/${a.id}`,
+          status: a.status ?? a.aluno_status ?? null,
+        })) satisfies MinimalResult[];
+
+        // @ts-expect-error: troca o tipo do state pra MinimalResult[]
+        setResults(items);
       } catch (err: any) {
         // ignore abort
         if (err?.name !== "AbortError") {
