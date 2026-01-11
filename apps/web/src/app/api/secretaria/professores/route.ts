@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
-import type { Database } from '~types/supabase'
+import { applyKf2ListInvariants } from '@/lib/kf2'
 
 export const dynamic = 'force-dynamic'
 
@@ -71,135 +70,66 @@ export async function GET(req: Request) {
     }
     const papels = cargoToPapels[cargo as keyof typeof cargoToPapels] ?? ['professor']
 
-    const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY
+    const { data: vinc, error: vincErr } = await s
+      .from('escola_users')
+      .select('id, user_id, created_at, papel')
+      .eq('escola_id', escolaId)
+      .in('papel', papels)
+      .gte('created_at', since)
+    if (vincErr) return NextResponse.json({ ok: false, error: vincErr.message }, { status: 500 })
 
-    // Quando service role estiver configurada, usar para contornar RLS em profiles
-    if (adminUrl && serviceRole) {
-      const admin = createAdminClient<Database>(adminUrl, serviceRole)
+    const vincList = (vinc || []) as Array<{ id: string; user_id: string; created_at: string; papel: string }>
+    const user_ids = vincList.map(v => v.user_id)
+    if (user_ids.length === 0) return NextResponse.json({ ok: true, items: [], total: 0 })
 
-      // 1) Buscar vínculos na escola pelos papéis desejados
-      const { data: vinc, error: vincErr } = await (admin as any)
-        .from('escola_users')
-        .select('id, user_id, created_at, papel')
-        .eq('escola_id', escolaId)
-        .in('papel', papels)
-        .gte('created_at', since)
-      if (vincErr) return NextResponse.json({ ok: false, error: vincErr.message }, { status: 500 })
+    let profilesQuery = (s as any)
+      .from('profiles')
+      .select('user_id, nome, email, telefone, numero_login, created_at')
+      .in('user_id', user_ids)
 
-      const vincList = (vinc || []) as Array<{ id: string; user_id: string; created_at: string; papel: string }>
-      const user_ids = vincList.map(v => v.user_id)
-      if (user_ids.length === 0) return NextResponse.json({ ok: true, items: [], total: 0 })
+    profilesQuery = applyKf2ListInvariants(profilesQuery)
 
-      // 2) Consultar perfis destes usuários (com filtro q)
-      let profilesQuery = (admin as any)
-        .from('profiles')
-        .select('user_id, nome, email, telefone, numero_login, created_at')
-        .in('user_id', user_ids)
-      if (q) {
-        profilesQuery = profilesQuery.or(`nome.ilike.%${q}%,email.ilike.%${q}%,telefone.ilike.%${q}%`)
-      }
-
-      // Paginação
-      const from = (page - 1) * pageSize
-      const to = from + pageSize - 1
-
-      const [{ data: rows, error: rowsErr }, countRes] = await Promise.all([
-        profilesQuery.order('created_at', { ascending: false }).range(from, to),
-        (admin as any)
-          .from('profiles')
-          .select('user_id', { count: 'exact', head: true })
-          .in('user_id', user_ids)
-      ])
-      if (rowsErr) return NextResponse.json({ ok: false, error: rowsErr.message }, { status: 500 })
-
-      const vincMap = new Map(vincList.map(v => [v.user_id, v]))
-      const mapPapelToCargo = (p: string | undefined): string => {
-        switch (p) {
-          case 'professor': return 'professor'
-          case 'secretaria': return 'assistente'
-          case 'staff_admin': return 'coordenador'
-          case 'admin':
-          case 'admin_escola':
-            return 'diretor'
-          default:
-            return 'professor'
-        }
-      }
-      const items = (rows || []).map((p: any) => {
-        const vincData = vincMap.get(p.user_id)
-        return {
-          id: vincData?.id,
-          user_id: p.user_id,
-          nome: p.nome,
-          email: p.email,
-          telefone: p.telefone,
-          cargo: mapPapelToCargo(vincData?.papel),
-          created_at: vincData?.created_at || new Date().toISOString(),
-          profiles: { numero_login: p.numero_login }
-        }
-      })
-      const total = (countRes as any)?.count ?? items.length
-      return NextResponse.json({ ok: true, items, total })
+    if (q) {
+      profilesQuery = profilesQuery.or(`nome.ilike.%${q}%,email.ilike.%${q}%,telefone.ilike.%${q}%`)
     }
 
-        // Fallback sem service role: tentar via cliente do usuário (pode retornar vazio por RLS)
-        const { data: vinc, error: vincErr } = await s
-          .from('escola_users')
-          .select('id, user_id, created_at, papel')
-          .eq('escola_id', escolaId)
-          .in('papel', papels)
-          .gte('created_at', since)
-        if (vincErr) return NextResponse.json({ ok: false, error: vincErr.message }, { status: 500 })
-    
-        const vincList = (vinc || []) as Array<{ id: string; user_id: string; created_at: string; papel: string }>
-        const user_ids = vincList.map(v => v.user_id)
-        if (user_ids.length === 0) return NextResponse.json({ ok: true, items: [], total: 0 })
-    
-        let profilesQuery = (s as any)
-          .from('profiles')
-          .select('user_id, nome, email, telefone, numero_login, created_at')
-          .in('user_id', user_ids)
-        if (q) {
-          profilesQuery = profilesQuery.or(`nome.ilike.%${q}%,email.ilike.%${q}%,telefone.ilike.%${q}%`)
-        }
-    
-        const from = (page - 1) * pageSize
-        const to = from + pageSize - 1
-        const [{ data: rows, error: rowsErr }, countRes] = await Promise.all([
-          profilesQuery.order('created_at', { ascending: false }).range(from, to),
-          (s as any).from('profiles').select('user_id', { count: 'exact', head: true }).in('user_id', user_ids)
-        ])
-        if (rowsErr) return NextResponse.json({ ok: false, error: rowsErr.message }, { status: 500 })
-    
-        const vincMap = new Map(vincList.map(v => [v.user_id, v]))
-        const mapPapelToCargo = (p: string | undefined): string => {
-          switch (p) {
-            case 'professor': return 'professor'
-            case 'secretaria': return 'assistente'
-            case 'staff_admin': return 'coordenador'
-            case 'admin':
-            case 'admin_escola':
-              return 'diretor'
-            default:
-              return 'professor'
-          }
-        }
-        const items = (rows || []).map((p: any) => {
-          const vincData = vincMap.get(p.user_id)
-          return {
-            id: vincData?.id,
-            user_id: p.user_id,
-            nome: p.nome,
-            email: p.email,
-            telefone: p.telefone,
-            cargo: mapPapelToCargo(vincData?.papel),
-            created_at: vincData?.created_at || new Date().toISOString(),
-            profiles: { numero_login: p.numero_login }
-          }
-        })
-        const total = (countRes as any)?.count ?? items.length
-        return NextResponse.json({ ok: true, items, total })  } catch (err) {
+    const from = (page - 1) * pageSize
+    const to = from + pageSize - 1
+    const [{ data: rows, error: rowsErr }, countRes] = await Promise.all([
+      profilesQuery.order('created_at', { ascending: false }).range(from, to),
+      (s as any).from('profiles').select('user_id', { count: 'exact', head: true }).in('user_id', user_ids)
+    ])
+    if (rowsErr) return NextResponse.json({ ok: false, error: rowsErr.message }, { status: 500 })
+
+    const vincMap = new Map(vincList.map(v => [v.user_id, v]))
+    const mapPapelToCargo = (p: string | undefined): string => {
+      switch (p) {
+        case 'professor': return 'professor'
+        case 'secretaria': return 'assistente'
+        case 'staff_admin': return 'coordenador'
+        case 'admin':
+        case 'admin_escola':
+          return 'diretor'
+        default:
+          return 'professor'
+      }
+    }
+    const items = (rows || []).map((p: any) => {
+      const vincData = vincMap.get(p.user_id)
+      return {
+        id: vincData?.id,
+        user_id: p.user_id,
+        nome: p.nome,
+        email: p.email,
+        telefone: p.telefone,
+        cargo: mapPapelToCargo(vincData?.papel),
+        created_at: vincData?.created_at || new Date().toISOString(),
+        profiles: { numero_login: p.numero_login }
+      }
+    })
+    const total = (countRes as any)?.count ?? items.length
+    return NextResponse.json({ ok: true, items, total })
+  } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     return NextResponse.json({ ok: false, error: msg }, { status: 500 })
   }

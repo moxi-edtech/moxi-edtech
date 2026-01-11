@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
-import type { Database } from "~types/supabase";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export const dynamic = 'force-dynamic';
 
@@ -64,32 +63,21 @@ export async function GET(req: Request) {
       });
 
     // Única fonte: anos_letivos
-    const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    const fetchAnosLetivos = async (client: any) =>
-      client
+    const fetchAnosLetivos = async (client: any) => {
+      let query = client
         .from('anos_letivos')
         .select('id, ano, data_inicio, data_fim, ativo, escola_id')
         .eq('escola_id', escolaId)
         .order('ano', { ascending: false });
 
+      query = applyKf2ListInvariants(query, { defaultLimit: 50 });
+      return query;
+    };
+
     const { data: anoLetivoData, error: anoLetivoError } = await fetchAnosLetivos(supabase as any);
 
     if (!anoLetivoError && (anoLetivoData?.length ?? 0) > 0) {
       const items = mapAnosLetivos(anoLetivoData || []);
-      return NextResponse.json({ ok: true, data: items });
-    }
-
-    if (adminUrl && serviceRole) {
-      const admin = createClient<Database>(adminUrl, serviceRole);
-      const { data: adminData, error: adminError } = await fetchAnosLetivos(admin as any);
-      if (adminError) {
-        console.error("Erro SQL anos_letivos (admin):", adminError);
-        throw adminError;
-      }
-
-      const items = mapAnosLetivos(adminData || []);
       return NextResponse.json({ ok: true, data: items });
     }
 

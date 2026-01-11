@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { createClient } from "@supabase/supabase-js";
 import { authorizeMatriculasManage } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
-import type { Database } from "~types/supabase";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export const dynamic = "force-dynamic";
 
@@ -28,15 +27,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 });
     }
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: "Configuração Supabase ausente" }, { status: 500 });
-    }
-
-    const admin = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-
     const { searchParams } = new URL(req.url);
     const statusParam = searchParams.get("status") || undefined;
     const statusList = statusParam
@@ -44,7 +34,7 @@ export async function GET(req: NextRequest) {
       : [];
     const q = (searchParams.get("q") || "").trim().toLowerCase();
 
-    let query = admin
+    let query = supabase
       .from("candidaturas")
       .select(
         `id, escola_id, aluno_id, curso_id, ano_letivo, status, created_at, turma_preferencial_id,
@@ -52,9 +42,9 @@ export async function GET(req: NextRequest) {
          alunos:aluno_id ( id, nome, nome_completo, numero_processo, bi_numero, email, telefone_responsavel, encarregado_email ),
          cursos:curso_id ( id, nome )`
       )
-      .order("created_at", { ascending: false })
-      .limit(200)
       .eq("escola_id", escolaId);
+      
+    query = applyKf2ListInvariants(query);
 
     if (statusList.length === 1) {
       query = query.eq("status", statusList[0]);

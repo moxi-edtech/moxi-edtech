@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 type AlunoTurmaRow = {
   matricula_id: string;
@@ -54,15 +54,7 @@ export async function GET(
 
     const { id: turmaId } = await params;
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: "Configuração Supabase ausente." }, { status: 500 });
-    }
-    const admin = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-
-    const { data, error } = await admin
+    let query = supabase
       .from("matriculas")
       .select(
         `
@@ -93,9 +85,11 @@ export async function GET(
       `
       )
       .eq("turma_id", turmaId)
-      .eq("escola_id", escolaId)
-      .order("numero_lista", { ascending: true })
-      .order("created_at", { ascending: true });
+      .eq("escola_id", escolaId);
+      
+    query = applyKf2ListInvariants(query);
+
+    const { data, error } = await query;
 
     if (error) {
       return NextResponse.json(

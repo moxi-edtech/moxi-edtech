@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export const dynamic = 'force-dynamic';
 
@@ -37,19 +36,13 @@ export async function GET() {
     const escolaId = await resolveEscolaId(s as any, user.id);
     if (!escolaId) return NextResponse.json({ ok: true, items: [] });
     
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: "Configuração Supabase ausente." }, { status: 500 });
-    }
-    const admin = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-
     // Catálogo de classes para mapear nomes → IDs existentes
-    const { data: classesCatalog } = await (admin as any)
+    let classesQuery = (s as any)
       .from('classes')
       .select('id, nome')
       .eq('escola_id', escolaId);
+    classesQuery = applyKf2ListInvariants(classesQuery, { defaultLimit: 2000 });
+    const { data: classesCatalog } = await classesQuery;
     const classByName = new Map<string, { id: string; nome: string }>();
     const normalizeClassName = (value: string) => value.trim().toLowerCase();
     for (const cls of (classesCatalog || []) as Array<{ id: string; nome: string }>) {
@@ -57,21 +50,25 @@ export async function GET() {
     }
 
     // Configurações curriculares salvas (contêm lista de classes escolhidas)
-    const { data: configs } = await (admin as any)
+    let configsQuery = (s as any)
       .from('configuracoes_curriculo')
       .select('curso_id, config')
       .eq('escola_id', escolaId);
+    configsQuery = applyKf2ListInvariants(configsQuery, { defaultLimit: 2000 });
+    const { data: configs } = await configsQuery;
     const configByCourse = new Map<string, any>();
     for (const cfg of (configs || []) as Array<{ curso_id: string; config: any }>) {
       if (cfg?.curso_id) configByCourse.set(cfg.curso_id, cfg.config);
     }
 
     // 1) Buscar cursos da escola
-    const { data: cursos, error: cursosErr } = await (admin as any)
+    let cursosQuery = (s as any)
       .from('cursos')
       .select('id, nome, codigo, tipo')
       .eq('escola_id', escolaId)
       .order('nome', { ascending: true });
+    cursosQuery = applyKf2ListInvariants(cursosQuery, { defaultLimit: 500 });
+    const { data: cursos, error: cursosErr } = await cursosQuery;
     if (cursosErr) return NextResponse.json({ ok: false, error: cursosErr.message }, { status: 400 });
 
     // 2) Para cada curso, adicionar as classes
