@@ -181,7 +181,7 @@ chore: establish KLASSE engineering agents contract
 3. Roda:
 
 ```
-codex scan
+pnpm agent:scan
 ```
 
 ---
