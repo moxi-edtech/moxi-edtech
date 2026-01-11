@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { createClient } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 
@@ -13,7 +12,7 @@ const ALUNO_SELECT_FIELDS =
   "id, nome, nome_completo, email, telefone_responsavel, encarregado_email, profile_id, responsavel_nome, responsavel_contato, escola_id";
 
 const findAlunoExistente = async (
-  admin: SupabaseClient<Database>,
+  client: SupabaseClient<Database>,
   escolaId: string,
   payload: { bi_numero?: string | null; nif?: string | null; numero_processo?: string | null },
   extraNumeroProcesso?: string | null
@@ -28,7 +27,7 @@ const findAlunoExistente = async (
 
   const matchExpr = matchFilters.join(",");
 
-  const { data: sameSchool } = await admin
+  const { data: sameSchool } = await client
     .from("alunos")
     .select(ALUNO_SELECT_FIELDS)
     .eq("escola_id", escolaId)
@@ -53,8 +52,8 @@ const extractSequencial = (numero?: string | null) => {
   return match ? Number(match[1]) : null;
 };
 
-const syncAlunoProcessoCounter = async (admin: SupabaseClient<Database>, escolaId: string) => {
-  const { data, error } = await admin
+const syncAlunoProcessoCounter = async (client: SupabaseClient<Database>, escolaId: string) => {
+  const { data, error } = await client
     .from("alunos")
     .select("numero_processo")
     .eq("escola_id", escolaId)
@@ -70,7 +69,7 @@ const syncAlunoProcessoCounter = async (admin: SupabaseClient<Database>, escolaI
 
   if (maxSeq === 0) return null;
 
-  await admin
+  await client
     .from("aluno_processo_counters")
     .upsert({ escola_id: escolaId, last_value: maxSeq, updated_at: new Date().toISOString() });
 
@@ -141,15 +140,6 @@ export async function POST(
       );
     }
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: "Configuração Supabase ausente" }, { status: 500 });
-    }
-
-    const admin = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-
     const escolaId = (candidatura as any).escola_id as string;
 
     // 2.5) Criar aluno real se ainda não existir (fluxo antigo gerava aluno antes)
@@ -183,13 +173,13 @@ export async function POST(
         status: "pendente",
       };
 
-      const alunoExistente = await findAlunoExistente(admin, escolaId, basePayload);
+      const alunoExistente = await findAlunoExistente(supabase, escolaId, basePayload);
 
       if (alunoExistente) {
         alunoId = alunoExistente.id as string;
         alunoPerfil = alunoExistente;
       } else {
-        const { data, error } = await admin
+        const { data, error } = await supabase
           .from("alunos")
           .insert(basePayload)
           .select(ALUNO_SELECT_FIELDS)
@@ -212,11 +202,11 @@ export async function POST(
               alunoPerfil = existente;
             } else if (error.message?.includes("idx_alunos_escola_processo")) {
               // Se a numeração de processo estiver desatualizada, sincroniza o contador e tenta novamente
-              await syncAlunoProcessoCounter(admin, escolaId);
+              await syncAlunoProcessoCounter(supabase, escolaId);
 
               const retryPayload = { ...basePayload, numero_processo: null };
 
-              const { data: retryData, error: retryErr } = await admin
+              const { data: retryData, error: retryErr } = await supabase
                 .from("alunos")
                 .insert(retryPayload)
                 .select(ALUNO_SELECT_FIELDS)
@@ -225,8 +215,8 @@ export async function POST(
               if (retryErr) {
                 const retryNumero = extractNumeroProcessoFromError(retryErr.details || retryErr.message);
                 if (retryNumero) {
-                  const retryExisting = await findAlunoExistente(
-                    admin,
+                    const retryExisting = await findAlunoExistente(
+                    supabase,
                     escolaId,
                     retryPayload,
                     retryNumero
@@ -259,7 +249,7 @@ export async function POST(
       }
 
       if (alunoId) {
-        await admin
+        await supabase
           .from("candidaturas")
           .update({ aluno_id: alunoId, nome_candidato: nomeCompleto })
           .eq("id", id);
@@ -274,7 +264,7 @@ export async function POST(
     }
 
     // 2.6) Garantir que não há matrícula prévia no mesmo ano (inclusive pendentes)
-    const { data: existingMatricula, error: existingErr } = await admin
+    const { data: existingMatricula, error: existingErr } = await supabase
       .from("matriculas")
       .select("id, numero_matricula")
       .eq("escola_id", escolaId)
@@ -293,7 +283,7 @@ export async function POST(
     }
 
     // 3) Criar matrícula oficial (ativa e numerada)
-    const { data: matricula, error: matErr } = await admin
+    const { data: matricula, error: matErr } = await supabase
       .from("matriculas")
       .insert({
         escola_id: (candidatura as any).escola_id,
@@ -311,110 +301,52 @@ export async function POST(
       return NextResponse.json({ ok: false, error: matErr?.message || "Erro ao criar matrícula" }, { status: 400 });
     }
 
-    const { error: confirmErr } = await (admin as any).rpc('confirmar_matricula', {
+    const { error: confirmErr } = await (supabase as any).rpc('confirmar_matricula', {
       p_matricula_id: matricula.id,
     });
 
     if (confirmErr) {
-      await admin.from("matriculas").delete().eq("id", matricula.id);
+      await supabase.from("matriculas").delete().eq("id", matricula.id);
       return NextResponse.json({ ok: false, error: confirmErr?.message || "Falha ao confirmar matrícula" }, { status: 400 });
     }
 
-    const { data: matriculaAtualizada, error: fetchErr } = await admin
+    const { data: matriculaAtualizada, error: fetchErr } = await supabase
       .from('matriculas')
       .select('id, numero_matricula, status')
       .eq('id', matricula.id)
       .maybeSingle();
 
     if (fetchErr || !matriculaAtualizada?.numero_matricula) {
-      await admin.from('matriculas').delete().eq('id', matricula.id);
+      await supabase.from('matriculas').delete().eq('id', matricula.id);
       return NextResponse.json({ ok: false, error: fetchErr?.message || 'Número de matrícula não gerado' }, { status: 400 });
     }
 
     const numeroMatricula = matriculaAtualizada.numero_matricula as string;
 
-    // 4) Garantir login/profile
-    let targetUserId: string | null = alunoPerfil.profile_id || null;
     const emailForLogin = alunoPerfil.email || alunoPerfil.encarregado_email || ((candidatura as any).dados_candidato as any)?.encarregado_email;
 
-    if (!targetUserId) {
-      if (!emailForLogin) {
-        return NextResponse.json(
-          { ok: false, error: "Aluno sem email para criar login" },
-          { status: 400 }
-        );
-      }
-
-      const tempPassword = Math.random().toString(36).slice(-12) + "A1!";
-      const { data: createdUser, error: authErr } = await admin.auth.admin.createUser({
-        email: emailForLogin,
-        password: tempPassword,
-        email_confirm: true,
-        user_metadata: { nome: alunoPerfil.nome_completo || alunoPerfil.nome, role: "aluno" },
-        app_metadata: { role: "aluno", escola_id: (candidatura as any).escola_id },
-      });
-
-      if (authErr) {
-        // Tentar reaproveitar usuário existente
-        if (authErr.message?.includes("registered") || authErr.status === 422) {
-          const { data: list } = await admin.auth.admin.listUsers();
-          const existing = list.users.find(
-            (u) => u.email?.toLowerCase() === emailForLogin.toLowerCase()
-          );
-          if (!existing) {
-            return NextResponse.json({ ok: false, error: authErr.message }, { status: 400 });
-          }
-          targetUserId = existing.id;
-        } else {
-          return NextResponse.json({ ok: false, error: authErr.message }, { status: 400 });
-        }
-      } else {
-        targetUserId = createdUser?.user?.id || null;
-      }
-    }
-
-    if (!targetUserId) {
-      return NextResponse.json({ ok: false, error: "Falha ao definir usuário" }, { status: 500 });
+    if (!emailForLogin) {
+      return NextResponse.json(
+        { ok: false, error: "Aluno sem email para criar login" },
+        { status: 400 }
+      );
     }
 
     const numeroLogin = numeroMatricula ? String(numeroMatricula) : null;
 
-    const profileData: any = {
-      user_id: targetUserId,
-      email: emailForLogin,
-      nome: alunoPerfil.nome_completo || alunoPerfil.nome,
-      role: "aluno",
-      escola_id: (candidatura as any).escola_id,
-      current_escola_id: (candidatura as any).escola_id,
-      numero_login: numeroLogin,
-      telefone: alunoPerfil.telefone_responsavel || null,
-      encarregado_relacao: alunoPerfil.responsavel_nome ? "encarregado" : null,
-    };
-
-    const { error: profErr } = await admin
-      .from("profiles")
-      .upsert(profileData, { onConflict: "user_id" });
-    if (profErr) {
-      return NextResponse.json({ ok: false, error: profErr.message }, { status: 400 });
-    }
-
-    const { error: linkErr } = await admin
-      .from("escola_users")
-      .upsert(
-        { escola_id: (candidatura as any).escola_id, user_id: targetUserId, papel: "aluno" },
-        { onConflict: "escola_id,user_id" }
-      );
-    if (linkErr) {
-      return NextResponse.json({ ok: false, error: linkErr.message }, { status: 400 });
-    }
-
-    await admin
-      .from("alunos")
-      .update({ profile_id: targetUserId })
-      .eq("id", alunoId);
+    await (supabase as any).rpc("enqueue_outbox_event", {
+      p_escola_id: escolaId,
+      p_topic: "auth_provision_student",
+      p_payload: {
+        aluno_id: alunoId,
+        email: emailForLogin,
+        numero_login: numeroLogin,
+        canal: "whatsapp",
+      },
+    });
 
     // 5) Atualizar status da candidatura
-    await admin
+    await supabase
       .from("candidaturas")
       .update({ status: "matriculado" })
       .eq("id", id);
@@ -424,7 +356,7 @@ export async function POST(
         ok: true,
         matricula_id: matricula?.id,
         numero_matricula: numeroLogin,
-        profile_id: targetUserId,
+        profile_id: alunoPerfil.profile_id ?? null,
       },
       { status: 200 }
     );

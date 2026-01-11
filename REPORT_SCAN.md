@@ -40,6 +40,7 @@
   - `supabase/migrations/20261019008000_audit_schema_min.sql` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/migrations/20261019009500_audit_actor_role.sql` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/migrations/20261019104000_gf4_audit_hardening.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations/20261019108000_hard_delete_aluno_rpc.sql` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/.branches/remote/schema.sql` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/migrations_archive/migrations_backup/20250917060400_audit_redaction.sql` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/migrations_archive/migrations_backup/20250917060500_audit_triggers.sql` — match: /audit_logs|auditLog|create_audit/i
@@ -55,7 +56,6 @@
   - `supabase/migrations_archive/migrations/20251116195500_normalize_auth_uid_in_policies.sql` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/migrations_archive/migrations/20251116211500_fix_audit_trigger_columns.sql` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/migrations_archive/migrations/20251116212500_secretaria_audit_view.sql` — match: /audit_logs|auditLog|create_audit/i
-  - `supabase/migrations_archive/migrations/20251214120000_add_rls_policies.sql` — match: /audit_logs|auditLog|create_audit/i
 - Recomendação: Padronizar schema: actor, action, entity, before, after, ip, created_at; garantir coverage financeiro/matrícula.
 
 ### F09_MV — F09 — Radar de Inadimplência com MATERIALIZED VIEW
