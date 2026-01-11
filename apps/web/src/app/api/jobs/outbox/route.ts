@@ -161,7 +161,7 @@ async function provisionStudent(admin: NonNullable<ReturnType<typeof getAdminCli
 
 export async function POST(req: Request) {
   const token = resolveJobToken(req);
-  const expected = process.env.OUTBOX_JOB_TOKEN;
+  const expected = process.env.OUTBOX_JOB_TOKEN || process.env.CRON_SECRET;
   if (!expected || token !== expected) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
