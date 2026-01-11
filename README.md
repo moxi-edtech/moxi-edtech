@@ -20,6 +20,7 @@ Liberação de acesso de alunos (novo)
 - Infra: migrations adicionam colunas de acesso em `alunos`, `outbox_notificacoes`, `outbox_events`, RPC `liberar_acesso_alunos_v2` + `request_liberar_acesso`; habilita realtime para monitorar o outbox.
 - Envio: worker `/api/jobs/outbox` consome `outbox_events` e atualiza `outbox_notificacoes`, enviando via Twilio (WhatsApp, fallback SMS opcional) ou Resend (email). Configure as envs acima e o webhook do Twilio para atualizar status.
 - Cron: Supabase pg_cron permanece como fonte de verdade (refresh MVs + requeue de outbox). Para executar `/api/jobs/outbox`, use a Edge Function `supabase/functions/outbox-dispatch` com `OUTBOX_JOB_URL` e `CRON_SECRET`.
+- Runbook: `docs/outbox-worker-runbook.md`.
 
 Fluxo recomendado (produção)
 1) Backfill Acadêmico (opcional, via Wizard)
