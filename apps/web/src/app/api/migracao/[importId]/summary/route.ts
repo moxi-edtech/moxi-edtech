@@ -9,9 +9,9 @@ type Params = { importId: string };
 
 export async function GET(
   _request: Request,
-  { params }: { params: Params }
+  { params }: { params: Promise<Params> }
 ) {
-  const { importId } = params;
+  const { importId } = await params;
 
   if (!importId) {
     return NextResponse.json(
@@ -24,9 +24,7 @@ export async function GET(
 
   try {
     const { data, error } = await supabase
-      .rpc("get_import_summary", {
-        p_import_id: importId,
-      })
+      .rpc("get_import_summary", { p_import_id: importId })
       .single();
 
     if (error) {
@@ -34,25 +32,16 @@ export async function GET(
         `[API MIGRAÇÃO SUMMARY] Erro ao chamar RPC get_import_summary:`,
         error
       );
-      throw new Error(
-        `Falha ao buscar o resumo da importação: ${error.message}`
-      );
-    }
-
-    if (!data) {
       return NextResponse.json(
-        { cursos: [], turmas: [] },
-        { status: 200 }
+        { error: `Falha ao buscar o resumo da importação: ${error.message}` },
+        { status: 500 }
       );
     }
 
-    return NextResponse.json(data);
-
+    return NextResponse.json(data ?? { cursos: [], turmas: [] });
   } catch (error: any) {
     return NextResponse.json(
-      {
-        error: error.message || "Ocorreu um erro no servidor.",
-      },
+      { error: error?.message || "Ocorreu um erro no servidor." },
       { status: 500 }
     );
   }
