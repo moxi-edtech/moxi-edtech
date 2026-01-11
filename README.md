@@ -19,7 +19,7 @@ Liberação de acesso de alunos (novo)
 - APIs: `/api/secretaria/alunos/sem-acesso`, `/metricas-acesso`, `/liberar-acesso` (RPC `request_liberar_acesso`, enfileira outbox) e `/api/alunos/ativar-acesso` (self-service).
 - Infra: migrations adicionam colunas de acesso em `alunos`, `outbox_notificacoes`, `outbox_events`, RPC `liberar_acesso_alunos_v2` + `request_liberar_acesso`; habilita realtime para monitorar o outbox.
 - Envio: worker `/api/jobs/outbox` consome `outbox_events` e atualiza `outbox_notificacoes`, enviando via Twilio (WhatsApp, fallback SMS opcional) ou Resend (email). Configure as envs acima e o webhook do Twilio para atualizar status.
-- Cron: `vercel.json` dispara `/api/jobs/outbox` a cada 2 min com header `x-job-token` (igual a `CRON_SECRET`).
+- Cron: Supabase pg_cron permanece como fonte de verdade (refresh MVs + requeue de outbox). Para executar `/api/jobs/outbox`, use um scheduler interno (Supabase Edge Scheduled Function) com `CRON_SECRET`.
 
 Fluxo recomendado (produção)
 1) Backfill Acadêmico (opcional, via Wizard)
