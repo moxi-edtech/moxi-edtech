@@ -1,5 +1,7 @@
 # PERF_GATE.md
 
-Status: **PASS**
+Status: **FAIL**
 
-## Blocking findings (0)
+## Blocking findings (1)
+
+- **NO_STORE** (HIGH/PARTIAL) — Anti-pattern — uso de cache: 'no-store' em páginas/relatórios
