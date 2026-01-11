@@ -26,8 +26,13 @@ BEGIN
     PERFORM public.enqueue_outbox_event(
       p_escola_id,
       'auth_provision_student',
-      jsonb_build_object('aluno_id', row.aluno_id, 'canal', p_canal),
-      row.request_id
+      jsonb_build_object(
+        'aluno_id', row.aluno_id,
+        'canal', p_canal,
+        'actor_user_id', auth.uid()
+      ),
+      row.request_id,
+      'AUTH_PROVISION_USER:' || p_escola_id::text || ':' || row.aluno_id::text
     );
 
     aluno_id := row.aluno_id;

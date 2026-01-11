@@ -10,9 +10,11 @@ type OutboxEvent = {
   escola_id: string;
   topic: string;
   request_id: string;
+  idempotency_key?: string | null;
   payload: Record<string, any> | null;
   status: string;
   attempts: number;
+  max_attempts?: number | null;
   next_run_at: string;
   created_at: string;
   processed_at: string | null;
@@ -32,29 +34,35 @@ function getAdminClient() {
 
 async function markEvent(
   admin: ReturnType<typeof getAdminClient>,
-  eventId: string,
+  event: OutboxEvent,
   status: "processed" | "failed",
   lastError?: string | null
 ) {
   if (!admin) return;
+  const attempts = event.attempts ?? 0;
+  const maxAttempts = event.max_attempts ?? 5;
+  const shouldDead = status === "failed" && attempts >= maxAttempts;
+  const backoffMinutes = Math.min(60, Math.pow(2, Math.max(0, attempts))) * 5;
   await admin
     .from("outbox_events")
     .update({
-      status,
+      status: shouldDead ? "dead" : status,
       processed_at: status === "processed" ? new Date().toISOString() : null,
       last_error: lastError ?? null,
       next_run_at:
-        status === "failed"
-          ? new Date(Date.now() + 5 * 60 * 1000).toISOString()
+        status === "failed" && !shouldDead
+          ? new Date(Date.now() + backoffMinutes * 60 * 1000).toISOString()
           : null,
     })
-    .eq("id", eventId);
+    .eq("id", event.id);
 }
 
 async function provisionStudent(admin: NonNullable<ReturnType<typeof getAdminClient>>, event: OutboxEvent) {
   const payload = (event.payload || {}) as Record<string, any>;
   const alunoId = payload.aluno_id as string | undefined;
   const canal = (payload.canal || "whatsapp") as string;
+  const actorUserId = payload.actor_user_id as string | undefined;
+  const idempotencyKey = event.idempotency_key || payload.idempotency_key;
 
   if (!alunoId) {
     throw new Error("payload missing aluno_id");
@@ -155,7 +163,16 @@ async function provisionStudent(admin: NonNullable<ReturnType<typeof getAdminCli
     tabela: "alunos",
     entity: "alunos",
     entity_id: aluno.id,
-    details: { aluno_id: aluno.id, canal },
+    actor_id: actorUserId ?? null,
+    user_id: actorUserId ?? null,
+    details: {
+      aluno_id: aluno.id,
+      canal,
+      idempotency_key: idempotencyKey,
+      job_id: event.id,
+      attempt: event.attempts,
+      provider: "supabase_auth",
+    },
   });
 }
 
@@ -186,11 +203,11 @@ export async function POST(req: Request) {
   for (const event of items) {
     try {
       await provisionStudent(admin, event);
-      await markEvent(admin, event.id, "processed");
+      await markEvent(admin, event, "processed");
       results.push({ id: event.id, status: "processed" });
     } catch (err: any) {
       const message = err?.message || String(err);
-      await markEvent(admin, event.id, "failed", message);
+      await markEvent(admin, event, "failed", message);
       results.push({ id: event.id, status: "failed", error: message });
     }
   }

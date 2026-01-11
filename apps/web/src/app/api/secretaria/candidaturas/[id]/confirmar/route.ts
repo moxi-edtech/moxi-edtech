@@ -337,11 +337,14 @@ export async function POST(
     await (supabase as any).rpc("enqueue_outbox_event", {
       p_escola_id: escolaId,
       p_topic: "auth_provision_student",
+      p_request_id: matricula.id,
+      p_idempotency_key: `AUTH_PROVISION_USER:${escolaId}:${alunoId}`,
       p_payload: {
         aluno_id: alunoId,
         email: emailForLogin,
         numero_login: numeroLogin,
         canal: "whatsapp",
+        actor_user_id: user.id,
       },
     });
 

@@ -3,10 +3,14 @@ CREATE TABLE IF NOT EXISTS public.outbox_events (
   escola_id uuid NOT NULL,
   topic text NOT NULL,
   request_id uuid NOT NULL,
+  idempotency_key text NOT NULL,
   payload jsonb NOT NULL DEFAULT '{}'::jsonb,
   status text NOT NULL DEFAULT 'pending',
   attempts int NOT NULL DEFAULT 0,
+  max_attempts int NOT NULL DEFAULT 5,
   next_run_at timestamptz NOT NULL DEFAULT now(),
+  locked_at timestamptz,
+  locked_by text,
   created_at timestamptz NOT NULL DEFAULT now(),
   processed_at timestamptz,
   last_error text
@@ -19,11 +23,7 @@ CREATE INDEX IF NOT EXISTS idx_outbox_events_topic_status
   ON public.outbox_events (topic, status, created_at);
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_outbox_events_idempotency
-  ON public.outbox_events (
-    topic,
-    request_id,
-    COALESCE(payload->>'aluno_id','')
-  );
+  ON public.outbox_events (idempotency_key);
 
 ALTER TABLE public.outbox_events ENABLE ROW LEVEL SECURITY;
 
@@ -48,7 +48,8 @@ CREATE OR REPLACE FUNCTION public.enqueue_outbox_event(
   p_escola_id uuid,
   p_topic text,
   p_payload jsonb,
-  p_request_id uuid DEFAULT gen_random_uuid()
+  p_request_id uuid DEFAULT gen_random_uuid(),
+  p_idempotency_key text DEFAULT NULL
 )
 RETURNS uuid
 LANGUAGE plpgsql
@@ -62,8 +63,14 @@ BEGIN
     RAISE EXCEPTION 'sem permissão para escola %', p_escola_id;
   END IF;
 
-  INSERT INTO public.outbox_events (escola_id, topic, request_id, payload)
-  VALUES (p_escola_id, p_topic, p_request_id, p_payload)
+  INSERT INTO public.outbox_events (escola_id, topic, request_id, idempotency_key, payload)
+  VALUES (
+    p_escola_id,
+    p_topic,
+    p_request_id,
+    COALESCE(p_idempotency_key, p_topic || ':' || p_request_id::text),
+    p_payload
+  )
   ON CONFLICT DO NOTHING
   RETURNING id INTO v_id;
 
@@ -71,9 +78,7 @@ BEGIN
     SELECT id
       INTO v_id
       FROM public.outbox_events
-     WHERE topic = p_topic
-       AND request_id = p_request_id
-       AND COALESCE(payload->>'aluno_id','') = COALESCE(p_payload->>'aluno_id','');
+     WHERE idempotency_key = COALESCE(p_idempotency_key, p_topic || ':' || p_request_id::text);
   END IF;
 
   RETURN v_id;
@@ -96,6 +101,7 @@ BEGIN
     FROM public.outbox_events
     WHERE status IN ('pending', 'failed')
       AND next_run_at <= now()
+      AND attempts < max_attempts
       AND (p_topic IS NULL OR topic = p_topic)
     ORDER BY created_at
     LIMIT GREATEST(1, LEAST(p_limit, 50))
@@ -103,9 +109,42 @@ BEGIN
   )
   UPDATE public.outbox_events o
      SET status = 'processing',
-         attempts = o.attempts + 1
+         attempts = o.attempts + 1,
+         locked_at = now(),
+         locked_by = 'outbox_worker'
     WHERE o.id IN (SELECT id FROM candidate)
   RETURNING o.*;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.retry_outbox_event(
+  p_event_id uuid
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_escola_id uuid;
+BEGIN
+  SELECT escola_id INTO v_escola_id
+  FROM public.outbox_events
+  WHERE id = p_event_id;
+
+  IF v_escola_id IS NULL THEN
+    RAISE EXCEPTION 'Outbox event não encontrado';
+  END IF;
+
+  IF NOT public.can_manage_school(v_escola_id) THEN
+    RAISE EXCEPTION 'sem permissão para escola %', v_escola_id;
+  END IF;
+
+  UPDATE public.outbox_events
+     SET status = 'pending',
+         next_run_at = now(),
+         last_error = NULL
+   WHERE id = p_event_id;
 END;
 $$;
 
