@@ -1,3 +1,5 @@
+SET LOCAL search_path TO "$user", public, extensions;
+
 create or replace function public.secretaria_list_alunos_kf2(
   p_escola_id uuid,
   p_status text default 'ativo',
@@ -56,7 +58,7 @@ base_alunos as (
   join params pr on pr.escola_id = a.escola_id
 ),
 filtered_alunos as (
-  select *
+  select ba.*
   from base_alunos ba
   join params pr on true
   where
@@ -82,14 +84,14 @@ alunos_status as (
           and m.ano_letivo = pr.ano_letivo
           and m.status in ('ativa', 'ativo', 'active')
       )
-      when 'inativo' then fa.status = 'inativo'
-      when 'pendente' then fa.status = 'pendente'
+      when 'inativo' then (fa.status = 'inativo')
+      when 'pendente' then (fa.status = 'pendente')
       when 'arquivado' then true
       else true
     end
 ),
 alunos_search as (
-  select *
+  select s.*
   from alunos_status s
   join params pr on true
   where pr.q is null
@@ -151,7 +153,7 @@ unioned as (
   select origem, id, aluno_id, nome, email, responsavel, telefone_responsavel, status, created_at, numero_login, numero_processo, bi_numero
   from candidaturas_search
 )
-select *
+select u.*
 from unioned u
 join params pr on true
 where pr.cursor_created_at is null
