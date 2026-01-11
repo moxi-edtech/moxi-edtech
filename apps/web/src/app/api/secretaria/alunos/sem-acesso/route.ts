@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { createClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export async function GET(req: Request) {
   try {
@@ -20,16 +20,7 @@ export async function GET(req: Request) {
     const authz = await authorizeEscolaAction(s as any, escolaId, user.id, []);
     if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 });
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: "Server misconfigured" }, { status: 500 });
-    }
-
-    const admin = createClient<any>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-
-    const { data, error } = await admin
+    let query = s
       .from("alunos")
       .select("id, nome, codigo_ativacao, created_at, responsavel_contato, telefone_responsavel, encarregado_telefone")
       .eq("escola_id", escolaId)
@@ -37,6 +28,10 @@ export async function GET(req: Request) {
       .eq("acesso_liberado", false)
       .not("status", "eq", "inativo")
       .order("created_at", { ascending: false });
+
+    query = applyKf2ListInvariants(query, { defaultLimit: 50 });
+
+    const { data, error } = await query;
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
 
