@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-01-11T16:00:24.959Z",
+  "timestamp": "2026-01-11T16:23:42.269Z",
   "status": "FAIL",
   "blocking_findings": [
     {
@@ -10,6 +10,10 @@
       "evidence": [
         {
           "file": "AGENTS.md",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/components/secretaria/AlunosListClient.tsx",
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
         }
       ],
