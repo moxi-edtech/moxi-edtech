@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveTabelaPreco } from "@/lib/financeiro/tabela-preco";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 function parseAnoLetivo(value: unknown) {
   const n = typeof value === "string" ? Number(value) : Number(value ?? "");
@@ -113,7 +114,7 @@ export async function GET(req: Request) {
     const autorizado = await usuarioTemAcessoEscola(s as any, user.id, escolaId);
     if (!autorizado) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
 
-    const { data, error } = await s
+    let query = s
       .from("financeiro_tabelas")
       .select(
         "id, escola_id, ano_letivo, curso_id, classe_id, valor_matricula, valor_mensalidade, dia_vencimento, multa_atraso_percentual, created_at, updated_at"
@@ -121,6 +122,10 @@ export async function GET(req: Request) {
       .eq("escola_id", escolaId)
       .eq("ano_letivo", anoLetivo)
       .order("created_at", { ascending: false });
+
+    query = applyKf2ListInvariants(query, { defaultLimit: 200 });
+
+    const { data, error } = await query;
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
 

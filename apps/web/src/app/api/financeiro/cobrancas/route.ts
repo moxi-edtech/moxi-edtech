@@ -12,6 +12,21 @@ const CobrancaItemSchema = z.object({
   enviado_em: z.string().datetime().optional(),
 });
 
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { applyKf2ListInvariants } from "@/lib/kf2";
+
+const CobrancaItemSchema = z.object({
+  aluno_id: z.string().uuid(),
+  mensalidade_id: z.string().uuid().nullable().optional(),
+  canal: z.enum(["whatsapp", "sms", "email", "manual"]),
+  status: z.enum(["enviada", "entregue", "respondida", "paga", "falha"]).optional(),
+  mensagem: z.string().optional(),
+  resposta: z.string().optional(),
+  enviado_em: z.string().datetime().optional(),
+});
+
 const CobrancaPayloadSchema = z.object({
   items: z.array(CobrancaItemSchema).min(1),
 });
@@ -28,7 +43,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const q = (searchParams.get("q") || "").trim().toLowerCase();
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("financeiro_cobrancas")
       .select(
         `
@@ -52,9 +67,11 @@ export async function GET(req: NextRequest) {
           status
         )
       `
-      )
-      .order("enviado_em", { ascending: false })
-      .limit(200);
+      );
+
+    query = applyKf2ListInvariants(query);
+    
+    const { data, error } = await query;
 
     if (error) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
@@ -76,7 +93,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
-
 export async function POST(req: NextRequest) {
   try {
     const supabase = await supabaseServerTyped<any>();

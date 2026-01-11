@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createRouteClient } from "@/lib/supabase/route-client";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export async function GET(req: Request) {
   try {
@@ -10,11 +11,15 @@ export async function GET(req: Request) {
 
     const supabase = await createRouteClient();
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("v_total_em_aberto_por_mes")
       .select("escola_id, ano, mes, total_aberto")
       .eq("ano", ano)
       .order("mes", { ascending: true });
+
+    query = applyKf2ListInvariants(query, { defaultLimit: 500 });
+
+    const { data, error } = await query;
 
     if (error) {
       console.error("[financeiro/graficos/mensal] error", error);

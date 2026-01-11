@@ -4,6 +4,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { createInstitutionalPdf } from "@/lib/pdf/documentTemplate";
 import { buildSignatureLine, createQrImage } from "@/lib/pdf/qr";
 import { requireFeature } from "@/lib/plan/requireFeature";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 interface PaymentRow {
   valor_pago: number | null;
@@ -110,7 +111,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ alunoId
 
     const { alunoId } = await params;
 
-    const { data: alunoRow, error: alunoError } = await supabase
+    let alunoQuery = supabase
       .from("alunos")
       .select(
         `
@@ -158,7 +159,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ alunoId
       `
       )
       .eq("id", alunoId)
-      .maybeSingle<AlunoRow>();
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    alunoQuery = applyKf2ListInvariants(alunoQuery, { defaultLimit: 1 });
+
+    const { data: alunoRow, error: alunoError } = await alunoQuery.maybeSingle<AlunoRow>();
 
     if (alunoError || !alunoRow) {
       return NextResponse.json({ ok: false, error: "Aluno não encontrado" }, { status: 404 });
@@ -171,7 +177,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ alunoId
     const matriculaAtual = matriculas.sort((a, b) => (b.ano_letivo ?? 0) - (a.ano_letivo ?? 0))[0];
     const turmaAtual = normalizeTurma(matriculaAtual?.turma);
 
-    const { data: mensalidades, error: mensError } = await supabase
+    let mensalidadesQuery = supabase
       .from("mensalidades")
       .select(
         `
@@ -195,8 +201,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ alunoId
       `
       )
       .eq("aluno_id", alunoId)
-      .order("data_vencimento", { ascending: true })
-      .returns<MensalidadeRow[]>();
+      .order("data_vencimento", { ascending: true });
+
+    mensalidadesQuery = applyKf2ListInvariants(mensalidadesQuery, { defaultLimit: 2000 });
+
+    const { data: mensalidades, error: mensError } = await mensalidadesQuery.returns<MensalidadeRow[]>();
 
     if (mensError) {
       return NextResponse.json(

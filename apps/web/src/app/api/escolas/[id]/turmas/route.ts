@@ -25,6 +25,34 @@ const normalizeTurno = (turno: string | undefined): "M" | "T" | "N" | null => {
   }
 };
 
+import { NextRequest, NextResponse } from "next/server";
+import { supabaseServer } from "@/lib/supabaseServer";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
+import type { Database } from "~types/supabase";
+import { canManageEscolaResources } from "../permissions";
+import { applyKf2ListInvariants } from "@/lib/kf2";
+
+const normalizeTurno = (turno: string | undefined): "M" | "T" | "N" | null => {
+  const t = (turno || "").trim().toLowerCase();
+  switch (t) {
+    case "m":
+    case "manha":
+    case "manhã":
+      return "M";
+    case "t":
+    case "tarde":
+      return "T";
+    case "n":
+    case "noite":
+      return "N";
+    default:
+      if (["M", "T", "N"].includes((turno || "").toUpperCase())) {
+        return (turno || "").toUpperCase() as "M" | "T" | "N";
+      }
+      return null;
+  }
+};
+
 // --- GET: Listar Turmas (Admin) ---
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: escolaId } = await params;
@@ -53,9 +81,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // 4. Query usando a view que resolve curso/classe
     let query = admin
       .from('vw_turmas_para_matricula')
-      .select('*')
+      .select('id, turma_nome, nome, turno, sala, capacidade_maxima, curso_nome, classe_nome, status_validacao, ocupacao_atual, ultima_matricula, escola_id, curso_id')
       .eq('escola_id', escolaId)
-      .order('turma_nome', { ascending: true });
+    
+    query = applyKf2ListInvariants(query);
 
     const normalizedTurno = turno && turno !== 'todos' ? turno.toUpperCase() : null;
     if (normalizedTurno) query = query.eq('turno', normalizedTurno);

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { hasPermission } from '@/lib/permissions'
 import { createServiceRoleClient, scopeToTenant } from '@moxi/tenant-sdk'
+import { applyKf2ListInvariants } from '@/lib/kf2'
 
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id: escolaId } = await context.params
@@ -22,18 +23,26 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
 
     const admin = createServiceRoleClient()
 
-    const { data: links, error } = await scopeToTenant(admin, 'escola_users', escolaId)
+    let linksQuery = scopeToTenant(admin, 'escola_users', escolaId)
       .select('user_id, papel')
       .returns<{ user_id: string; papel: string | null }[]>()
+
+    linksQuery = applyKf2ListInvariants(linksQuery, { defaultLimit: 2000 })
+
+    const { data: links, error } = await linksQuery
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
 
     const ids = (links || []).map(l => l.user_id)
     if (ids.length === 0) return NextResponse.json({ ok: true, users: [], page, perPage, total: 0 })
 
-    const { data: profiles } = await admin
+    let profilesQuery = admin
       .from('profiles')
       .select('user_id, email, nome')
       .in('user_id', ids)
+
+    profilesQuery = applyKf2ListInvariants(profilesQuery, { defaultLimit: 2000 })
+
+    const { data: profiles } = await profilesQuery
     let users = (links || []).map(l => {
       const p = profiles?.find(pr => pr.user_id === l.user_id)
       return { user_id: l.user_id, papel: l.papel, email: p?.email || '', nome: p?.nome || '' }

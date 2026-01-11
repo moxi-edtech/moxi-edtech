@@ -1,11 +1,18 @@
 import ImportacaoDetailPage from "@/app/secretaria/(portal-secretaria)/importacoes/[id]/page";
 
-export default function ImportacaoDetailEscolaPage({
+type Params = {
+  id: string;
+  importacaoId: string;
+};
+
+export default async function ImportacaoDetailEscolaPage({
   params,
 }: {
-  params: { importacaoId: string };
+  params: Promise<Params>;
 }) {
+  const { importacaoId } = await params;
+
   return ImportacaoDetailPage({
-    params: Promise.resolve({ id: params.importacaoId }),
+    params: Promise.resolve({ id: importacaoId }),
   });
 }

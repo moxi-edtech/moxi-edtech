@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseServerTyped } from '@/lib/supabaseServer';
 import * as XLSX from 'xlsx';
+import { applyKf2ListInvariants } from '@/lib/kf2';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -32,13 +33,17 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return new NextResponse('Turma not found', { status: 404 });
     }
     
-    const { data: matriculasData, error: matriculasError } = await supabase
+    let matriculasQuery = supabase
       .from('matriculas')
       .select(`
         alunos ( id, nome )
       `)
       .eq('turma_id', turmaId)
       .eq('status', 'ATIVA'); // Somente alunos com matrícula ativa
+
+    matriculasQuery = applyKf2ListInvariants(matriculasQuery, { defaultLimit: 1000 });
+
+    const { data: matriculasData, error: matriculasError } = await matriculasQuery;
 
     if (matriculasError) {
       console.error('Error fetching matriculas:', matriculasError);

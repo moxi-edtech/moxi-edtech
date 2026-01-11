@@ -62,8 +62,17 @@ export async function POST(req: Request) {
       if (createRes.error) {
         if (createRes.error.message?.toLowerCase().includes('registered')) {
           try {
-            const existing = await admin.auth.admin.getUserByEmail(login);
-            userId = (existing?.data?.user as any)?.id || null;
+            const { data: existingUser, error: existingUserError } = await admin
+              .from('users')
+              .select('id')
+              .eq('email', login)
+              .single();
+
+            if (existingUserError) {
+              return NextResponse.json({ ok: false, error: existingUserError.message }, { status: 400 });
+            }
+
+            userId = existingUser?.id || null;
           } catch {
             return NextResponse.json({ ok: false, error: createRes.error.message }, { status: 400 });
           }

@@ -10,6 +10,19 @@ function hasOverlap(start1: Date, end1: Date, start2: Date, end2: Date): boolean
   return start1 <= end2 && start2 <= end1;
 }
 
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { supabaseServer } from "@/lib/supabaseServer";
+import { hasPermission } from "@/lib/permissions";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
+import type { Database } from "~types/supabase";
+import { applyKf2ListInvariants } from "@/lib/kf2";
+
+// Helper para validar sobreposição de intervalos [start, end]
+function hasOverlap(start1: Date, end1: Date, start2: Date, end2: Date): boolean {
+  return start1 <= end2 && start2 <= end1;
+}
+
 // GET /api/escolas/[id]/semestres
 // Lista períodos de uma sessão da escola
 export async function GET(
@@ -70,7 +83,9 @@ export async function GET(
     if (sErr) return NextResponse.json({ ok: false, error: sErr.message }, { status: 400 });
     if (!sess || (sess as any).escola_id !== escolaId) return NextResponse.json({ ok: false, error: 'Sessão inválida para esta escola' }, { status: 404 });
 
-    let q = (admin as any).from('semestres').select('*').eq('session_id', sessao_id).eq('escola_id', escolaId).order('data_inicio', { ascending: true });
+    let q = (admin as any).from('semestres').select('id, session_id, escola_id, nome, data_inicio, data_fim, attendance_type, permitir_submissao_final, tipo').eq('session_id', sessao_id).eq('escola_id', escolaId);
+    q = applyKf2ListInvariants(q);
+
     if (tipo && ['TRIMESTRE', 'BIMESTRE', 'SEMESTRE', 'ANUAL'].includes(tipo)) q = q.eq('tipo', tipo);
     const { data, error } = await q;
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
@@ -80,7 +95,6 @@ export async function GET(
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
 }
-
 // POST /api/escolas/[id]/semestres
 // Cria um período (semestre/trimestre/bimestre/anual) dentro de uma sessão
 export async function POST(

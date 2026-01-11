@@ -3,6 +3,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { tryCanonicalFetch } from "@/lib/api/proxyCanonical";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export const dynamic = 'force-dynamic';
 
@@ -55,6 +56,8 @@ export async function GET(req: Request) {
 
     if (anoLetivo) query = query.eq('ano_letivo', anoLetivo);
     if (sessionId) query = query.eq('session_id', sessionId);
+
+    query = applyKf2ListInvariants(query, { defaultLimit: 200 });
 
     const { data: existing, error } = await query;
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400, headers });

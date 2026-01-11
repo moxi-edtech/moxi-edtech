@@ -10,8 +10,16 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
 
     // Query scoped views (RLS function handles tenant)
     const [{ data: topT }, { data: topC }] = await Promise.all([
-      s.from('v_top_turmas_hoje' as any).select('turma_nome, percent').limit(10),
-      s.from('v_top_cursos_media' as any).select('curso_nome, media').limit(10),
+      s
+        .from('v_top_turmas_hoje' as any)
+        .select('turma_nome, percent')
+        .order('percent', { ascending: false })
+        .limit(10),
+      s
+        .from('v_top_cursos_media' as any)
+        .select('curso_nome, media')
+        .order('media', { ascending: false })
+        .limit(10),
     ])
 
     const res = NextResponse.json({
@@ -27,4 +35,3 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
 }
-

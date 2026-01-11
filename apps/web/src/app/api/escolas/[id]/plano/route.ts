@@ -6,7 +6,13 @@ export async function GET(_req: Request, context: { params: Promise<{ id: string
   try {
     const { id } = await context.params;
     const supabase = await supabaseServerTyped<any>();
-    const { data } = await supabase.from('escolas').select('plano_atual, plano').eq('id', id).maybeSingle();
+    const { data } = await supabase
+      .from('escolas')
+      .select('plano_atual, plano')
+      .eq('id', id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
     const planoRaw = (data as any)?.plano_atual ?? (data as any)?.plano ?? null;
     return NextResponse.json({ plano: planoRaw ? parsePlanTier(planoRaw) : null });
   } catch (e) {

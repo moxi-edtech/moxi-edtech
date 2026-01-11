@@ -3,6 +3,12 @@ import { supabaseServer } from '@/lib/supabaseServer'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import type { Database } from '~types/supabase'
 
+import { NextResponse } from 'next/server'
+import { supabaseServer } from '@/lib/supabaseServer'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
+import type { Database } from '~types/supabase'
+import { applyKf2ListInvariants } from '@/lib/kf2'
+
 // Lista e cria/atualiza regras de mensalidade por escola/curso/classe usando
 // a tabela padrão `financeiro_tabelas` (valor_mensalidade).
 
@@ -113,12 +119,15 @@ export async function GET(req: Request) {
 
     const db = getTenantClient(s)
 
-    const { data, error } = await db
+    let query = db
       .from('financeiro_tabelas')
       .select('id, curso_id, classe_id, valor_mensalidade, dia_vencimento, ano_letivo, created_at, updated_at')
       .eq('escola_id', escolaId)
       .eq('ano_letivo', anoLetivo)
-      .order('created_at', { ascending: false })
+
+    query = applyKf2ListInvariants(query);
+
+    const { data, error } = await query;
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
 
@@ -140,7 +149,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
 }
-
 export async function POST(req: Request) {
   try {
     const s = await supabaseServer()

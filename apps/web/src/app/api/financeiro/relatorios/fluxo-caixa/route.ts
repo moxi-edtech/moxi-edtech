@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export const dynamic = "force-dynamic";
 
@@ -27,11 +28,15 @@ export async function GET(_req: Request) {
     }
 
     // Prefer view simples (v_financeiro_escola_dia). Se não existir, retorna vazio.
-    const { data, error } = await supabase
+    let query = supabase
       .from('v_financeiro_escola_dia')
       .select('dia, qtd_pagos, qtd_total')
       .eq('escola_id', escolaId)
       .order('dia', { ascending: true });
+
+    query = applyKf2ListInvariants(query, { defaultLimit: 500 });
+
+    const { data, error } = await query;
 
     if (error) {
       return NextResponse.json(
@@ -57,4 +62,3 @@ export async function GET(_req: Request) {
     return NextResponse.json({ ok: false, error: err?.message || 'Erro inesperado' }, { status: 500 });
   }
 }
-

@@ -7,6 +7,7 @@ import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { tryCanonicalFetch } from "@/lib/api/proxyCanonical";
 import { requireFeature } from "@/lib/plan/requireFeature";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 type TurmaRow = {
   id: string;
@@ -120,7 +121,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const classeNome = (turma as any)?.classes?.nome || '—';
 
     // 2) Buscar matrículas ativas + dados dos alunos
-    const { data: matriculas, error: matriculasError } = await supabase
+    let matriculasQuery = supabase
       .from("matriculas")
       .select(
         `
@@ -141,6 +142,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       .eq("turma_id", turmaId)
       .eq("escola_id", escolaId)
       .in("status", ["ativo", "ativa"]);
+
+    matriculasQuery = applyKf2ListInvariants(matriculasQuery, { defaultLimit: 200 });
+
+    const { data: matriculas, error: matriculasError } = await matriculasQuery;
 
     if (matriculasError) {
       return NextResponse.json({ ok: false, error: matriculasError.message }, { status: 500, headers });

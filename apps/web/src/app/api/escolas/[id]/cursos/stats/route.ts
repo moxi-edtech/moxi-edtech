@@ -4,6 +4,7 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 import { canManageEscolaResources } from "../../permissions";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 // --- HELPERS PARA GERAR CÓDIGO (Consistência com outras rotas) ---
 const normalizeNome = (nome: string): string =>
@@ -45,19 +46,25 @@ export async function GET(
     // Buscar cursos com colunas opcionais em fallback
     let rows: any[] = [];
     {
-      const { data, error } = await (admin as any)
+      let query = (admin as any)
         .from('cursos')
         .select('id, nome, nivel, descricao, codigo, course_code, curriculum_key, tipo')
         .eq('escola_id', escolaId)
         .order('nome', { ascending: true });
+      query = applyKf2ListInvariants(query, { defaultLimit: 500 });
+
+      const { data, error } = await query;
       if (!error) rows = data || [];
       else {
         // Retry com menos colunas se falhar
-        const retry = await (admin as any)
+        let retryQuery = (admin as any)
           .from('cursos')
           .select('id, nome, codigo')
           .eq('escola_id', escolaId)
           .order('nome', { ascending: true });
+        retryQuery = applyKf2ListInvariants(retryQuery, { defaultLimit: 500 });
+
+        const retry = await retryQuery;
         if (retry.error) return NextResponse.json({ ok: false, error: retry.error.message }, { status: 400 });
         rows = retry.data || [];
       }

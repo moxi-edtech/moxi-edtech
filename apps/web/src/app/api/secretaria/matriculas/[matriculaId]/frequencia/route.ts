@@ -4,6 +4,7 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { authorizeMatriculasManage } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { tryCanonicalFetch } from "@/lib/api/proxyCanonical";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export async function GET(req: Request, context: { params: Promise<{ matriculaId: string }> }) {
   try {
@@ -43,11 +44,15 @@ export async function GET(req: Request, context: { params: Promise<{ matriculaId
       return NextResponse.json({ ok: false, error: 'Matrícula não encontrada' }, { status: 404, headers });
     }
 
-    const { data: frequencias } = await supabase
+    let frequenciasQuery = supabase
       .from('frequencias')
-      .select('*')
+      .select('id, matricula_id, routine_id, curso_oferta_id, data, status, escola_id, aula_id, observacao')
       .eq('matricula_id', matricula_id)
       .order('data', { ascending: false });
+
+    frequenciasQuery = applyKf2ListInvariants(frequenciasQuery, { defaultLimit: 200 });
+
+    const { data: frequencias } = await frequenciasQuery;
 
     const pdfDoc = await PDFDocument.create();
     const page = pdfDoc.addPage();

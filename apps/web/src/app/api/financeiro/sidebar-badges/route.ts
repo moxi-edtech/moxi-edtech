@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export async function GET() {
   try {
@@ -13,19 +14,27 @@ export async function GET() {
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
     if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 400 });
 
-    const { count: candidaturasPendentes, error: candErr } = await supabase
+    let candidaturasQuery = supabase
       .from("candidaturas")
       .select("id", { count: "exact", head: true })
       .eq("escola_id", escolaId)
       .in("status", ["pendente", "aguardando_compensacao"] as any);
 
+    candidaturasQuery = applyKf2ListInvariants(candidaturasQuery, { defaultLimit: 1 });
+
+    const { count: candidaturasPendentes, error: candErr } = await candidaturasQuery;
+
     if (candErr) return NextResponse.json({ ok: false, error: candErr.message }, { status: 400 });
 
-    const { count: cobrancasPendentes, error: cobErr } = await supabase
+    let cobrancasQuery = supabase
       .from("financeiro_cobrancas")
       .select("id", { count: "exact", head: true })
       .eq("escola_id", escolaId)
       .in("status", ["enviada", "entregue"] as any);
+
+    cobrancasQuery = applyKf2ListInvariants(cobrancasQuery, { defaultLimit: 1 });
+
+    const { count: cobrancasPendentes, error: cobErr } = await cobrancasQuery;
 
     if (cobErr) return NextResponse.json({ ok: false, error: cobErr.message }, { status: 400 });
 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
+import { applyKf2ListInvariants } from '@/lib/kf2'
 
 async function resolveEscolaId(
   s: Awaited<ReturnType<typeof supabaseServer>>,
@@ -40,6 +41,8 @@ export async function GET(req: Request) {
       .order('created_at', { ascending: false })
 
     if (onlyActive) query = query.eq('ativo', true)
+
+    query = applyKf2ListInvariants(query, { defaultLimit: 200 })
 
     const { data, error } = await query
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })

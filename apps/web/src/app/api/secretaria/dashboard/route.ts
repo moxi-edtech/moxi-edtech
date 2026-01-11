@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 type MatriculaResumo = {
   status: string | null;
@@ -37,33 +38,55 @@ export async function GET() {
       });
     }
 
+    const countsQuery = supabase
+      .from('vw_secretaria_dashboard_counts')
+      .select('alunos_ativos, matriculas_total, turmas_total')
+      .eq('escola_id', escolaId)
+      .maybeSingle();
+
+    let turmasQuery = supabase
+      .from('turmas')
+      .select('id, nome, turno, ano_letivo, professor_id')
+      .eq('escola_id', escolaId)
+      .order('nome');
+    turmasQuery = applyKf2ListInvariants(turmasQuery, { defaultLimit: 200 });
+
+    let matsStatusQuery = supabase
+      .from('vw_secretaria_matriculas_status')
+      .select('status, total')
+      .eq('escola_id', escolaId)
+      .order('status', { ascending: true });
+    matsStatusQuery = applyKf2ListInvariants(matsStatusQuery, { defaultLimit: 200 });
+
+    let matsTurmaStatusQuery = supabase
+      .from('vw_secretaria_matriculas_turma_status')
+      .select('turma_id, status, total')
+      .eq('escola_id', escolaId)
+      .order('turma_id', { ascending: true })
+      .order('status', { ascending: true });
+    matsTurmaStatusQuery = applyKf2ListInvariants(matsTurmaStatusQuery, { defaultLimit: 200 });
+
+    const avisosQuery = supabase
+      .from('avisos')
+      .select('id, titulo, resumo, origem, created_at')
+      .eq('escola_id', escolaId)
+      .order('created_at', { ascending: false })
+      .limit(3);
+
+    const ultimasMatriculasQuery = supabase
+      .from('matriculas')
+      .select(`id, status, created_at, turma_id, turmas ( nome, turno ), alunos ( id, profiles!alunos_profile_id_fkey ( nome, email ) )`)
+      .eq('escola_id', escolaId)
+      .order('created_at', { ascending: false })
+      .limit(6);
+
     const [countsRes, turmasRes, matsStatusRes, matsTurmaStatusRes, avisosRes, ultimasMatriculasRes] = await Promise.all([
-      supabase
-        .from('vw_secretaria_dashboard_counts')
-        .select('alunos_ativos, matriculas_total, turmas_total')
-        .eq('escola_id', escolaId)
-        .maybeSingle(),
-      supabase.from('turmas').select('id, nome, turno, ano_letivo, professor_id').eq('escola_id', escolaId).order('nome'),
-      supabase
-        .from('vw_secretaria_matriculas_status')
-        .select('status, total')
-        .eq('escola_id', escolaId),
-      supabase
-        .from('vw_secretaria_matriculas_turma_status')
-        .select('turma_id, status, total')
-        .eq('escola_id', escolaId),
-      supabase
-        .from('avisos')
-        .select('id, titulo, resumo, origem, created_at')
-        .eq('escola_id', escolaId)
-        .order('created_at', { ascending: false })
-        .limit(3),
-      supabase
-        .from('matriculas')
-        .select(`id, status, created_at, turma_id, turmas ( nome, turno ), alunos ( id, profiles!alunos_profile_id_fkey ( nome, email ) )`)
-        .eq('escola_id', escolaId)
-        .order('created_at', { ascending: false })
-        .limit(6),
+      countsQuery,
+      turmasQuery,
+      matsStatusQuery,
+      matsTurmaStatusQuery,
+      avisosQuery,
+      ultimasMatriculasQuery,
     ]);
 
     // Aggregate and normalize status to avoid duplicates from DB inconsistencies

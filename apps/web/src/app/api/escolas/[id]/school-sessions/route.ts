@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export async function GET(
   _req: NextRequest,
@@ -92,11 +93,15 @@ export async function GET(
       }));
 
     if (!adminUrl || !serviceRole) {
-      const { data, error } = await supabase
+      let query = supabase
         .from("anos_letivos")
         .select("id, ano, data_inicio, data_fim, ativo")
         .eq("escola_id", escolaId)
         .order("ano", { ascending: false });
+
+      query = applyKf2ListInvariants(query, { defaultLimit: 200 });
+
+      const { data, error } = await query;
 
       if (error) {
         return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
@@ -108,11 +113,15 @@ export async function GET(
     }
 
     const admin = createAdminClient<Database>(adminUrl, serviceRole);
-    const { data, error } = await (admin as any)
+    let adminQuery = (admin as any)
       .from("anos_letivos")
       .select("id, ano, data_inicio, data_fim, ativo")
       .eq("escola_id", escolaId)
       .order("ano", { ascending: false });
+
+    adminQuery = applyKf2ListInvariants(adminQuery, { defaultLimit: 200 });
+
+    const { data, error } = await adminQuery;
 
     if (error) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 });

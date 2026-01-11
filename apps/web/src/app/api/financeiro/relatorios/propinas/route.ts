@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,7 @@ export async function GET(req: Request) {
     const anoLetivo = anoParam ? parseInt(anoParam, 10) : new Date().getFullYear();
 
     // 1) Série mensal (para gráficos)
-    const { data: mensal, error: mensalError } = await supabase
+    let mensalQuery = supabase
       .from("vw_financeiro_propinas_mensal_escola")
       .select(
         `
@@ -41,6 +42,10 @@ export async function GET(req: Request) {
       .order("ano", { ascending: true })
       .order("mes", { ascending: true });
 
+    mensalQuery = applyKf2ListInvariants(mensalQuery, { defaultLimit: 500 });
+
+    const { data: mensal, error: mensalError } = await mensalQuery;
+
     if (mensalError) {
       console.error("[financeiro/relatorios/propinas] mensalError", mensalError);
       return NextResponse.json(
@@ -54,10 +59,14 @@ export async function GET(req: Request) {
     }
 
     // 2) Ranking por turma (para tabela)
-    const { data: porTurma, error: turmaError } = await supabase
+    let turmaQuery = supabase
       .rpc("get_propinas_por_turma", { p_ano_letivo: anoLetivo })
       .order("inadimplencia_pct", { ascending: false })
       .order("total_em_atraso", { ascending: false });
+
+    turmaQuery = applyKf2ListInvariants(turmaQuery, { defaultLimit: 500 });
+
+    const { data: porTurma, error: turmaError } = await turmaQuery;
 
     if (turmaError) {
       console.error("[financeiro/relatorios/propinas] turmaError", turmaError);

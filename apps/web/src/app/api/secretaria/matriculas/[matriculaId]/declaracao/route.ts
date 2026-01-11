@@ -37,6 +37,8 @@ export async function GET(req: Request, context: { params: Promise<{ matriculaId
       `)
       .eq('id', matricula_id)
       .eq('escola_id', escolaId)
+      .order('created_at', { ascending: false })
+      .limit(1)
       .single();
 
     if (error || !matricula) {

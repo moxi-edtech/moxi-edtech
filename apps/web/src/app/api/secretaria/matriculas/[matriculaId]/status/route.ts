@@ -30,6 +30,23 @@ export async function PUT(req: Request, context: { params: Promise<{ matriculaId
       return NextResponse.json({ ok: false, error: 'status é obrigatório' }, { status: 400 });
     }
 
+    const { data: matriculaCheck, error: matriculaError } = await supabase
+      .from('matriculas')
+      .select('id')
+      .eq('id', matricula_id)
+      .eq('escola_id', escolaId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (matriculaError) {
+      return NextResponse.json({ ok: false, error: matriculaError.message }, { status: 400, headers });
+    }
+
+    if (!matriculaCheck) {
+      return NextResponse.json({ ok: false, error: 'Matrícula não encontrada' }, { status: 404, headers });
+    }
+
     const { data, error } = await supabase
       .from('matriculas')
       .update({ status })

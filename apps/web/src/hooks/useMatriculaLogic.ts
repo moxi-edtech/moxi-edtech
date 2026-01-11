@@ -141,7 +141,7 @@ export function useMatriculaLogic() {
           if (!exists) {
             const detailRes = await fetch(
               `/api/secretaria/candidaturas/${candidaturaIdFromQuery}`,
-              { cache: "no-store" }
+              { cache: "no-cache" }
             ).catch(() => undefined);
             const detailJson = await parseDirectJson(detailRes);
             const detail = detailJson?.item || detailJson?.data;

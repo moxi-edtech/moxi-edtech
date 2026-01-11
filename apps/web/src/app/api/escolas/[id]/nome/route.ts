@@ -85,6 +85,8 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
       .from("escolas")
       .select("nome, plano_atual, status")
       .eq("id", escolaId)
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
 

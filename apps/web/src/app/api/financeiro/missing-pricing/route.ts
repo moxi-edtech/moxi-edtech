@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { normalizeAnoLetivo } from "@/lib/financeiro/tabela-preco";
 import { findClassesSemPreco } from "@/lib/financeiro/missing-pricing";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export const dynamic = "force-dynamic";
 
@@ -110,10 +111,14 @@ export async function GET(req: Request) {
     let items: any[] = [];
 
     try {
-      const { data, error } = await (supabase as any).rpc("get_classes_sem_preco", {
+      let rpcQuery = (supabase as any).rpc("get_classes_sem_preco", {
         p_escola_id: escolaId,
         p_ano_letivo: anoLetivo,
       });
+
+      rpcQuery = applyKf2ListInvariants(rpcQuery, { defaultLimit: 2000 });
+
+      const { data, error } = await rpcQuery;
 
       if (error) throw error;
 

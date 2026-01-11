@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import type { Database } from "~types/supabase";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 const querySchema = z
   .object({
@@ -71,6 +72,8 @@ export async function GET(
       .eq("escola_id", escolaId)
       .eq("ano_letivo_id", anoLetivoId)
       .order("created_at", { ascending: false });
+
+    query = applyKf2ListInvariants(query, { defaultLimit: 200 });
 
     if (scope === "pending") {
       return NextResponse.json({ ok: true, filters: { anoLetivoId, classeId, courseId, scope, turmaId: turmaId ?? null }, meta: { total: 0, pendentes: 0 }, matriculas: [] });

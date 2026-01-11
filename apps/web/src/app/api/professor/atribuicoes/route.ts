@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
+import { applyKf2ListInvariants } from '@/lib/kf2'
 
 // GET /api/professor/atribuicoes
 // Lista atribuições (turma, disciplina) para o professor logado
@@ -19,13 +20,17 @@ export async function GET() {
     const escolaId = ((prof as any)?.current_escola_id || (prof as any)?.escola_id) as string | undefined
     if (!escolaId) return NextResponse.json({ ok: true, items: [] })
 
-    const { data: tdp, error } = await supabase
+    let query = supabase
       .from('turma_disciplinas')
       .select('id, turma_id, curso_matriz_id')
       .eq('escola_id', escolaId)
       .in('professor_id', (
         await supabase.from('professores').select('id').eq('profile_id', user.id).eq('escola_id', escolaId)
       ).data?.map((r: any) => r.id) || [] )
+
+    query = applyKf2ListInvariants(query, { defaultLimit: 200 })
+
+    const { data: tdp, error } = await query
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
 

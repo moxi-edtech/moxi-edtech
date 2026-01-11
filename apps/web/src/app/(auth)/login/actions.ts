@@ -11,7 +11,10 @@ const LoginSchema = z.object({
 });
 
 export async function loginAction(_: any, formData: FormData) {
-  const parsed = LoginSchema.safeParse(Object.fromEntries(formData));
+  const parsed = LoginSchema.safeParse({
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
 
   if (!parsed.success) {
     const errorMessage = parsed.error.errors.map((e) => e.message).join(" ");

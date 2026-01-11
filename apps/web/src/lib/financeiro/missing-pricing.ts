@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { normalizeAnoLetivo } from "./tabela-preco";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export type MissingPricingItem = {
   curso_id: string | null;
@@ -17,18 +18,24 @@ export async function findClassesSemPreco(
 ): Promise<{ anoLetivo: number; items: MissingPricingItem[] }> {
   const anoLetivo = normalizeAnoLetivo(anoLetivoInput);
 
-  const { data: classes, error: classesError } = await (client as any)
+  let classesQuery = (client as any)
     .from("classes")
     .select("id, nome, curso:curso_id(id, nome, escola_id)")
     .eq("escola_id", escolaId);
+  classesQuery = applyKf2ListInvariants(classesQuery, { defaultLimit: 2000 });
+
+  const { data: classes, error: classesError } = await classesQuery;
 
   if (classesError) throw classesError;
 
-  const { data: tabelas, error: tabelasError } = await (client as any)
+  let tabelasQuery = (client as any)
     .from("financeiro_tabelas")
     .select("curso_id, classe_id, valor_matricula, valor_mensalidade")
     .eq("escola_id", escolaId)
     .eq("ano_letivo", anoLetivo);
+  tabelasQuery = applyKf2ListInvariants(tabelasQuery, { defaultLimit: 2000 });
+
+  const { data: tabelas, error: tabelasError } = await tabelasQuery;
 
   if (tabelasError) throw tabelasError;
 

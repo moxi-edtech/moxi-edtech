@@ -25,6 +25,8 @@ export async function GET(
       .from("escolas")
       .select("nome, nif")
       .eq("id", escolaId)
+      .order("created_at", { ascending: false })
+      .limit(1)
       .single();
 
     if (escolaError) throw new Error("Erro ao buscar dados da escola.");
@@ -33,7 +35,7 @@ export async function GET(
     // 2. Check Academico (pelo menos 1 curso)
     const { count: cursoCount, error: cursoError } = await supabaseAdmin
       .from("cursos")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .eq("escola_id", escolaId);
 
     if (cursoError) throw new Error("Erro ao verificar estrutura académica.");
@@ -42,7 +44,7 @@ export async function GET(
     // 3. Check Financeiro (pelo menos 1 tabela de preço)
     const { count: financeiroCount, error: financeiroError } = await supabaseAdmin
       .from("financeiro_tabela_precos")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .eq("escola_id", escolaId);
       
     if (financeiroError) throw new Error("Erro ao verificar configuração financeira.");
