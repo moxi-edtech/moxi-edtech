@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-01-11T19:10:06.138Z",
+  "timestamp": "2026-01-11T19:40:28.339Z",
   "repoRoot": "/Users/gundja/moxi-edtech",
   "summary": {
     "critical": 0,
@@ -106,11 +106,15 @@
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
-          "file": "supabase/.branches/remote/schema.sql",
+          "file": "supabase/migrations/20261019151000_finance_confirm_payment_patch.sql",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
           "file": "supabase/functions/outbox-worker/index.ts",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "supabase/.branches/remote/schema.sql",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
@@ -155,10 +159,6 @@
         },
         {
           "file": "supabase/migrations_archive/migrations/20251108141000_fix_rls_initplan_policies.sql",
-          "note": "match: /audit_logs|auditLog|create_audit/i"
-        },
-        {
-          "file": "supabase/migrations_archive/migrations/20251116195500_normalize_auth_uid_in_policies.sql",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         }
       ],

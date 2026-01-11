@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+export const fetchCache = 'force-no-store';
+
 // Webhook de confirmação do Gateway MCX.
 // Usa service_role para ignorar RLS e atualizar pagamentos sem sessão de usuário.
 const supabaseAdmin = (() => {
@@ -48,64 +52,139 @@ export async function POST(req: Request) {
     const norm = String(status).toLowerCase();
 
     if (norm === 'success' || norm === 'paid' || norm === 'concluido') {
-      const { data: pagamento, error } = await supabaseAdmin
+      const { data: pagamento, error: pagamentoErr } = await supabaseAdmin
         .from('pagamentos')
-        .update({
-          status: 'concluido',
-          conciliado: true,
-          data_pagamento: new Date().toISOString(),
-        })
+        .select('id, mensalidade_id, valor_pago, escola_id')
         .eq('transacao_id_externo', transactionId)
+        .maybeSingle();
+
+      if (pagamentoErr) {
+        console.error('[MCX Webhook] Erro ao carregar pagamento:', pagamentoErr.message);
+      }
+
+      const mensalidadeId = (pagamento as any)?.mensalidade_id || customReference;
+      if (!mensalidadeId) {
+        return NextResponse.json({ received: true, error: 'Mensalidade não encontrada' }, { status: 200 });
+      }
+
+      const { data: mensalidade, error: menErr } = await supabaseAdmin
+        .from('mensalidades')
+        .select('id, escola_id, valor_previsto, valor')
+        .eq('id', mensalidadeId)
+        .maybeSingle();
+
+      if (menErr || !mensalidade) {
+        return NextResponse.json({ received: true, error: 'Mensalidade inválida' }, { status: 200 });
+      }
+
+      const escolaId = (pagamento as any)?.escola_id || (mensalidade as any).escola_id;
+      const amount = Number((pagamento as any)?.valor_pago ?? (mensalidade as any).valor_previsto ?? (mensalidade as any).valor ?? 0);
+
+      if (!escolaId || !amount) {
+        return NextResponse.json({ received: true, error: 'Dados insuficientes para confirmar' }, { status: 200 });
+      }
+
+      const dedupeKey = `mcx:${transactionId}`;
+      const intentPayload = {
+        escola_id: escolaId,
+        aluno_id: null,
+        mensalidade_id: mensalidadeId,
+        amount,
+        currency: 'AOA',
+        method: 'mcx_express',
+        external_ref: transactionId,
+        status: 'pending',
+        dedupe_key: dedupeKey,
+      };
+
+      const { data: intentUpsert, error: intentErr } = await supabaseAdmin
+        .from('finance_payment_intents')
+        .upsert(intentPayload, { onConflict: 'escola_id,dedupe_key' })
         .select()
         .maybeSingle();
 
-      if (error) {
-        console.error('[MCX Webhook] Update pagamento error:', error.message);
-        // Retorna 200 para evitar retries infinitos se o provedor não tolera 5xx, mas loga o erro
-        return NextResponse.json({ received: true, error: error.message }, { status: 200 });
+      if (intentErr) {
+        console.error('[MCX Webhook] Erro ao criar intent:', intentErr.message);
+        return NextResponse.json({ received: true, error: intentErr.message }, { status: 200 });
       }
 
-      // 3) Se existir mensalidade associada, verificar se já está totalmente paga
-      const mensalidadeId = (pagamento as any)?.mensalidade_id;
-      if (mensalidadeId) {
-        const { data: mensalidade, error: menErr } = await supabaseAdmin
-          .from('mensalidades')
-          .select('id, valor, status')
-          .eq('id', mensalidadeId)
-          .maybeSingle();
+      const intent = intentUpsert
+        ? intentUpsert
+        : await supabaseAdmin
+            .from('finance_payment_intents')
+            .select('*')
+            .eq('escola_id', escolaId)
+            .eq('dedupe_key', dedupeKey)
+            .maybeSingle()
+            .then((res) => res.data);
 
-        if (menErr) {
-          console.error('[MCX Webhook] Erro ao carregar mensalidade:', menErr.message);
-        } else if (mensalidade) {
-          const { data: pagos, error: pagosErr } = await supabaseAdmin
-            .from('pagamentos')
-            .select('valor_pago')
-            .eq('mensalidade_id', mensalidadeId)
-            .eq('conciliado', true);
+      if (!intent) {
+        return NextResponse.json({ received: true, error: 'Intent não encontrada' }, { status: 200 });
+      }
 
-          if (pagosErr) {
-            console.error('[MCX Webhook] Erro ao somar pagamentos:', pagosErr.message);
-          } else {
-            const sumPago = (pagos || []).reduce((acc: number, p: any) => acc + Number(p.valor_pago || 0), 0);
-            const esperado = Number((mensalidade as any).valor || 0);
-            const epsilon = 0.005; // tolerância de centavos
-            if (sumPago + epsilon >= esperado && (mensalidade as any).status !== 'pago') {
-              const { error: upMenErr } = await supabaseAdmin
-                .from('mensalidades')
-                .update({ status: 'pago', pago_em: new Date().toISOString() })
-                .eq('id', mensalidadeId);
-              if (upMenErr) {
-                console.error('[MCX Webhook] Erro ao fechar mensalidade:', upMenErr.message);
-              }
-            }
-          }
-        }
+      const { error: confirmErr } = await supabaseAdmin.rpc('finance_confirm_payment', {
+        p_intent_id: intent.id,
+      });
+
+      if (confirmErr) {
+        console.error('[MCX Webhook] Erro ao confirmar pagamento:', confirmErr.message);
+        return NextResponse.json({ received: true, error: confirmErr.message }, { status: 200 });
       }
 
       return NextResponse.json({ received: true });
     }
 
     if (norm === 'failed' || norm === 'falhado' || norm === 'canceled' || norm === 'cancelled') {
+      const { data: pagamento } = await supabaseAdmin
+        .from('pagamentos')
+        .select('mensalidade_id, escola_id, valor_pago')
+        .eq('transacao_id_externo', transactionId)
+        .maybeSingle();
+
+      const mensalidadeId = (pagamento as any)?.mensalidade_id || customReference;
+      if (mensalidadeId) {
+        const { data: mensalidade } = await supabaseAdmin
+          .from('mensalidades')
+          .select('id, escola_id, valor_previsto, valor')
+          .eq('id', mensalidadeId)
+          .maybeSingle();
+
+        const escolaId = (pagamento as any)?.escola_id || (mensalidade as any)?.escola_id;
+        if (escolaId) {
+          const dedupeKey = `mcx:${transactionId}`;
+          const { data: existing } = await supabaseAdmin
+            .from('finance_payment_intents')
+            .select('id, status')
+            .eq('escola_id', escolaId)
+            .eq('dedupe_key', dedupeKey)
+            .maybeSingle();
+
+          if (!existing) {
+            const amount = Number(
+              (pagamento as any)?.valor_pago ??
+                (mensalidade as any)?.valor_previsto ??
+                (mensalidade as any)?.valor ??
+                0
+            );
+            await supabaseAdmin.from('finance_payment_intents').insert({
+              escola_id: escolaId,
+              mensalidade_id: mensalidadeId,
+              amount,
+              currency: 'AOA',
+              method: 'mcx_express',
+              external_ref: transactionId,
+              status: 'rejected',
+              dedupe_key: dedupeKey,
+            });
+          } else if (existing.status === 'pending') {
+            await supabaseAdmin
+              .from('finance_payment_intents')
+              .update({ status: 'rejected' })
+              .eq('id', existing.id);
+          }
+        }
+      }
+
       const { error } = await supabaseAdmin
         .from('pagamentos')
         .update({ status: 'falhado' })
