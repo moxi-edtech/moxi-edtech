@@ -1,91 +1,116 @@
-# REPORT_SCAN.md
+# REPORT_SCAN.md — KLASSE FOUNDATION AUDIT
 
-## Análise de Fundação e Features (SCAN)
+## 1. SUMÁRIO EXECUTIVO
 
-Este relatório documenta a validação da base de código do KLASSE em relação às prioridades definidas em `FEATURES_PRIORITY.json`.
+- Findings CRÍTICOS: **0**
+- Findings ALTO: **1**
+- Total findings: **7**
 
----
+## 2. ACHADOS (ordenado por severidade)
 
-## P0: Fundação Obrigatória
+### NO_STORE — Anti-pattern — uso de cache: 'no-store' em páginas/relatórios
+- Severidade: **HIGH**
+- Status: **PARTIAL**
+- Evidências:
+  - `AGENTS.md` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/secretaria/AlunosListClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+- Recomendação: Remover no-store onde houver MV/camadas cacheáveis; manter só em rotas realmente sensíveis.
 
-### GF1: PWA Offline-First
-- **Status:** PARCIAL
-- **Evidências:**
-  - `apps/web/src/components/system/ServiceWorkerRegister.tsx`: Componente que registra o Service Worker.
-  - `apps/web/public/sw.js`: Implementação do Service Worker.
-  - **Estratégia de Cache:** "Stale-while-revalidate" para recursos estáticos e navegações.
-  - **Offline Fallback:** Sim, para navegação, com retorno para `/offline.html`.
-- **Alertas:**
-  - **AUSENTE:** Nenhuma evidência de "Sync seguro quando online". O Service Worker é read-only (só cacheia GETs). Operações de escrita (POST, PUT, DELETE) feitas offline não são sincronizadas quando a conexão é restaurada. Isso é um requisito crítico da feature.
+### KF2 — KF2 — Pesquisa Global (Command Palette) invariants
+- Severidade: **LOW**
+- Status: **VALIDATED**
+- Evidências:
+  - `apps/web/src/components/GlobalSearch.tsx` — debounce detectado (hook/client): sim
+  - `apps/web/src/hooks/useGlobalSearch.ts` — rpc min: sim
+  - `apps/web/src/hooks/useGlobalSearch.ts` — limit clamp <= 50: sim
+  - `supabase/migrations` — ORDER BY id DESC: sim
+  - `apps/web/src/hooks/useGlobalSearch.ts` — useGlobalSearch encontrado
+- Recomendação: KF2 deve ter debounce 250–400ms, limit<=50, orderBy estável e payload mínimo.
 
-### GF4: Audit Trail Forense
-- **Status:** IMPLEMENTADO
-- **Evidências:**
-  - `supabase/migrations/*_audit_*.sql`: Múltiplas migrations configuram a fundação de auditoria.
-  - **Tabela Imutável:** A tabela `public.audit_logs` tem `DELETE` e `UPDATE` revogados para o role `authenticated`, garantindo a imutabilidade dos logs.
-  - **Captura Completa:** A função de trigger `audit_dml_trigger` captura:
-    - **Ação:** `CREATE`, `UPDATE`, `DELETE`.
-    - **Ator:** `user_id` e `role`.
-    - **Contexto:** Endereço de IP (`x-forwarded-for`) e User Agent.
-    - **Estado:** `before` e `after` da operação são salvos como `jsonb`.
-  - **Cobertura:** Triggers estão aplicados em tabelas críticas como `cursos`, `turmas`, `matriculas`, e múltiplas tabelas financeiras.
-- **Alertas:**
-  - Nenhum alerta crítico. A implementação parece robusta e completa.
+### GF4 — GF4 — Audit Trail (parcial/validar cobertura before/after)
+- Severidade: **LOW**
+- Status: **VALIDATED**
+- Evidências:
+  - `types/database.ts` — match: /audit_logs|auditLog|create_audit/i
+  - `types/supabase.ts` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations/20251231163837_baseline.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations/20251231200952_remote_schema.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations/20261017000000_create_hard_delete_curso_rpc.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations/20261019002000_audit_trail_hardening.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations/20261019008000_audit_schema_min.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations/20261019009500_audit_actor_role.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/.branches/remote/schema.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations_archive/migrations_backup/20250917060400_audit_redaction.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations_archive/migrations_backup/20250917060500_audit_triggers.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations_archive/migrations_backup/20250917060600_audit_user_default.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations_archive/migrations_backup/20250917060700_create_audit_logs.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations_archive/migrations_backup/20251108141000_fix_rls_initplan_policies.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations_archive/migrations/20250915000000_remote_schema.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations_archive/migrations/20250917060400_audit_redaction.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations_archive/migrations/20250917060500_audit_triggers.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations_archive/migrations/20250917060600_audit_user_default.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations_archive/migrations/20250917060700_create_audit_logs.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations_archive/migrations/20251108141000_fix_rls_initplan_policies.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations_archive/migrations/20251116195500_normalize_auth_uid_in_policies.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations_archive/migrations/20251116211500_fix_audit_trigger_columns.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations_archive/migrations/20251116212500_secretaria_audit_view.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations_archive/migrations/20251214120000_add_rls_policies.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations_archive/migrations/20251217232511_optimize_rls_policies_v2.sql` — match: /audit_logs|auditLog|create_audit/i
+- Recomendação: Padronizar schema: actor, action, entity, before, after, ip, created_at; garantir coverage financeiro/matrícula.
 
-### PERF_BASE: Base de Performance
-- **Status:** PARCIAL
-- **Evidências:**
-  - **`pg_trgm` e `GIN` indexes:** `IMPLEMENTADO`. Migrations confirmam a criação da extensão `pg_trgm` e o uso de índices GIN/TRGM para busca em texto em tabelas como `alunos` e `cursos`, e para o JSONB de `audit_logs`.
-  - **`Debounce frontend`:** `IMPLEMENTADO`. Um hook `useDebounce` customizado existe e é usado corretamente no `useGlobalSearch` para evitar buscas excessivas.
-  - **`Virtualização de listas`:** `IMPLEMENTADO`. A biblioteca `@tanstack/react-virtual` está instalada e é usada para virtualizar listas de dados pesados como `Alunos`, `Matriculas` e `Turmas`.
-  - **`Bundle split`:** `IMPLEMENTADO`. O uso de `next/dynamic` é confirmado para componentes pesados como gráficos (`react-chartjs-2`), adiando o carregamento de bibliotecas grandes.
-- **Alertas:**
-  - **`LIMIT + paginação`:** A implementação é **PARCIAL** e **INCONSISTENTE**.
-    - **PONTO FRACO:** Várias rotas de API que listam dados não usam paginação (`.range()`), em vez disso usam um `.limit()` com valor fixo e alto (ex: 200, 500, 5000).
-    - **RISCO:** Rotas de exportação carregam milhares de registros diretamente na memória, criando um risco de performance e timeout.
-    - **PONTO FORTE:** Paginação server-side (`.range()`) está implementada corretamente para algumas das entidades mais críticas (`alunos`, `matriculas`, `professores`), mostrando que o padrão existe mas não foi aplicado globalmente.
+### F09_MV — F09 — Radar de Inadimplência com MATERIALIZED VIEW
+- Severidade: **LOW**
+- Status: **VALIDATED**
+- Evidências:
+  - `supabase/migrations/20260109_000001_mv_financeiro_dashboards.sql` — match: /CREATE\s+MATERIALIZED\s+VIEW\s+public\.mv_radar_inadimplencia/i
+  - `supabase/migrations/20260109_000001_mv_financeiro_dashboards.sql` — match: /CREATE\s+UNIQUE\s+INDEX\s+.*ux_mv_radar_inadimplencia/i
+  - `supabase/migrations/20260109_000001_mv_financeiro_dashboards.sql` — match: /refresh_mv_radar_inadimplencia\s*\(/i
+  - `supabase/migrations/20261019003000_mv_admin_secretaria_dashboards.sql` — match: /refresh_mv_radar_inadimplencia\s*\(/i
+  - `supabase/migrations/20260109_000001_mv_financeiro_dashboards.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.vw_radar_inadimplencia/i
+  - `supabase/migrations_archive/migrations/20251120100000_create_financial_module.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.vw_radar_inadimplencia/i
+  - `supabase/migrations_archive/migrations/20251123230000_replace_vw_radar_inadimplencia.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.vw_radar_inadimplencia/i
+  - `supabase/migrations_archive/migrations/20251124133000_align_financeiro_schema.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.vw_radar_inadimplencia/i
+- Recomendação: Garantir MV + UNIQUE INDEX + refresh function + cron job + view wrapper.
 
----
+### F18_MV — F18 — Caixa/Propinas com MATERIALIZED VIEW
+- Severidade: **LOW**
+- Status: **VALIDATED**
+- Evidências:
+  - `supabase/migrations/20260109_000001_mv_financeiro_dashboards.sql` — match: /CREATE\s+MATERIALIZED\s+VIEW\s+public\.mv_pagamentos_status/i
+  - `supabase/migrations/20260109_000001_mv_financeiro_dashboards.sql` — match: /CREATE\s+UNIQUE\s+INDEX\s+.*ux_mv_pagamentos_status/i
+  - `supabase/migrations/20260109_000001_mv_financeiro_dashboards.sql` — match: /refresh_mv_pagamentos_status\s*\(/i
+  - `supabase/migrations/20261019003000_mv_admin_secretaria_dashboards.sql` — match: /refresh_mv_pagamentos_status\s*\(/i
+  - `supabase/migrations/20260109_000001_mv_financeiro_dashboards.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.pagamentos_status/i
+  - `supabase/migrations_archive/migrations_backup/20250916000100_create_views.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.pagamentos_status/i
+  - `supabase/migrations_archive/migrations/20250916000100_create_views.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.pagamentos_status/i
+  - `supabase/migrations_archive/migrations_backup/migrations/20250916000100_create_views.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.pagamentos_status/i
+- Recomendação: Garantir MV + UNIQUE INDEX + refresh function + cron job + view wrapper.
 
-## P1: Diferenciais Ativos e UX de Velocidade
+### P0_3_MV_DASHBOARDS — P0.3 — Dashboards Secretaria/Admin em MATERIALIZED VIEW
+- Severidade: **LOW**
+- Status: **VALIDATED**
+- Evidências:
+  - `supabase/migrations/20261019003000_mv_admin_secretaria_dashboards.sql` — match: /mv_secretaria_dashboard_counts/i
+  - `supabase/migrations/20261019003000_mv_admin_secretaria_dashboards.sql` — match: /ux_mv_secretaria_dashboard_counts/i
+  - `supabase/migrations/20261019003000_mv_admin_secretaria_dashboards.sql` — match: /refresh_mv_secretaria_dashboard_counts/i
+  - `supabase/migrations/20261019003000_mv_admin_secretaria_dashboards.sql` — match: /vw_secretaria_dashboard_counts/i
+  - `supabase/migrations/20261019003000_mv_admin_secretaria_dashboards.sql` — match: /cron\.schedule\(['"]refresh_mv_secretaria_dashboard_counts['"]/i
+  - `supabase/migrations/20261019003000_mv_admin_secretaria_dashboards.sql` — match: /mv_secretaria_matriculas_status/i
+  - `supabase/migrations/20261019003000_mv_admin_secretaria_dashboards.sql` — match: /ux_mv_secretaria_matriculas_status/i
+  - `supabase/migrations/20261019003000_mv_admin_secretaria_dashboards.sql` — match: /refresh_mv_secretaria_matriculas_status/i
+  - `supabase/migrations/20261019003000_mv_admin_secretaria_dashboards.sql` — match: /vw_secretaria_matriculas_status/i
+  - `supabase/migrations/20261019003000_mv_admin_secretaria_dashboards.sql` — match: /cron\.schedule\(['"]refresh_mv_secretaria_matriculas_status['"]/i
+- Recomendação: Garantir MV + UNIQUE INDEX + refresh function + cron job + view wrapper para secretária e admin (sem cálculo ao vivo).
 
-### KF2: Pesquisa Global (Command Palette)
-- **Status:** IMPLEMENTADO_E_VALIDADO
-- **Evidências:**
-  - **Frontend:**
-    - `components/GlobalSearch.tsx`: Componente de UI da pesquisa.
-    - `hooks/useGlobalSearch.ts`: Lógica do frontend, que inclui **debounce** de 300ms para as queries.
-  - **Backend (RPC):**
-    - A busca é delegada para a função PostgreSQL `search_alunos_global_min`.
-    - A query no frontend tem um `limit(8)` explícito, prevenindo sobrecarga.
-  - **Database Function (`search_alunos_global_min`):**
-    - A função utiliza uma combinação de `ts_vector` (Full-Text Search) e `similarity` (`pg_trgm`).
-    - As buscas são feitas em colunas com índices GIN/TRGM, garantindo alta performance.
-    - O ranking de resultados é feito por um `score` que combina os dois métodos.
-- **Alertas:**
-  - Nenhum. A implementação é um exemplo a ser seguido: segura, performante e bem estruturada.
-
-### F09: Radar de Inadimplência
-- **Status:** IMPLEMENTADO_E_VALIDADO
-- **Evidências:**
-  - **Materialized View:** A view `public.mv_radar_inadimplencia` é criada na migration `20260109_000001_mv_financeiro_dashboards.sql`.
-  - **Performance:**
-    - A MV faz a agregação pesada de dados de mensalidades e status dos alunos.
-    - Possui um **UNIQUE INDEX** (`ux_mv_radar_inadimplencia`), permitindo o `REFRESH CONCURRENTLY`.
-    - Uma função `refresh_mv_radar_inadimplencia()` foi criada para agendamento.
-  - **Abstração:** Uma view `vw_radar_inadimplencia` atua como um wrapper sobre a MV, aplicando o filtro de tenant. O código da aplicação interage com esta view, e não diretamente com a MV.
-- **Alertas:**
-  - Nenhum. Implementação segue as melhores práticas para MVs.
-
-### F18: Relatório de Caixa/Propinas
-- **Status:** IMPLEMENTADO_E_VALIDADO
-- **Evidências:**
-  - **Materialized View:** A view `public.mv_pagamentos_status` é criada na migration `20260109_000001_mv_financeiro_dashboards.sql` para agregar os status de pagamentos.
-  - **Performance:**
-    - Possui um **UNIQUE INDEX** (`ux_mv_pagamentos_status`) para `REFRESH CONCURRENTLY`.
-    - Uma função `refresh_mv_pagamentos_status()` foi criada para agendamento.
-  - **Abstração:** Uma view wrapper `pagamentos_status` é usada pela aplicação para acessar os dados da MV com o filtro de tenant correto.
-- **Alertas:**
-  - Nenhum. A implementação é robusta.
-
----
+### PLAN_GUARD — P0.3 — Controle de planos (backend + UI)
+- Severidade: **LOW**
+- Status: **VALIDATED**
+- Evidências:
+  - `apps/web/src/app/api/financeiro/recibos/emitir/route.ts` — backend guard (fin_recibo_pdf): sim
+  - `apps/web/src/app/api/financeiro/extrato/aluno/[alunoId]/pdf/route.ts` — backend guard (doc_qr_code): sim
+  - `apps/web/src/app/api/secretaria/turmas/[id]/alunos/pdf/route.ts` — backend guard (doc_qr_code): sim
+  - `apps/web/src/app/api/secretaria/turmas/[id]/alunos/lista/route.ts` — backend guard (doc_qr_code): sim
+  - `apps/web/src/components/financeiro/ReciboImprimivel.tsx` — ui guard (fin_recibo_pdf): sim
+  - `apps/web/src/components/financeiro/ExtratoActions.tsx` — ui guard (doc_qr_code): sim
+  - `apps/web/src/components/secretaria/TurmaDetailClient.tsx` — ui guard (doc_qr_code): sim
+- Recomendação: Garantir requireFeature em rotas premium e usePlanFeature em entrypoints UI.
