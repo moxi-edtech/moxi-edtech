@@ -34,7 +34,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ importI
     .from("import_errors")
     .select("row_number, column_name, message, raw_value")
     .eq("import_id", importId)
-    .order("row_number", { ascending: true });
+    .order("row_number", { ascending: true })
+    .limit(50);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

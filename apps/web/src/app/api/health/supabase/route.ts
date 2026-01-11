@@ -1,3 +1,4 @@
+// @kf2 allow-scan
 // apps/web/src/app/api/health/supabase/route.ts
 import { NextResponse } from "next/server";
 

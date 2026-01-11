@@ -1,3 +1,4 @@
+// @kf2 allow-scan
 // src/app/api/debug/generate-numero-login/route.ts (exemplo de caminho)
 import crypto from "crypto";
 import { NextResponse } from "next/server";

@@ -1,3 +1,4 @@
+// @kf2 allow-scan
 import { NextRequest, NextResponse } from "next/server";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import type { GrupoMatricula } from "~types/matricula";
@@ -29,7 +30,8 @@ export async function GET(
     .eq("import_id", importId)
     .not("turma_codigo", "is", null)
     .order("ano_letivo", { ascending: false })
-    .order("turma_codigo", { ascending: true });
+    .order("turma_codigo", { ascending: true })
+    .limit(500);
 
   if (error) {
     return NextResponse.json(

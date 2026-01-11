@@ -17,7 +17,8 @@ export async function GET(_req: Request, context: { params: Promise<{ disciplina
       .eq('escola_id', escolaId)
       .eq('matricula_id', matriculaId)
       .eq('disciplina_id', disciplinaId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(50);
 
     return NextResponse.json({ ok: true, notas: notas || [] });
   } catch (e) {

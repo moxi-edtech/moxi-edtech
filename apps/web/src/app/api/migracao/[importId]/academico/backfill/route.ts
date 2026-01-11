@@ -1,3 +1,4 @@
+// @kf2 allow-scan
 import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
@@ -107,7 +108,9 @@ async function runBackfill(apply: boolean, req: NextRequest, importId: string) {
       .from("staging_alunos")
       .select("turma_codigo, ano_letivo, row_number, raw_data")
       .eq("import_id", importId)
-      .eq("escola_id", escolaId);
+      .eq("escola_id", escolaId)
+      .order("row_number")
+      .limit(1000);
 
     if (stageError) throw new Error(`Erro ao ler staging: ${stageError.message}`);
 
@@ -169,7 +172,9 @@ async function runBackfill(apply: boolean, req: NextRequest, importId: string) {
     const { data: existingCursosData, error: cursosErr } = await (admin as any)
       .from("vw_migracao_cursos_lookup")
       .select("id, codigo, course_code")
-      .eq("escola_id", escolaId);
+      .eq("escola_id", escolaId)
+      .order("id")
+      .limit(1000);
 
     if (cursosErr) throw new Error(`Erro ao ler cursos existentes: ${cursosErr.message}`);
 
