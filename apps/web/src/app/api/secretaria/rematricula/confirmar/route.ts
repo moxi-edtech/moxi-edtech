@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { recordAuditServer } from '@/lib/audit'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
-import type { Database } from '~types/supabase'
 import { normalizeAnoLetivo, resolveTabelaPreco } from '@/lib/financeiro/tabela-preco'
 import { tryCanonicalFetch } from '@/lib/api/proxyCanonical'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
@@ -36,27 +34,18 @@ export async function POST(req: Request) {
     const forwarded = await tryCanonicalFetch(req, `/api/escolas/${escolaId}/rematricula/confirmar`)
     if (forwarded) return forwarded
 
-    // Helper to load turma with session and escola
-    async function getTurma(turmaId: string): Promise<{ session_id: string | null; escola_id: string | null } | null> {
-      const { data } = await supabase.from('turmas').select('session_id, escola_id').eq('id', turmaId).maybeSingle()
-      if (!data) return null
-      return { session_id: (data as any)?.session_id ?? null, escola_id: (data as any)?.escola_id ?? null }
-    }
-
     const resultsPromocoes: Array<{ origem_turma_id: string; destino_turma_id: string; inserted: number; skipped: number }> = []
 
     const gerarMensalidades = Boolean((json as any)?.gerar_mensalidades)
     const gerarTodas = (json as any)?.gerar_todas !== false
 
     // Preferir RPC quando disponível (transacional e mais escalável)
-    const hasAdmin = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
-    const admin = hasAdmin ? createAdminClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!) : null
 
     // Process promotions
     if (body.promocoes && body.promocoes.length) {
       for (const p of body.promocoes) {
-        if (hasAdmin && admin) {
-          const { data, error } = await (admin as any).rpc('rematricula_em_massa', {
+        {
+          const { data, error } = await (supabase as any).rpc('rematricula_em_massa', {
             p_escola_id: escolaId,
             p_origem_turma_id: p.origem_turma_id,
             p_destino_turma_id: p.destino_turma_id,
@@ -89,54 +78,6 @@ export async function POST(req: Request) {
               await generateMensalidadesForAlunos(supabase as any, escolaId, p.destino_turma_id, sessionId, (dest as any)?.ano_letivo ?? null, (dest as any)?.classe_id ?? null, insertedAlunos, gerarTodas)
             }
           }
-        } else {
-          const dest = await getTurma(p.destino_turma_id)
-          if (!dest?.session_id) continue
-          if (dest.escola_id !== escolaId) continue
-          // alunos ativos na origem
-          const { data: mats } = await supabase
-            .from('matriculas')
-            .select('aluno_id')
-            .eq('escola_id', escolaId)
-            .eq('turma_id', p.origem_turma_id)
-            .in('status', ['ativo', 'ativa', 'active'])
-          const alunoIds = (mats || []).map((m: any) => m.aluno_id).filter(Boolean)
-          if (alunoIds.length === 0) { resultsPromocoes.push({ origem_turma_id: p.origem_turma_id, destino_turma_id: p.destino_turma_id, inserted: 0, skipped: 0 }); continue }
-
-          // Dedup: excluir quem já tem matrícula ativa na sessão destino
-          const { data: existing } = await supabase
-            .from('matriculas')
-            .select('aluno_id')
-            .eq('escola_id', escolaId)
-            .eq('session_id', dest.session_id)
-            .in('aluno_id', alunoIds)
-            .in('status', ['ativo','ativa','active'])
-          const already = new Set<string>((existing || []).map((r: any) => r.aluno_id))
-          const toInsert = alunoIds.filter((id) => !already.has(id))
-          if (toInsert.length > 0) {
-            const inserts = toInsert.map((aluno_id: string) => ({
-              aluno_id,
-              turma_id: p.destino_turma_id,
-              session_id: dest.session_id,
-              escola_id: escolaId,
-              status: 'ativo',
-            }))
-            const { error: insErr } = await supabase.from('matriculas').insert(inserts as any)
-            if (insErr) return NextResponse.json({ ok: false, error: insErr.message }, { status: 400 })
-
-            // Marca antigas como transferido apenas para os inseridos
-            await supabase
-              .from('matriculas')
-              .update({ status: 'transferido' })
-              .eq('escola_id', escolaId)
-              .eq('turma_id', p.origem_turma_id)
-              .in('aluno_id', toInsert)
-          }
-          // Mensalidades pós-processo
-          if (gerarMensalidades && toInsert.length > 0) {
-            await generateMensalidadesForAlunos(supabase as any, escolaId, p.destino_turma_id, dest.session_id!, (dest as any)?.ano_letivo ?? null, (dest as any)?.classe_id ?? null, toInsert, gerarTodas)
-          }
-          resultsPromocoes.push({ origem_turma_id: p.origem_turma_id, destino_turma_id: p.destino_turma_id, inserted: toInsert.length, skipped: alunoIds.length - toInsert.length })
         }
       }
     }
