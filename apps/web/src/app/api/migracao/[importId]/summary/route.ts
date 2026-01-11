@@ -5,9 +5,11 @@ import { Database } from "@/types/supabase";
 
 export const dynamic = "force-dynamic";
 
+type Params = { importId: string };
+
 export async function GET(
   _request: Request,
-  { params }: { params: { importId: string } }
+  { params }: { params: Params }
 ) {
   const { importId } = params;
 
