@@ -5,14 +5,11 @@ import { Database } from "@/types/supabase";
 
 export const dynamic = "force-dynamic";
 
-type TParams = {
-  params: {
-    importId: string;
-  };
-};
-
-export async function GET(request: Request, { params }: TParams) {
-  const { importId } = params;
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ importId: string }> }
+) {
+  const { importId } = await params;
 
   if (!importId) {
     return NextResponse.json(
