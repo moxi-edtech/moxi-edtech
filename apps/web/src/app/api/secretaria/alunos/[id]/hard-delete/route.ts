@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
 import { recordAuditServer } from "@/lib/audit";
 
 export async function POST(
@@ -14,6 +12,8 @@ export async function POST(
     if (!alunoId) return NextResponse.json({ ok: false, error: "ID do aluno não fornecido" }, { status: 400 });
 
     const s = await supabaseServerTyped<any>();
+    const body = await req.json().catch(() => ({}));
+    const reason = (body?.reason as string | undefined)?.trim() || null;
     const { data: userRes } = await s.auth.getUser();
     const user = userRes?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
@@ -23,6 +23,8 @@ export async function POST(
       .from("profiles")
       .select("role, escola_id, current_escola_id")
       .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
     if (profErr) return NextResponse.json({ ok: false, error: profErr.message }, { status: 400 });
 
@@ -41,6 +43,8 @@ export async function POST(
       .from("alunos")
       .select("id, nome, escola_id, profile_id, created_at")
       .eq("id", alunoId)
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
     if (alunoErr) return NextResponse.json({ ok: false, error: alunoErr.message }, { status: 400 });
     if (!aluno) return NextResponse.json({ ok: false, error: "Aluno não encontrado" }, { status: 404 });
@@ -48,15 +52,10 @@ export async function POST(
       return NextResponse.json({ ok: false, error: "Aluno não pertence à escola ativa do usuário" }, { status: 403 });
     }
 
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!url || !service) {
-      return NextResponse.json({ ok: false, error: "Server misconfigured: falta SUPABASE_SERVICE_ROLE_KEY" }, { status: 500 });
-    }
-    const admin = createAdminClient<Database>(url, service);
-
-    // Hard delete
-    const { error: delErr } = await admin.from("alunos").delete().eq("id", alunoId);
+    const { error: delErr } = await s.rpc("hard_delete_aluno", {
+      p_aluno_id: alunoId,
+      p_reason: reason,
+    });
     if (delErr) {
       return NextResponse.json({ ok: false, error: delErr.message }, { status: 409 });
     }
