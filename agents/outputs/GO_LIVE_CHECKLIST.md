@@ -1,39 +1,104 @@
 # GO_LIVE_CHECKLIST.md — Piloto (3–5 escolas)
 
-## 1) Observabilidade (Dia 0)
-1. Diagnostics UI mostra outbox/cron sem erro.
-2. `cron.job_run_details` com execuções recentes.
-3. Alerts básicos (cron falhou, outbox backlog > 30m).
-4. Auditoria GF4 habilitada com before/after.
+✅ KLASSE — GO-LIVE CHECKLIST (PILOTO)
 
-## 2) Fluxo Financeiro
-5. `finance_payment_intents` como SSOT (manual + webhook).
-6. Confirmação idempotente (repetir 5x → 1 efeito).
-7. `pagamentos` com unique `(escola_id, transacao_id_externo)`.
-8. Outbox `FINANCE_PAYMENT_CONFIRMED` emitido e processado.
+## 🧱 BLOCO A — FUNDAÇÃO (TEM QUE ESTAR 100%)
 
-## 3) Tenant & RLS
-9. `escola_id` NOT NULL em core tables.
-10. Índices `(escola_id, ...)` nas consultas críticas.
-11. RLS ativo + policies completas (`select/insert/update/delete`).
-12. Triggers de consistência tenant nos fluxos principais.
+### A1) Tenant Hard Wall (DB)
+- `escola_id` NOT NULL em todas as tabelas core.
+- Índices começando por `(escola_id, ...)`.
+- Triggers/checks de consistência tenant nas FKs mais críticas (matrícula, pagamentos, notas, frequências).
 
-## 4) Matrícula & Notas
-13. Matrícula única ativa por aluno/ano.
-14. Notas/avaliações auditadas (before/after + actor).
-15. Frequências com unique key por partição.
+### A2) RLS (acesso por papel)
+- RLS ativo em todas as tabelas core.
+- Policies para select/write em `alunos`, `matrículas`, `pagamentos`, `notas/avaliações`, `frequências`.
+- Teste manual: usuário A não enxerga dados da escola B.
 
-## 5) Operação & Suporte
-16. Logging com `escola_id` e `user_id` (sem PII sensível).
-17. Backups/snapshots confirmados.
-18. Plano de rollback (ou quarentena de importações).
-19. Processo de suporte com SLA interno (24–48h).
-20. Checklist de “primeiro dia” com 1 escola piloto.
+### A3) Service Role fora do caminho normal
+- Nenhuma rota de secretaria usa `SUPABASE_SERVICE_ROLE_KEY`.
+- Service role só em: outbox worker, provisionamento auth, jobs.
+- Auditar 1x: grep por `service_role` no repo.
 
-## Ordem de execução (1 dia)
+## 🔄 BLOCO B — RESILIÊNCIA (ONDE SISTEMAS QUEBRAM)
 
-1) Confirmar cron/outbox/diagnostics
-2) Validar fluxo de pagamento (manual + replay)
-3) Validar RLS/tenant e constraints
-4) Rodar GF4 nos fluxos caros
-5) Abrir piloto com 1 escola
+### B1) Outbox (eventos críticos)
+- `outbox_events` com `status`, `attempts`, `max_attempts`, locks e `dedupe_key`.
+- Job de requeue funcionando (`pg_cron`).
+- Catálogo mínimo de eventos: `AUTH_PROVISION_USER`, `FINANCE_PAYMENT_CONFIRMED`, `MATRICULA_CREATED`, `MATRICULA_TRANSFERRED`.
+
+### B2) Idempotência (dinheiro e auth)
+- Pagamento: unique `(escola_id, transacao_id_externo)`.
+- Payment Intent com `dedupe_key`.
+- Regra: um intent confirmado nunca confirma de novo.
+
+### B3) Cron / Jobs
+- `pg_cron` ativo.
+- Jobs com histórico (`cron.job_run_details`).
+- Alerta simples: job falhou 3x seguidas → log visível.
+
+## 🧾 BLOCO C — AUDITORIA (GF4)
+
+### C1) Audit schema fechado
+- `actor_id`, `actor_role`, `action`.
+- `entity`, `entity_id`, `before`, `after`.
+- `ip`, `user_agent`, `db_role`.
+
+### C2) Cobertura mínima
+- Matrícula: create/transfer/cancel.
+- Pagamento: confirm/reverse.
+- Nota: insert/update.
+- Frequência: batch insert.
+
+## ⚙️ BLOCO D — FLUXOS CORE
+
+### D1) Matrícula
+- 1 matrícula ativa por aluno/ano/escola.
+- Transferência auditada.
+- Cancelamento claro (soft delete ou status).
+
+### D2) Pagamentos (piloto)
+- Confirmação manual pela secretaria.
+- `origem_confirmacao = 'manual' | 'webhook'`.
+- Recibo gerado 1x (idempotente).
+
+### D3) Boletim / Notas
+- RLS ok.
+- View ou função estável pra cálculo.
+- Nota editada → audit.
+
+### D4) Frequências
+- Chave natural única por partição.
+- Índices por `(escola_id, matricula_id, data)`.
+- Inserção em lote sem duplicar.
+
+### D5) Candidatura → Matrícula
+- Consistência por aluno + ano + escola.
+- Status claro (aprovada/rejeitada/convertida).
+
+## 🚀 BLOCO E — PERFORMANCE & UX
+
+### E1) Dashboards
+- Materialized Views (sem cálculo ao vivo).
+- Refresh via cron.
+- UI mostra “Atualizado há X min”.
+
+### E2) Pesquisa Global (KF2)
+- Debounce 250–400ms.
+- Limit <= 50.
+- OrderBy estável.
+- Payload mínimo (id + label + type).
+
+## 🩺 BLOCO F — OPERACIONAL
+
+### F1) Diagnostics interno
+- Página simples com outbox pendente/falhou, jobs cron, últimos pagamentos.
+- Acesso só admin/superadmin.
+
+### F2) Logs & Erros
+- Sentry (ou equivalente).
+- `escola_id` + `user_id` nos eventos.
+- `release/version` tag.
+
+### F3) Backup & rollback
+- Backup automático diário (Supabase ok).
+- Política clara: não apaga dado no piloto.
