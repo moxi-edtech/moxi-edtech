@@ -3,8 +3,10 @@ import { NextResponse } from "next/server";
 import { createInstitutionalPdf } from "@/lib/pdf/documentTemplate";
 import { buildSignatureLine, createQrImage } from "@/lib/pdf/qr";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { resolveEscolaIdForUser, authorizeTurmasManage } from "@/lib/escola/disciplinas";
+import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { tryCanonicalFetch } from "@/lib/api/proxyCanonical";
+import { requireFeature } from "@/lib/plan/requireFeature";
 
 type TurmaRow = {
   id: string;
@@ -70,6 +72,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const format = searchParams.get("format") ?? "json";
 
     if (format === "pdf") {
+      await requireFeature("doc_qr_code");
       const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
       if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 });
       const forwarded = await tryCanonicalFetch(req, `/api/escolas/${escolaId}/turmas/${turmaId}/alunos/pdf`);

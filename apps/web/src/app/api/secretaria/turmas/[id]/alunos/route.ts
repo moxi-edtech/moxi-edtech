@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { resolveEscolaIdForUser, authorizeTurmasManage } from "@/lib/escola/disciplinas";
+import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 

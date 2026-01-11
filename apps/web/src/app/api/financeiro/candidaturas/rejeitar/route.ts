@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
-import { resolveEscolaIdForUser } from '@/lib/escola/disciplinas'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import type { Database } from '~types/supabase'
 
 const BodySchema = z.object({
@@ -64,4 +64,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
 }
-

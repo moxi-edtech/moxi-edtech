@@ -4,34 +4,6 @@ import type { Database } from "~types/supabase";
 
 type Client = SupabaseClient<Database>;
 
-export async function resolveEscolaIdForUser(
-  s: Client,
-  userId: string
-): Promise<string | null> {
-  try {
-    const { data: prof } = await s
-      .from("profiles")
-      .select("current_escola_id, escola_id")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(1);
-    const escolaId = (prof?.[0] as any)?.current_escola_id || (prof?.[0] as any)?.escola_id;
-    if (escolaId) return String(escolaId);
-  } catch {}
-
-  try {
-    const { data: vinc } = await s
-      .from("escola_users")
-      .select("escola_id")
-      .eq("user_id", userId)
-      .limit(1);
-    const escolaId = (vinc?.[0] as any)?.escola_id;
-    if (escolaId) return String(escolaId);
-  } catch {}
-
-  return null;
-}
-
 export async function authorizeEscolaAction(
   s: Client,
   escolaId: string,

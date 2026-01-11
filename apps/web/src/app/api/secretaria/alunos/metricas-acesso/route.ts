@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
-import { resolveEscolaIdForUser, authorizeEscolaAction } from "@/lib/escola/disciplinas";
+import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export async function GET(req: Request) {
   try {
@@ -12,8 +13,8 @@ export async function GET(req: Request) {
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
     const url = new URL(req.url);
-    const escolaIdParam = url.searchParams.get("escolaId") || undefined;
-    const escolaId = escolaIdParam || (await resolveEscolaIdForUser(s as any, user.id));
+    const escolaIdParam = url.searchParams.get("escolaId") || null;
+    const escolaId = await resolveEscolaIdForUser(s as any, user.id, escolaIdParam);
     if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 400 });
 
     const authz = await authorizeEscolaAction(s as any, escolaId, user.id, []);

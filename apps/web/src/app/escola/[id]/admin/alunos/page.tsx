@@ -11,6 +11,8 @@ type Aluno = {
   numero_login: string | null;
   created_at: string;
   status?: string | null;
+  origem?: "aluno" | "candidatura" | null;
+  aluno_id?: string | null;
 };
 
 export default function Page({ params }: { params: Promise<{ id: string }> }) {
@@ -26,7 +28,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
   async function fetchAlunos() {
     setLoading(true);
     try {
-      const url = new URL(`/api/secretaria/alunos`, window.location.origin);
+      const url = new URL(`/api/escolas/${escolaId}/admin/alunos`, window.location.origin);
       url.searchParams.set("status", tab === "ativos" ? "active" : "archived");
       if (q.trim()) url.searchParams.set("q", q.trim());
       const res = await fetch(url.toString(), { cache: "force-cache" });
@@ -270,6 +272,9 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                       <div className="font-bold text-moxinexa-navy">
                         {aluno.nome || "—"}
                       </div>
+                      {aluno.origem === "candidatura" && (
+                        <div className="text-[10px] uppercase font-semibold text-amber-600">Lead</div>
+                      )}
                       <div className="text-xs text-slate-500 font-mono">
                         {aluno.id.slice(0, 8)}...
                       </div>
@@ -286,7 +291,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                     </td>
                     <td className="px-4 py-3 text-center">
                       <div className="flex justify-center gap-2">
-                        {tab === "ativos" ? (
+                        {aluno.origem === "aluno" && tab === "ativos" ? (
                           <>
                             <Link 
                               href={`/escola/${escolaId}/admin/alunos/${aluno.id}`}
@@ -303,7 +308,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                               <Archive className="w-4 h-4" />
                             </button>
                           </>
-                        ) : (
+                        ) : aluno.origem === "aluno" ? (
                           <>
                             <button
                               onClick={() => restoreAluno(aluno.id)}
@@ -320,6 +325,8 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </>
+                        ) : (
+                          <span className="text-xs text-slate-400">—</span>
                         )}
                       </div>
                     </td>

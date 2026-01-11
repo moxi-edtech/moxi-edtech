@@ -7,9 +7,9 @@ export const dynamic = "force-dynamic";
 
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ importId: string }> }
+  { params }: { params: { importId: string } }
 ) {
-  const { importId } = await params;
+  const { importId } = params;
 
   if (!importId) {
     return NextResponse.json(

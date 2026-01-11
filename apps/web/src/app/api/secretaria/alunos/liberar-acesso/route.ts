@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { resolveEscolaIdForUser, authorizeEscolaAction } from "@/lib/escola/disciplinas";
+import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
 import crypto from "crypto";
 
@@ -21,15 +22,15 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
     const body = await req.json().catch(() => null);
-    const alunoIds = Array.isArray(body?.alunoIds) ? body.alunoIds.filter(Boolean) as string[] : [];
+    const alunoIds = Array.isArray(body?.alunoIds) ? (body.alunoIds.filter(Boolean) as string[]) : [];
     const canal = (body?.canal || body?.metodoEnvio || "whatsapp") as string;
-    let escolaId: string | null = body?.escolaId || null;
+    const escolaIdRequest = (body?.escolaId || body?.escola_id || null) as string | null;
 
     if (alunoIds.length === 0) {
       return NextResponse.json({ ok: false, error: "Informe alunos para liberar" }, { status: 400 });
     }
 
-    if (!escolaId) escolaId = await resolveEscolaIdForUser(s as any, user.id);
+    const escolaId = await resolveEscolaIdForUser(s as any, user.id, escolaIdRequest);
     if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 400 });
 
     const authz = await authorizeEscolaAction(s as any, escolaId, user.id, []);

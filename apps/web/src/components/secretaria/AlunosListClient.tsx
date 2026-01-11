@@ -20,6 +20,9 @@ type Aluno = {
   created_at: string;
   numero_login?: string | null;
   numero_processo?: string | null;
+  origem?: "aluno" | "candidatura" | null;
+  candidatura_id?: string | null;
+  aluno_id?: string | null;
 };
 
 // --- MICRO-COMPONENTES ---
@@ -259,6 +262,12 @@ export default function AlunosListClient() {
                   const aluno = items[virtualRow.index];
                   const identificador = aluno.numero_processo || aluno.numero_login || "—";
                   const identificadorLabel = aluno.numero_processo ? "Proc." : aluno.numero_login ? "Login" : "—";
+                  const isLead = aluno.origem === "candidatura";
+                  const matriculaHref = isLead
+                    ? aluno.candidatura_id
+                      ? `/secretaria/matriculas/nova?candidaturaId=${aluno.candidatura_id}`
+                      : null
+                    : `/secretaria/matriculas/nova?alunoId=${aluno.id}`;
 
                   return (
                     <tr
@@ -284,6 +293,9 @@ export default function AlunosListClient() {
                               <p className="text-xs text-slate-400 font-mono">
                                 {identificadorLabel !== "—" ? `${identificadorLabel}: ${identificador}` : "—"}
                               </p>
+                              {isLead && (
+                                <p className="text-[10px] text-amber-600 font-semibold uppercase">Lead</p>
+                              )}
                               {aluno.numero_processo && aluno.numero_login && (
                                 <p className="text-[10px] text-slate-400 font-mono">Login: {aluno.numero_login}</p>
                               )}
@@ -306,14 +318,18 @@ export default function AlunosListClient() {
                       </td>
                       <td className="px-6 py-4 text-right">
                           <div className="flex justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                              {aluno.status !== 'ativo' && (
-                                <Link href={`/secretaria/matriculas/nova?alunoId=${aluno.id}`} className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition" title="Matricular Aluno">
+                              {matriculaHref && aluno.status !== 'ativo' && (
+                                <Link href={matriculaHref} className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition" title="Matricular Aluno">
                                   <UserPlus className="w-4 h-4"/>
                                 </Link>
                               )}
-                              <Link href={`/secretaria/alunos/${aluno.id}`} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"><Eye className="w-4 h-4"/></Link>
-                              <Link href={`/secretaria/alunos/${aluno.id}/editar`} className="p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition"><Edit className="w-4 h-4"/></Link>
-                              <button onClick={() => handleOpenDelete(aluno)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"><Archive className="w-4 h-4"/></button>
+                              {!isLead && (
+                                <>
+                                  <Link href={`/secretaria/alunos/${aluno.id}`} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"><Eye className="w-4 h-4"/></Link>
+                                  <Link href={`/secretaria/alunos/${aluno.id}/editar`} className="p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition"><Edit className="w-4 h-4"/></Link>
+                                  <button onClick={() => handleOpenDelete(aluno)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"><Archive className="w-4 h-4"/></button>
+                                </>
+                              )}
                           </div>
                       </td>
                     </tr>

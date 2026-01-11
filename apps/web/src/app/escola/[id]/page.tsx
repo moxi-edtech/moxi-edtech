@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 
 export default async function EscolaIdPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
 
   const {
     data: { user },
@@ -15,7 +15,7 @@ export default async function EscolaIdPage({ params }: { params: Promise<{ id: s
   }
 
   const { data: escolaUsuario, error } = await supabase
-    .from('escola_usuarios')
+    .from('escola_users')
     .select('papel')
     .eq('escola_id', id)
     .eq('user_id', user.id)

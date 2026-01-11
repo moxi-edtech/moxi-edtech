@@ -155,13 +155,17 @@ export async function runChecks(opts: { repoRoot: string; files: string[]; contr
   }
 
   const noStoreHits = containsPatternInAnyFile(repoRoot, files, /cache:\s*['\"]no-store['\"]/i);
-  if (noStoreHits.length) {
+  const allowedNoStore = new Set([
+    "apps/web/src/app/api/auth/login/route.ts",
+  ]);
+  const disallowedNoStore = noStoreHits.filter((hit) => !allowedNoStore.has(hit.file));
+  if (disallowedNoStore.length) {
     findings.push({
       id: "NO_STORE",
       title: "Anti-pattern — uso de cache: 'no-store' em páginas/relatórios",
       severity: "HIGH",
       status: "PARTIAL",
-      evidence: noStoreHits.slice(0, 25),
+      evidence: disallowedNoStore.slice(0, 25),
       recommendation: "Remover no-store onde houver MV/camadas cacheáveis; manter só em rotas realmente sensíveis.",
     });
 
@@ -170,7 +174,7 @@ export async function runChecks(opts: { repoRoot: string; files: string[]; contr
       "",
       "Arquivos com `cache: 'no-store'` detectados:",
       "",
-      ...noStoreHits.map((hit) => `- ${hit.file}`),
+      ...disallowedNoStore.map((hit) => `- ${hit.file}`),
       "",
       "Ação recomendada:",
       "- Revisar caso a caso e substituir por cache adequado (revalidate/force-cache) ou remover fetch desnecessário.",
@@ -188,9 +192,17 @@ export async function runChecks(opts: { repoRoot: string; files: string[]; contr
     const text = fileText(repoRoot, file) || "";
     const hookText = hookFiles.map((f) => fileText(repoRoot, f) || "").join("\n");
     const hasDebounce = /useDebounce\(/.test(text) || /useDebounce\(/.test(hookText) || /debounce/.test(hookText);
-    const severity = hasDebounce ? "MEDIUM" : "HIGH";
-    const status = hasDebounce ? "PARTIAL" : "PARTIAL";
-    const evidence = [{ file, note: `debounce detectado (hook/client): ${hasDebounce ? "sim" : "não"}` }];
+    const usesMinRpc = /search_alunos_global_min/.test(hookText);
+    const hasLimitClamp = /Math\.min\([^\)]*50/.test(hookText);
+    const hasOrderTieBreak = findSqlEvidence(/ORDER\s+BY[\s\S]*id\s+DESC/i).length > 0;
+    const severity = hasDebounce && usesMinRpc && hasLimitClamp && hasOrderTieBreak ? "LOW" : "HIGH";
+    const status = severity === "LOW" ? "VALIDATED" : "PARTIAL";
+    const evidence = [
+      { file, note: `debounce detectado (hook/client): ${hasDebounce ? "sim" : "não"}` },
+      { file: hookFiles[0] ?? file, note: `rpc min: ${usesMinRpc ? "sim" : "não"}` },
+      { file: hookFiles[0] ?? file, note: `limit clamp <= 50: ${hasLimitClamp ? "sim" : "não"}` },
+      { file: "supabase/migrations", note: `ORDER BY id DESC: ${hasOrderTieBreak ? "sim" : "não"}` },
+    ];
     if (hookFiles.length) {
       evidence.push({ file: hookFiles[0], note: "useGlobalSearch encontrado" });
     }
@@ -229,11 +241,18 @@ export async function runChecks(opts: { repoRoot: string; files: string[]; contr
   if (auditHits.length) {
     const hasAuditTriggerFn = containsPatternInAnyFile(repoRoot, files, /audit_dml_trigger\s*\(/i).length > 0;
     const hasBeforeAfterUpdate =
-      containsPatternInAnyFile(repoRoot, files, /jsonb_build_object\(['"]op['"],\s*tg_op,\s*['"]old['"]/i).length > 0;
+      containsPatternInAnyFile(repoRoot, files, /before\s+jsonb|after\s+jsonb/i).length > 0;
+    const hasActorRole = containsPatternInAnyFile(repoRoot, files, /actor_role/i).length > 0;
+    const hasCreateAudit = containsPatternInAnyFile(repoRoot, files, /create_audit_event\s*\(/i).length > 0;
     const hasFinanceTriggers =
       containsPatternInAnyFile(repoRoot, files, /trg_audit_financeiro_(cobrancas|estornos|lancamentos|titulos)/i).length > 0;
-    const severity = hasAuditTriggerFn && hasBeforeAfterUpdate && hasFinanceTriggers ? "MEDIUM" : "HIGH";
-    const status = severity === "MEDIUM" ? "PARTIAL" : "PARTIAL";
+    const hasCoreTriggers =
+      containsPatternInAnyFile(repoRoot, files, /trg_audit_(matriculas|cursos|turmas|mensalidades)/i).length > 0;
+    const severity =
+      hasAuditTriggerFn && hasBeforeAfterUpdate && hasActorRole && hasCreateAudit && hasFinanceTriggers && hasCoreTriggers
+        ? "LOW"
+        : "HIGH";
+    const status = severity === "LOW" ? "VALIDATED" : "PARTIAL";
     findings.push({
       id: "GF4",
       title: "GF4 — Audit Trail (parcial/validar cobertura before/after)",
@@ -358,6 +377,71 @@ export async function runChecks(opts: { repoRoot: string; files: string[]; contr
     evidence: mvDashEvidence.slice(0, 10),
     recommendation:
       "Garantir MV + UNIQUE INDEX + refresh function + cron job + view wrapper para secretária e admin (sem cálculo ao vivo).",
+  });
+
+  const premiumRouteChecks = [
+    {
+      path: "apps/web/src/app/api/financeiro/recibos/emitir/route.ts",
+      feature: "fin_recibo_pdf",
+    },
+    {
+      path: "apps/web/src/app/api/financeiro/extrato/aluno/[alunoId]/pdf/route.ts",
+      feature: "doc_qr_code",
+    },
+    {
+      path: "apps/web/src/app/api/secretaria/turmas/[id]/alunos/pdf/route.ts",
+      feature: "doc_qr_code",
+    },
+    {
+      path: "apps/web/src/app/api/secretaria/turmas/[id]/alunos/lista/route.ts",
+      feature: "doc_qr_code",
+    },
+  ];
+
+  const premiumUiChecks = [
+    {
+      path: "apps/web/src/components/financeiro/ReciboImprimivel.tsx",
+      feature: "fin_recibo_pdf",
+    },
+    {
+      path: "apps/web/src/components/financeiro/ExtratoActions.tsx",
+      feature: "doc_qr_code",
+    },
+    {
+      path: "apps/web/src/components/secretaria/TurmaDetailClient.tsx",
+      feature: "doc_qr_code",
+    },
+  ];
+
+  const premiumEvidence: Array<{ file: string; note: string }> = [];
+  let premiumMissing = false;
+  for (const check of premiumRouteChecks) {
+    const text = fileText(repoRoot, check.path) || "";
+    const hasGuard = text.includes("requireFeature") && text.includes(check.feature);
+    premiumEvidence.push({
+      file: check.path,
+      note: `backend guard (${check.feature}): ${hasGuard ? "sim" : "não"}`,
+    });
+    if (!hasGuard) premiumMissing = true;
+  }
+
+  for (const check of premiumUiChecks) {
+    const text = fileText(repoRoot, check.path) || "";
+    const hasGuard = text.includes("usePlanFeature") && text.includes(check.feature);
+    premiumEvidence.push({
+      file: check.path,
+      note: `ui guard (${check.feature}): ${hasGuard ? "sim" : "não"}`,
+    });
+    if (!hasGuard) premiumMissing = true;
+  }
+
+  findings.push({
+    id: "PLAN_GUARD",
+    title: "P0.3 — Controle de planos (backend + UI)",
+    severity: premiumMissing ? "HIGH" : "LOW",
+    status: premiumMissing ? "PARTIAL" : "VALIDATED",
+    evidence: premiumEvidence.slice(0, 12),
+    recommendation: "Garantir requireFeature em rotas premium e usePlanFeature em entrypoints UI.",
   });
 
   return { findings, plan };

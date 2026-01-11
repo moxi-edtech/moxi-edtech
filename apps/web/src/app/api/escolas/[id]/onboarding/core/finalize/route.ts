@@ -327,6 +327,7 @@ export async function POST(
           nome: inv.nome ?? inv.papel,
           role: roleEnum as any,
           escola_id: escolaId,
+          current_escola_id: escolaId,
         }
         if (numeroLogin) {
           profilePayload.numero_login = numeroLogin

@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { 
+import {
   Loader2, UsersRound, BookOpen, UserCheck, Download, 
   MoreVertical, UserPlus, FileText, CalendarCheck, Settings, 
   School, LayoutDashboard, GraduationCap, MapPin
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { usePlanFeature } from "@/hooks/usePlanFeature";
 
 // --- TYPES (Mantidos e Refinados) ---
 type Aluno = {
@@ -91,6 +92,14 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const alunosScrollRef = useRef<HTMLDivElement | null>(null);
+  const { isEnabled: canQrDocs } = usePlanFeature("doc_qr_code");
+  const alunos = data?.alunos ?? [];
+  const alunosVirtualizer = useVirtualizer({
+    count: alunos.length,
+    getScrollElement: () => alunosScrollRef.current,
+    estimateSize: () => 64,
+    overscan: 6,
+  });
 
   useEffect(() => {
     async function load() {
@@ -114,6 +123,10 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
   };
 
   const handleListaPdf = () => {
+    if (!canQrDocs) {
+      alert("Seu plano não permite PDF com QR.");
+      return;
+    }
     window.open(`/api/secretaria/turmas/${turmaId}/alunos/lista?format=pdf`, "_blank");
   };
 
@@ -127,15 +140,49 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
   if (error) return <div className="p-6 text-center text-red-600 bg-red-50 rounded-xl border border-red-100 m-6 text-sm font-bold">{error}</div>;
   if (!data) return null;
 
-  const { turma, alunos, disciplinas } = data;
+  const { turma, disciplinas } = data;
   const ocupacaoPct = Math.min((turma.ocupacao / Math.max(turma.capacidade, 1)) * 100, 100);
   const hasAlunos = alunos.length > 0;
-  const alunosVirtualizer = useVirtualizer({
-    count: alunos.length,
-    getScrollElement: () => alunosScrollRef.current,
-    estimateSize: () => 64,
-    overscan: 6,
-  });
+  const virtualRows = alunosVirtualizer.getVirtualItems();
+  const shouldVirtualize = hasAlunos && virtualRows.length > 0;
+  const renderAlunoRow = (aluno: Aluno, rowStyle?: React.CSSProperties) => (
+    <tr
+      key={aluno.aluno_id}
+      className="hover:bg-slate-50/80 transition group"
+      style={rowStyle}
+    >
+      <td className="px-6 py-4 font-mono text-slate-400 text-xs">{String(aluno.numero).padStart(2, '0')}</td>
+      <td className="px-6 py-4">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
+            {aluno.nome[0]}
+          </div>
+          <div>
+            <p className="font-bold text-slate-800 text-sm">{aluno.nome}</p>
+            <p className="text-[10px] text-slate-400">BI: {aluno.bi || '---'}</p>
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4">
+        <div className="flex flex-col gap-1">
+          <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 font-mono text-[11px] font-bold text-slate-700 ring-1 ring-slate-200">
+            Mat.: {aluno.numero_matricula ? aluno.numero_matricula : '—'}
+          </span>
+          <StatusBadge status={aluno.status_matricula || 'indefinido'} />
+        </div>
+      </td>
+      <td className="px-6 py-4">
+        <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-100 uppercase">
+          Em Dia
+        </span>
+      </td>
+      <td className="px-6 py-4 text-right">
+        <button className="p-2 text-slate-300 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+          <MoreVertical size={16}/>
+        </button>
+      </td>
+    </tr>
+  );
 
   return (
     <div className="min-h-screen bg-slate-50/50 pb-20 font-sora">
@@ -286,7 +333,7 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
                     <tbody
                       className="divide-y divide-slate-50"
                       style={
-                        hasAlunos
+                        shouldVirtualize
                           ? {
                               position: "relative",
                               display: "block",
@@ -299,13 +346,10 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
                           <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                             <td colSpan={5} className="p-12 text-center text-slate-400 text-sm">Nenhum aluno matriculado nesta turma.</td>
                           </tr>
-                       ) : alunosVirtualizer.getVirtualItems().map((virtualRow) => {
-                          const aluno = alunos[virtualRow.index];
-                          return (
-                          <tr
-                            key={aluno.aluno_id}
-                            className="hover:bg-slate-50/80 transition group"
-                            style={{
+                       ) : shouldVirtualize ? (
+                          virtualRows.map((virtualRow) => {
+                            const aluno = alunos[virtualRow.index];
+                            return renderAlunoRow(aluno, {
                               position: "absolute",
                               top: 0,
                               left: 0,
@@ -313,41 +357,11 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
                               width: "100%",
                               display: "table",
                               tableLayout: "fixed",
-                            }}
-                          >
-                             <td className="px-6 py-4 font-mono text-slate-400 text-xs">{String(aluno.numero).padStart(2, '0')}</td>
-                             <td className="px-6 py-4">
-                                <div className="flex items-center gap-3">
-                                   <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
-                                      {aluno.nome[0]}
-                                   </div>
-                                   <div>
-                                      <p className="font-bold text-slate-800 text-sm">{aluno.nome}</p>
-                                      <p className="text-[10px] text-slate-400">BI: {aluno.bi || '---'}</p>
-                                   </div>
-                                </div>
-                             </td>
-                             <td className="px-6 py-4">
-                               <div className="flex flex-col gap-1">
-                                  <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-1 font-mono text-[11px] font-bold text-slate-700 ring-1 ring-slate-200">
-                                     Mat.: {aluno.numero_matricula ? aluno.numero_matricula : '—'}
-                                  </span>
-                                  <StatusBadge status={aluno.status_matricula || 'indefinido'} />
-                               </div>
-                             </td>
-                             <td className="px-6 py-4">
-                                <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-100 uppercase">
-                                   Em Dia
-                                </span>
-                             </td>
-                             <td className="px-6 py-4 text-right">
-                                <button className="p-2 text-slate-300 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
-                                   <MoreVertical size={16}/>
-                                </button>
-                             </td>
-                          </tr>
-                          );
-                       })}
+                            });
+                          })
+                       ) : (
+                          alunos.map((aluno) => renderAlunoRow(aluno))
+                       )}
                     </tbody>
                  </table>
                  </div>

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
-import { resolveEscolaIdForUser, authorizeTurmasManage } from '@/lib/escola/disciplinas'
+import { authorizeTurmasManage } from '@/lib/escola/disciplinas'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 
 // DELETE /api/secretaria/turmas/:id/disciplinas/:disciplinaId
 export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string; disciplinaId: string }> }) {

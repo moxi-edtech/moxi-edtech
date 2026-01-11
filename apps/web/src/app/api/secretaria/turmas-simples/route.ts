@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { resolveEscolaIdForUser, authorizeTurmasManage } from "@/lib/escola/disciplinas";
+import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +18,7 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const escolaIdFromQuery = url.searchParams.get('escolaId') || url.searchParams.get('escola_id');
 
-    const escolaId = escolaIdFromQuery || await resolveEscolaIdForUser(supabase as any, user.id);
+    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaIdFromQuery);
     if (!escolaId) return NextResponse.json({ ok: true, items: [], total: 0 }, { headers });
 
     const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id);

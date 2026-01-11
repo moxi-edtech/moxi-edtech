@@ -166,6 +166,7 @@ async function ensureAdminUser(
       telefone,
       role: 'admin',
       escola_id: params.escolaId,
+      current_escola_id: params.escolaId,
     },
     { onConflict: 'user_id' }
   )

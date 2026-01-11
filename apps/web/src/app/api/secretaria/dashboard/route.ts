@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 type MatriculaResumo = {
   status: string | null;
@@ -19,23 +20,12 @@ export async function GET() {
     const user = userRes?.user;
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
 
-    // Resolve escola do usuário: profiles.current_escola_id -> profiles.escola_id -> escola_users.escola_id
-    const { data: prof } = await supabase
-      .from('profiles')
-      .select('current_escola_id, escola_id, user_id')
-      .order('created_at', { ascending: false })
-      .limit(1);
-    let escolaId = ((prof?.[0] as any)?.current_escola_id || (prof?.[0] as any)?.escola_id) as string | undefined;
-    if (!escolaId) {
-      try {
-        const { data: vinc } = await supabase
-          .from('escola_users')
-          .select('escola_id')
-          .eq('user_id', user.id)
-          .limit(1);
-        escolaId = (vinc?.[0] as any)?.escola_id as string | undefined;
-      } catch {}
-    }
+    const metaEscolaId = (user.app_metadata as any)?.escola_id as string | undefined;
+    const escolaId = await resolveEscolaIdForUser(
+      supabase as any,
+      user.id,
+      metaEscolaId ? String(metaEscolaId) : null
+    );
     if (!escolaId) {
       return NextResponse.json({
         ok: true,

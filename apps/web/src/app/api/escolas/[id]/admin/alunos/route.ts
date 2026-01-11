@@ -55,7 +55,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     const { data, error } = await query;
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
 
-    const items = (data ?? []).map((row: any) => {
+    const alunoItems = (data ?? []).map((row: any) => {
       const prof = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
       return {
         id: row.id,
@@ -64,13 +64,70 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         numero_login: prof?.numero_login ?? null,
         created_at: row.created_at,
         status: row.status ?? null,
+        origem: 'aluno',
       };
     });
 
-    return NextResponse.json({ ok: true, items });
+    let candidaturaItems: Array<any> = [];
+    if (status !== "archived") {
+      let candQuery = s
+        .from("candidaturas")
+        .select(
+          `id, aluno_id, status, created_at, nome_candidato, dados_candidato,
+           alunos:aluno_id ( id, nome, nome_completo, numero_processo, bi_numero, email )`
+        )
+        .eq("escola_id", escolaId)
+        .not("status", "in", "(matriculado,rejeitada,cancelada)")
+        .order("created_at", { ascending: false })
+        .limit(500);
+
+      if (q) {
+        const uuidRe = /^[0-9a-fA-F-]{36}$/;
+        if (uuidRe.test(q)) {
+          candQuery = candQuery.or(`id.eq.${q}`);
+        } else {
+          const orParts = [
+            `nome_candidato.ilike.%${q}%`,
+            `alunos.nome.ilike.%${q}%`,
+            `alunos.nome_completo.ilike.%${q}%`,
+            `alunos.numero_processo.ilike.%${q}%`,
+          ];
+          candQuery = candQuery.or(orParts.join(","));
+        }
+      }
+
+      const { data: candData, error: candError } = await candQuery;
+      if (candError) {
+        return NextResponse.json({ ok: false, error: candError.message }, { status: 400 });
+      }
+
+      candidaturaItems = (candData ?? []).map((row: any) => {
+        const alunoRaw = Array.isArray(row.alunos) ? row.alunos[0] : row.alunos;
+        const payload = row.dados_candidato || {};
+        const nome =
+          alunoRaw?.nome_completo ||
+          alunoRaw?.nome ||
+          payload.nome_completo ||
+          payload.nome ||
+          row.nome_candidato ||
+          "";
+        const email = alunoRaw?.email || payload.email || payload.encarregado_email || null;
+        return {
+          id: row.id,
+          nome,
+          email,
+          numero_login: null,
+          created_at: row.created_at,
+          status: row.status ?? null,
+          origem: 'candidatura',
+          aluno_id: row.aluno_id ?? null,
+        };
+      });
+    }
+
+    return NextResponse.json({ ok: true, items: [...candidaturaItems, ...alunoItems] });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
-

@@ -3,7 +3,8 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { createClient as createAdminClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 import { resolveTabelaPreco } from "@/lib/financeiro/tabela-preco";
-import { resolveEscolaIdForUser, authorizeMatriculasManage } from "@/lib/escola/disciplinas";
+import { authorizeMatriculasManage } from "@/lib/escola/disciplinas";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 let legacySchoolSessionsMissing = false;
 let legacySchoolSessionsWarned = false;
@@ -352,8 +353,12 @@ export async function GET(req: Request) {
       query = query.or(conditions.join(','));
     }
 
-    const normalizedStatusIn = statusIn.map((s) => s.toLowerCase());
+    let normalizedStatusIn = statusIn.map((s) => s.toLowerCase());
     const normalizedStatus = status ? status.toLowerCase() : "";
+
+    if (normalizedStatusIn.length === 0 && !normalizedStatus) {
+      normalizedStatusIn = ['ativa', 'ativo'];
+    }
 
     const statusFiltersForQuery = normalizedStatusIn.length > 0 ? normalizedStatusIn : normalizedStatus ? [normalizedStatus] : [];
     const wantsAllStatuses = statusFiltersForQuery.length === 0;

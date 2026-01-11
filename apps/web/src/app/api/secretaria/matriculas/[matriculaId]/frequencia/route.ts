@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
-import { resolveEscolaIdForUser, authorizeMatriculasManage } from "@/lib/escola/disciplinas";
+import { authorizeMatriculasManage } from "@/lib/escola/disciplinas";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { tryCanonicalFetch } from "@/lib/api/proxyCanonical";
 
 export async function GET(req: Request, context: { params: Promise<{ matriculaId: string }> }) {

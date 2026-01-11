@@ -139,7 +139,7 @@ export default function NovaMatriculaPage() {
                 <option value="">Selecione a candidatura...</option>
                 {data.candidaturas.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.nome_candidato || "Sem Nome"} - {c.cursos?.nome}
+                    {c.nome_candidato || c.alunos?.nome_completo || c.alunos?.nome || "Sem Nome"} - {c.cursos?.nome}
                   </option>
                 ))}
               </select>

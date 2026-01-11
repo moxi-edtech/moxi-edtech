@@ -1,7 +1,8 @@
 //app/api/escolas/[id]/disciplinas/route.ts
 import { NextResponse } from 'next/server'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
-import { authorizeDisciplinaManage, resolveEscolaIdForUser } from '@/lib/escola/disciplinas'
+import { authorizeDisciplinaManage } from '@/lib/escola/disciplinas'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 
 // --- GET: Listar Disciplinas ---
 export async function GET(req: Request) {

@@ -6,6 +6,7 @@ import { createClient as createAdminClient } from '@supabase/supabase-js'
 import type { Database } from '~types/supabase'
 import { normalizeAnoLetivo, resolveTabelaPreco } from '@/lib/financeiro/tabela-preco'
 import { tryCanonicalFetch } from '@/lib/api/proxyCanonical'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 
 const Body = z.object({
   promocoes: z.array(z.object({ origem_turma_id: z.string().uuid(), destino_turma_id: z.string().uuid() })).optional(),
@@ -29,21 +30,7 @@ export async function POST(req: Request) {
     const body = parsed.data
 
     // Resolve escola
-    const { data: prof } = await supabase
-      .from('profiles')
-      .select('current_escola_id, escola_id')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-    let escolaId = ((prof?.[0] as any)?.current_escola_id || (prof?.[0] as any)?.escola_id) as string | undefined
-    if (!escolaId) {
-      const { data: vinc } = await supabase
-        .from('escola_users')
-        .select('escola_id')
-        .eq('user_id', user.id)
-        .limit(1)
-      escolaId = (vinc?.[0] as any)?.escola_id as string | undefined
-    }
+    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 })
 
     const forwarded = await tryCanonicalFetch(req, `/api/escolas/${escolaId}/rematricula/confirmar`)

@@ -1,5 +1,5 @@
 import { supabaseServer } from '@/lib/supabaseServer'
-import { resolveEscolaIdForUser } from '@/lib/escola/disciplinas'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader'
 import { FinanceiroCandidaturasInbox } from '../_components/CandidaturasInbox'
 
@@ -39,4 +39,3 @@ export default async function FinanceiroCandidaturasPage() {
     </main>
   )
 }
-

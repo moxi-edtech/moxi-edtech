@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 
 // GET /api/secretaria/classes/:id/disciplinas
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -11,22 +12,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 
     const { id: classeId } = await ctx.params
 
-    // Resolve escola
-    const { data: prof } = await supabase
-      .from('profiles')
-      .select('current_escola_id, escola_id')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-    let escolaId = ((prof?.[0] as any)?.current_escola_id || (prof?.[0] as any)?.escola_id) as string | undefined
-    if (!escolaId) {
-      const { data: vinc } = await supabase
-        .from('escola_users')
-        .select('escola_id')
-        .eq('user_id', user.id)
-        .limit(1)
-      escolaId = (vinc?.[0] as any)?.escola_id as string | undefined
-    }
+    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
     if (!escolaId) return NextResponse.json({ ok: true, items: [] })
 
     const { data, error } = await supabase
@@ -43,4 +29,3 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
 }
-

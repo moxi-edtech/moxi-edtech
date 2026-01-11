@@ -154,7 +154,13 @@ export async function POST(req: NextRequest) {
       try {
         if (!dryRun) {
           await admin.from('profiles' as any).upsert([
-            { user_id: userId, email: email ?? null, role: 'admin' as any, escola_id: escolaId } as TablesInsert<'profiles'> as any,
+            {
+              user_id: userId,
+              email: email ?? null,
+              role: 'admin' as any,
+              escola_id: escolaId,
+              current_escola_id: escolaId,
+            } as TablesInsert<'profiles'> as any,
           ])
           actions.push('profiles upsert (role=admin, escola_id set)')
         } else {

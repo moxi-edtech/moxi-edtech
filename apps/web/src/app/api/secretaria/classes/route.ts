@@ -1,7 +1,8 @@
 //app/api/escolas/[id]/classes/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
-import { resolveEscolaIdForUser, authorizeEscolaAction } from '@/lib/escola/disciplinas'
+import { authorizeEscolaAction } from '@/lib/escola/disciplinas'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 
 export const dynamic = 'force-dynamic'
 

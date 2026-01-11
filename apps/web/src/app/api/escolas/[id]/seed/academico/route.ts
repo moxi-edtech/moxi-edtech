@@ -110,7 +110,16 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
         userId = created?.user?.id
       }
-      try { await (admin as any).from('profiles').upsert({ user_id: userId, email, nome: `Professor ${i}`, role: 'professor' } as any) } catch {}
+      try {
+        await (admin as any).from('profiles').upsert({
+          user_id: userId,
+          email,
+          nome: `Professor ${i}`,
+          role: 'professor',
+          escola_id: escolaId,
+          current_escola_id: escolaId,
+        } as any)
+      } catch {}
       try { await (admin as any).from('escola_users').upsert({ escola_id: escolaId, user_id: userId, papel: 'professor' } as any, { onConflict: 'escola_id,user_id' }) } catch {}
       try { await (admin as any).from('professores').upsert({ id: userId, escola_id: escolaId, profile_id: userId } as any) } catch {}
       profs.push({ user_id: userId!, email })
@@ -191,7 +200,16 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
         userId = created?.user?.id
       }
-      try { await (admin as any).from('profiles').upsert({ user_id: userId, email, nome: `Aluno ${i}`, role: 'aluno', escola_id: escolaId } as any) } catch {}
+      try {
+        await (admin as any).from('profiles').upsert({
+          user_id: userId,
+          email,
+          nome: `Aluno ${i}`,
+          role: 'aluno',
+          escola_id: escolaId,
+          current_escola_id: escolaId,
+        } as any)
+      } catch {}
       try { await (admin as any).from('escola_users').upsert({ escola_id: escolaId, user_id: userId, papel: 'aluno' } as any, { onConflict: 'escola_id,user_id' }) } catch {}
 
       const { data: alEx } = await admin.from('alunos').select('id').eq('profile_id', userId!).maybeSingle()

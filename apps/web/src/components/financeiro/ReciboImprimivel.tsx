@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import QRCode from "react-qr-code";
 import { Eye } from "lucide-react";
+import { usePlanFeature } from "@/hooks/usePlanFeature";
 
 const formatKz = (valor: number) =>
   new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA" }).format(
@@ -109,6 +110,7 @@ export function ReciboPrintButton({
   const [loading, setLoading] = useState(false);
   const [recibo, setRecibo] = useState<ReciboPayload | null>(null);
   const [printRequested, setPrintRequested] = useState(false);
+  const { isEnabled: canEmitir } = usePlanFeature("fin_recibo_pdf");
 
   useEffect(() => {
     if (!printRequested || !recibo) return;
@@ -121,6 +123,10 @@ export function ReciboPrintButton({
   }, [printRequested, recibo]);
 
   async function handlePrint() {
+    if (!canEmitir) {
+      alert("Seu plano não permite emitir recibos em PDF.");
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch("/api/financeiro/recibos/emitir", {
@@ -151,7 +157,7 @@ export function ReciboPrintButton({
       <button
         type="button"
         onClick={handlePrint}
-        disabled={loading}
+        disabled={loading || !canEmitir}
         className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:brightness-95 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20 disabled:opacity-60"
       >
         <Eye className="h-4 w-4" />

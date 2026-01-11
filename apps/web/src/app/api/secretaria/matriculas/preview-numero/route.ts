@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
-import { resolveEscolaIdForUser, authorizeMatriculasManage } from "@/lib/escola/disciplinas";
+import { authorizeMatriculasManage } from "@/lib/escola/disciplinas";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export async function GET() {
   try {

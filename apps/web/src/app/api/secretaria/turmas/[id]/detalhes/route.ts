@@ -1,22 +1,45 @@
 import { NextResponse } from 'next/server';
+import { createClient } from "@supabase/supabase-js";
 import { supabaseServerTyped } from '@/lib/supabaseServer';
+import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import type { Database } from "~types/supabase";
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const supabase = await supabaseServerTyped();
+    const supabase = await supabaseServerTyped<Database>();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
     }
 
+    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
+    if (!escolaId) {
+      return NextResponse.json({ ok: false, error: 'Usuário não vinculado a nenhuma escola' }, { status: 403 });
+    }
+
+    const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id);
+    if (!authz.allowed) {
+      return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 });
+    }
+
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ ok: false, error: "Configuração Supabase ausente." }, { status: 500 });
+    }
+
+    const admin = createClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
+
     const { id: turmaId } = await params;
     console.log('Fetching turma ID:', turmaId);
 
     // 1. Query principal da turma - simplificada primeiro
-    const { data: turmaResult, error: turmaError } = await supabase
+    const { data: turmaResult, error: turmaError } = await admin
       .from('turmas')
       .select(`
         id,
@@ -32,6 +55,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         cursos ( id, nome, tipo )
       `)
       .eq('id', turmaId)
+      .eq('escola_id', escolaId)
       .single();
 
     if (turmaError || !turmaResult) {
@@ -40,10 +64,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     // 2. Ocupação da turma
-    const { data: ocupacaoResult, error: ocupacaoError } = await supabase
+    const { data: ocupacaoResult, error: ocupacaoError } = await admin
       .from('matriculas')
       .select('id')
       .eq('turma_id', turmaId)
+      .eq('escola_id', escolaId)
       .in('status', ['ativa', 'ativo']);
 
     if (ocupacaoError) {
@@ -56,7 +81,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     // 3. Buscar diretor separadamente para evitar problemas de relacionamento
     let diretor = null;
     if (turmaResult.diretor_turma_id) {
-      const { data: diretorData, error: diretorError } = await supabase
+      const { data: diretorData, error: diretorError } = await admin
         .from('escola_usuarios')
         .select(`
           id,
@@ -76,16 +101,24 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     // 4. Buscar alunos - usando numero_chamada que existe
-    const { data: alunosData, error: alunosError } = await supabase
+    const { data: alunosData, error: alunosError } = await admin
       .from('matriculas')
       .select(`
         id,
         numero_chamada,
         numero_matricula,
         status,
-        alunos!inner ( id, nome, bi_numero, foto_url, status )
+        alunos!inner (
+          id,
+          nome,
+          bi_numero,
+          status,
+          profile_id,
+          profiles!alunos_profile_id_fkey ( avatar_url )
+        )
       `)
       .eq('turma_id', turmaId)
+      .eq('escola_id', escolaId)
       .in('status', ['ativa', 'ativo'])
       .order('numero_chamada', { ascending: true });
 
@@ -95,14 +128,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     // 5. Buscar disciplinas e professores separadamente
-    const { data: disciplinasData, error: disciplinasError } = await supabase
+    const { data: disciplinasData, error: disciplinasError } = await admin
       .from('turma_disciplinas_professores')
       .select(`
         id,
         turma_id,
         professor_id,
         syllabus_id,
-        professores ( id, nome_completo, profile_id ),
+        professores (
+          id,
+          apelido,
+          profile_id,
+          profiles!professores_profile_id_fkey ( nome, email )
+        ),
         syllabi ( id, nome, codigo )
       `)
       .eq('turma_id', turmaId);
@@ -135,7 +173,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       aluno_id: m.alunos?.id || '',
       nome: m.alunos?.nome || 'Nome Desconhecido',
       bi: m.alunos?.bi_numero || 'N/A',
-      foto: m.alunos?.foto_url || undefined,
+      foto: m.alunos?.profiles?.avatar_url || undefined,
       numero_matricula: m.numero_matricula,
       status_matricula: m.status || m.alunos?.status || 'desconhecido',
     }));
@@ -144,7 +182,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       id: td.syllabi?.id || '',
       nome: td.syllabi?.nome || 'Disciplina Desconhecida',
       sigla: td.syllabi?.codigo || '',
-      professor: td.professores?.nome_completo || 'Sem Professor',
+      professor: td.professores?.profiles?.nome || td.professores?.apelido || 'Sem Professor',
     }));
 
     const responseData = {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export async function GET(req: Request) {
   try {
@@ -8,12 +9,7 @@ export async function GET(req: Request) {
     const user = userRes?.user;
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
 
-    const { data: prof } = await supabase
-      .from('profiles')
-      .select('escola_id')
-      .order('created_at', { ascending: false })
-      .limit(1);
-    const escolaId = (prof?.[0] as any)?.escola_id as string | undefined;
+    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
     if (!escolaId) {
       return NextResponse.json({ ok: true, items: [] });
     }
@@ -43,12 +39,7 @@ export async function POST(req: Request) {
     const user = userRes?.user;
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
 
-    const { data: prof } = await supabase
-      .from('profiles')
-      .select('escola_id')
-      .order('created_at', { ascending: false })
-      .limit(1);
-    const escolaId = (prof?.[0] as any)?.escola_id as string | undefined;
+    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 });
     }
