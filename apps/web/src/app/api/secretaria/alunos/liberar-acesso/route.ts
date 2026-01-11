@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     const authz = await authorizeEscolaAction(s as any, escolaId, user.id, []);
     if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 });
 
-    const { data: rpcRes, error: rpcErr } = await (s as any).rpc("liberar_acesso_alunos_v2", {
+    const { data: rpcRes, error: rpcErr } = await (s as any).rpc("request_liberar_acesso", {
       p_escola_id: escolaId,
       p_aluno_ids: alunoIds,
       p_canal: canal || "whatsapp",
@@ -37,17 +37,9 @@ export async function POST(req: Request) {
     const rows = Array.isArray(rpcRes) ? rpcRes : [];
     const detalhes: Array<{ id: string; status: string; request_id?: string | null }> = [];
 
-    await Promise.all(
-      rows.map(async (row: any) => {
-        await (s as any).rpc("enqueue_outbox_event", {
-          p_escola_id: escolaId,
-          p_topic: "auth_provision_student",
-          p_request_id: row.request_id,
-          p_payload: { aluno_id: row.aluno_id, canal },
-        });
-        detalhes.push({ id: row.aluno_id, status: "queued", request_id: row.request_id });
-      })
-    );
+    for (const row of rows as any[]) {
+      detalhes.push({ id: row.aluno_id, status: "queued", request_id: row.request_id });
+    }
 
     return NextResponse.json({ ok: true, liberados: rows.length, detalhes });
   } catch (e) {
