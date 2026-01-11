@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseServer } from '@/lib/supabaseServer'
-import { createClient } from '@supabase/supabase-js'
-import type { Database } from '~types/supabase'
 import { recordAuditServer } from '@/lib/audit'
 
 const BodySchema = z.object({
@@ -35,12 +33,6 @@ const BodySchema = z.object({
 // Removi o segundo argumento 'context' pois a rota não tem [id]
 export async function POST(req: Request) {
   let escolaId: string | null = null
-
-  // Cliente Admin (Service Role)
-  const admin = createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
 
   try {
     const bodyRaw = await req.json()
@@ -116,7 +108,7 @@ export async function POST(req: Request) {
       },
     }
 
-    const { data: candidatura, error: candErr } = await admin
+    const { data: candidatura, error: candErr } = await s
       .from('candidaturas')
       .insert({
         escola_id: escolaId,
@@ -157,7 +149,7 @@ export async function POST(req: Request) {
       const mensagem = mensagemParts.join(' | ')
 
       try {
-        await admin.from('notifications').insert({
+        await s.from('notifications').insert({
           escola_id: escolaId,
           target_role: 'financeiro' as any,
           tipo: 'candidatura_pagamento',

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveTabelaPreco } from "@/lib/financeiro/tabela-preco";
 import type { Database } from "~types/supabase";
@@ -20,25 +19,19 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ matriculaId
   const user = userRes?.user;
   if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
-  const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!adminUrl || !serviceKey) {
-    return NextResponse.json({ ok: false, error: "Configuração SUPABASE incompleta" }, { status: 500 });
-  }
-
-  const admin = createClient<Database>(adminUrl, serviceKey);
-
-  const { data: matricula, error: matErr } = await admin
+  const { data: matricula, error: matErr } = await supabase
     .from("matriculas")
     .select("id, aluno_id, turma_id, ano_letivo, escola_id, turmas(curso_id, classe_id)")
     .eq("id", matriculaId)
+    .order("created_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
   if (matErr || !matricula) {
     return NextResponse.json({ ok: false, error: matErr?.message || "Matrícula não encontrada" }, { status: 404 });
   }
 
   const escolaId = (matricula as any).escola_id as string;
-  const { data: targetTurma, error: turmaErr } = await admin
+  const { data: targetTurma, error: turmaErr } = await supabase
     .from("turmas")
     .select("id, escola_id, curso_id, classe_id, ano_letivo")
     .eq("id", targetTurmaId)
@@ -54,7 +47,7 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ matriculaId
 
   const resolverPreco = async (cursoId?: string | null, classeId?: string | null) => {
     try {
-      const { tabela } = await resolveTabelaPreco(admin as any, {
+      const { tabela } = await resolveTabelaPreco(supabase as any, {
         escolaId,
         anoLetivo: anoLetivoDestino,
         cursoId: cursoId || undefined,
@@ -72,7 +65,7 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ matriculaId
   const valorNovo = await resolverPreco((targetTurma as any).curso_id, (targetTurma as any).classe_id);
 
   // Atualiza a matrícula
-  const { error: updateErr } = await admin
+  const { error: updateErr } = await supabase
     .from("matriculas")
     .update({ turma_id: targetTurmaId, status: 'ativo' })
     .eq("id", matriculaId)
@@ -84,7 +77,7 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ matriculaId
   let parcelasAtualizadas = 0;
   if (valorNovo !== valorAtual) {
     const hoje = new Date().toISOString().slice(0, 10);
-    const { data: abertas, error: abertasErr } = await admin
+    const { data: abertas, error: abertasErr } = await supabase
       .from("mensalidades")
       .select("id")
       .eq("escola_id", escolaId)
@@ -98,7 +91,7 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ matriculaId
 
     const ids = (abertas || []).map((m: any) => m.id);
     if (ids.length > 0) {
-      const { error: updMens } = await admin
+      const { error: updMens } = await supabase
         .from("mensalidades")
         .update({ valor_previsto: valorNovo, valor: valorNovo })
         .in("id", ids);

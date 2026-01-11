@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
 import { normalizeAnoLetivo, resolveTabelaPreco } from "@/lib/financeiro/tabela-preco";
 import { recordAuditServer } from "@/lib/audit";
 import { tryCanonicalFetch } from "@/lib/api/proxyCanonical";
@@ -30,13 +28,18 @@ export async function POST(req: Request) {
     }
 
     // RPC fast-path (transacional no banco, reusável)
-    if (use_rpc && process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      const admin = createAdminClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+    if (use_rpc) {
       // Determine session/cls and pre-existing at destino
-      const { data: destTurma } = await (admin as any).from('turmas').select('id, session_id, classe_id, ano_letivo').eq('id', destination_turma_id).maybeSingle();
+      const { data: destTurma } = await (supabase as any)
+        .from('turmas')
+        .select('id, session_id, classe_id, ano_letivo')
+        .eq('id', destination_turma_id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
       const sessionId = (destTurma as any)?.session_id as string | null;
       if (!sessionId) return NextResponse.json({ ok: false, error: 'Turma destino sem sessão vinculada' }, { status: 400 });
-      const { data: preActive } = await (admin as any)
+      const { data: preActive } = await (supabase as any)
         .from('matriculas')
         .select('aluno_id')
         .eq('escola_id', escolaId)
@@ -44,7 +47,7 @@ export async function POST(req: Request) {
         .in('status', ['ativo','ativa','active']);
       const preSet = new Set<string>((preActive || []).map((r: any) => r.aluno_id));
 
-      const { data, error } = await (admin as any).rpc('rematricula_em_massa', {
+      const { data, error } = await (supabase as any).rpc('rematricula_em_massa', {
         p_escola_id: escolaId,
         p_origem_turma_id: origin_turma_id,
         p_destino_turma_id: destination_turma_id,
@@ -56,7 +59,7 @@ export async function POST(req: Request) {
       let insertedCount = row?.inserted ?? 0;
       // Pós-processo: gerar mensalidades para os realmente inseridos
       if (gerar_mensalidades && insertedCount > 0) {
-        const { data: nowActive } = await (admin as any)
+        const { data: nowActive } = await (supabase as any)
           .from('matriculas')
           .select('aluno_id')
           .eq('escola_id', escolaId)
@@ -65,7 +68,7 @@ export async function POST(req: Request) {
           .in('status', ['ativo','ativa','active']);
         const nowSet = new Set<string>((nowActive || []).map((r: any) => r.aluno_id));
         const insertedAlunos = Array.from(nowSet).filter(id => !preSet.has(id));
-        await generateMensalidadesForAlunos(admin as any, escolaId, destination_turma_id, sessionId, (destTurma as any)?.ano_letivo ?? null, (destTurma as any)?.classe_id ?? null, insertedAlunos, gerar_todas);
+        await generateMensalidadesForAlunos(supabase as any, escolaId, destination_turma_id, sessionId, (destTurma as any)?.ano_letivo ?? null, (destTurma as any)?.classe_id ?? null, insertedAlunos, gerar_todas);
       }
       return NextResponse.json({ ok: true, inserted: insertedCount, skipped: row?.skipped ?? 0, errors: row?.errors ?? [] });
     }

@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
 import type { Database } from '~types/supabase'
 import { recordAuditServer } from '@/lib/audit'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import { applyKf2ListInvariants } from '@/lib/kf2'
 
 const UpdateSchema = z.object({
   nome: z.string().trim().min(1, 'Informe o nome').optional(),
@@ -35,6 +35,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       .from('profiles')
       .select('role, escola_id, current_escola_id')
       .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle()
 
     const role = (prof as any)?.role as string | undefined
@@ -46,30 +48,30 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     if (!role || !allowedRoles.includes(role)) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     if (!escolaFromProfile) return NextResponse.json({ ok: false, error: 'Perfil não está vinculado a uma escola' }, { status: 403 })
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: 'Configuração Supabase ausente.' }, { status: 500 })
-    }
-
-    const admin = createAdminClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
-
-    const { data: aluno, error } = await admin
+    let alunoQuery = s
       .from('alunos')
       .select('id, nome, responsavel, telefone_responsavel, status, created_at, profile_id, escola_id, profiles:profiles!alunos_profile_id_fkey(user_id, email, nome, telefone, data_nascimento, sexo, bi_numero, naturalidade, provincia, encarregado_relacao, numero_login)')
       .eq('id', alunoId)
-      .maybeSingle()
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    alunoQuery = applyKf2ListInvariants(alunoQuery, { defaultLimit: 1 })
+
+    const { data: aluno, error } = await alunoQuery.maybeSingle()
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
     if (!aluno) return NextResponse.json({ ok: false, error: 'Aluno não encontrado' }, { status: 404 })
 
     let alunoEscolaId = (aluno as any).escola_id
     if (String(alunoEscolaId) !== String(escolaFromProfile)) {
-      const { data: vincMatricula, error: vincErr } = await admin
+      const { data: vincMatricula, error: vincErr } = await s
         .from('matriculas')
-        .select('id')
-        .eq('aluno_id', alunoId)
-        .eq('escola_id', escolaFromProfile)
-        .limit(1)
-        .maybeSingle()
+      .select('id')
+      .eq('aluno_id', alunoId)
+      .eq('escola_id', escolaFromProfile)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
 
       if (vincErr) return NextResponse.json({ ok: false, error: vincErr.message }, { status: 400 })
       if (!vincMatricula) {
@@ -127,6 +129,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       .from('profiles')
       .select('role, escola_id, current_escola_id')
       .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle()
 
     const role = (prof as any)?.role as string | undefined
@@ -136,23 +140,22 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (!escolaFromProfile) return NextResponse.json({ ok: false, error: 'Perfil não está vinculado a uma escola' }, { status: 403 })
 
     // fetch aluno to get profile_id/escola_id
-    const { data: aluno, error: alunoErr } = await s
+    let alunoQuery = s
       .from('alunos')
       .select('id, escola_id, profile_id, nome')
       .eq('id', alunoId)
-      .maybeSingle()
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    alunoQuery = applyKf2ListInvariants(alunoQuery, { defaultLimit: 1 })
+
+    const { data: aluno, error: alunoErr } = await alunoQuery.maybeSingle()
 
     if (alunoErr) return NextResponse.json({ ok: false, error: alunoErr.message }, { status: 400 })
     if (!aluno) return NextResponse.json({ ok: false, error: 'Aluno não encontrado' }, { status: 404 })
     if (String((aluno as any).escola_id) !== String(escolaFromProfile)) {
       return NextResponse.json({ ok: false, error: 'Aluno não pertence à escola ativa do usuário' }, { status: 403 })
     }
-
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: 'Server misconfigured: falta SUPABASE_SERVICE_ROLE_KEY' }, { status: 500 })
-    }
-
-    const admin = createAdminClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
 
     const profileId = (aluno as any).profile_id as string | null
     // Update profiles
@@ -169,7 +172,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       if (body.encarregado_relacao !== undefined) toUpdateProfile.encarregado_relacao = body.encarregado_relacao
 
       if (Object.keys(toUpdateProfile).length > 0) {
-        const { error: pErr } = await admin.from('profiles').update(toUpdateProfile).eq('user_id', profileId)
+        const { error: pErr } = await s.from('profiles').update(toUpdateProfile).eq('user_id', profileId)
         if (pErr) return NextResponse.json({ ok: false, error: pErr.message }, { status: 400 })
       }
     }
@@ -181,7 +184,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (body.telefone_responsavel !== undefined) toUpdateAluno.telefone_responsavel = body.telefone_responsavel
 
     if (Object.keys(toUpdateAluno).length > 0) {
-      const { error: aErr } = await admin.from('alunos').update(toUpdateAluno).eq('id', alunoId)
+      const { error: aErr } = await s.from('alunos').update(toUpdateAluno).eq('id', alunoId)
       if (aErr) return NextResponse.json({ ok: false, error: aErr.message }, { status: 400 })
     }
 
