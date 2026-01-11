@@ -25,6 +25,11 @@ type Aluno = {
   aluno_id?: string | null;
 };
 
+type Cursor = {
+  created_at: string;
+  id: string;
+};
+
 // --- MICRO-COMPONENTES ---
 function KpiCard({ title, value, icon: Icon, colorClass, bgClass }: any) {
   return (
@@ -66,6 +71,8 @@ export default function AlunosListClient() {
   // Estados de Dados
   const [items, setItems] = useState<Aluno[]>([]);
   const [total, setTotal] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [pageCursors, setPageCursors] = useState<Array<Cursor | null>>([null]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const scrollParentRef = useRef<HTMLDivElement | null>(null);
@@ -76,7 +83,6 @@ export default function AlunosListClient() {
   const [deleting, setDeleting] = useState(false);
   const [alunoSelecionado, setAlunoSelecionado] = useState<Aluno | null>(null);
 
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const hasRows = !loading && items.length > 0;
 
   const rowVirtualizer = useVirtualizer({
@@ -91,15 +97,28 @@ export default function AlunosListClient() {
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams({ q, status, page: String(p), pageSize: String(pageSize) });
-      const res = await fetch(`/api/secretaria/alunos?${params.toString()}`, { cache: "force-cache" });
+      const cursor = pageCursors[p - 1] ?? null;
+      const params = new URLSearchParams({ q, status, pageSize: String(pageSize) });
+      if (cursor) {
+        params.set("cursor_created_at", cursor.created_at);
+        params.set("cursor_id", cursor.id);
+      } else {
+        params.set("page", String(p));
+      }
+      const res = await fetch(`/api/secretaria/alunos?${params.toString()}`, { cache: "no-store" });
       const json = await res.json();
 
       if (!res.ok || !json.ok) throw new Error(json?.error || "Falha ao carregar");
 
       setItems(json.items || []);
-      setTotal(json.total || 0);
-      if (p !== json.page) setPage(json.page); // Sync page se API ajustar
+      setTotal(json.total ?? json.items?.length ?? 0);
+      setHasMore(Boolean(json.page?.hasMore));
+      const nextCursor = json.page?.nextCursor || null;
+      setPageCursors((prev) => {
+        const next = [...prev];
+        next[p] = nextCursor;
+        return next;
+      });
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -108,7 +127,11 @@ export default function AlunosListClient() {
   }
 
   // Reload triggers
-  useEffect(() => { load(1); }, [q, status]); // Reset page on filter change
+  useEffect(() => {
+    setPage(1);
+    setPageCursors([null]);
+    load(1);
+  }, [q, status]);
   useEffect(() => { load(page); }, [page]); // Load on page change
 
   // --- AÇÕES ---
@@ -174,7 +197,7 @@ export default function AlunosListClient() {
 
       {/* 2. KPIS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard title="Total Alunos" value={total} icon={Users} colorClass="text-blue-600" bgClass="bg-blue-50" />
+        <KpiCard title="Total na Página" value={total} icon={Users} colorClass="text-blue-600" bgClass="bg-blue-50" />
         <KpiCard title="Leads Pendentes" value={stats.pendentes} icon={Filter} colorClass="text-amber-600" bgClass="bg-amber-50" />
         <KpiCard title="Matriculados (Ativos)" value={stats.ativos} icon={Shield} colorClass="text-emerald-600" bgClass="bg-emerald-50" />
         <KpiCard title="Com Responsável" value={stats.comResp} icon={Users} colorClass="text-orange-600" bgClass="bg-orange-50" />
@@ -343,10 +366,10 @@ export default function AlunosListClient() {
 
         {/* Paginacao */}
         <div className="bg-slate-50 px-6 py-4 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
-            <span>Página {page} de {totalPages}</span>
+            <span>Página {page}</span>
             <div className="flex gap-2">
                 <button disabled={page<=1} onClick={() => setPage(p => p-1)} className="px-3 py-1 bg-white border rounded-md disabled:opacity-50">Anterior</button>
-                <button disabled={page>=totalPages} onClick={() => setPage(p => p+1)} className="px-3 py-1 bg-white border rounded-md disabled:opacity-50">Próximo</button>
+                <button disabled={!hasMore} onClick={() => setPage(p => p+1)} className="px-3 py-1 bg-white border rounded-md disabled:opacity-50">Próximo</button>
             </div>
         </div>
       </div>
