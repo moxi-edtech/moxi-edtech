@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
 import { recordAuditServer } from "@/lib/audit";
 
 
@@ -41,6 +39,8 @@ export async function POST(
       .from("profiles")
       .select("role, escola_id, current_escola_id")
       .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (profErr) {
@@ -76,20 +76,12 @@ export async function POST(
     }
 
     // 4) Carrega o aluno usando service role (evita bloqueios inesperados de RLS)
-    const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    if (!adminUrl || !serviceRole) {
-      return NextResponse.json(
-        { ok: false, error: "Server misconfigured: falta SUPABASE_SERVICE_ROLE_KEY" },
-        { status: 500 }
-      );
-    }
-    const admin = createAdminClient<Database>(adminUrl, serviceRole);
-
-    const { data: aluno, error: alunoErr } = await admin
+    const { data: aluno, error: alunoErr } = await s
       .from("alunos")
       .select("id, escola_id")
       .eq("id", alunoId)
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (alunoErr) {
@@ -129,7 +121,7 @@ export async function POST(
     }
 
     // 6) Usa service role para chamar a função `soft_delete_aluno`
-    const { error: rpcError } = await admin.rpc('soft_delete_aluno', {
+    const { error: rpcError } = await s.rpc('soft_delete_aluno', {
       p_id: alunoId,
       p_deleted_by: user.id,
       p_reason: reason,

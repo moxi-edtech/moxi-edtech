@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
 import { authorizeMatriculasManage } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export async function GET() {
   try {
@@ -32,18 +31,14 @@ export async function GET() {
     headers.set('Link', `</api/escolas/${escolaId}/matriculas>; rel="successor-version"`);
 
     // 3. Admin client para chamar RPC segura
-    const admin =
-      process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
-        ? createAdminClient<Database>(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!
-          )
-        : supabase;
-
     // 4. Chama RPC de prévia
-    const { data, error } = await admin.rpc("preview_next_matricula_number", {
+    let rpcQuery = supabase.rpc("preview_next_matricula_number", {
       p_escola_id: escolaId
     });
+
+    rpcQuery = applyKf2ListInvariants(rpcQuery, { defaultLimit: 1 });
+
+    const { data, error } = await rpcQuery;
 
     if (error)
       return NextResponse.json({ ok: false, error: error.message }, { status: 400, headers });
