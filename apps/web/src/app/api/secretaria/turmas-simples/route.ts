@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export const dynamic = 'force-dynamic';
 
@@ -62,7 +63,28 @@ export async function GET(req: Request) {
     // 4. CONSULTA À VIEW
     let query = supabase
       .from('vw_turmas_para_matricula')
-      .select('*')
+      .select(
+        [
+          'id',
+          'escola_id',
+          'session_id',
+          'turma_nome',
+          'turno',
+          'capacidade_maxima',
+          'sala',
+          'classe_nome',
+          'curso_nome',
+          'curso_tipo',
+          'curso_is_custom',
+          'curso_global_hash',
+          'classe_id',
+          'curso_id',
+          'ano_letivo',
+          'ocupacao_atual',
+          'ultima_matricula',
+          'status_validacao',
+        ].join(', ')
+      )
       .eq('escola_id', escolaId)
       // [CORREÇÃO] A view usa 'turma_nome', não 'nome'
       .order('turma_nome', { ascending: true });
@@ -76,6 +98,8 @@ export async function GET(req: Request) {
     }
 
     if (turno) query = query.eq('turno', turno);
+
+    query = applyKf2ListInvariants(query, { defaultLimit: 200 });
 
     const { data: turmasView, error } = await query;
 

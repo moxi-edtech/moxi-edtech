@@ -3,16 +3,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { authorizeEscolaAction } from '@/lib/escola/disciplinas'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import { applyKf2ListInvariants } from '@/lib/kf2'
 
 export const dynamic = 'force-dynamic'
 
 // Helper para listar classes (mantido igual)
 async function listarClassesBase(client: any, escolaId: string) {
-  const { data, error } = await client
+  let query = client
     .from('classes')
     .select('id, nome')
     .eq('escola_id', escolaId)
     .order('nome')
+
+  query = applyKf2ListInvariants(query, { defaultLimit: 200 })
+
+  const { data, error } = await query
 
   if (error) throw new Error(error.message)
   return data || []
@@ -57,12 +62,16 @@ export async function GET(req: NextRequest) {
         if (classeIdsSet.size === 0) {
             // Se a lógica complexa não achou nada, tentamos buscar direto na tabela classes
             // Caso as classes tenham sido criadas mas ainda não tenham turmas/ofertas
-            const { data: directClasses } = await s
+            let directQuery = s
                 .from('classes')
                 .select('id, nome')
                 .eq('escola_id', escolaId)
                 .eq('curso_id', cursoId)
                 .order('nome');
+
+            directQuery = applyKf2ListInvariants(directQuery, { defaultLimit: 200 });
+
+            const { data: directClasses } = await directQuery;
             
             if (directClasses && directClasses.length > 0) {
                 return NextResponse.json({ ok: true, items: directClasses })
@@ -72,11 +81,15 @@ export async function GET(req: NextRequest) {
 
         const classeIds = Array.from(classeIdsSet)
 
-        const { data, error } = await s
+        let classesQuery = s
           .from('classes')
           .select('id, nome')
           .in('id', classeIds)
           .order('nome')
+
+        classesQuery = applyKf2ListInvariants(classesQuery, { defaultLimit: 200 });
+
+        const { data, error } = await classesQuery
 
         if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400, headers })
         return NextResponse.json({ ok: true, items: data || [] }, { headers })

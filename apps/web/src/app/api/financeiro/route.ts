@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { findClassesSemPreco } from "@/lib/financeiro/missing-pricing";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export async function GET(req: NextRequest) {
   const s = await supabaseServer();
@@ -9,10 +10,13 @@ export async function GET(req: NextRequest) {
   const anoLetivoParam = searchParams.get("anoLetivo");
 
   // 1) Total de matriculados (ativos)
-  const { count: totalMatriculados, error: totalMatriculadosError } = await s
+  let totalMatriculadosQuery = s
     .from("matriculas")
-    .select("*", { count: "exact", head: true })
+    .select("id", { count: "exact", head: true })
     .or("status.eq.ativo,status.eq.ativa");
+  totalMatriculadosQuery = applyKf2ListInvariants(totalMatriculadosQuery, { defaultLimit: 1 });
+
+  const { count: totalMatriculados, error: totalMatriculadosError } = await totalMatriculadosQuery;
 
   if (totalMatriculadosError) {
     console.error("❌ Erro ao contar matriculados:", totalMatriculadosError.message);
@@ -24,11 +28,15 @@ export async function GET(req: NextRequest) {
 
   // 2) Inadimplência e risco a partir de mensalidades (usa valor_previsto)
   const hojeStr = new Date().toISOString().slice(0, 10);
-  const { data: mensalidadesVencidas, error: errMensVencidas } = await s
+  let vencidasQuery = s
     .from("mensalidades")
     .select("aluno_id, valor_previsto, data_vencimento, status")
     .neq("status", "pago")
-    .lt("data_vencimento", hojeStr);
+    .lt("data_vencimento", hojeStr)
+    .order("data_vencimento", { ascending: true });
+  vencidasQuery = applyKf2ListInvariants(vencidasQuery, { defaultLimit: 5000 });
+
+  const { data: mensalidadesVencidas, error: errMensVencidas } = await vencidasQuery;
 
   if (errMensVencidas) {
     console.error("❌ Erro ao buscar inadimplência:", errMensVencidas.message);
@@ -46,9 +54,13 @@ export async function GET(req: NextRequest) {
   );
 
   // 3) Confirmados x pendentes (mensalidades)
-  const { data: todasMensalidades, error: errMens } = await s
+  let mensalidadesQuery = s
     .from("mensalidades")
-    .select("status, valor_previsto");
+    .select("status, valor_previsto")
+    .order("created_at", { ascending: false });
+  mensalidadesQuery = applyKf2ListInvariants(mensalidadesQuery, { defaultLimit: 5000 });
+
+  const { data: todasMensalidades, error: errMens } = await mensalidadesQuery;
   if (errMens) {
     console.error("❌ Erro ao buscar mensalidades:", errMens.message);
     return NextResponse.json(

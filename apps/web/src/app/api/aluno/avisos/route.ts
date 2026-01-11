@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export async function GET() {
   try {
@@ -9,12 +10,15 @@ export async function GET() {
 
     if (!escolaId) return NextResponse.json({ ok: true, avisos: [] });
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('avisos')
       .select('id, titulo, resumo, origem, created_at')
       .eq('escola_id', escolaId)
-      .order('created_at', { ascending: false })
-      .limit(50);
+      
+    query = applyKf2ListInvariants(query);
+
+    const { data, error } = await query;
+
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
 
     const avisos = (data || []).map((a: any) => ({
@@ -31,4 +35,3 @@ export async function GET() {
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
-

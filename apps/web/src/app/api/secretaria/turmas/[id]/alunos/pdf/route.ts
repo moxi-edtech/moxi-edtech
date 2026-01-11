@@ -6,6 +6,7 @@ import { createQrImage, buildSignatureLine } from "@/lib/pdf/qr";
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { tryCanonicalFetch } from "@/lib/api/proxyCanonical";
 import { requireFeature } from "@/lib/plan/requireFeature";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export async function GET(
   req: Request,
@@ -66,7 +67,7 @@ export async function GET(
     const escola = (turma as any).escolas;
     const sessao = (turma as any).school_sessions;
 
-    const { data: matriculas, error: alunosError } = await supabase
+    let matriculasQuery = supabase
       .from("matriculas")
       .select(
         `
@@ -88,6 +89,10 @@ export async function GET(
       .eq("escola_id", escolaId)
       .order("numero_lista", { ascending: true })
       .order("created_at", { ascending: true });
+
+    matriculasQuery = applyKf2ListInvariants(matriculasQuery, { defaultLimit: 1000 });
+
+    const { data: matriculas, error: alunosError } = await matriculasQuery;
 
     if (alunosError) {
       return NextResponse.json(

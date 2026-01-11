@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { authorizeTurmasManage } from '@/lib/escola/disciplinas'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import { applyKf2ListInvariants } from '@/lib/kf2'
 
 // GET /api/secretaria/turmas/:id/disciplinas
 // Returns assigned disciplinas for a turma with professor info and simple linkage checks
@@ -25,11 +26,15 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     headers.set('Link', `</api/escolas/${escolaId}/turmas>; rel="successor-version"`)
 
     // Load assignments
-    const { data: rows, error } = await supabase
+    let query = supabase
       .from('turma_disciplinas')
       .select('id, turma_id, curso_matriz_id, professor_id, horarios, planejamento')
       .eq('escola_id', escolaId)
       .eq('turma_id', turmaId)
+
+    query = applyKf2ListInvariants(query);
+
+    const { data: rows, error } = await query;
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400, headers })
 

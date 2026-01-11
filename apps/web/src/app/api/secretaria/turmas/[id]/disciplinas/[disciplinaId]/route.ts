@@ -29,6 +29,8 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string;
       .eq('escola_id', escolaId)
       .eq('turma_id', turmaId)
       .eq('disciplina_id', disciplinaId)
+      .order('created_at', { ascending: false })
+      .limit(1)
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400, headers })
 
     return NextResponse.json({ ok: true }, { headers })

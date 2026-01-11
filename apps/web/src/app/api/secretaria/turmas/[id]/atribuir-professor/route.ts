@@ -46,7 +46,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     // Upsert unique by (turma_id, curso_matriz_id)
     // Ensure curso_matriz entry and professor exist and belong to escola
     const [matrizQ, profByIdQ, profByUserQ, turmaQ] = await Promise.all([
-      supabase.from('curso_matriz').select('id, escola_id').eq('id', body.disciplina_id).eq('escola_id', escolaId).maybeSingle(),
+      supabase
+        .from('curso_matriz')
+        .select('id, escola_id')
+        .eq('id', body.disciplina_id)
+        .eq('escola_id', escolaId)
+        .order('id', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
       body.professor_id
         ? supabase.from('professores').select('id, profile_id').eq('id', body.professor_id).eq('escola_id', escolaId).maybeSingle()
         : Promise.resolve({ data: null } as any),

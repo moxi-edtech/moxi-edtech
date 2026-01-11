@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export async function GET() {
   const supa = await createRouteClient();
@@ -42,7 +43,7 @@ export async function GET() {
 
   if (escolaIds.length === 0) return NextResponse.json({ items: [] });
 
-  const { data, error } = await admin
+  let query = admin
     .from("import_migrations")
     .select(
       `
@@ -57,9 +58,12 @@ export async function GET() {
         created_at
       `,
     )
-    .in("escola_id", escolaIds)
-    .order("created_at", { ascending: false })
-    .limit(50);
+    .in("escola_id", escolaIds);
+
+  query = applyKf2ListInvariants(query);
+
+  const { data, error } = await query;
+
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

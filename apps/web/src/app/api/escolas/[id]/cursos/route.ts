@@ -20,6 +20,29 @@ const makeCursoCodigo = (nome: string, escolaId: string): string => {
 
 
 
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { supabaseServer } from "@/lib/supabaseServer";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
+import type { Database } from "~types/supabase";
+import { canManageEscolaResources } from "../permissions";
+import { applyKf2ListInvariants } from "@/lib/kf2";
+
+// --- HELPERS PARA GERAR CÓDIGO (consistência com outras rotas) ---
+const normalizeNome = (nome: string): string =>
+  nome
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_");
+
+const makeCursoCodigo = (nome: string, escolaId: string): string => {
+  const prefix = escolaId.replace(/-/g, "").slice(0, 8);
+  return `${prefix}_${normalizeNome(nome)}`;
+};
+
+
+
 // GET /api/escolas/[id]/cursos
 // Lista cursos da escola (usa service role com autorização)
 export async function GET(
@@ -46,18 +69,25 @@ export async function GET(
     // Buscar cursos com colunas opcionais em fallback
     let rows: any[] = [];
     {
-      const { data, error } = await (admin as any)
+      let query = (admin as any)
         .from('cursos')
         .select('id, nome, nivel, descricao, codigo, course_code, curriculum_key, tipo')
         .eq('escola_id', escolaId)
-        .order('nome', { ascending: true });
+      
+      query = applyKf2ListInvariants(query);
+      
+      const { data, error } = await query;
       if (!error) rows = data || [];
       else {
-        const retry = await (admin as any)
+        let retryQuery = (admin as any)
           .from('cursos')
           .select('id, nome, codigo')
           .eq('escola_id', escolaId)
-          .order('nome', { ascending: true });
+
+        retryQuery = applyKf2ListInvariants(retryQuery);
+        
+        const retry = await retryQuery;
+
         if (retry.error) return NextResponse.json({ ok: false, error: retry.error.message }, { status: 400 });
         rows = retry.data || [];
       }
@@ -82,7 +112,6 @@ export async function GET(
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
 }
-
 // POST /api/escolas/[id]/cursos
 // Cria um novo curso (usa service role com autorização)
 export async function POST(

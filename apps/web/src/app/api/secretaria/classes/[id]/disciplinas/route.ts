@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import { applyKf2ListInvariants } from '@/lib/kf2'
 
 // GET /api/secretaria/classes/:id/disciplinas
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -15,12 +16,16 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
     if (!escolaId) return NextResponse.json({ ok: true, items: [] })
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('disciplinas')
       .select('id, nome')
       .eq('escola_id', escolaId)
       .eq('classe_id', classeId)
       .order('nome')
+
+    query = applyKf2ListInvariants(query, { defaultLimit: 200 })
+
+    const { data, error } = await query
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
 
     return NextResponse.json({ ok: true, items: data || [] })

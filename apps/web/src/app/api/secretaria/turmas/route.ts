@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 // Força a renderização dinâmica para garantir que a autenticação seja verificada a cada request
 export const dynamic = 'force-dynamic';
@@ -46,13 +47,22 @@ export async function GET(req: Request) {
     let query = supabase
       .from('turmas') 
       .select(`
-        *,
+        id,
+        nome,
+        turma_codigo,
+        ano_letivo,
+        turno,
+        sala,
+        session_id,
+        capacidade_maxima,
         curso:cursos(nome),
         classe:classes(nome),
-        matriculas(count)
+        matriculas(count),
+        status_validacao
       `)
-      .eq('escola_id', escolaId)
-      .order('nome', { ascending: true });
+      .eq('escola_id', escolaId);
+
+    query = applyKf2ListInvariants(query);
 
     // Filtro de turno no Nível do Banco (Mais performático)
     if (turno && turno !== 'todos') {

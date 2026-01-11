@@ -20,7 +20,7 @@
         "../../types/*"
       ], // ajuste se suas types estiverem em outro lugar
       "~/lib/*": [
-        "../../lib/*"
+        "src/lib/*"
       ],
       "@supabase/supabase-js": [
         "./node_modules/@supabase/supabase-js"

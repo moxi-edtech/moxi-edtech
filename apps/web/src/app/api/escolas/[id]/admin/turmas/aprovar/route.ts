@@ -1,7 +1,6 @@
 // apps/web/src/app/api/escolas/[id]/admin/turmas/aprovar/route.ts
 
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+import { createClient } from "~/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +26,7 @@ export async function POST(
     );
   }
 
-  const supabase = createRouteHandlerClient({ cookies });
+  const supabase = createClient();
 
   const { error } = await supabase.rpc("aprovar_turmas", {
     p_turma_ids: turma_ids,

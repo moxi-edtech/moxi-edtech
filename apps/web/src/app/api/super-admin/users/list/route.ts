@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import type { Database } from '~types/supabase'
+import { applyKf2ListInvariants } from '@/lib/kf2'
 
 type UsuarioItem = {
   id: string
@@ -49,26 +50,32 @@ export async function GET() {
     // 1) Carrega perfis básicos
     let profiles: any[] | null = null
     {
-      const { data, error: pErr } = await admin
+      let profilesQuery = admin
         .from('profiles' as any)
         .select('user_id, nome, email, telefone, role, numero_login, escola_id, current_escola_id')
         .is('deleted_at', null)
         .in('role', Array.from(allowedRoles) as any)
         .order('nome', { ascending: true })
-        .limit(5000)
+
+      profilesQuery = applyKf2ListInvariants(profilesQuery, { defaultLimit: 5000 })
+
+      const { data, error: pErr } = await profilesQuery
       if (pErr) {
         const msg = (pErr as any)?.message as string | undefined
         const code = (pErr as any)?.code as string | undefined
         const maybeMissingColumn = code === '42703' || (msg && /column .* does not exist|does not exist/i.test(msg))
         if (maybeMissingColumn) {
           // Fallback sem numero_login para ambientes sem a coluna
-          const { data: data2, error: pErr2 } = await admin
+          let fallbackQuery = admin
             .from('profiles' as any)
             .select('user_id, nome, email, telefone, role, escola_id, current_escola_id')
             .is('deleted_at', null)
             .in('role', Array.from(allowedRoles) as any)
             .order('nome', { ascending: true })
-            .limit(5000)
+
+          fallbackQuery = applyKf2ListInvariants(fallbackQuery, { defaultLimit: 5000 })
+
+          const { data: data2, error: pErr2 } = await fallbackQuery
           if (pErr2) {
             return NextResponse.json({ ok: false, error: pErr2.message }, { status: 400 })
           }

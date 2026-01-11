@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 function last12MonthsLabels(): string[] {
   const months = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
@@ -12,11 +13,8 @@ function last12MonthsLabels(): string[] {
   return arr;
 }
 
-export async function GET(req: NextRequest, context: { params: Promise<{ escolaId: string }> }) {
-  // Nota: Verifique se sua pasta se chama [escolaId] ou [id]. 
-  // No código anterior usaste 'id', mas a convenção do next é o nome do ficheiro. 
-  // Vou assumir que o param é 'escolaId' conforme a estrutura padrão.
-  const { escolaId } = await context.params; 
+export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
+  const { id: escolaId } = await context.params; 
 
   try {
     const supabase = await supabaseServer();
@@ -24,6 +22,27 @@ export async function GET(req: NextRequest, context: { params: Promise<{ escolaI
     const now = new Date();
 
     // 🚀 O SEGREDO: Disparar TODAS as queries ao mesmo tempo (Paralelismo)
+    let avisosQuery = supabase
+      .from('avisos')
+      .select('id, titulo, created_at')
+      .eq('escola_id', escolaId)
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    let pagamentosQuery = supabase
+      .from('pagamentos_status')
+      .select('status, total')
+      .eq('escola_id', escolaId)
+      .order('status', { ascending: true });
+    pagamentosQuery = applyKf2ListInvariants(pagamentosQuery, { defaultLimit: 200 });
+
+    let matriculasMesQuery = supabase
+      .from('vw_admin_matriculas_por_mes')
+      .select('mes, total')
+      .eq('escola_id', escolaId)
+      .order('mes', { ascending: true });
+    matriculasMesQuery = applyKf2ListInvariants(matriculasMesQuery, { defaultLimit: 200 });
+
     const [
       countsRes,
       avisosRes,
@@ -35,20 +54,9 @@ export async function GET(req: NextRequest, context: { params: Promise<{ escolaI
         .select('alunos_ativos, turmas_total, professores_total, avaliacoes_total')
         .eq('escola_id', escolaId)
         .maybeSingle(),
-      supabase
-        .from('avisos')
-        .select('id, titulo, created_at')
-        .eq('escola_id', escolaId)
-        .order('created_at', { ascending: false })
-        .limit(5),
-      supabase
-        .from('pagamentos_status')
-        .select('status, total')
-        .eq('escola_id', escolaId),
-      supabase
-        .from('vw_admin_matriculas_por_mes')
-        .select('mes, total')
-        .eq('escola_id', escolaId),
+      avisosQuery,
+      pagamentosQuery,
+      matriculasMesQuery,
     ]);
 
     // --- Processamento dos Dados (Executado em memória, super rápido) ---

@@ -4,6 +4,7 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { canManageEscolaResources } from "../../../permissions";
 import type { Database } from "~types/supabase";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 const mapTurno = (turno: string | null) => {
   const normalized = (turno || "").toUpperCase();
@@ -36,12 +37,17 @@ export async function GET(
     const allowed = await canManageEscolaResources(admin, escolaId, user.id);
     if (!allowed) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
 
-    const { data: turmas, error: turmasError } = await (admin as any)
+    let turmasQuery = (admin as any)
       .from("turmas")
       .select("id, nome, classe_id, turno, capacidade_maxima, status_validacao, classes(id, nome)")
       .eq("escola_id", escolaId)
       .eq("curso_id", cursoId)
-      .eq("status_validacao", "ativo");
+      .eq("status_validacao", "ativo")
+      .order("nome", { ascending: true });
+
+    turmasQuery = applyKf2ListInvariants(turmasQuery, { defaultLimit: 200 });
+
+    const { data: turmas, error: turmasError } = await turmasQuery;
 
     if (turmasError) throw turmasError;
 
@@ -51,12 +57,17 @@ export async function GET(
 
     const turmaIds = turmas.map((t: any) => t.id);
 
-    const { data: matriculas, error: matriculasError } = await (admin as any)
+    let matriculasQuery = (admin as any)
       .from("matriculas")
       .select("id, turma_id, status, aluno:alunos(id, nome, bi_numero)")
       .in("turma_id", turmaIds)
       .eq("escola_id", escolaId)
-      .eq("status", "ativo");
+      .eq("status", "ativo")
+      .order("created_at", { ascending: false });
+
+    matriculasQuery = applyKf2ListInvariants(matriculasQuery, { defaultLimit: 500 });
+
+    const { data: matriculas, error: matriculasError } = await matriculasQuery;
 
     if (matriculasError) throw matriculasError;
 

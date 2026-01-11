@@ -4,6 +4,7 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 import { canManageEscolaResources } from "../permissions";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 // GET /api/escolas/[id]/disciplinas
 export async function GET(
@@ -41,6 +42,8 @@ export async function GET(
         )
         .eq("escola_id", escolaId)
         .order("classe_id", { ascending: true });
+
+      query = applyKf2ListInvariants(query, { defaultLimit: 500 });
 
       if (cursoId) query = query.eq('curso_id', cursoId);
 

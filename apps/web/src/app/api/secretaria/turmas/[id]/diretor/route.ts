@@ -30,6 +30,23 @@ export async function PUT(req: Request, context: { params: Promise<{ id: string 
       return NextResponse.json({ ok: false, error: 'diretor_turma_id é obrigatório' }, { status: 400 });
     }
 
+    const { data: turmaCheck, error: turmaError } = await supabase
+      .from('turmas')
+      .select('id')
+      .eq('id', turma_id)
+      .eq('escola_id', escolaId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (turmaError) {
+      return NextResponse.json({ ok: false, error: turmaError.message }, { status: 400, headers });
+    }
+
+    if (!turmaCheck) {
+      return NextResponse.json({ ok: false, error: 'Turma não encontrada' }, { status: 404, headers });
+    }
+
     const { data, error } = await supabase
       .from('turmas')
       .update({ diretor_turma_id })

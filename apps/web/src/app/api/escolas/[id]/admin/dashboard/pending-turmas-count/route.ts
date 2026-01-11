@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+import { createClient } from "~/lib/supabase/server";
 import type { Database } from "~types/supabase";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export const dynamic = "force-dynamic";
 
@@ -18,12 +18,16 @@ export async function GET(
     );
   }
 
-  const supabase = createRouteHandlerClient<Database>({ cookies });
+  const supabase = createClient();
 
   try {
-    const { data, error } = await supabase.rpc("get_pending_turmas_count", {
+    let rpcQuery = supabase.rpc("get_pending_turmas_count", {
       p_escola_id: escolaId,
-    }).single();
+    });
+
+    rpcQuery = applyKf2ListInvariants(rpcQuery, { defaultLimit: 1 });
+
+    const { data, error } = await rpcQuery.single();
 
     if (error) {
       console.error("[API pending-turmas-count] Erro ao chamar RPC get_pending_turmas_count:", error);

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export const dynamic = "force-dynamic";
 
@@ -24,10 +25,14 @@ export async function GET(_req: Request) {
       return NextResponse.json({ ok: false, error: "Perfil sem escola vinculada" }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('pagamentos_status')
       .select('status, total')
       .eq('escola_id', escolaId);
+
+    query = applyKf2ListInvariants(query);
+
+    const { data, error } = await query;
 
     if (error) {
       return NextResponse.json(
@@ -50,4 +55,3 @@ export async function GET(_req: Request) {
     return NextResponse.json({ ok: false, error: err?.message || 'Erro inesperado' }, { status: 500 });
   }
 }
-

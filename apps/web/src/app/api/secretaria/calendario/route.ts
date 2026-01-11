@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export async function GET(req: Request) {
   try {
@@ -14,11 +15,15 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: true, items: [] });
     }
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('events')
-      .select('*')
+      .select('id, escola_id, titulo, descricao, inicio_at, fim_at, publico_alvo')
       .eq('escola_id', escolaId)
       .order('inicio_at', { ascending: true });
+
+    query = applyKf2ListInvariants(query, { defaultLimit: 200 });
+
+    const { data, error } = await query;
 
     if (error) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 });

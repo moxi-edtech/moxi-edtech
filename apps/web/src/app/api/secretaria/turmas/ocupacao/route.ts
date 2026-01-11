@@ -3,6 +3,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { tryCanonicalFetch } from "@/lib/api/proxyCanonical";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 type OcupacaoRow = {
   id: string;
@@ -68,6 +69,8 @@ export async function GET(req: Request) {
       .order("classe", { ascending: true })
       .order("turno", { ascending: true })
       .order("nome", { ascending: true });
+
+    query = applyKf2ListInvariants(query, { defaultLimit: 200 });
 
     if (classeFilter) {
       query = query.eq("classe", classeFilter);

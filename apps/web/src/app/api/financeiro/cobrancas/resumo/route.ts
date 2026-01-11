@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 type CobrancaRow = {
   status: string;
@@ -24,11 +25,14 @@ export async function GET() {
     const since = new Date();
     since.setDate(since.getDate() - 30);
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("financeiro_cobrancas")
       .select("status, enviado_em, mensalidades(valor_previsto)")
-      .gte("enviado_em", since.toISOString())
-      .order("enviado_em", { ascending: true });
+      .gte("enviado_em", since.toISOString());
+
+    query = applyKf2ListInvariants(query);
+
+    const { data, error } = await query;
 
     if (error) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 });

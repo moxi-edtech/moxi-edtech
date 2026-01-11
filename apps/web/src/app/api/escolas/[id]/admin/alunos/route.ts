@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id: escolaId } = await ctx.params;
@@ -21,6 +22,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       .eq("escola_id", escolaId)
       .order("created_at", { ascending: false });
 
+    query = applyKf2ListInvariants(query, { defaultLimit: 500 });
+
     if (status === "archived") {
       query = query.not("deleted_at", "is", null);
     } else {
@@ -35,12 +38,15 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         // buscar por nome/responsavel e numero_login via profiles
         let profileIds: string[] = [];
         try {
-          const { data: profRows } = await s
+          let profQuery = s
             .from("profiles")
             .select("user_id, numero_login")
             .ilike("numero_login", `%${q}%`)
             .eq("escola_id", escolaId)
-            .limit(500);
+
+          profQuery = applyKf2ListInvariants(profQuery, { defaultLimit: 500 });
+
+          const { data: profRows } = await profQuery;
           profileIds = (profRows ?? []).map((r: any) => r.user_id).filter(Boolean);
         } catch {}
         const orParts = [`nome.ilike.%${q}%`, `responsavel.ilike.%${q}%`];
@@ -78,8 +84,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         )
         .eq("escola_id", escolaId)
         .not("status", "in", "(matriculado,rejeitada,cancelada)")
-        .order("created_at", { ascending: false })
-        .limit(500);
+        .order("created_at", { ascending: false });
+
+      candQuery = applyKf2ListInvariants(candQuery, { defaultLimit: 500 });
 
       if (q) {
         const uuidRe = /^[0-9a-fA-F-]{36}$/;

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 // Radar de Inadimplência
 // Usa a view materializada vw_radar_inadimplencia que já consolida dados.
@@ -17,7 +18,7 @@ export async function GET() {
     
     // A view vw_radar_inadimplencia já filtra por `escola_id = current_tenant_escola_id()`
     // Apenas precisamos garantir que a chamada é autenticada.
-    const { data, error } = await s
+    let query = s
       .from("vw_radar_inadimplencia")
       .select(
         [
@@ -42,6 +43,10 @@ export async function GET() {
       .neq("alunos.status", "inativo")
       .not("aluno_id", "is", null)
       .limit(5000);
+
+    query = applyKf2ListInvariants(query, { defaultLimit: 5000 });
+
+    const { data, error } = await query;
 
     if (error) {
       console.error("Erro ao buscar vw_radar_inadimplencia:", error.message);

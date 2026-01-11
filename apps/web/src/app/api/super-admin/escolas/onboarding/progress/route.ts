@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import type { Database } from "~types/supabase"
+import { applyKf2ListInvariants } from "@/lib/kf2"
 
 // Returns onboarding progress per school for Super Admin view
 // Shape: [{ escola_id, nome, onboarding_finalizado, last_step, last_updated_at }]
@@ -19,19 +20,25 @@ export async function GET() {
     let escolas: any[] | null = null
     {
       const sel = 'id, nome, onboarding_finalizado, needs_academic_setup'
-      const { data, error } = await admin
+      let escolasQuery = admin
         .from('escolas')
         .select(sel)
         .order('nome', { ascending: true })
-        .limit(500)
+
+      escolasQuery = applyKf2ListInvariants(escolasQuery, { defaultLimit: 500 })
+
+      const { data, error } = await escolasQuery
       if (error) {
         const msg = String(error.message || '')
         if (msg.includes('needs_academic_setup') || msg.toLowerCase().includes('schema cache')) {
-          const { data: data2, error: err2 } = await admin
+          let fallbackQuery = admin
             .from('escolas')
             .select('id, nome, onboarding_finalizado')
             .order('nome', { ascending: true })
-            .limit(500)
+
+          fallbackQuery = applyKf2ListInvariants(fallbackQuery, { defaultLimit: 500 })
+
+          const { data: data2, error: err2 } = await fallbackQuery
           if (err2) {
             return NextResponse.json({ ok: false, error: err2.message }, { status: 400 })
           }
@@ -45,11 +52,14 @@ export async function GET() {
     }
 
     // Fetch all drafts (limited) ordered by updated_at desc to pick the latest per escola
-    const { data: drafts } = await admin
+    let draftsQuery = admin
       .from('onboarding_drafts')
       .select('escola_id, step, updated_at')
       .order('updated_at', { ascending: false })
-      .limit(2000)
+
+    draftsQuery = applyKf2ListInvariants(draftsQuery, { defaultLimit: 2000 })
+
+    const { data: drafts } = await draftsQuery
 
     const latestByEscola = new Map<string, { step: number | null, updated_at: string | null }>()
     for (const d of (drafts || []) as any[]) {

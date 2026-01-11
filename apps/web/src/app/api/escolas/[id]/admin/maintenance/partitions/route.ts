@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { hasPermission } from '@/lib/permissions'
+import { applyKf2ListInvariants } from '@/lib/kf2'
 
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id: escolaId } = await context.params
@@ -22,7 +23,10 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY!
     const admin = createAdminClient(url, key)
 
-    const { data, error: pErr } = await (admin as any).rpc('partitions_info')
+    let partitionsQuery = (admin as any).rpc('partitions_info')
+    partitionsQuery = applyKf2ListInvariants(partitionsQuery, { defaultLimit: 200 })
+
+    const { data, error: pErr } = await partitionsQuery
     if (pErr) return NextResponse.json({ ok: false, error: pErr.message }, { status: 500 })
     return NextResponse.json({ ok: true, partitions: data })
   } catch (err) {

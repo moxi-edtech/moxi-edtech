@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { tryCanonicalFetch } from '@/lib/api/proxyCanonical'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import { applyKf2ListInvariants } from '@/lib/kf2'
 
 // Rule: 6 -> 7, 9 -> 10, 12 -> concluido
 function proximaClasseNumero(num: number): number | null {
@@ -33,10 +34,14 @@ export async function GET(req: Request) {
     if (forwarded) return forwarded
 
     // Carrega turmas com classe_id para usar regra acadêmica por classe
-    const { data: turmas } = await supabase
+    let turmasQuery = supabase
       .from('turmas')
       .select('id, nome, turno, ano_letivo, classe_id')
       .eq('escola_id', escolaId)
+
+    turmasQuery = applyKf2ListInvariants(turmasQuery, { defaultLimit: 200 })
+
+    const { data: turmas } = await turmasQuery
 
     const turmaByClasse = new Map<string, any[]>()
     for (const t of turmas || []) {
@@ -48,10 +53,14 @@ export async function GET(req: Request) {
     }
 
     // Carrega classes (numero) da escola
-    const { data: classes } = await supabase
+    let classesQuery = supabase
       .from('classes')
       .select('id, nome, numero')
       .eq('escola_id', escolaId)
+
+    classesQuery = applyKf2ListInvariants(classesQuery, { defaultLimit: 200 })
+
+    const { data: classes } = await classesQuery
 
     const classById = new Map<string, { id: string; nome: string; numero: number | null }>()
     const classesByNumero = new Map<number, string[]>()
@@ -71,6 +80,7 @@ export async function GET(req: Request) {
       .select('turma_id, count:turma_id', { count: 'exact', head: false, group: 'turma_id' } as any)
       .eq('escola_id', escolaId)
       .in('status', ['ativo', 'ativa', 'active'])
+      .order('turma_id', { ascending: true })
 
     const countByTurma = new Map<string, number>()
     for (const r of matsResumo || []) countByTurma.set((r as any).turma_id, Number((r as any).count || 0))

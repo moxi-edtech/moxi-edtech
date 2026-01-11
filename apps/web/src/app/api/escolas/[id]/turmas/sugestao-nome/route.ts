@@ -3,6 +3,7 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 import { canManageEscolaResources } from "../../permissions";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export const dynamic = "force-dynamic";
 
@@ -41,11 +42,14 @@ export async function GET(
     }
 
     if (!anoLetivo && sessionId) {
-      const { data: sess } = await admin
+      let sessionQuery = admin
         .from("school_sessions")
         .select("nome")
         .eq("id", sessionId)
-        .maybeSingle();
+        .order("created_at", { ascending: false })
+        .limit(1);
+      sessionQuery = applyKf2ListInvariants(sessionQuery, { defaultLimit: 1 });
+      const { data: sess } = await sessionQuery.maybeSingle();
       anoLetivo = (sess as any)?.nome || undefined;
     }
 
@@ -58,6 +62,8 @@ export async function GET(
 
     if (anoLetivo) query = query.eq("ano_letivo", anoLetivo);
     if (sessionId) query = query.eq("session_id", sessionId);
+
+    query = applyKf2ListInvariants(query, { defaultLimit: 200 });
 
     const { data: existing, error } = await query;
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });

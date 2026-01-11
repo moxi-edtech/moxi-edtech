@@ -3,6 +3,7 @@ import { supabaseServer } from '@/lib/supabaseServer'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import type { Database } from '~types/supabase'
 import { parsePlanTier, type PlanTier } from '@/config/plans'
+import { applyKf2ListInvariants } from '@/lib/kf2'
 
 type EscolaItem = {
   id: string
@@ -47,12 +48,14 @@ export async function GET() {
     async function queryWith(client: any) {
       // Tenta via view consolidada
       console.log('[super-admin/escolas/list] queryWith: Attempting to use escolas_view');
-      const { data, error } = await client
+      let query = client
         .from('escolas_view' as any)
         .select('id, nome, status, plano_atual, plano, last_access, total_alunos, total_professores, cidade, estado')
         .neq('status', 'excluida' as any)
-        .order('nome', { ascending: true })
-        .limit(1000)
+
+      query = applyKf2ListInvariants(query, { defaultLimit: 1000 });
+
+      const { data, error } = await query
 
       if (!error) {
         const items: EscolaItem[] = (data || []).map((e: any) => ({
@@ -84,12 +87,14 @@ export async function GET() {
 
       // Fallback: usa tabela 'escolas' com subset de colunas
       console.log('[super-admin/escolas/list] queryWith: Fallback to escolas table');
-      const { data: raw, error: e2 } = await client
+      let fallbackQuery = client
         .from('escolas' as any)
         .select('id, nome, status, plano_atual, endereco, plano')
         .neq('status', 'excluida' as any)
-        .order('nome', { ascending: true })
-        .limit(1000)
+      
+      fallbackQuery = applyKf2ListInvariants(fallbackQuery, { defaultLimit: 1000 });
+      
+      const { data: raw, error: e2 } = await fallbackQuery;
       if (e2) {
         console.error(`[super-admin/escolas/list] queryWith: Error with fallback escolas table: ${e2.message}`);
         return { ok: false as const, error: e2 }
