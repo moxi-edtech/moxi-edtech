@@ -15,6 +15,20 @@ import {
 type Curso = { id: string; nome: string };
 type Classe = { id: string; nome: string };
 type Session = { id: string; nome: string; ano_letivo?: number | null };
+type AlunoListItem = {
+  id: string;
+  nome: string;
+  email?: string | null;
+  responsavel?: string | null;
+  telefone_responsavel?: string | null;
+  status?: string | null;
+  created_at: string;
+  numero_processo?: string | null;
+  bi_numero?: string | null;
+  origem?: "aluno" | "candidatura" | null;
+  candidatura_id?: string | null;
+  aluno_id?: string | null;
+};
 
 export default function AlunosPage() {
   const router = useRouter();
@@ -29,6 +43,10 @@ export default function AlunosPage() {
   const [loadingTurmas, setLoadingTurmas] = useState(false);
   const [createdCandidaturaId, setCreatedCandidaturaId] = useState<string | null>(null);
   const [cacheReady, setCacheReady] = useState(false);
+  const [listStatus, setListStatus] = useState<"pendente" | "ativo">("pendente");
+  const [listQuery, setListQuery] = useState("");
+  const [listItems, setListItems] = useState<AlunoListItem[]>([]);
+  const [listLoading, setListLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -91,6 +109,38 @@ export default function AlunosPage() {
       /* ignore */
     }
   }, [formData, currentStep, activeTab, cacheReady]);
+
+  useEffect(() => {
+    if (activeTab !== "list") return;
+    let cancelled = false;
+
+    async function loadLista() {
+      setListLoading(true);
+      try {
+        const params = new URLSearchParams({
+          status: listStatus,
+          page: "1",
+          pageSize: "50",
+        });
+        if (listQuery.trim()) params.set("q", listQuery.trim());
+
+        const res = await fetch(`/api/secretaria/alunos?${params.toString()}`);
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao carregar lista");
+        if (!cancelled) setListItems(json.items || []);
+      } catch (_) {
+        if (!cancelled) setListItems([]);
+      } finally {
+        if (!cancelled) setListLoading(false);
+      }
+    }
+
+    loadLista();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, listStatus, listQuery]);
 
   useEffect(() => {
     if (!formData.nif && formData.idNumber) {
@@ -336,6 +386,15 @@ export default function AlunosPage() {
 
   const turmaCodigo = (turma: any) =>
     turma.codigo || turma.turma_codigo || turma.codigo_interno || turma.codigo_siga || "";
+
+  const pendenciasAluno = (item: AlunoListItem) => {
+    const pendencias = [] as string[];
+    if (!item.bi_numero) pendencias.push("BI");
+    if (!item.responsavel) pendencias.push("Responsável");
+    if (!item.telefone_responsavel) pendencias.push("Contacto");
+    if (!item.email) pendencias.push("Email");
+    return pendencias;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -928,29 +987,118 @@ export default function AlunosPage() {
               </Button>
             </div>
 
+            <div className="flex flex-col gap-3 mb-4 md:flex-row md:items-center md:justify-between">
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setListStatus("pendente")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${
+                    listStatus === "pendente"
+                      ? "bg-amber-50 text-amber-700 border-amber-200"
+                      : "bg-white text-gray-500 border-gray-200"
+                  }`}
+                >
+                  Leads
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setListStatus("ativo")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${
+                    listStatus === "ativo"
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      : "bg-white text-gray-500 border-gray-200"
+                  }`}
+                >
+                  Matriculados
+                </button>
+              </div>
+              <div className="w-full md:max-w-sm">
+                <input
+                  type="text"
+                  placeholder="Buscar por nome ou processo"
+                  className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent"
+                  value={listQuery}
+                  onChange={(e) => setListQuery(e.target.value)}
+                />
+              </div>
+            </div>
+
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50 text-moxinexa-dark">
-                    <th className="px-4 py-3 text-left font-semibold rounded-l-lg">Nº Documento</th>
+                    <th className="px-4 py-3 text-left font-semibold rounded-l-lg">Nº Processo/BI</th>
                     <th className="px-4 py-3 text-left font-semibold">Nome</th>
                     <th className="px-4 py-3 text-left font-semibold">Email</th>
-                    <th className="px-4 py-3 text-left font-semibold rounded-r-lg">Telefone</th>
+                    <th className="px-4 py-3 text-left font-semibold">Telefone</th>
+                    <th className="px-4 py-3 text-left font-semibold">Pendências</th>
+                    <th className="px-4 py-3 text-left font-semibold rounded-r-lg">Ação</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  <tr className="hover:bg-gray-50 transition-colors duration-150">
-                    <td className="px-4 py-3">004568923LA049</td>
-                    <td className="px-4 py-3 font-medium">Manuel José</td>
-                    <td className="px-4 py-3">manuel.jose@escola.co.ao</td>
-                    <td className="px-4 py-3">+244 923 456 789</td>
-                  </tr>
-                  <tr className="hover:bg-gray-50 transition-colors duration-150">
-                    <td className="px-4 py-3">004568923LA050</td>
-                    <td className="px-4 py-3 font-medium">Maria António</td>
-                    <td className="px-4 py-3">maria.antonio@escola.co.ao</td>
-                    <td className="px-4 py-3">+244 912 123 456</td>
-                  </tr>
+                  {listLoading && (
+                    <tr>
+                      <td className="px-4 py-4 text-gray-500" colSpan={6}>
+                        Carregando lista...
+                      </td>
+                    </tr>
+                  )}
+                  {!listLoading && listItems.length === 0 && (
+                    <tr>
+                      <td className="px-4 py-4 text-gray-500" colSpan={6}>
+                        Nenhum estudante encontrado.
+                      </td>
+                    </tr>
+                  )}
+                  {listItems.map((item) => {
+                    const pendencias = pendenciasAluno(item);
+                    const contato = item.telefone_responsavel || "—";
+                    const documento = item.numero_processo || item.bi_numero || "—";
+                    const actionHref = item.aluno_id
+                      ? `/secretaria/alunos/${item.aluno_id}/editar`
+                      : item.origem === "aluno"
+                      ? `/secretaria/alunos/${item.id}/editar`
+                      : item.candidatura_id || item.id
+                      ? `/secretaria/candidaturas/${item.candidatura_id || item.id}/editar`
+                      : null;
+                    return (
+                      <tr key={item.id} className="hover:bg-gray-50 transition-colors duration-150">
+                        <td className="px-4 py-3 text-xs text-gray-700 font-mono">{documento}</td>
+                        <td className="px-4 py-3 font-medium">{item.nome}</td>
+                        <td className="px-4 py-3">{item.email || "—"}</td>
+                        <td className="px-4 py-3">{contato}</td>
+                        <td className="px-4 py-3">
+                          {pendencias.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {pendencias.map((p) => (
+                                <span
+                                  key={p}
+                                  className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200"
+                                >
+                                  {p}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-emerald-600 font-semibold">Completo</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {actionHref ? (
+                            <button
+                              type="button"
+                              onClick={() => router.push(actionHref)}
+                              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-moxinexa-teal text-white hover:bg-teal-600"
+                            >
+                              Resolver
+                            </button>
+                          ) : (
+                            <span className="text-xs text-gray-400">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { supabaseServer } from "~/lib/supabase/server";
+import { normalizePapel } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 
 const LoginSchema = z.object({
@@ -17,7 +18,7 @@ export async function loginAction(_: any, formData: FormData) {
     return { ok: false, message: errorMessage };
   }
 
-  const supabase = supabaseServer();
+  const supabase = await supabaseServer();
 
   const { data, error } = await supabase.auth.signInWithPassword({
     email: parsed.data.email,
@@ -31,7 +32,7 @@ export async function loginAction(_: any, formData: FormData) {
 
   if (data.user) {
     const { data: escolaUsuarios, error: userError } = await supabase
-      .from("escola_usuarios")
+      .from("escola_users")
       .select("papel, escola_id")
       .eq("user_id", data.user.id)
       .maybeSingle(); // Use .maybeSingle() if you expect 0 or 1 rows
@@ -43,12 +44,17 @@ export async function loginAction(_: any, formData: FormData) {
 
     if (escolaUsuarios) {
       const { papel, escola_id } = escolaUsuarios;
+      const papelNormalizado = normalizePapel(papel);
 
-      if ((papel === "admin" || papel === "staff_admin") && escola_id) {
+      if ((papelNormalizado === "admin" || papelNormalizado === "staff_admin" || papelNormalizado === "admin_escola") && escola_id) {
         redirect(`/escola/${escola_id}/admin/dashboard`);
-      } else if (papel === "secretaria") {
-        redirect("/secretaria");
-      } else if (papel === "financeiro") {
+      } else if (papelNormalizado === "secretaria") {
+        if (escola_id) {
+          redirect(`/escola/${escola_id}/secretaria`);
+        } else {
+          redirect("/secretaria");
+        }
+      } else if (papelNormalizado === "financeiro") {
         redirect("/financeiro");
       } else if (escola_id) {
         redirect(`/escola/${escola_id}`);

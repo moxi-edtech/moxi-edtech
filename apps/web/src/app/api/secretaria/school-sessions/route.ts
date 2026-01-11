@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { authorizeEscolaAction, resolveEscolaIdForUser } from "@/lib/escola/disciplinas"; 
+import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
 
 export const dynamic = 'force-dynamic';
@@ -33,10 +34,10 @@ export async function GET(req: Request) {
     if (!user) return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
 
     const { searchParams } = new URL(req.url);
-    const escolaIdFromQuery = searchParams.get('escolaId') || searchParams.get('escola_id') || undefined;
+    const escolaIdFromQuery = searchParams.get('escolaId') || searchParams.get('escola_id') || null;
 
     // 2. Escola ID
-    const escolaId = escolaIdFromQuery || await resolveEscolaIdForUser(supabase, user.id);
+    const escolaId = await resolveEscolaIdForUser(supabase, user.id, escolaIdFromQuery);
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 });
 
     const authz = await authorizeEscolaAction(supabase as any, escolaId, user.id, []);

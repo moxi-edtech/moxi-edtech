@@ -198,6 +198,7 @@ export async function POST(request: Request) {
             telefone: telefone || null,
             role: roleEnum,
             escola_id: escolaId,
+            current_escola_id: escolaId,
             // numero_login: null // se for aluno, será preenchido pela matricula
           },
         ] as any,

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { tryCanonicalFetch } from '@/lib/api/proxyCanonical'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 
 // Rule: 6 -> 7, 9 -> 10, 12 -> concluido
 function proximaClasseNumero(num: number): number | null {
@@ -25,22 +26,7 @@ export async function GET(req: Request) {
     const user = userRes?.user
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
-    // Resolve escola
-    const { data: prof } = await supabase
-      .from('profiles')
-      .select('current_escola_id, escola_id')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-    let escolaId = ((prof?.[0] as any)?.current_escola_id || (prof?.[0] as any)?.escola_id) as string | undefined
-    if (!escolaId) {
-      const { data: vinc } = await supabase
-        .from('escola_users')
-        .select('escola_id')
-        .eq('user_id', user.id)
-        .limit(1)
-      escolaId = (vinc?.[0] as any)?.escola_id as string | undefined
-    }
+    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
     if (!escolaId) return NextResponse.json({ ok: true, sugestoes: [] })
 
     const forwarded = await tryCanonicalFetch(req, `/api/escolas/${escolaId}/rematricula/sugestoes`)

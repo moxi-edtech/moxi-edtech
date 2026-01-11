@@ -129,6 +129,7 @@ export async function POST(
           nome: body.nome,
           role: 'aluno',
           escola_id: escolaId,
+          current_escola_id: escolaId,
         }
         await admin.from('profiles' as any).upsert(profilePayload, { onConflict: 'user_id' })
 

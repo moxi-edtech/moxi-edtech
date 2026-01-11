@@ -164,6 +164,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         telefone: body.telefone ?? null,
         role: roleEnum,
         escola_id: escolaId,
+        current_escola_id: escolaId,
         // numero_login: null // será criado só pela matrícula
       } as TablesInsert<'profiles'>)
     } else {
@@ -174,6 +175,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           telefone: body.telefone ?? null,
           role: roleEnum,
           escola_id: escolaId,
+          current_escola_id: escolaId,
         })
         .eq('user_id', userId)
     }

@@ -13,6 +13,7 @@ import {
   Clock,
 } from "lucide-react";
 import { supabaseServer } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 const kwanza = new Intl.NumberFormat("pt-AO", {
   style: "currency",
@@ -37,10 +38,13 @@ export default async function AlunoDossierPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  const escolaId =
+  const escolaIdFromMetadata =
     (user?.user_metadata as any)?.escola_id ||
     (user?.app_metadata as any)?.escola_id ||
     null;
+  const escolaId =
+    escolaIdFromMetadata ||
+    (user ? await resolveEscolaIdForUser(supabase as any, user.id) : null);
 
   if (!user || !escolaId) return notFound();
 

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { createClient } from "@supabase/supabase-js";
-import { resolveEscolaIdForUser, authorizeMatriculasManage } from "@/lib/escola/disciplinas";
+import { authorizeMatriculasManage } from "@/lib/escola/disciplinas";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
 
 export const dynamic = "force-dynamic";

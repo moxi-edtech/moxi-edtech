@@ -1,5 +1,5 @@
 import { supabaseServer } from "@/lib/supabaseServer";
-import Link from "next/link";
+import { ExtratoActions } from "@/components/financeiro/ExtratoActions";
 
 export const dynamic = 'force-dynamic'
 
@@ -66,9 +66,8 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
                   <td className="py-2 pr-4">{a.bi_numero ?? '—'}</td>
                   <td className="py-2 pr-4">{a.responsavel ?? '—'}</td>
                   <td className="py-2 pr-4">{a.telefone_responsavel ?? '—'}</td>
-                  <td className="py-2 pr-4 whitespace-nowrap">
-                    <Link href={`/api/financeiro/extrato/aluno/${a.id}`} className="text-blue-600 hover:underline mr-3" target="_blank">Extrato (JSON)</Link>
-                    <Link href={`/api/financeiro/extrato/aluno/${a.id}/pdf`} className="text-blue-600 hover:underline" target="_blank">PDF</Link>
+                  <td className="py-2 pr-4">
+                    <ExtratoActions alunoId={a.id} />
                   </td>
                 </tr>
               ))}
@@ -82,4 +81,3 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
     </div>
   )
 }
-

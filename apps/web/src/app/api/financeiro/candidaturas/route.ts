@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
-import { resolveEscolaIdForUser } from '@/lib/escola/disciplinas'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import type { Database } from '~types/supabase'
 
 export async function GET(req: Request) {
@@ -28,4 +28,3 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
 }
-

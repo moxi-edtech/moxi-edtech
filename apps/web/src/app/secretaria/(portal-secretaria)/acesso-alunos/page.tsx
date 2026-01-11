@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabaseServer";
-import { resolveEscolaIdForUser } from "@/lib/escola/disciplinas";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { LiberarAcessoAlunos } from "@/components/secretaria/LiberarAcessoAlunos";
 import { MetricasAcessoAlunos } from "@/components/secretaria/MetricasAcessoAlunos";
 

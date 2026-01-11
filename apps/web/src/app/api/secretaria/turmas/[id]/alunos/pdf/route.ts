@@ -3,8 +3,9 @@ import { randomUUID } from "crypto";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { createInstitutionalPdf } from "@/lib/pdf/documentTemplate";
 import { createQrImage, buildSignatureLine } from "@/lib/pdf/qr";
-import { resolveEscolaIdForUser, authorizeTurmasManage } from "@/lib/escola/disciplinas";
+import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { tryCanonicalFetch } from "@/lib/api/proxyCanonical";
+import { requireFeature } from "@/lib/plan/requireFeature";
 
 export async function GET(
   req: Request,
@@ -24,9 +25,7 @@ export async function GET(
     }
 
     const { id: turmaId } = await params;
-
-    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
-    if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 });
+    const { escolaId } = await requireFeature("doc_qr_code");
 
     const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id);
     if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 });

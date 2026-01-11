@@ -120,9 +120,10 @@ export function useMatriculaLogic() {
           }
         };
 
-        const candRes = await fetch(`/api/secretaria/candidaturas`, { cache: "force-cache" }).catch(
-          () => undefined
-        );
+        const candRes = await fetch(
+          `/api/secretaria/candidaturas?status=pendente,aguardando_compensacao`,
+          { cache: "force-cache" }
+        ).catch(() => undefined);
         const candJson = await parseDirectJson(candRes);
         let candidaturas = Array.isArray(candJson?.items)
           ? candJson.items
@@ -132,8 +133,23 @@ export function useMatriculaLogic() {
 
         candidaturas = candidaturas.filter((c: any) => {
           const status = (c?.status || "").toString().toLowerCase();
-          return status !== "matriculado" && status !== "rejeitada" && status !== "cancelada";
+          return status === "pendente" || status === "aguardando_compensacao";
         });
+
+        if (candidaturaIdFromQuery) {
+          const exists = candidaturas.some((c: any) => c.id === candidaturaIdFromQuery);
+          if (!exists) {
+            const detailRes = await fetch(
+              `/api/secretaria/candidaturas/${candidaturaIdFromQuery}`,
+              { cache: "no-store" }
+            ).catch(() => undefined);
+            const detailJson = await parseDirectJson(detailRes);
+            const detail = detailJson?.item || detailJson?.data;
+            if (detail?.id) {
+              candidaturas = [detail, ...candidaturas];
+            }
+          }
+        }
 
         const escolaPreferida =
           escolaIdFromQuery ||
@@ -252,6 +268,12 @@ export function useMatriculaLogic() {
     const activeSession = dados.sessions.find((s) => s.status === "ativa") || dados.sessions[0];
     if (activeSession) setSelecao((prev) => ({ ...prev, sessionId: activeSession.id }));
   }, [dados.sessions, selecao.sessionId]);
+
+  useEffect(() => {
+    const turmaPref = (candidaturaAtiva as any)?.turma_preferencial_id || "";
+    if (!turmaPref || selecao.turmaId) return;
+    setSelecao((prev) => ({ ...prev, turmaId: turmaPref }));
+  }, [candidaturaAtiva, selecao.turmaId]);
 
   // 2. Carregar Turmas quando Sessão muda
   useEffect(() => {

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
-import { resolveEscolaIdForUser, authorizeTurmasManage } from '@/lib/escola/disciplinas'
+import { authorizeTurmasManage } from '@/lib/escola/disciplinas'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { tryCanonicalFetch } from '@/lib/api/proxyCanonical'
 
 const Body = z.object({

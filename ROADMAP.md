@@ -41,6 +41,18 @@
 
 ---
 
+## PRINCÍPIOS OPERACIONAIS (HARD GATE)
+
+1) Latência é requisito funcional (p95 por tela; regressão = bloqueio)
+2) Derivados > dados brutos (dashboards só via MV/derivados)
+3) Gates duplos (UX + backend) para features premium
+4) Fail fast, fail quiet (timeouts claros + fallback visual)
+5) One way to do things (um padrão de MV, audit, search, virtualização)
+6) Infra que protege o humano (flags, kill-switch, wrappers, audit)
+7) Context over cleverness (SQL explícito, front previsível, pouca mágica)
+
+---
+
 ## NOTA FINAL
 
 Nada entra sem:

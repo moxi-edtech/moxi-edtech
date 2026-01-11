@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 function inferAno(...valores: Array<string | number | null | undefined>): number | null {
   for (const valor of valores) {
@@ -40,24 +41,14 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
-    let escolaId = (
-      (prof?.[0] as any)?.current_escola_id ||
-      (prof?.[0] as any)?.escola_id
-    ) as string | undefined;
-
-    if (!escolaId) {
-      try {
-        const { data: vinc } = await supabase
-          .from("escola_users")
-          .select("escola_id")
-          .eq("user_id", user.id)
-          .limit(1)
-          .maybeSingle();
-        escolaId = (vinc as any)?.escola_id as string | undefined;
-      } catch {
-        // silencioso
-      }
-    }
+    const profileRow = prof?.[0] as any;
+    const profileEscolaId = profileRow?.current_escola_id ?? profileRow?.escola_id;
+    const metaEscolaId = (user.app_metadata as any)?.escola_id as string | undefined;
+    const escolaId = await resolveEscolaIdForUser(
+      supabase as any,
+      user.id,
+      profileEscolaId ? String(profileEscolaId) : metaEscolaId ? String(metaEscolaId) : null
+    );
 
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: "Usuário não vinculado a nenhuma escola" }, { status: 403 });
@@ -166,51 +157,25 @@ export async function GET(req: Request) {
       };
     };
 
-    // Se existe sessão (selecionada ou ativa), coletar alunos com matrícula nesta sessão para excluí-los do resultado
-    let alunosComMatriculaAtual: string[] = [];
-    if (escolaId && (targetAno !== null || targetLegacySessionId)) {
-      try {
-        const { data: mats } = await admin
-          .from('matriculas')
-          .select('aluno_id')
-          .eq('escola_id', escolaId)
-          .or([
-            targetAno !== null ? `ano_letivo.eq.${targetAno}` : null,
-            targetLegacySessionId ? `session_id.eq.${targetLegacySessionId}` : null,
-          ].filter(Boolean).join(','));
-        alunosComMatriculaAtual = (mats ?? [])
-          .map((m: any) => m.aluno_id)
-          .filter((v: any) => !!v);
-      } catch {
-        // silencioso
-      }
-    } else if (escolaId && targetAno === null) {
-      // Fallback: excluir alunos com matrícula ativa na escola, sem filtrar por sessão
-      try {
-        const { data: mats } = await admin
-          .from('matriculas')
-          .select('aluno_id, status')
-          .eq('escola_id', escolaId)
-          .eq('status', 'ativo');
-        alunosComMatriculaAtual = (mats ?? [])
-          .map((m: any) => m.aluno_id)
-          .filter((v: any) => !!v);
-      } catch {
-        // silencioso
-      }
-    }
+    const matriculaStatusAtivos = ['ativa', 'ativo', 'active'];
 
-    // Blindagem extra: exclui qualquer aluno que já possua numero_matricula atribuído na escola, independentemente da sessão
-    let alunosComNumero: string[] = [];
+    // Se existe sessão (selecionada ou ativa), coletar alunos com matrícula válida para filtros e abas de matriculados
+    let alunosComMatriculaAtual: string[] = [];
     if (escolaId) {
       try {
-        const { data: matsComNumero } = await admin
+        let matsQuery = admin
           .from('matriculas')
           .select('aluno_id')
           .eq('escola_id', escolaId)
-          .not('numero_matricula', 'is', null);
+          .in('status', matriculaStatusAtivos)
+          .not('numero_matricula', 'is', null)
+          .neq('numero_matricula', '');
 
-        alunosComNumero = (matsComNumero ?? [])
+        if (targetAno !== null) matsQuery = matsQuery.eq('ano_letivo', targetAno);
+        if (targetLegacySessionId) matsQuery = matsQuery.eq('session_id', targetLegacySessionId);
+
+        const { data: mats } = await matsQuery;
+        alunosComMatriculaAtual = (mats ?? [])
           .map((m: any) => m.aluno_id)
           .filter((v: any) => !!v);
       } catch {
@@ -218,8 +183,103 @@ export async function GET(req: Request) {
       }
     }
 
-    const alunosMatriculados = Array.from(new Set([...(alunosComMatriculaAtual || []), ...(alunosComNumero || [])]));
+    const alunosMatriculados = Array.from(new Set(alunosComMatriculaAtual || []));
     const shouldFilterMatriculados = Boolean(targetAno !== null) && alunosMatriculados.length > 0;
+
+    const idsMatriculados = alunosMatriculados.map((id) => `"${id}"`).join(',');
+
+    if (status === 'pendente') {
+      const candidaturaStatus = ['pendente', 'aguardando_compensacao'];
+      let query = admin
+        .from("candidaturas")
+        .select(
+          `id, aluno_id, status, created_at, nome_candidato, dados_candidato,
+           alunos:aluno_id ( id, nome, nome_completo, numero_processo, bi_numero, email, telefone_responsavel, responsavel )`,
+          { count: "exact" }
+        )
+        .eq("escola_id", escolaId)
+        .in("status", candidaturaStatus)
+        .order("created_at", { ascending: false });
+
+      if (q) {
+        const uuidRe = /^[0-9a-fA-F-]{36}$/;
+        if (uuidRe.test(q)) {
+          query = query.or(`id.eq.${q}`);
+        } else {
+          const orParts = [
+            `nome_candidato.ilike.%${q}%`,
+            `alunos.nome.ilike.%${q}%`,
+            `alunos.nome_completo.ilike.%${q}%`,
+            `alunos.numero_processo.ilike.%${q}%`,
+          ];
+          query = query.or(orParts.join(","));
+        }
+      }
+
+      const { data, error, count } = await query.range(offset, offset + pageSize - 1);
+      if (error) {
+        return NextResponse.json(
+          { ok: false, error: error.message },
+          { status: 400 }
+        );
+      }
+
+      const items = (data ?? [])
+        .filter((row: any) => !row.aluno_id || !alunosMatriculados.includes(row.aluno_id))
+        .map((row: any) => {
+          const alunoRaw = Array.isArray(row.alunos) ? row.alunos[0] : row.alunos;
+          const payload = row.dados_candidato || {};
+          const nome =
+            alunoRaw?.nome_completo ||
+            alunoRaw?.nome ||
+            payload.nome_completo ||
+            payload.nome ||
+            row.nome_candidato ||
+            "";
+          const numeroProcesso = alunoRaw?.numero_processo || payload.numero_processo || null;
+          const responsavel =
+            alunoRaw?.responsavel ||
+            payload.responsavel_nome ||
+            payload.responsavel ||
+            payload.encarregado_nome ||
+            null;
+          const telefoneResponsavel =
+            alunoRaw?.telefone_responsavel ||
+            payload.responsavel_contato ||
+            payload.telefone ||
+            null;
+          const email =
+            alunoRaw?.email ||
+            payload.email ||
+            payload.encarregado_email ||
+            null;
+
+          return {
+            id: row.id,
+            candidatura_id: row.id,
+            aluno_id: row.aluno_id,
+            nome,
+            email,
+            responsavel,
+            telefone_responsavel: telefoneResponsavel,
+            status: row.status || 'pendente',
+            created_at: row.created_at,
+            numero_login: null,
+            numero_processo: numeroProcesso,
+            bi_numero: alunoRaw?.bi_numero ?? payload.bi_numero ?? null,
+            bilhete: alunoRaw?.bi_numero ?? payload.bi_numero ?? null,
+            origem: 'candidatura',
+          };
+        });
+
+      return NextResponse.json({
+        ok: true,
+        items,
+        total: count ?? 0,
+        page,
+        pageSize,
+      });
+    }
 
     // Demais status
     // Agora com relacionamento para profiles(numero_login)
@@ -229,11 +289,13 @@ export async function GET(req: Request) {
       .order("created_at", { ascending: false })
       .eq("escola_id", escolaId);
 
-    const idsMatriculados = alunosMatriculados.map((id) => `"${id}"`).join(',');
-
     switch (status) {
       case 'ativo':
-        query = query.eq('status', 'ativo').is('deleted_at', null);
+        query = query.is('deleted_at', null);
+        if (alunosMatriculados.length === 0) {
+          return NextResponse.json({ ok: true, items: [], total: 0, page, pageSize });
+        }
+        query = query.in('id', alunosMatriculados);
         break;
 
       case 'inativo':
@@ -247,7 +309,7 @@ export async function GET(req: Request) {
       case 'arquivado':
         query = query.not('deleted_at', 'is', null);
         break;
-      
+
       case 'todos':
       default:
         // Por padrão, 'todos' deve incluir tanto alunos ativos quanto arquivados.
@@ -313,7 +375,10 @@ export async function GET(req: Request) {
       );
     }
 
-    const items = (data ?? []).map(mapAlunoRow);
+    const items = (data ?? []).map((row) => ({
+      ...mapAlunoRow(row),
+      origem: 'aluno',
+    }));
 
     return NextResponse.json({
       ok: true,

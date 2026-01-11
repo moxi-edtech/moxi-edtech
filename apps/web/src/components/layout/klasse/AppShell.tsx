@@ -3,6 +3,7 @@
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import { useUserRole, type UserRole } from "@/hooks/useUserRole";
+import { useEscolaId } from "@/hooks/useEscolaId";
 import { sidebarConfig } from "@/lib/sidebarNav";
 import { useMemo, useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
@@ -20,12 +21,13 @@ const TOPBAR_LABELS: Record<UserRole, { title: string; subtitle: string }> = {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { userRole, isLoading: isLoadingRole } = useUserRole();
+  const { escolaId: escolaIdFromSession } = useEscolaId();
   const [escolaIdState, setEscolaIdState] = useState<string | null>(null);
   const [financeBadges, setFinanceBadges] = useState<Record<string, string>>({});
 
   // Extract escolaId from the pathname if available
   useEffect(() => {
-    const match = pathname.match(/\/escola\/([^\/]+)\/admin/);
+    const match = pathname.match(/\/escola\/([^\/]+)\/(admin|secretaria)/);
     if (match && match[1]) {
       setEscolaIdState(match[1]);
     } else {
@@ -40,6 +42,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (pathname.startsWith("/super-admin")) return "superadmin";
     if (pathname.startsWith("/secretaria")) return "secretaria";
     if (pathname.includes("/escola/") && pathname.includes("/admin")) return "admin";
+    if (pathname.includes("/escola/") && pathname.includes("/secretaria")) return "secretaria";
 
     return null;
   }, [userRole, pathname]);
@@ -48,17 +51,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (isLoadingRole || !inferredRole) return [];
     let items = sidebarConfig[inferredRole] || [];
 
-    if (inferredRole === "admin" && escolaIdState) {
+    const navEscolaId = escolaIdState || escolaIdFromSession;
+    if ((inferredRole === "admin" || inferredRole === "secretaria") && navEscolaId) {
       return items.map((item) => ({
         ...item,
-        href: item.href.replace("[escolaId]", escolaIdState),
+        href: item.href.replace("[escolaId]", navEscolaId),
       }));
     }
     if (inferredRole === "financeiro" && Object.keys(financeBadges).length) {
       items = items.map((item) => ({ ...item, badge: financeBadges[item.href] || item.badge }));
     }
     return items;
-  }, [inferredRole, isLoadingRole, escolaIdState, financeBadges]);
+  }, [inferredRole, isLoadingRole, escolaIdState, escolaIdFromSession, financeBadges]);
 
   useEffect(() => {
     if (inferredRole !== "financeiro") return;

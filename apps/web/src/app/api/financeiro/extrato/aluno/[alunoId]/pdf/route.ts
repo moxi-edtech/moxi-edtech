@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { createInstitutionalPdf } from "@/lib/pdf/documentTemplate";
 import { buildSignatureLine, createQrImage } from "@/lib/pdf/qr";
+import { requireFeature } from "@/lib/plan/requireFeature";
 
 interface PaymentRow {
   valor_pago: number | null;
@@ -104,6 +105,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ alunoId
     if (!user) {
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     }
+
+    await requireFeature("doc_qr_code");
 
     const { alunoId } = await params;
 

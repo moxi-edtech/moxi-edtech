@@ -162,6 +162,7 @@ export async function POST(
             numero_login: numeroLogin ?? null, // se já havia matrícula anterior, reaproveita; senão fica null
             role: "aluno" as any,
             escola_id: escolaId,
+            current_escola_id: escolaId,
           } as TablesInsert<"profiles">,
         ]);
       } catch {
@@ -185,11 +186,12 @@ export async function POST(
       try {
         await admin
           .from("profiles")
-          .update({
-            role: "aluno" as any,
-            escola_id: escolaId,
-            // numero_login: numeroLogin ?? undefined, // só atualizamos se já houver
-          })
+        .update({
+          role: "aluno" as any,
+          escola_id: escolaId,
+          current_escola_id: escolaId,
+          // numero_login: numeroLogin ?? undefined, // só atualizamos se já houver
+        })
           .eq("user_id", userId);
       } catch {
         // best-effort

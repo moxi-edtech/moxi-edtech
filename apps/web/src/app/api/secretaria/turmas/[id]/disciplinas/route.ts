@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
-import { resolveEscolaIdForUser, authorizeTurmasManage } from '@/lib/escola/disciplinas'
+import { authorizeTurmasManage } from '@/lib/escola/disciplinas'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 
 // GET /api/secretaria/turmas/:id/disciplinas
 // Returns assigned disciplinas for a turma with professor info and simple linkage checks

@@ -3,6 +3,7 @@
 import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabaseClient";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export default function RedirectPage() {
   const router = useRouter();
@@ -59,6 +60,7 @@ export default function RedirectPage() {
           const profile = rows?.[0] as { role?: string | null; escola_id?: string | null } | undefined;
           const role: string = profile?.role ?? "guest";
           const escola_id: string | null = profile?.escola_id ?? null;
+          const resolvedEscolaId = escola_id || (await resolveEscolaIdForUser(supabase, user.id));
 
           // Roteamento por role
           if (escola_id && (role === "admin" || role === "staff_admin")) {
@@ -116,7 +118,11 @@ export default function RedirectPage() {
               break;
             }
             case "secretaria":
-              router.replace("/secretaria");
+              if (resolvedEscolaId) {
+                router.replace(`/escola/${resolvedEscolaId}/secretaria`);
+              } else {
+                router.replace("/secretaria");
+              }
               break;
             case "financeiro":
               router.replace("/financeiro");
