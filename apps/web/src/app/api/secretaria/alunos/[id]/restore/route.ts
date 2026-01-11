@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
 import { recordAuditServer } from "@/lib/audit";
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -19,6 +17,8 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       .from('profiles')
       .select('role, escola_id, current_escola_id')
       .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
     if (profErr) return NextResponse.json({ ok: false, error: profErr.message }, { status: 400 })
     const role = (prof as any)?.role as string | undefined
@@ -33,17 +33,14 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       .from('alunos')
       .select('id, escola_id, deleted_at')
       .eq('id', alunoId)
+      .order('created_at', { ascending: false })
+      .limit(1)
       .maybeSingle();
     if (alunoErr) return NextResponse.json({ ok: false, error: alunoErr.message }, { status: 400 })
     if (!aluno) return NextResponse.json({ ok: false, error: 'Aluno não encontrado' }, { status: 404 })
     if (String((aluno as any).escola_id) !== String(escolaFromProfile)) return NextResponse.json({ ok: false, error: 'Aluno não pertence à escola ativa do usuário' }, { status: 403 })
 
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const service = process.env.SUPABASE_SERVICE_ROLE_KEY
-    if (!url || !service) return NextResponse.json({ ok: false, error: 'Server misconfigured: falta SUPABASE_SERVICE_ROLE_KEY' }, { status: 500 })
-    const admin = createAdminClient<Database>(url, service)
-
-    const { error: updErr } = await admin
+    const { error: updErr } = await s
       .from('alunos')
       .update({ deleted_at: null, deleted_by: null, deletion_reason: null, status: 'ativo' } as any)
       .eq('id', alunoId)
@@ -66,4 +63,3 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
 }
-

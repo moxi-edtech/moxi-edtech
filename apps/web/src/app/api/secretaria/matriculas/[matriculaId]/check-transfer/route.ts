@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveTabelaPreco } from "@/lib/financeiro/tabela-preco";
 import type { Database } from "~types/supabase";
@@ -19,23 +18,17 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ matriculaId
   const user = userRes?.user;
   if (!user) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
 
-  const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!adminUrl || !serviceKey) {
-    return NextResponse.json({ error: "Configuração SUPABASE incompleta" }, { status: 500 });
-  }
-
-  const admin = createClient<Database>(adminUrl, serviceKey);
-
-  const { data: profile } = await admin
+  const { data: profile } = await supabase
     .from("profiles")
     .select("role, escola_id, current_escola_id")
     .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
   const userRole = (profile as any)?.role as string | undefined;
   const isAdmin = ["admin", "super_admin", "global_admin"].includes((userRole || "").toLowerCase());
 
-  const { data: matricula, error: matErr } = await admin
+  const { data: matricula, error: matErr } = await supabase
     .from("matriculas")
     .select("id, aluno_id, turma_id, ano_letivo, escola_id, turmas(curso_id, classe_id, turno)")
     .eq("id", matriculaId)
@@ -47,7 +40,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ matriculaId
 
   const escolaId = (matricula as any).escola_id as string;
 
-  const { data: targetTurma, error: turmaErr } = await admin
+  const { data: targetTurma, error: turmaErr } = await supabase
     .from("turmas")
     .select("id, escola_id, capacidade_maxima, turno, curso_id, classe_id, ano_letivo")
     .eq("id", targetTurmaId)
@@ -61,7 +54,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ matriculaId
     return NextResponse.json({ error: "Turma de destino não pertence à mesma escola" }, { status: 400 });
   }
 
-  const { count: ocupacao } = await admin
+  const { count: ocupacao } = await supabase
     .from("matriculas")
     .select("id", { count: "exact", head: true })
     .eq("turma_id", targetTurmaId)
@@ -80,7 +73,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ matriculaId
 
   const resolverPreco = async (cursoId?: string | null, classeId?: string | null) => {
     try {
-      const { tabela } = await resolveTabelaPreco(admin as any, {
+      const { tabela } = await resolveTabelaPreco(supabase as any, {
         escolaId,
         anoLetivo,
         cursoId: cursoId || undefined,
@@ -119,4 +112,3 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ matriculaId
     },
   });
 }
-

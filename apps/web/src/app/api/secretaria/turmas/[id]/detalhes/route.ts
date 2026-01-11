@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { createClient } from "@supabase/supabase-js";
 import { supabaseServerTyped } from '@/lib/supabaseServer';
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 import type { Database } from "~types/supabase";
 
 export const dynamic = 'force-dynamic';
@@ -26,20 +26,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 });
     }
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: "Configuração Supabase ausente." }, { status: 500 });
-    }
-
-    const admin = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-
     const { id: turmaId } = await params;
     console.log('Fetching turma ID:', turmaId);
 
     // 1. Query principal da turma - simplificada primeiro
-    const { data: turmaResult, error: turmaError } = await admin
+    const { data: turmaResult, error: turmaError } = await supabase
       .from('turmas')
       .select(`
         id,
@@ -64,9 +55,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     // 2. Ocupação da turma
-    const { data: ocupacaoResult, error: ocupacaoError } = await admin
+    const { count: ocupacao, error: ocupacaoError } = await supabase
       .from('matriculas')
-      .select('id')
+      .select('id', { count: 'exact', head: true })
       .eq('turma_id', turmaId)
       .eq('escola_id', escolaId)
       .in('status', ['ativa', 'ativo']);
@@ -76,12 +67,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ ok: false, error: 'Erro ao buscar ocupação' }, { status: 500 });
     }
 
-    const ocupacao = ocupacaoResult?.length || 0;
-
     // 3. Buscar diretor separadamente para evitar problemas de relacionamento
     let diretor = null;
     if (turmaResult.diretor_turma_id) {
-      const { data: diretorData, error: diretorError } = await admin
+      const { data: diretorData, error: diretorError } = await supabase
         .from('escola_usuarios')
         .select(`
           id,
@@ -101,7 +90,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     // 4. Buscar alunos - usando numero_chamada que existe
-    const { data: alunosData, error: alunosError } = await admin
+    let alunosQuery = supabase
       .from('matriculas')
       .select(`
         id,
@@ -122,13 +111,17 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       .in('status', ['ativa', 'ativo'])
       .order('numero_chamada', { ascending: true });
 
+    alunosQuery = applyKf2ListInvariants(alunosQuery, { defaultLimit: 500 });
+
+    const { data: alunosData, error: alunosError } = await alunosQuery;
+
     if (alunosError) {
       console.error('Error fetching students:', alunosError);
       // Continuar mesmo com erro nos alunos, retornar array vazio
     }
 
     // 5. Buscar disciplinas e professores separadamente
-    const { data: disciplinasData, error: disciplinasError } = await admin
+    let disciplinasQuery = supabase
       .from('turma_disciplinas_professores')
       .select(`
         id,
@@ -143,7 +136,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         ),
         syllabi ( id, nome, codigo )
       `)
-      .eq('turma_id', turmaId);
+      .eq('turma_id', turmaId)
+      .order('created_at', { ascending: false });
+
+    disciplinasQuery = applyKf2ListInvariants(disciplinasQuery, { defaultLimit: 200 });
+
+    const { data: disciplinasData, error: disciplinasError } = await disciplinasQuery;
 
     if (disciplinasError) {
       console.error('Error fetching disciplines:', disciplinasError);
@@ -161,7 +159,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       turno: turmaResult.turno,
       sala: turmaResult.sala || '',
       capacidade: turmaResult.capacidade_maxima,
-      ocupacao: ocupacao,
+      ocupacao: ocupacao ?? 0,
       diretor: diretor,
       curso_nome: turmaResult.cursos?.nome || null,
       curso_tipo: turmaResult.cursos?.tipo || null,

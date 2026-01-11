@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { createClient } from "@supabase/supabase-js";
 import { authorizeMatriculasManage } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
-import type { Database } from "~types/supabase";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export const dynamic = "force-dynamic";
 
@@ -29,16 +28,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       return NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 });
     }
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: "Configuração Supabase ausente" }, { status: 500 });
-    }
-
-    const admin = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-
-    const { data, error } = await admin
+    let query = supabase
       .from("candidaturas")
       .select(
         `id, escola_id, aluno_id, curso_id, ano_letivo, status, created_at, turma_preferencial_id,
@@ -48,7 +38,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       )
       .eq("id", id)
       .eq("escola_id", escolaId)
-      .maybeSingle();
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    query = applyKf2ListInvariants(query, { defaultLimit: 1 });
+
+    const { data, error } = await query.maybeSingle();
 
     if (error) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
@@ -112,21 +107,17 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       return NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 });
     }
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: "Configuração Supabase ausente" }, { status: 500 });
-    }
-
-    const admin = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-
-    const { data: current, error: currentError } = await admin
+    let currentQuery = supabase
       .from("candidaturas")
       .select("id, escola_id, dados_candidato, nome_candidato")
       .eq("id", id)
       .eq("escola_id", escolaId)
-      .maybeSingle();
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    currentQuery = applyKf2ListInvariants(currentQuery, { defaultLimit: 1 });
+
+    const { data: current, error: currentError } = await currentQuery.maybeSingle();
 
     if (currentError) {
       return NextResponse.json({ ok: false, error: currentError.message }, { status: 400 });
@@ -160,7 +151,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
     const nomeCandidato = payload.nome_completo || payload.nome || (current as any).nome_candidato || null;
 
-    const { error: updateError } = await admin
+    const { error: updateError } = await supabase
       .from("candidaturas")
       .update({
         nome_candidato: nomeCandidato,
