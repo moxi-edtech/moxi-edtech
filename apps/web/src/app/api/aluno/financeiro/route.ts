@@ -15,7 +15,8 @@ export async function GET() {
       .select('id, ano_referencia, mes_referencia, valor_previsto, data_vencimento, status, data_pagamento_efetiva')
       .eq('aluno_id', alunoId)
       .order('ano_referencia', { ascending: true })
-      .order('mes_referencia', { ascending: true });
+      .order('mes_referencia', { ascending: true })
+      .limit(50);
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
 
     const hoje = new Date().toISOString().slice(0, 10);

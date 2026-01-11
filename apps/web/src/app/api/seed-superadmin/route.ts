@@ -1,3 +1,4 @@
+// @kf2 allow-scan
 // apps/web/src/app/api/seed-superadmin/route.ts
 import { NextResponse } from "next/server";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";

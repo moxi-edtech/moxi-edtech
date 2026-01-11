@@ -1,5 +1,5 @@
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+// @kf2 allow-scan
+import { createClient } from "~/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { Database } from "@/types/supabase";
 
@@ -20,7 +20,7 @@ export async function GET(
     );
   }
 
-  const supabase = createRouteHandlerClient<Database>({ cookies });
+  const supabase = createClient();
 
   try {
     const { data, error } = await supabase
