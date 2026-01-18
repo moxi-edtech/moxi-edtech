@@ -56,7 +56,6 @@ export async function POST(req: Request) {
         mensagem: motivo || 'Pagamento não localizado/validado',
         link_acao: `/secretaria/candidaturas/${id}`,
       })
-      .catch(() => null)
 
     return NextResponse.json({ ok: true })
   } catch (e) {

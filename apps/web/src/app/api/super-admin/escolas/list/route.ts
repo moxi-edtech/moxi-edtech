@@ -45,6 +45,11 @@ export async function GET() {
     console.log(`[super-admin/escolas/list] hasServiceKey: ${hasServiceKey}`);
 
     // Função auxiliar para montar resposta a partir de uma consulta
+    const orderByNome = [
+      { column: 'nome', ascending: true },
+      { column: 'id', ascending: false },
+    ]
+
     async function queryWith(client: any) {
       // Tenta via view consolidada
       console.log('[super-admin/escolas/list] queryWith: Attempting to use escolas_view');
@@ -53,7 +58,7 @@ export async function GET() {
         .select('id, nome, status, plano_atual, plano, last_access, total_alunos, total_professores, cidade, estado')
         .neq('status', 'excluida' as any)
 
-      query = applyKf2ListInvariants(query, { defaultLimit: 1000 });
+      query = applyKf2ListInvariants(query, { defaultLimit: 1000, order: orderByNome });
 
       const { data, error } = await query
 
@@ -89,10 +94,10 @@ export async function GET() {
       console.log('[super-admin/escolas/list] queryWith: Fallback to escolas table');
       let fallbackQuery = client
         .from('escolas' as any)
-        .select('id, nome, status, plano_atual, endereco, plano')
+        .select('id, nome, status, plano_atual, endereco')
         .neq('status', 'excluida' as any)
       
-      fallbackQuery = applyKf2ListInvariants(fallbackQuery, { defaultLimit: 1000 });
+      fallbackQuery = applyKf2ListInvariants(fallbackQuery, { defaultLimit: 1000, order: orderByNome });
       
       const { data: raw, error: e2 } = await fallbackQuery;
       if (e2) {

@@ -107,9 +107,7 @@ export function useGlobalSearch(escolaId?: string | null) {
           p_cursor_updated_at: pageCursor?.updated_at ?? null,
           p_cursor_created_at: pageCursor?.created_at ?? null,
           p_cursor_id: pageCursor?.id ?? null,
-        },
-        { signal: ac.signal }
-      );
+        });
 
       if (error) throw error;
 
@@ -171,9 +169,7 @@ export function useGlobalSearch(escolaId?: string | null) {
           p_cursor_updated_at: cursor.updated_at,
           p_cursor_created_at: cursor.created_at,
           p_cursor_id: cursor.id,
-        },
-        { signal: ac.signal }
-      );
+        });
 
       if (error) throw error;
 

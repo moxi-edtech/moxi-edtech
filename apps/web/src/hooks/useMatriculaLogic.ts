@@ -1,7 +1,7 @@
 // hooks/useMatriculaLogic.ts
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Aluno, Candidatura, Curso, Orcamento, Session, Turma } from "@/types/matricula";
+import { Aluno, Candidatura, Curso, Orcamento, Session, Turma } from "~types/matricula";
 
 const extrairAnoLetivo = (valor?: string | number | null) => {
   if (valor === null || valor === undefined) return null;

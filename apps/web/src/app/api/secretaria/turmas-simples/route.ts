@@ -85,9 +85,7 @@ export async function GET(req: Request) {
           'status_validacao',
         ].join(', ')
       )
-      .eq('escola_id', escolaId)
-      // [CORREÇÃO] A view usa 'turma_nome', não 'nome'
-      .order('turma_nome', { ascending: true });
+      .eq('escola_id', escolaId);
 
     if (sessionId && anoLetivo) {
       query = query.eq('ano_letivo', anoLetivo).or(`session_id.eq.${sessionId},session_id.is.null`);
@@ -99,7 +97,13 @@ export async function GET(req: Request) {
 
     if (turno) query = query.eq('turno', turno);
 
-    query = applyKf2ListInvariants(query, { defaultLimit: 200 });
+    query = applyKf2ListInvariants(query, {
+      defaultLimit: 200,
+      order: [
+        { column: 'turma_nome', ascending: true },
+        { column: 'id', ascending: false },
+      ],
+    });
 
     const { data: turmasView, error } = await query;
 

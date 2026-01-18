@@ -48,20 +48,21 @@ export default async function AlunoDossierPage({
 
   if (!user || !escolaId) return notFound();
 
-  const { data: dossier, error } = await supabase.rpc<Dossier>(
+  const { data: dossier, error } = await supabase.rpc(
     "get_aluno_dossier",
     {
       p_escola_id: escolaId,
       p_aluno_id: id,
     }
   );
+  const typedDossier = dossier as Dossier | null;
 
-  if (error || !dossier || !dossier.perfil) {
+  if (error || !typedDossier || !typedDossier.perfil) {
     console.error("Erro Dossiê:", error?.message || error);
     return notFound();
   }
 
-  const { perfil, historico = [], financeiro = {} } = dossier;
+  const { perfil, historico = [], financeiro = {} } = typedDossier;
   const mensalidades: any[] = Array.isArray(financeiro.mensalidades)
     ? financeiro.mensalidades
     : [];

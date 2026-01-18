@@ -68,23 +68,24 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     // 3. Buscar diretor separadamente para evitar problemas de relacionamento
-    let diretor = null;
+    let diretor: { id: string; nome: string; email: string } | null = null;
     if (turmaResult.diretor_turma_id) {
       const { data: diretorData, error: diretorError } = await supabase
-        .from('escola_usuarios')
-        .select(`
-          id,
-          user_id,
-          perfis ( nome_completo, email )
-        `)
+        .from('escola_users')
+        .select('id, user_id')
         .eq('id', turmaResult.diretor_turma_id)
         .single();
 
       if (!diretorError && diretorData) {
+        const { data: perfil } = await supabase
+          .from('profiles')
+          .select('nome, email')
+          .eq('user_id', diretorData.user_id)
+          .maybeSingle();
         diretor = {
           id: diretorData.id,
-          nome: diretorData.perfis?.nome_completo || 'Diretor sem nome',
-          email: diretorData.perfis?.email || '',
+          nome: perfil?.nome || 'Diretor sem nome',
+          email: perfil?.email || '',
         };
       }
     }
@@ -134,7 +135,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           profile_id,
           profiles!professores_profile_id_fkey ( nome, email )
         ),
-        syllabi ( id, nome, codigo )
+        syllabi ( id, nome )
       `)
       .eq('turma_id', turmaId)
       .order('created_at', { ascending: false });
@@ -179,7 +180,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const disciplinas = (disciplinasData || []).map(td => ({
       id: td.syllabi?.id || '',
       nome: td.syllabi?.nome || 'Disciplina Desconhecida',
-      sigla: td.syllabi?.codigo || '',
+      sigla: '',
       professor: td.professores?.profiles?.nome || td.professores?.apelido || 'Sem Professor',
     }));
 

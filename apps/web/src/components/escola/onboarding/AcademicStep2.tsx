@@ -35,6 +35,7 @@ import {
   type AcademicStep2Props,
   type MatrixRow,
   type CurriculumCategory,
+  type TurnosState,
 } from "./academicSetupTypes";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
@@ -83,7 +84,7 @@ function CourseMatrixTable({
   onMatrixUpdate,
 }: {
   rows: MatrixRow[];
-  turnos: Record<string, boolean>;
+  turnos: TurnosState;
   onMatrixUpdate: (rowId: string, field: "manha" | "tarde" | "noite", value: string) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement | null>(null);

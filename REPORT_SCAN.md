@@ -2,11 +2,27 @@
 
 ## 1. SUMÁRIO EXECUTIVO
 
-- Findings CRÍTICOS: **0**
+- Findings CRÍTICOS: **2**
 - Findings ALTO: **1**
-- Total findings: **7**
+- Total findings: **9**
 
 ## 2. ACHADOS (ordenado por severidade)
+
+### TENANT_ISOLATION — `escola_id` nullable em `mensalidades`
+- Severidade: **CRITICAL**
+- Status: **FAIL**
+- Evidências:
+  - DB — `information_schema.columns` retornou `mensalidades | YES`
+- Recomendação: Backfill + `ALTER TABLE mensalidades ALTER COLUMN escola_id SET NOT NULL`.
+
+### SERVICE_ROLE_HUMAN_ROUTES — uso de `SUPABASE_SERVICE_ROLE_KEY` em rotas humanas
+- Severidade: **CRITICAL**
+- Status: **FAIL**
+- Evidências:
+  - `apps/web/src/app/api/escolas/[id]/cursos/route.ts`
+  - `apps/web/src/app/api/escolas/[id]/turmas/route.ts`
+  - `apps/web/src/app/api/escolas/[id]/alunos/novo/route.ts`
+- Recomendação: Remover service role de rotas humanas e usar RLS + `resolveEscolaIdForUser`.
 
 ### NO_STORE — Anti-pattern — uso de cache: 'no-store' em páginas/relatórios
 - Severidade: **HIGH**

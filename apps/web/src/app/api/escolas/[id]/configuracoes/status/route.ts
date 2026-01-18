@@ -43,7 +43,7 @@ export async function GET(
 
     // 3. Check Financeiro (pelo menos 1 tabela de preço)
     const { count: financeiroCount, error: financeiroError } = await supabaseAdmin
-      .from("financeiro_tabela_precos")
+      .from("financeiro_tabelas")
       .select("id", { count: "exact", head: true })
       .eq("escola_id", escolaId);
       

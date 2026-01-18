@@ -96,8 +96,9 @@ async function provisionStudent(admin: NonNullable<ReturnType<typeof getAdminCli
 
     if (createRes.error) {
       if (createRes.error.message?.toLowerCase().includes("registered")) {
-        const existing = await admin.auth.admin.getUserByEmail(login);
-        userId = existing?.data?.user?.id ?? null;
+        const { data: listUsers } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+        const existing = listUsers?.users?.find((u) => u.email === login);
+        userId = existing?.id ?? null;
       } else {
         throw createRes.error;
       }

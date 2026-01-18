@@ -11,8 +11,8 @@ export async function GET() {
     if (!turmaId) return NextResponse.json({ ok: true, disciplinas: [] });
 
     let query = supabase
-      .from('cursos_oferta')
-      .select('curso_id, cursos!inner(id, nome)')
+      .from('turma_disciplinas')
+      .select('curso_matriz:curso_matriz_id(disciplina:disciplinas_catalogo(id, nome))')
       .eq('turma_id', turmaId);
 
     query = applyKf2ListInvariants(query);
@@ -21,7 +21,14 @@ export async function GET() {
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
 
-    const disciplinas = (cursosOferta || []).map((r: any) => ({ id: r.cursos?.id, nome: r.cursos?.nome }));
+    const seen = new Map<string, string>();
+    (cursosOferta || []).forEach((row: any) => {
+      const disciplina = row?.curso_matriz?.disciplina;
+      if (disciplina?.id && !seen.has(disciplina.id)) {
+        seen.set(disciplina.id, disciplina.nome);
+      }
+    });
+    const disciplinas = Array.from(seen.entries()).map(([id, nome]) => ({ id, nome }));
     return NextResponse.json({ ok: true, disciplinas });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

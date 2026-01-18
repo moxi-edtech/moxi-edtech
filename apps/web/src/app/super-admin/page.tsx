@@ -15,6 +15,13 @@ import {
 } from "@heroicons/react/24/outline"
 import Link from 'next/link'
 
+type KpiItem = {
+  title: string
+  value: string | number
+  icon: typeof BuildingLibraryIcon
+  href?: string
+}
+
 export default async function Page() {
   try {
     const [data, charts] = await Promise.all([
@@ -25,7 +32,7 @@ export default async function Page() {
 
     console.log('✅ Dados carregados no servidor:', data)
 
-    const kpis = [
+    const kpis: KpiItem[] = [
       { title: "Escolas", value: data.escolas, icon: BuildingLibraryIcon },
       {
         title: "Usuários Globais",
@@ -85,7 +92,7 @@ export default async function Page() {
     console.error('❌ Erro no servidor:', error)
     
     // Fallback para erro
-    const kpis = [
+    const kpis: KpiItem[] = [
       { title: "Escolas", value: 0, icon: BuildingLibraryIcon },
       { title: "Usuários Globais", value: 0, icon: UsersIcon },
       { title: "Matrículas", value: 0, icon: AcademicCapIcon },

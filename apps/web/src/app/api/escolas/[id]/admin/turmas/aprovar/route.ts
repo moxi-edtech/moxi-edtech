@@ -26,7 +26,7 @@ export async function POST(
     );
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { error } = await supabase.rpc("aprovar_turmas", {
     p_turma_ids: turma_ids,

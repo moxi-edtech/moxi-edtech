@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     const errorCode = params.get("ErrorCode");
 
     if (messageSid && messageStatus) {
-      const supabase = await createClient();
+      const supabase = await createRouteClient();
       await supabase
         .from("outbox_notificacoes")
         .update({ status: messageStatus, error_message: errorCode || null })

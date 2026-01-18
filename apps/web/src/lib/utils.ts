@@ -6,6 +6,16 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function getAbsoluteUrl(path: string): string {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-  return `${siteUrl}${path}`;
+  if (typeof window !== "undefined" && window.location?.origin) {
+    const base = window.location.origin.replace(/\/$/, "");
+    const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+    return `${base}${normalizedPath}`;
+  }
+
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
+  const base = siteUrl.replace(/\/$/, "");
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${base}${normalizedPath}`;
 }

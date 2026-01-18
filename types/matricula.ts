@@ -64,3 +64,31 @@ export interface Orcamento {
   origem_regra: string;
   dia_vencimento?: number | null;
 }
+
+export interface GrupoMatriculaAluno {
+  id: string | number;
+  nome?: string;
+  data_nascimento?: string;
+  profile_id?: string | null;
+  numero_matricula?: string | number;
+}
+
+export interface GrupoMatricula {
+  import_id: string;
+  escola_id: string;
+  turma_codigo?: string | null;
+  ano_letivo?: number | string | null;
+  count: number;
+  alunos: GrupoMatriculaAluno[];
+}
+
+export interface MatriculaMassaPayload {
+  import_id: string;
+  escola_id: string;
+  curso_codigo: string;
+  classe_numero: number;
+  turno_codigo: string;
+  turma_letra: string;
+  ano_letivo: number;
+  turma_id?: string | null;
+}

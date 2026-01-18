@@ -1,67 +1,11 @@
-import { NextResponse } from 'next/server'
-import { supabaseServer } from '@/lib/supabaseServer'
+import { NextResponse } from "next/server";
 
-export async function GET(req: Request) {
-  try {
-    const s = (await supabaseServer()) as any
-    const url = new URL(req.url)
-    const format = (url.searchParams.get('format') || 'csv').toLowerCase()
-    const q = url.searchParams.get('q') || ''
-    const days = url.searchParams.get('days') ?? '0'
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
-    const { data: sess } = await s.auth.getUser()
-    const user = sess?.user
-    let escolaId: string | null = null
-    if (user) {
-      const { data: prof } = await s.from('profiles').select('escola_id').eq('user_id', user.id).maybeSingle()
-      escolaId = (prof as any)?.escola_id ?? null
-    }
-    if (!escolaId) return NextResponse.json([])
-
-    const since = (() => {
-      const d = parseInt(days || '30', 10)
-      if (!Number.isFinite(d) || d <= 0) return '1970-01-01'
-      const dt = new Date(); dt.setDate(dt.getDate() - d); return dt.toISOString()
-    })()
-
-    let query = s
-      .from('matriculas')
-      .select('id, aluno_id, turma_id, status, data_matricula, numero_chamada, created_at')
-      .eq('escola_id', escolaId)
-      .gte('created_at', since)
-      .order('created_at', { ascending: false })
-      .limit(5000)
-
-    if (q) {
-      const uuidRe = /^[0-9a-fA-F-]{36}$/
-      if (uuidRe.test(q)) {
-        query = query.or(`id.eq.${q},aluno_id.eq.${q},turma_id.eq.${q}`)
-      } else {
-        query = query.or(`status.ilike.%${q}%`)
-      }
-    }
-
-    const { data, error } = await query
-    const rows = (data ?? []) as any[]
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-    const ts = new Date().toISOString().replace(/[:.]/g, '-')
-    if (format === 'json') {
-      const res = NextResponse.json(rows)
-      res.headers.set('Content-Disposition', `attachment; filename="matriculas_${ts}.json"`)
-      return res
-    }
-
-    const csvEscape = (val: any) => {
-      const s = String(val ?? '')
-      const escaped = s.replace(/"/g, '""')
-      return `"${escaped}"`
-    }
-    const header = ['id','aluno_id','turma_id','status','data_matricula','numero_chamada','created_at']
-    const csv = [header.map(csvEscape).join(','), ...rows.map((r: any) => header.map(k => csvEscape(r[k])).join(','))].join('\n')
-    return new NextResponse(csv, { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="matriculas_${ts}.csv"` } })
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    return NextResponse.json({ error: msg }, { status: 500 })
-  }
+export async function GET() {
+  return NextResponse.json(
+    { ok: false, error: "Exportação de matrículas indisponível no momento." },
+    { status: 501 }
+  );
 }

@@ -38,15 +38,16 @@ export async function loginAction(_: any, formData: FormData) {
       .from("escola_users")
       .select("papel, escola_id")
       .eq("user_id", data.user.id)
-      .maybeSingle(); // Use .maybeSingle() if you expect 0 or 1 rows
+      .limit(1);
 
     if (userError) {
       console.error("Erro ao buscar papel/escola do usuário:", userError);
-      return { ok: false, message: "Erro ao carregar dados do usuário. Contacte o suporte." };
     }
 
-    if (escolaUsuarios) {
-      const { papel, escola_id } = escolaUsuarios;
+    const firstLink = Array.isArray(escolaUsuarios) ? escolaUsuarios[0] : null;
+
+    if (firstLink) {
+      const { papel, escola_id } = firstLink;
       const papelNormalizado = normalizePapel(papel);
 
       if ((papelNormalizado === "admin" || papelNormalizado === "staff_admin" || papelNormalizado === "admin_escola") && escola_id) {

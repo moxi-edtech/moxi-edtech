@@ -36,7 +36,7 @@ export const sidebarConfig: SidebarConfig = {
   secretaria: [
     { href: "/escola/[escolaId]/secretaria", label: "Dashboard", icon: "LayoutDashboard" },
     { href: "/escola/[escolaId]/secretaria/alunos", label: "Alunos", icon: "Users" },
-    { href: "/escola/[escolaId]/secretaria/matriculas", label: "Matrículas", icon: "GraduationCap" },
+    { href: "/escola/[escolaId]/secretaria/admissoes", label: "Admissões", icon: "GraduationCap" },
     { href: "/escola/[escolaId]/secretaria/acesso", label: "Acesso ao Portal", icon: "KeyRound" },
     { href: "/escola/[escolaId]/secretaria/turmas", label: "Turmas", icon: "BookOpen" },
     { href: "/escola/[escolaId]/secretaria/calendario", label: "Calendário", icon: "CalendarDays" },
@@ -47,13 +47,10 @@ export const sidebarConfig: SidebarConfig = {
     { href: "/financeiro", label: "Dashboard", icon: "LayoutDashboard" },
     { href: "/financeiro/radar", label: "Radar", icon: "Radar", badge: "Novo" },
     { href: "/financeiro/candidaturas", label: "Candidaturas", icon: "FileText" },
-    { href: "/financeiro/mensalidades", label: "Mensalidades", icon: "Wallet" },
     { href: "/financeiro/configuracoes/precos", label: "Tabelas de Preço", icon: "Table" },
     { href: "/financeiro/tabelas-mensalidade", label: "Tabelas de Mensalidade", icon: "Table" },
     { href: "/financeiro/conciliacao", label: "Conciliação", icon: "Scale" },
     { href: "/financeiro/cobrancas", label: "Cobranças", icon: "BadgeDollarSign" },
-    { href: "/financeiro/faturas", label: "Faturas", icon: "FileText" },
-    { href: "/financeiro/plano-contas", label: "Plano de Contas", icon: "Scale" },
     { href: "/financeiro/relatorios", label: "Relatórios", icon: "BarChart" },
   ],
   aluno: [

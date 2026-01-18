@@ -66,7 +66,7 @@ export default function ConfigurationStep({
   const [availableCourses, setAvailableCourses] = useState<AvailableCurso[]>([]);
   const { userRole, isLoading: loadingRole } = useUserRole();
 
-  const canApproveCourses = useMemo(() => userRole === 'admin' || userRole === 'super_admin', [userRole]);
+  const canApproveCourses = useMemo(() => userRole === 'admin' || userRole === 'superadmin', [userRole]);
 
   useEffect(() => {
     async function fetchAuxiliaryData() {

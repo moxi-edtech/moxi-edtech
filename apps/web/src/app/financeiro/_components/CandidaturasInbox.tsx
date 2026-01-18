@@ -38,6 +38,9 @@ export function FinanceiroCandidaturasInbox({ escolaId, initialItems }: { escola
         body: JSON.stringify({ turma_id: item.turmaPreferencialId }),
       })
       const json = await res.json().catch(() => ({}))
+      if (res.status === 410) {
+        throw new Error("Este fluxo foi migrado. Use o Radar de Admissões para converter esta candidatura.");
+      }
       if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao confirmar')
       removeItem(item.id)
       setSelected(null)

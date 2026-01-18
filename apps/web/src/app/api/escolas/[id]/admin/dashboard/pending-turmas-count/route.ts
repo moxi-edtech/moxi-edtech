@@ -18,7 +18,7 @@ export async function GET(
     );
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
 
   try {
     let rpcQuery = supabase.rpc("get_pending_turmas_count", {

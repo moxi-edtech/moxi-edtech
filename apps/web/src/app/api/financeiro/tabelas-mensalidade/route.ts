@@ -2,11 +2,6 @@ import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import type { Database } from '~types/supabase'
-
-import { NextResponse } from 'next/server'
-import { supabaseServer } from '@/lib/supabaseServer'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
-import type { Database } from '~types/supabase'
 import { applyKf2ListInvariants } from '@/lib/kf2'
 
 // Lista e cria/atualiza regras de mensalidade por escola/curso/classe usando

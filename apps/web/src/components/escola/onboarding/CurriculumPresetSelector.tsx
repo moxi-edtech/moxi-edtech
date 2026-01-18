@@ -35,16 +35,23 @@ const PRESET_CATEGORIES: Record<CurriculumKey, CurriculumCategory> = {
   primario_base: "geral",
   primario_avancado: "geral",
   ciclo1: "geral",
-  puniv: "geral",
-  economicas: "geral",
+  puniv_fisicas: "geral",
+  puniv_economicas: "geral",
+  puniv_humanas: "geral",
+  puniv_artes: "geral",
 
   // Técnico (inclui saúde)
   tecnico_informatica: "tecnico",
   tecnico_gestao: "tecnico",
   tecnico_construcao: "tecnico",
+  tecnico_electricidade: "tecnico",
+  tecnico_mecanica: "tecnico",
+  tecnico_electronica: "tecnico",
+  tecnico_petroleos: "tecnico",
   tecnico_base: "tecnico",
   saude_enfermagem: "tecnico",
   saude_farmacia_analises: "tecnico",
+  magisterio_primario: "tecnico",
 };
 
 interface Props {

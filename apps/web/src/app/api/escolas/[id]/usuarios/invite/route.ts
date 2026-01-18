@@ -63,7 +63,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const profilePapel = profCheck?.escola_id === escolaId ? normalizePapel(profCheck?.role) : null
 
     let allowed = hasPermission(papelReq, 'criar_usuario') || hasPermission(profilePapel, 'criar_usuario')
-    let adminLink: { user_id: string }[] | null = null
+    let adminLink: { user_id: string | null }[] | null = null
 
     if (!allowed) {
       const { data } = await s

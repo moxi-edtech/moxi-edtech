@@ -4,18 +4,6 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { hasPermission } from "@/lib/permissions";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
-
-// Helper para validar sobreposição de intervalos [start, end]
-function hasOverlap(start1: Date, end1: Date, start2: Date, end2: Date): boolean {
-  return start1 <= end2 && start2 <= end1;
-}
-
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { supabaseServer } from "@/lib/supabaseServer";
-import { hasPermission } from "@/lib/permissions";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 
 // Helper para validar sobreposição de intervalos [start, end]

@@ -65,14 +65,17 @@ export default function PortalLayout({
   const navItems = useMemo(() => {
     if (isLoadingRole || !userRole) return [];
     const items = sidebarConfig[userRole] || [];
-    // Adjust href for admin/escola roles
-    if (userRole === "admin" && escolaIdState) {
-      return items.map(item => ({
-        ...item,
-        href: item.href.replace("[escolaId]", escolaIdState)
-      }));
-    }
-    return items;
+    const replaced = items.map((item) => {
+      if (!escolaIdState) return item;
+      if (item.href.includes("[escolaId]")) {
+        return { ...item, href: item.href.replace("[escolaId]", escolaIdState) };
+      }
+      if (item.href.includes("[id]")) {
+        return { ...item, href: item.href.replace("[id]", escolaIdState) };
+      }
+      return item;
+    });
+    return replaced.filter((item) => !item.href.includes("["));
   }, [userRole, isLoadingRole, escolaIdState]);
 
   useEffect(() => {
@@ -100,7 +103,8 @@ export default function PortalLayout({
     let mounted = true
     ;(async () => {
       try {
-        const { data: prof } = await supabase.from('profiles').select('escola_id').order('created_at', { ascending: false }).limit(1)
+        const supabaseClient = await supabase
+        const { data: prof } = await supabaseClient.from('profiles').select('escola_id').order('created_at', { ascending: false }).limit(1)
         const escolaId = (prof?.[0] as { escola_id: string | null })?.escola_id
         if (!mounted || !escolaId) return
         setEscolaIdState(escolaId); // Set the new state variable
@@ -129,10 +133,11 @@ export default function PortalLayout({
     let mounted = true
     ;(async () => {
       try {
-        const { data: auth } = await supabase.auth.getUser()
+        const supabaseClient = await supabase
+        const { data: auth } = await supabaseClient.auth.getUser()
         const userId = auth?.user?.id
         if (!mounted || !userId) return
-        const { data: prof } = await supabase
+        const { data: prof } = await supabaseClient
           .from('profiles')
           .select('nome, email')
           .eq('user_id', userId)
@@ -223,29 +228,29 @@ export default function PortalLayout({
                 {navItems.map((item) => {
                   const Icon = Icons[item.icon as IconName] ?? Icons.HelpCircle;
                   const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-                  return (
-                    <li key={item.href}>
-                      <Link
-                        href={item.href}
-                        className={clsx(
-                          "group flex items-center gap-3 rounded-md px-2 py-2 text-sm font-medium w-full",
-                          isActive
-                            ? "bg-moxinexa-teal text-white"
-                            : "text-slate-700 hover:bg-slate-100"
-                        )}
-                        title={item.label}
-                      >
-                        <Icon className={clsx("h-5 w-5 shrink-0", isActive ? "text-white" : "text-slate-500 group-hover:text-slate-700")} />
-                        {!collapsed && <span className="truncate">{item.label}</span>}
-                        {item.badge && !collapsed && (
-                          <span className="ml-auto px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                            {item.badge}
-                          </span>
-                        )}
-                      </Link>
-                    </li>
-                  );
-                })}
+                                        const IconComponent = Icon as React.ElementType;
+                                        return (
+                                          <li key={item.href}>
+                                            <Link
+                                              href={item.href}
+                                              className={clsx(
+                                                "group flex items-center gap-3 rounded-md px-2 py-2 text-sm font-medium w-full",
+                                                isActive
+                                                  ? "bg-moxinexa-teal text-white"
+                                                  : "text-slate-700 hover:bg-slate-100"
+                                              )}
+                                              title={item.label}
+                                            >
+                                              <IconComponent className={clsx("h-5 w-5 shrink-0", isActive ? "text-white" : "text-slate-500 group-hover:text-slate-700")} />
+                                              {!collapsed && <span className="truncate">{item.label}</span>}
+                                              {item.badge && !collapsed && (
+                                                <span className="ml-auto px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                                                  {item.badge}
+                                                </span>
+                                              )}
+                                            </Link>
+                                          </li>
+                                        );                })}
               </ul>
             </nav>
           </aside>

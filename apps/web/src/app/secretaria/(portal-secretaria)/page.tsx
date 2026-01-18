@@ -149,7 +149,7 @@ export default function SecretariaDashboardPage() {
                   actions={
                     <>
                       <Link
-                        href="/secretaria/matriculas?nova=1"
+                        href="/secretaria/admissoes?nova=1"
                         className="
                           inline-flex items-center gap-2
                           rounded-xl bg-klasse-gold px-4 py-2
@@ -176,7 +176,7 @@ export default function SecretariaDashboardPage() {
                 <div>
                     <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 ml-1">Balcão de Atendimento</h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                        <ActionCard title="Matricular" sub="Novo ou Confirmação" icon={UserPlus} href="/secretaria/matriculas?nova=1" />
+                        <ActionCard title="Matricular" sub="Novo ou Confirmação" icon={UserPlus} href="/secretaria/admissoes?nova=1" />
                         <ActionCard title="Emitir Declaração" sub="Com ou sem notas" icon={FileText} href="/secretaria/documentos" />
                         <ActionCard title="Cobrar Propina" sub="Pagamento Rápido" icon={Banknote} href="/secretaria/financeiro" />
                         <ActionCard title="Justificar Falta" sub="Registar ausência" icon={CalendarX} href="/secretaria/faltas" />

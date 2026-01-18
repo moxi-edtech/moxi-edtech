@@ -14,7 +14,7 @@
     "lint": "pnpm -w --filter web lint",
     "typecheck": "pnpm -r typecheck",
     "clean": "rm -rf .next node_modules/.cache",
-    "gen:types": "mkdir -p types && supabase gen types typescript --project-id wjtifcpxxxotsbmvbgoq > types/supabase.ts",
+    "db:types": "bash -c 'set -euo pipefail; mkdir -p types; tmp=$(mktemp); supabase gen types typescript --project-id wjtifcpxxxotsbmvbgoq > \"$tmp\"; mv \"$tmp\" types/supabase.ts'",
     "db:link": "supabase link --project-ref wjtifcpxxxotsbmvbgoq",
     "db:push": "supabase db push",
     "db:reset": "supabase db reset",
@@ -35,6 +35,11 @@
     "agents:scan": "tsx agents/scripts/codex-scan-v2.ts --repo . --contracts agents/contracts --out agents/outputs",
     "agents:gate": "tsx agents/scripts/perf-gate.ts --scan agents/outputs/REPORT_SCAN.json --contracts agents/contracts --out agents/outputs",
     "agents:apply": "tsx agents/scripts/apply-agent.ts --plan agents/outputs/PLAN_PATCHES.json --gate agents/outputs/PERF_GATE.json --repo . --mode safe"
+  },
+  "pnpm": {
+    "overrides": {
+      "@supabase/postgrest-js": "2.90.1"
+    }
   },
   "devDependencies": {
     "@types/node": "^24.10.0",

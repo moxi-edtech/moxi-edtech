@@ -6,27 +6,9 @@ import { toast } from "sonner";
 import { parseTurmaCode, findCursoIdByFuzzy as findCursoBySigla, findClasseByNum, normalizeTurmaCode } from "@/lib/turma";
 import { saveAndValidateTurma } from "@/features/turmas/actions";
 
-// Tipos
-interface TurmaItem {
-  id?: string;
-  nome?: string;
-  turma_codigo?: string;
-  turno?: string;
-  sala?: string;
-  capacidade_maxima?: number;
-  ano_letivo?: number;
-  status_validacao?: string;
-  session_id?: string;
-  curso_id?: string;
-  classe_id?: string;
-  metadata?: {
-    importacao_config?: {
-      skip_matricula: boolean;
-      mes_inicio: number;
-    };
-  };
-}
+import { TurmaItem } from "~/types/turmas";
 
+// Tipos
 interface ItemSelect {
   id: string;
   nome: string;

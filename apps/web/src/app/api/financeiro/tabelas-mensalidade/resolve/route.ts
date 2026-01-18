@@ -51,9 +51,11 @@ export async function GET(req: Request) {
         .from('vw_turmas_para_matricula')
         .select('curso_id, classe_id, escola_id')
         .eq('id', turmaId)
-        .order('id', { ascending: false })
-        .limit(1)
-      turmaQuery = applyKf2ListInvariants(turmaQuery, { defaultLimit: 1 })
+
+      turmaQuery = applyKf2ListInvariants(turmaQuery, {
+        defaultLimit: 1,
+        order: [{ column: 'id', ascending: false }],
+      })
 
       const { data: turmaView } = await turmaQuery.maybeSingle()
 

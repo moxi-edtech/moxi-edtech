@@ -30,8 +30,8 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
     // Gather related ids
     const { data: secoes } = await admin.from('secoes').select('id').eq('turma_id', turmaId)
     const secIds = (secoes || []).map((s: any) => s.id)
-    const { data: ofertas } = await admin.from('cursos_oferta').select('id').eq('turma_id', turmaId)
-    const ofertaIds = (ofertas || []).map((o: any) => o.id)
+    const { data: turmaDisciplinas } = await admin.from('turma_disciplinas').select('id').eq('turma_id', turmaId)
+    const turmaDiscIds = (turmaDisciplinas || []).map((t: any) => t.id)
     const { data: mats } = await admin.from('matriculas').select('id').eq('turma_id', turmaId)
     const matIds = (mats || []).map((m: any) => m.id)
 
@@ -43,21 +43,21 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
     // Rotinas by seções
     try { if (secIds.length > 0) await admin.from('rotinas').delete().in('secao_id', secIds) } catch {}
     // Rotinas by ofertas
-    try { if (ofertaIds.length > 0) await admin.from('rotinas').delete().in('curso_oferta_id', ofertaIds) } catch {}
+    try { await admin.from('rotinas').delete().eq('turma_id', turmaId) } catch {}
     // Atribuições professor por seções/ofertas
     try { if (secIds.length > 0) await admin.from('atribuicoes_prof').delete().in('secao_id', secIds) } catch {}
-    try { if (ofertaIds.length > 0) await admin.from('atribuicoes_prof').delete().in('curso_oferta_id', ofertaIds) } catch {}
     // Matriculas da turma
     try { await admin.from('matriculas').delete().eq('turma_id', turmaId) } catch {}
     // Seções da turma
     try { if (secIds.length > 0) await admin.from('secoes').delete().in('id', secIds) } catch {}
-    // Ofertas da turma
-    try { if (ofertaIds.length > 0) await admin.from('cursos_oferta').delete().in('id', ofertaIds) } catch {}
+    // Turma disciplinas
+    try { if (turmaDiscIds.length > 0) await admin.from('turma_disciplinas').delete().in('id', turmaDiscIds) } catch {}
+    try { await admin.from('turma_disciplinas_professores').delete().eq('turma_id', turmaId) } catch {}
     // Por fim, turma
     const { error: delErr } = await admin.from('turmas').delete().eq('id', turmaId)
     if (delErr) return NextResponse.json({ ok: false, error: delErr.message }, { status: 400 })
 
-    recordAuditServer({ escolaId, portal: 'admin_escola', acao: 'TURMA_EXCLUIDA_CASCADE', entity: 'turma', entityId: turmaId, details: { secIds, ofertaIds, matIds } }).catch(() => null)
+    recordAuditServer({ escolaId, portal: 'admin_escola', acao: 'TURMA_EXCLUIDA_CASCADE', entity: 'turma', entityId: turmaId, details: { secIds, turmaDiscIds, matIds } }).catch(() => null)
     return NextResponse.json({ ok: true })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

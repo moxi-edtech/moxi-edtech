@@ -21,6 +21,7 @@ export default function ClasseDetailClient({ classeId }: { classeId: string }) {
 
   useEffect(() => {
     const loadData = async () => {
+      if (!escolaId) return;
       setLoading(true);
       setError(null);
       try {

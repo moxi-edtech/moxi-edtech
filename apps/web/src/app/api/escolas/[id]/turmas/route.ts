@@ -3,33 +3,6 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 import { canManageEscolaResources } from "../permissions";
-
-const normalizeTurno = (turno: string | undefined): "M" | "T" | "N" | null => {
-  const t = (turno || "").trim().toLowerCase();
-  switch (t) {
-    case "m":
-    case "manha":
-    case "manhã":
-      return "M";
-    case "t":
-    case "tarde":
-      return "T";
-    case "n":
-    case "noite":
-      return "N";
-    default:
-      if (["M", "T", "N"].includes((turno || "").toUpperCase())) {
-        return (turno || "").toUpperCase() as "M" | "T" | "N";
-      }
-      return null;
-  }
-};
-
-import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabaseServer";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
-import { canManageEscolaResources } from "../permissions";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 
 const normalizeTurno = (turno: string | undefined): "M" | "T" | "N" | null => {
@@ -81,21 +54,79 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // 4. Query usando a view que resolve curso/classe
     let query = admin
       .from('vw_turmas_para_matricula')
-      .select('id, turma_nome, nome, turno, sala, capacidade_maxima, curso_nome, classe_nome, status_validacao, ocupacao_atual, ultima_matricula, escola_id, curso_id')
+      .select('id, turma_nome, turno, sala, capacidade_maxima, curso_nome, classe_nome, status_validacao, ocupacao_atual, ultima_matricula, escola_id, curso_id')
       .eq('escola_id', escolaId)
     
-    query = applyKf2ListInvariants(query);
+    query = applyKf2ListInvariants(query, {
+      order: [
+        { column: 'turma_nome', ascending: true },
+        { column: 'id', ascending: false },
+      ],
+    });
 
     const normalizedTurno = turno && turno !== 'todos' ? turno.toUpperCase() : null;
     if (normalizedTurno) query = query.eq('turno', normalizedTurno);
     if (cursoId) query = query.eq('curso_id', cursoId);
     if (status && status !== 'todos') query = query.eq('status_validacao', status);
     
-    const { data: rows, error } = await query;
+    const isMissingColumn = (err: any) => {
+      const msg = err?.message as string | undefined
+      const code = err?.code as string | undefined
+      return code === '42703' || (msg && /column .* does not exist|does not exist/i.test(msg))
+    }
+    const isMissingView = (err: any) => {
+      const msg = err?.message as string | undefined
+      const code = err?.code as string | undefined
+      return code === '42P01' || (msg && /relation .* does not exist|does not exist/i.test(msg))
+    }
+
+    let rows: any[] | null = null
+    const { data: viewRows, error } = await query;
 
     if (error) {
-        console.error("Erro na view vw_turmas_para_matricula:", error);
+      console.error("Erro na view vw_turmas_para_matricula:", error);
+      if (!(isMissingColumn(error) || isMissingView(error))) {
         throw error;
+      }
+
+      let fallbackQuery = admin
+        .from('turmas' as any)
+        .select('id, nome, turno, sala, capacidade_maxima, status_validacao, escola_id, curso_id, classe_id')
+        .eq('escola_id', escolaId)
+
+      fallbackQuery = applyKf2ListInvariants(fallbackQuery, {
+        order: [
+          { column: 'nome', ascending: true },
+          { column: 'id', ascending: false },
+        ],
+      })
+
+      if (normalizedTurno) fallbackQuery = fallbackQuery.eq('turno', normalizedTurno);
+      if (cursoId) fallbackQuery = fallbackQuery.eq('curso_id', cursoId);
+      if (status && status !== 'todos') fallbackQuery = fallbackQuery.eq('status_validacao', status);
+
+      const { data: fallbackRows, error: fallbackError } = await fallbackQuery
+      if (fallbackError) {
+        console.error('Erro no fallback de turmas:', fallbackError)
+        throw fallbackError
+      }
+
+      rows = (fallbackRows || []).map((t: any) => ({
+        id: t.id,
+        turma_nome: t.nome ?? null,
+        turno: t.turno ?? null,
+        sala: t.sala ?? null,
+        capacidade_maxima: t.capacidade_maxima ?? null,
+        curso_nome: null,
+        classe_nome: null,
+        status_validacao: t.status_validacao ?? null,
+        ocupacao_atual: 0,
+        ultima_matricula: null,
+        escola_id: t.escola_id ?? escolaId,
+        curso_id: t.curso_id ?? null,
+      }))
+    } else {
+      rows = viewRows as any[]
     }
 
     // Busca turma_codigo original para rótulos de rascunho
@@ -114,7 +145,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // Enriquecimento para o frontend exibir Curso/Classe corretamente
     const items = (rows || []).map((t: any) => ({
       ...t,
-      nome: t.turma_nome ?? t.nome ?? 'Sem Nome',
+      nome: t.turma_nome ?? 'Sem Nome',
       turno: t.turno ?? 'sem_turno',
       sala: t.sala ?? '',
       capacidade_maxima: t.capacidade_maxima ?? 35,

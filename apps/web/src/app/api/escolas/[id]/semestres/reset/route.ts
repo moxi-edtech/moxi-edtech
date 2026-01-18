@@ -178,28 +178,7 @@ export async function POST(
       .eq('session_id', sessao_id)
     const semIds = (sems || []).map((r: any) => r.id)
 
-    // Verifica dependências básicas (cursos_oferta)
-    if (semIds.length > 0) {
-      const { data: deps, error: depErr } = await (admin as any)
-        .from('cursos_oferta')
-        .select('id')
-        .in('semestre_id', semIds)
-        .limit(1)
-      if (depErr) {
-        // Se tabela não existir, ignoramos essa verificação
-        const code = (depErr as any)?.code as string | undefined
-        const msg = (depErr as any)?.message as string | undefined
-        const isMissing = code === '42P01' || (msg && /does not exist|relation .* does not exist/i.test(msg))
-        if (!isMissing) {
-          console.error('[semestres.reset.POST] dependency check error', { message: depErr.message, code })
-          return NextResponse.json({ ok: false, error: depErr.message }, { status: 400 })
-        }
-      }
-      if (deps && (deps as any[]).length > 0) {
-        console.error('[semestres.reset.POST] abort: existing course offerings tied to semestres')
-        return NextResponse.json({ ok: false, error: 'Não é possível regerar períodos: existem ofertas de curso vinculadas a semestres atuais.' }, { status: 409 })
-      }
-    }
+    // Verificação de dependências removida: cursos_oferta não existe neste schema.
 
     // Apaga semestres atuais
     if (semIds.length > 0) {

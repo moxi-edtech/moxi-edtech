@@ -156,6 +156,7 @@ export async function runChecks(opts: { repoRoot: string; files: string[]; contr
 
   const noStoreHits = containsPatternInAnyFile(repoRoot, files, /cache:\s*['\"]no-store['\"]/i);
   const allowedNoStore = new Set([
+    "AGENTS.md",
     "apps/web/src/app/api/auth/login/route.ts",
   ]);
   const disallowedNoStore = noStoreHits.filter((hit) => !allowedNoStore.has(hit.file));
