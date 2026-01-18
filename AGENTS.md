@@ -1,3 +1,5 @@
+<user_instructions>
+
 # KLASSE — Engineering Agents Contract
 
 Este arquivo define os agentes automáticos do repositório KLASSE.
@@ -192,3 +194,6 @@ pnpm agent:scan
 **4️⃣** Travar CI para bloquear PR sem PASS dos agentes
 
 👉 **Manda o número.**
+
+
+</user_instructions>
