@@ -47,44 +47,73 @@ export async function GET() {
     // Papéis globais que podem aparecer na lista (sem alunos/professores)
     const allowedRoles = new Set(['super_admin', 'global_admin', 'admin', 'financeiro', 'secretaria'])
 
+    const isMissingColumn = (err: any) => {
+      const msg = err?.message as string | undefined
+      const code = err?.code as string | undefined
+      return code === '42703' || (msg && /column .* does not exist|does not exist/i.test(msg))
+    }
+    const isMissingTable = (err: any) => {
+      const msg = err?.message as string | undefined
+      const code = err?.code as string | undefined
+      return code === '42P01' || (msg && /relation .* does not exist|does not exist/i.test(msg))
+    }
+
     // 1) Carrega perfis básicos
     let profiles: any[] | null = null
     {
-      let profilesQuery = admin
-        .from('profiles' as any)
-        .select('user_id, nome, email, telefone, role, numero_login, escola_id, current_escola_id')
-        .is('deleted_at', null)
-        .in('role', Array.from(allowedRoles) as any)
-        .order('nome', { ascending: true })
+      const attempts = [
+        {
+          select: 'user_id, nome, email, telefone, role, numero_login, escola_id, current_escola_id',
+          withDeletedAt: true,
+        },
+        {
+          select: 'user_id, nome, email, telefone, role, escola_id, current_escola_id',
+          withDeletedAt: true,
+        },
+        {
+          select: 'user_id, nome, email, telefone, role, escola_id',
+          withDeletedAt: true,
+        },
+        {
+          select: 'user_id, nome, email, telefone, role, escola_id',
+          withDeletedAt: false,
+        },
+      ]
 
-      profilesQuery = applyKf2ListInvariants(profilesQuery, { defaultLimit: 5000 })
+      for (const attempt of attempts) {
+        let profilesQuery = admin
+          .from('profiles' as any)
+          .select(attempt.select)
+          .in('role', Array.from(allowedRoles) as any)
 
-      const { data, error: pErr } = await profilesQuery
-      if (pErr) {
-        const msg = (pErr as any)?.message as string | undefined
-        const code = (pErr as any)?.code as string | undefined
-        const maybeMissingColumn = code === '42703' || (msg && /column .* does not exist|does not exist/i.test(msg))
-        if (maybeMissingColumn) {
-          // Fallback sem numero_login para ambientes sem a coluna
-          let fallbackQuery = admin
-            .from('profiles' as any)
-            .select('user_id, nome, email, telefone, role, escola_id, current_escola_id')
-            .is('deleted_at', null)
-            .in('role', Array.from(allowedRoles) as any)
-            .order('nome', { ascending: true })
+        if (attempt.withDeletedAt) {
+          profilesQuery = profilesQuery.is('deleted_at', null)
+        }
 
-          fallbackQuery = applyKf2ListInvariants(fallbackQuery, { defaultLimit: 5000 })
+        profilesQuery = applyKf2ListInvariants(profilesQuery, {
+          defaultLimit: 5000,
+          order: [
+            { column: 'nome', ascending: true },
+            { column: 'user_id', ascending: false },
+          ],
+        })
 
-          const { data: data2, error: pErr2 } = await fallbackQuery
-          if (pErr2) {
-            return NextResponse.json({ ok: false, error: pErr2.message }, { status: 400 })
+        const { data, error: pErr } = await profilesQuery
+        if (pErr) {
+          if (isMissingColumn(pErr)) {
+            continue
           }
-          profiles = data2 as any[]
-        } else {
           return NextResponse.json({ ok: false, error: pErr.message }, { status: 400 })
         }
-      } else {
         profiles = data as any[]
+        break
+      }
+
+      if (!profiles) {
+        return NextResponse.json(
+          { ok: false, error: 'Falha ao carregar profiles (schema incompatível)' },
+          { status: 400 }
+        )
       }
     }
 
@@ -97,32 +126,45 @@ export async function GET() {
     let vRows: any[] = []
     let papelField: 'papel' | 'role' = 'papel'
     if (userIds.length > 0) {
-      const fetchVinculos = (field: 'papel' | 'role') =>
-        admin
-          .from('escola_users' as any)
+      const fetchVinculos = (table: string, field: 'papel' | 'role', withOrder: boolean) => {
+        let query = admin
+          .from(table as any)
           .select(`user_id, escola_id, ${field}`)
           .in('user_id', userIds as any)
-          .order('created_at', { ascending: false })
           .limit(200000)
+        if (withOrder) {
+          query = query.order('created_at', { ascending: false })
+        }
+        return query
+      }
 
-      let { data: v, error: vErr } = await fetchVinculos('papel')
-      if (vErr) {
-        const msg = (vErr as any)?.message as string | undefined
-        const code = (vErr as any)?.code as string | undefined
-        const missingColumn = code === '42703' || (msg && /column .* does not exist|does not exist/i.test(msg))
-        if (!missingColumn) {
+      const attempts = [
+        { table: 'escola_users', field: 'papel' as const, order: true },
+        { table: 'escola_users', field: 'papel' as const, order: false },
+        { table: 'escola_users', field: 'role' as const, order: true },
+        { table: 'escola_users', field: 'role' as const, order: false },
+        { table: 'escola_usuarios', field: 'papel' as const, order: true },
+        { table: 'escola_usuarios', field: 'papel' as const, order: false },
+        { table: 'escola_usuarios', field: 'role' as const, order: true },
+        { table: 'escola_usuarios', field: 'role' as const, order: false },
+      ]
+
+      for (const attempt of attempts) {
+        const { data: v, error: vErr } = await fetchVinculos(
+          attempt.table,
+          attempt.field,
+          attempt.order
+        )
+        if (vErr) {
+          if (isMissingColumn(vErr) || isMissingTable(vErr)) {
+            continue
+          }
           return NextResponse.json({ ok: false, error: vErr.message }, { status: 400 })
         }
-
-        // Fallback para esquemas que usam 'role' em vez de 'papel'
-        const fallback = await fetchVinculos('role')
-        if (fallback.error) {
-          return NextResponse.json({ ok: false, error: fallback.error.message }, { status: 400 })
-        }
-        papelField = 'role'
-        v = fallback.data
+        papelField = attempt.field
+        vRows = (v || []) as any[]
+        break
       }
-      vRows = (v || []) as any[]
     }
 
     // 3) Nomes de escolas

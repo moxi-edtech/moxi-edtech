@@ -1,31 +1,14 @@
 {
-  "timestamp": "2026-01-11T19:40:28.339Z",
+  "timestamp": "2026-01-18T17:12:26.623Z",
   "repoRoot": "/Users/gundja/moxi-edtech",
   "summary": {
     "critical": 0,
-    "high": 1,
+    "high": 0,
     "medium": 0,
     "low": 6,
-    "total": 7
+    "total": 6
   },
   "findings": [
-    {
-      "id": "NO_STORE",
-      "title": "Anti-pattern — uso de cache: 'no-store' em páginas/relatórios",
-      "severity": "HIGH",
-      "status": "PARTIAL",
-      "evidence": [
-        {
-          "file": "AGENTS.md",
-          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
-        },
-        {
-          "file": "apps/web/src/components/secretaria/AlunosListClient.tsx",
-          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
-        }
-      ],
-      "recommendation": "Remover no-store onde houver MV/camadas cacheáveis; manter só em rotas realmente sensíveis."
-    },
     {
       "id": "KF2",
       "title": "KF2 — Pesquisa Global (Command Palette) invariants",
@@ -61,6 +44,22 @@
       "severity": "LOW",
       "status": "VALIDATED",
       "evidence": [
+        {
+          "file": "DOUBLE_CHECK_REPORT_ADMISSAO_P0_V2.md",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "E2E_CHECKLIST_ADMISSAO.md",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "MIGRATION_ADMISSAO_P0.sql",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "REPORT_ADMISSAO_P0.md",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
         {
           "file": "types/database.ts",
           "note": "match: /audit_logs|auditLog|create_audit/i"
@@ -110,11 +109,11 @@
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
-          "file": "supabase/functions/outbox-worker/index.ts",
+          "file": "supabase/migrations/20261019170000_create_admissao_rpcs.sql",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
-          "file": "supabase/.branches/remote/schema.sql",
+          "file": "supabase/functions/outbox-worker/index.ts",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
@@ -143,22 +142,6 @@
         },
         {
           "file": "supabase/migrations_archive/migrations/20250917060400_audit_redaction.sql",
-          "note": "match: /audit_logs|auditLog|create_audit/i"
-        },
-        {
-          "file": "supabase/migrations_archive/migrations/20250917060500_audit_triggers.sql",
-          "note": "match: /audit_logs|auditLog|create_audit/i"
-        },
-        {
-          "file": "supabase/migrations_archive/migrations/20250917060600_audit_user_default.sql",
-          "note": "match: /audit_logs|auditLog|create_audit/i"
-        },
-        {
-          "file": "supabase/migrations_archive/migrations/20250917060700_create_audit_logs.sql",
-          "note": "match: /audit_logs|auditLog|create_audit/i"
-        },
-        {
-          "file": "supabase/migrations_archive/migrations/20251108141000_fix_rls_initplan_policies.sql",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         }
       ],

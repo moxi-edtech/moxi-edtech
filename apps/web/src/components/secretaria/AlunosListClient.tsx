@@ -1,15 +1,36 @@
+// apps/web/src/components/secretaria/AlunosListClient.tsx
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { 
-  Loader2, Search, Filter, UserPlus, ArrowLeft, 
-  Users, Mail, Phone, Shield, 
-  Archive, Eye, Edit 
+import { useRouter } from "next/navigation";
+import {
+  Loader2,
+  Search,
+  Filter,
+  Plus,
+  ArrowLeft,
+  Users,
+  Mail,
+  Phone,
+  Shield,
+  Eye,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
-// --- TIPOS ---
+/**
+ * KLASSE UI notes:
+ * - Gold (#E3B23C) = action/active states
+ * - Green (#1F6B3B) = brand/headings
+ * - Radius: rounded-xl (cards/inputs/buttons), rounded-full (badges)
+ * - Focus: ring-4 ring-klasse-gold/20 + border-klasse-gold
+ */
+
+// -----------------------------
+// Types
+// -----------------------------
 type Aluno = {
   id: string;
   nome: string;
@@ -18,123 +39,226 @@ type Aluno = {
   telefone_responsavel?: string | null;
   status?: string | null;
   created_at: string;
-  numero_login?: string | null;
-  numero_processo?: string | null;
+
+  // Identifiers
+  numero_login?: string | null; // existe quando virou aluno/matricula
+  numero_processo?: string | null; // pode existir se vocês mantiveram "processo" em alunos
+
+  // Lead/origem
   origem?: "aluno" | "candidatura" | null;
   candidatura_id?: string | null;
-  aluno_id?: string | null;
 };
 
-type Cursor = {
-  created_at: string;
-  id: string;
+type Cursor = { created_at: string; id: string };
+
+type ApiResponse = {
+  ok: boolean;
+  items: Aluno[];
+  total?: number;
+  page?: { hasMore?: boolean; nextCursor?: Cursor | null };
+  error?: string;
 };
 
-// --- MICRO-COMPONENTES ---
-function KpiCard({ title, value, icon: Icon, colorClass, bgClass }: any) {
+// -----------------------------
+// Small utilities
+// -----------------------------
+function useDebounce<T>(value: T, delayMs: number) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(t);
+  }, [value, delayMs]);
+  return debounced;
+}
+
+async function fetchJson<T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
+  const res = await fetch(input, init);
+  const contentType = res.headers.get("content-type") || "";
+  const data = contentType.includes("application/json") ? await res.json() : null;
+
+  if (!res.ok) {
+    const msg =
+      data?.error ||
+      (res.status === 401
+        ? "Não autenticado. Faça login novamente."
+        : res.status === 403
+          ? "Sem permissão para acessar este recurso."
+          : "Falha na requisição.");
+    throw new Error(msg);
+  }
+  return data as T;
+}
+
+// -----------------------------
+// UI micro-components
+// -----------------------------
+function KpiCard({
+  title,
+  value,
+  icon: Icon,
+}: {
+  title: string;
+  value: number | string;
+  icon: React.ComponentType<{ className?: string }>;
+}) {
   return (
-    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-start justify-between hover:shadow-md transition-all">
-      <div>
-        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{title}</p>
-        <p className="text-2xl font-black text-slate-800 mt-1">{value}</p>
+    <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-5 flex items-start justify-between">
+      <div className="min-w-0">
+        <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{title}</p>
+        <p className="text-2xl font-black text-slate-950 mt-1">{value}</p>
       </div>
-      <div className={`p-3 rounded-xl ${bgClass} ${colorClass}`}>
-        <Icon className="h-5 w-5" />
+
+      <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
+        <Icon className="h-4 w-4 text-slate-400" />
       </div>
     </div>
   );
 }
 
 function StatusBadge({ status }: { status?: string | null }) {
-  const st = status || 'pendente';
+  const st = (status || "pendente").toLowerCase();
+
+  // Ajusta conforme teus status reais do backend
   const styles: Record<string, string> = {
     ativo: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    suspenso: "bg-amber-50 text-amber-700 border-amber-200",
-    inativo: "bg-red-50 text-red-700 border-red-200",
-    pendente: "bg-amber-50 text-amber-700 border-amber-200",
+    matriculado: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    pendente: "bg-amber-50 text-amber-800 border-amber-200",
+    submetida: "bg-amber-50 text-amber-800 border-amber-200",
+    em_analise: "bg-sky-50 text-sky-700 border-sky-200",
+    aprovada: "bg-indigo-50 text-indigo-700 border-indigo-200",
+    suspenso: "bg-amber-50 text-amber-800 border-amber-200",
+    inativo: "bg-rose-50 text-rose-700 border-rose-200",
+    arquivado: "bg-slate-100 text-slate-600 border-slate-200",
+    todos: "bg-slate-100 text-slate-600 border-slate-200",
   };
+
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border capitalize ${styles[st] || styles.pendente}`}>
-      {st}
+    <span
+      className={[
+        "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border capitalize",
+        styles[st] || styles.pendente,
+      ].join(" ")}
+      title={st}
+    >
+      {st.replace(/_/g, " ")}
     </span>
   );
 }
 
-// --- COMPONENTE PRINCIPAL ---
+function EmptyState({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <div className="p-12 text-center">
+      <p className="text-sm font-semibold text-slate-700">{title}</p>
+      {subtitle ? <p className="text-sm text-slate-500 mt-1">{subtitle}</p> : null}
+    </div>
+  );
+}
+
+// -----------------------------
+// Main
+// -----------------------------
 export default function AlunosListClient() {
-  // Estados de Filtro
+  const router = useRouter();
+
+  // Filters
   const [q, setQ] = useState("");
-  const [status, setStatus] = useState("pendente");
+  const debouncedQ = useDebounce(q, 300);
+
+  // Mantive teus filtros (porque não tenho certeza do teu endpoint /api/secretaria/alunos).
+  // Se teu backend mudou para status de candidatura (submetida/em_analise/aprovada/matriculado),
+  // você só troca a lista abaixo + o "default".
+  const [status, setStatus] = useState<"pendente" | "ativo" | "inativo" | "arquivado" | "todos">("pendente");
+
+  // Paging/cursor
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(20);
-  
-  // Estados de Dados
+  const pageSize = 20;
+
+  // Data
   const [items, setItems] = useState<Aluno[]>([]);
   const [total, setTotal] = useState(0);
   const [hasMore, setHasMore] = useState(false);
-  const [pageCursors, setPageCursors] = useState<Array<Cursor | null>>([null]);
+  const pageCursors = useRef<Array<Cursor | null>>([null]);
+
+  // UI state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const scrollParentRef = useRef<HTMLDivElement | null>(null);
 
-  // Estados de Ação (Modal)
+  // Delete modal
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteReason, setDeleteReason] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [alunoSelecionado, setAlunoSelecionado] = useState<Aluno | null>(null);
 
-  const hasRows = !loading && items.length > 0;
+  const scrollParentRef = useRef<HTMLDivElement | null>(null);
 
   const rowVirtualizer = useVirtualizer({
     count: items.length,
     getScrollElement: () => scrollParentRef.current,
-    estimateSize: () => 72,
+    estimateSize: () => 76,
     overscan: 6,
   });
 
-  // --- DATA FETCHING ---
-  async function load(p = page) {
-    setLoading(true);
-    setError(null);
-    try {
-      const cursor = pageCursors[p - 1] ?? null;
-      const params = new URLSearchParams({ q, status, pageSize: String(pageSize) });
-      if (cursor) {
-        params.set("cursor_created_at", cursor.created_at);
-        params.set("cursor_id", cursor.id);
-      } else {
-        params.set("page", String(p));
+  const hasRows = !loading && items.length > 0;
+
+  const load = useCallback(
+    async (p: number) => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const cursor = pageCursors.current[p - 1] ?? null;
+
+        const params = new URLSearchParams({
+          q: debouncedQ,
+          status,
+          pageSize: String(pageSize),
+        });
+
+        if (cursor) {
+          params.set("cursor_created_at", cursor.created_at);
+          params.set("cursor_id", cursor.id);
+        } else {
+          params.set("page", String(p));
+        }
+
+        const json = await fetchJson<ApiResponse>(`/api/secretaria/alunos?${params.toString()}`);
+
+        if (!json?.ok) throw new Error(json?.error || "Falha ao carregar.");
+
+        setItems(json.items || []);
+        setTotal(json.total ?? json.items?.length ?? 0);
+
+        const more = Boolean(json.page?.hasMore);
+        setHasMore(more);
+
+        const nextCursor = json.page?.nextCursor ?? null;
+        pageCursors.current[p] = nextCursor;
+      } catch (e: any) {
+        setError(e.message || "Erro inesperado.");
+        setItems([]);
+        setTotal(0);
+        setHasMore(false);
+      } finally {
+        setLoading(false);
       }
-      const res = await fetch(`/api/secretaria/alunos?${params.toString()}`, { cache: "no-store" });
-      const json = await res.json();
-
-      if (!res.ok || !json.ok) throw new Error(json?.error || "Falha ao carregar");
-
-      setItems(json.items || []);
-      setTotal(json.total ?? json.items?.length ?? 0);
-      setHasMore(Boolean(json.page?.hasMore));
-      const nextCursor = json.page?.nextCursor || null;
-      setPageCursors((prev) => {
-        const next = [...prev];
-        next[p] = nextCursor;
-        return next;
-      });
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
-  }
+    },
+    [debouncedQ, pageSize, status]
+  );
 
   // Reload triggers
   useEffect(() => {
     setPage(1);
-    setPageCursors([null]);
+    pageCursors.current = [null];
     load(1);
-  }, [q, status]);
-  useEffect(() => { load(page); }, [page]); // Load on page change
+  }, [debouncedQ, status, load]);
 
-  // --- AÇÕES ---
+  useEffect(() => {
+    if (page !== 1) {
+      load(page);
+    }
+  }, [page, load]);
+
+  // Actions
   const handleOpenDelete = (aluno: Aluno) => {
     setAlunoSelecionado(aluno);
     setDeleteReason("");
@@ -142,260 +266,390 @@ export default function AlunosListClient() {
   };
 
   const handleConfirmDelete = async () => {
-    if (!alunoSelecionado || !deleteReason.trim()) return alert("Motivo obrigatório.");
+    if (!alunoSelecionado) return;
+    const reason = deleteReason.trim();
+    if (!reason) {
+      alert("Motivo obrigatório.");
+      return;
+    }
+
     setDeleting(true);
     try {
-      const res = await fetch(`/api/secretaria/alunos/${alunoSelecionado.id}/delete`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason: deleteReason.trim() }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.ok) throw new Error(json.error);
-      
+      const json = await fetchJson<{ ok: boolean; error?: string }>(
+        `/api/secretaria/alunos/${alunoSelecionado.id}/delete`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason }),
+        }
+      );
+
+      if (!json.ok) throw new Error(json.error || "Falha ao arquivar.");
+
       await load(1);
       setShowDeleteModal(false);
     } catch (e: any) {
-      alert(e.message);
+      alert(e.message || "Erro ao arquivar.");
     } finally {
       setDeleting(false);
     }
   };
 
-  // --- MÉTRICAS ---
-  const stats = useMemo(() => ({
-    pendentes: items.filter(a => a.status === 'pendente').length,
-    ativos: items.filter(a => a.status === 'ativo').length,
-    comEmail: items.filter(a => a.email).length,
-    comResp: items.filter(a => a.responsavel).length
-  }), [items]);
+  // Derived stats (só na página atual; se quiser global, precisa endpoint)
+  const stats = useMemo(() => {
+    const pendentes = items.filter((a) => (a.status || "").toLowerCase() === "pendente").length;
+    const ativos = items.filter((a) => (a.status || "").toLowerCase() === "ativo").length;
+    const comEmail = items.filter((a) => !!a.email).length;
+    const comResp = items.filter((a) => !!a.responsavel).length;
+    return { pendentes, ativos, comEmail, comResp };
+  }, [items]);
+
+  // Filter options
+  const statusOptions: Array<{ label: string; value: typeof status }> = [
+    { label: "Leads (pendente)", value: "pendente" },
+    { label: "Matriculados (ativo)", value: "ativo" },
+    { label: "Inativos", value: "inativo" },
+    { label: "Arquivados", value: "arquivado" },
+    { label: "Todos", value: "todos" },
+  ];
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-6 space-y-8 pb-20">
-      
-      {/* 1. HEADER & AÇÕES */}
+    <div className="w-full max-w-7xl mx-auto p-6 space-y-6 pb-20">
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <button 
-            onClick={() => window.history.back()}
-            className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors mb-2"
+        <div className="min-w-0">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-slate-700 transition-colors mb-2"
           >
-            <ArrowLeft size={14}/> Voltar
+            <ArrowLeft size={16} className="text-slate-400" />
+            Voltar
           </button>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Gestão de Alunos</h1>
-          <p className="text-sm font-medium text-slate-500">Cadastros começam como pendentes (lead) e viram ativos ao matricular.</p>
+
+          <h1 className="text-2xl font-black text-klasse-green tracking-tight">Gestão de Alunos</h1>
+          <p className="text-sm text-slate-600 mt-1">
+            Leads (candidaturas) podem aparecer como <span className="font-semibold">pendentes</span> até a conversão para matrícula.
+          </p>
         </div>
-        
-        <Link 
-          href="/secretaria/alunos/novo"
-          className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 shadow-lg shadow-slate-900/20 transition hover:-translate-y-0.5"
+
+        <Link
+          href="/secretaria/admissoes/nova"
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold bg-klasse-gold text-white hover:brightness-95 shadow-sm"
         >
-          <UserPlus size={18} />
-          Novo Aluno
+          <Plus size={16} />
+          Nova Admissão
         </Link>
       </div>
 
-      {/* 2. KPIS */}
+      {/* Error */}
+      {error ? (
+        <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 text-sm text-rose-700">
+          <div className="font-bold">Erro ao carregar</div>
+          <div className="mt-1">{error}</div>
+          <button
+            onClick={() => load(1)}
+            className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-white border border-rose-200 text-rose-700 hover:bg-rose-50"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      ) : null}
+
+      {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard title="Total na Página" value={total} icon={Users} colorClass="text-blue-600" bgClass="bg-blue-50" />
-        <KpiCard title="Leads Pendentes" value={stats.pendentes} icon={Filter} colorClass="text-amber-600" bgClass="bg-amber-50" />
-        <KpiCard title="Matriculados (Ativos)" value={stats.ativos} icon={Shield} colorClass="text-emerald-600" bgClass="bg-emerald-50" />
-        <KpiCard title="Com Responsável" value={stats.comResp} icon={Users} colorClass="text-orange-600" bgClass="bg-orange-50" />
+        <KpiCard title="Total (página)" value={total} icon={Users} />
+        <KpiCard title="Leads pendentes" value={stats.pendentes} icon={Filter} />
+        <KpiCard title="Ativos" value={stats.ativos} icon={Shield} />
+        <KpiCard title="Com responsável" value={stats.comResp} icon={Users} />
       </div>
 
-      {/* 3. TABELA PRINCIPAL */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-        
+      {/* Table card */}
+      <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
         {/* Toolbar */}
-        <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row gap-4 justify-between items-center">
-          
-          <div className="relative w-full sm:max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Buscar por nome, responsável ou número..." 
-              value={q} 
-              onChange={(e) => setQ(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-shadow"
-            />
-          </div>
+        <div className="p-5 border-b border-slate-200 bg-slate-50">
+          <div className="flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between">
+            <div className="relative w-full lg:max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Buscar por nome, responsável, processo ou login…"
+                className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none
+                           focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+              />
+            </div>
 
-          <div className="flex gap-2 w-full sm:w-auto overflow-x-auto">
-            {[
-              { label: 'Leads (pendente)', value: 'pendente' },
-              { label: 'Matriculados (ativo)', value: 'ativo' },
-              { label: 'Inativos/Cancelados', value: 'inativo' },
-              { label: 'Arquivados', value: 'arquivado' },
-              { label: 'Todos', value: 'todos' },
-            ].map((s) => (
-              <button 
-                key={s.value} 
-                onClick={() => setStatus(s.value)}
-                className={`whitespace-nowrap px-4 py-2 rounded-lg text-sm font-bold border-b-4 transition-all ${
-                  status === s.value
-                  ? 'border-teal-500 bg-white text-teal-600' 
-                  : 'border-transparent text-slate-500 hover:bg-white hover:text-slate-700'
-                }`}
-              >
-                {s.label}
-              </button>
-            ))}
+            <div className="flex gap-2 w-full lg:w-auto overflow-x-auto">
+              {statusOptions.map((s) => {
+                const active = status === s.value;
+                return (
+                  <button
+                    key={s.value}
+                    onClick={() => setStatus(s.value)}
+                    className={[
+                      "whitespace-nowrap px-4 py-2 rounded-xl text-sm font-bold border transition-all",
+                      active
+                        ? "bg-white border-klasse-gold text-klasse-gold ring-1 ring-klasse-gold/25"
+                        : "bg-white border-slate-200 text-slate-600 hover:text-slate-800",
+                    ].join(" ")}
+                  >
+                    {s.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
-        {/* Lista */}
+        {/* Table */}
         <div className="overflow-x-auto">
           <div ref={scrollParentRef} className="max-h-[560px] overflow-y-auto">
-            <table className="min-w-full table-fixed divide-y divide-slate-100">
+            <table className="min-w-full table-fixed divide-y divide-slate-200">
               <thead className="bg-white sticky top-0 z-10" style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
-              <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Aluno</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Contato</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-slate-400 uppercase tracking-wider">Responsável</th>
-                <th className="px-6 py-4 text-center text-xs font-bold text-slate-400 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-4 text-right text-xs font-bold text-slate-400 uppercase tracking-wider">Ações</th>
-              </tr>
-            </thead>
-            <tbody
-              className="bg-white divide-y divide-slate-50"
-              style={
-                hasRows
-                  ? {
-                      position: "relative",
-                      display: "block",
-                      height: rowVirtualizer.getTotalSize(),
-                    }
-                  : undefined
-              }
-            >
-              {loading ? (
-                 <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
-                   <td colSpan={5} className="p-12 text-center text-slate-500">
-                     <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-teal-600"/>Carregando...
-                   </td>
-                 </tr>
-              ) : items.length === 0 ? (
-                 <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
-                   <td colSpan={5} className="p-12 text-center text-slate-500">
-                     Nenhum aluno encontrado. Cadastros nascem como pendentes até gerar matrícula.
-                   </td>
-                 </tr>
-              ) : (
-                rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                  const aluno = items[virtualRow.index];
-                  const identificador = aluno.numero_processo || aluno.numero_login || "—";
-                  const identificadorLabel = aluno.numero_processo ? "Proc." : aluno.numero_login ? "Login" : "—";
-                  const isLead = aluno.origem === "candidatura";
-                  const matriculaHref = isLead
-                    ? aluno.candidatura_id
-                      ? `/secretaria/matriculas/nova?candidaturaId=${aluno.candidatura_id}`
-                      : null
-                    : `/secretaria/matriculas/nova?alunoId=${aluno.id}`;
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Aluno</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Contato</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wider">Responsável</th>
+                  <th className="px-6 py-4 text-center text-xs font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-4 text-right text-xs font-bold text-slate-500 uppercase tracking-wider">Ações</th>
+                </tr>
+              </thead>
 
-                  return (
-                    <tr
-                      key={aluno.id}
-                      className="hover:bg-slate-50/80 transition-colors group"
-                      style={{
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        transform: `translateY(${virtualRow.start}px)`,
-                        width: "100%",
-                        display: "table",
-                        tableLayout: "fixed",
-                      }}
-                    >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                           <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs border border-slate-200">
-                              {aluno.nome.substring(0,2).toUpperCase()}
-                           </div>
-                           <div>
-                              <p className="font-bold text-sm text-slate-800">{aluno.nome}</p>
-                              <p className="text-xs text-slate-400 font-mono">
+              <tbody
+                className="bg-white divide-y divide-slate-100"
+                style={
+                  hasRows
+                    ? { position: "relative", display: "block", height: rowVirtualizer.getTotalSize() }
+                    : undefined
+                }
+              >
+                {loading ? (
+                  <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
+                    <td colSpan={5} className="p-12 text-center text-slate-600">
+                      <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-klasse-gold" />
+                      Carregando…
+                    </td>
+                  </tr>
+                ) : items.length === 0 ? (
+                  <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
+                    <td colSpan={5}>
+                      <EmptyState
+                        title="Nenhum registro encontrado."
+                        subtitle="Tente outro termo de busca ou ajuste o filtro."
+                      />
+                    </td>
+                  </tr>
+                ) : (
+                  rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                    const aluno = items[virtualRow.index];
+
+                    const isLead = aluno.origem === "candidatura";
+                    const identificador =
+                      aluno.numero_processo || aluno.numero_login || "—";
+                    const identificadorLabel = aluno.numero_processo
+                      ? "Proc."
+                      : aluno.numero_login
+                        ? "Login"
+                        : "—";
+
+                    const matriculaHref =
+                      isLead && aluno.candidatura_id
+                        ? `/secretaria/admissoes/nova?candidaturaId=${aluno.candidatura_id}`
+                        : !isLead
+                          ? `/secretaria/admissoes/nova?alunoId=${aluno.id}`
+                          : null;
+
+                    const initials = (aluno.nome || "—")
+                      .trim()
+                      .split(/\s+/)
+                      .slice(0, 2)
+                      .map((p) => p[0]?.toUpperCase())
+                      .join("")
+                      .slice(0, 2);
+
+                    return (
+                      <tr
+                        key={aluno.id}
+                        className="hover:bg-slate-50 transition-colors group"
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          transform: `translateY(${virtualRow.start}px)`,
+                          width: "100%",
+                          display: "table",
+                          tableLayout: "fixed",
+                        }}
+                      >
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center">
+                              <span className="text-xs font-black text-slate-600">{initials || "—"}</span>
+                            </div>
+
+                            <div className="min-w-0">
+                              <p className="font-bold text-sm text-slate-950 truncate">{aluno.nome}</p>
+
+                              <p className="text-xs text-slate-500 font-mono mt-0.5">
                                 {identificadorLabel !== "—" ? `${identificadorLabel}: ${identificador}` : "—"}
                               </p>
-                              {isLead && (
-                                <p className="text-[10px] text-amber-600 font-semibold uppercase">Lead</p>
-                              )}
-                              {aluno.numero_processo && aluno.numero_login && (
-                                <p className="text-[10px] text-slate-400 font-mono">Login: {aluno.numero_login}</p>
-                              )}
-                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-600">
-                          {aluno.email ? <div className="flex items-center gap-1"><Mail className="w-3 h-3"/> {aluno.email}</div> : <span className="text-slate-300 text-xs">—</span>}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-slate-600">
-                          {aluno.responsavel ? (
-                              <div>
-                                  <p className="font-medium">{aluno.responsavel}</p>
-                                  <p className="text-xs text-slate-400 flex items-center gap-1"><Phone className="w-3 h-3"/> {aluno.telefone_responsavel}</p>
-                              </div>
-                          ) : <span className="text-slate-300 text-xs">—</span>}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                          <StatusBadge status={aluno.status} />
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                          <div className="flex justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
-                              {matriculaHref && aluno.status !== 'ativo' && (
-                                <Link href={matriculaHref} className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition" title="Matricular Aluno">
-                                  <UserPlus className="w-4 h-4"/>
-                                </Link>
-                              )}
-                              {!isLead && (
-                                <>
-                                  <Link href={`/secretaria/alunos/${aluno.id}`} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"><Eye className="w-4 h-4"/></Link>
-                                  <Link href={`/secretaria/alunos/${aluno.id}/editar`} className="p-2 text-slate-400 hover:text-teal-600 hover:bg-teal-50 rounded-lg transition"><Edit className="w-4 h-4"/></Link>
-                                  <button onClick={() => handleOpenDelete(aluno)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"><Archive className="w-4 h-4"/></button>
-                                </>
-                              )}
+
+                              {isLead ? (
+                                <span className="inline-flex mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold border bg-amber-50 text-amber-800 border-amber-200 uppercase">
+                                  Lead
+                                </span>
+                              ) : null}
+                            </div>
                           </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                        </td>
+
+                        <td className="px-6 py-4 text-sm text-slate-700">
+                          {aluno.email ? (
+                            <div className="flex items-center gap-2">
+                              <Mail className="w-4 h-4 text-slate-400" />
+                              <span className="truncate">{aluno.email}</span>
+                            </div>
+                          ) : (
+                            <span className="text-slate-300 text-sm">—</span>
+                          )}
+                        </td>
+
+                        <td className="px-6 py-4 text-sm text-slate-700">
+                          {aluno.responsavel ? (
+                            <div className="min-w-0">
+                              <p className="font-semibold truncate">{aluno.responsavel}</p>
+                              {aluno.telefone_responsavel ? (
+                                <p className="text-xs text-slate-500 flex items-center gap-2 mt-0.5">
+                                  <Phone className="w-4 h-4 text-slate-400" />
+                                  {aluno.telefone_responsavel}
+                                </p>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <span className="text-slate-300 text-sm">—</span>
+                          )}
+                        </td>
+
+                        <td className="px-6 py-4 text-center">
+                          <StatusBadge status={aluno.status} />
+                        </td>
+
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex justify-end gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
+                            {/* Matricular (se não ativo ainda) */}
+                            {matriculaHref && (aluno.status || "").toLowerCase() !== "ativo" ? (
+                              <Link
+                                href={matriculaHref}
+                                className="p-2 rounded-xl text-slate-400 hover:text-klasse-gold hover:bg-amber-50 transition"
+                                title="Abrir matrícula"
+                              >
+                                <Plus className="w-4 h-4" />
+                              </Link>
+                            ) : null}
+
+                            {/* Ações só para aluno (não lead) */}
+                            {!isLead ? (
+                              <>
+                                <Link
+                                  href={`/secretaria/alunos/${aluno.id}`}
+                                  className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                                  title="Ver"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </Link>
+
+                                <Link
+                                  href={`/secretaria/alunos/${aluno.id}/editar`}
+                                  className="p-2 rounded-xl text-slate-400 hover:text-klasse-gold hover:bg-amber-50 transition"
+                                  title="Editar"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </Link>
+
+                                <button
+                                  onClick={() => handleOpenDelete(aluno)}
+                                  className="p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 transition"
+                                  title="Arquivar"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
 
-        {/* Paginacao */}
-        <div className="bg-slate-50 px-6 py-4 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
-            <span>Página {page}</span>
-            <div className="flex gap-2">
-                <button disabled={page<=1} onClick={() => setPage(p => p-1)} className="px-3 py-1 bg-white border rounded-md disabled:opacity-50">Anterior</button>
-                <button disabled={!hasMore} onClick={() => setPage(p => p+1)} className="px-3 py-1 bg-white border rounded-md disabled:opacity-50">Próximo</button>
-            </div>
+        {/* Pagination */}
+        <div className="bg-slate-50 px-6 py-4 border-t border-slate-200 flex items-center justify-between text-sm text-slate-600">
+          <span className="font-semibold">Página {page}</span>
+          <div className="flex gap-2">
+            <button
+              disabled={page <= 1}
+              onClick={() => setPage((p) => p - 1)}
+              className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold disabled:opacity-50"
+            >
+              Anterior
+            </button>
+            <button
+              disabled={!hasMore}
+              onClick={() => setPage((p) => p + 1)}
+              className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold disabled:opacity-50"
+            >
+              Próximo
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* MODAL DELETE */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md scale-100 animate-in zoom-in-95">
-                <h3 className="text-lg font-bold text-slate-900 mb-2">Arquivar Aluno</h3>
-                <p className="text-sm text-slate-500 mb-4">Tem a certeza que deseja arquivar <strong>{alunoSelecionado?.nome}</strong>? Esta ação não apaga o histórico financeiro.</p>
-                <textarea 
-                    value={deleteReason}
-                    onChange={e => setDeleteReason(e.target.value)}
-                    placeholder="Motivo do arquivamento..."
-                    className="w-full p-3 border border-slate-200 rounded-lg text-sm mb-4 outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
-                    rows={3}
-                />
-                <div className="flex justify-end gap-3">
-                    <button onClick={() => setShowDeleteModal(false)} className="px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100 rounded-lg">Cancelar</button>
-                    <button onClick={handleConfirmDelete} disabled={deleting} className="px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-sm">
-                        {deleting ? "Arquivando..." : "Confirmar Arquivo"}
-                    </button>
-                </div>
+      {/* Delete / Archive modal */}
+      {showDeleteModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm">
+          <div className="bg-white border border-slate-200 rounded-xl shadow-2xl w-full max-w-md p-6">
+            <h3 className="text-lg font-black text-slate-950">Arquivar aluno</h3>
+            <p className="text-sm text-slate-600 mt-2">
+              Confirma arquivar <span className="font-bold">{alunoSelecionado?.nome}</span>? Isso não apaga histórico financeiro.
+            </p>
+
+            <div className="mt-4">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">
+                Motivo (obrigatório)
+              </label>
+              <textarea
+                value={deleteReason}
+                onChange={(e) => setDeleteReason(e.target.value)}
+                placeholder="Ex.: desistiu / transferência / duplicado…"
+                rows={3}
+                className="mt-2 w-full p-3 border border-slate-200 rounded-xl text-sm outline-none
+                           focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+              />
             </div>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="px-4 py-2 rounded-xl text-sm font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50"
+              >
+                Cancelar
+              </button>
+
+              <button
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+                className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-red-600 hover:brightness-95 disabled:opacity-60"
+              >
+                {deleting ? "Arquivando…" : "Confirmar"}
+              </button>
+            </div>
+          </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

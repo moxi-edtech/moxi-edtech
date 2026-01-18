@@ -14,6 +14,7 @@ const ROLE_START: Record<UserRole, number> = {
   professor: 2001,
   secretaria: 3001,
   financeiro: 4001,
+  encarregado: 5001,
   super_admin: 1,
   global_admin: 1,
 };

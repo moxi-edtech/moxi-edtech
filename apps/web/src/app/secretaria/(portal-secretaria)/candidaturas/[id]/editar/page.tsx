@@ -1,11 +1,17 @@
-"use client";
+'use client';
 
-import React, { useEffect, useMemo, useState } from "react";
+import { useUserRole } from "@/hooks/useUserRole";
+import { createClient } from "@/lib/supabaseClient";
+import {
+  ArrowLeftIcon,
+  CheckCircleIcon,
+  PencilSquareIcon,
+} from "@heroicons/react/24/outline";
 import { useParams, useRouter } from "next/navigation";
-import Button from "@/components/ui/Button";
-import { ArrowLeftIcon, CheckCircleIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
+import { useEffect, useMemo, useState } from "react";
+import Button from '@/components/ui/Button';
 
-type CandidaturaForm = {
+interface CandidaturaForm {
   nome: string;
   email: string;
   telefone: string;
@@ -17,11 +23,20 @@ type CandidaturaForm = {
   responsavel_nome: string;
   responsavel_contato: string;
   encarregado_email: string;
-};
+}
 
 export default function EditarCandidaturaPage() {
   const router = useRouter();
   const params = useParams();
+  const { userRole: role } = useUserRole();
+  const supabase = createClient();
+
+  useEffect(() => {
+    if (role === 'secretaria') {
+      router.replace('/secretaria/admissoes');
+    }
+  }, [role, router]);
+
   const candidaturaId = useMemo(() => String(params?.id ?? ""), [params]);
 
   const [loading, setLoading] = useState(true);
@@ -111,6 +126,10 @@ export default function EditarCandidaturaPage() {
       setSaving(false);
     }
   };
+
+  if (role === 'secretaria') {
+    return null; // or a loading spinner
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-moxinexa-light to-blue-50 py-8">

@@ -65,7 +65,7 @@ export default function TransferForm({ matriculaId, anoLetivo, onSuccess }: Tran
     }
     setChecking(true);
     setError(null);
-    fetch(`/api/secretaria/matriculas/${matriculaId}/check-transfer?target_turma_id=${encodeURIComponent(turmaId)}`)
+    fetch(`/api/secretaria/admissoes/matriculas/${matriculaId}/check-transfer?target_turma_id=${encodeURIComponent(turmaId)}`)
       .then((r) => r.json().then((j) => ({ ok: r.ok, body: j })))
       .then(({ ok, body }) => {
         if (!ok) throw new Error(body?.error || "Falha ao simular transferência");
@@ -84,7 +84,7 @@ export default function TransferForm({ matriculaId, anoLetivo, onSuccess }: Tran
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/secretaria/matriculas/${matriculaId}/transfer`, {
+      const res = await fetch(`/api/secretaria/admissoes/matriculas/${matriculaId}/transfer`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ turma_id: turmaId }),
@@ -180,7 +180,7 @@ export default function TransferForm({ matriculaId, anoLetivo, onSuccess }: Tran
         </button>
         <button
           type="submit"
-          disabled={disableConfirm}
+          disabled={!!disableConfirm}
           className="inline-flex justify-center rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50"
         >
           {loading ? "Transferindo..." : "Confirmar transferência"}

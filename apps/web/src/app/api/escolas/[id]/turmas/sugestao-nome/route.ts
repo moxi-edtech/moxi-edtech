@@ -34,7 +34,9 @@ export async function GET(
     const url = new URL(req.url);
     const classeId = url.searchParams.get("classe_id");
     const turno = url.searchParams.get("turno");
-    let anoLetivo = url.searchParams.get("ano_letivo") || undefined;
+    const anoLetivoParam = url.searchParams.get("ano_letivo");
+    const parsedAnoLetivo = anoLetivoParam ? Number(anoLetivoParam) : undefined;
+    let anoLetivo = Number.isFinite(parsedAnoLetivo) ? parsedAnoLetivo : undefined;
     const sessionId = url.searchParams.get("session_id");
 
     if (!classeId || !turno) {
@@ -42,15 +44,8 @@ export async function GET(
     }
 
     if (!anoLetivo && sessionId) {
-      let sessionQuery = admin
-        .from("school_sessions")
-        .select("nome")
-        .eq("id", sessionId)
-        .order("created_at", { ascending: false })
-        .limit(1);
-      sessionQuery = applyKf2ListInvariants(sessionQuery, { defaultLimit: 1 });
-      const { data: sess } = await sessionQuery.maybeSingle();
-      anoLetivo = (sess as any)?.nome || undefined;
+      // Sem tabela de sessions neste schema; usamos apenas o filtro por session_id.
+      anoLetivo = undefined;
     }
 
     let query = admin

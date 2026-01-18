@@ -1,6 +1,7 @@
 import AuditPageView from "@/components/audit/AuditPageView"
 import PrecosClient from "@/app/escola/[id]/financeiro/configuracoes/precos/PrecosClient"
 import { supabaseServer } from "@/lib/supabaseServer"
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 import { GerarMensalidadesModal } from "@/components/financeiro/GerarMensalidadesModal"
 import { RegistrarPagamentoButton } from "@/components/financeiro/RegistrarPagamentoButton"
 import Link from "next/link"
@@ -14,20 +15,7 @@ export default async function Page() {
 
   let escolaId: string | null = null
   if (user) {
-    escolaId =
-      (user.app_metadata as any)?.escola_id ||
-      (user.user_metadata as any)?.escola_id ||
-      null
-
-    if (!escolaId) {
-      const { data: prof } = await s
-        .from('profiles')
-        .select('current_escola_id, escola_id')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-      escolaId = (prof?.[0] as any)?.current_escola_id || (prof?.[0] as any)?.escola_id || null
-    }
+    escolaId = await resolveEscolaIdForUser(s as any, user.id)
   }
 
   const { data: pendencias } = await s
@@ -60,7 +48,12 @@ export default async function Page() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <GerarMensalidadesModal escolaId={escolaId} />
-          <Link href="/financeiro" className="text-sm px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-50">Ver painel financeiro</Link>
+          <Link
+            href="/financeiro"
+            className="text-sm px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-50"
+          >
+            Ver painel financeiro
+          </Link>
         </div>
       </div>
 

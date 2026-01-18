@@ -10,14 +10,21 @@ const CURRICULUM_CLASS_RANGES: Record<CurriculumKey, { min: number; max: number 
   primario_base: { min: 1, max: 6 },
   primario_avancado: { min: 1, max: 6 },
   ciclo1: { min: 7, max: 9 },
-  puniv: { min: 10, max: 12 },
-  economicas: { min: 10, max: 12 },
+  puniv_fisicas: { min: 10, max: 12 },
+  puniv_economicas: { min: 10, max: 12 },
+  puniv_humanas: { min: 10, max: 12 },
+  puniv_artes: { min: 10, max: 12 },
   tecnico_informatica: { min: 10, max: 13 },
   tecnico_gestao: { min: 10, max: 13 },
   tecnico_construcao: { min: 10, max: 13 },
+  tecnico_electricidade: { min: 10, max: 13 },
+  tecnico_mecanica: { min: 10, max: 13 },
+  tecnico_electronica: { min: 10, max: 13 },
+  tecnico_petroleos: { min: 10, max: 13 },
   tecnico_base: { min: 10, max: 13 },
   saude_enfermagem: { min: 10, max: 13 },
   saude_farmacia_analises: { min: 10, max: 13 },
+  magisterio_primario: { min: 10, max: 13 },
 };
 
 const parseClasseNumero = (nome: string) => {

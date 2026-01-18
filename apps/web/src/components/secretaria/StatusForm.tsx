@@ -21,7 +21,7 @@ export default function StatusForm({ matriculaId, currentStatus, onSuccess }: St
     setError(null);
 
     try {
-      const res = await fetch(`/api/secretaria/matriculas/${matriculaId}/status`, {
+      const res = await fetch(`/api/secretaria/admissoes/matriculas/${matriculaId}/status`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),

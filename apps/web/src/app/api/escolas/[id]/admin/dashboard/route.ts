@@ -22,13 +22,6 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     const now = new Date();
 
     // 🚀 O SEGREDO: Disparar TODAS as queries ao mesmo tempo (Paralelismo)
-    let avisosQuery = supabase
-      .from('avisos')
-      .select('id, titulo, created_at')
-      .eq('escola_id', escolaId)
-      .order('created_at', { ascending: false })
-      .limit(5);
-
     let pagamentosQuery = supabase
       .from('pagamentos_status')
       .select('status, total')
@@ -45,7 +38,6 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
 
     const [
       countsRes,
-      avisosRes,
       pagamentosRes,
       matriculasMesRes,
     ] = await Promise.all([
@@ -54,7 +46,6 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
         .select('alunos_ativos, turmas_total, professores_total, avaliacoes_total')
         .eq('escola_id', escolaId)
         .maybeSingle(),
-      avisosQuery,
       pagamentosQuery,
       matriculasMesQuery,
     ]);
@@ -93,12 +84,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       if (idx >= 0) counts[idx] = Number(row.total || 0);
     });
 
-    // Mapeamento de Avisos
-    const avisos = (avisosRes.data || []).map((a: any) => ({
-      id: String(a.id),
-      titulo: a.titulo,
-      dataISO: a.created_at
-    }));
+    const avisos: Array<{ id: string; titulo: string; dataISO: string }> = [];
 
     return NextResponse.json({
       ok: true,

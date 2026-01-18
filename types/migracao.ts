@@ -79,6 +79,7 @@ export interface ImportResult {
   errors: number;
   warnings_turma?: number;
   turmas_created?: number; // Turmas criadas automaticamente (rascunho)
+  cursos_created?: number; // Cursos pendentes/gerados
 }
 
 export interface MappedColumns {

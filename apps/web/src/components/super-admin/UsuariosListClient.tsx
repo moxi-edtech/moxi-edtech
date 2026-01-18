@@ -41,6 +41,36 @@ function ListaUsuarios() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Usuario>>({});
   const [saving, setSaving] = useState<string | null>(null);
+  const [resetUser, setResetUser] = useState<Usuario | null>(null);
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetMustChange, setResetMustChange] = useState(true);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetShowPassword, setResetShowPassword] = useState(false);
+  const [resetCopied, setResetCopied] = useState(false);
+
+  const passwordRules = (password: string) => [
+    { ok: password.length >= 8, msg: "Pelo menos 8 caracteres" },
+    { ok: /[A-Z]/.test(password), msg: "1 letra maiúscula" },
+    { ok: /[a-z]/.test(password), msg: "1 letra minúscula" },
+    { ok: /\d/.test(password), msg: "1 número" },
+    { ok: /[^A-Za-z0-9]/.test(password), msg: "1 caractere especial" },
+  ];
+
+  const generateStrongPassword = (len = 12) => {
+    const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const lower = "abcdefghijklmnopqrstuvwxyz";
+    const nums = "0123456789";
+    const special = "!@#$%^&*()-_=+[]{};:,.?";
+    const all = upper + lower + nums + special;
+    const pick = (set: string) => set[Math.floor(Math.random() * set.length)];
+    let pwd = pick(upper) + pick(lower) + pick(nums) + pick(special);
+    for (let i = pwd.length; i < len; i += 1) pwd += pick(all);
+    return pwd
+      .split("")
+      .sort(() => Math.random() - 0.5)
+      .join("");
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -222,6 +252,55 @@ function ListaUsuarios() {
       setError(msg);
     } finally {
       setSaving(null);
+    }
+  };
+
+  const openResetModal = (usuario: Usuario) => {
+    setResetUser(usuario);
+    setResetPassword("");
+    setResetMustChange(true);
+    setResetError(null);
+    setResetShowPassword(false);
+  };
+
+  const closeResetModal = () => {
+    setResetUser(null);
+    setResetPassword("");
+    setResetError(null);
+    setResetLoading(false);
+    setResetCopied(false);
+  };
+
+  const handleResetPassword = async () => {
+    if (!resetUser) return;
+    const failedRule = passwordRules(resetPassword).find((rule) => !rule.ok);
+    if (failedRule) {
+      setResetError(`Senha inválida: ${failedRule.msg}`);
+      return;
+    }
+
+    try {
+      setResetLoading(true);
+      setResetError(null);
+      const res = await fetch("/api/super-admin/users/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: resetUser.id,
+          password: resetPassword,
+          mustChange: resetMustChange,
+        }),
+      });
+      const json = await res.json().catch(() => ({ ok: false }));
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || "Falha ao redefinir senha");
+      }
+      closeResetModal();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setResetError(msg);
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -463,6 +542,14 @@ function ListaUsuarios() {
                           Editar
                         </Button>
                         <Button
+                          onClick={() => openResetModal(u)}
+                          tone="gray"
+                          size="sm"
+                          className="px-3"
+                        >
+                          Redefinir senha
+                        </Button>
+                        <Button
                           onClick={() => handleDelete(u.id, u.email)}
                           disabled={saving === u.id}
                           tone="red"
@@ -480,6 +567,125 @@ function ListaUsuarios() {
           </tbody>
         </table>
       </div>
+
+      {resetUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">Redefinir senha</h3>
+                <p className="text-sm text-slate-500">
+                  Usuário: <span className="font-medium text-slate-800">{resetUser.nome ?? resetUser.email}</span>
+                </p>
+              </div>
+              <button
+                onClick={closeResetModal}
+                className="text-slate-400 hover:text-slate-600"
+                aria-label="Fechar"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mt-5 space-y-4">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-slate-700">Nova senha</label>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <input
+                  type={resetShowPassword ? "text" : "password"}
+                  value={resetPassword}
+                  onChange={(e) => setResetPassword(e.target.value)}
+                  className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                  placeholder="Digite a nova senha"
+                />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        setResetPassword(generateStrongPassword());
+                        setResetCopied(false);
+                      }}
+                      tone="gray"
+                      size="sm"
+                      className="whitespace-nowrap px-3"
+                    >
+                      Gerar senha
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(resetPassword);
+                          setResetCopied(true);
+                        } catch {
+                          setResetCopied(false);
+                        }
+                      }}
+                      tone="gray"
+                      size="sm"
+                      className="whitespace-nowrap px-3"
+                      disabled={!resetPassword}
+                    >
+                      {resetCopied ? "Copiado" : "Copiar"}
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-xs text-slate-500">
+                  <button
+                    type="button"
+                    onClick={() => setResetShowPassword((prev) => !prev)}
+                    className="text-slate-600 hover:text-slate-800"
+                  >
+                    {resetShowPassword ? "Ocultar senha" : "Mostrar senha"}
+                  </button>
+                  <span>Senha temporária segura</span>
+                </div>
+              </div>
+
+              <div className="grid gap-1 text-xs text-slate-500">
+                {passwordRules(resetPassword).map((rule) => (
+                  <span key={rule.msg} className={rule.ok ? "text-emerald-600" : "text-slate-500"}>
+                    {rule.ok ? "✓" : "•"} {rule.msg}
+                  </span>
+                ))}
+              </div>
+
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={resetMustChange}
+                    onChange={(e) => setResetMustChange(e.target.checked)}
+                    className="h-4 w-4"
+                  />
+                  Exigir troca de senha no próximo login
+                </label>
+              </div>
+
+              {resetError && (
+                <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {resetError}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button onClick={closeResetModal} tone="gray" size="sm" className="px-4">
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleResetPassword}
+                tone="blue"
+                size="sm"
+                className="px-4"
+                disabled={resetLoading}
+              >
+                {resetLoading ? "Salvando..." : "Redefinir senha"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

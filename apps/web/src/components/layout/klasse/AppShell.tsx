@@ -52,7 +52,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     let items = sidebarConfig[inferredRole] || [];
 
     const navEscolaId = escolaIdState || escolaIdFromSession;
-    if ((inferredRole === "admin" || inferredRole === "secretaria") && navEscolaId) {
+    if ((inferredRole === "admin" || inferredRole === "secretaria" || inferredRole === "financeiro") && navEscolaId) {
       return items.map((item) => ({
         ...item,
         href: item.href.replace("[escolaId]", navEscolaId),

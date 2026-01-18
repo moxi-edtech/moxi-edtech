@@ -20,21 +20,9 @@ import AtribuirProfessorForm from "./AtribuirProfessorForm";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildEscolaUrl } from "@/lib/escola/url";
 
-// --- TYPES ---
-interface TurmaItem {
-  id: string;
-  nome: string; 
-  turno: string;
-  ano_letivo: string | null;
-  sala?: string;
-  capacidade_maxima?: number;
-  ocupacao_atual?: number;
-  classe_nome?: string;
-  curso_nome?: string;
-  status_validacao?: 'ativo' | 'rascunho' | 'arquivado';
-  turma_codigo?: string;
-}
+import { TurmaItem } from "~/types/turmas";
 
+// --- TYPES ---
 interface TurmasResponse {
   ok: boolean;
   items: TurmaItem[];
@@ -169,7 +157,7 @@ function TurmaRow({
                             {turma.sala || 'Sala N/D'}
                          </div>
                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-slate-100 text-slate-600 border border-slate-200">
-                            {TURNO_LABELS[turma.turno] || turma.turno}
+                            {TURNO_LABELS[turma.turno || ''] || turma.turno}
                          </span>
                     </div>
                 </td>

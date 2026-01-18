@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabaseClient";
 import type { ImportAlunoDTO, ImportResult } from "@/types/importacao";
+import type { Json } from "~types/supabase";
 import { cleanExcelDate, cleanPhone } from "@/utils/excelHelpers";
 
 // Helper para buscar valor independentemente de maiúsculas/minúsculas ou acentos
@@ -107,12 +108,12 @@ export const processarImportacaoAlunos = async (
   const { data, error } = await supabase.rpc("importar_alunos_v2", {
     p_escola_id: escolaId,
     p_ano_letivo: anoLetivo,
-    p_alunos: alunosPayload,
+    p_alunos: alunosPayload as unknown as Json,
   });
 
   if (error) {
     throw new Error(`Erro ao processar importação: ${error.message}`);
   }
 
-  return data as ImportResult;
+  return data as unknown as ImportResult;
 };

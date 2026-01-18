@@ -1,0 +1,2292 @@
+diff --git a/REPORT_SCAN.md b/REPORT_SCAN.md
+index 0d5b56ad..4374bdb9 100644
+--- a/REPORT_SCAN.md
++++ b/REPORT_SCAN.md
+@@ -2,12 +2,28 @@
+ 
+ ## 1. SUMÁRIO EXECUTIVO
+ 
+-- Findings CRÍTICOS: **0**
++- Findings CRÍTICOS: **2**
+ - Findings ALTO: **1**
+-- Total findings: **7**
++- Total findings: **9**
+ 
+ ## 2. ACHADOS (ordenado por severidade)
+ 
++### TENANT_ISOLATION — `escola_id` nullable em `mensalidades`
++- Severidade: **CRITICAL**
++- Status: **FAIL**
++- Evidências:
++  - DB — `information_schema.columns` retornou `mensalidades | YES`
++- Recomendação: Backfill + `ALTER TABLE mensalidades ALTER COLUMN escola_id SET NOT NULL`.
++
++### SERVICE_ROLE_HUMAN_ROUTES — uso de `SUPABASE_SERVICE_ROLE_KEY` em rotas humanas
++- Severidade: **CRITICAL**
++- Status: **FAIL**
++- Evidências:
++  - `apps/web/src/app/api/escolas/[id]/cursos/route.ts`
++  - `apps/web/src/app/api/escolas/[id]/turmas/route.ts`
++  - `apps/web/src/app/api/escolas/[id]/alunos/novo/route.ts`
++- Recomendação: Remover service role de rotas humanas e usar RLS + `resolveEscolaIdForUser`.
++
+ ### NO_STORE — Anti-pattern — uso de cache: 'no-store' em páginas/relatórios
+ - Severidade: **HIGH**
+ - Status: **PARTIAL**
+diff --git a/agents/contracts/AGENT_INSTRUCTIONS.md b/agents/contracts/AGENT_INSTRUCTIONS.md
+index f2c2b37a..c58b939e 100644
+--- a/agents/contracts/AGENT_INSTRUCTIONS.md
++++ b/agents/contracts/AGENT_INSTRUCTIONS.md
+@@ -1,111 +1,258 @@
+-# KLASSE — CODEX AGENT CONTRACT (FOUNDATION-FIRST)
++# 🧠 AGENT INSTRUCTIONS — PILOT READINESS CHECK (KLASSE)
+ 
+-## PAPEL DO AGENTE
+-Você é um agente técnico de fundador.
+-Seu objetivo é **validar base, performance, integridade e escalabilidade** do KLASSE
+-antes de qualquer feature nova.
++## OBJETIVO
+ 
+-Você NÃO é um gerador cego de código.
++Verificar end-to-end, com evidência real, se o KLASSE está pronto para piloto com 3–5 escolas, cobrindo Secretaria, Admin e Financeiro.
++
++O agente NÃO assume nada.
++Tudo que não tiver evidência explícita = FAIL ou WARN.
+ 
+ ---
+ 
+-## MODOS DE OPERAÇÃO
++## ORDEM DE PRIORIDADE (NÃO ALTERAR)
++
++### 🔴 P0 — SEGURANÇA, TENANT E CONSISTÊNCIA (BLOCKER)
++
++#### P0.1 — Tenant Isolation (G0)
++
++Verificar:
++- Todas as tabelas core têm escola_id NOT NULL
++- Índices iniciando por escola_id
++- Triggers ou constraints impedem cross-tenant write
++
++Evidência (SQL):
++
++```
++select table_name, is_nullable
++from information_schema.columns
++where column_name = 'escola_id'
++  and table_schema = 'public'
++  and table_name in (
++    'alunos','matriculas','pagamentos','mensalidades',
++    'notas','avaliacoes','presencas','frequencias','candidaturas'
++  );
++```
++
++Resultado esperado: nenhum is_nullable = YES.
++
++---
++
++#### P0.2 — RLS REAL POR ROLE (não teórico)
++
++Testar com usuários reais:
++- secretaria
++- professor
++- aluno
++- admin
++
++Verificar:
++- professor não acessa aluno fora da turma
++- aluno só acessa próprios dados
++- secretaria/admin acessam apenas da própria escola
++
++Evidência:
++- chamadas HTTP retornando 200/403 corretamente
++- policies existentes e aplicadas
+ 
+-### 1. SCAN (default)
+-- Ler o repositório inteiro
+-- Validar features listadas no FEATURES_PRIORITY.json
+-- Verificar:
+-  - O que está IMPLEMENTADO
+-  - O que está PARCIAL
+-  - O que está AUSENTE
+-- Detectar anti-patterns
+-- Produzir relatório técnico (sem escrever código)
++```
++select tablename, policyname, roles, cmd
++from pg_policies
++where tablename in ('alunos','notas','avaliacoes','pagamentos');
++```
+ 
+-### 2. PROPOSE (somente quando solicitado)
+-- Gerar plano técnico de implementação
+-- Sugerir arquivos, migrations, componentes
+-- NÃO criar nada automaticamente
++---
++
++#### P0.3 — Service Role fora do fluxo humano
+ 
+-### 3. APPLY (somente com confirmação explícita)
+-- Criar código/migrations
+-- Nunca sobrescrever arquivos existentes
+-- Nunca executar operações destrutivas
++Verificar:
++- Nenhuma rota de secretaria/admin usa SUPABASE_SERVICE_ROLE_KEY
++- Service role só em:
++  - jobs
++  - workers
++  - provisioning
++
++Evidência:
++- grep no repo
++- revisão das rotas API
+ 
+ ---
+ 
+-## REGRAS ABSOLUTAS (NÃO NEGOCIÁVEIS)
++### 🔴 P1 — FLUXOS CRÍTICOS END-TO-END (PILOTO NÃO SOBREVIVE SEM)
++
++#### P1.1 — Candidatura → Matrícula
+ 
+-❌ NÃO executar:
+-- DROP TABLE / DROP COLUMN
+-- ALTER DATA destrutivo
+-- DELETE em massa
+-- REFRESH MATERIALIZED VIEW inline
+-- Mudanças que afetem dados reais sem flag explícita
++Verificar:
++- Confirmar candidatura cria matrícula
++- Reconfirmar é idempotente
++- Ano letivo consistente
+ 
+-✅ SEMPRE:
+-- Preferir validação a criação
+-- Preferir relatório a execução
+-- Assumir que o sistema AINDA NÃO TEM CLIENTES REAIS
+-- Priorizar fundação > feature
++```
++select c.id, c.status, m.id as matricula_id, m.ano_letivo
++from candidaturas c
++left join matriculas m
++  on m.aluno_id = c.aluno_id
++ and m.ano_letivo = c.ano_letivo
++where c.id = '<CANDIDATURA_ID>';
++```
+ 
+ ---
+ 
+-## PERFORMANCE É LEI
++#### P1.2 — Matrícula & Rematrícula
+ 
+-O agente deve **GRITAR** se detectar:
+-- Busca sem LIMIT
+-- ILIKE %term% sem pg_trgm
+-- Falta de índices GIN onde aplicável
+-- Listagens sem paginação
+-- Bundles grandes sem code splitting
+-- Falta de debounce em buscas
+-- Dashboards agregados sem MV
++Verificar:
++- 1 matrícula ativa por aluno/ano/escola
++- Rematrícula em massa é idempotente
++- Matrícula antiga vira transferido
++
++```
++select aluno_id, ano_letivo, count(*)
++from matriculas
++where status = 'ativa'
++group by aluno_id, ano_letivo
++having count(*) > 1;
++```
+ 
+ ---
+ 
+-## MATERIALIZED VIEWS
++#### P1.3 — Pagamento Manual (base para webhook)
++
++Verificar E2E:
++1. gerar mensalidade
++2. confirmar pagamento
++3. mensalidade atualiza
++4. outbox dispara evento
++5. audit log registrado
++
++```
++select * from pagamentos
++order by created_at desc limit 5;
+ 
+-Use APENAS se:
+-- Agregação pesada (SUM, COUNT, GROUP BY)
+-- Usado em dashboards (ex.: F09, F18)
+-- Com UNIQUE INDEX
+-- Com REFRESH CONCURRENTLY
+-- Fora do request do usuário
++select * from mensalidades
++where id = '<MENSALIDADE_ID>';
+ 
+-PROIBIDO usar MV para:
+-- KF2 (busca)
+-- CRUD interativo
+-- Autocomplete
++select * from outbox_events
++where event_type = 'FINANCE_PAYMENT_CONFIRMED'
++order by created_at desc;
++
++select * from audit_logs
++where action = 'FINANCE_PAYMENT_CONFIRMED'
++order by created_at desc;
++```
++
++Idempotência obrigatória:
++
++```
++select count(*), count(distinct transacao_id_externo)
++from pagamentos
++where transacao_id_externo is not null;
++```
+ 
+ ---
+ 
+-## SAÍDA ESPERADA (SCAN)
++### 🔴 P2 — OPERAÇÃO DIÁRIA (SECRETARIA / PROFESSOR)
+ 
+-Gerar:
+-- REPORT_SCAN.md
+-- Lista de pendências por prioridade (P0, P1, P2)
+-- Alertas críticos
+-- Métricas estimadas (latência, risco, impacto)
++#### P2.1 — Presenças / Frequências
+ 
+-Nada além disso.
++Verificar:
++- Qual tabela é SSOT (presencas OU frequencias)
++- Lançar mesma aula 2x não duplica
++- Unique key por partição existe
++
++```
++select indexname, indexdef
++from pg_indexes
++where tablename like 'frequencias%';
++```
+ 
+ ---
+ 
+-## PRINCÍPIOS OPERACIONAIS (HARD GATE)
++#### P2.2 — Notas & Boletim
++
++Verificar:
++- professor lança nota
++- aluno consulta nota
++- secretaria/admin consulta tudo
++- existe consolidação mínima (média por disciplina/ano)
++
++```
++select count(*) from notas;
++select count(*) from avaliacoes;
++```
++
++Se não houver view/RPC de consolidação → WARN explícito.
++
++---
++
++### 🟡 P3 — SUPORTE AO CRESCIMENTO (NÃO BLOQUEIA PILOTO, MAS REGISTRAR)
++
++#### P3.1 — Transferência de Turma
++
++Verificar:
++- Existe endpoint explícito que:
++  - encerra matrícula atual
++  - cria nova matrícula
++  - audita evento
++
++Se só existe checagem, marcar FAIL OPERACIONAL.
++
++---
++
++#### P3.2 — Importação (Backfill)
++
++Verificar:
++- Importar mesmo CSV 2x não duplica
++- Aprovação é idempotente
++- Cursos/turmas criados apenas após aprovação
++
++---
++
++### 🟢 EVENTOS MÍNIMOS (OUTBOX)
++
++Obrigatórios no piloto:
++- AUTH_PROVISION_USER
++- FINANCE_PAYMENT_CONFIRMED
++
++Verificar:
++
++```
++select event_type, count(*)
++from outbox_events
++group by event_type;
++```
++
++Payload mínimo esperado:
++- escola_id
++- entidade principal (user_id ou pagamento_id)
++- timestamp
++- dedupe_key
++
++---
++
++## SAÍDA DO AGENTE (FORMATO OBRIGATÓRIO)
++
++Para cada item:
++
++```
++[P0.1] Tenant Isolation — PASS
++Evidence: <SQL / endpoint / log>
++
++[P1.3] Pagamentos E2E — FAIL
++Reason: mensalidade não atualiza após confirmação
++Evidence: <query result>
++```
++
++Ao final:
+ 
+-1) Latência é requisito funcional (p95 por tela; regressão = bloqueio)
+-2) Derivados > dados brutos (dashboards só via MV/derivados)
+-3) Gates duplos (UX + backend) para features premium
+-4) Fail fast, fail quiet (timeouts claros + fallback visual)
+-5) One way to do things (um padrão de MV, audit, search, virtualização)
+-6) Infra que protege o humano (flags, kill-switch, wrappers, audit)
+-7) Context over cleverness (SQL explícito, front previsível, pouca mágica)
++```
++PILOT READINESS: GO / NO-GO
++BLOCKERS: <lista>
++WARNINGS: <lista>
++```
+ 
+ ---
+ 
+-## UI — REFERÊNCIAS OBRIGATÓRIAS
++## REGRA FINAL (IMPORTANTE)
+ 
+-Antes de mexer em UI, consultar:
+-- `docs/icon-map.md`
+-- `docs/design-tokens.md`
+-- `docs/storybook-guide.md`
++❌ Nada de “parece que”
++❌ Nada de “acho que”
++✅ Só PASS se houver evidência executada
+diff --git a/agents/outputs/GO_LIVE_CHECKLIST.md b/agents/outputs/GO_LIVE_CHECKLIST.md
+index cbba7688..2e8eba46 100644
+--- a/agents/outputs/GO_LIVE_CHECKLIST.md
++++ b/agents/outputs/GO_LIVE_CHECKLIST.md
+@@ -1,104 +1,36 @@
+-# GO_LIVE_CHECKLIST.md — Piloto (3–5 escolas)
++# GO_LIVE_CHECKLIST.md — Pilot Readiness (3–5 escolas)
+ 
+-✅ KLASSE — GO-LIVE CHECKLIST (PILOTO)
++## 🔴 P0 — Segurança, Tenant e Consistência (BLOCKER)
+ 
+-## 🧱 BLOCO A — FUNDAÇÃO (TEM QUE ESTAR 100%)
++- [ ] `escola_id` NOT NULL nas tabelas core.
++- [ ] Índices iniciando por `escola_id` nas tabelas core.
++- [ ] Triggers/constraints bloqueiam cross-tenant write.
++- [ ] RLS validado por role (secretaria, professor, aluno, admin).
++- [ ] Service role fora do fluxo humano (apenas jobs/workers/provisioning).
+ 
+-### A1) Tenant Hard Wall (DB)
+-- `escola_id` NOT NULL em todas as tabelas core.
+-- Índices começando por `(escola_id, ...)`.
+-- Triggers/checks de consistência tenant nas FKs mais críticas (matrícula, pagamentos, notas, frequências).
++## 🔴 P1 — Fluxos Críticos End-to-End
+ 
+-### A2) RLS (acesso por papel)
+-- RLS ativo em todas as tabelas core.
+-- Policies para select/write em `alunos`, `matrículas`, `pagamentos`, `notas/avaliações`, `frequências`.
+-- Teste manual: usuário A não enxerga dados da escola B.
++- [ ] Candidatura confirmada cria matrícula (idempotente).
++- [ ] 1 matrícula ativa por aluno/ano/escola.
++- [ ] Rematrícula em massa idempotente.
++- [ ] Pagamento manual confirma mensalidade e outbox/audit.
++- [ ] Idempotência de pagamentos por `transacao_id_externo`.
+ 
+-### A3) Service Role fora do caminho normal
+-- Nenhuma rota de secretaria usa `SUPABASE_SERVICE_ROLE_KEY`.
+-- Service role só em: outbox worker, provisionamento auth, jobs.
+-- Auditar 1x: grep por `service_role` no repo.
++## 🔴 P2 — Operação Diária (Secretaria/Professor)
+ 
+-## 🔄 BLOCO B — RESILIÊNCIA (ONDE SISTEMAS QUEBRAM)
++- [ ] SSOT definido para presença/frequência.
++- [ ] Chave única por partição em frequência/presença.
++- [ ] Professor lança nota e aluno consulta com RLS.
++- [ ] Consolidação mínima de boletim (view/RPC) ou WARN explícito.
+ 
+-### B1) Outbox (eventos críticos)
+-- `outbox_events` com `status`, `attempts`, `max_attempts`, locks e `dedupe_key`.
+-- Job de requeue funcionando (`pg_cron`).
+-- Catálogo mínimo de eventos: `AUTH_PROVISION_USER`, `FINANCE_PAYMENT_CONFIRMED`, `MATRICULA_CREATED`, `MATRICULA_TRANSFERRED`.
++## 🟡 P3 — Suporte ao Crescimento
+ 
+-### B2) Idempotência (dinheiro e auth)
+-- Pagamento: unique `(escola_id, transacao_id_externo)`.
+-- Payment Intent com `dedupe_key`.
+-- Regra: um intent confirmado nunca confirma de novo.
++- [ ] Endpoint de transferência de turma com auditoria.
++- [ ] Importação CSV idempotente.
++- [ ] Aprovação de importação idempotente.
+ 
+-### B3) Cron / Jobs
+-- `pg_cron` ativo.
+-- Jobs com histórico (`cron.job_run_details`).
+-- Alerta simples: job falhou 3x seguidas → log visível.
++## 🟢 Eventos Mínimos (Outbox)
+ 
+-## 🧾 BLOCO C — AUDITORIA (GF4)
+-
+-### C1) Audit schema fechado
+-- `actor_id`, `actor_role`, `action`.
+-- `entity`, `entity_id`, `before`, `after`.
+-- `ip`, `user_agent`, `db_role`.
+-
+-### C2) Cobertura mínima
+-- Matrícula: create/transfer/cancel.
+-- Pagamento: confirm/reverse.
+-- Nota: insert/update.
+-- Frequência: batch insert.
+-
+-## ⚙️ BLOCO D — FLUXOS CORE
+-
+-### D1) Matrícula
+-- 1 matrícula ativa por aluno/ano/escola.
+-- Transferência auditada.
+-- Cancelamento claro (soft delete ou status).
+-
+-### D2) Pagamentos (piloto)
+-- Confirmação manual pela secretaria.
+-- `origem_confirmacao = 'manual' | 'webhook'`.
+-- Recibo gerado 1x (idempotente).
+-
+-### D3) Boletim / Notas
+-- RLS ok.
+-- View ou função estável pra cálculo.
+-- Nota editada → audit.
+-
+-### D4) Frequências
+-- Chave natural única por partição.
+-- Índices por `(escola_id, matricula_id, data)`.
+-- Inserção em lote sem duplicar.
+-
+-### D5) Candidatura → Matrícula
+-- Consistência por aluno + ano + escola.
+-- Status claro (aprovada/rejeitada/convertida).
+-
+-## 🚀 BLOCO E — PERFORMANCE & UX
+-
+-### E1) Dashboards
+-- Materialized Views (sem cálculo ao vivo).
+-- Refresh via cron.
+-- UI mostra “Atualizado há X min”.
+-
+-### E2) Pesquisa Global (KF2)
+-- Debounce 250–400ms.
+-- Limit <= 50.
+-- OrderBy estável.
+-- Payload mínimo (id + label + type).
+-
+-## 🩺 BLOCO F — OPERACIONAL
+-
+-### F1) Diagnostics interno
+-- Página simples com outbox pendente/falhou, jobs cron, últimos pagamentos.
+-- Acesso só admin/superadmin.
+-
+-### F2) Logs & Erros
+-- Sentry (ou equivalente).
+-- `escola_id` + `user_id` nos eventos.
+-- `release/version` tag.
+-
+-### F3) Backup & rollback
+-- Backup automático diário (Supabase ok).
+-- Política clara: não apaga dado no piloto.
++- [ ] `AUTH_PROVISION_USER` com `escola_id` e `user_id`.
++- [ ] `FINANCE_PAYMENT_CONFIRMED` com `escola_id` e `pagamento_id`.
++- [ ] Payload inclui `timestamp` e `dedupe_key`.
+diff --git a/agents/outputs/PLAN_PATCHES.json b/agents/outputs/PLAN_PATCHES.json
+index ec316c44..074bd349 100644
+--- a/agents/outputs/PLAN_PATCHES.json
++++ b/agents/outputs/PLAN_PATCHES.json
+@@ -1,22 +1,4 @@
+ [
+-  {
+-    "id": "PLAN_NO_STORE",
+-    "priority": 2,
+-    "type": "DOC",
+-    "title": "Plano de revisão de no-store",
+-    "rationale": "Planejar ajustes com revisão manual.",
+-    "files": [
+-      {
+-        "path": "agents/outputs/PLAN_NO_STORE.md",
+-        "action": "CREATE",
+-        "content": "# Plano — Remoção de cache no-store\n\nArquivos com `cache: 'no-store'` detectados:\n\n- AGENTS.md\n- apps/web/src/components/secretaria/AlunosListClient.tsx\n\nAção recomendada:\n- Revisar caso a caso e substituir por cache adequado (revalidate/force-cache) ou remover fetch desnecessário."
+-      }
+-    ],
+-    "safety": {
+-      "destructive": false,
+-      "requires_manual_review": true
+-    }
+-  },
+   {
+     "id": "PLAN_AUDIT_TRAIL",
+     "priority": 2,
+diff --git a/agents/outputs/REPORT_SCAN.json b/agents/outputs/REPORT_SCAN.json
+index a4b23220..b95c7186 100644
+--- a/agents/outputs/REPORT_SCAN.json
++++ b/agents/outputs/REPORT_SCAN.json
+@@ -1,31 +1,14 @@
+ {
+-  "timestamp": "2026-01-11T19:40:28.339Z",
++  "timestamp": "2026-01-11T23:31:33.394Z",
+   "repoRoot": "/Users/gundja/moxi-edtech",
+   "summary": {
+     "critical": 0,
+-    "high": 1,
++    "high": 0,
+     "medium": 0,
+     "low": 6,
+-    "total": 7
++    "total": 6
+   },
+   "findings": [
+-    {
+-      "id": "NO_STORE",
+-      "title": "Anti-pattern — uso de cache: 'no-store' em páginas/relatórios",
+-      "severity": "HIGH",
+-      "status": "PARTIAL",
+-      "evidence": [
+-        {
+-          "file": "AGENTS.md",
+-          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+-        },
+-        {
+-          "file": "apps/web/src/components/secretaria/AlunosListClient.tsx",
+-          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+-        }
+-      ],
+-      "recommendation": "Remover no-store onde houver MV/camadas cacheáveis; manter só em rotas realmente sensíveis."
+-    },
+     {
+       "id": "KF2",
+       "title": "KF2 — Pesquisa Global (Command Palette) invariants",
+@@ -110,55 +93,55 @@
+           "note": "match: /audit_logs|auditLog|create_audit/i"
+         },
+         {
+-          "file": "supabase/functions/outbox-worker/index.ts",
++          "file": "supabase/.branches/remote/schema.sql",
+           "note": "match: /audit_logs|auditLog|create_audit/i"
+         },
+         {
+-          "file": "supabase/.branches/remote/schema.sql",
++          "file": "supabase/functions/outbox-worker/index.ts",
+           "note": "match: /audit_logs|auditLog|create_audit/i"
+         },
+         {
+-          "file": "supabase/migrations_archive/migrations_backup/20250917060400_audit_redaction.sql",
++          "file": "supabase/migrations_archive/migrations/20250915000000_remote_schema.sql",
+           "note": "match: /audit_logs|auditLog|create_audit/i"
+         },
+         {
+-          "file": "supabase/migrations_archive/migrations_backup/20250917060500_audit_triggers.sql",
++          "file": "supabase/migrations_archive/migrations/20250917060400_audit_redaction.sql",
+           "note": "match: /audit_logs|auditLog|create_audit/i"
+         },
+         {
+-          "file": "supabase/migrations_archive/migrations_backup/20250917060600_audit_user_default.sql",
++          "file": "supabase/migrations_archive/migrations/20250917060500_audit_triggers.sql",
+           "note": "match: /audit_logs|auditLog|create_audit/i"
+         },
+         {
+-          "file": "supabase/migrations_archive/migrations_backup/20250917060700_create_audit_logs.sql",
++          "file": "supabase/migrations_archive/migrations/20250917060600_audit_user_default.sql",
+           "note": "match: /audit_logs|auditLog|create_audit/i"
+         },
+         {
+-          "file": "supabase/migrations_archive/migrations_backup/20251108141000_fix_rls_initplan_policies.sql",
++          "file": "supabase/migrations_archive/migrations/20250917060700_create_audit_logs.sql",
+           "note": "match: /audit_logs|auditLog|create_audit/i"
+         },
+         {
+-          "file": "supabase/migrations_archive/migrations/20250915000000_remote_schema.sql",
++          "file": "supabase/migrations_archive/migrations/20251108141000_fix_rls_initplan_policies.sql",
+           "note": "match: /audit_logs|auditLog|create_audit/i"
+         },
+         {
+-          "file": "supabase/migrations_archive/migrations/20250917060400_audit_redaction.sql",
++          "file": "supabase/migrations_archive/migrations/20251116195500_normalize_auth_uid_in_policies.sql",
+           "note": "match: /audit_logs|auditLog|create_audit/i"
+         },
+         {
+-          "file": "supabase/migrations_archive/migrations/20250917060500_audit_triggers.sql",
++          "file": "supabase/migrations_archive/migrations/20251116211500_fix_audit_trigger_columns.sql",
+           "note": "match: /audit_logs|auditLog|create_audit/i"
+         },
+         {
+-          "file": "supabase/migrations_archive/migrations/20250917060600_audit_user_default.sql",
++          "file": "supabase/migrations_archive/migrations/20251116212500_secretaria_audit_view.sql",
+           "note": "match: /audit_logs|auditLog|create_audit/i"
+         },
+         {
+-          "file": "supabase/migrations_archive/migrations/20250917060700_create_audit_logs.sql",
++          "file": "supabase/migrations_archive/migrations/20251214120000_add_rls_policies.sql",
+           "note": "match: /audit_logs|auditLog|create_audit/i"
+         },
+         {
+-          "file": "supabase/migrations_archive/migrations/20251108141000_fix_rls_initplan_policies.sql",
++          "file": "supabase/migrations_archive/migrations/20251217232511_optimize_rls_policies_v2.sql",
+           "note": "match: /audit_logs|auditLog|create_audit/i"
+         }
+       ],
+@@ -236,11 +219,11 @@
+           "note": "match: /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\.pagamentos_status/i"
+         },
+         {
+-          "file": "supabase/migrations_archive/migrations_backup/20250916000100_create_views.sql",
++          "file": "supabase/migrations_archive/migrations/20250916000100_create_views.sql",
+           "note": "match: /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\.pagamentos_status/i"
+         },
+         {
+-          "file": "supabase/migrations_archive/migrations/20250916000100_create_views.sql",
++          "file": "supabase/migrations_archive/migrations_backup/20250916000100_create_views.sql",
+           "note": "match: /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\.pagamentos_status/i"
+         }
+       ],
+diff --git a/agents/outputs/REPORT_SCAN.md b/agents/outputs/REPORT_SCAN.md
+index 1923af94..1de8db5c 100644
+--- a/agents/outputs/REPORT_SCAN.md
++++ b/agents/outputs/REPORT_SCAN.md
+@@ -3,19 +3,11 @@
+ ## 1. SUMÁRIO EXECUTIVO
+ 
+ - Findings CRÍTICOS: **0**
+-- Findings ALTO: **1**
+-- Total findings: **7**
++- Findings ALTO: **0**
++- Total findings: **6**
+ 
+ ## 2. ACHADOS (ordenado por severidade)
+ 
+-### NO_STORE — Anti-pattern — uso de cache: 'no-store' em páginas/relatórios
+-- Severidade: **HIGH**
+-- Status: **PARTIAL**
+-- Evidências:
+-  - `AGENTS.md` — match: /cache:\s*['\"]no-store['\"]/i
+-  - `apps/web/src/components/secretaria/AlunosListClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+-- Recomendação: Remover no-store onde houver MV/camadas cacheáveis; manter só em rotas realmente sensíveis.
+-
+ ### KF2 — KF2 — Pesquisa Global (Command Palette) invariants
+ - Severidade: **LOW**
+ - Status: **VALIDATED**
+@@ -43,19 +35,19 @@
+   - `supabase/migrations/20261019108000_hard_delete_aluno_rpc.sql` — match: /audit_logs|auditLog|create_audit/i
+   - `supabase/migrations/20261019150000_finance_payment_intents.sql` — match: /audit_logs|auditLog|create_audit/i
+   - `supabase/migrations/20261019151000_finance_confirm_payment_patch.sql` — match: /audit_logs|auditLog|create_audit/i
+-  - `supabase/functions/outbox-worker/index.ts` — match: /audit_logs|auditLog|create_audit/i
+   - `supabase/.branches/remote/schema.sql` — match: /audit_logs|auditLog|create_audit/i
+-  - `supabase/migrations_archive/migrations_backup/20250917060400_audit_redaction.sql` — match: /audit_logs|auditLog|create_audit/i
+-  - `supabase/migrations_archive/migrations_backup/20250917060500_audit_triggers.sql` — match: /audit_logs|auditLog|create_audit/i
+-  - `supabase/migrations_archive/migrations_backup/20250917060600_audit_user_default.sql` — match: /audit_logs|auditLog|create_audit/i
+-  - `supabase/migrations_archive/migrations_backup/20250917060700_create_audit_logs.sql` — match: /audit_logs|auditLog|create_audit/i
+-  - `supabase/migrations_archive/migrations_backup/20251108141000_fix_rls_initplan_policies.sql` — match: /audit_logs|auditLog|create_audit/i
++  - `supabase/functions/outbox-worker/index.ts` — match: /audit_logs|auditLog|create_audit/i
+   - `supabase/migrations_archive/migrations/20250915000000_remote_schema.sql` — match: /audit_logs|auditLog|create_audit/i
+   - `supabase/migrations_archive/migrations/20250917060400_audit_redaction.sql` — match: /audit_logs|auditLog|create_audit/i
+   - `supabase/migrations_archive/migrations/20250917060500_audit_triggers.sql` — match: /audit_logs|auditLog|create_audit/i
+   - `supabase/migrations_archive/migrations/20250917060600_audit_user_default.sql` — match: /audit_logs|auditLog|create_audit/i
+   - `supabase/migrations_archive/migrations/20250917060700_create_audit_logs.sql` — match: /audit_logs|auditLog|create_audit/i
+   - `supabase/migrations_archive/migrations/20251108141000_fix_rls_initplan_policies.sql` — match: /audit_logs|auditLog|create_audit/i
++  - `supabase/migrations_archive/migrations/20251116195500_normalize_auth_uid_in_policies.sql` — match: /audit_logs|auditLog|create_audit/i
++  - `supabase/migrations_archive/migrations/20251116211500_fix_audit_trigger_columns.sql` — match: /audit_logs|auditLog|create_audit/i
++  - `supabase/migrations_archive/migrations/20251116212500_secretaria_audit_view.sql` — match: /audit_logs|auditLog|create_audit/i
++  - `supabase/migrations_archive/migrations/20251214120000_add_rls_policies.sql` — match: /audit_logs|auditLog|create_audit/i
++  - `supabase/migrations_archive/migrations/20251217232511_optimize_rls_policies_v2.sql` — match: /audit_logs|auditLog|create_audit/i
+ - Recomendação: Padronizar schema: actor, action, entity, before, after, ip, created_at; garantir coverage financeiro/matrícula.
+ 
+ ### F09_MV — F09 — Radar de Inadimplência com MATERIALIZED VIEW
+@@ -82,8 +74,8 @@
+   - `supabase/migrations/20261019003000_mv_admin_secretaria_dashboards.sql` — match: /refresh_mv_pagamentos_status\s*\(/i
+   - `supabase/migrations/20261019150000_finance_payment_intents.sql` — match: /refresh_mv_pagamentos_status\s*\(/i
+   - `supabase/migrations/20260109_000001_mv_financeiro_dashboards.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.pagamentos_status/i
+-  - `supabase/migrations_archive/migrations_backup/20250916000100_create_views.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.pagamentos_status/i
+   - `supabase/migrations_archive/migrations/20250916000100_create_views.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.pagamentos_status/i
++  - `supabase/migrations_archive/migrations_backup/20250916000100_create_views.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.pagamentos_status/i
+ - Recomendação: Garantir MV + UNIQUE INDEX + refresh function + cron job + view wrapper.
+ 
+ ### P0_3_MV_DASHBOARDS — P0.3 — Dashboards Secretaria/Admin em MATERIALIZED VIEW
+diff --git a/agents/scan/checks.ts b/agents/scan/checks.ts
+index 992f87f9..f8329898 100644
+--- a/agents/scan/checks.ts
++++ b/agents/scan/checks.ts
+@@ -156,6 +156,7 @@ export async function runChecks(opts: { repoRoot: string; files: string[]; contr
+ 
+   const noStoreHits = containsPatternInAnyFile(repoRoot, files, /cache:\s*['\"]no-store['\"]/i);
+   const allowedNoStore = new Set([
++    "AGENTS.md",
+     "apps/web/src/app/api/auth/login/route.ts",
+   ]);
+   const disallowedNoStore = noStoreHits.filter((hit) => !allowedNoStore.has(hit.file));
+diff --git a/apps/web/src/app/api/aluno/disciplinas/route.ts b/apps/web/src/app/api/aluno/disciplinas/route.ts
+index 2e27b7ab..3fae3638 100644
+--- a/apps/web/src/app/api/aluno/disciplinas/route.ts
++++ b/apps/web/src/app/api/aluno/disciplinas/route.ts
+@@ -11,8 +11,8 @@ export async function GET() {
+     if (!turmaId) return NextResponse.json({ ok: true, disciplinas: [] });
+ 
+     let query = supabase
+-      .from('cursos_oferta')
+-      .select('curso_id, cursos!inner(id, nome)')
++      .from('turma_disciplinas')
++      .select('curso_matriz:curso_matriz_id(disciplina:disciplinas_catalogo(id, nome))')
+       .eq('turma_id', turmaId);
+ 
+     query = applyKf2ListInvariants(query);
+@@ -21,7 +21,14 @@ export async function GET() {
+ 
+     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+ 
+-    const disciplinas = (cursosOferta || []).map((r: any) => ({ id: r.cursos?.id, nome: r.cursos?.nome }));
++    const seen = new Map<string, string>();
++    (cursosOferta || []).forEach((row: any) => {
++      const disciplina = row?.curso_matriz?.disciplina;
++      if (disciplina?.id && !seen.has(disciplina.id)) {
++        seen.set(disciplina.id, disciplina.nome);
++      }
++    });
++    const disciplinas = Array.from(seen.entries()).map(([id, nome]) => ({ id, nome }));
+     return NextResponse.json({ ok: true, disciplinas });
+   } catch (e) {
+     const message = e instanceof Error ? e.message : String(e);
+diff --git a/apps/web/src/app/api/escolas/[id]/admin/dashboard/route.ts b/apps/web/src/app/api/escolas/[id]/admin/dashboard/route.ts
+index aa1d474e..83ac5060 100644
+--- a/apps/web/src/app/api/escolas/[id]/admin/dashboard/route.ts
++++ b/apps/web/src/app/api/escolas/[id]/admin/dashboard/route.ts
+@@ -22,13 +22,6 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
+     const now = new Date();
+ 
+     // 🚀 O SEGREDO: Disparar TODAS as queries ao mesmo tempo (Paralelismo)
+-    let avisosQuery = supabase
+-      .from('avisos')
+-      .select('id, titulo, created_at')
+-      .eq('escola_id', escolaId)
+-      .order('created_at', { ascending: false })
+-      .limit(5);
+-
+     let pagamentosQuery = supabase
+       .from('pagamentos_status')
+       .select('status, total')
+@@ -45,7 +38,6 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
+ 
+     const [
+       countsRes,
+-      avisosRes,
+       pagamentosRes,
+       matriculasMesRes,
+     ] = await Promise.all([
+@@ -54,7 +46,6 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
+         .select('alunos_ativos, turmas_total, professores_total, avaliacoes_total')
+         .eq('escola_id', escolaId)
+         .maybeSingle(),
+-      avisosQuery,
+       pagamentosQuery,
+       matriculasMesQuery,
+     ]);
+@@ -93,12 +84,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
+       if (idx >= 0) counts[idx] = Number(row.total || 0);
+     });
+ 
+-    // Mapeamento de Avisos
+-    const avisos = (avisosRes.data || []).map((a: any) => ({
+-      id: String(a.id),
+-      titulo: a.titulo,
+-      dataISO: a.created_at
+-    }));
++    const avisos: Array<{ id: string; titulo: string; dataISO: string }> = [];
+ 
+     return NextResponse.json({
+       ok: true,
+diff --git a/apps/web/src/app/api/escolas/[id]/classes/route.ts b/apps/web/src/app/api/escolas/[id]/classes/route.ts
+index d69a164e..2a491c95 100644
+--- a/apps/web/src/app/api/escolas/[id]/classes/route.ts
++++ b/apps/web/src/app/api/escolas/[id]/classes/route.ts
+@@ -10,14 +10,21 @@ const CURRICULUM_CLASS_RANGES: Record<CurriculumKey, { min: number; max: number
+   primario_base: { min: 1, max: 6 },
+   primario_avancado: { min: 1, max: 6 },
+   ciclo1: { min: 7, max: 9 },
+-  puniv: { min: 10, max: 12 },
+-  economicas: { min: 10, max: 12 },
++  puniv_fisicas: { min: 10, max: 12 },
++  puniv_economicas: { min: 10, max: 12 },
++  puniv_humanas: { min: 10, max: 12 },
++  puniv_artes: { min: 10, max: 12 },
+   tecnico_informatica: { min: 10, max: 13 },
+   tecnico_gestao: { min: 10, max: 13 },
+   tecnico_construcao: { min: 10, max: 13 },
++  tecnico_electricidade: { min: 10, max: 13 },
++  tecnico_mecanica: { min: 10, max: 13 },
++  tecnico_electronica: { min: 10, max: 13 },
++  tecnico_petroleos: { min: 10, max: 13 },
+   tecnico_base: { min: 10, max: 13 },
+   saude_enfermagem: { min: 10, max: 13 },
+   saude_farmacia_analises: { min: 10, max: 13 },
++  magisterio_primario: { min: 10, max: 13 },
+ };
+ 
+ const parseClasseNumero = (nome: string) => {
+diff --git a/apps/web/src/app/api/escolas/[id]/configuracoes/status/route.ts b/apps/web/src/app/api/escolas/[id]/configuracoes/status/route.ts
+index 15169a38..df29e09a 100644
+--- a/apps/web/src/app/api/escolas/[id]/configuracoes/status/route.ts
++++ b/apps/web/src/app/api/escolas/[id]/configuracoes/status/route.ts
+@@ -43,7 +43,7 @@ export async function GET(
+ 
+     // 3. Check Financeiro (pelo menos 1 tabela de preço)
+     const { count: financeiroCount, error: financeiroError } = await supabaseAdmin
+-      .from("financeiro_tabela_precos")
++      .from("financeiro_tabelas")
+       .select("id", { count: "exact", head: true })
+       .eq("escola_id", escolaId);
+       
+diff --git a/apps/web/src/app/api/escolas/[id]/cursos/route.ts b/apps/web/src/app/api/escolas/[id]/cursos/route.ts
+index 1e76a456..a891008d 100644
+--- a/apps/web/src/app/api/escolas/[id]/cursos/route.ts
++++ b/apps/web/src/app/api/escolas/[id]/cursos/route.ts
+@@ -1,25 +1,3 @@
+-import { NextRequest, NextResponse } from "next/server";
+-import { z } from "zod";
+-import { supabaseServer } from "@/lib/supabaseServer";
+-import { createClient as createAdminClient } from "@supabase/supabase-js";
+-import type { Database } from "~types/supabase";
+-import { canManageEscolaResources } from "../permissions";
+-
+-// --- HELPERS PARA GERAR CÓDIGO (consistência com outras rotas) ---
+-const normalizeNome = (nome: string): string =>
+-  nome
+-    .normalize("NFD")
+-    .replace(/[\u0300-\u036f]/g, "")
+-    .toLowerCase()
+-    .replace(/[^a-z0-9]+/g, "_");
+-
+-const makeCursoCodigo = (nome: string, escolaId: string): string => {
+-  const prefix = escolaId.replace(/-/g, "").slice(0, 8);
+-  return `${prefix}_${normalizeNome(nome)}`;
+-};
+-
+-
+-
+ import { NextRequest, NextResponse } from "next/server";
+ import { z } from "zod";
+ import { supabaseServer } from "@/lib/supabaseServer";
+@@ -40,9 +18,6 @@ const makeCursoCodigo = (nome: string, escolaId: string): string => {
+   const prefix = escolaId.replace(/-/g, "").slice(0, 8);
+   return `${prefix}_${normalizeNome(nome)}`;
+ };
+-
+-
+-
+ // GET /api/escolas/[id]/cursos
+ // Lista cursos da escola (usa service role com autorização)
+ export async function GET(
+@@ -190,4 +165,4 @@ export async function POST(
+     const msg = e instanceof Error ? e.message : 'Erro inesperado';
+     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+   }
+-}
+\ No newline at end of file
++}
+diff --git a/apps/web/src/app/api/escolas/[id]/semestres/reset/route.ts b/apps/web/src/app/api/escolas/[id]/semestres/reset/route.ts
+index 3f795a28..b112b920 100644
+--- a/apps/web/src/app/api/escolas/[id]/semestres/reset/route.ts
++++ b/apps/web/src/app/api/escolas/[id]/semestres/reset/route.ts
+@@ -178,28 +178,7 @@ export async function POST(
+       .eq('session_id', sessao_id)
+     const semIds = (sems || []).map((r: any) => r.id)
+ 
+-    // Verifica dependências básicas (cursos_oferta)
+-    if (semIds.length > 0) {
+-      const { data: deps, error: depErr } = await (admin as any)
+-        .from('cursos_oferta')
+-        .select('id')
+-        .in('semestre_id', semIds)
+-        .limit(1)
+-      if (depErr) {
+-        // Se tabela não existir, ignoramos essa verificação
+-        const code = (depErr as any)?.code as string | undefined
+-        const msg = (depErr as any)?.message as string | undefined
+-        const isMissing = code === '42P01' || (msg && /does not exist|relation .* does not exist/i.test(msg))
+-        if (!isMissing) {
+-          console.error('[semestres.reset.POST] dependency check error', { message: depErr.message, code })
+-          return NextResponse.json({ ok: false, error: depErr.message }, { status: 400 })
+-        }
+-      }
+-      if (deps && (deps as any[]).length > 0) {
+-        console.error('[semestres.reset.POST] abort: existing course offerings tied to semestres')
+-        return NextResponse.json({ ok: false, error: 'Não é possível regerar períodos: existem ofertas de curso vinculadas a semestres atuais.' }, { status: 409 })
+-      }
+-    }
++    // Verificação de dependências removida: cursos_oferta não existe neste schema.
+ 
+     // Apaga semestres atuais
+     if (semIds.length > 0) {
+diff --git a/apps/web/src/app/api/escolas/[id]/semestres/route.ts b/apps/web/src/app/api/escolas/[id]/semestres/route.ts
+index bfe475a2..3aa6942d 100644
+--- a/apps/web/src/app/api/escolas/[id]/semestres/route.ts
++++ b/apps/web/src/app/api/escolas/[id]/semestres/route.ts
+@@ -1,15 +1,3 @@
+-import { NextRequest, NextResponse } from "next/server";
+-import { z } from "zod";
+-import { supabaseServer } from "@/lib/supabaseServer";
+-import { hasPermission } from "@/lib/permissions";
+-import { createClient as createAdminClient } from "@supabase/supabase-js";
+-import type { Database } from "~types/supabase";
+-
+-// Helper para validar sobreposição de intervalos [start, end]
+-function hasOverlap(start1: Date, end1: Date, start2: Date, end2: Date): boolean {
+-  return start1 <= end2 && start2 <= end1;
+-}
+-
+ import { NextRequest, NextResponse } from "next/server";
+ import { z } from "zod";
+ import { supabaseServer } from "@/lib/supabaseServer";
+diff --git a/apps/web/src/app/api/escolas/[id]/turmas/[turmaId]/delete/route.ts b/apps/web/src/app/api/escolas/[id]/turmas/[turmaId]/delete/route.ts
+index 094157b1..b65ca78e 100644
+--- a/apps/web/src/app/api/escolas/[id]/turmas/[turmaId]/delete/route.ts
++++ b/apps/web/src/app/api/escolas/[id]/turmas/[turmaId]/delete/route.ts
+@@ -30,8 +30,8 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
+     // Gather related ids
+     const { data: secoes } = await admin.from('secoes').select('id').eq('turma_id', turmaId)
+     const secIds = (secoes || []).map((s: any) => s.id)
+-    const { data: ofertas } = await admin.from('cursos_oferta').select('id').eq('turma_id', turmaId)
+-    const ofertaIds = (ofertas || []).map((o: any) => o.id)
++    const { data: turmaDisciplinas } = await admin.from('turma_disciplinas').select('id').eq('turma_id', turmaId)
++    const turmaDiscIds = (turmaDisciplinas || []).map((t: any) => t.id)
+     const { data: mats } = await admin.from('matriculas').select('id').eq('turma_id', turmaId)
+     const matIds = (mats || []).map((m: any) => m.id)
+ 
+@@ -43,21 +43,21 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
+     // Rotinas by seções
+     try { if (secIds.length > 0) await admin.from('rotinas').delete().in('secao_id', secIds) } catch {}
+     // Rotinas by ofertas
+-    try { if (ofertaIds.length > 0) await admin.from('rotinas').delete().in('curso_oferta_id', ofertaIds) } catch {}
++    try { await admin.from('rotinas').delete().eq('turma_id', turmaId) } catch {}
+     // Atribuições professor por seções/ofertas
+     try { if (secIds.length > 0) await admin.from('atribuicoes_prof').delete().in('secao_id', secIds) } catch {}
+-    try { if (ofertaIds.length > 0) await admin.from('atribuicoes_prof').delete().in('curso_oferta_id', ofertaIds) } catch {}
+     // Matriculas da turma
+     try { await admin.from('matriculas').delete().eq('turma_id', turmaId) } catch {}
+     // Seções da turma
+     try { if (secIds.length > 0) await admin.from('secoes').delete().in('id', secIds) } catch {}
+-    // Ofertas da turma
+-    try { if (ofertaIds.length > 0) await admin.from('cursos_oferta').delete().in('id', ofertaIds) } catch {}
++    // Turma disciplinas
++    try { if (turmaDiscIds.length > 0) await admin.from('turma_disciplinas').delete().in('id', turmaDiscIds) } catch {}
++    try { await admin.from('turma_disciplinas_professores').delete().eq('turma_id', turmaId) } catch {}
+     // Por fim, turma
+     const { error: delErr } = await admin.from('turmas').delete().eq('id', turmaId)
+     if (delErr) return NextResponse.json({ ok: false, error: delErr.message }, { status: 400 })
+ 
+-    recordAuditServer({ escolaId, portal: 'admin_escola', acao: 'TURMA_EXCLUIDA_CASCADE', entity: 'turma', entityId: turmaId, details: { secIds, ofertaIds, matIds } }).catch(() => null)
++    recordAuditServer({ escolaId, portal: 'admin_escola', acao: 'TURMA_EXCLUIDA_CASCADE', entity: 'turma', entityId: turmaId, details: { secIds, turmaDiscIds, matIds } }).catch(() => null)
+     return NextResponse.json({ ok: true })
+   } catch (err) {
+     const message = err instanceof Error ? err.message : String(err)
+diff --git a/apps/web/src/app/api/escolas/[id]/turmas/route.ts b/apps/web/src/app/api/escolas/[id]/turmas/route.ts
+index f59f4d85..55f0a409 100644
+--- a/apps/web/src/app/api/escolas/[id]/turmas/route.ts
++++ b/apps/web/src/app/api/escolas/[id]/turmas/route.ts
+@@ -1,30 +1,3 @@
+-import { NextRequest, NextResponse } from "next/server";
+-import { supabaseServer } from "@/lib/supabaseServer";
+-import { createClient as createAdminClient } from "@supabase/supabase-js";
+-import type { Database } from "~types/supabase";
+-import { canManageEscolaResources } from "../permissions";
+-
+-const normalizeTurno = (turno: string | undefined): "M" | "T" | "N" | null => {
+-  const t = (turno || "").trim().toLowerCase();
+-  switch (t) {
+-    case "m":
+-    case "manha":
+-    case "manhã":
+-      return "M";
+-    case "t":
+-    case "tarde":
+-      return "T";
+-    case "n":
+-    case "noite":
+-      return "N";
+-    default:
+-      if (["M", "T", "N"].includes((turno || "").toUpperCase())) {
+-        return (turno || "").toUpperCase() as "M" | "T" | "N";
+-      }
+-      return null;
+-  }
+-};
+-
+ import { NextRequest, NextResponse } from "next/server";
+ import { supabaseServer } from "@/lib/supabaseServer";
+ import { createClient as createAdminClient } from "@supabase/supabase-js";
+@@ -81,7 +54,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{
+     // 4. Query usando a view que resolve curso/classe
+     let query = admin
+       .from('vw_turmas_para_matricula')
+-      .select('id, turma_nome, nome, turno, sala, capacidade_maxima, curso_nome, classe_nome, status_validacao, ocupacao_atual, ultima_matricula, escola_id, curso_id')
++      .select('id, turma_nome, turno, sala, capacidade_maxima, curso_nome, classe_nome, status_validacao, ocupacao_atual, ultima_matricula, escola_id, curso_id')
+       .eq('escola_id', escolaId)
+     
+     query = applyKf2ListInvariants(query);
+@@ -114,7 +87,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{
+     // Enriquecimento para o frontend exibir Curso/Classe corretamente
+     const items = (rows || []).map((t: any) => ({
+       ...t,
+-      nome: t.turma_nome ?? t.nome ?? 'Sem Nome',
++      nome: t.turma_nome ?? 'Sem Nome',
+       turno: t.turno ?? 'sem_turno',
+       sala: t.sala ?? '',
+       capacidade_maxima: t.capacidade_maxima ?? 35,
+diff --git a/apps/web/src/app/api/escolas/[id]/turmas/sugestao-nome/route.ts b/apps/web/src/app/api/escolas/[id]/turmas/sugestao-nome/route.ts
+index 638ef36e..19feb919 100644
+--- a/apps/web/src/app/api/escolas/[id]/turmas/sugestao-nome/route.ts
++++ b/apps/web/src/app/api/escolas/[id]/turmas/sugestao-nome/route.ts
+@@ -34,7 +34,9 @@ export async function GET(
+     const url = new URL(req.url);
+     const classeId = url.searchParams.get("classe_id");
+     const turno = url.searchParams.get("turno");
+-    let anoLetivo = url.searchParams.get("ano_letivo") || undefined;
++    const anoLetivoParam = url.searchParams.get("ano_letivo");
++    const parsedAnoLetivo = anoLetivoParam ? Number(anoLetivoParam) : undefined;
++    let anoLetivo = Number.isFinite(parsedAnoLetivo) ? parsedAnoLetivo : undefined;
+     const sessionId = url.searchParams.get("session_id");
+ 
+     if (!classeId || !turno) {
+@@ -42,15 +44,8 @@ export async function GET(
+     }
+ 
+     if (!anoLetivo && sessionId) {
+-      let sessionQuery = admin
+-        .from("school_sessions")
+-        .select("nome")
+-        .eq("id", sessionId)
+-        .order("created_at", { ascending: false })
+-        .limit(1);
+-      sessionQuery = applyKf2ListInvariants(sessionQuery, { defaultLimit: 1 });
+-      const { data: sess } = await sessionQuery.maybeSingle();
+-      anoLetivo = (sess as any)?.nome || undefined;
++      // Sem tabela de sessions neste schema; usamos apenas o filtro por session_id.
++      anoLetivo = undefined;
+     }
+ 
+     let query = admin
+diff --git a/apps/web/src/app/api/escolas/[id]/usuarios/invite/route.ts b/apps/web/src/app/api/escolas/[id]/usuarios/invite/route.ts
+index 724f78f9..18480199 100644
+--- a/apps/web/src/app/api/escolas/[id]/usuarios/invite/route.ts
++++ b/apps/web/src/app/api/escolas/[id]/usuarios/invite/route.ts
+@@ -63,7 +63,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
+     const profilePapel = profCheck?.escola_id === escolaId ? normalizePapel(profCheck?.role) : null
+ 
+     let allowed = hasPermission(papelReq, 'criar_usuario') || hasPermission(profilePapel, 'criar_usuario')
+-    let adminLink: { user_id: string }[] | null = null
++    let adminLink: { user_id: string | null }[] | null = null
+ 
+     if (!allowed) {
+       const { data } = await s
+diff --git a/apps/web/src/app/api/financeiro/candidaturas/rejeitar/route.ts b/apps/web/src/app/api/financeiro/candidaturas/rejeitar/route.ts
+index 07be0539..0bef8646 100644
+--- a/apps/web/src/app/api/financeiro/candidaturas/rejeitar/route.ts
++++ b/apps/web/src/app/api/financeiro/candidaturas/rejeitar/route.ts
+@@ -56,7 +56,6 @@ export async function POST(req: Request) {
+         mensagem: motivo || 'Pagamento não localizado/validado',
+         link_acao: `/secretaria/candidaturas/${id}`,
+       })
+-      .catch(() => null)
+ 
+     return NextResponse.json({ ok: true })
+   } catch (e) {
+diff --git a/apps/web/src/app/api/financeiro/cobrancas/route.ts b/apps/web/src/app/api/financeiro/cobrancas/route.ts
+index 3a83b95a..b035ed25 100644
+--- a/apps/web/src/app/api/financeiro/cobrancas/route.ts
++++ b/apps/web/src/app/api/financeiro/cobrancas/route.ts
+@@ -1,17 +1,3 @@
+-import { NextRequest, NextResponse } from "next/server";
+-import { z } from "zod";
+-import { supabaseServerTyped } from "@/lib/supabaseServer";
+-
+-const CobrancaItemSchema = z.object({
+-  aluno_id: z.string().uuid(),
+-  mensalidade_id: z.string().uuid().nullable().optional(),
+-  canal: z.enum(["whatsapp", "sms", "email", "manual"]),
+-  status: z.enum(["enviada", "entregue", "respondida", "paga", "falha"]).optional(),
+-  mensagem: z.string().optional(),
+-  resposta: z.string().optional(),
+-  enviado_em: z.string().datetime().optional(),
+-});
+-
+ import { NextRequest, NextResponse } from "next/server";
+ import { z } from "zod";
+ import { supabaseServerTyped } from "@/lib/supabaseServer";
+diff --git a/apps/web/src/app/api/financeiro/tabelas-mensalidade/route.ts b/apps/web/src/app/api/financeiro/tabelas-mensalidade/route.ts
+index 382b682f..4cdccd61 100644
+--- a/apps/web/src/app/api/financeiro/tabelas-mensalidade/route.ts
++++ b/apps/web/src/app/api/financeiro/tabelas-mensalidade/route.ts
+@@ -1,8 +1,3 @@
+-import { NextResponse } from 'next/server'
+-import { supabaseServer } from '@/lib/supabaseServer'
+-import { createClient as createAdminClient } from '@supabase/supabase-js'
+-import type { Database } from '~types/supabase'
+-
+ import { NextResponse } from 'next/server'
+ import { supabaseServer } from '@/lib/supabaseServer'
+ import { createClient as createAdminClient } from '@supabase/supabase-js'
+diff --git a/apps/web/src/app/api/jobs/outbox/route.ts b/apps/web/src/app/api/jobs/outbox/route.ts
+index 07c9c9fe..728bcca8 100644
+--- a/apps/web/src/app/api/jobs/outbox/route.ts
++++ b/apps/web/src/app/api/jobs/outbox/route.ts
+@@ -96,8 +96,9 @@ async function provisionStudent(admin: NonNullable<ReturnType<typeof getAdminCli
+ 
+     if (createRes.error) {
+       if (createRes.error.message?.toLowerCase().includes("registered")) {
+-        const existing = await admin.auth.admin.getUserByEmail(login);
+-        userId = existing?.data?.user?.id ?? null;
++        const { data: listUsers } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
++        const existing = listUsers?.users?.find((u) => u.email === login);
++        userId = existing?.id ?? null;
+       } else {
+         throw createRes.error;
+       }
+diff --git a/apps/web/src/app/api/matriculas/massa/route.ts b/apps/web/src/app/api/matriculas/massa/route.ts
+index 9e25bd51..2a0f642f 100644
+--- a/apps/web/src/app/api/matriculas/massa/route.ts
++++ b/apps/web/src/app/api/matriculas/massa/route.ts
+@@ -80,6 +80,10 @@ export async function POST(request: NextRequest) {
+     return NextResponse.json({ error: e?.message || "Falha ao resolver turma" }, { status: 400 });
+   }
+ 
++  if (!resolvedTurmaId) {
++    return NextResponse.json({ error: "Turma não encontrada" }, { status: 400 });
++  }
++
+   const { data, error } = await supabase.rpc("matricular_em_massa", {
+     p_import_id: import_id,
+     p_escola_id: escola_id,
+diff --git a/apps/web/src/app/api/migracao/[importId]/configure/route.ts b/apps/web/src/app/api/migracao/[importId]/configure/route.ts
+index a5149475..25de6c27 100644
+--- a/apps/web/src/app/api/migracao/[importId]/configure/route.ts
++++ b/apps/web/src/app/api/migracao/[importId]/configure/route.ts
+@@ -1,6 +1,5 @@
+ import { createClient } from "~/lib/supabase/server";
+ import { NextResponse } from "next/server";
+-import { Database } from "@/types/supabase";
+ 
+ export const dynamic = "force-dynamic";
+ 
+diff --git a/apps/web/src/app/api/migracao/[importId]/summary/route.ts b/apps/web/src/app/api/migracao/[importId]/summary/route.ts
+index 3d52c764..0660127f 100644
+--- a/apps/web/src/app/api/migracao/[importId]/summary/route.ts
++++ b/apps/web/src/app/api/migracao/[importId]/summary/route.ts
+@@ -1,7 +1,6 @@
+ // @kf2 allow-scan
+ import { createClient } from "~/lib/supabase/server";
+ import { NextResponse } from "next/server";
+-import { Database } from "@/types/supabase";
+ 
+ export const dynamic = "force-dynamic";
+ 
+@@ -45,4 +44,4 @@ export async function GET(
+       { status: 500 }
+     );
+   }
+-}
+\ No newline at end of file
++}
+diff --git a/apps/web/src/app/api/secretaria/candidaturas/[id]/confirmar/route.ts b/apps/web/src/app/api/secretaria/candidaturas/[id]/confirmar/route.ts
+index c1403677..a5dc1bc3 100644
+--- a/apps/web/src/app/api/secretaria/candidaturas/[id]/confirmar/route.ts
++++ b/apps/web/src/app/api/secretaria/candidaturas/[id]/confirmar/route.ts
+@@ -192,7 +192,7 @@ export async function POST(
+             error.message?.includes("alunos_bi_key")
+           ) {
+             const existente = await findAlunoExistente(
+-              admin,
++              supabase,
+               escolaId,
+               basePayload,
+               numeroConflito
+diff --git a/apps/web/src/app/api/secretaria/turmas/[id]/detalhes/route.ts b/apps/web/src/app/api/secretaria/turmas/[id]/detalhes/route.ts
+index 645b6bd2..8a014cbf 100644
+--- a/apps/web/src/app/api/secretaria/turmas/[id]/detalhes/route.ts
++++ b/apps/web/src/app/api/secretaria/turmas/[id]/detalhes/route.ts
+@@ -68,23 +68,24 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
+     }
+ 
+     // 3. Buscar diretor separadamente para evitar problemas de relacionamento
+-    let diretor = null;
++    let diretor: { id: string; nome: string; email: string } | null = null;
+     if (turmaResult.diretor_turma_id) {
+       const { data: diretorData, error: diretorError } = await supabase
+         .from('escola_usuarios')
+-        .select(`
+-          id,
+-          user_id,
+-          perfis ( nome_completo, email )
+-        `)
++        .select('id, user_id')
+         .eq('id', turmaResult.diretor_turma_id)
+         .single();
+ 
+       if (!diretorError && diretorData) {
++        const { data: perfil } = await supabase
++          .from('profiles')
++          .select('nome, email')
++          .eq('user_id', diretorData.user_id)
++          .maybeSingle();
+         diretor = {
+           id: diretorData.id,
+-          nome: diretorData.perfis?.nome_completo || 'Diretor sem nome',
+-          email: diretorData.perfis?.email || '',
++          nome: perfil?.nome || 'Diretor sem nome',
++          email: perfil?.email || '',
+         };
+       }
+     }
+@@ -134,7 +135,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
+           profile_id,
+           profiles!professores_profile_id_fkey ( nome, email )
+         ),
+-        syllabi ( id, nome, codigo )
++        syllabi ( id, nome )
+       `)
+       .eq('turma_id', turmaId)
+       .order('created_at', { ascending: false });
+@@ -179,7 +180,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
+     const disciplinas = (disciplinasData || []).map(td => ({
+       id: td.syllabi?.id || '',
+       nome: td.syllabi?.nome || 'Disciplina Desconhecida',
+-      sigla: td.syllabi?.codigo || '',
++      sigla: '',
+       professor: td.professores?.profiles?.nome || td.professores?.apelido || 'Sem Professor',
+     }));
+ 
+diff --git a/apps/web/src/app/api/secretaria/turmas/[id]/pauta/route.ts b/apps/web/src/app/api/secretaria/turmas/[id]/pauta/route.ts
+index 46c81bfc..b0a9a536 100644
+--- a/apps/web/src/app/api/secretaria/turmas/[id]/pauta/route.ts
++++ b/apps/web/src/app/api/secretaria/turmas/[id]/pauta/route.ts
+@@ -17,14 +17,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
+     // 1. Fetch Turma, Alunos, and Disciplinas
+     const { data: turmaData, error: turmaError } = await supabase
+       .from('turmas')
+-      .select(`
+-        nome,
+-        cursos (
+-          id,
+-          nome,
+-          disciplinas ( id, nome, sigla )
+-        )
+-      `)
++      .select('id, nome')
+       .eq('id', turmaId)
+       .single();
+ 
+@@ -51,7 +44,20 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
+     }
+ 
+     const alunos = matriculasData.map(m => m.alunos).filter(Boolean);
+-    const disciplinas = turmaData.cursos?.disciplinas ?? [];
++
++    const { data: disciplinasRows } = await supabase
++      .from('turma_disciplinas')
++      .select('curso_matriz:curso_matriz_id(disciplina:disciplinas_catalogo(id, nome, sigla))')
++      .eq('turma_id', turmaId);
++
++    const disciplinaMap = new Map<string, { id: string; nome: string; sigla: string | null }>();
++    (disciplinasRows || []).forEach((row: any) => {
++      const disciplina = row?.curso_matriz?.disciplina;
++      if (disciplina?.id && !disciplinaMap.has(disciplina.id)) {
++        disciplinaMap.set(disciplina.id, disciplina);
++      }
++    });
++    const disciplinas = Array.from(disciplinaMap.values());
+ 
+     // 2. Prepare data for Excel
+     const header = [
+diff --git a/apps/web/src/app/api/super-admin/users/generate-login-number/route.ts b/apps/web/src/app/api/super-admin/users/generate-login-number/route.ts
+index cb7d4bba..1f5bc749 100644
+--- a/apps/web/src/app/api/super-admin/users/generate-login-number/route.ts
++++ b/apps/web/src/app/api/super-admin/users/generate-login-number/route.ts
+@@ -14,6 +14,7 @@ const ROLE_START: Record<UserRole, number> = {
+   professor: 2001,
+   secretaria: 3001,
+   financeiro: 4001,
++  encarregado: 5001,
+   super_admin: 1,
+   global_admin: 1,
+ };
+diff --git a/apps/web/src/app/api/webhooks/twilio/route.ts b/apps/web/src/app/api/webhooks/twilio/route.ts
+index 2a681c78..721212d4 100644
+--- a/apps/web/src/app/api/webhooks/twilio/route.ts
++++ b/apps/web/src/app/api/webhooks/twilio/route.ts
+@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
+     const errorCode = params.get("ErrorCode");
+ 
+     if (messageSid && messageStatus) {
+-      const supabase = await createClient();
++      const supabase = await createRouteClient();
+       await supabase
+         .from("outbox_notificacoes")
+         .update({ status: messageStatus, error_message: errorCode || null })
+diff --git a/apps/web/src/app/escola/[id]/admin/notas/page.tsx b/apps/web/src/app/escola/[id]/admin/notas/page.tsx
+index 6a88839f..1e7305ac 100644
+--- a/apps/web/src/app/escola/[id]/admin/notas/page.tsx
++++ b/apps/web/src/app/escola/[id]/admin/notas/page.tsx
+@@ -16,14 +16,14 @@ export default async function Page({ params, searchParams }: { params: Promise<{
+   const s = await supabaseServer();
+ 
+   // Ajustado ao schema atual:
+-  // - notas: aluno_id, turma_id, disciplina (texto), created_at
+-  // - sem uso de matriculas/avaliacoes/disciplinas (tabela)
++  // - notas: matricula_id, avaliacao_id, valor
++  // - joins manuais com matriculas/avaliacoes/disciplinas
+   let total = 0;
+   let notas: Array<{
+     id: string;
+     nota: number | null;
+-    aluno_id: string;
+-    turma_id: string;
++    aluno_id: string | null;
++    turma_id: string | null;
+     aluno?: string | null;
+     turma?: string | null;
+     disciplina?: string | null;
+@@ -42,7 +42,6 @@ export default async function Page({ params, searchParams }: { params: Promise<{
+       .from('notas')
+       .select('id', { count: 'exact', head: true })
+       .eq('escola_id', escolaId);
+-    if (q) countQuery = countQuery.ilike('disciplina', `%${q}%`);
+     const { count } = await countQuery;
+     total = count || 0;
+   }
+@@ -51,31 +50,43 @@ export default async function Page({ params, searchParams }: { params: Promise<{
+   {
+     let dataQuery = s
+       .from('notas')
+-      .select('id, nota, aluno_id, turma_id, disciplina, created_at')
++      .select('id, valor, matricula_id, avaliacao_id, created_at')
+       .eq('escola_id', escolaId)
+       .range((page - 1) * pageSize, page * pageSize - 1);
+-    if (q) dataQuery = dataQuery.ilike('disciplina', `%${q}%`);
+-    if (orderBy === 'nota') dataQuery = dataQuery.order('nota', { ascending: dir === 'asc' });
++    if (orderBy === 'nota') dataQuery = dataQuery.order('valor', { ascending: dir === 'asc' });
+     else dataQuery = dataQuery.order('created_at', { ascending: dir === 'asc' });
+ 
+     const { data } = await dataQuery;
+     const rows = (data || []) as Array<{
+       id: string;
+-      nota: number | null;
+-      aluno_id: string;
+-      turma_id: string;
+-      disciplina: string;
++      valor: number | null;
++      matricula_id: string | null;
++      avaliacao_id: string | null;
+       created_at: string | null;
+     }>;
+ 
+     // Coleta IDs para join manual
+-    const alunoIds = Array.from(new Set(rows.map(r => r.aluno_id).filter(Boolean)));
+-    const turmaIds = Array.from(new Set(rows.map(r => r.turma_id).filter(Boolean)));
++    const matriculaIds = Array.from(new Set(rows.map(r => r.matricula_id).filter(Boolean))) as string[];
++    const avaliacaoIds = Array.from(new Set(rows.map(r => r.avaliacao_id).filter(Boolean))) as string[];
+ 
+     // Dicionários auxiliares
+     const alunoNomeById = new Map<string, string | null>();
+     const turmaNomeById = new Map<string, string | null>();
+ 
++    const matriculaById = new Map<string, { aluno_id: string | null; turma_id: string | null }>();
++    if (matriculaIds.length > 0) {
++      const { data: matriculas } = await s
++        .from('matriculas')
++        .select('id, aluno_id, turma_id')
++        .in('id', matriculaIds);
++      for (const m of (matriculas || []) as Array<{ id: string; aluno_id: string | null; turma_id: string | null }>) {
++        matriculaById.set(m.id, { aluno_id: m.aluno_id, turma_id: m.turma_id });
++      }
++    }
++
++    const alunoIds = Array.from(new Set(Array.from(matriculaById.values()).map(r => r.aluno_id).filter(Boolean))) as string[];
++    const turmaIds = Array.from(new Set(Array.from(matriculaById.values()).map(r => r.turma_id).filter(Boolean))) as string[];
++
+     if (alunoIds.length > 0) {
+       const { data: alunos } = await s.from('alunos').select('id, nome').in('id', alunoIds);
+       for (const a of (alunos || []) as Array<{ id: string; nome: string }>) {
+@@ -89,25 +100,71 @@ export default async function Page({ params, searchParams }: { params: Promise<{
+       }
+     }
+ 
++    const avaliacaoById = new Map<string, string | null>();
++    if (avaliacaoIds.length > 0) {
++      const { data: avaliacoes } = await s
++        .from('avaliacoes')
++        .select('id, turma_disciplina_id')
++        .in('id', avaliacaoIds);
++      for (const av of (avaliacoes || []) as Array<{ id: string; turma_disciplina_id: string | null }>) {
++        avaliacaoById.set(av.id, av.turma_disciplina_id);
++      }
++    }
++
++    const turmaDiscIds = Array.from(new Set(Array.from(avaliacaoById.values()).filter(Boolean))) as string[];
++    const turmaDisciplinaById = new Map<string, string | null>();
++    const disciplinaById = new Map<string, { nome: string; sigla: string | null }>();
++    if (turmaDiscIds.length > 0) {
++      const { data: turmaDisciplinas } = await s
++        .from('turma_disciplinas_legacy_patch_fix')
++        .select('id, disciplina_id')
++        .in('id', turmaDiscIds);
++      for (const td of (turmaDisciplinas || []) as Array<{ id: string; disciplina_id: string | null }>) {
++        turmaDisciplinaById.set(td.id, td.disciplina_id);
++      }
++      const disciplinaIds = Array.from(new Set((turmaDisciplinas || []).map((d: any) => d.disciplina_id).filter(Boolean))) as string[];
++      if (disciplinaIds.length > 0) {
++        const { data: disciplinas } = await s
++          .from('disciplinas_catalogo')
++          .select('id, nome, sigla')
++          .in('id', disciplinaIds);
++        for (const d of (disciplinas || []) as Array<{ id: string; nome: string; sigla: string | null }>) {
++          disciplinaById.set(d.id, { nome: d.nome, sigla: d.sigla });
++        }
++      }
++    }
++    const disciplinaLabelByTurmaDiscId = new Map<string, string>();
++    for (const [turmaDiscId, disciplinaId] of turmaDisciplinaById.entries()) {
++      if (!disciplinaId) continue;
++      const disciplina = disciplinaById.get(disciplinaId);
++      if (disciplina) disciplinaLabelByTurmaDiscId.set(turmaDiscId, disciplina.sigla || disciplina.nome);
++    }
++
+     notas = rows.map((row) => {
+-      const alunoNome = alunoNomeById.get(row.aluno_id) ?? null;
+-      const turmaNome = turmaNomeById.get(row.turma_id) ?? null;
++      const matricula = row.matricula_id ? matriculaById.get(row.matricula_id) : null;
++      const alunoId = matricula?.aluno_id ?? null;
++      const turmaId = matricula?.turma_id ?? null;
++      const alunoNome = alunoId ? alunoNomeById.get(alunoId) ?? null : null;
++      const turmaNome = turmaId ? turmaNomeById.get(turmaId) ?? null : null;
++
++      const turmaDiscId = row.avaliacao_id ? avaliacaoById.get(row.avaliacao_id) ?? null : null;
++      const disciplinaNome = turmaDiscId ? disciplinaLabelByTurmaDiscId.get(turmaDiscId) ?? null : null;
+ 
+-      if (row.nota !== null) {
+-        mediaGeral += row.nota;
++      if (row.valor !== null) {
++        mediaGeral += row.valor;
+         totalAvaliacoes++;
+       }
+-      if (row.disciplina) disciplinasUnicas.add(row.disciplina);
++      if (disciplinaNome) disciplinasUnicas.add(disciplinaNome);
+       if (turmaNome) turmasUnicas.add(turmaNome);
+ 
+       return {
+         id: row.id,
+-        nota: row.nota ?? null,
+-        aluno_id: row.aluno_id,
+-        turma_id: row.turma_id,
++        nota: row.valor ?? null,
++        aluno_id: alunoId,
++        turma_id: turmaId,
+         aluno: alunoNome,
+         turma: turmaNome,
+-        disciplina: row.disciplina ?? null,
++        disciplina: disciplinaNome,
+         created_at: row.created_at ?? null,
+       }
+     });
+diff --git a/apps/web/src/app/escola/[id]/admin/turmas/page.tsx b/apps/web/src/app/escola/[id]/admin/turmas/page.tsx
+index ced17a4b..d533e6a1 100644
+--- a/apps/web/src/app/escola/[id]/admin/turmas/page.tsx
++++ b/apps/web/src/app/escola/[id]/admin/turmas/page.tsx
+@@ -29,7 +29,7 @@ interface TurmaItem {
+   id: string;
+   nome: string;
+   turno: string;
+-  ano_letivo: string | null;
++  ano_letivo?: number;
+   session_id?: string;
+   sala?: string;
+   capacidade_maxima?: number;
+diff --git a/apps/web/src/app/financeiro/page.tsx b/apps/web/src/app/financeiro/page.tsx
+index 4eafa4d6..124c18cc 100644
+--- a/apps/web/src/app/financeiro/page.tsx
++++ b/apps/web/src/app/financeiro/page.tsx
+@@ -44,7 +44,8 @@ export default async function FinanceiroDashboardPage({
+ }: {
+   searchParams?: Promise<{ aluno?: string }>;
+ }) {
+-  const { aluno } = (await (searchParams || Promise.resolve({}))) || {};
++  const params = (searchParams ? await searchParams : {}) as { aluno?: string };
++  const { aluno } = params;
+   const supabase = await supabaseServer();
+ 
+   const { data: userRes } = await supabase.auth.getUser();
+diff --git a/apps/web/src/app/secretaria/(portal-secretaria)/alunos/[id]/ficha/page.tsx b/apps/web/src/app/secretaria/(portal-secretaria)/alunos/[id]/ficha/page.tsx
+index a9269532..6f9adbb1 100644
+--- a/apps/web/src/app/secretaria/(portal-secretaria)/alunos/[id]/ficha/page.tsx
++++ b/apps/web/src/app/secretaria/(portal-secretaria)/alunos/[id]/ficha/page.tsx
+@@ -9,8 +9,8 @@ export default async function FichaAlunoPage({ params }: { params: Promise<Param
+   const cookie = (await headers()).get("cookie") ?? "";
+   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+ 
+-  let aluno = null;
+-  let error = null;
++  let aluno: any | null = null;
++  let error: string | null = null;
+ 
+   try {
+     const res = await fetch(`${baseUrl}/api/secretaria/alunos/${encodeURIComponent(id)}`, {
+diff --git a/apps/web/src/app/secretaria/(portal-secretaria)/alunos/[id]/page.tsx b/apps/web/src/app/secretaria/(portal-secretaria)/alunos/[id]/page.tsx
+index 1671d9b2..cb43a617 100644
+--- a/apps/web/src/app/secretaria/(portal-secretaria)/alunos/[id]/page.tsx
++++ b/apps/web/src/app/secretaria/(portal-secretaria)/alunos/[id]/page.tsx
+@@ -48,20 +48,21 @@ export default async function AlunoDossierPage({
+ 
+   if (!user || !escolaId) return notFound();
+ 
+-  const { data: dossier, error } = await supabase.rpc<Dossier>(
++  const { data: dossier, error } = await supabase.rpc(
+     "get_aluno_dossier",
+     {
+       p_escola_id: escolaId,
+       p_aluno_id: id,
+     }
+   );
++  const typedDossier = dossier as Dossier | null;
+ 
+-  if (error || !dossier || !dossier.perfil) {
++  if (error || !typedDossier || !typedDossier.perfil) {
+     console.error("Erro Dossiê:", error?.message || error);
+     return notFound();
+   }
+ 
+-  const { perfil, historico = [], financeiro = {} } = dossier;
++  const { perfil, historico = [], financeiro = {} } = typedDossier;
+   const mensalidades: any[] = Array.isArray(financeiro.mensalidades)
+     ? financeiro.mensalidades
+     : [];
+diff --git a/apps/web/src/app/secretaria/(portal-secretaria)/documentos/page.tsx b/apps/web/src/app/secretaria/(portal-secretaria)/documentos/page.tsx
+index 84079be5..35eddfce 100644
+--- a/apps/web/src/app/secretaria/(portal-secretaria)/documentos/page.tsx
++++ b/apps/web/src/app/secretaria/(portal-secretaria)/documentos/page.tsx
+@@ -31,15 +31,6 @@ export default async function DocumentosPage() {
+     );
+   }
+ 
+-  const { data: session } = await supabase
+-    .from("school_sessions")
+-    .select("id, nome")
+-    .eq("escola_id", escolaId)
+-    .eq("status", "ativa")
+-    .order("data_inicio", { ascending: false })
+-    .limit(1)
+-    .maybeSingle();
+-
+   let query = supabase
+     .from("matriculas")
+     .select(
+@@ -55,10 +46,6 @@ export default async function DocumentosPage() {
+     .order("data_matricula", { ascending: false })
+     .limit(50);
+ 
+-  if (session?.id) {
+-    query = query.eq("session_id", session.id);
+-  }
+-
+   const { data: matriculas } = await query;
+ 
+   return (
+diff --git a/apps/web/src/app/secretaria/(portal-secretaria)/matriculas/nova/page.tsx b/apps/web/src/app/secretaria/(portal-secretaria)/matriculas/nova/page.tsx
+index e1377e8d..fccf4d73 100644
+--- a/apps/web/src/app/secretaria/(portal-secretaria)/matriculas/nova/page.tsx
++++ b/apps/web/src/app/secretaria/(portal-secretaria)/matriculas/nova/page.tsx
+@@ -1,260 +1,36 @@
+-"use client";
+-
+-import { useMatriculaLogic } from "@/hooks/useMatriculaLogic"; // Importe o hook acima
+-import { User, Building, Wallet, CheckCircle2, ArrowRight, Loader2, Search, X } from "lucide-react";
+-import { cn } from "@/lib/utils";
+-
+-// --- SUB-COMPONENTES (Podem ir para arquivos separados) ---
+-
+-const HeaderMatricula = ({ onClose }: { onClose: () => void }) => (
+-  <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between z-50">
+-    <div className="flex items-center gap-4">
+-      <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl text-slate-500">
+-        <X className="w-5 h-5" />
+-      </button>
+-      <h1 className="text-lg font-bold text-slate-900">Nova Matrícula</h1>
+-    </div>
+-    <div className="hidden md:flex items-center gap-2 text-xs font-medium text-slate-400">
+-      {/* Steps visualizer simplificado */}
+-      <StepBadge icon={User} label="Seleção" active />
+-      <span className="w-4 h-px bg-slate-300" />
+-      <StepBadge icon={Building} label="Alocação" />
+-      <span className="w-4 h-px bg-slate-300" />
+-      <StepBadge icon={CheckCircle2} label="Confirmação" />
+-    </div>
+-  </header>
+-);
+-
+-const StepBadge = ({ icon: Icon, label, active }: any) => (
+-  <span className={cn("flex items-center gap-1", active ? "text-klasse-gold font-bold" : "")}>
+-    <Icon className="w-3 h-3" /> {label}
+-  </span>
+-);
+-
+-const ResumoFinanceiro = ({ orcamento, loading, disabled, onSubmit, submitting }: any) => {
+-  if (loading)
+-    return (
+-      <div className="p-8">
+-        <Loader2 className="animate-spin text-klasse-gold" />
+-      </div>
+-    );
+-
+-  const total = (orcamento?.valor_matricula ?? 0) + (orcamento?.valor_mensalidade ?? 0) + 3500; // Exemplo
+-
+-  return (
+-    <aside className="hidden lg:flex flex-col w-[380px] bg-white border-l border-slate-200 p-8 shadow-sm">
+-      <div className="flex items-center gap-3 mb-8">
+-        <div className="p-2 bg-klasse-green/10 rounded-xl text-klasse-green">
+-          <Wallet className="w-6 h-6" />
+-        </div>
+-        <h3 className="font-bold text-slate-900 text-lg">Resumo Financeiro</h3>
+-      </div>
+-
+-      <div className="flex-1 space-y-4">
+-        {orcamento ? (
+-          <>
+-            <LineItem label="Matrícula" value={orcamento.valor_matricula} />
+-            <LineItem label="Mensalidade" value={orcamento.valor_mensalidade} />
+-            <LineItem label="Taxas" value={3500} />
+-            <div className="h-px bg-slate-200 my-4" />
+-            <div className="flex justify-between items-end">
+-              <span className="text-sm font-bold text-slate-400">TOTAL</span>
+-              <span className="text-2xl font-black text-klasse-green">{total.toLocaleString()} Kz</span>
+-            </div>
+-          </>
+-        ) : (
+-          <div className="p-6 bg-slate-50 border border-dashed rounded-xl text-center text-slate-500 text-sm">
+-            Selecione a turma para calcular.
+-          </div>
+-        )}
+-      </div>
+-
+-      <button
+-        onClick={onSubmit}
+-        disabled={disabled || submitting}
+-        className={cn(
+-          "w-full py-4 rounded-xl font-bold text-white shadow-sm flex items-center justify-center gap-2",
+-          disabled ? "bg-slate-200 text-slate-400" : "bg-klasse-gold hover:brightness-95"
+-        )}
+-      >
+-        {submitting ? (
+-          <Loader2 className="animate-spin" />
+-        ) : (
+-          <>
+-            Confirmar <ArrowRight className="w-5 h-5" />
+-          </>
+-        )}
+-      </button>
+-    </aside>
+-  );
+-};
+-
+-const LineItem = ({ label, value }: any) => (
+-  <div className="flex justify-between text-sm">
+-    <span className="text-slate-500">{label}</span>
+-    <span className="font-bold text-slate-900">{value?.toLocaleString()} Kz</span>
+-  </div>
+-);
+-
+-// --- COMPONENTE PRINCIPAL ---
+-
+-export default function NovaMatriculaPage() {
+-  // 1. Injetamos a lógica
+-  const { state, data, selection, setSelection, derived, actions } = useMatriculaLogic();
+-
+-  // Helpers locais para UI
+-  const handleSelectCandidatura = (e: React.ChangeEvent<HTMLSelectElement>) =>
+-    setSelection((prev) => ({ ...prev, candidaturaId: e.target.value, turmaId: "" }));
+-
+-  if (state.loading)
++import { supabaseServer } from "@/lib/supabaseServer";
++import AuditPageView from "@/components/audit/AuditPageView";
++import AdmissaoWizardClient from "@/components/secretaria/AdmissaoWizardClient";
++
++export const dynamic = 'force-dynamic'
++
++export default async function Page() {
++  const s = await supabaseServer()
++  const { data: sess } = await s.auth.getUser()
++  const user = sess?.user
++  let escolaId: string | null = null
++  if (user) {
++    const { data: prof } = await s
++      .from('profiles')
++      .select('escola_id')
++      .eq('user_id', user.id)
++      .maybeSingle()
++    escolaId = (prof as any)?.escola_id ?? null
++  }
++
++  if (!escolaId) {
+     return (
+-      <div className="h-screen flex items-center justify-center">
+-        <Loader2 className="animate-spin text-klasse-gold" />
+-      </div>
+-    );
++      <>
++        <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="admissao_wizard" />
++          Vincule seu perfil a uma escola para iniciar uma nova admissão.
++      </>
++    )
++  }
+ 
+   return (
+-    <div className="flex flex-col h-screen bg-slate-50 text-slate-900 font-sora">
+-      <HeaderMatricula onClose={() => window.history.back()} />
+-
+-      <div className="flex-1 flex overflow-hidden max-w-7xl mx-auto w-full">
+-        {/* COLUNA DA ESQUERDA (FORMULÁRIO) */}
+-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 pb-32 space-y-8">
+-          {/* STEP 1: QUEM */}
+-          <section className="space-y-4">
+-            <div className="flex items-center gap-3">
+-              <span className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm">
+-                1
+-              </span>
+-              <h2 className="text-lg font-bold">Quem vamos matricular?</h2>
+-            </div>
+-
+-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm relative">
+-              <Search className="absolute left-4 top-3.5 w-5 h-5 text-slate-400" />
+-              <select
+-                className="w-full pl-12 pr-4 py-3 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-klasse-gold"
+-                value={selection.candidaturaId}
+-                onChange={handleSelectCandidatura}
+-              >
+-                <option value="">Selecione a candidatura...</option>
+-                {data.candidaturas.map((c) => (
+-                  <option key={c.id} value={c.id}>
+-                    {c.nome_candidato || c.alunos?.nome_completo || c.alunos?.nome || "Sem Nome"} - {c.cursos?.nome}
+-                  </option>
+-                ))}
+-              </select>
+-
+-              {derived.alunoAtivo && (
+-                <div className="mt-6 flex items-center gap-4 p-4 bg-slate-50 rounded-xl">
+-                  <div className="w-12 h-12 rounded-full bg-klasse-green/20 text-klasse-green flex items-center justify-center font-bold text-xl">
+-                    {derived.alunoAtivo.nome[0]}
+-                  </div>
+-                  <div>
+-                    <p className="font-bold text-slate-900">{derived.alunoAtivo.nome}</p>
+-                    <p className="text-sm text-slate-500">
+-                      Curso Pretendido: {derived.candidaturaAtiva?.cursos?.nome}
+-                    </p>
+-                  </div>
+-                </div>
+-              )}
+-            </div>
+-          </section>
+-
+-          {/* STEP 2: ONDE (Só aparece se tiver aluno) */}
+-          <section
+-            className={cn(
+-              "space-y-4 transition-opacity",
+-              !selection.candidaturaId && "opacity-50 pointer-events-none"
+-            )}
+-          >
+-            <div className="flex items-center gap-3">
+-              <span className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-sm">
+-                2
+-              </span>
+-              <h2 className="text-lg font-bold">Para onde vai?</h2>
+-            </div>
+-
+-            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-6">
+-              <div className="grid md:grid-cols-2 gap-4">
+-                {/* Seletor de Ano */}
+-                <div>
+-                  <label className="text-xs font-bold text-slate-500 uppercase">Ano Letivo</label>
+-                  <select
+-                    className="w-full mt-1 p-3 bg-white rounded-xl border border-slate-200"
+-                    disabled={!data.sessions.length}
+-                    value={selection.sessionId}
+-                    onChange={(e) => setSelection((prev) => ({ ...prev, sessionId: e.target.value }))}
+-                  >
+-                    <option value="" disabled>
+-                      {data.sessions.length ? "Selecione o ano letivo..." : "Nenhum ano letivo disponível"}
+-                    </option>
+-                    {data.sessions.map((s) => (
+-                      <option key={s.id} value={s.id}>
+-                        {s.nome}
+-                      </option>
+-                    ))}
+-                  </select>
+-                </div>
+-
+-                {/* Toggle Tipo */}
+-                <div>
+-                  <label className="text-xs font-bold text-slate-500 uppercase">Modalidade</label>
+-                  <div className="grid grid-cols-2 gap-2 mt-1">
+-                    <button
+-                      onClick={() => setSelection((prev) => ({ ...prev, destinoTipo: "classe" }))}
+-                      className={cn(
+-                        "p-3 rounded-xl font-bold text-sm",
+-                        selection.destinoTipo === "classe" ? "bg-slate-900 text-white" : "bg-slate-50"
+-                      )}
+-                    >
+-                      Por Classe
+-                    </button>
+-                    <button
+-                      onClick={() => setSelection((prev) => ({ ...prev, destinoTipo: "curso" }))}
+-                      className={cn(
+-                        "p-3 rounded-xl font-bold text-sm",
+-                        selection.destinoTipo === "curso" ? "bg-slate-900 text-white" : "bg-slate-50"
+-                      )}
+-                    >
+-                      Por Curso
+-                    </button>
+-                  </div>
+-                </div>
+-              </div>
+-
+-              {/* Filtros Dinâmicos (Lógica Simplificada na UI) */}
+-              <div className="grid md:grid-cols-2 gap-4">
+-                {/* Aqui entrariam os selects de filtros (Curso/Classe) baseados no destinoTipo */}
+-                {/* Para brevidade, mostramos apenas o Select de Turma final que depende dos filtros */}
+-                <div className="md:col-span-2">
+-                  <label className="text-xs font-bold text-slate-500 uppercase">Turma Final</label>
+-                  <select
+-                    className="w-full mt-1 p-3 bg-slate-50 rounded-xl border border-slate-200"
+-                    value={selection.turmaId}
+-                    onChange={(e) => setSelection((prev) => ({ ...prev, turmaId: e.target.value }))}
+-                  >
+-                    <option value="">Selecione a turma...</option>
+-                    {data.turmas.map((t) => (
+-                      <option key={t.id} value={t.id}>
+-                        {t.nome} ({t.turno}) - {t.ocupacao_atual || 0} vagas ocup.
+-                      </option>
+-                    ))}
+-                  </select>
+-                </div>
+-              </div>
+-            </div>
+-          </section>
+-        </main>
+-
+-        {/* COLUNA DA DIREITA (RESUMO) */}
+-        <ResumoFinanceiro
+-          orcamento={state.orcamento}
+-          loading={state.loadingOrcamento}
+-          disabled={!selection.candidaturaId || !selection.turmaId}
+-          submitting={state.submitting}
+-          onSubmit={actions.submitMatricula}
+-        />
+-      </div>
++    <div className="p-6">
++      <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="admissoes_wizard" />
++      <AdmissaoWizardClient escolaId={escolaId} />
+     </div>
+-  );
++  )
+ }
+diff --git a/apps/web/src/app/secretaria/(portal-secretaria)/matriculas/page.tsx b/apps/web/src/app/secretaria/(portal-secretaria)/matriculas/page.tsx
+index b4748e81..22944408 100644
+--- a/apps/web/src/app/secretaria/(portal-secretaria)/matriculas/page.tsx
++++ b/apps/web/src/app/secretaria/(portal-secretaria)/matriculas/page.tsx
+@@ -1,13 +1,10 @@
+ import { supabaseServer } from "@/lib/supabaseServer";
+ import AuditPageView from "@/components/audit/AuditPageView";
+-import MatriculasListClient from "@/components/secretaria/MatriculasListClient";
++import AdmissoesRadarClient from "@/components/secretaria/AdmissoesRadarClient";
+ 
+ export const dynamic = 'force-dynamic'
+ 
+-type SearchParams = { q?: string; days?: string }
+-
+-export default async function Page(props: { searchParams?: Promise<SearchParams> }) {
+-  const searchParams = (await props.searchParams) ?? ({} as SearchParams)
++export default async function Page() {
+   const s = await supabaseServer()
+   const { data: sess } = await s.auth.getUser()
+   const user = sess?.user
+@@ -24,16 +21,16 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
+   if (!escolaId) {
+     return (
+       <>
+-        <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="matriculas_list" />
+-          Vincule seu perfil a uma escola para ver matrículas.
++        <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="admissoes_radar" />
++          Vincule seu perfil a uma escola para ver o radar de admissões.
+       </>
+     )
+   }
+ 
+   return (
+     <>
+-      <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="matriculas_list" />
+-      <MatriculasListClient />
++      <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="admissoes_radar" />
++      <AdmissoesRadarClient escolaId={escolaId} />
+     </>
+   )
+ }
+diff --git a/apps/web/src/app/super-admin/page.tsx b/apps/web/src/app/super-admin/page.tsx
+index 3c4db15a..756ae62d 100644
+--- a/apps/web/src/app/super-admin/page.tsx
++++ b/apps/web/src/app/super-admin/page.tsx
+@@ -15,6 +15,13 @@ import {
+ } from "@heroicons/react/24/outline"
+ import Link from 'next/link'
+ 
++type KpiItem = {
++  title: string
++  value: string | number
++  icon: typeof BuildingLibraryIcon
++  href?: string
++}
++
+ export default async function Page() {
+   try {
+     const [data, charts] = await Promise.all([
+@@ -25,7 +32,7 @@ export default async function Page() {
+ 
+     console.log('✅ Dados carregados no servidor:', data)
+ 
+-    const kpis = [
++    const kpis: KpiItem[] = [
+       { title: "Escolas", value: data.escolas, icon: BuildingLibraryIcon },
+       {
+         title: "Usuários Globais",
+@@ -85,7 +92,7 @@ export default async function Page() {
+     console.error('❌ Erro no servidor:', error)
+     
+     // Fallback para erro
+-    const kpis = [
++    const kpis: KpiItem[] = [
+       { title: "Escolas", value: 0, icon: BuildingLibraryIcon },
+       { title: "Usuários Globais", value: 0, icon: UsersIcon },
+       { title: "Matrículas", value: 0, icon: AcademicCapIcon },
+diff --git a/apps/web/src/components/escola/onboarding/CurriculumPresetSelector.tsx b/apps/web/src/components/escola/onboarding/CurriculumPresetSelector.tsx
+index 9745dd01..e6f22c72 100644
+--- a/apps/web/src/components/escola/onboarding/CurriculumPresetSelector.tsx
++++ b/apps/web/src/components/escola/onboarding/CurriculumPresetSelector.tsx
+@@ -35,16 +35,23 @@ const PRESET_CATEGORIES: Record<CurriculumKey, CurriculumCategory> = {
+   primario_base: "geral",
+   primario_avancado: "geral",
+   ciclo1: "geral",
+-  puniv: "geral",
+-  economicas: "geral",
++  puniv_fisicas: "geral",
++  puniv_economicas: "geral",
++  puniv_humanas: "geral",
++  puniv_artes: "geral",
+ 
+   // Técnico (inclui saúde)
+   tecnico_informatica: "tecnico",
+   tecnico_gestao: "tecnico",
+   tecnico_construcao: "tecnico",
++  tecnico_electricidade: "tecnico",
++  tecnico_mecanica: "tecnico",
++  tecnico_electronica: "tecnico",
++  tecnico_petroleos: "tecnico",
+   tecnico_base: "tecnico",
+   saude_enfermagem: "tecnico",
+   saude_farmacia_analises: "tecnico",
++  magisterio_primario: "tecnico",
+ };
+ 
+ interface Props {
+diff --git a/apps/web/src/components/secretaria/AlunosListClient.tsx b/apps/web/src/components/secretaria/AlunosListClient.tsx
+index c8f7ff6a..7fd7e482 100644
+--- a/apps/web/src/components/secretaria/AlunosListClient.tsx
++++ b/apps/web/src/components/secretaria/AlunosListClient.tsx
+@@ -105,7 +105,7 @@ export default function AlunosListClient() {
+       } else {
+         params.set("page", String(p));
+       }
+-      const res = await fetch(`/api/secretaria/alunos?${params.toString()}`, { cache: "no-store" });
++      const res = await fetch(`/api/secretaria/alunos?${params.toString()}`);
+       const json = await res.json();
+ 
+       if (!res.ok || !json.ok) throw new Error(json?.error || "Falha ao carregar");
+diff --git a/apps/web/src/components/super-admin/DiagnosticsDashboard.tsx b/apps/web/src/components/super-admin/DiagnosticsDashboard.tsx
+index fdbc21c4..37fd5d3a 100644
+--- a/apps/web/src/components/super-admin/DiagnosticsDashboard.tsx
++++ b/apps/web/src/components/super-admin/DiagnosticsDashboard.tsx
+@@ -33,7 +33,7 @@ export default function DiagnosticsDashboard() {
+       setLoading(true);
+       setError(null);
+       try {
+-        const res = await fetch("/api/super-admin/diagnostics", { cache: "no-store" });
++        const res = await fetch("/api/super-admin/diagnostics");
+         const json = (await res.json().catch(() => null)) as DiagnosticsPayload | null;
+         if (!active) return;
+         if (!res.ok || !json?.ok) {
+diff --git a/apps/web/src/lib/db/kf2.ts b/apps/web/src/lib/db/kf2.ts
+index f50ac6c5..4c92b895 100644
+--- a/apps/web/src/lib/db/kf2.ts
++++ b/apps/web/src/lib/db/kf2.ts
+@@ -2,6 +2,13 @@ import type { PostgrestFilterBuilder } from "@supabase/postgrest-js";
+ 
+ type OrderSpec = { column: string; ascending?: boolean; nullsFirst?: boolean };
+ 
++type Kf2ListOptions = {
++  limit?: number;
++  offset?: number;
++  defaultLimit?: number;
++  order?: OrderSpec[];
++};
++
+ export function kf2Range(limit?: number, offset?: number) {
+   const l = Math.min(Math.max(Number(limit ?? 50), 1), 50);
+   const o = Math.max(Number(offset ?? 0), 0);
+@@ -36,3 +43,14 @@ export function applyKf2<T>(
+ 
+   return qq.range(from, to);
+ }
++
++export function applyKf2ListInvariants(
++  q: PostgrestFilterBuilder<any, any, any, any>,
++  opts?: Kf2ListOptions
++) {
++  return applyKf2(q, {
++    limit: opts?.limit ?? opts?.defaultLimit,
++    offset: opts?.offset,
++    order: opts?.order,
++  });
++}
+diff --git a/apps/web/src/lib/supabase/server.ts b/apps/web/src/lib/supabase/server.ts
+index 5a9060d8..8da7ae6c 100644
+--- a/apps/web/src/lib/supabase/server.ts
++++ b/apps/web/src/lib/supabase/server.ts
+@@ -28,3 +28,5 @@ export function createClient() {
+     }
+   );
+ }
++
++export const supabaseServer = createClient;
+diff --git a/types/matricula.ts b/types/matricula.ts
+index ffcb818d..51012672 100644
+--- a/types/matricula.ts
++++ b/types/matricula.ts
+@@ -63,4 +63,32 @@ export interface Orcamento {
+   valor_mensalidade: number;
+   origem_regra: string;
+   dia_vencimento?: number | null;
+-}
+\ No newline at end of file
++}
++
++export interface GrupoMatriculaAluno {
++  id: string | number;
++  nome?: string;
++  data_nascimento?: string;
++  profile_id?: string | null;
++  numero_matricula?: string | number;
++}
++
++export interface GrupoMatricula {
++  import_id: string;
++  escola_id: string;
++  turma_codigo?: string | null;
++  ano_letivo?: number | string | null;
++  count: number;
++  alunos: GrupoMatriculaAluno[];
++}
++
++export interface MatriculaMassaPayload {
++  import_id: string;
++  escola_id: string;
++  curso_codigo: string;
++  classe_numero: number;
++  turno_codigo: string;
++  turma_letra: string;
++  ano_letivo: number;
++  turma_id?: string | null;
++}
+diff --git a/types/migracao.ts b/types/migracao.ts
+index 4d5e48c2..b6690390 100644
+--- a/types/migracao.ts
++++ b/types/migracao.ts
+@@ -79,6 +79,7 @@ export interface ImportResult {
+   errors: number;
+   warnings_turma?: number;
+   turmas_created?: number; // Turmas criadas automaticamente (rascunho)
++  cursos_created?: number; // Cursos pendentes/gerados
+ }
+ 
+ export interface MappedColumns {
+diff --git a/types/supabase.ts b/types/supabase.ts
+index 952769af..e1205424 100644
+--- a/types/supabase.ts
++++ b/types/supabase.ts
+@@ -2137,6 +2137,86 @@ export type Database = {
+           },
+         ]
+       }
++      finance_payment_intents: {
++        Row: {
++          aluno_id: string | null
++          amount: number
++          confirmed_at: string | null
++          confirmed_by: string | null
++          created_at: string
++          currency: string
++          dedupe_key: string
++          escola_id: string
++          external_ref: string | null
++          id: string
++          mensalidade_id: string | null
++          method: string
++          proof_url: string | null
++          status: string
++        }
++        Insert: {
++          aluno_id?: string | null
++          amount: number
++          confirmed_at?: string | null
++          confirmed_by?: string | null
++          created_at?: string
++          currency: string
++          dedupe_key: string
++          escola_id: string
++          external_ref?: string | null
++          id?: string
++          mensalidade_id?: string | null
++          method: string
++          proof_url?: string | null
++          status: string
++        }
++        Update: {
++          aluno_id?: string | null
++          amount?: number
++          confirmed_at?: string | null
++          confirmed_by?: string | null
++          created_at?: string
++          currency?: string
++          dedupe_key?: string
++          escola_id?: string
++          external_ref?: string | null
++          id?: string
++          mensalidade_id?: string | null
++          method?: string
++          proof_url?: string | null
++          status?: string
++        }
++        Relationships: [
++          {
++            foreignKeyName: "finance_payment_intents_aluno_id_fkey"
++            columns: ["aluno_id"]
++            isOneToOne: false
++            referencedRelation: "alunos"
++            referencedColumns: ["id"]
++          },
++          {
++            foreignKeyName: "finance_payment_intents_escola_id_fkey"
++            columns: ["escola_id"]
++            isOneToOne: false
++            referencedRelation: "escolas"
++            referencedColumns: ["id"]
++          },
++          {
++            foreignKeyName: "finance_payment_intents_escola_id_fkey"
++            columns: ["escola_id"]
++            isOneToOne: false
++            referencedRelation: "escolas_view"
++            referencedColumns: ["id"]
++          },
++          {
++            foreignKeyName: "finance_payment_intents_mensalidade_id_fkey"
++            columns: ["mensalidade_id"]
++            isOneToOne: false
++            referencedRelation: "mensalidades"
++            referencedColumns: ["id"]
++          },
++        ]
++      }
+       financeiro_lancamentos: {
+         Row: {
+           aluno_id: string
+@@ -5881,6 +5961,24 @@ export type Database = {
+         }
+         Relationships: []
+       }
++      vw_admin_dashboard_counts: {
++        Row: {
++          alunos_ativos: number | null
++          avaliacoes_total: number | null
++          escola_id: string | null
++          professores_total: number | null
++          turmas_total: number | null
++        }
++        Relationships: []
++      }
++      vw_admin_matriculas_por_mes: {
++        Row: {
++          escola_id: string | null
++          mes: string | null
++          total: number | null
++        }
++        Relationships: []
++      }
+       vw_alunos_active: {
+         Row: {
+           bi_numero: string | null
+@@ -6425,6 +6523,10 @@ export type Database = {
+         }
+         Returns: number
+       }
++      finance_confirm_payment: {
++        Args: { p_dedupe_key_override?: string | null; p_intent_id: string }
++        Returns: Database["public"]["Tables"]["finance_payment_intents"]["Row"]
++      }
+       create_or_get_turma_by_code: {
+         Args: {
+           p_ano_letivo: number
+@@ -6752,6 +6854,32 @@ export type Database = {
+           user_id: string
+         }[]
+       }
++      secretaria_list_alunos_kf2: {
++        Args: {
++          p_ano_letivo?: number | null
++          p_cursor_created_at?: string | null
++          p_cursor_id?: string | null
++          p_escola_id: string
++          p_limit?: number
++          p_offset?: number
++          p_q?: string | null
++          p_status?: string
++        }
++        Returns: {
++          aluno_id: string | null
++          bi_numero: string | null
++          created_at: string | null
++          email: string | null
++          id: string | null
++          nome: string | null
++          numero_login: string | null
++          numero_processo: string | null
++          origem: string | null
++          responsavel: string | null
++          status: string | null
++          telefone_responsavel: string | null
++        }[]
++      }
+       soft_delete_aluno: {
+         Args: { p_deleted_by: string; p_id: string; p_reason: string }
+         Returns: undefined
+@@ -7006,4 +7134,3 @@ export const Constants = {
+     },
+   },
+ } as const
+-

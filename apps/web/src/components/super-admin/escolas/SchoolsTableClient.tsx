@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
@@ -51,7 +51,7 @@ export default function SchoolsTableClient({
   const normalizeStr = (s: string | null | undefined) => (s || "").toLowerCase();
 
   // Reload data from server APIs
-  const reload = async () => {
+  const reload = useCallback(async () => {
     try {
       setLoading(true);
       setErrorMsg(null);
@@ -98,7 +98,13 @@ export default function SchoolsTableClient({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const shouldAutoLoad = initialSchools.length === 0 || Boolean(initialErrorMsg);
+    if (!shouldAutoLoad) return;
+    reload();
+  }, [initialSchools.length, initialErrorMsg, reload]);
 
   const handleRetry = () => {
     reload();

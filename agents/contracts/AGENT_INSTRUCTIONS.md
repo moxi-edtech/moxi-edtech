@@ -1,111 +1,258 @@
-# KLASSE — CODEX AGENT CONTRACT (FOUNDATION-FIRST)
+# 🧠 AGENT INSTRUCTIONS — PILOT READINESS CHECK (KLASSE)
 
-## PAPEL DO AGENTE
-Você é um agente técnico de fundador.
-Seu objetivo é **validar base, performance, integridade e escalabilidade** do KLASSE
-antes de qualquer feature nova.
+## OBJETIVO
 
-Você NÃO é um gerador cego de código.
+Verificar end-to-end, com evidência real, se o KLASSE está pronto para piloto com 3–5 escolas, cobrindo Secretaria, Admin e Financeiro.
 
----
-
-## MODOS DE OPERAÇÃO
-
-### 1. SCAN (default)
-- Ler o repositório inteiro
-- Validar features listadas no FEATURES_PRIORITY.json
-- Verificar:
-  - O que está IMPLEMENTADO
-  - O que está PARCIAL
-  - O que está AUSENTE
-- Detectar anti-patterns
-- Produzir relatório técnico (sem escrever código)
-
-### 2. PROPOSE (somente quando solicitado)
-- Gerar plano técnico de implementação
-- Sugerir arquivos, migrations, componentes
-- NÃO criar nada automaticamente
-
-### 3. APPLY (somente com confirmação explícita)
-- Criar código/migrations
-- Nunca sobrescrever arquivos existentes
-- Nunca executar operações destrutivas
+O agente NÃO assume nada.
+Tudo que não tiver evidência explícita = FAIL ou WARN.
 
 ---
 
-## REGRAS ABSOLUTAS (NÃO NEGOCIÁVEIS)
+## ORDEM DE PRIORIDADE (NÃO ALTERAR)
 
-❌ NÃO executar:
-- DROP TABLE / DROP COLUMN
-- ALTER DATA destrutivo
-- DELETE em massa
-- REFRESH MATERIALIZED VIEW inline
-- Mudanças que afetem dados reais sem flag explícita
+### 🔴 P0 — SEGURANÇA, TENANT E CONSISTÊNCIA (BLOCKER)
 
-✅ SEMPRE:
-- Preferir validação a criação
-- Preferir relatório a execução
-- Assumir que o sistema AINDA NÃO TEM CLIENTES REAIS
-- Priorizar fundação > feature
+#### P0.1 — Tenant Isolation (G0)
 
----
+Verificar:
+- Todas as tabelas core têm escola_id NOT NULL
+- Índices iniciando por escola_id
+- Triggers ou constraints impedem cross-tenant write
 
-## PERFORMANCE É LEI
+Evidência (SQL):
 
-O agente deve **GRITAR** se detectar:
-- Busca sem LIMIT
-- ILIKE %term% sem pg_trgm
-- Falta de índices GIN onde aplicável
-- Listagens sem paginação
-- Bundles grandes sem code splitting
-- Falta de debounce em buscas
-- Dashboards agregados sem MV
+```
+select table_name, is_nullable
+from information_schema.columns
+where column_name = 'escola_id'
+  and table_schema = 'public'
+  and table_name in (
+    'alunos','matriculas','pagamentos','mensalidades',
+    'notas','avaliacoes','presencas','frequencias','candidaturas'
+  );
+```
+
+Resultado esperado: nenhum is_nullable = YES.
 
 ---
 
-## MATERIALIZED VIEWS
+#### P0.2 — RLS REAL POR ROLE (não teórico)
 
-Use APENAS se:
-- Agregação pesada (SUM, COUNT, GROUP BY)
-- Usado em dashboards (ex.: F09, F18)
-- Com UNIQUE INDEX
-- Com REFRESH CONCURRENTLY
-- Fora do request do usuário
+Testar com usuários reais:
+- secretaria
+- professor
+- aluno
+- admin
 
-PROIBIDO usar MV para:
-- KF2 (busca)
-- CRUD interativo
-- Autocomplete
+Verificar:
+- professor não acessa aluno fora da turma
+- aluno só acessa próprios dados
+- secretaria/admin acessam apenas da própria escola
 
----
+Evidência:
+- chamadas HTTP retornando 200/403 corretamente
+- policies existentes e aplicadas
 
-## SAÍDA ESPERADA (SCAN)
-
-Gerar:
-- REPORT_SCAN.md
-- Lista de pendências por prioridade (P0, P1, P2)
-- Alertas críticos
-- Métricas estimadas (latência, risco, impacto)
-
-Nada além disso.
+```
+select tablename, policyname, roles, cmd
+from pg_policies
+where tablename in ('alunos','notas','avaliacoes','pagamentos');
+```
 
 ---
 
-## PRINCÍPIOS OPERACIONAIS (HARD GATE)
+#### P0.3 — Service Role fora do fluxo humano
 
-1) Latência é requisito funcional (p95 por tela; regressão = bloqueio)
-2) Derivados > dados brutos (dashboards só via MV/derivados)
-3) Gates duplos (UX + backend) para features premium
-4) Fail fast, fail quiet (timeouts claros + fallback visual)
-5) One way to do things (um padrão de MV, audit, search, virtualização)
-6) Infra que protege o humano (flags, kill-switch, wrappers, audit)
-7) Context over cleverness (SQL explícito, front previsível, pouca mágica)
+Verificar:
+- Nenhuma rota de secretaria/admin usa SUPABASE_SERVICE_ROLE_KEY
+- Service role só em:
+  - jobs
+  - workers
+  - provisioning
+
+Evidência:
+- grep no repo
+- revisão das rotas API
 
 ---
 
-## UI — REFERÊNCIAS OBRIGATÓRIAS
+### 🔴 P1 — FLUXOS CRÍTICOS END-TO-END (PILOTO NÃO SOBREVIVE SEM)
 
-Antes de mexer em UI, consultar:
-- `docs/icon-map.md`
-- `docs/design-tokens.md`
-- `docs/storybook-guide.md`
+#### P1.1 — Candidatura → Matrícula
+
+Verificar:
+- Confirmar candidatura cria matrícula
+- Reconfirmar é idempotente
+- Ano letivo consistente
+
+```
+select c.id, c.status, m.id as matricula_id, m.ano_letivo
+from candidaturas c
+left join matriculas m
+  on m.aluno_id = c.aluno_id
+ and m.ano_letivo = c.ano_letivo
+where c.id = '<CANDIDATURA_ID>';
+```
+
+---
+
+#### P1.2 — Matrícula & Rematrícula
+
+Verificar:
+- 1 matrícula ativa por aluno/ano/escola
+- Rematrícula em massa é idempotente
+- Matrícula antiga vira transferido
+
+```
+select aluno_id, ano_letivo, count(*)
+from matriculas
+where status = 'ativa'
+group by aluno_id, ano_letivo
+having count(*) > 1;
+```
+
+---
+
+#### P1.3 — Pagamento Manual (base para webhook)
+
+Verificar E2E:
+1. gerar mensalidade
+2. confirmar pagamento
+3. mensalidade atualiza
+4. outbox dispara evento
+5. audit log registrado
+
+```
+select * from pagamentos
+order by created_at desc limit 5;
+
+select * from mensalidades
+where id = '<MENSALIDADE_ID>';
+
+select * from outbox_events
+where event_type = 'FINANCE_PAYMENT_CONFIRMED'
+order by created_at desc;
+
+select * from audit_logs
+where action = 'FINANCE_PAYMENT_CONFIRMED'
+order by created_at desc;
+```
+
+Idempotência obrigatória:
+
+```
+select count(*), count(distinct transacao_id_externo)
+from pagamentos
+where transacao_id_externo is not null;
+```
+
+---
+
+### 🔴 P2 — OPERAÇÃO DIÁRIA (SECRETARIA / PROFESSOR)
+
+#### P2.1 — Presenças / Frequências
+
+Verificar:
+- Qual tabela é SSOT (presencas OU frequencias)
+- Lançar mesma aula 2x não duplica
+- Unique key por partição existe
+
+```
+select indexname, indexdef
+from pg_indexes
+where tablename like 'frequencias%';
+```
+
+---
+
+#### P2.2 — Notas & Boletim
+
+Verificar:
+- professor lança nota
+- aluno consulta nota
+- secretaria/admin consulta tudo
+- existe consolidação mínima (média por disciplina/ano)
+
+```
+select count(*) from notas;
+select count(*) from avaliacoes;
+```
+
+Se não houver view/RPC de consolidação → WARN explícito.
+
+---
+
+### 🟡 P3 — SUPORTE AO CRESCIMENTO (NÃO BLOQUEIA PILOTO, MAS REGISTRAR)
+
+#### P3.1 — Transferência de Turma
+
+Verificar:
+- Existe endpoint explícito que:
+  - encerra matrícula atual
+  - cria nova matrícula
+  - audita evento
+
+Se só existe checagem, marcar FAIL OPERACIONAL.
+
+---
+
+#### P3.2 — Importação (Backfill)
+
+Verificar:
+- Importar mesmo CSV 2x não duplica
+- Aprovação é idempotente
+- Cursos/turmas criados apenas após aprovação
+
+---
+
+### 🟢 EVENTOS MÍNIMOS (OUTBOX)
+
+Obrigatórios no piloto:
+- AUTH_PROVISION_USER
+- FINANCE_PAYMENT_CONFIRMED
+
+Verificar:
+
+```
+select event_type, count(*)
+from outbox_events
+group by event_type;
+```
+
+Payload mínimo esperado:
+- escola_id
+- entidade principal (user_id ou pagamento_id)
+- timestamp
+- dedupe_key
+
+---
+
+## SAÍDA DO AGENTE (FORMATO OBRIGATÓRIO)
+
+Para cada item:
+
+```
+[P0.1] Tenant Isolation — PASS
+Evidence: <SQL / endpoint / log>
+
+[P1.3] Pagamentos E2E — FAIL
+Reason: mensalidade não atualiza após confirmação
+Evidence: <query result>
+```
+
+Ao final:
+
+```
+PILOT READINESS: GO / NO-GO
+BLOCKERS: <lista>
+WARNINGS: <lista>
+```
+
+---
+
+## REGRA FINAL (IMPORTANTE)
+
+❌ Nada de “parece que”
+❌ Nada de “acho que”
+✅ Só PASS se houver evidência executada

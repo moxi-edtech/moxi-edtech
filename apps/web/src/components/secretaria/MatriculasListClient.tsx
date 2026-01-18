@@ -331,7 +331,7 @@ export default function MatriculasListClient() {
       if (statusFromQuery) params.set("status", statusFromQuery);
       if (statusInFromQuery) params.set("status_in", statusInFromQuery);
 
-      const res = await fetch(`/api/secretaria/matriculas?${params.toString()}`, {
+      const res = await fetch(`/api/secretaria/admissoes/matriculas?${params.toString()}`, {
         cache: "force-cache",
         signal: controller.signal,
       });
@@ -416,7 +416,7 @@ export default function MatriculasListClient() {
         </div>
 
         <Link
-          href="/secretaria/matriculas/nova"
+          href="/secretaria/admissoes/nova"
           className={cn(
             "inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold",
             "bg-klasse-gold text-white hover:brightness-95",
@@ -484,11 +484,11 @@ export default function MatriculasListClient() {
           {/* Exports */}
           <div className="flex gap-2">
             <ToolbarButton
-              href={`/secretaria/matriculas/export?format=csv&ano=${anoLetivoAtivo}&q=${q}`}
+              href={`/secretaria/admissoes/matriculas/export?format=csv&ano=${anoLetivoAtivo}&q=${q}`}
               label="CSV"
             />
             <ToolbarButton
-              href={`/secretaria/matriculas/export?format=json&ano=${anoLetivoAtivo}&q=${q}`}
+              href={`/secretaria/admissoes/matriculas/export?format=json&ano=${anoLetivoAtivo}&q=${q}`}
               label="JSON"
             />
           </div>
@@ -783,7 +783,7 @@ export default function MatriculasListClient() {
                           </button>
 
                           <Link
-                            href={`/api/secretaria/matriculas/${m.id}/declaracao`}
+                            href={`/api/secretaria/admissoes/matriculas/${m.id}/declaracao`}
                             target="_blank"
                             title="Declaração"
                             className="rounded-xl p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"

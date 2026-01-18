@@ -24,6 +24,8 @@ type Props = {
   charts?: { meses: string[]; alunosPorMes: number[]; pagamentos: PagamentosResumo };
   stats: KpiStats;
   pendingTurmasCount?: number | null;
+  onboardingComplete: boolean;
+  pagamentosKpis?: any; // Add this line
 };
 
 export default function EscolaAdminDashboardContent({
@@ -36,6 +38,7 @@ export default function EscolaAdminDashboardContent({
   charts,
   stats,
   pendingTurmasCount,
+  onboardingComplete,
 }: Props) {
   return (
     <div className="space-y-8 pb-10">
@@ -56,7 +59,7 @@ export default function EscolaAdminDashboardContent({
           </div>
         </div>
 
-        <KpiSection escolaId={escolaId} stats={stats} loading={loading} error={error} />
+        <KpiSection escolaId={escolaId} stats={stats} loading={loading} error={error} onboardingComplete={onboardingComplete} />
 
         {typeof pendingTurmasCount === "number" && pendingTurmasCount > 0 && (
           <div className="animate-in fade-in duration-500">

@@ -20,6 +20,7 @@ export default function ClassesListClient() {
 
   useEffect(() => {
     const loadData = async () => {
+      if (!escolaId) return;
       setLoading(true);
       setError(null);
       try {

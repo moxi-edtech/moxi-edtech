@@ -33,7 +33,7 @@ export default function DiagnosticsDashboard() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch("/api/super-admin/diagnostics", { cache: "no-store" });
+        const res = await fetch("/api/super-admin/diagnostics");
         const json = (await res.json().catch(() => null)) as DiagnosticsPayload | null;
         if (!active) return;
         if (!res.ok || !json?.ok) {

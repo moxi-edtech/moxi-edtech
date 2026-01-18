@@ -1,4 +1,4 @@
-import { getAbsoluteUrl } from "@/lib/utils";
+import { getAbsoluteUrlServer } from "@/lib/serverUrl";
 import {
   Wallet,
   TrendingUp,
@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { supabaseServer } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { GerarMensalidadesDialog } from "./_components/GerarMensalidadesDialog";
 import { RegistrarPagamentoButton } from "@/components/financeiro/RegistrarPagamentoButton";
 import { ReciboPrintButton } from "@/components/financeiro/ReciboImprimivel";
@@ -44,26 +45,15 @@ export default async function FinanceiroDashboardPage({
 }: {
   searchParams?: Promise<{ aluno?: string }>;
 }) {
-  const { aluno } = (await (searchParams || Promise.resolve({}))) || {};
+  const params = (searchParams ? await searchParams : {}) as { aluno?: string };
+  const { aluno } = params;
   const supabase = await supabaseServer();
 
   const { data: userRes } = await supabase.auth.getUser();
   const user = userRes?.user;
   let escolaId: string | null = null;
   if (user) {
-    escolaId =
-      (user.app_metadata as any)?.escola_id ||
-      (user.user_metadata as any)?.escola_id ||
-      null;
-    if (!escolaId) {
-      const { data: prof } = await supabase
-        .from("profiles")
-        .select("current_escola_id, escola_id")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(1);
-      escolaId = (prof?.[0] as any)?.current_escola_id || (prof?.[0] as any)?.escola_id || null;
-    }
+    escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
   }
 
   // Tentativa de ler cache; fallback para API
@@ -75,7 +65,7 @@ export default async function FinanceiroDashboardPage({
 
   const resumoData: DashboardResumo =
     (cacheResumo as any) ??
-    (await fetch(getAbsoluteUrl("/api/financeiro"), {
+    (await fetch(await getAbsoluteUrlServer("/api/financeiro"), {
       cache: "force-cache",
     }).then((r) => r.json()));
 

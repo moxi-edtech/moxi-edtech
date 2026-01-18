@@ -17,14 +17,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     // 1. Fetch Turma, Alunos, and Disciplinas
     const { data: turmaData, error: turmaError } = await supabase
       .from('turmas')
-      .select(`
-        nome,
-        cursos (
-          id,
-          nome,
-          disciplinas ( id, nome, sigla )
-        )
-      `)
+      .select('id, nome')
       .eq('id', turmaId)
       .single();
 
@@ -51,7 +44,20 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     const alunos = matriculasData.map(m => m.alunos).filter(Boolean);
-    const disciplinas = turmaData.cursos?.disciplinas ?? [];
+
+    const { data: disciplinasRows } = await supabase
+      .from('turma_disciplinas')
+      .select('curso_matriz:curso_matriz_id(disciplina:disciplinas_catalogo(id, nome, sigla))')
+      .eq('turma_id', turmaId);
+
+    const disciplinaMap = new Map<string, { id: string; nome: string; sigla: string | null }>();
+    (disciplinasRows || []).forEach((row: any) => {
+      const disciplina = row?.curso_matriz?.disciplina;
+      if (disciplina?.id && !disciplinaMap.has(disciplina.id)) {
+        disciplinaMap.set(disciplina.id, disciplina);
+      }
+    });
+    const disciplinas = Array.from(disciplinaMap.values());
 
     // 2. Prepare data for Excel
     const header = [

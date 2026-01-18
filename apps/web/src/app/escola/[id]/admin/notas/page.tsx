@@ -16,14 +16,14 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   const s = await supabaseServer();
 
   // Ajustado ao schema atual:
-  // - notas: aluno_id, turma_id, disciplina (texto), created_at
-  // - sem uso de matriculas/avaliacoes/disciplinas (tabela)
+  // - notas: matricula_id, avaliacao_id, valor
+  // - joins manuais com matriculas/avaliacoes/disciplinas
   let total = 0;
   let notas: Array<{
     id: string;
     nota: number | null;
-    aluno_id: string;
-    turma_id: string;
+    aluno_id: string | null;
+    turma_id: string | null;
     aluno?: string | null;
     turma?: string | null;
     disciplina?: string | null;
@@ -42,7 +42,6 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       .from('notas')
       .select('id', { count: 'exact', head: true })
       .eq('escola_id', escolaId);
-    if (q) countQuery = countQuery.ilike('disciplina', `%${q}%`);
     const { count } = await countQuery;
     total = count || 0;
   }
@@ -51,30 +50,42 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   {
     let dataQuery = s
       .from('notas')
-      .select('id, nota, aluno_id, turma_id, disciplina, created_at')
+      .select('id, valor, matricula_id, avaliacao_id, created_at')
       .eq('escola_id', escolaId)
       .range((page - 1) * pageSize, page * pageSize - 1);
-    if (q) dataQuery = dataQuery.ilike('disciplina', `%${q}%`);
-    if (orderBy === 'nota') dataQuery = dataQuery.order('nota', { ascending: dir === 'asc' });
+    if (orderBy === 'nota') dataQuery = dataQuery.order('valor', { ascending: dir === 'asc' });
     else dataQuery = dataQuery.order('created_at', { ascending: dir === 'asc' });
 
     const { data } = await dataQuery;
     const rows = (data || []) as Array<{
       id: string;
-      nota: number | null;
-      aluno_id: string;
-      turma_id: string;
-      disciplina: string;
+      valor: number | null;
+      matricula_id: string | null;
+      avaliacao_id: string | null;
       created_at: string | null;
     }>;
 
     // Coleta IDs para join manual
-    const alunoIds = Array.from(new Set(rows.map(r => r.aluno_id).filter(Boolean)));
-    const turmaIds = Array.from(new Set(rows.map(r => r.turma_id).filter(Boolean)));
+    const matriculaIds = Array.from(new Set(rows.map(r => r.matricula_id).filter(Boolean))) as string[];
+    const avaliacaoIds = Array.from(new Set(rows.map(r => r.avaliacao_id).filter(Boolean))) as string[];
 
     // Dicionários auxiliares
     const alunoNomeById = new Map<string, string | null>();
     const turmaNomeById = new Map<string, string | null>();
+
+    const matriculaById = new Map<string, { aluno_id: string | null; turma_id: string | null }>();
+    if (matriculaIds.length > 0) {
+      const { data: matriculas } = await s
+        .from('matriculas')
+        .select('id, aluno_id, turma_id')
+        .in('id', matriculaIds);
+      for (const m of (matriculas || []) as Array<{ id: string; aluno_id: string | null; turma_id: string | null }>) {
+        matriculaById.set(m.id, { aluno_id: m.aluno_id, turma_id: m.turma_id });
+      }
+    }
+
+    const alunoIds = Array.from(new Set(Array.from(matriculaById.values()).map(r => r.aluno_id).filter(Boolean))) as string[];
+    const turmaIds = Array.from(new Set(Array.from(matriculaById.values()).map(r => r.turma_id).filter(Boolean))) as string[];
 
     if (alunoIds.length > 0) {
       const { data: alunos } = await s.from('alunos').select('id, nome').in('id', alunoIds);
@@ -89,25 +100,89 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       }
     }
 
-    notas = rows.map((row) => {
-      const alunoNome = alunoNomeById.get(row.aluno_id) ?? null;
-      const turmaNome = turmaNomeById.get(row.turma_id) ?? null;
+    const avaliacaoById = new Map<string, string | null>();
+    if (avaliacaoIds.length > 0) {
+      const { data: avaliacoes } = await s
+        .from('avaliacoes')
+        .select('id, turma_disciplina_id')
+        .in('id', avaliacaoIds);
+      for (const av of (avaliacoes || []) as Array<{ id: string; turma_disciplina_id: string | null }>) {
+        avaliacaoById.set(av.id, av.turma_disciplina_id);
+      }
+    }
 
-      if (row.nota !== null) {
-        mediaGeral += row.nota;
+    const turmaDiscIds = Array.from(new Set(Array.from(avaliacaoById.values()).filter(Boolean))) as string[];
+    const turmaDisciplinaById = new Map<string, string | null>();
+    const disciplinaById = new Map<string, { nome: string; sigla: string | null }>();
+    if (turmaDiscIds.length > 0) {
+      const { data: turmaDisciplinas } = await s
+        .from('turma_disciplinas')
+        .select('id, curso_matriz_id')
+        .in('id', turmaDiscIds);
+      
+      const cursoMatrizIds = Array.from(new Set((turmaDisciplinas || []).map((td: any) => td.curso_matriz_id).filter(Boolean))) as string[];
+      const cursoMatrizMap = new Map<string, string | null>();
+
+      if (cursoMatrizIds.length > 0) {
+        const { data: cursoMatrizes } = await s
+          .from('curso_matriz')
+          .select('id, disciplina_id')
+          .in('id', cursoMatrizIds);
+        for (const cm of (cursoMatrizes || []) as Array<{ id: string; disciplina_id: string | null }>) {
+          cursoMatrizMap.set(cm.id, cm.disciplina_id);
+        }
+      }
+
+      for (const td of (turmaDisciplinas || []) as Array<{ id: string; curso_matriz_id: string | null }>) {
+        if (td.curso_matriz_id) {
+          const disciplinaId = cursoMatrizMap.get(td.curso_matriz_id) || null;
+          turmaDisciplinaById.set(td.id, disciplinaId);
+        }
+      }
+
+      const disciplinaIds = Array.from(new Set(Array.from(turmaDisciplinaById.values()).filter(Boolean))) as string[];
+      if (disciplinaIds.length > 0) {
+        const { data: disciplinas } = await s
+          .from('disciplinas_catalogo')
+          .select('id, nome, sigla')
+          .in('id', disciplinaIds);
+        for (const d of (disciplinas || []) as Array<{ id: string; nome: string; sigla: string | null }>) {
+          disciplinaById.set(d.id, { nome: d.nome, sigla: d.sigla });
+        }
+      }
+    }
+    const disciplinaLabelByTurmaDiscId = new Map<string, string>();
+    for (const [turmaDiscId, disciplinaId] of turmaDisciplinaById.entries()) {
+      if (!disciplinaId) continue;
+      const disciplina = disciplinaById.get(disciplinaId);
+      if (disciplina) disciplinaLabelByTurmaDiscId.set(turmaDiscId, disciplina.sigla || disciplina.nome);
+    }
+
+    notas = rows.map((row) => {
+      const matricula = row.matricula_id ? matriculaById.get(row.matricula_id) : null;
+      const alunoId = matricula?.aluno_id ?? null;
+      const turmaId = matricula?.turma_id ?? null;
+      const alunoNome = alunoId ? alunoNomeById.get(alunoId) ?? null : null;
+      const turmaNome = turmaId ? turmaNomeById.get(turmaId) ?? null : null;
+
+      const turmaDiscId = row.avaliacao_id ? avaliacaoById.get(row.avaliacao_id) ?? null : null;
+      const disciplinaNome = turmaDiscId ? disciplinaLabelByTurmaDiscId.get(turmaDiscId) ?? null : null;
+
+      if (row.valor !== null) {
+        mediaGeral += row.valor;
         totalAvaliacoes++;
       }
-      if (row.disciplina) disciplinasUnicas.add(row.disciplina);
+      if (disciplinaNome) disciplinasUnicas.add(disciplinaNome);
       if (turmaNome) turmasUnicas.add(turmaNome);
 
       return {
         id: row.id,
-        nota: row.nota ?? null,
-        aluno_id: row.aluno_id,
-        turma_id: row.turma_id,
+        nota: row.valor ?? null,
+        aluno_id: alunoId,
+        turma_id: turmaId,
         aluno: alunoNome,
         turma: turmaNome,
-        disciplina: row.disciplina ?? null,
+        disciplina: disciplinaNome,
         created_at: row.created_at ?? null,
       }
     });

@@ -9,8 +9,8 @@ export default async function FichaAlunoPage({ params }: { params: Promise<Param
   const cookie = (await headers()).get("cookie") ?? "";
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
-  let aluno = null;
-  let error = null;
+  let aluno: any | null = null;
+  let error: string | null = null;
 
   try {
     const res = await fetch(`${baseUrl}/api/secretaria/alunos/${encodeURIComponent(id)}`, {

@@ -31,15 +31,6 @@ export default async function DocumentosPage() {
     );
   }
 
-  const { data: session } = await supabase
-    .from("school_sessions")
-    .select("id, nome")
-    .eq("escola_id", escolaId)
-    .eq("status", "ativa")
-    .order("data_inicio", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
   let query = supabase
     .from("matriculas")
     .select(
@@ -54,10 +45,6 @@ export default async function DocumentosPage() {
     .eq("escola_id", escolaId)
     .order("data_matricula", { ascending: false })
     .limit(50);
-
-  if (session?.id) {
-    query = query.eq("session_id", session.id);
-  }
 
   const { data: matriculas } = await query;
 
@@ -107,7 +94,7 @@ export default async function DocumentosPage() {
                   </td>
                   <td className="px-4 py-3">
                     <Link
-                      href={`/api/secretaria/matriculas/${row.id}/declaracao`}
+                      href={`/api/secretaria/admissoes/matriculas/${row.id}/declaracao`}
                       target="_blank"
                       className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:brightness-95 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
                     >

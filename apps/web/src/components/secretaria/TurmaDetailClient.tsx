@@ -227,7 +227,7 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
                </button>
                {/* CTA: GOLD */}
                <Link 
-                 href={`/secretaria/matriculas/nova?turmaId=${turma.id}`} 
+                 href={`/secretaria/admissoes/nova?turmaId=${turma.id}`} 
                  className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-[#E3B23C] text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:brightness-95 transition-all shadow-sm shadow-orange-500/10 active:scale-95"
                >
                   <UserPlus size={18}/> Matricular

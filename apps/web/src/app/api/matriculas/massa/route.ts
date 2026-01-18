@@ -80,6 +80,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: e?.message || "Falha ao resolver turma" }, { status: 400 });
   }
 
+  if (!resolvedTurmaId) {
+    return NextResponse.json({ error: "Turma não encontrada" }, { status: 400 });
+  }
+
   const { data, error } = await supabase.rpc("matricular_em_massa", {
     p_import_id: import_id,
     p_escola_id: escola_id,

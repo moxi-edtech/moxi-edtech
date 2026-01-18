@@ -46,12 +46,12 @@ export async function GET(req: Request) {
     const { data, error } = await supabase.rpc("secretaria_list_alunos_kf2", {
       p_escola_id: escolaId,
       p_status: status,
-      p_q: q,
-      p_ano_letivo: targetAno,
+      p_q: q ?? undefined,
+      p_ano_letivo: targetAno ?? undefined,
       p_limit: limit,
       p_offset: from,
-      p_cursor_created_at: cursorCreatedAt,
-      p_cursor_id: cursorId,
+      p_cursor_created_at: cursorCreatedAt ?? undefined,
+      p_cursor_id: cursorId ?? undefined,
     });
 
     if (error) throw error;

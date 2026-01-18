@@ -1,7 +1,6 @@
 // @kf2 allow-scan
 import { createClient } from "~/lib/supabase/server";
 import { NextResponse } from "next/server";
-import { Database } from "@/types/supabase";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +19,7 @@ export async function GET(
     );
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
 
   try {
     const { data, error } = await supabase

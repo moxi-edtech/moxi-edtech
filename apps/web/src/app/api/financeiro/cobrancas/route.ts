@@ -1,20 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-
-const CobrancaItemSchema = z.object({
-  aluno_id: z.string().uuid(),
-  mensalidade_id: z.string().uuid().nullable().optional(),
-  canal: z.enum(["whatsapp", "sms", "email", "manual"]),
-  status: z.enum(["enviada", "entregue", "respondida", "paga", "falha"]).optional(),
-  mensagem: z.string().optional(),
-  resposta: z.string().optional(),
-  enviado_em: z.string().datetime().optional(),
-});
-
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 
 const CobrancaItemSchema = z.object({

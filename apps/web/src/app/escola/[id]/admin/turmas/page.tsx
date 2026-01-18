@@ -29,7 +29,7 @@ interface TurmaItem {
   id: string;
   nome: string;
   turno: string;
-  ano_letivo: string | null;
+  ano_letivo?: number;
   session_id?: string;
   sala?: string;
   capacidade_maxima?: number;

@@ -43,10 +43,12 @@
     "next-env.d.ts",
     "src/**/*.ts",
     "src/**/*.tsx",
+    "src/components/layout/escola-admin/EscolaAdminSidebar.tsx.bak",
     ".next/types/**/*.ts"
-, "src/components/layout/escola-admin/EscolaAdminSidebar.tsx.bak"  ],
+  ],
   "exclude": [
     "node_modules",
+    ".next",
     "playwright.config.ts",
     "tests",
     "**/*.spec.ts",
