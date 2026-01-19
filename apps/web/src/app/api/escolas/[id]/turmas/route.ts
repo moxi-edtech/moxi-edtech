@@ -79,13 +79,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       const code = err?.code as string | undefined
       return code === '42P01' || (msg && /relation .* does not exist|does not exist/i.test(msg))
     }
+    const isLegacyDependency = (err: any) => {
+      const msg = err?.message as string | undefined
+      return Boolean(msg && /escola_usuarios/i.test(msg))
+    }
 
     let rows: any[] | null = null
     const { data: viewRows, error } = await query;
 
     if (error) {
       console.error("Erro na view vw_turmas_para_matricula:", error);
-      if (!(isMissingColumn(error) || isMissingView(error))) {
+      if (!(isMissingColumn(error) || isMissingView(error) || isLegacyDependency(error))) {
         throw error;
       }
 
@@ -182,9 +186,28 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       stats,
     });
 
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Erro inesperado';
-    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+  } catch (e: any) {
+    const rawMessage =
+      e?.message || e?.error || (typeof e === 'string' ? e : null);
+    const fallbackMessage = (() => {
+      if (rawMessage) return rawMessage;
+      try {
+        return JSON.stringify(e);
+      } catch {
+        return 'Erro inesperado';
+      }
+    })();
+
+    return NextResponse.json(
+      {
+        ok: false,
+        error: fallbackMessage,
+        details: e?.details ?? null,
+        hint: e?.hint ?? null,
+        code: e?.code ?? null,
+      },
+      { status: 500 }
+    );
   }
 }
 

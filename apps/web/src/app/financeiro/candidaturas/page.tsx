@@ -3,7 +3,11 @@ import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader'
 import { FinanceiroCandidaturasInbox } from '../_components/CandidaturasInbox'
 
-export default async function FinanceiroCandidaturasPage() {
+type Props = {
+  searchParams?: { candidatura?: string }
+}
+
+export default async function FinanceiroCandidaturasPage({ searchParams }: Props) {
   const supabase = await supabaseServer()
   const { data: userRes } = await supabase.auth.getUser()
   const user = userRes?.user
@@ -29,13 +33,19 @@ export default async function FinanceiroCandidaturasPage() {
     created_at: c.created_at,
   }))
 
+  const selectedId = searchParams?.candidatura || null
+
   return (
     <main className="space-y-6 p-4 md:p-6">
       <DashboardHeader
         title="Inbox de Candidaturas"
         description="Compense pagamentos, valide comprovativos e converta em matrículas."
       />
-      <FinanceiroCandidaturasInbox escolaId={escolaId} initialItems={items} />
+      <FinanceiroCandidaturasInbox
+        escolaId={escolaId}
+        initialItems={items}
+        initialSelectedId={selectedId}
+      />
     </main>
   )
 }

@@ -82,9 +82,28 @@ export async function GET(
       curriculum_key: r.curriculum_key ?? undefined,
     }));
     return NextResponse.json({ ok: true, data: payload });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Erro inesperado';
-    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+  } catch (e: any) {
+    const rawMessage =
+      e?.message || e?.error || (typeof e === 'string' ? e : null);
+    const fallbackMessage = (() => {
+      if (rawMessage) return rawMessage;
+      try {
+        return JSON.stringify(e);
+      } catch {
+        return 'Erro inesperado';
+      }
+    })();
+
+    return NextResponse.json(
+      {
+        ok: false,
+        error: fallbackMessage,
+        details: e?.details ?? null,
+        hint: e?.hint ?? null,
+        code: e?.code ?? null,
+      },
+      { status: 500 }
+    );
   }
 }
 // POST /api/escolas/[id]/cursos
@@ -161,8 +180,27 @@ export async function POST(
     }
 
     return NextResponse.json({ ok: true, data: ins });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Erro inesperado';
-    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+  } catch (e: any) {
+    const rawMessage =
+      e?.message || e?.error || (typeof e === 'string' ? e : null);
+    const fallbackMessage = (() => {
+      if (rawMessage) return rawMessage;
+      try {
+        return JSON.stringify(e);
+      } catch {
+        return 'Erro inesperado';
+      }
+    })();
+
+    return NextResponse.json(
+      {
+        ok: false,
+        error: fallbackMessage,
+        details: e?.details ?? null,
+        hint: e?.hint ?? null,
+        code: e?.code ?? null,
+      },
+      { status: 500 }
+    );
   }
 }

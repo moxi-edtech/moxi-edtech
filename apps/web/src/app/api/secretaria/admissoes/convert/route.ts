@@ -93,10 +93,17 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'This request has already been processed.' }, { status: 409 });
     }
     if (error?.code === '42883') {
+      const message = String(error?.message ?? '')
+      const missingFunction = /confirmar_matricula_core/i.test(message)
       return NextResponse.json(
         {
-          error: 'Banco desatualizado: função confirmar_matricula_core não encontrada.',
-          details: 'Execute as migrations locais (ex: pnpm db:push ou pnpm db:reset) para criar a função.',
+          error: missingFunction
+            ? 'Banco desatualizado: função confirmar_matricula_core não encontrada.'
+            : 'Erro de compatibilidade no banco ao converter matrícula.',
+          details: missingFunction
+            ? 'Execute as migrations locais (ex: pnpm db:push ou pnpm db:reset) para criar a função.'
+            : error?.message ?? null,
+          hint: missingFunction ? null : error?.hint ?? null,
           code: error?.code ?? null,
         },
         { status: 500 }
