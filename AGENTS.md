@@ -1,5 +1,3 @@
-<user_instructions>
-
 # KLASSE — Engineering Agents Contract
 
 Este arquivo define os agentes automáticos do repositório KLASSE.
@@ -168,32 +166,3 @@ Este arquivo tem precedência sobre:
 - Atalho técnico
 
 Se violar → FAIL.
-
----
-
-## ✅ O QUE VOCÊ FAZ AGORA (SEM DISCUSSÃO)
-
-1. Salva esse arquivo como **`AGENTS.md` na raiz**
-2. Commit com mensagem:
-
-```
-chore: establish KLASSE engineering agents contract
-```
-
-3. Roda:
-
-```
-pnpm agent:scan
-```
-
----
-
-## Próximo passo imediato (escolhe um):
-**2️⃣** Fechar KF2 em **PASS total** (diff mínimo)  
-**3️⃣** Gerar **script automático de MV audit**  
-**4️⃣** Travar CI para bloquear PR sem PASS dos agentes
-
-👉 **Manda o número.**
-
-
-</user_instructions>
