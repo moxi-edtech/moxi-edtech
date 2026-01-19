@@ -121,15 +121,52 @@ if [[ -n "${DB_URL:-}" ]]; then
   fi
 fi
 
+run_pull() {
+  local log_file="$1"
+  shift
+  local extra_args=()
+  if [[ $# -gt 0 ]]; then
+    extra_args=("$@")
+  fi
+  if [[ -n "$HOSTADDR_V4" ]]; then
+    echo "[INFO] Preferindo IPv4 para db pull: $HOSTNAME_ONLY -> $HOSTADDR_V4"
+    if [[ ${#extra_args[@]} -gt 0 ]]; then
+      PGHOST="$HOSTNAME_ONLY" PGHOSTADDR="$HOSTADDR_V4" supabase "${PULL_ARGS[@]}" "${extra_args[@]}" 2>&1 | tee "$log_file"
+    else
+      PGHOST="$HOSTNAME_ONLY" PGHOSTADDR="$HOSTADDR_V4" supabase "${PULL_ARGS[@]}" 2>&1 | tee "$log_file"
+    fi
+    return ${PIPESTATUS[0]}
+  fi
+
+  if [[ ${#extra_args[@]} -gt 0 ]]; then
+    supabase "${PULL_ARGS[@]}" "${extra_args[@]}" 2>&1 | tee "$log_file"
+  else
+    supabase "${PULL_ARGS[@]}" 2>&1 | tee "$log_file"
+  fi
+  return ${PIPESTATUS[0]}
+}
+
+log_file=$(mktemp)
 set +e
-if [[ -n "$HOSTADDR_V4" ]]; then
-  echo "[INFO] Preferindo IPv4 para db pull: $HOSTNAME_ONLY -> $HOSTADDR_V4"
-  PGHOST="$HOSTNAME_ONLY" PGHOSTADDR="$HOSTADDR_V4" supabase "${PULL_ARGS[@]}"
-else
-  supabase "${PULL_ARGS[@]}"
-fi
+run_pull "$log_file"
 status=$?
+
+if [[ $status -ne 0 ]]; then
+  if grep -qi "Not implemented" "$log_file"; then
+    echo "[WARN] supabase db pull falhou no diff. Tentando novamente com --experimental..." >&2
+  else
+    echo "[WARN] supabase db pull falhou. Tentando novamente com --experimental..." >&2
+  fi
+  : > "$log_file"
+  run_pull "$log_file" --experimental
+  status=$?
+fi
+if [[ $status -ne 0 ]] && grep -qi "Not implemented" "$log_file"; then
+  echo "[WARN] Diff do schema falhou por limitação do CLI. Mantendo pull como sucesso." >&2
+  status=0
+fi
 set -e
+rm -f "$log_file"
 
 # Restaura o config antes de checar resultado
 restore_config

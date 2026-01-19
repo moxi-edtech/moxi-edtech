@@ -155,7 +155,7 @@ export async function POST(req: Request) {
           tipo: 'candidatura_pagamento',
           titulo,
           mensagem: mensagem || null,
-          link_acao: `/financeiro/candidaturas/${candidatura?.id ?? ''}`,
+          link_acao: `/financeiro/candidaturas?candidatura=${candidatura?.id ?? ''}`,
         })
       } catch (_) {
         /* ignore */

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -16,11 +16,54 @@ type InboxItem = {
   created_at: string | null
 }
 
-export function FinanceiroCandidaturasInbox({ escolaId, initialItems }: { escolaId: string; initialItems: InboxItem[] }) {
+const normalizeMetodoPagamento = (raw?: string | null) => {
+  const cleaned = String(raw ?? '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+
+  if (!cleaned) return 'CASH'
+  if (cleaned.includes('tpa') || cleaned.includes('mcx') || cleaned.includes('multicaixa')) return 'TPA'
+  if (cleaned.includes('transf')) return 'TRANSFERENCIA'
+  if (cleaned.includes('cash') || cleaned.includes('dinheiro') || cleaned.includes('numerario')) return 'CASH'
+  return 'CASH'
+}
+
+const parseAmount = (value: unknown) => {
+  if (value == null) return undefined
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string') {
+    const normalized = value.replace(/\./g, '').replace(',', '.')
+    const parsed = Number(normalized)
+    return Number.isFinite(parsed) ? parsed : undefined
+  }
+  return undefined
+}
+
+export function FinanceiroCandidaturasInbox({
+  escolaId,
+  initialItems,
+  initialSelectedId,
+}: {
+  escolaId: string
+  initialItems: InboxItem[]
+  initialSelectedId?: string | null
+}) {
   const [items, setItems] = useState<InboxItem[]>(initialItems || [])
-  const [selected, setSelected] = useState<InboxItem | null>(null)
+  const [selected, setSelected] = useState<InboxItem | null>(() => {
+    if (!initialSelectedId) return null
+    return (initialItems || []).find((item) => item.id === initialSelectedId) ?? null
+  })
   const [loadingId, setLoadingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!initialSelectedId) return
+    if (selected?.id === initialSelectedId) return
+    const match = items.find((item) => item.id === initialSelectedId)
+    if (match) setSelected(match)
+  }, [initialSelectedId, items, selected])
 
   const removeItem = (id: string) => setItems((prev) => prev.filter((i) => i.id !== id))
 
@@ -32,16 +75,40 @@ export function FinanceiroCandidaturasInbox({ escolaId, initialItems }: { escola
     setLoadingId(item.id)
     setError(null)
     try {
-      const res = await fetch(`/api/secretaria/candidaturas/${item.id}/confirmar`, {
+      if (item.status && item.status !== 'aprovada') {
+        const approveRes = await fetch('/api/secretaria/admissoes/approve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            candidatura_id: item.id,
+            observacao: 'Pagamento confirmado pelo financeiro',
+          }),
+        })
+        const approveJson = await approveRes.json().catch(() => ({}))
+        if (!approveRes.ok || !approveJson?.ok) {
+          throw new Error(approveJson?.error || 'Falha ao aprovar candidatura')
+        }
+      }
+
+      const pagamento = item.pagamento || {}
+      const payload = {
+        candidatura_id: item.id,
+        turma_id: item.turmaPreferencialId,
+        metodo_pagamento: normalizeMetodoPagamento(pagamento.metodo),
+        comprovativo_url: pagamento.comprovativo_url || undefined,
+        amount: parseAmount((pagamento as any)?.valor ?? (pagamento as any)?.amount),
+      }
+
+      const res = await fetch('/api/secretaria/admissoes/convert', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ turma_id: item.turmaPreferencialId }),
+        headers: {
+          'Content-Type': 'application/json',
+          'idempotency-key': `convert-${item.id}`,
+        },
+        body: JSON.stringify(payload),
       })
       const json = await res.json().catch(() => ({}))
-      if (res.status === 410) {
-        throw new Error("Este fluxo foi migrado. Use o Radar de Admissões para converter esta candidatura.");
-      }
-      if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao confirmar')
+      if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao converter')
       removeItem(item.id)
       setSelected(null)
     } catch (e: any) {
