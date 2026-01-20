@@ -643,8 +643,18 @@ function Step3Pagamento(props: {
   cursoId: string | null;
   classeId: string | null;
   anoLetivo?: number | null;
+  candidaturaStatus?: string | null;
 }) {
-  const { onBack, candidaturaId, turmaId, escolaId, cursoId, classeId, anoLetivo } = props;
+  const {
+    onBack,
+    candidaturaId,
+    turmaId,
+    escolaId,
+    cursoId,
+    classeId,
+    anoLetivo,
+    candidaturaStatus,
+  } = props;
 
   const [payment, setPayment] = useState({
     metodo_pagamento: "CASH",
@@ -675,7 +685,6 @@ function Step3Pagamento(props: {
 
         const res = await fetch(`/api/financeiro/orcamento/matricula?${params.toString()}`, {
           signal: controller.signal,
-          cache: "no-store",
         });
 
         const json = await res.json().catch(() => ({}));
@@ -707,12 +716,16 @@ function Step3Pagamento(props: {
     setPayment((p) => ({ ...p, [name]: value }));
   };
 
-  const canConvert = useMemo(() => {
-    return isUuid(candidaturaId) && isUuid(turmaId);
-  }, [candidaturaId, turmaId]);
+  const statusNormalized = String(candidaturaStatus ?? '').toLowerCase();
 
-  const handleConvert = async () => {
-    if (!canConvert) {
+  const canSendToFinance = useMemo(() => {
+    if (!isUuid(candidaturaId) || !isUuid(turmaId)) return false;
+    if (['aprovada', 'aguardando_pagamento', 'matriculado'].includes(statusNormalized)) return false;
+    return true;
+  }, [candidaturaId, turmaId, statusNormalized]);
+
+  const handleSendToFinance = async () => {
+    if (!canSendToFinance) {
       setResult({ ok: false, error: "Candidatura ou turma inválida." });
       return;
     }
@@ -720,21 +733,19 @@ function Step3Pagamento(props: {
     setLoading(true);
     const payload = pickDefined({
       candidatura_id: candidaturaId,
-      turma_id: turmaId,
       metodo_pagamento: payment.metodo_pagamento,
       comprovativo_url: payment.comprovativo_url,
       amount: payment.amount ? Number(payment.amount) : undefined,
     });
 
     const resp = await postJson<any>(
-      "/api/secretaria/admissoes/convert",
-      payload,
-      { "idempotency-key": `convert-${candidaturaId}` }
+      "/api/secretaria/admissoes/approve",
+      payload
     );
 
     setLoading(false);
     if (!resp.ok) return setResult({ ok: false, error: resp.error });
-    setResult(resp.data);
+    setResult({ ok: true, message: "Enviado para validação do financeiro." });
   };
 
   const handleSaveForLater = async () => {
@@ -758,7 +769,9 @@ function Step3Pagamento(props: {
       <div className="space-y-4">
         <h2 className="text-lg font-semibold text-klasse-green">Resultado</h2>
         {result.ok ? (
-          <p className="text-sm font-semibold text-klasse-green">Operação concluída com sucesso.</p>
+          <p className="text-sm font-semibold text-klasse-green">
+            {result.message || "Operação concluída com sucesso."}
+          </p>
         ) : (
           <p className="text-sm font-semibold text-red-600">Erro: {result.error}</p>
         )}
@@ -771,7 +784,7 @@ function Step3Pagamento(props: {
     <div className="space-y-5">
       <div>
         <h2 className="text-lg font-semibold text-klasse-green">Pagamento</h2>
-        <p className="text-sm text-slate-500">Converter para matrícula (estado terminal).</p>
+        <p className="text-sm text-slate-500">Enviar para validação do financeiro.</p>
       </div>
 
       <div className="grid gap-3">
@@ -811,6 +824,12 @@ function Step3Pagamento(props: {
         />
       </div>
 
+      {statusNormalized === 'aguardando_pagamento' ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          Pagamento aguardando compensação pelo financeiro. A matrícula será gerada após validação.
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
@@ -823,11 +842,11 @@ function Step3Pagamento(props: {
 
         <button
           type="button"
-          onClick={() => void handleConvert()}
-          disabled={loading || !canConvert}
+          onClick={() => void handleSendToFinance()}
+          disabled={loading || !canSendToFinance}
           className="rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-60"
         >
-          {loading ? "Processando…" : "Matricular definitivamente"}
+          {loading ? "Processando…" : "Enviar para Financeiro"}
         </button>
 
         <button
@@ -887,7 +906,9 @@ export default function AdmissaoWizardClient({ escolaId }: { escolaId: string })
     <div className="space-y-4">
       <div>
         <h1 className="text-xl font-semibold text-klasse-green">Nova Admissão</h1>
-        <p className="text-sm text-slate-500">Fluxo rascunho → submetida → aprovada → matriculado.</p>
+        <p className="text-sm text-slate-500">
+          Fluxo rascunho → submetida → aprovada → aguardando_pagamento → matriculado.
+        </p>
       </div>
 
       <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
@@ -922,6 +943,7 @@ export default function AdmissaoWizardClient({ escolaId }: { escolaId: string })
             cursoId={cursoId}
             classeId={classeId}
             anoLetivo={initialData?.ano_letivo ?? null}
+            candidaturaStatus={initialData?.status ?? null}
           />
         )}
       </div>

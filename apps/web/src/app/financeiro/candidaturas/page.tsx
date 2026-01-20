@@ -4,7 +4,7 @@ import { DashboardHeader } from '@/components/dashboard/DashboardHeader'
 import { FinanceiroCandidaturasInbox } from '../_components/CandidaturasInbox'
 
 type Props = {
-  searchParams?: { candidatura?: string }
+  searchParams?: Promise<{ candidatura?: string }>
 }
 
 export default async function FinanceiroCandidaturasPage({ searchParams }: Props) {
@@ -20,7 +20,7 @@ export default async function FinanceiroCandidaturasPage({ searchParams }: Props
     .from('candidaturas')
     .select('id, nome_candidato, curso_id, classe_id, turma_preferencial_id, status, created_at, dados_candidato, cursos(nome)')
     .eq('escola_id', escolaId)
-    .in('status', ['pendente', 'aguardando_compensacao'])
+    .in('status', ['aguardando_compensacao', 'aguardando_pagamento'])
     .order('created_at', { ascending: false })
 
   const items = (data || []).map((c: any) => ({
@@ -33,7 +33,8 @@ export default async function FinanceiroCandidaturasPage({ searchParams }: Props
     created_at: c.created_at,
   }))
 
-  const selectedId = searchParams?.candidatura || null
+  const resolvedParams = searchParams ? await searchParams : null
+  const selectedId = resolvedParams?.candidatura || null
 
   return (
     <main className="space-y-6 p-4 md:p-6">

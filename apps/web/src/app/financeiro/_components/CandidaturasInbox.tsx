@@ -72,24 +72,13 @@ export function FinanceiroCandidaturasInbox({
       setError('Selecione/defina uma turma preferencial antes de confirmar.')
       return
     }
+    if (item.status !== 'aguardando_pagamento' && item.status !== 'aguardando_compensacao') {
+      setError('Aguardando aprovação da secretaria antes da compensação.')
+      return
+    }
     setLoadingId(item.id)
     setError(null)
     try {
-      if (item.status && item.status !== 'aprovada') {
-        const approveRes = await fetch('/api/secretaria/admissoes/approve', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            candidatura_id: item.id,
-            observacao: 'Pagamento confirmado pelo financeiro',
-          }),
-        })
-        const approveJson = await approveRes.json().catch(() => ({}))
-        if (!approveRes.ok || !approveJson?.ok) {
-          throw new Error(approveJson?.error || 'Falha ao aprovar candidatura')
-        }
-      }
-
       const pagamento = item.pagamento || {}
       const payload = {
         candidatura_id: item.id,
