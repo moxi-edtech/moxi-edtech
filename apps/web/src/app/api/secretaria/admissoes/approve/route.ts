@@ -78,7 +78,7 @@ export async function POST(request: Request) {
     const { error } = await supabase.rpc('admissao_approve', {
       p_escola_id: head.escola_id,
       p_candidatura_id: candidatura_id,
-      p_observacao: observacao ?? null,
+      p_observacao: observacao ?? undefined,
     })
 
     if (error) throw error
