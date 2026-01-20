@@ -138,30 +138,6 @@ export async function POST(req: Request) {
       details: { email: body.email, nome: nomeCompleto, registrado_por: user.id, portal: 'secretaria' },
     }).catch(() => null)
 
-    // Notifica Financeiro se houver informação de pagamento anexada
-    const hasPagamentoInfo = body.pagamento_metodo || body.pagamento_referencia || body.pagamento_comprovativo_url
-    if (hasPagamentoInfo) {
-      const titulo = 'Nova candidatura com pagamento informado'
-      const mensagemParts = [
-        `Método: ${body.pagamento_metodo || 'não informado'}`,
-        body.pagamento_referencia ? `Ref: ${body.pagamento_referencia}` : null,
-      ].filter(Boolean)
-      const mensagem = mensagemParts.join(' | ')
-
-      try {
-        await s.from('notifications').insert({
-          escola_id: escolaId,
-          target_role: 'financeiro' as any,
-          tipo: 'candidatura_pagamento',
-          titulo,
-          mensagem: mensagem || null,
-          link_acao: `/financeiro/candidaturas?candidatura=${candidatura?.id ?? ''}`,
-        })
-      } catch (_) {
-        /* ignore */
-      }
-    }
-
     return NextResponse.json({ ok: true, candidatura_id: candidatura?.id }, { status: 200 })
 
   } catch (err) {

@@ -1,26 +1,8 @@
 {
-  "timestamp": "2026-01-11T17:30:51.274Z",
-  "status": "FAIL",
-  "blocking_findings": [
-    {
-      "id": "NO_STORE",
-      "title": "Anti-pattern — uso de cache: 'no-store' em páginas/relatórios",
-      "severity": "HIGH",
-      "status": "PARTIAL",
-      "evidence": [
-        {
-          "file": "AGENTS.md",
-          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
-        },
-        {
-          "file": "apps/web/src/components/secretaria/AlunosListClient.tsx",
-          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
-        }
-      ],
-      "recommendation": "Remover no-store onde houver MV/camadas cacheáveis; manter só em rotas realmente sensíveis."
-    }
-  ],
+  "timestamp": "2026-01-20T01:04:18.543Z",
+  "status": "PASS",
+  "blocking_findings": [],
   "notes": [
-    "Hard-gate ativo: CRITICAL/HIGH bloqueiam PR até resolver."
+    "PASS: sem bloqueios P0/P1."
   ]
 }

@@ -1,27 +1,14 @@
 {
-  "timestamp": "2026-01-19T00:50:21.766Z",
+  "timestamp": "2026-01-20T01:03:41.075Z",
   "repoRoot": "/Users/gundja/moxi-edtech",
   "summary": {
     "critical": 0,
-    "high": 1,
+    "high": 0,
     "medium": 0,
     "low": 6,
-    "total": 7
+    "total": 6
   },
   "findings": [
-    {
-      "id": "NO_STORE",
-      "title": "Anti-pattern — uso de cache: 'no-store' em páginas/relatórios",
-      "severity": "HIGH",
-      "status": "PARTIAL",
-      "evidence": [
-        {
-          "file": "apps/web/src/components/secretaria/AdmissaoWizardClient.tsx",
-          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
-        }
-      ],
-      "recommendation": "Remover no-store onde houver MV/camadas cacheáveis; manter só em rotas realmente sensíveis."
-    },
     {
       "id": "KF2",
       "title": "KF2 — Pesquisa Global (Command Palette) invariants",
@@ -126,10 +113,6 @@
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
-          "file": "supabase/.branches/remote/schema.sql",
-          "note": "match: /audit_logs|auditLog|create_audit/i"
-        },
-        {
           "file": "supabase/functions/outbox-worker/index.ts",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
@@ -155,6 +138,10 @@
         },
         {
           "file": "supabase/migrations_archive/migrations/20250915000000_remote_schema.sql",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations/20250917060400_audit_redaction.sql",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         }
       ],
