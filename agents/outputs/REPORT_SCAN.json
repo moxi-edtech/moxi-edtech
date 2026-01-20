@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-01-20T01:03:41.075Z",
+  "timestamp": "2026-01-20T01:37:29.825Z",
   "repoRoot": "/Users/gundja/moxi-edtech",
   "summary": {
     "critical": 0,
@@ -117,6 +117,10 @@
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
+          "file": "supabase/.branches/remote/schema.sql",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
           "file": "supabase/migrations_archive/migrations_backup/20250917060400_audit_redaction.sql",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
@@ -138,10 +142,6 @@
         },
         {
           "file": "supabase/migrations_archive/migrations/20250915000000_remote_schema.sql",
-          "note": "match: /audit_logs|auditLog|create_audit/i"
-        },
-        {
-          "file": "supabase/migrations_archive/migrations/20250917060400_audit_redaction.sql",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         }
       ],

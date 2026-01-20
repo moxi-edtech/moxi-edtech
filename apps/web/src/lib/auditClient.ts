@@ -8,6 +8,7 @@ export type AuditEvent = {
     | "admin_escola"
     | "secretaria"
     | "financeiro"
+    | "professor"
     | "aluno"
     | "super_admin"
     | "outro";

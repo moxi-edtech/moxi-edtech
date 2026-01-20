@@ -60,6 +60,9 @@
 - SSOT definido (qual tabela é verdade única).
 - Estrutura com partição: UNIQUE(aluno_id, data) ou UNIQUE(matricula_id, aula_id) conforme modelo final.
 - Views ou RPC para relatórios por turma → eficientes.
+  - `vw_presencas_por_turma`
+  - `vw_frequencia_resumo_aluno`
+  - `professor_list_presencas_turma(p_turma_id, p_data_inicio, p_data_fim)`
 
 ### Disciplinas
 - Turma possui vínculo com matriz → disciplinas carregadas automaticamente.
@@ -68,12 +71,24 @@
   - matriculas → turma → turma_disciplinas
 
 ### Notas
+- Período letivo oficial (piloto Angola):
+  - tipo = TRIMESTRE
+  - valores: 1 | 2 | 3
+  - escopo por escola + ano_letivo (2025)
+- Avaliações (on-demand):
+  - UNIQUE(escola_id, turma_disciplina_id, ano_letivo, trimestre, tipo)
+  - Uma avaliação por disciplina + trimestre
+- Notas (on-demand):
+  - UNIQUE(escola_id, matricula_id, avaliacao_id)
+  - Sem placeholders; INSERT só no lançamento do professor
 - Sem placeholders: não criar linhas vazias na tabela notas.
 - Pauta do professor lista alunos por matriculas.
 - Primeira nota lançada → INSERT on-demand na tabela notas.
+  - upsert por `(matricula_id, avaliacao_id)`
+  - avaliação criada on‑demand (turma_disciplina_id + periodo_letivo_id + nome)
 - Views para boletins:
-  - campos agregados calculados
-  - fallback → WARN se alguma disciplina não tiver nota.
+  - `vw_boletim_por_matricula`
+  - `missing_count` + `has_missing` quando faltar nota
 
 ---
 
