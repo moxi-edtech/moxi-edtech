@@ -4,6 +4,9 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import Link from "next/link";
 import { parsePlanTier, PLAN_NAMES, type PlanTier } from "@/config/plans";
 import { getAbsoluteUrlServer } from "@/lib/serverUrl";
+import type { Database } from "~types/supabase";
+
+export const dynamic = 'force-dynamic'
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const awaitedParams = await params;
@@ -11,28 +14,30 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const s = await supabaseServer()
 
   const [ paid, pending, all, detalhes, dashboardResumo ] = await Promise.all([
-    s.from('pagamentos').select('valor', { head: false }).eq('escola_id', escolaId).eq('status', 'pago'),
-    s.from('pagamentos').select('valor', { head: false }).eq('escola_id', escolaId).eq('status', 'pendente'),
+    s.from('pagamentos').select('valor_pago', { head: false }).eq('escola_id', escolaId).eq('status', 'pago'),
+    s.from('pagamentos').select('valor_pago', { head: false }).eq('escola_id', escolaId).eq('status', 'pendente'),
     s.from('pagamentos').select('id', { count: 'exact', head: true }).eq('escola_id', escolaId),
     getAbsoluteUrlServer(`/api/escolas/${escolaId}/nome`).then((url) =>
-      fetch(url, { cache: 'force-cache' }).then(r => r.json()).catch(() => null)
+      fetch(url, { cache: 'no-store' }).then(r => r.json()).catch(() => null)
     ),
     getAbsoluteUrlServer(`/api/financeiro?escolaId=${escolaId}`).then((url) =>
-      fetch(url, { cache: 'force-cache' }).then(r => r.json()).catch(() => null)
+      fetch(url, { cache: 'no-store' }).then(r => r.json()).catch(() => null)
     ),
   ])
 
-  const sum = (rows: any[] | null | undefined) => (rows || []).reduce((acc, r) => acc + Number(r.valor || 0), 0)
+  type PagamentoValor = Pick<Database['public']['Tables']['pagamentos']['Row'], 'valor_pago'>
+  const sum = (rows: PagamentoValor[] | null | undefined) =>
+    (rows || []).reduce((acc, r) => acc + Number(r.valor_pago || 0), 0)
   const totalPago = sum(paid.data)
   const totalPendente = sum(pending.data)
   const total = totalPago + totalPendente
   const percentPago = total ? Math.round((totalPago / total) * 100) : 0
   const totalPagamentos = all.count ?? 0
 
-  const cursosPendentesPorEscola = (dashboardResumo as any)?.cursosPendentes?.totalPorEscola || {}
+  const cursosPendentesPorEscola = (dashboardResumo as { cursosPendentes?: { totalPorEscola?: Record<string, number> } } | null)?.cursosPendentes?.totalPorEscola || {}
   const cursosPendentes = Number(cursosPendentesPorEscola[escolaId] || 0)
 
-  const plan: PlanTier = parsePlanTier((detalhes as any)?.plano);
+  const plan: PlanTier = parsePlanTier((detalhes as { plano?: string | null } | null)?.plano);
 
   const isStandard = plan === 'profissional' || plan === 'premium';
   const isPremium = plan === 'premium';

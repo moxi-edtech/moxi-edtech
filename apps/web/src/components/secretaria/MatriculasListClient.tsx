@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -39,6 +39,29 @@ type Item = {
   status: string;
   data_matricula?: string | null;
   created_at: string;
+};
+
+type SessionItem = {
+  id: string;
+  nome?: string | null;
+  status?: string | null;
+  ano_letivo?: number | string | null;
+  data_inicio?: string | null;
+  data_fim?: string | null;
+  ano_resolvido?: number | null;
+};
+
+type CursoItem = { id: string; nome?: string | null; tipo?: string | null };
+type ClasseItem = { id: string; nome?: string | null; curso_id?: string | null };
+type TurmaItem = {
+  id: string;
+  nome?: string | null;
+  turma_codigo?: string | null;
+  turno?: string | null;
+  ano_letivo?: number | string | null;
+  ano?: number | string | null;
+  curso_id?: string | null;
+  classe_id?: string | null;
 };
 
 function cn(...c: Array<string | false | null | undefined>) {
@@ -141,7 +164,7 @@ export default function MatriculasListClient() {
 
   // Estados Locais
   const [q, setQ] = useState("");
-  const [sessions, setSessions] = useState<any[]>([]);
+  const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [selectedAno, setSelectedAno] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
@@ -154,11 +177,11 @@ export default function MatriculasListClient() {
 
   // Estados dos Filtros em Cascata
   const [selectedEnsino, setSelectedEnsino] = useState<string>("");
-  const [cursos, setCursos] = useState<any[]>([]);
+  const [cursos, setCursos] = useState<CursoItem[]>([]);
   const [selectedCurso, setSelectedCurso] = useState<string>("");
-  const [classes, setClasses] = useState<any[]>([]);
+  const [classes, setClasses] = useState<ClasseItem[]>([]);
   const [selectedClasse, setSelectedClasse] = useState<string>("");
-  const [turmas, setTurmas] = useState<any[]>([]);
+  const [turmas, setTurmas] = useState<TurmaItem[]>([]);
   const [selectedTurma, setSelectedTurma] = useState<string>("");
   const [showPendentes, setShowPendentes] = useState<boolean>(false);
 
@@ -188,48 +211,48 @@ export default function MatriculasListClient() {
   const anoLetivoAtivo = useMemo(() => selectedAno ?? new Date().getFullYear(), [selectedAno]);
 
   // --- LÓGICA (INTACTA) ---
-  async function fetchSessions() {
+  const fetchSessions = useCallback(async () => {
     try {
       const res = await fetch("/api/secretaria/school-sessions");
       const json = await res.json();
       if (json.ok) {
         const sessionItems = Array.isArray(json.data)
-          ? json.data
+          ? (json.data as SessionItem[])
           : Array.isArray(json.items)
-            ? json.items
+            ? (json.items as SessionItem[])
             : [];
 
-        const resolved = sessionItems.map((s: any) => ({
+        const resolved = sessionItems.map((s) => ({
           ...s,
-          ano_resolvido: extrairAnoLetivo((s as any)?.ano_letivo ?? s?.nome ?? s?.data_inicio ?? s?.data_fim),
+          ano_resolvido: extrairAnoLetivo(s.ano_letivo ?? s.nome ?? s.data_inicio ?? s.data_fim),
         }));
 
         setSessions(resolved);
 
-        const activeSession = resolved.find((s: any) => s.status === "ativa" && s.ano_resolvido);
-        const firstWithAno = resolved.find((s: any) => s.ano_resolvido);
+        const activeSession = resolved.find((s) => s.status === "ativa" && s.ano_resolvido);
+        const firstWithAno = resolved.find((s) => s.ano_resolvido);
 
         setSelectedAno((prev) => prev ?? activeSession?.ano_resolvido ?? firstWithAno?.ano_resolvido ?? new Date().getFullYear());
       }
     } catch (error) {
       console.error("Failed to fetch sessions", error);
     }
-  }
+  }, []);
 
-  async function fetchCursos() {
+  const fetchCursos = useCallback(async () => {
     try {
       const res = await fetch("/api/secretaria/cursos");
       const json = await res.json();
-      if (json.ok) setCursos(Array.isArray(json.items) ? json.items : []);
+      if (json.ok) setCursos(Array.isArray(json.items) ? (json.items as CursoItem[]) : []);
     } catch (error) {
       console.error("Failed to fetch cursos", error);
     }
-  }
+  }, []);
 
   useEffect(() => {
     fetchSessions();
     fetchCursos();
-  }, []);
+  }, [fetchSessions, fetchCursos]);
 
   useEffect(() => {
     async function fetchClasses() {
@@ -241,7 +264,7 @@ export default function MatriculasListClient() {
       try {
         const res = await fetch(`/api/secretaria/classes?curso_id=${selectedCurso}`);
         const json = await res.json();
-        if (json.ok) setClasses(Array.isArray(json.items) ? json.items : []);
+        if (json.ok) setClasses(Array.isArray(json.items) ? (json.items as ClasseItem[]) : []);
       } catch (error) {
         console.error("Failed to fetch classes", error);
       }
@@ -261,7 +284,7 @@ export default function MatriculasListClient() {
         if (anoLetivoAtivo) params.set('ano', String(anoLetivoAtivo));
         const res = await fetch(`/api/secretaria/turmas-simples?${params.toString()}`);
         const json = await res.json();
-        if (json.ok) setTurmas(Array.isArray(json.items) ? json.items : []);
+        if (json.ok) setTurmas(Array.isArray(json.items) ? (json.items as TurmaItem[]) : []);
       } catch (error) {
         console.error("Failed to fetch turmas", error);
       }
@@ -303,7 +326,7 @@ export default function MatriculasListClient() {
     });
   };
 
-  async function load(p = page) {
+  const load = useCallback(async (p: number) => {
     const requestId = activeRequestRef.current + 1;
     activeRequestRef.current = requestId;
 
@@ -332,7 +355,7 @@ export default function MatriculasListClient() {
       if (statusInFromQuery) params.set("status_in", statusInFromQuery);
 
       const res = await fetch(`/api/secretaria/admissoes/matriculas?${params.toString()}`, {
-        cache: "force-cache",
+        cache: "no-store",
         signal: controller.signal,
       });
       const json = await res.json();
@@ -342,13 +365,24 @@ export default function MatriculasListClient() {
         setItems(Array.isArray(json.items) ? json.items : []);
         setTotal(json.total || 0);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (controller.signal.aborted) return;
       console.error(error);
     } finally {
       if (activeRequestRef.current === requestId) setLoading(false);
     }
-  }
+  }, [
+    anoLetivoAtivo,
+    pageSize,
+    q,
+    selectedClasse,
+    selectedCurso,
+    selectedEnsino,
+    selectedTurma,
+    showPendentes,
+    statusFromQuery,
+    statusInFromQuery,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -359,20 +393,10 @@ export default function MatriculasListClient() {
   useEffect(() => {
     load(1);
     setPage(1);
-  }, [
-    q,
-    selectedAno,
-    selectedTurma,
-    selectedClasse,
-    selectedCurso,
-    selectedEnsino,
-    showPendentes,
-    statusFromQuery,
-    statusInFromQuery,
-  ]);
+  }, [load, selectedAno]);
   useEffect(() => {
     load(page);
-  }, [page]);
+  }, [load, page]);
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -471,7 +495,7 @@ export default function MatriculasListClient() {
             >
               <option value="">Ano letivo</option>
               {sessions
-                .map((s) => ({ ...s, ano_resolvido: extrairAnoLetivo((s as any)?.ano_letivo ?? s?.nome ?? s?.data_inicio ?? s?.data_fim) }))
+                .map((s) => ({ ...s, ano_resolvido: extrairAnoLetivo(s.ano_letivo ?? s.nome ?? s.data_inicio ?? s.data_fim) }))
                 .filter((s) => s.ano_resolvido)
                 .map((s) => (
                   <option key={s.id} value={s.ano_resolvido as number}>
@@ -852,7 +876,7 @@ export default function MatriculasListClient() {
               currentStatus={selectedMatricula.status}
               onSuccess={() => {
                 setShowStatusForm(false);
-                load();
+                load(page);
               }}
             />
           </div>
@@ -877,7 +901,7 @@ export default function MatriculasListClient() {
               anoLetivo={anoLetivoAtivo}
               onSuccess={() => {
                 setShowTransferForm(false);
-                load();
+                load(page);
               }}
             />
           </div>

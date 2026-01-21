@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Eye } from "lucide-react";
 import { supabaseServer } from "@/lib/supabaseServer";
 import AuditPageView from "@/components/audit/AuditPageView";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import type { Database } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
 
@@ -9,16 +11,7 @@ export default async function DocumentosPage() {
   const supabase = await supabaseServer();
   const { data: auth } = await supabase.auth.getUser();
   const user = auth?.user;
-
-  let escolaId: string | null = null;
-  if (user) {
-    const { data: prof } = await supabase
-      .from("profiles")
-      .select("current_escola_id, escola_id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    escolaId = (prof as any)?.current_escola_id ?? (prof as any)?.escola_id ?? null;
-  }
+  const escolaId = user ? await resolveEscolaIdForUser(supabase, user.id) : null;
 
   if (!escolaId) {
     return (
@@ -31,7 +24,7 @@ export default async function DocumentosPage() {
     );
   }
 
-  let query = supabase
+  const query = supabase
     .from("matriculas")
     .select(
       `
@@ -47,6 +40,16 @@ export default async function DocumentosPage() {
     .limit(50);
 
   const { data: matriculas } = await query;
+
+  type MatriculaResumo = {
+    id: string;
+    data_matricula: string | null;
+    numero_matricula: string | null;
+    alunos?: { nome?: string | null } | null;
+    turmas?: { nome?: string | null; classes?: { nome?: string | null } | null } | null;
+  };
+
+  const rows = (matriculas ?? []) as MatriculaResumo[];
 
   return (
     <>
@@ -78,7 +81,7 @@ export default async function DocumentosPage() {
                   </td>
                 </tr>
               )}
-              {(matriculas ?? []).map((row: any) => (
+              {rows.map((row) => (
                 <tr key={row.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 font-semibold text-slate-900">
                     {row.alunos?.nome ?? "—"}
@@ -96,6 +99,7 @@ export default async function DocumentosPage() {
                     <Link
                       href={`/api/secretaria/admissoes/matriculas/${row.id}/declaracao`}
                       target="_blank"
+                      rel="noreferrer"
                       className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:brightness-95 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
                     >
                       <Eye className="h-4 w-4" />

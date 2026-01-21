@@ -1,5 +1,23 @@
 [
   {
+    "id": "PLAN_NO_STORE",
+    "priority": 2,
+    "type": "DOC",
+    "title": "Plano de revisão de no-store",
+    "rationale": "Planejar ajustes com revisão manual.",
+    "files": [
+      {
+        "path": "agents/outputs/PLAN_NO_STORE.md",
+        "action": "CREATE",
+        "content": "# Plano — Remoção de cache no-store\n\nArquivos com `cache: 'no-store'` detectados:\n\n- apps/web/src/app/financeiro/page.tsx\n- apps/web/src/components/secretaria/MatriculasListClient.tsx\n- apps/web/src/components/secretaria/TurmaForm.tsx\n- apps/web/src/app/escola/[id]/financeiro/page.tsx\n\nAção recomendada:\n- Revisar caso a caso e substituir por cache adequado (revalidate/force-cache) ou remover fetch desnecessário."
+      }
+    ],
+    "safety": {
+      "destructive": false,
+      "requires_manual_review": true
+    }
+  },
+  {
     "id": "PLAN_AUDIT_TRAIL",
     "priority": 2,
     "type": "DOC",

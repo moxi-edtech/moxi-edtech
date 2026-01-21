@@ -26,6 +26,8 @@ import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { FinanceiroAlerts } from "@/components/financeiro/FinanceiroAlerts";
 import { MissingPricingAlert } from "@/components/financeiro/MissingPricingAlert";
 
+export const dynamic = 'force-dynamic';
+
 const kwanza = new Intl.NumberFormat("pt-AO", {
   style: "currency",
   currency: "AOA",
@@ -39,6 +41,10 @@ type DashboardResumo = {
 };
 
 type Notification = Database["public"]["Tables"]["notifications"]["Row"];
+type Mensalidade = Database["public"]["Tables"]["mensalidades"]["Row"] & {
+  turmas?: { nome?: string | null } | null;
+  valor?: number | null;
+};
 
 export default async function FinanceiroDashboardPage({
   searchParams,
@@ -53,23 +59,21 @@ export default async function FinanceiroDashboardPage({
   const user = userRes?.user;
   let escolaId: string | null = null;
   if (user) {
-    escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
+    escolaId = await resolveEscolaIdForUser(supabase, user.id);
   }
 
-  // Tentativa de ler cache; fallback para API
-  const { data: cacheResumo } = await supabase
-    .from("financeiro_dashboard_cache" as any)
-    .select("*")
-    .limit(1)
-    .maybeSingle();
+  const resumoData: DashboardResumo = await fetch(await getAbsoluteUrlServer("/api/financeiro"), {
+    cache: "no-store",
+  })
+    .then((r) => r.json())
+    .catch(() => ({
+      inadimplencia: { total: 0, percentual: 0 },
+      risco: { total: 0 },
+      confirmados: { total: 0 },
+      pendentes: { total: 0 },
+    }));
 
-  const resumoData: DashboardResumo =
-    (cacheResumo as any) ??
-    (await fetch(await getAbsoluteUrlServer("/api/financeiro"), {
-      cache: "force-cache",
-    }).then((r) => r.json()));
-
-  let mensalidades: Database["public"]["Tables"]["mensalidades"]["Row"][] = [];
+  let mensalidades: Mensalidade[] = [];
   let alunoNome = "";
   let financeNotifications: Notification[] = [];
   let escolaNome = "Escola";
@@ -81,14 +85,14 @@ export default async function FinanceiroDashboardPage({
       .eq("aluno_id", aluno)
       .order("ano_referencia", { ascending: false })
       .order("mes_referencia", { ascending: false });
-    mensalidades = (data as any[]) ?? [];
+    mensalidades = (data as Mensalidade[]) ?? [];
 
     const { data: alunoRow } = await supabase
       .from("alunos")
       .select("nome_completo, nome")
       .eq("id", aluno)
       .maybeSingle();
-    alunoNome = (alunoRow as any)?.nome_completo || (alunoRow as any)?.nome || "Aluno";
+    alunoNome = alunoRow?.nome_completo || alunoRow?.nome || "Aluno";
   }
 
   if (escolaId) {
@@ -98,7 +102,7 @@ export default async function FinanceiroDashboardPage({
       .eq("id", escolaId)
       .maybeSingle();
 
-    escolaNome = (escolaRow as any)?.nome ?? escolaNome;
+    escolaNome = escolaRow?.nome ?? escolaNome;
 
     const { data } = await supabase
       .from("notifications")
@@ -236,7 +240,7 @@ export default async function FinanceiroDashboardPage({
                           : "—"}
                       </td>
                       <td className="px-6 py-4 font-bold text-slate-800">
-                        {kwanza.format(mens.valor_previsto ?? (mens as any).valor ?? 0)}
+                        {kwanza.format(mens.valor_previsto ?? mens.valor ?? 0)}
                       </td>
                       <td className="px-6 py-4 text-center">
                         {mens.status === "pago" ? (
@@ -257,7 +261,7 @@ export default async function FinanceiroDashboardPage({
                         {mens.status !== "pago" ? (
                           <RegistrarPagamentoButton
                             mensalidadeId={mens.id}
-                            valor={mens.valor_previsto ?? (mens as any).valor ?? 0}
+                            valor={mens.valor_previsto ?? mens.valor ?? 0}
                           />
                         ) : (
                           <div className="flex flex-wrap items-center justify-end gap-2">
@@ -265,7 +269,7 @@ export default async function FinanceiroDashboardPage({
                               mensalidadeId={mens.id}
                               escolaNome={escolaNome}
                               alunoNome={alunoNome}
-                              valor={mens.valor_pago_total ?? mens.valor_previsto ?? (mens as any).valor ?? 0}
+                              valor={mens.valor_pago_total ?? mens.valor_previsto ?? mens.valor ?? 0}
                               dataPagamento={mens.data_pagamento_efetiva ?? new Date().toISOString()}
                             />
                             <EstornarMensalidadeButton mensalidadeId={mens.id} />

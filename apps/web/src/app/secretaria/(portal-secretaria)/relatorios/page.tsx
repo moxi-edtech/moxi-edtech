@@ -1,5 +1,7 @@
 import { supabaseServer } from "@/lib/supabaseServer";
 import AuditPageView from "@/components/audit/AuditPageView";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import type { Database } from "~types/supabase";
 
 export const dynamic = 'force-dynamic'
 
@@ -10,15 +12,7 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
   const s = await supabaseServer()
   const { data: sess } = await s.auth.getUser()
   const user = sess?.user
-  let escolaId: string | null = null
-  if (user) {
-    const { data: prof } = await s
-      .from('profiles')
-      .select('escola_id')
-      .eq('user_id', user.id)
-      .maybeSingle()
-    escolaId = (prof as any)?.escola_id ?? null
-  }
+  const escolaId = user ? await resolveEscolaIdForUser(s, user.id) : null
 
   const q = searchParams.q || ''
   const days = searchParams.days || '30'
@@ -52,7 +46,7 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
   if (q) query = query.or(`action.ilike.%${q}%,entity.ilike.%${q}%`)
 
   const { data } = await query
-  const logs = (data ?? []) as any[]
+  const logs = (data ?? []) as Array<Database['public']['Tables']['audit_logs']['Row']>
 
   return (
     <>
@@ -67,8 +61,8 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
                 <a key={d} href={`/secretaria/relatorios?days=${encodeURIComponent(d)}&q=${encodeURIComponent(q)}`} className={`px-2.5 py-1 rounded border ${days === d ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100'}`}>{d === '1' ? '1 dia' : `${d} dias`}</a>
               ))}
               <span className="mx-2 h-4 w-px bg-gray-200" />
-              <a href={`/secretaria/relatorios/export?format=csv&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}`} className="px-2.5 py-1 rounded border bg-white text-gray-700 hover:bg-gray-100" target="_blank">Exportar CSV</a>
-              <a href={`/secretaria/relatorios/export?format=json&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}`} className="px-2.5 py-1 rounded border bg-white text-gray-700 hover:bg-gray-100" target="_blank">Exportar JSON</a>
+              <a href={`/secretaria/relatorios/export?format=csv&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}`} className="px-2.5 py-1 rounded border bg-white text-gray-700 hover:bg-gray-100" target="_blank" rel="noreferrer">Exportar CSV</a>
+              <a href={`/secretaria/relatorios/export?format=json&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}`} className="px-2.5 py-1 rounded border bg-white text-gray-700 hover:bg-gray-100" target="_blank" rel="noreferrer">Exportar JSON</a>
             </div>
           </div>
           <form action="" className="flex gap-2 text-sm">
@@ -89,9 +83,11 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
             </tr>
           </thead>
           <tbody>
-            {logs.map((l: any) => (
+            {logs.map((l) => (
               <tr key={l.id} className="border-b last:border-b-0">
-                <td className="py-2 pr-4 whitespace-nowrap">{new Date(l.created_at).toLocaleString()}</td>
+                <td className="py-2 pr-4 whitespace-nowrap">
+                  {l.created_at ? new Date(l.created_at).toLocaleString() : '—'}
+                </td>
                 <td className="py-2 pr-4">{l.action}</td>
                 <td className="py-2 pr-4">{l.entity}</td>
                 <td className="py-2 pr-4">{l.entity_id ?? '—'}</td>

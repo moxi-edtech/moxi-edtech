@@ -1,5 +1,7 @@
 import PortalLayout from "@/components/layout/PortalLayout";
 import { supabaseServer } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import type { Database } from "~types/supabase";
 import AuditPageView from "@/components/audit/AuditPageView";
 
 export const dynamic = 'force-dynamic'
@@ -9,8 +11,8 @@ type SearchParams = { q?: string; days?: string }
 export default async function Page(props: { searchParams?: Promise<SearchParams> }) {
   const searchParams = (await props.searchParams) ?? ({} as SearchParams)
   const s = await supabaseServer()
-  const { data: prof } = await s.from('profiles').select('escola_id').order('created_at', { ascending: false }).limit(1)
-  const escolaId = prof?.[0]?.escola_id as string | null
+  const { data: userRes } = await s.auth.getUser()
+  const escolaId = userRes?.user ? await resolveEscolaIdForUser(s, userRes.user.id) : null
 
   const q = searchParams.q || ''
   const days = searchParams.days || '30'
@@ -43,8 +45,8 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
 
   if (q) query = query.or(`action.ilike.%${q}%,entity.ilike.%${q}%`)
 
-  const { data, error } = await query
-  const logs = (data ?? []) as any[]
+  const { data } = await query
+  const logs = (data ?? []) as Array<Database['public']['Tables']['audit_logs']['Row']>
 
   return (
     <PortalLayout>
@@ -78,9 +80,11 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
             </tr>
           </thead>
           <tbody>
-            {logs.map((l: any) => (
+            {logs.map((l) => (
               <tr key={l.id} className="border-b last:border-b-0">
-                <td className="py-2 pr-4 whitespace-nowrap">{new Date(l.created_at).toLocaleString()}</td>
+                <td className="py-2 pr-4 whitespace-nowrap">
+                  {l.created_at ? new Date(l.created_at).toLocaleString() : '—'}
+                </td>
                 <td className="py-2 pr-4">{l.action}</td>
                 <td className="py-2 pr-4">{l.entity}</td>
                 <td className="py-2 pr-4">{l.entity_id ?? '—'}</td>
@@ -96,4 +100,3 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
     </PortalLayout>
   )
 }
-

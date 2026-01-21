@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "~types/supabase";
 import { resolveMensalidade } from "./pricing";
 
 export function normalizeAnoLetivo(value: number | string | null | undefined): number {
@@ -54,7 +55,7 @@ export type TabelaPrecoResultado = {
 };
 
 export async function resolveTabelaPreco(
-  client: SupabaseClient,
+  client: SupabaseClient<Database>,
   params: {
     escolaId: string;
     anoLetivo: number | string;
@@ -73,59 +74,66 @@ export async function resolveTabelaPreco(
   const allowFallback = params.allowMensalidadeFallback !== false;
 
   const fetchTabela = async (
-    builder: (q: any) => any,
+    filters: { cursoId?: string | null; classeId?: string | null },
     opts?: { ignoreAno?: boolean }
   ): Promise<TabelaPreco | null> => {
     const base = client.from("financeiro_tabelas").select("*").eq("escola_id", params.escolaId);
+    let scoped = opts?.ignoreAno ? base : base.eq("ano_letivo", anoLetivo);
 
-    const scoped = opts?.ignoreAno ? base : base.eq("ano_letivo", anoLetivo);
+    if (filters.cursoId !== undefined) {
+      scoped = filters.cursoId ? scoped.eq("curso_id", filters.cursoId) : scoped.is("curso_id", null);
+    }
 
-    const prioritized = builder(scoped)
+    if (filters.classeId !== undefined) {
+      scoped = filters.classeId ? scoped.eq("classe_id", filters.classeId) : scoped.is("classe_id", null);
+    }
+
+    const prioritized = scoped
       .order("ano_letivo", { ascending: false })
       .order("updated_at", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(1);
 
     const { data, error } = await prioritized;
-    if (error && (error as any)?.code !== "PGRST116") throw error;
-    const tabela = (data?.[0] as any) || null;
+    if (error && "code" in error && error.code !== "PGRST116") throw error;
+    const tabela = (data?.[0] as TabelaPreco | undefined) || null;
     return tabela;
   };
 
   const tentarResolver = async (
-    builder: (q: any) => any,
+    filters: { cursoId?: string | null; classeId?: string | null },
     origem: TabelaPrecoResultado["origem"],
   ): Promise<TabelaPrecoResultado | null> => {
-    const tabelaAno = await fetchTabela(builder);
-    if (tabelaAno) return { tabela: tabelaAno as any, origem };
+    const tabelaAno = await fetchTabela(filters);
+    if (tabelaAno) return { tabela: tabelaAno, origem };
 
-    const tabelaMaisRecente = await fetchTabela(builder, { ignoreAno: true });
-    if (tabelaMaisRecente) return { tabela: tabelaMaisRecente as any, origem };
+    const tabelaMaisRecente = await fetchTabela(filters, { ignoreAno: true });
+    if (tabelaMaisRecente) return { tabela: tabelaMaisRecente, origem };
 
     return null;
   };
 
   // 1) Específico (Curso + Classe)
   if (cursoId && classeId) {
-    const resolved = await tentarResolver((q) => q.eq("curso_id", cursoId).eq("classe_id", classeId), "especifica");
+    const resolved = await tentarResolver({ cursoId, classeId }, "especifica");
     if (resolved) return resolved;
   }
 
   // 2) Por Curso
   if (cursoId) {
-    const resolved = await tentarResolver((q) => q.eq("curso_id", cursoId).is("classe_id", null), "curso");
+    const resolved = await tentarResolver({ cursoId, classeId: null }, "curso");
     if (resolved) return resolved;
   }
 
   // 3) Por Classe
   if (classeId) {
-    const resolved = await tentarResolver((q) => q.is("curso_id", null).eq("classe_id", classeId), "classe");
+    const resolved = await tentarResolver({ cursoId: null, classeId }, "classe");
     if (resolved) return resolved;
   }
 
   // 4) Geral
   {
-    const resolved = await tentarResolver((q) => q.is("curso_id", null).is("classe_id", null), "geral");
+    const resolved = await tentarResolver({ cursoId: null, classeId: null }, "geral");
     if (resolved) return resolved;
   }
 
