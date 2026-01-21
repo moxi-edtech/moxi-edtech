@@ -14,7 +14,29 @@ import {
 
 type Curso = { id: string; nome: string };
 type Classe = { id: string; nome: string };
-type Session = { id: string; nome: string; ano_letivo?: number | null };
+type Session = { id: string; nome: string; ano_letivo?: number | null; status?: string | null };
+type TurmaItem = {
+  id: string;
+  nome?: string | null;
+  turno?: string | null;
+  ano_letivo?: number | string | null;
+  ano?: number | string | null;
+  curso_id?: string | null;
+  classe_id?: string | null;
+  curso?: { id?: string | null } | null;
+  classe?: { id?: string | null } | null;
+  capacidade_maxima?: number | null;
+  vagas?: number | null;
+  capacidade?: number | null;
+  lotacao?: number | null;
+  ocupacao_atual?: number | null;
+  matriculados_count?: number | null;
+  ocupacao?: number | null;
+  codigo?: string | null;
+  turma_codigo?: string | null;
+  codigo_interno?: string | null;
+  codigo_siga?: string | null;
+};
 type AlunoListItem = {
   id: string;
   nome: string;
@@ -39,7 +61,7 @@ export default function AlunosPage() {
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [classes, setClasses] = useState<Classe[]>([]);
   const [sessions, setSessions] = useState<Session[]>([]);
-  const [turmasDisponiveis, setTurmasDisponiveis] = useState<any[]>([]);
+  const [turmasDisponiveis, setTurmasDisponiveis] = useState<TurmaItem[]>([]);
   const [loadingTurmas, setLoadingTurmas] = useState(false);
   const [createdCandidaturaId, setCreatedCandidaturaId] = useState<string | null>(null);
   const [cacheReady, setCacheReady] = useState(false);
@@ -108,7 +130,7 @@ export default function AlunosPage() {
     } catch (_) {
       /* ignore */
     }
-  }, [formData, currentStep, activeTab, cacheReady]);
+  }, [formData, currentStep, activeTab, cacheReady, CACHE_TTL_MS]);
 
   useEffect(() => {
     if (activeTab !== "list") return;
@@ -168,11 +190,11 @@ export default function AlunosPage() {
 
         if (resSessions.ok) {
           const json = await resSessions.json().catch(() => ({}));
-          const items = json?.data || json?.items || [];
+          const items = (json?.data || json?.items || []) as Session[];
           setSessions(items);
           const anoAtual = Number(formData.anoLetivo);
-          const ativa = items.find((s: any) => s.status === "ativa");
-          const mesmaBase = items.find((s: any) => Number(s.ano_letivo) === anoAtual);
+          const ativa = items.find((s) => s.status === "ativa");
+          const mesmaBase = items.find((s) => Number(s.ano_letivo) === anoAtual);
           const sugestao = mesmaBase || ativa || items[0];
           if (sugestao?.ano_letivo && sugestao.ano_letivo !== anoAtual) {
             setFormData((prev) => ({ ...prev, anoLetivo: String(sugestao.ano_letivo) }));
@@ -219,27 +241,27 @@ export default function AlunosPage() {
         const params = new URLSearchParams();
         if (sessionId) params.append("session_id", sessionId);
 
-        let turmas: any[] = [];
+        let turmas: TurmaItem[] = [];
 
         if (sessionId) {
           const res = await fetch(`/api/secretaria/turmas-simples?${params.toString()}`);
           const json = await res.json().catch(() => ({}));
-          turmas = json?.items || json?.data || [];
+          turmas = (json?.items || json?.data || []) as TurmaItem[];
         }
 
         if (!sessionId || turmas.length === 0) {
           const res = await fetch(`/api/secretaria/turmas`);
           const json = await res.json().catch(() => ({}));
-          turmas = json?.items || [];
+          turmas = (json?.items || []) as TurmaItem[];
         }
 
         if (cancelled) return;
 
         const turnoFiltro = formData.turno.trim().toLowerCase();
-        const filtradas = turmas.filter((turma: any) => {
+        const filtradas = turmas.filter((turma) => {
           const cursoId = turma.curso_id || turma?.curso?.id;
           const classeId = turma.classe_id || turma?.classe?.id;
-          const anoTurma = Number((turma as any).ano_letivo ?? (turma as any).ano);
+          const anoTurma = Number(turma.ano_letivo ?? turma.ano);
           const turnoTurma = (turma.turno || "").toString().toLowerCase();
 
           const matchCurso = !formData.cursoId || cursoId === formData.cursoId;
@@ -287,7 +309,7 @@ export default function AlunosPage() {
     setCreatedCandidaturaId(null);
 
     try {
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         primeiro_nome: formData.firstName.trim(),
         sobrenome: formData.lastName.trim(),
         nome: `${formData.firstName} ${formData.lastName}`.trim(),
@@ -295,7 +317,7 @@ export default function AlunosPage() {
         telefone: formData.phone.trim() || null,
         endereco: formData.address.trim() || null,
         data_nascimento: formData.birthDate || null,
-        sexo: (formData.gender as any) || null,
+        sexo: formData.gender || null,
         bi_numero: formData.idNumber || null,
         nif: formData.nif || formData.idNumber || null,
         responsavel_nome: formData.guardianName || null,
@@ -373,7 +395,7 @@ export default function AlunosPage() {
     )
   ).filter(Boolean);
 
-  const vagasRestantes = (turma: any) => {
+  const vagasRestantes = (turma: TurmaItem) => {
     const capacidadeRaw = Number(
       turma.capacidade_maxima ?? turma.vagas ?? turma.capacidade ?? turma.lotacao
     );
@@ -384,7 +406,7 @@ export default function AlunosPage() {
     return Math.max(capacidade - ocupacao, 0);
   };
 
-  const turmaCodigo = (turma: any) =>
+  const turmaCodigo = (turma: TurmaItem) =>
     turma.codigo || turma.turma_codigo || turma.codigo_interno || turma.codigo_siga || "";
 
   const pendenciasAluno = (item: AlunoListItem) => {
@@ -837,7 +859,7 @@ export default function AlunosPage() {
                                   <p className="text-xs text-gray-500 flex gap-2">
                                     <span>Turno: {turma.turno || "N/D"}</span>
                                     <span className="text-gray-300">•</span>
-                                    <span>Ano: {(turma as any).ano_letivo ?? (turma as any).ano ?? formData.anoLetivo}</span>
+                                    <span>Ano: {turma.ano_letivo ?? turma.ano ?? formData.anoLetivo}</span>
                                   </p>
                                 </div>
                               </div>

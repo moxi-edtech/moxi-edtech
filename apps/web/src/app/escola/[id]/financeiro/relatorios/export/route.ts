@@ -1,16 +1,20 @@
 import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import type { Database } from '~types/supabase'
+
+type AuditLogRow = Database['public']['Tables']['audit_logs']['Row']
 
 export async function GET(req: Request) {
   try {
-    const s = (await supabaseServer()) as any
+    const s = await supabaseServer()
     const url = new URL(req.url)
     const format = (url.searchParams.get('format') || 'csv').toLowerCase()
     const q = url.searchParams.get('q') || ''
     const days = url.searchParams.get('days') || '30'
 
-    const { data: prof } = await s.from('profiles').select('escola_id').order('created_at', { ascending: false }).limit(1)
-    const escolaId = (prof?.[0]?.escola_id ?? null) as string | null
+    const { data: userRes } = await s.auth.getUser()
+    const escolaId = userRes?.user ? await resolveEscolaIdForUser(s, userRes.user.id) : null
     if (!escolaId) return NextResponse.json([])
 
     const since = (() => {
@@ -31,7 +35,7 @@ export async function GET(req: Request) {
     if (q) query = query.or(`action.ilike.%${q}%,entity.ilike.%${q}%`)
 
   const { data, error } = await query
-  const logs = (data ?? []) as any[]
+  const logs = (data ?? []) as AuditLogRow[]
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
     const ts = new Date().toISOString().replace(/[:.]/g, '-')
@@ -41,14 +45,14 @@ export async function GET(req: Request) {
       return res
     }
 
-    const csvEscape = (val: any) => {
+    const csvEscape = (val: unknown) => {
       const s = typeof val === 'string' ? val : JSON.stringify(val)
       if (s == null) return ''
       const escaped = s.replace(/"/g, '""')
       return `"${escaped}"`
     }
     const header = ['created_at','action','entity','entity_id','details']
-    const rows = logs.map((l: any) => [l.created_at, l.action, l.entity, l.entity_id ?? '', JSON.stringify(l.details || {})])
+    const rows = logs.map((l) => [l.created_at, l.action, l.entity, l.entity_id ?? '', JSON.stringify(l.details || {})])
     const csv = [header.map(csvEscape).join(','), ...rows.map(r => r.map(csvEscape).join(','))].join('\n')
     return new NextResponse(csv, { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="finance_audit_${ts}.csv"` } })
   } catch (err) {

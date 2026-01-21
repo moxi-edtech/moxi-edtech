@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import type { Database } from "~types/supabase";
 
 type MatriculaResumo = {
   status: string | null;
@@ -16,14 +17,14 @@ type TurmaResumo = {
 
 export async function GET() {
   try {
-    const supabase = await supabaseServerTyped<any>();
+    const supabase = await supabaseServerTyped<Database>();
     const { data: userRes } = await supabase.auth.getUser();
     const user = userRes?.user;
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
 
-    const metaEscolaId = (user.app_metadata as any)?.escola_id as string | undefined;
+    const metaEscolaId = (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? undefined;
     const escolaId = await resolveEscolaIdForUser(
-      supabase as any,
+      supabase,
       user.id,
       metaEscolaId ? String(metaEscolaId) : null
     );
@@ -66,13 +67,6 @@ export async function GET() {
       .order('status', { ascending: true });
     matsTurmaStatusQuery = applyKf2ListInvariants(matsTurmaStatusQuery, { defaultLimit: 200 });
 
-    const avisosQuery = supabase
-      .from('avisos')
-      .select('id, titulo, resumo, origem, created_at')
-      .eq('escola_id', escolaId)
-      .order('created_at', { ascending: false })
-      .limit(3);
-
     const ultimasMatriculasQuery = supabase
       .from('matriculas')
       .select(`id, status, created_at, turma_id, turmas ( nome, turno ), alunos ( id, profiles!alunos_profile_id_fkey ( nome, email ) )`)
@@ -80,12 +74,11 @@ export async function GET() {
       .order('created_at', { ascending: false })
       .limit(6);
 
-    const [countsRes, turmasRes, matsStatusRes, matsTurmaStatusRes, avisosRes, ultimasMatriculasRes] = await Promise.all([
+    const [countsRes, turmasRes, matsStatusRes, matsTurmaStatusRes, ultimasMatriculasRes] = await Promise.all([
       countsQuery,
       turmasQuery,
       matsStatusQuery,
       matsTurmaStatusQuery,
-      avisosQuery,
       ultimasMatriculasQuery,
     ]);
 
@@ -112,7 +105,7 @@ export async function GET() {
       new Set((turmasRes.data || []).map((t: any) => t.professor_id).filter((id: string | null | undefined): id is string => Boolean(id)))
     );
 
-    let professoresMap = new Map<string, { nome: string | null; email: string | null }>();
+    const professoresMap = new Map<string, { nome: string | null; email: string | null }>();
     if (professorIds.length) {
       const { data: professores } = await supabase
         .from('professores')
@@ -121,7 +114,7 @@ export async function GET() {
       const profileIds = Array.from(
         new Set((professores || []).map((p) => p.profile_id).filter((id: string | null | undefined): id is string => Boolean(id)))
       );
-      let profilesMap = new Map<string, { nome: string | null; email: string | null }>();
+      const profilesMap = new Map<string, { nome: string | null; email: string | null }>();
       if (profileIds.length) {
         const { data: perfis } = await supabase
           .from('profiles')
@@ -134,7 +127,7 @@ export async function GET() {
       for (const prof of professores || []) {
         if (!prof?.id) continue;
         const perfil = prof.profile_id ? profilesMap.get(prof.profile_id) : undefined;
-        professoresMap.set(prof.id, { nome: perfil?.nome ?? null, email: perfil?.email ?? null });
+        professoresMap.set( prof.id, { nome: perfil?.nome ?? null, email: perfil?.email ?? null });
       }
     }
 
@@ -155,13 +148,7 @@ export async function GET() {
 
     turmasDestaque.sort((a, b) => (b.total_alunos ?? 0) - (a.total_alunos ?? 0));
 
-    const avisos_recentes = (avisosRes.data || []).map((a: any) => ({
-      id: a.id,
-      titulo: a.titulo,
-      resumo: a.resumo,
-      origem: a.origem,
-      data: a.created_at,
-    }));
+    const avisos_recentes: any[] = [];
 
     const novasMatriculas = (ultimasMatriculasRes.data || []).map((row: any) => {
       const alunoProfile = row.alunos?.profiles?.[0] ?? row.alunos?.profiles;

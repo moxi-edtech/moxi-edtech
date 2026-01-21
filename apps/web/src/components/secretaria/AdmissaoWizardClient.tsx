@@ -47,31 +47,58 @@ function useDebouncedValue<T>(value: T, delayMs: number) {
   return debounced;
 }
 
+type JsonRecord = Record<string, unknown>;
+
+function isJsonRecord(value: unknown): value is JsonRecord {
+  return typeof value === "object" && value !== null;
+}
+
+type CandidaturaDraft = {
+  nome_candidato?: string | null;
+  dados_candidato?: {
+    telefone?: string | null;
+    bi_numero?: string | null;
+    email?: string | null;
+  } | null;
+  curso_id?: string | null;
+  classe_id?: string | null;
+  turma_preferencial_id?: string | null;
+  ano_letivo?: number | null;
+  status?: string | null;
+};
+
+type SimpleResult = { ok: boolean; message?: string; error?: string };
+
 async function postJson<TResp>(
   url: string,
   payload: unknown,
   extraHeaders?: Record<string, string>
-): Promise<{ ok: true; data: TResp } | { ok: false; status: number; error: string; raw?: any }> {
+): Promise<
+  | { ok: true; data: TResp }
+  | { ok: false; status: number; error: string; raw?: JsonRecord | null }
+> {
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json", ...(extraHeaders ?? {}) },
     body: JSON.stringify(payload),
   });
 
-  let json: any = null;
+  let json: JsonRecord | null = null;
   try {
-    json = await res.json();
+    const parsed = await res.json();
+    if (isJsonRecord(parsed)) json = parsed;
   } catch {
     // ignore
   }
 
   if (!res.ok) {
     // Route returns { error: zod.format() } or { error: string }
+    const errorValue = json?.error;
     const fallbackError =
-      typeof json?.error === "string"
-        ? json.error
-        : json?.error
-        ? JSON.stringify(json.error)
+      typeof errorValue === "string"
+        ? errorValue
+        : errorValue
+        ? JSON.stringify(errorValue)
         : "Falha na requisição.";
     const detail = typeof json?.details === "string" ? json.details : null;
     const code = typeof json?.code === "string" ? json.code : null;
@@ -100,7 +127,7 @@ function Step1Identificacao(props: {
   escolaId: string;
   candidaturaId: string | null;
   setCandidaturaId: (id: string | null) => void;
-  initialData: any;
+  initialData: CandidaturaDraft | null;
   hydrated: boolean;
   canEditDraft: boolean;
 }) {
@@ -197,7 +224,7 @@ function Step1Identificacao(props: {
       setLastSavedAt(Date.now());
       return { ok: true as const };
     },
-    [escolaId, canAutosave, payload, setCandidaturaId]
+    [canAutosave, canEditDraft, escolaId, payload, setCandidaturaId]
   );
 
   // autosave on debounced form change
@@ -355,7 +382,7 @@ function Step2FitAcademico(props: {
   setTurmaId: (id: string) => void;
   setCursoId: (id: string | null) => void;
   setClasseId: (id: string | null) => void;
-  initialData: any;
+  initialData: CandidaturaDraft | null;
   canEditDraft: boolean;
 }) {
   const { onBack, onNext, escolaId, candidaturaId, setTurmaId, setCursoId, setClasseId, initialData, canEditDraft } = props;
@@ -388,7 +415,7 @@ function Step2FitAcademico(props: {
     if (initialData.turma_preferencial_id) {
       setTurmaId(initialData.turma_preferencial_id);
     }
-  }, [initialData]);
+  }, [initialData, setClasseId, setCursoId, setTurmaId]);
 
   // load cursos/classes
   useEffect(() => {
@@ -663,7 +690,7 @@ function Step3Pagamento(props: {
   });
 
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<SimpleResult | null>(null);
   const [priceHint, setPriceHint] = useState<string | null>(null);
 
   useEffect(() => {
@@ -702,8 +729,8 @@ function Step3Pagamento(props: {
         } else {
           setPriceHint(null);
         }
-      } catch (err: any) {
-        if (err?.name === "AbortError") return;
+      } catch (err: unknown) {
+        if (typeof err === "object" && err && "name" in err && err.name === "AbortError") return;
         setPriceHint(null);
       }
     })();
@@ -738,7 +765,7 @@ function Step3Pagamento(props: {
       amount: payment.amount ? Number(payment.amount) : undefined,
     });
 
-    const resp = await postJson<any>(
+    const resp = await postJson<SimpleResult>(
       "/api/secretaria/admissoes/approve",
       payload
     );
@@ -755,7 +782,7 @@ function Step3Pagamento(props: {
     }
 
     setLoading(true);
-    const resp = await postJson<any>("/api/secretaria/admissoes/save_for_later", {
+    const resp = await postJson<SimpleResult>("/api/secretaria/admissoes/save_for_later", {
       candidatura_id: candidaturaId,
     });
     setLoading(false);
@@ -872,7 +899,7 @@ export default function AdmissaoWizardClient({ escolaId }: { escolaId: string })
   const [turmaId, setTurmaId] = useState<string | null>(null);
   const [cursoId, setCursoId] = useState<string | null>(null);
   const [classeId, setClasseId] = useState<string | null>(null);
-  const [initialData, setInitialData] = useState<any>(null);
+  const [initialData, setInitialData] = useState<CandidaturaDraft | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [canEditDraft, setCanEditDraft] = useState(true);
 

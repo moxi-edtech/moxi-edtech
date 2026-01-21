@@ -1,10 +1,15 @@
 // app/api/secretaria/professores/export/route.ts
 import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import type { Database } from '~types/supabase'
+
+type ProfileRow = Database['public']['Tables']['profiles']['Row']
+type EscolaUserRow = Database['public']['Tables']['escola_users']['Row']
 
 export async function GET(req: Request) {
   try {
-    const s = (await supabaseServer()) as any
+    const s = await supabaseServer()
     const url = new URL(req.url)
     const format = (url.searchParams.get('format') || 'csv').toLowerCase()
     const q = url.searchParams.get('q') || ''
@@ -13,11 +18,7 @@ export async function GET(req: Request) {
 
     const { data: sess } = await s.auth.getUser()
     const user = sess?.user
-    let escolaId: string | null = null
-    if (user) {
-      const { data: prof } = await s.from('profiles').select('escola_id').eq('user_id', user.id).maybeSingle()
-      escolaId = (prof as any)?.escola_id ?? null
-    }
+    const escolaId = user ? await resolveEscolaIdForUser(s, user.id) : null
     if (!escolaId) return NextResponse.json([])
 
     const since = (() => {
@@ -47,12 +48,12 @@ export async function GET(req: Request) {
       .in('papel', papels)
       .gte('created_at', since)
     if (vincErr) return NextResponse.json({ error: vincErr.message }, { status: 500 })
-    const vincList = (vinc || []) as Array<{ user_id: string; created_at: string; papel: string }>
+    const vincList = (vinc || []) as Array<Pick<EscolaUserRow, 'user_id' | 'created_at' | 'papel'>>
     const ids = vincList.map(v => v.user_id)
     if (ids.length === 0) return NextResponse.json([])
 
     let profQ = s
-      .from('profiles' as any)
+      .from('profiles')
       .select('user_id, nome, email, telefone, numero_login, created_at')
       .in('user_id', ids)
       .gte('created_at', since)
@@ -62,14 +63,14 @@ export async function GET(req: Request) {
     if (q) {
       const uuidRe = /^[0-9a-fA-F-]{36}$/
       if (uuidRe.test(q)) {
-        profQ = (profQ as any).eq('user_id', q)
+        profQ = profQ.eq('user_id', q)
       } else {
-        profQ = (profQ as any).or(`nome.ilike.%${q}%,email.ilike.%${q}%,telefone.ilike.%${q}%`)
+        profQ = profQ.or(`nome.ilike.%${q}%,email.ilike.%${q}%,telefone.ilike.%${q}%`)
       }
     }
 
     const { data, error } = await profQ
-    const rows = (data ?? []) as any[]
+    const rows = (data ?? []) as ProfileRow[]
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
     const ts = new Date().toISOString().replace(/[:.]/g, '-')
@@ -81,7 +82,7 @@ export async function GET(req: Request) {
     }
 
     // Formato CSV
-    const csvEscape = (val: any) => {
+    const csvEscape = (val: unknown) => {
       const s = String(val ?? '')
       const escaped = s.replace(/"/g, '""')
       return `"${escaped}"`
@@ -90,7 +91,7 @@ export async function GET(req: Request) {
     const header = ['ID', 'User ID', 'Nome', 'Email', 'Telefone', 'Cargo', 'Número Login', 'Data Criação']
     const csv = [
       header.map(csvEscape).join(','), 
-      ...rows.map((r: any) => {
+      ...rows.map((r) => {
         const vinc = vincList.find(v => v.user_id === r.user_id)
         const createdAt = vinc?.created_at || r.created_at
         const papel = vinc?.papel

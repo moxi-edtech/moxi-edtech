@@ -30,6 +30,15 @@ type PorTurma = {
   inadimplenciaPct: number;
 };
 
+type SessionItem = {
+  id: string;
+  nome?: string | null;
+  status?: string | null;
+  ano_letivo?: number | string | null;
+  data_inicio?: string | null;
+  data_fim?: string | null;
+};
+
 export default function Page() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +46,7 @@ export default function Page() {
   const [porTurma, setPorTurma] = useState<PorTurma[]>([]);
 
   // --- Alinhamento com Sessão Acadêmica ---
-  const [sessions, setSessions] = useState<any[]>([]);
+  const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [selectedSession, setSelectedSession] = useState<string>("");
 
   const sessionSelecionada = useMemo(() => sessions.find((s) => s.id === selectedSession), [sessions, selectedSession]);
@@ -52,10 +61,10 @@ export default function Page() {
 
   const anoLetivoAtivo = useMemo(() => {
     const candidatos = [
-      (sessionSelecionada as any)?.ano_letivo,
-      (sessionSelecionada as any)?.nome,
-      (sessionSelecionada as any)?.data_inicio,
-      (sessionSelecionada as any)?.data_fim,
+      sessionSelecionada?.ano_letivo,
+      sessionSelecionada?.nome,
+      sessionSelecionada?.data_inicio,
+      sessionSelecionada?.data_fim,
     ];
 
     for (const candidato of candidatos) {
@@ -71,9 +80,13 @@ export default function Page() {
         const res = await fetch("/api/secretaria/school-sessions");
         const json = await res.json();
         if (json.ok) {
-          const sessionItems = Array.isArray(json.data) ? json.data : Array.isArray(json.items) ? json.items : [];
+          const sessionItems = Array.isArray(json.data)
+            ? (json.data as SessionItem[])
+            : Array.isArray(json.items)
+              ? (json.items as SessionItem[])
+              : [];
           setSessions(sessionItems);
-          const activeSession = sessionItems.find((s: any) => s.status === "ativa");
+          const activeSession = sessionItems.find((s) => s.status === "ativa");
           if (activeSession) setSelectedSession(activeSession.id);
           else if (sessionItems.length > 0) setSelectedSession(sessionItems[0].id);
         }
@@ -103,8 +116,8 @@ export default function Page() {
           setMensal(j.mensal || []);
           setPorTurma(j.porTurma || []);
         }
-      } catch (e: any) {
-        if (!cancelled) setError(e?.message || 'Erro ao carregar');
+      } catch (e: unknown) {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Erro ao carregar');
       } finally {
         if (!cancelled) setLoading(false);
       }

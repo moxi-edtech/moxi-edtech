@@ -9,7 +9,7 @@
     "prebuild": "pnpm -w db:types",
     "build": "npm_config_registry=https://registry.npmjs.org/ npm_config_workspace= npm_config_workspaces= next build",
     "start": "npm_config_registry=https://registry.npmjs.org/ npm_config_workspace= npm_config_workspaces= next start",
-    "lint": "npm_config_registry=https://registry.npmjs.org/ npm_config_workspace= npm_config_workspaces= next lint",
+    "lint": "npm_config_registry=https://registry.npmjs.org/ npm_config_workspace= npm_config_workspaces= eslint . --max-warnings 10000",
     "docker:build": "docker build -t moxi-edtech .",
     "docker:run": "docker run -p 3000:3000 moxi-edtech",
     "docker:compose": "docker-compose up",

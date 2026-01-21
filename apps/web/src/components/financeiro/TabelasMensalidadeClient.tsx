@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { 
-  Plus, Filter, Search, Edit, Trash2, CheckCircle2, AlertCircle, 
+  Plus, Filter, Search, Edit, Trash2, AlertCircle, 
   DollarSign, Calendar, Layers, BookOpen, X
 } from "lucide-react";
 import { toast } from "sonner";
@@ -22,6 +22,7 @@ type Item = {
 }; 
 type Ref = { id: string; nome: string };
 type Curso = { id: string; nome: string; tipo: string; classes: Ref[] };
+type CursoResponse = { id: string; nome: string; tipo?: string | null; classes?: Ref[] };
 
 export default function TabelasMensalidadeClient() {
   // --- ESTADOS ---
@@ -29,6 +30,8 @@ export default function TabelasMensalidadeClient() {
   const [items, setItems] = useState<Item[]>([]);
   const [cursos, setCursos] = useState<Curso[]>([]);
   const { escolaId, isLoading: escolaLoading, error: escolaError } = useEscolaId();
+  void escolaLoading
+  void escolaError
   
   // Filtros
   const [search, setSearch] = useState("");
@@ -40,7 +43,7 @@ export default function TabelasMensalidadeClient() {
   const [editingItem, setEditingItem] = useState<Item | null>(null);
 
   // --- DATA FETCHING ---
-  const loadAll = async () => {
+  const loadAll = useCallback(async () => {
     setLoading(true);
     try {
         const anoQuery = fAno ? `?ano_letivo=${encodeURIComponent(fAno)}` : "";
@@ -51,13 +54,11 @@ export default function TabelasMensalidadeClient() {
         ]);
         
         const j0: { ok?: boolean; items?: Item[] } = await r0.json();
-        const j1: {
-            data: any[] | undefined; ok?: boolean; items?: any[] 
-} = await r1.json();
+        const j1: { data?: CursoResponse[]; ok?: boolean; items?: CursoResponse[] } = await r1.json();
 
         if (j0.ok) setItems(j0.items || []);
         if (j1.ok) {
-          const mappedCursos = (j1.items || j1.data || []).map((c: any) => ({
+          const mappedCursos = (j1.items || j1.data || []).map((c) => ({
             id: c.id,
             nome: c.nome,
             tipo: c.tipo ?? 'core',
@@ -66,14 +67,14 @@ export default function TabelasMensalidadeClient() {
           setCursos(mappedCursos);
         }
 
-    } catch (e) {
+    } catch {
       toast.error("Erro ao carregar dados.");
     } finally {
       setLoading(false);
     }
-  };
+  }, [escolaId, fAno]);
 
-  useEffect(() => { if (escolaId) loadAll(); }, [fAno, escolaId]);
+  useEffect(() => { if (escolaId) loadAll(); }, [escolaId, loadAll]);
 
   // --- FILTRAGEM ---
   const filtered = useMemo(() => {

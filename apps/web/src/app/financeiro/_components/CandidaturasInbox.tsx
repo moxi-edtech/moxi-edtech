@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { CheckCircle2, XCircle, Paperclip, Loader2 } from 'lucide-react'
@@ -14,6 +13,14 @@ type InboxItem = {
   turmaPreferencialId: string | null
   pagamento: { metodo?: string | null; referencia?: string | null; comprovativo_url?: string | null }
   created_at: string | null
+}
+
+type PagamentoPayload = {
+  metodo?: string | null
+  referencia?: string | null
+  comprovativo_url?: string | null
+  valor?: number | string | null
+  amount?: number | string | null
 }
 
 const normalizeMetodoPagamento = (raw?: string | null) => {
@@ -50,6 +57,7 @@ export function FinanceiroCandidaturasInbox({
   initialItems: InboxItem[]
   initialSelectedId?: string | null
 }) {
+  void escolaId
   const [items, setItems] = useState<InboxItem[]>(initialItems || [])
   const [selected, setSelected] = useState<InboxItem | null>(() => {
     if (!initialSelectedId) return null
@@ -79,13 +87,13 @@ export function FinanceiroCandidaturasInbox({
     setLoadingId(item.id)
     setError(null)
     try {
-      const pagamento = item.pagamento || {}
+      const pagamento = (item.pagamento || {}) as PagamentoPayload
       const payload = {
         candidatura_id: item.id,
         turma_id: item.turmaPreferencialId,
         metodo_pagamento: normalizeMetodoPagamento(pagamento.metodo),
         comprovativo_url: pagamento.comprovativo_url || undefined,
-        amount: parseAmount((pagamento as any)?.valor ?? (pagamento as any)?.amount),
+        amount: parseAmount(pagamento.valor ?? pagamento.amount),
       }
 
       const res = await fetch('/api/secretaria/admissoes/convert', {
@@ -100,8 +108,8 @@ export function FinanceiroCandidaturasInbox({
       if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao converter')
       removeItem(item.id)
       setSelected(null)
-    } catch (e: any) {
-      setError(e?.message || 'Erro ao confirmar')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Erro ao confirmar')
     } finally {
       setLoadingId(null)
     }
@@ -121,8 +129,8 @@ export function FinanceiroCandidaturasInbox({
       if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao rejeitar')
       removeItem(item.id)
       setSelected(null)
-    } catch (e: any) {
-      setError(e?.message || 'Erro ao rejeitar')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Erro ao rejeitar')
     } finally {
       setLoadingId(null)
     }

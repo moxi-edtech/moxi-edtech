@@ -57,7 +57,7 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
       );
       const json = await res.json();
       if (!res.ok || !json?.ok) return;
-      const items = (json.items || []).map((t: any) => ({
+      const items = (json.items || []).map((t: { id: string; nome?: string | null }) => ({
         id: String(t.id),
         nome: String(t.nome ?? "Turma"),
       }));
@@ -81,7 +81,7 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
       }
       loadTurmas(selectedSession);
     }
-  }, [selectedSession, isOpen]);
+  }, [selectedSession, isOpen, sessions]);
 
   async function handleGerar() {
     if (!selectedSession) {
@@ -117,9 +117,9 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
         setIsOpen(false);
         setStatus("idle");
       }, 2000);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setStatus("error");
-      setMsg(err?.message || "Falha ao gerar mensalidades");
+      setMsg(err instanceof Error ? err.message : "Falha ao gerar mensalidades");
     } finally {
       setLoading(false);
     }

@@ -13,12 +13,19 @@ interface Aluno {
   nome: string;
 }
 
+type SugestaoRematricula = {
+  origem: Turma;
+  destino?: Turma | null;
+  regra?: string | null;
+  total_alunos?: number | null;
+};
+
 export default function RematriculaPage() {
   const router = useRouter();
   const [originTurmaId, setOriginTurmaId] = useState("");
   const [destinationTurmaId, setDestinationTurmaId] = useState("");
   const [turmas, setTurmas] = useState<Turma[]>([]);
-  const [sugestoes, setSugestoes] = useState<any[]>([]);
+  const [sugestoes, setSugestoes] = useState<SugestaoRematricula[]>([]);
   const [loadingSugestoes, setLoadingSugestoes] = useState(false);
   const [alunos, setAlunos] = useState<Aluno[]>([]);
   const [selectedAlunos, setSelectedAlunos] = useState<string[]>([]);
@@ -36,7 +43,7 @@ export default function RematriculaPage() {
         if (json.ok) {
           setTurmas(json.items);
         }
-      } catch (e) {
+      } catch {
         setError("Falha ao carregar turmas.");
       }
     };
@@ -53,7 +60,7 @@ export default function RematriculaPage() {
           if (json.ok) {
             setAlunos(json.items);
           }
-        } catch (e) {
+        } catch {
           setError("Falha ao carregar alunos.");
         }
       } else {
@@ -71,7 +78,7 @@ export default function RematriculaPage() {
       if (json.ok) {
         setSugestoes(json.sugestoes);
       }
-    } catch (e) {
+    } catch {
       setError("Falha ao carregar sugestões.");
     } finally {
       setLoadingSugestoes(false);

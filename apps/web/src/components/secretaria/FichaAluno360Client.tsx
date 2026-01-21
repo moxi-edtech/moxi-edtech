@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertCircle,
@@ -15,7 +15,6 @@ import {
   CreditCard,
   FileText,
   GraduationCap,
-  MoreVertical,
   Pencil
 } from "lucide-react";
 
@@ -47,7 +46,7 @@ type Props = {
 
 // --- HELPER COMPONENTS ---
 
-function InfoRow({ label, value, icon: Icon }: { label: string, value: string | null, icon?: any }) {
+function InfoRow({ label, value, icon: Icon }: { label: string; value: string | null; icon?: React.ElementType }) {
   if (!value) return null;
   return (
     <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
@@ -80,6 +79,12 @@ export default function FichaAluno360Client({ aluno, error }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'geral' | 'financeiro' | 'academico'>('geral');
 
+  const alunoId = aluno?.id ?? '';
+  const displayIdCurto = alunoId ? alunoId.slice(0, 8).toUpperCase() : '';
+  const dataNascFmt = aluno?.data_nascimento
+    ? new Date(aluno.data_nascimento).toLocaleDateString("pt-PT", { day: '2-digit', month: 'long', year: 'numeric' })
+    : null;
+
   // --- ERROR STATE ---
   if (error || !aluno) {
     return (
@@ -106,14 +111,8 @@ export default function FichaAluno360Client({ aluno, error }: Props) {
   }
 
   // --- DATA FORMATTING ---
-  const displayIdCurto = useMemo(() => aluno.id.slice(0, 8).toUpperCase(), [aluno.id]);
-  
   const encarregadoNome = aluno.responsavel_nome || aluno.responsavel || "Não definido";
   const encarregadoContato = aluno.responsavel_contato || aluno.telefone_responsavel || aluno.telefone || "—";
-  
-  const dataNascFmt = aluno.data_nascimento
-    ? new Date(aluno.data_nascimento).toLocaleDateString("pt-PT", { day: '2-digit', month: 'long', year: 'numeric' })
-    : null;
 
   return (
     <div className="bg-slate-50/50 text-slate-900 font-sora min-h-screen flex flex-col pb-20">
