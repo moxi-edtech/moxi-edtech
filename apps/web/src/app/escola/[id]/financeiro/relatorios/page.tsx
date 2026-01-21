@@ -1,5 +1,7 @@
 import PortalLayout from "@/components/layout/PortalLayout"
 import { supabaseServer } from "@/lib/supabaseServer"
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
+import type { Database } from "~types/supabase"
 import AuditPageView from "@/components/audit/AuditPageView"
 
 export const dynamic = 'force-dynamic'
@@ -9,8 +11,8 @@ type SearchParams = { q?: string; days?: string }
 export default async function Page(props: { searchParams?: Promise<SearchParams> }) {
   const searchParams = (await props.searchParams) ?? ({} as SearchParams)
   const s = await supabaseServer()
-  const { data: prof } = await s.from('profiles').select('escola_id').order('created_at', { ascending: false }).limit(1)
-  const escolaId = prof?.[0]?.escola_id as string | null
+  const { data: userRes } = await s.auth.getUser()
+  const escolaId = userRes?.user ? await resolveEscolaIdForUser(s, userRes.user.id) : null
 
   const q = searchParams.q || ''
   const days = searchParams.days || '30'
@@ -43,8 +45,8 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
 
   if (q) query = query.or(`action.ilike.%${q}%,entity.ilike.%${q}%`)
 
-  const { data, error } = await query
-  const logs = (data ?? []) as any[]
+  const { data } = await query
+  const logs = (data ?? []) as Array<Database['public']['Tables']['audit_logs']['Row']>
 
   return (
     <PortalLayout>
@@ -59,8 +61,8 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
                 <a key={d} href={`/financeiro/relatorios?days=${encodeURIComponent(d)}&q=${encodeURIComponent(q)}`} className={`px-2.5 py-1 rounded border ${days === d ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100'}`}>{d === '1' ? '1 dia' : `${d} dias`}</a>
               ))}
               <span className="mx-2 h-4 w-px bg-gray-200" />
-              <a href={`/financeiro/relatorios/export?format=csv&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}`} className="px-2.5 py-1 rounded border bg-white text-gray-700 hover:bg-gray-100" target="_blank">Exportar CSV</a>
-              <a href={`/financeiro/relatorios/export?format=json&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}`} className="px-2.5 py-1 rounded border bg-white text-gray-700 hover:bg-gray-100" target="_blank">Exportar JSON</a>
+              <a href={`/financeiro/relatorios/export?format=csv&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}`} className="px-2.5 py-1 rounded border bg-white text-gray-700 hover:bg-gray-100" target="_blank" rel="noreferrer">Exportar CSV</a>
+              <a href={`/financeiro/relatorios/export?format=json&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}`} className="px-2.5 py-1 rounded border bg-white text-gray-700 hover:bg-gray-100" target="_blank" rel="noreferrer">Exportar JSON</a>
             </div>
           </div>
           <form action="" className="flex gap-2 text-sm">
@@ -81,9 +83,11 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
             </tr>
           </thead>
           <tbody>
-            {logs.map((l: any) => (
+            {logs.map((l) => (
               <tr key={l.id} className="border-b last:border-b-0">
-                <td className="py-2 pr-4 whitespace-nowrap">{new Date(l.created_at).toLocaleString()}</td>
+                <td className="py-2 pr-4 whitespace-nowrap">
+                  {l.created_at ? new Date(l.created_at).toLocaleString() : '—'}
+                </td>
                 <td className="py-2 pr-4">{l.action}</td>
                 <td className="py-2 pr-4">{l.entity}</td>
                 <td className="py-2 pr-4">{l.entity_id ?? '—'}</td>

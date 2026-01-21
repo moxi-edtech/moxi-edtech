@@ -4,11 +4,9 @@ import {
   User,
   MapPin,
   Phone,
-  Shield,
   GraduationCap,
   Calendar,
   DollarSign,
-  AlertCircle,
   CheckCircle,
   Clock,
 } from "lucide-react";
@@ -20,10 +18,53 @@ const kwanza = new Intl.NumberFormat("pt-AO", {
   currency: "AOA",
 });
 
+type DossierPerfil = {
+  nome_completo?: string | null;
+  nome?: string | null;
+  foto_url?: string | null;
+  status?: string | null;
+  numero_processo?: string | null;
+  bi_numero?: string | null;
+  data_nascimento?: string | null;
+  encarregado_nome?: string | null;
+  responsavel?: string | null;
+  encarregado_telefone?: string | null;
+  telefone_responsavel?: string | null;
+  endereco?: string | null;
+  endereco_bairro?: string | null;
+  provincia?: string | null;
+  provincia_residencia?: string | null;
+};
+
+type DossierHistoricoItem = {
+  status?: string | null;
+  ano_letivo?: string | number | null;
+  turma?: string | null;
+  numero_matricula?: string | null;
+  turno?: string | null;
+};
+
+type DossierFinanceiro = {
+  total_em_atraso?: number | null;
+  total_pago?: number | null;
+  mensalidades?: DossierMensalidade[] | null;
+};
+
+type DossierMensalidade = {
+  id?: string | null;
+  status?: string | null;
+  mes?: number | null;
+  ano?: number | null;
+  valor?: number | null;
+  pago?: number | null;
+  vencimento?: string | null;
+  pago_em?: string | null;
+};
+
 type Dossier = {
-  perfil: any;
-  historico: any[];
-  financeiro: any;
+  perfil: DossierPerfil;
+  historico: DossierHistoricoItem[];
+  financeiro: DossierFinanceiro;
 };
 
 export default async function AlunoDossierPage({
@@ -39,12 +80,12 @@ export default async function AlunoDossierPage({
   } = await supabase.auth.getUser();
 
   const escolaIdFromMetadata =
-    (user?.user_metadata as any)?.escola_id ||
-    (user?.app_metadata as any)?.escola_id ||
+    (user?.user_metadata as { escola_id?: string | null } | null)?.escola_id ||
+    (user?.app_metadata as { escola_id?: string | null } | null)?.escola_id ||
     null;
   const escolaId =
     escolaIdFromMetadata ||
-    (user ? await resolveEscolaIdForUser(supabase as any, user.id) : null);
+    (user ? await resolveEscolaIdForUser(supabase, user.id) : null);
 
   if (!user || !escolaId) return notFound();
 
@@ -63,7 +104,7 @@ export default async function AlunoDossierPage({
   }
 
   const { perfil, historico = [], financeiro = {} } = typedDossier;
-  const mensalidades: any[] = Array.isArray(financeiro.mensalidades)
+  const mensalidades: DossierMensalidade[] = Array.isArray(financeiro.mensalidades)
     ? financeiro.mensalidades
     : [];
 
@@ -80,7 +121,7 @@ export default async function AlunoDossierPage({
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={perfil.foto_url}
-              alt={perfil.nome_completo || perfil.nome}
+              alt={perfil.nome_completo || perfil.nome || "Aluno"}
               className="h-full w-full object-cover"
             />
           ) : (
@@ -193,7 +234,7 @@ export default async function AlunoDossierPage({
               </div>
             ) : (
               <div className="relative border-l border-gray-200 ml-2 space-y-6">
-                {historico.map((mat: any, idx: number) => (
+                {historico.map((mat, idx) => (
                   <div key={idx} className="ml-4 relative">
                     <div
                       className={`absolute -left-[21px] top-1 w-3 h-3 rounded-full border-2 border-white ${
@@ -256,7 +297,7 @@ export default async function AlunoDossierPage({
               <label className="text-xs text-gray-400 block">
                 Mensalidades Recentes
               </label>
-              {mensalidades.slice(0, 5).map((fat: any) => (
+              {mensalidades.slice(0, 5).map((fat) => (
                 <div
                   key={fat.id}
                   className="flex items-center justify-between p-2 hover:bg-gray-50 rounded border border-transparent hover:border-gray-100 transition text-sm"
@@ -268,21 +309,21 @@ export default async function AlunoDossierPage({
                       <Clock className="w-4 h-4 text-yellow-500" />
                     )}
                     <span className="text-gray-700 font-medium">
-                      {new Date(0, (fat.mes ?? fat.mes_referencia ?? 1) - 1).toLocaleString(
+                      {new Date(0, (fat.mes ?? 1) - 1).toLocaleString(
                         "pt-PT",
                         { month: "short" }
                       )}
-                      /{fat.ano ?? fat.ano_referencia}
+                      /{fat.ano ?? new Date().getFullYear()}
                     </span>
                   </div>
                   <div className="text-right">
                     <div className="text-gray-900 font-bold">
-                      {kwanza.format(fat.valor ?? fat.valor_previsto ?? 0)}
+                      {kwanza.format(fat.valor ?? 0)}
                     </div>
-                    {fat.vencimento || fat.data_vencimento ? (
+                    {fat.vencimento ? (
                       <div className="text-[10px] text-gray-400">
                         Venc:{" "}
-                        {new Date(fat.vencimento || fat.data_vencimento).toLocaleDateString(
+                        {new Date(fat.vencimento).toLocaleDateString(
                           "pt-PT",
                           { day: "2-digit", month: "2-digit" }
                         )}

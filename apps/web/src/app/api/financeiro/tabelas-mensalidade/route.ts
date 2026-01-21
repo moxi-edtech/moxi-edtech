@@ -1,58 +1,17 @@
 import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { createClient as createAdminClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '~types/supabase'
 import { applyKf2ListInvariants } from '@/lib/kf2'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 
 // Lista e cria/atualiza regras de mensalidade por escola/curso/classe usando
 // a tabela padrão `financeiro_tabelas` (valor_mensalidade).
 
-async function resolverEscolaId(client: any, user: any) {
-  try {
-    const { data } = await client.rpc('current_tenant_escola_id')
-    if (data) return data as string
-  } catch {}
+type FinanceiroTabelaRow = Database['public']['Tables']['financeiro_tabelas']['Row']
+type FinanceiroTabelaInsert = Database['public']['Tables']['financeiro_tabelas']['Insert']
 
-  const claimEscola = (user?.app_metadata?.escola_id || user?.user_metadata?.escola_id) as
-    | string
-    | undefined
-  if (claimEscola) return claimEscola as string
-
-  try {
-    const { data: prof } = await client
-      .from('profiles' as any)
-      .select('current_escola_id, escola_id')
-      .eq('user_id', user.id)
-      .limit(1)
-    const perfil = prof?.[0] as any
-    if (perfil?.current_escola_id) return perfil.current_escola_id as string
-    if (perfil?.escola_id) return perfil.escola_id as string
-  } catch {}
-
-  try {
-    const { data: vinc } = await client
-      .from('escola_users')
-      .select('escola_id')
-      .eq('user_id', user.id)
-      .limit(1)
-    const vinculo = vinc?.[0] as any
-    if (vinculo?.escola_id) return vinculo.escola_id as string
-  } catch {}
-
-  return null
-}
-
-async function possuiVinculo(client: any, userId: string, escolaId: string) {
-  try {
-    const { data } = await client
-      .from('escola_users')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('escola_id', escolaId)
-      .limit(1)
-    if (data && data.length > 0) return true
-  } catch {}
-
+async function possuiVinculo(client: SupabaseClient<Database>, userId: string, escolaId: string) {
   try {
     const { data } = await client
       .from('escola_users')
@@ -66,7 +25,7 @@ async function possuiVinculo(client: any, userId: string, escolaId: string) {
   return false
 }
 
-function getTenantClient(fallback: any) {
+function getTenantClient(fallback: SupabaseClient<Database>) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (url && serviceRole) {
@@ -102,14 +61,14 @@ export async function GET(req: Request) {
     const user = userRes?.user
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
-    const escolaId = await resolverEscolaId(s as any, user)
+    const escolaId = await resolveEscolaIdForUser(s, user.id)
     if (!escolaId) return NextResponse.json({ ok: true, items: [] })
 
     const url = new URL(req.url)
     const anoParam = parseAnoLetivo(url.searchParams.get('ano_letivo') || url.searchParams.get('ano'))
     const anoLetivo = anoParam ?? new Date().getFullYear()
 
-    const vinculado = await possuiVinculo(s as any, user.id, escolaId)
+    const vinculado = await possuiVinculo(s, user.id, escolaId)
     if (!vinculado) return NextResponse.json({ ok: false, error: 'Sem vínculo com a escola' }, { status: 403 })
 
     const db = getTenantClient(s)
@@ -126,7 +85,7 @@ export async function GET(req: Request) {
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
 
-    const items = (data || []).map((row: any) => ({
+    const items = (data || []).map((row) => ({
       id: row.id,
       curso_id: row.curso_id,
       classe_id: row.classe_id,
@@ -152,7 +111,7 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
     const body = await req.json().catch(() => ({}))
-    const { curso_id, classe_id, valor, dia_vencimento, ativo = true, ano_letivo } = body || {}
+    const { curso_id, classe_id, valor, dia_vencimento, ano_letivo } = body || {}
     const parsedValor = parseValor(valor)
     if (parsedValor === null || parsedValor <= 0) return NextResponse.json({ ok: false, error: 'Valor inválido' }, { status: 400 })
     const parsedDiaRaw = Number(dia_vencimento)
@@ -160,10 +119,10 @@ export async function POST(req: Request) {
 
     const anoLetivo = parseAnoLetivo(ano_letivo) ?? new Date().getFullYear()
 
-    const escolaId = await resolverEscolaId(s as any, user)
+    const escolaId = await resolveEscolaIdForUser(s, user.id)
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 })
 
-    const vinculado = await possuiVinculo(s as any, user.id, escolaId)
+    const vinculado = await possuiVinculo(s, user.id, escolaId)
     if (!vinculado) return NextResponse.json({ ok: false, error: 'Sem vínculo com a escola' }, { status: 403 })
 
     const db = getTenantClient(s)
@@ -171,9 +130,9 @@ export async function POST(req: Request) {
     // Upsert por (escola, ano, curso, classe) na tabela oficial
     const cursoId = curso_id || null
     const classeId = classe_id || null
-    let valorMatricula = 0
+    const valorMatricula = 0
 
-    const payload = {
+    const payload: FinanceiroTabelaInsert = {
       escola_id: escolaId,
       ano_letivo: anoLetivo,
       curso_id: cursoId,
@@ -182,7 +141,7 @@ export async function POST(req: Request) {
       valor_mensalidade: Number(parsedValor.toFixed(2)),
       dia_vencimento: parsedDia ? Math.max(1, Math.min(31, parsedDia)) : null,
       updated_at: new Date().toISOString(),
-    } as any
+    }
 
     if (body?.id) {
       const { data: existing, error: findErr } = await db
@@ -194,7 +153,7 @@ export async function POST(req: Request) {
       if (findErr) return NextResponse.json({ ok: false, error: findErr.message }, { status: 400 })
       if (!existing) return NextResponse.json({ ok: false, error: 'Registro não encontrado' }, { status: 404 })
 
-      payload.valor_matricula = (existing as any)?.valor_matricula ?? 0
+      payload.valor_matricula = existing?.valor_matricula ?? 0
 
       const { data, error } = await db
         .from('financeiro_tabelas')
@@ -216,8 +175,8 @@ export async function POST(req: Request) {
         .eq('curso_id', cursoId)
         .eq('classe_id', classeId)
         .maybeSingle()
-      if (existing && typeof (existing as any).valor_matricula === 'number') {
-        payload.valor_matricula = (existing as any).valor_matricula
+      if (existing && typeof existing.valor_matricula === 'number') {
+        payload.valor_matricula = existing.valor_matricula
       }
     } catch {}
 
@@ -246,10 +205,10 @@ export async function DELETE(req: Request) {
     const id = url.searchParams.get('id') || null
     if (!id) return NextResponse.json({ ok: false, error: 'id é obrigatório' }, { status: 400 })
 
-    const escolaId = await resolverEscolaId(s as any, user)
+    const escolaId = await resolveEscolaIdForUser(s, user.id)
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 })
 
-    const vinculado = await possuiVinculo(s as any, user.id, escolaId)
+    const vinculado = await possuiVinculo(s, user.id, escolaId)
     if (!vinculado) return NextResponse.json({ ok: false, error: 'Sem vínculo com a escola' }, { status: 403 })
 
     const db = getTenantClient(s)

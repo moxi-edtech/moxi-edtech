@@ -3,10 +3,20 @@
 ## 1. SUMÁRIO EXECUTIVO
 
 - Findings CRÍTICOS: **0**
-- Findings ALTO: **0**
-- Total findings: **6**
+- Findings ALTO: **1**
+- Total findings: **7**
 
 ## 2. ACHADOS (ordenado por severidade)
+
+### NO_STORE — Anti-pattern — uso de cache: 'no-store' em páginas/relatórios
+- Severidade: **HIGH**
+- Status: **PARTIAL**
+- Evidências:
+  - `apps/web/src/app/financeiro/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/secretaria/MatriculasListClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/secretaria/TurmaForm.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/app/escola/[id]/financeiro/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+- Recomendação: Remover no-store onde houver MV/camadas cacheáveis; manter só em rotas realmente sensíveis.
 
 ### KF2 — KF2 — Pesquisa Global (Command Palette) invariants
 - Severidade: **LOW**
@@ -41,13 +51,13 @@
   - `supabase/migrations/20261019151000_finance_confirm_payment_patch.sql` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/migrations/20261019170000_create_admissao_rpcs.sql` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/functions/outbox-worker/index.ts` — match: /audit_logs|auditLog|create_audit/i
-  - `supabase/.branches/remote/schema.sql` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/migrations_archive/migrations_backup/20250917060400_audit_redaction.sql` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/migrations_archive/migrations_backup/20250917060500_audit_triggers.sql` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/migrations_archive/migrations_backup/20250917060600_audit_user_default.sql` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/migrations_archive/migrations_backup/20250917060700_create_audit_logs.sql` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/migrations_archive/migrations_backup/20251108141000_fix_rls_initplan_policies.sql` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/migrations_archive/migrations/20250915000000_remote_schema.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations_archive/migrations/20250917060400_audit_redaction.sql` — match: /audit_logs|auditLog|create_audit/i
 - Recomendação: Padronizar schema: actor, action, entity, before, after, ip, created_at; garantir coverage financeiro/matrícula.
 
 ### F09_MV — F09 — Radar de Inadimplência com MATERIALIZED VIEW

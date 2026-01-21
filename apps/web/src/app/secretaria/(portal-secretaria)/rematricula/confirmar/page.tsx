@@ -3,16 +3,26 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
+type SuggestaoTurma = {
+  tipo: 'promocao' | 'conclusao'
+  origem: { id: string; nome: string }
+  destino?: { id: string; nome: string } | null
+}
+
 export default function ConfirmarRematriculaPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [summary, setSummary] = useState<{ total_inserted: number; total_skipped: number; items: Array<{ origem: string; destino: string; inserted: number; skipped: number }>} | null>(null);
+  const [summary, setSummary] = useState<{
+    total_inserted: number;
+    total_skipped: number;
+    items: Array<{ origem: string; destino: string; inserted: number; skipped: number }>;
+  } | null>(null);
   const [gerarMensalidades, setGerarMensalidades] = useState(false);
   const [gerarTodas, setGerarTodas] = useState(true);
 
   // In a real implementation, the suggestions would be passed as props or fetched from a shared state
-  const [sugestoes, setSugestoes] = useState<any[]>([]);
+  const [sugestoes, setSugestoes] = useState<SuggestaoTurma[]>([]);
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -20,7 +30,10 @@ export default function ConfirmarRematriculaPage() {
     setSummary(null);
 
     const promocoes = sugestoes
-      .filter((s) => s.tipo === 'promocao' && s.destino)
+      .filter(
+        (s): s is SuggestaoTurma & { destino: { id: string; nome: string } } =>
+          s.tipo === 'promocao' && Boolean(s.destino)
+      )
       .map((s) => ({
         origem_turma_id: s.origem.id,
         destino_turma_id: s.destino.id,
@@ -48,9 +61,9 @@ export default function ConfirmarRematriculaPage() {
       if (!res.ok || !json.ok) {
         throw new Error(json.error || "Falha ao confirmar rematrícula em massa");
       }
-      const items = (json.results?.promocoes || []).map((r: any) => ({
-        origem: sugestoes.find((s:any)=>s.origem.id===r.origem_turma_id)?.origem?.nome || r.origem_turma_id,
-        destino: sugestoes.find((s:any)=>s.destino?.id===r.destino_turma_id)?.destino?.nome || r.destino_turma_id,
+      const items = (json.results?.promocoes || []).map((r: { origem_turma_id: string; destino_turma_id: string; inserted?: number; skipped?: number }) => ({
+        origem: sugestoes.find((s) => s.origem.id === r.origem_turma_id)?.origem?.nome || r.origem_turma_id,
+        destino: sugestoes.find((s) => s.destino?.id === r.destino_turma_id)?.destino?.nome || r.destino_turma_id,
         inserted: r.inserted ?? 0,
         skipped: r.skipped ?? 0,
       }))
@@ -72,7 +85,7 @@ export default function ConfirmarRematriculaPage() {
         if (json.ok) {
           setSugestoes(json.sugestoes);
         }
-      } catch (e) {
+      } catch {
         setError("Falha ao carregar sugestões.");
       } finally {
         setLoading(false);

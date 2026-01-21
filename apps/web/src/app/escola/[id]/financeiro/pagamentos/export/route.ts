@@ -1,16 +1,20 @@
 import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import type { Database } from '~types/supabase'
+
+type PagamentoRow = Database['public']['Tables']['pagamentos']['Row']
 
 export async function GET(req: Request) {
   try {
-    const s = (await supabaseServer()) as any
+    const s = await supabaseServer()
     const url = new URL(req.url)
     const format = (url.searchParams.get('format') || 'csv').toLowerCase()
     const q = url.searchParams.get('q') || ''
     const days = url.searchParams.get('days') || '30'
 
-    const { data: prof } = await s.from('profiles').select('escola_id').order('created_at', { ascending: false }).limit(1)
-    const escolaId = (prof?.[0]?.escola_id ?? null) as string | null
+    const { data: userRes } = await s.auth.getUser()
+    const escolaId = userRes?.user ? await resolveEscolaIdForUser(s, userRes.user.id) : null
     if (!escolaId) {
       return NextResponse.json([])
     }
@@ -23,7 +27,7 @@ export async function GET(req: Request) {
 
     let query = s
       .from('pagamentos')
-      .select('id, status, valor, metodo, referencia, created_at')
+      .select('id, status, valor_pago, metodo, referencia, created_at')
       .eq('escola_id', escolaId)
       .gte('created_at', since)
       .order('created_at', { ascending: false })
@@ -39,7 +43,7 @@ export async function GET(req: Request) {
     }
 
     const { data, error } = await query
-    const rows = (data ?? []) as any[]
+    const rows = (data ?? []) as PagamentoRow[]
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
     const ts = new Date().toISOString().replace(/[:.]/g, '-')
@@ -49,13 +53,13 @@ export async function GET(req: Request) {
       return res
     }
 
-    const csvEscape = (val: any) => {
+    const csvEscape = (val: unknown) => {
       const s = String(val ?? '')
       const escaped = s.replace(/"/g, '""')
       return `"${escaped}"`
     }
-    const header = ['id','status','valor','metodo','referencia','created_at']
-    const csv = [header.map(csvEscape).join(','), ...rows.map((r: any) => header.map(k => csvEscape(r[k])).join(','))].join('\n')
+    const header = ['id', 'status', 'valor_pago', 'metodo', 'referencia', 'created_at']
+    const csv = [header.map(csvEscape).join(','), ...rows.map((r) => header.map(k => csvEscape(r[k as keyof PagamentoRow])).join(','))].join('\n')
     return new NextResponse(csv, { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="pagamentos_${ts}.csv"` } })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)

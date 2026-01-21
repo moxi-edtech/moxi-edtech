@@ -49,13 +49,11 @@ function extractAnoLetivoFromSessionName(nome?: string) {
   return first && first.length === 4 ? first : new Date().getFullYear().toString();
 }
 
-function useDebouncedEffect(effect: () => void, deps: any[], delayMs: number) {
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+function useDebouncedEffect(effect: () => void, deps: Array<unknown>, delayMs: number) {
   useEffect(() => {
     const t = setTimeout(() => effect(), delayMs);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
+  }, [effect, delayMs, deps]);
 }
 
 export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFormProps) {
@@ -96,7 +94,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
 
   const isDraft = useMemo(
     () => !initialData || initialData.status_validacao === "rascunho" || !initialData.status_validacao,
-    [initialData?.id, initialData?.status_validacao]
+    [initialData]
   );
 
   const parserInfo = useMemo(() => parseTurmaCode(codigoReferencia), [codigoReferencia]);
@@ -129,27 +127,31 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
     setAutoFilled(false);
     setInitialAutoFillAttempted(false);
     lastAutofillCodigoRef.current = "";
-  }, [initialData?.id]);
+  }, [initialData]);
 
   // --- 1) Carregar dados iniciais (fetch correto) ---
   useEffect(() => {
     let mounted = true;
 
-    async function fetchJson(url: string) {
-      const res = await fetch(url);
-      let json: any = null;
+    async function fetchJson(url: string): Promise<ItemSelect[]> {
+      const res = await fetch(url, { cache: "no-store" });
+      let json: Record<string, unknown> | null = null;
       try {
-        json = await res.json();
+        const parsed = await res.json();
+        if (typeof parsed === "object" && parsed !== null) {
+          json = parsed as Record<string, unknown>;
+        }
       } catch {
         // se não for json, lança erro com status
         throw new Error(`Resposta inválida (não-JSON) em ${url} (HTTP ${res.status})`);
       }
       if (!res.ok) {
-        const msg = json?.error || json?.message || `HTTP ${res.status}`;
+        const msg = (json?.error as string) || (json?.message as string) || `HTTP ${res.status}`;
         throw new Error(`Falha ao carregar ${url}: ${msg}`);
       }
       // aceita formatos comuns: {data}, {items}, array direto
-      return Array.isArray(json) ? json : (json.data || json.items || []);
+      const payload = Array.isArray(json) ? json : (json?.data ?? json?.items ?? []);
+      return Array.isArray(payload) ? (payload as ItemSelect[]) : [];
     }
 
     const loadAll = async () => {
@@ -166,9 +168,10 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
         setSessions(sessionsData);
         setCursos(cursosData);
         setClasses(classesData);
-      } catch (e: any) {
+      } catch (e: unknown) {
         console.error("Erro loading lists:", e);
-        if (mounted) setError(e?.message || "Erro de conexão ao carregar listas.");
+        const message = e instanceof Error ? e.message : "Erro de conexão ao carregar listas.";
+        if (mounted) setError(message);
       } finally {
         if (mounted) setLoadingData(false);
       }
@@ -440,10 +443,11 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
 
       toast.success("Turma validada e ativada com sucesso!");
       onSuccess();
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      setError(e?.message || "Erro ao salvar.");
-      toast.error(e?.message || "Erro ao salvar.");
+      const message = e instanceof Error ? e.message : "Erro ao salvar.";
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -602,7 +606,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
           </select>
           {!classeId && isDraft && (
             <p className="text-[10px] text-amber-700 mt-1">
-              ⚠️ Se deixar vazio, o sistema criará a classe automaticamente baseada no código (ex: "10").
+              ⚠️ Se deixar vazio, o sistema criará a classe automaticamente baseada no código (ex: &quot;10&quot;).
             </p>
           )}
         </div>
