@@ -54,7 +54,7 @@ export default function EditarAlunoPage() {
     return () => { active = false };
   }, [alunoId]);
 
-  const updateField = (key: keyof AlunoDetails, value: any) => {
+  const updateField = (key: keyof AlunoDetails, value: string) => {
     setForm((prev) => (prev ? { ...prev, [key]: value } : prev));
   };
 
@@ -65,14 +65,14 @@ export default function EditarAlunoPage() {
     setError(null);
     setSuccess(false);
     try {
-      const payload: any = {
+      const payload: Partial<AlunoDetails> = {
         nome: form.nome,
         email: form.email || undefined,
         telefone: form.telefone || undefined,
         responsavel: form.responsavel,
         telefone_responsavel: form.telefone_responsavel,
         data_nascimento: form.data_nascimento,
-        sexo: form.sexo as any,
+        sexo: form.sexo,
         bi_numero: form.bi_numero,
         naturalidade: form.naturalidade,
         provincia: form.provincia,
@@ -264,4 +264,3 @@ export default function EditarAlunoPage() {
     </div>
   );
 }
-

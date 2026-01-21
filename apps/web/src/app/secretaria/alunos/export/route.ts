@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import type { Database } from '~types/supabase'
+
+type AlunoRow = Database['public']['Tables']['alunos']['Row']
 
 export async function GET(req: Request) {
   try {
-    const s = (await supabaseServer()) as any
+    const s = await supabaseServer()
     const url = new URL(req.url)
     const format = (url.searchParams.get('format') || 'csv').toLowerCase()
     const q = url.searchParams.get('q') || ''
@@ -11,11 +15,7 @@ export async function GET(req: Request) {
 
     const { data: sess } = await s.auth.getUser()
     const user = sess?.user
-    let escolaId: string | null = null
-    if (user) {
-      const { data: prof } = await s.from('profiles').select('escola_id').eq('user_id', user.id).maybeSingle()
-      escolaId = (prof as any)?.escola_id ?? null
-    }
+    const escolaId = user ? await resolveEscolaIdForUser(s, user.id) : null
     if (!escolaId) return NextResponse.json([])
 
     const since = (() => {
@@ -42,7 +42,7 @@ export async function GET(req: Request) {
     }
 
     const { data, error } = await query
-    const rows = (data ?? []) as any[]
+    const rows = (data ?? []) as AlunoRow[]
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
     const ts = new Date().toISOString().replace(/[:.]/g, '-')
@@ -52,13 +52,13 @@ export async function GET(req: Request) {
       return res
     }
 
-    const csvEscape = (val: any) => {
+    const csvEscape = (val: unknown) => {
       const s = String(val ?? '')
       const escaped = s.replace(/"/g, '""')
       return `"${escaped}"`
     }
     const header = ['id','nome','email','created_at']
-    const csv = [header.map(csvEscape).join(','), ...rows.map((r: any) => header.map(k => csvEscape(r[k])).join(','))].join('\n')
+    const csv = [header.map(csvEscape).join(','), ...rows.map((r) => header.map(k => csvEscape(r[k as keyof AlunoRow])).join(','))].join('\n')
     return new NextResponse(csv, { headers: { 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="alunos_${ts}.csv"` } })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)

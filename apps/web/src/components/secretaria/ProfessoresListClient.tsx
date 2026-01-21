@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { 
   Loader2, 
@@ -28,7 +28,7 @@ type Professor = {
   telefone: string | null;
   cargo: string | null;
   created_at: string;
-  profiles?: { numero_login?: string } | Array<{ numero_login?: string }>;
+  profiles?: { numero_login?: string | null } | Array<{ numero_login?: string | null }>;
 };
 
 export default function ProfessoresListClient() {
@@ -51,7 +51,7 @@ export default function ProfessoresListClient() {
     overscan: 6,
   });
 
-  async function load(p = page) {
+  const load = useCallback(async (p: number) => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ 
@@ -71,10 +71,10 @@ export default function ProfessoresListClient() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [cargoFilter, days, pageSize, q]);
 
-  useEffect(() => { load(1); setPage(1); }, [q, days, cargoFilter]);
-  useEffect(() => { load(page); }, [page]);
+  useEffect(() => { load(1); setPage(1); }, [cargoFilter, days, load, q]);
+  useEffect(() => { load(page); }, [load, page]);
 
   // Calcular métricas
   const professoresPorCargo = useMemo(() => {
@@ -247,6 +247,7 @@ export default function ProfessoresListClient() {
             href={`/secretaria/professores/export?format=csv&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}&cargo=${encodeURIComponent(cargoFilter)}`} 
             className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-all"
             target="_blank"
+            rel="noreferrer"
           >
             <Download className="h-4 w-4" />
             Exportar CSV
@@ -255,6 +256,7 @@ export default function ProfessoresListClient() {
             href={`/secretaria/professores/export?format=json&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}&cargo=${encodeURIComponent(cargoFilter)}`} 
             className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition-all"
             target="_blank"
+            rel="noreferrer"
           >
             <Download className="h-4 w-4" />
             Exportar JSON
@@ -321,7 +323,7 @@ export default function ProfessoresListClient() {
                   const professor = items[virtualRow.index];
                   const numeroLogin = Array.isArray(professor.profiles)
                     ? (professor.profiles?.[0]?.numero_login ?? null)
-                    : (professor.profiles as any)?.numero_login ?? null;
+                    : (professor.profiles?.numero_login ?? null);
 
                   return (
                     <tr

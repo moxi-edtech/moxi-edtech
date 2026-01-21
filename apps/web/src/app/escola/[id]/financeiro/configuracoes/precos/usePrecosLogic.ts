@@ -38,6 +38,19 @@ export const initialForm: FormState = {
   dia_vencimento: "",
 }
 
+type SessionItem = {
+  id: string
+  status?: string | null
+  ano_letivo?: number | null
+  nome?: string | null
+  data_inicio?: string | null
+  data_fim?: string | null
+}
+
+function formatError(err: unknown, fallback: string) {
+  return err instanceof Error ? err.message : fallback
+}
+
 function formatCurrencyInput(val: string) {
   if (val === "") return null
   const num = parseFloat(val)
@@ -45,7 +58,7 @@ function formatCurrencyInput(val: string) {
 }
 
 export function usePrecosLogic(escolaId: string) {
-  const [sessions, setSessions] = useState<any[]>([])
+  const [sessions, setSessions] = useState<SessionItem[]>([])
   const [selectedSession, setSelectedSession] = useState<string>("")
   const [anoLetivoFallback, setAnoLetivoFallback] = useState<number>(new Date().getFullYear())
   const [cursos, setCursos] = useState<Catalogo[]>([])
@@ -61,10 +74,12 @@ export function usePrecosLogic(escolaId: string) {
   const simulacaoRequestRef = useRef(0)
   const [classesFiltradasForm, setClassesFiltradasForm] = useState<Catalogo[]>([])
 
-  const deduplicarClassesPorNome = (lista: Catalogo[]) => {
-    const unicas = lista.filter((cls, index, self) => index === self.findIndex((t) => t.nome === cls.nome))
-    return [...unicas].sort((a, b) => a.nome.localeCompare(b.nome, undefined, { numeric: true }))
-  }
+  const deduplicarClassesPorNome = useMemo(() => {
+    return (lista: Catalogo[]) => {
+      const unicas = lista.filter((cls, index, self) => index === self.findIndex((t) => t.nome === cls.nome))
+      return [...unicas].sort((a, b) => a.nome.localeCompare(b.nome, undefined, { numeric: true }))
+    }
+  }, [])
 
   const cursoIds = useMemo(() => new Set(cursos.map((c) => c.id)), [cursos])
   const classeIds = useMemo(() => new Set(classes.map((c) => c.id)), [classes])
@@ -82,10 +97,10 @@ export function usePrecosLogic(escolaId: string) {
 
   const anoLetivo = useMemo(() => {
     const candidatos = [
-      (sessionSelecionada as any)?.ano_letivo,
-      (sessionSelecionada as any)?.nome,
-      (sessionSelecionada as any)?.data_inicio,
-      (sessionSelecionada as any)?.data_fim,
+      sessionSelecionada?.ano_letivo,
+      sessionSelecionada?.nome,
+      sessionSelecionada?.data_inicio,
+      sessionSelecionada?.data_fim,
     ]
 
     for (const candidato of candidatos) {
@@ -100,19 +115,8 @@ export function usePrecosLogic(escolaId: string) {
     return new Date().getFullYear().toString()
   }, [anoLetivo])
 
-  useEffect(() => {
-    carregarCatalogos()
-  }, [])
-
-  useEffect(() => {
-    carregarSessions()
-  }, [])
-
-  useEffect(() => {
-    carregarTabelas()
-  }, [anoLetivo])
-
-  const filtrarClassesPorCurso = (cursoId: string) => {
+  const filtrarClassesPorCurso = useMemo(() => {
+    return (cursoId: string) => {
     const vinculadasAoCurso = classes.filter((cls) => cls.curso_id === cursoId)
     if (vinculadasAoCurso.length > 0) return deduplicarClassesPorNome(vinculadasAoCurso)
 
@@ -126,7 +130,8 @@ export function usePrecosLogic(escolaId: string) {
     }
 
     return deduplicarClassesPorNome(classes)
-  }
+    }
+  }, [classes, cursos, deduplicarClassesPorNome])
 
   useEffect(() => {
     if (!form.curso_id) {
@@ -139,7 +144,7 @@ export function usePrecosLogic(escolaId: string) {
     if (form.classe_id && !filtradas.some((c) => c.id === form.classe_id)) {
       setForm((prev) => ({ ...prev, classe_id: "" }))
     }
-  }, [form.curso_id, form.classe_id, classes, cursos])
+  }, [form.curso_id, form.classe_id, filtrarClassesPorCurso])
 
   useEffect(() => {
     const cursoValido = simulacao.curso_id && cursoIds.has(simulacao.curso_id)
@@ -152,15 +157,12 @@ export function usePrecosLogic(escolaId: string) {
     if (!cursoValido && !classeValida) return
     simular()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [simulacao.curso_id, simulacao.classe_id, anoLetivo, cursoIds, classeIds, classes, cursos])
+  }, [simulacao.curso_id, simulacao.classe_id, anoLetivo, cursoIds, classeIds, classes, cursos, filtrarClassesPorCurso])
 
-  const classesFiltradasSimulacao = useMemo(
-    () => {
-      if (!simulacao.curso_id) return deduplicarClassesPorNome(classes)
-      return filtrarClassesPorCurso(simulacao.curso_id)
-    },
-    [simulacao.curso_id, classes, cursos]
-  )
+  const classesFiltradasSimulacao = useMemo(() => {
+    if (!simulacao.curso_id) return deduplicarClassesPorNome(classes)
+    return filtrarClassesPorCurso(simulacao.curso_id)
+  }, [simulacao.curso_id, classes, filtrarClassesPorCurso, deduplicarClassesPorNome])
 
   const tabelasFiltradas = useMemo(
     () =>
@@ -192,7 +194,8 @@ export function usePrecosLogic(escolaId: string) {
     return "—"
   }, [form.curso_id, form.classe_id, cursos, classes, cursoIds, classeIds])
 
-  async function carregarCatalogos() {
+  const carregarCatalogos = useMemo(() => {
+    return async () => {
     try {
       const [cursosRes, classesRes] = await Promise.all([
         fetch(`/api/escolas/${escolaId}/cursos`, { cache: "force-cache" }),
@@ -213,30 +216,34 @@ export function usePrecosLogic(escolaId: string) {
     } catch (e) {
       console.error(e)
     }
-  }
+    }
+  }, [escolaId])
 
-  async function carregarSessions() {
+  const carregarSessions = useMemo(() => {
+    return async () => {
     try {
       const res = await fetch("/api/secretaria/school-sessions")
       const json = await res.json().catch(() => null)
       if (!res.ok || !json) return
 
       const sessionItems = Array.isArray(json.data)
-        ? json.data
+        ? (json.data as SessionItem[])
         : Array.isArray(json.items)
-          ? json.items
+          ? (json.items as SessionItem[])
           : []
 
       setSessions(sessionItems)
-      const active = sessionItems.find((s: any) => s.status === "ativa")
+      const active = sessionItems.find((s) => s.status === "ativa")
       if (active) setSelectedSession(active.id)
       else if (sessionItems.length > 0) setSelectedSession(sessionItems[0].id)
     } catch (e) {
       console.error(e)
     }
-  }
+    }
+  }, [])
 
-  async function carregarTabelas() {
+  const carregarTabelas = useMemo(() => {
+    return async () => {
     const requestId = ++tabelasRequestRef.current
     setLoading(true)
     setTabelas([])
@@ -253,16 +260,18 @@ export function usePrecosLogic(escolaId: string) {
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Erro ao carregar preços")
       setTabelas((json.items as TabelaPrecoItem[]) || [])
       setResolved(json.resolved || null)
-    } catch (e: any) {
-      toast.error(e?.message || "Erro ao carregar tabelas")
+    } catch (e: unknown) {
+      toast.error(formatError(e, "Erro ao carregar tabelas"))
     } finally {
       if (tabelasRequestRef.current === requestId) {
         setLoading(false)
       }
     }
-  }
+    }
+  }, [anoLetivoParam, escolaId])
 
-  async function simular() {
+  const simular = useMemo(() => {
+    return async () => {
     const requestId = ++simulacaoRequestRef.current
     setResolving(true)
     const cursoIdValido = simulacao.curso_id && cursoIds.has(simulacao.curso_id) ? simulacao.curso_id : ""
@@ -283,21 +292,34 @@ export function usePrecosLogic(escolaId: string) {
       if (simulacaoRequestRef.current !== requestId) return
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Erro ao resolver preços")
       setResolved(json.resolved || null)
-    } catch (e: any) {
-      toast.error(e?.message || "Erro ao simular preço")
+    } catch (e: unknown) {
+      toast.error(formatError(e, "Erro ao simular preço"))
     } finally {
       if (simulacaoRequestRef.current === requestId) {
         setResolving(false)
       }
     }
-  }
+    }
+  }, [anoLetivoParam, cursoIds, classeIds, escolaId, simulacao.curso_id, simulacao.classe_id])
+
+  useEffect(() => {
+    carregarCatalogos()
+  }, [carregarCatalogos])
+
+  useEffect(() => {
+    carregarSessions()
+  }, [carregarSessions])
+
+  useEffect(() => {
+    carregarTabelas()
+  }, [anoLetivo, carregarTabelas])
 
   async function salvar(e: FormEvent) {
     e.preventDefault()
     setSaving(true)
     try {
       const anoLetivoNumero = Number(anoLetivoParam) || anoLetivoFallback || new Date().getFullYear()
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         ano_letivo: anoLetivoNumero,
         curso_id: form.curso_id && cursoIds.has(form.curso_id) ? form.curso_id : null,
         classe_id: form.classe_id && classeIds.has(form.classe_id) ? form.classe_id : null,
@@ -325,8 +347,8 @@ export function usePrecosLogic(escolaId: string) {
       toast.success("Tabela salva com sucesso")
       setForm(initialForm)
       carregarTabelas()
-    } catch (e: any) {
-      toast.error(e?.message || "Falha ao salvar")
+    } catch (e: unknown) {
+      toast.error(formatError(e, "Falha ao salvar"))
     } finally {
       setSaving(false)
     }

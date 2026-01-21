@@ -3,20 +3,19 @@
 import { useEffect, useMemo, useState, useCallback, useRef, type CSSProperties } from "react";
 import Link from "next/link"; 
 import { 
-  Loader2, Search, ArrowLeft,
+  Search, ArrowLeft,
   UsersRound, 
   BookOpen, 
   Building2, 
   CalendarCheck,
-  Eye, Pencil, Trash2, 
+  Eye, Pencil, 
   Plus, Filter,
-  AlertTriangle, CheckCircle2, MoreVertical,
+  AlertTriangle, CheckCircle2,
   GraduationCap
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
 import TurmaForm from "./TurmaForm"; 
-import AtribuirProfessorForm from "./AtribuirProfessorForm"; 
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildEscolaUrl } from "@/lib/escola/url";
 
@@ -62,7 +61,15 @@ const getTurmaMeta = (t: TurmaItem) => {
 };
 
 // --- COMPONENT: KPI Card ---
-function KpiCard({ title, value, icon: Icon, active, onClick }: any) {
+type KpiCardProps = {
+  title: string;
+  value: number | string;
+  icon: React.ElementType;
+  active?: boolean;
+  onClick?: () => void;
+};
+
+function KpiCard({ title, value, icon: Icon, active, onClick }: KpiCardProps) {
   return (
     <div 
       onClick={onClick} 

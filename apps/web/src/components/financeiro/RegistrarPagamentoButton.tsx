@@ -39,12 +39,14 @@ export function RegistrarPagamentoButton({
         p_observacao: "Pagamento via balcão",
       });
       if (error) throw error;
-      if (data && (data as any).ok === false) {
-        throw new Error((data as any).erro || "Falha ao registrar pagamento");
+      const payload = (typeof data === "object" && data !== null) ? (data as { ok?: boolean; erro?: string }) : null;
+      if (payload?.ok === false) {
+        throw new Error(payload.erro || "Falha ao registrar pagamento");
       }
       router.refresh();
-    } catch (e: any) {
-      alert("Erro: " + (e?.message || "Falha ao registrar pagamento"));
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "Falha ao registrar pagamento";
+      alert("Erro: " + message);
     } finally {
       setLoading(false);
     }

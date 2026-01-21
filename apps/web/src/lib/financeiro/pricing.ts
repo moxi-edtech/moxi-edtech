@@ -7,8 +7,13 @@ export type MensalidadeRule = {
   source: 'classe' | 'curso' | 'escola' | 'none';
 };
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "~types/supabase";
+
+type MensalidadeRow = Database["public"]["Tables"]["tabelas_mensalidade"]["Row"];
+
 export async function resolveMensalidade(
-  client: any,
+  client: SupabaseClient<Database>,
   escolaId: string,
   opts: { classeId?: string | null; cursoId?: string | null }
 ): Promise<MensalidadeRule> {
@@ -28,7 +33,7 @@ export async function resolveMensalidade(
         .order('created_at', { ascending: false })
         .limit(1);
       if (data && data.length > 0) {
-        const row = data[0] as any;
+        const row = data[0] as MensalidadeRow;
         return { valor: Number(row.valor), dia_vencimento: row.dia_vencimento ?? null, source: 'classe' };
       }
     }
@@ -46,7 +51,7 @@ export async function resolveMensalidade(
         .order('created_at', { ascending: false })
         .limit(1);
       if (data && data.length > 0) {
-        const row = data[0] as any;
+        const row = data[0] as MensalidadeRow;
         return { valor: Number(row.valor), dia_vencimento: row.dia_vencimento ?? null, source: 'curso' };
       }
     }
@@ -64,7 +69,7 @@ export async function resolveMensalidade(
         .order('created_at', { ascending: false })
         .limit(1);
       if (data && data.length > 0) {
-        const row = data[0] as any;
+        const row = data[0] as MensalidadeRow;
         return { valor: Number(row.valor), dia_vencimento: row.dia_vencimento ?? null, source: 'escola' };
       }
     }

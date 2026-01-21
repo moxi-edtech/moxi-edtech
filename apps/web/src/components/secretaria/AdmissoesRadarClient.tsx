@@ -109,8 +109,8 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
         const json = await res.json().catch(() => null)
         if (!res.ok) throw new Error(json?.details || json?.error || 'Falha ao aprovar')
         reload()
-      } catch (err: any) {
-        setError(err?.message || 'Falha ao aprovar')
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Falha ao aprovar')
       } finally {
         setActionLoadingId(null)
       }
@@ -132,8 +132,8 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
         const json = await res.json().catch(() => null)
         if (!res.ok) throw new Error(json?.details || json?.error || 'Falha ao rejeitar')
         reload()
-      } catch (err: any) {
-        setError(err?.message || 'Falha ao rejeitar')
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Falha ao rejeitar')
       } finally {
         setActionLoadingId(null)
       }
@@ -162,9 +162,9 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
 
         const json = (await res.json()) as RadarData
         setData({ counts: json.counts ?? {}, items: Array.isArray(json.items) ? json.items : [] })
-      } catch (e: any) {
-        if (e?.name === 'AbortError') return
-        setError(e?.message ?? 'Erro inesperado.')
+      } catch (e: unknown) {
+        if (typeof e === 'object' && e && 'name' in e && e.name === 'AbortError') return
+        setError(e instanceof Error ? e.message : 'Erro inesperado.')
       } finally {
         setLoading(false)
       }

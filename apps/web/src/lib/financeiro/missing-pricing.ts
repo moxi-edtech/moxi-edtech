@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "~types/supabase";
 
 import { normalizeAnoLetivo } from "./tabela-preco";
 import { applyKf2ListInvariants } from "@/lib/kf2";
@@ -11,14 +12,22 @@ export type MissingPricingItem = {
   missing_type: "sem_configuracao" | "valores_zerados" | "mensalidade_zero" | "matricula_zero";
 };
 
+type CursoRow = Database["public"]["Tables"]["cursos"]["Row"];
+type ClasseRow = Database["public"]["Tables"]["classes"]["Row"];
+type FinanceiroTabelaRow = Database["public"]["Tables"]["financeiro_tabelas"]["Row"];
+
+type ClasseComCurso = Pick<ClasseRow, "id" | "nome"> & {
+  curso: Pick<CursoRow, "id" | "nome" | "escola_id"> | null;
+};
+
 export async function findClassesSemPreco(
-  client: SupabaseClient,
+  client: SupabaseClient<Database>,
   escolaId: string,
   anoLetivoInput: number | string | null | undefined
 ): Promise<{ anoLetivo: number; items: MissingPricingItem[] }> {
   const anoLetivo = normalizeAnoLetivo(anoLetivoInput);
 
-  let classesQuery = (client as any)
+  let classesQuery = client
     .from("classes")
     .select("id, nome, curso:curso_id(id, nome, escola_id)")
     .eq("escola_id", escolaId);
@@ -28,7 +37,7 @@ export async function findClassesSemPreco(
 
   if (classesError) throw classesError;
 
-  let tabelasQuery = (client as any)
+  let tabelasQuery = client
     .from("financeiro_tabelas")
     .select("curso_id, classe_id, valor_matricula, valor_mensalidade")
     .eq("escola_id", escolaId)
@@ -41,7 +50,7 @@ export async function findClassesSemPreco(
 
   const tabelasMap = new Map<string, { valor_matricula: number | null; valor_mensalidade: number | null }>();
 
-  (tabelas || []).forEach((t: any) => {
+  (tabelas || []).forEach((t: Pick<FinanceiroTabelaRow, "curso_id" | "classe_id" | "valor_matricula" | "valor_mensalidade">) => {
     const key = `${t.curso_id ?? ""}::${t.classe_id ?? ""}`;
     tabelasMap.set(key, {
       valor_matricula: t.valor_matricula ?? null,
@@ -51,8 +60,8 @@ export async function findClassesSemPreco(
 
   const items: MissingPricingItem[] = [];
 
-  (classes || []).forEach((cls: any) => {
-    const curso = cls?.curso as any;
+  (classes || []).forEach((cls: ClasseComCurso) => {
+    const curso = cls.curso;
     if (!curso || curso.escola_id !== escolaId) return;
 
     const tabela = tabelasMap.get(`${curso.id ?? ""}::${cls.id ?? ""}`);
