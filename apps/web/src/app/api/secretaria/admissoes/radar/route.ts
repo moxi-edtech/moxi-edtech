@@ -136,6 +136,7 @@ export async function GET(request: Request) {
     const items = [...(matRes.data ?? []), ...(openRes.data ?? [])]
       .map((item) => ({
         ...item,
+        status_raw: item.status,
         status: normalizeStatus(item.status),
       }))
       .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))

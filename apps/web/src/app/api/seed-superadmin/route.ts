@@ -19,7 +19,10 @@ const nome = "Super Admin";
 export async function GET(request: Request) {
   const supabase = getSupabaseClient();
   if (!supabase) {
-    return new Response("Supabase not configured (SUPABASE_URL or key missing)", { status: 503 });
+    return NextResponse.json(
+      { ok: false, error: "Supabase not configured (SUPABASE_URL or key missing)" },
+      { status: 503 }
+    );
   }
 
   const enabled =
@@ -27,7 +30,7 @@ export async function GET(request: Request) {
     process.env.NEXT_PUBLIC_ENABLE_SEED === "1";
   if (!enabled) {
     return NextResponse.json(
-      { error: "🚫 Rota desativada" },
+      { ok: false, error: "🚫 Rota desativada" },
       { status: 403 }
     );
   }
@@ -99,7 +102,10 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const supabase = getSupabaseClient();
   if (!supabase) {
-    return new Response("Supabase not configured (SUPABASE_URL or key missing)", { status: 503 });
+    return NextResponse.json(
+      { ok: false, error: "Supabase not configured (SUPABASE_URL or key missing)" },
+      { status: 503 }
+    );
   }
 
   const enabled =
@@ -107,7 +113,7 @@ export async function POST(request: Request) {
     process.env.NEXT_PUBLIC_ENABLE_SEED === "1";
   if (!enabled) {
     return NextResponse.json(
-      { error: "🚫 Rota desativada" },
+      { ok: false, error: "🚫 Rota desativada" },
       { status: 403 }
     );
   }

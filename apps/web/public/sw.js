@@ -1,6 +1,6 @@
-const CACHE = "klasse-static-v1";
+const CACHE = "klasse-static-v2";
 const OFFLINE_URL = "/offline.html";
-const CRITICAL_PATHS = ["/secretaria", "/admin"];
+const STATIC_PREFIXES = ["/_next/static", "/icons", "/manifest.json"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -28,24 +28,36 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   const isSameOrigin = url.origin === location.origin;
   const isNavigation = req.mode === "navigate";
-  const isCritical = CRITICAL_PATHS.some((path) => url.pathname.startsWith(path));
+  const isStaticAsset =
+    isSameOrigin &&
+    (STATIC_PREFIXES.some((prefix) => url.pathname.startsWith(prefix)) ||
+      url.pathname === OFFLINE_URL ||
+      url.pathname.endsWith(".png") ||
+      url.pathname.endsWith(".svg") ||
+      url.pathname.endsWith(".ico"));
   event.respondWith(
     (async () => {
-      try {
+      if (isStaticAsset) {
+        const cached = await caches.match(req);
+        if (cached) return cached;
         const res = await fetch(req);
-        if (isSameOrigin && res.ok) {
+        if (res.ok) {
           const cache = await caches.open(CACHE);
           cache.put(req, res.clone());
         }
         return res;
-      } catch {
-        if (isSameOrigin && isNavigation && isCritical) {
-          const cached = await caches.match(req);
-          if (cached) return cached;
-        }
-        const cached = await caches.match(req);
-        return cached || caches.match(OFFLINE_URL);
       }
+
+      if (isSameOrigin && isNavigation) {
+        try {
+          return await fetch(req);
+        } catch {
+          const fallback = await caches.match(OFFLINE_URL);
+          return fallback || new Response("Offline", { status: 503 });
+        }
+      }
+
+      return fetch(req);
     })()
   );
 });

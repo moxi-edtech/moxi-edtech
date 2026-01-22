@@ -4,6 +4,7 @@ import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import type { Database } from "~types/supabase";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +26,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     if (!authz.allowed) {
       return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 });
     }
+
+    const adminUrl = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const admin = adminUrl && serviceRoleKey
+      ? createAdminClient<Database>(adminUrl, serviceRoleKey)
+      : null;
+    const disciplinaClient = admin ?? supabase;
 
     const { id: turmaId } = await params;
     console.log('Fetching turma ID:', turmaId);
@@ -122,31 +130,100 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     // 5. Buscar disciplinas e professores separadamente
-    let disciplinasQuery = supabase
-      .from('turma_disciplinas_professores')
-      .select(`
-        id,
-        turma_id,
-        professor_id,
-        syllabus_id,
-        professores (
+    let disciplinasData: any[] | null = null;
+    let disciplinasError: Error | null = null;
+    try {
+      let disciplinasQuery = disciplinaClient
+        .from('turma_disciplinas_professores')
+        .select(`
           id,
-          apelido,
-          profile_id,
-          profiles!professores_profile_id_fkey ( nome, email )
-        ),
-        syllabi ( id, nome )
-      `)
-      .eq('turma_id', turmaId)
-      .order('created_at', { ascending: false });
+          turma_id,
+          professor_id,
+          disciplina_id,
+          syllabus_id,
+          professores (
+            id,
+            apelido,
+            profile_id,
+            profiles!professores_profile_id_fkey ( nome, email )
+          ),
+          syllabi ( id, nome )
+        `)
+        .eq('turma_id', turmaId)
+        .eq('escola_id', escolaId)
+        .order('created_at', { ascending: false });
 
-    disciplinasQuery = applyKf2ListInvariants(disciplinasQuery, { defaultLimit: 200 });
+      disciplinasQuery = applyKf2ListInvariants(disciplinasQuery, { defaultLimit: 200 });
 
-    const { data: disciplinasData, error: disciplinasError } = await disciplinasQuery;
+      const { data, error } = await disciplinasQuery;
+      disciplinasData = data ?? [];
+      disciplinasError = error ? new Error(error.message) : null;
+    } catch (e) {
+      disciplinasError = e instanceof Error ? e : new Error('Erro ao buscar disciplinas');
+    }
 
     if (disciplinasError) {
       console.error('Error fetching disciplines:', disciplinasError);
-      // Continuar mesmo com erro
+      disciplinasData = disciplinasData ?? [];
+    }
+
+    if (!disciplinasData || disciplinasData.length === 0) {
+      let fallbackQuery = disciplinaClient
+        .from('turma_disciplinas')
+        .select(`
+          id,
+          turma_id,
+          curso_matriz_id,
+          curso_matriz (
+            id,
+            disciplina_id,
+            disciplinas_catalogo ( id, nome )
+          )
+        `)
+        .eq('turma_id', turmaId)
+        .eq('escola_id', escolaId)
+        .order('created_at', { ascending: false });
+
+      fallbackQuery = applyKf2ListInvariants(fallbackQuery, { defaultLimit: 200 });
+
+      const { data: fallbackRows, error: fallbackError } = await fallbackQuery;
+      if (fallbackError) {
+        console.error('Error fetching turma_disciplinas fallback:', fallbackError);
+      }
+
+      disciplinasData = (fallbackRows || []).map((row: any) => ({
+        id: row.curso_matriz?.disciplinas_catalogo?.id || row.curso_matriz?.disciplina_id || row.curso_matriz_id,
+        turma_id: turmaId,
+        disciplina: row.curso_matriz?.disciplinas_catalogo || null,
+        professores: null,
+      }));
+    }
+
+    if (!disciplinasData || disciplinasData.length === 0) {
+      let matrizQuery = disciplinaClient
+        .from('curso_matriz')
+        .select('id, disciplina_id, disciplinas_catalogo ( id, nome )')
+        .eq('escola_id', escolaId)
+        .eq('classe_id', turmaResult.classes?.id || '')
+        .order('ordem', { ascending: true });
+
+      if (turmaResult.cursos?.id) {
+        matrizQuery = matrizQuery.eq('curso_id', turmaResult.cursos.id);
+      }
+
+      matrizQuery = applyKf2ListInvariants(matrizQuery, { defaultLimit: 200 });
+
+      const { data: matrizRows, error: matrizError } = await matrizQuery;
+      if (matrizError) {
+        console.error('Error fetching curso_matriz fallback:', matrizError);
+      }
+
+      disciplinasData = (matrizRows || []).map((row: any) => ({
+        id: row.disciplinas_catalogo?.id || row.disciplina_id || row.id,
+        turma_id: turmaId,
+        disciplina: row.disciplinas_catalogo || null,
+        professores: null,
+      }));
     }
 
     // 6. Montar resposta final
@@ -178,8 +255,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }));
 
     const disciplinas = (disciplinasData || []).map(td => ({
-      id: td.syllabi?.id || '',
-      nome: td.syllabi?.nome || 'Disciplina Desconhecida',
+      id: td.syllabi?.id || td.disciplina?.id || td.disciplina_id || '',
+      nome: td.syllabi?.nome || td.disciplina?.nome || 'Disciplina Desconhecida',
       sigla: '',
       professor: td.professores?.profiles?.nome || td.professores?.apelido || 'Sem Professor',
     }));

@@ -36,6 +36,16 @@ Para alunos existentes que são migrados para o sistema via planilha, o fluxo é
 - Inbox em `/financeiro/candidaturas` lista candidaturas `pendente/aguardando_compensacao` com ação de Compensar/Rejeitar.
 - A confirmação chama a RPC oficial `confirmar_matricula` (gera número via trigger) e conclui o funil end-to-end.
 
+#### Retomada Inteligente (Pagamento posterior)
+- Ao abrir uma candidatura em `aguardando_pagamento`, o Wizard salta direto para o Passo 3 (Pagamento/Conversão).
+- Dados dos Passos 1/2 ficam em leitura (read-only); botão “Editar Dados” volta ao Passo 1.
+- Evita duplicidade de leads e reduz fricção para pais que retornam com comprovativo.
+
+#### Arquivamento (Limpeza de Radar)
+- Candidaturas sem retorno podem ser arquivadas via ação “Arquivar” no Radar.
+- Backend: RPC `admissao_archive` atualiza status para `arquivado` e registra em `candidaturas_status_log`.
+- Histórico permanece disponível para reengajamento futuro.
+
 4. Exemplo Prático (SQL)
 Quando quiseres ver "Todos os alunos da 10ª de Informática" (o cenário que descreveste), tu não precisas de mudar a matrícula. Basta fazeres a query certa.
 

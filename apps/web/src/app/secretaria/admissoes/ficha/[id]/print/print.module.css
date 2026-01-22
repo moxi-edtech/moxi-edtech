@@ -1,0 +1,41 @@
+.printRoot {
+  background: #f1f5f9;
+}
+
+.sheet {
+  margin: 16px auto;
+  width: 210mm;
+  min-height: 297mm;
+  padding: 15mm;
+  background: white;
+}
+
+@media print {
+  .sheet {
+    margin: 0;
+    box-shadow: none;
+    padding: 12mm;
+  }
+}
+
+@media print {
+  .printRoot {
+    background: white !important;
+  }
+
+  aside {
+    display: none !important;
+  }
+
+  header.sticky {
+    display: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+  }
+
+  body {
+    background: white !important;
+  }
+}

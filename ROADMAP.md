@@ -60,4 +60,8 @@ Nada entra sem:
 - Auditabilidade mínima
 - Previsibilidade operacional
 
+## REFERÊNCIAS
+- `docs/pedagogico-map.md`
+- `docs/global-search-roadmap.md`
+
 KLASSE não cresce em cima de gambiarra.

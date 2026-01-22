@@ -50,6 +50,8 @@ This report details the "hardening" actions taken to address the risks identifie
 - ✅ **Conversão canônica única**: Confirmado. O único caminho de conversão é `/api/secretaria/admissoes/convert`.
 - ✅ **`pay later` não cria matrícula**: Confirmado.
 - ✅ **Sem `service_role` nas rotas da secretaria**: Confirmado.
+- ✅ **Retomada inteligente**: Wizard abre direto no Passo 3 para `aguardando_pagamento`, com dados em read-only e botão “Editar Dados”.
+- ✅ **Arquivamento seguro**: RPC `admissao_archive` registra status `arquivado` via log e remove do radar.
 
 ## 4. Score de Confiança no P0 (Atualizado)
 - **Score:** 98%
@@ -66,6 +68,7 @@ This report details the "hardening" actions taken to address the risks identifie
 | `admissao_approve` | Definer | Validação final de coerência e marcação como pronta para matrícula. |
 | `admissao_reject` | Definer | Estado terminal. Impede qualquer ação futura na candidatura. |
 | `admissao_convert_to_matricula` | Definer | Cria Aluno (se necessário) e gera Matrícula via `confirmar_matricula_core`. |
+| `admissao_archive` | Definer | Soft delete operacional (status `arquivado`) para limpeza do Radar. |
 
 ### Alterações de Schema (Invariants)
 - **Tabela `candidaturas`**:
