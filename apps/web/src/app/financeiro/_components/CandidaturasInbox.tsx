@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { CheckCircle2, XCircle, Paperclip, Loader2 } from 'lucide-react'
+import { enqueueOfflineAction } from '@/lib/offline/queue'
 
 type InboxItem = {
   id: string
@@ -94,6 +95,24 @@ export function FinanceiroCandidaturasInbox({
         metodo_pagamento: normalizeMetodoPagamento(pagamento.metodo),
         comprovativo_url: pagamento.comprovativo_url || undefined,
         amount: parseAmount(pagamento.valor ?? pagamento.amount),
+      }
+
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        await enqueueOfflineAction({
+          url: '/api/secretaria/admissoes/convert',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'idempotency-key': `convert-${item.id}`,
+          },
+          body: JSON.stringify(payload),
+          type: 'convert_candidatura',
+        })
+        removeItem(item.id)
+        setSelected(null)
+        setError('Sem internet. Conversão enfileirada para sincronizar depois.')
+        setLoadingId(null)
+        return
       }
 
       const res = await fetch('/api/secretaria/admissoes/convert', {

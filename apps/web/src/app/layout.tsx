@@ -1,6 +1,7 @@
 import "./globals.css";
 import { Sora } from "next/font/google";
 import { ServiceWorkerRegister } from "@/components/system/ServiceWorkerRegister";
+import { OfflineSyncRegister } from "@/components/system/OfflineSyncRegister";
 
 const sora = Sora({
   subsets: ["latin"],
@@ -17,6 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className={`h-full ${sora.className}`}>
         <ServiceWorkerRegister />
+        <OfflineSyncRegister />
         {children}
       </body>
     </html>

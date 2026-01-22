@@ -1,8 +1,8 @@
 import PortalLayout from "@/components/layout/PortalLayout"
 import { supabaseServer } from "@/lib/supabaseServer"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
-import type { Database } from "~types/supabase"
 import AuditPageView from "@/components/audit/AuditPageView"
+import { PagamentosListClient } from "@/components/financeiro/PagamentosListClient"
 
 export const dynamic = 'force-dynamic'
 
@@ -14,14 +14,8 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
   const { data: userRes } = await s.auth.getUser()
   const escolaId = userRes?.user ? await resolveEscolaIdForUser(s, userRes.user.id) : null
 
-  const q = searchParams.q || ''
-  const days = searchParams.days || '30'
-
-  const since = (() => {
-    const d = parseInt(days || '30', 10)
-    if (!Number.isFinite(d) || d <= 0) return '1970-01-01'
-    const dt = new Date(); dt.setDate(dt.getDate() - d); return dt.toISOString()
-  })()
+  const q = searchParams.q || ""
+  const days = searchParams.days || "30"
 
   if (!escolaId) {
     return (
@@ -33,30 +27,6 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
       </PortalLayout>
     )
   }
-
-  let query = s
-    .from('pagamentos')
-    .select('id, status, valor_pago, metodo, referencia, created_at')
-    .eq('escola_id', escolaId)
-    .gte('created_at', since)
-    .order('created_at', { ascending: false })
-    .limit(200)
-
-  if (q) {
-    const uuidRe = /^[0-9a-fA-F-]{36}$/
-    const numRe = /^\d+(?:[\.,]\d+)?$/
-    if (uuidRe.test(q)) {
-      query = query.eq('id', q)
-    } else if (numRe.test(q)) {
-      // valor aproximado: não há ilike numérico; deixamos só texto em referencia/metodo/status
-      query = query.or(`status.ilike.%${q}%,metodo.ilike.%${q}%,referencia.ilike.%${q}%`)
-    } else {
-      query = query.or(`status.ilike.%${q}%,metodo.ilike.%${q}%,referencia.ilike.%${q}%`)
-    }
-  }
-
-  const { data } = await query
-  const pays = (data ?? []) as Array<Database['public']['Tables']['pagamentos']['Row']>
 
   return (
     <PortalLayout>
@@ -82,33 +52,7 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
           </form>
         </div>
 
-        <table className="min-w-full text-sm">
-          <thead>
-            <tr className="text-left text-gray-500 border-b">
-              <th className="py-2 pr-4">ID</th>
-              <th className="py-2 pr-4">Status</th>
-              <th className="py-2 pr-4">Valor</th>
-              <th className="py-2 pr-4">Método</th>
-              <th className="py-2 pr-4">Referência</th>
-              <th className="py-2 pr-4">Criado em</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pays.map((p) => (
-              <tr key={p.id} className="border-b last:border-b-0">
-                <td className="py-2 pr-4">{p.id}</td>
-                <td className="py-2 pr-4">{p.status}</td>
-                <td className="py-2 pr-4">R$ {Number(p.valor_pago || 0).toFixed(2)}</td>
-                <td className="py-2 pr-4">{p.metodo}</td>
-                <td className="py-2 pr-4">{p.referencia ?? '—'}</td>
-                <td className="py-2 pr-4">{new Date(p.created_at).toLocaleString()}</td>
-              </tr>
-            ))}
-            {pays.length === 0 && (
-              <tr><td colSpan={6} className="py-6 text-center text-gray-500">Nenhum pagamento encontrado.</td></tr>
-            )}
-          </tbody>
-        </table>
+        <PagamentosListClient />
       </div>
     </PortalLayout>
   )

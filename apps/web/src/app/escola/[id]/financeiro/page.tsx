@@ -88,11 +88,6 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
               <span className="px-3 py-1.5 text-xs bg-gray-50 text-gray-400 border border-gray-300 rounded cursor-not-allowed font-sans">Gerar Boleto/Link</span>
             )}
             {isStandard ? (
-              <Link href="relatorios/detalhados" className="px-3 py-1.5 text-xs bg-blue-50 text-blue-700 border border-blue-300 rounded font-sans hover:border-blue-500 transition-colors">Relatórios Detalhados</Link>
-            ) : (
-              <span className="px-3 py-1.5 text-xs bg-gray-50 text-gray-400 border border-gray-300 rounded cursor-not-allowed font-sans">Relatórios Detalhados</span>
-            )}
-            {isStandard ? (
               <Link href="alertas" className="px-3 py-1.5 text-xs bg-blue-50 text-blue-700 border border-blue-300 rounded font-sans hover:border-blue-500 transition-colors">Alertas</Link>
             ) : (
               <span className="px-3 py-1.5 text-xs bg-gray-50 text-gray-400 border border-gray-300 rounded cursor-not-allowed font-sans">Alertas</span>

@@ -96,6 +96,48 @@ export function useGlobalSearch(escolaId?: string | null) {
       id: item.id,
     });
 
+    const fetchFallback = async () => {
+      const params = new URLSearchParams({
+        q,
+        status: "todos",
+        pageSize: String(limit),
+      });
+      const res = await fetch(`/api/secretaria/alunos?${params.toString()}`);
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || "Falha ao buscar alunos");
+      }
+
+      const payload = ((json.items as any[]) ?? []).map((row) => ({
+        id: row.id,
+        label: row.nome_completo || row.nome || "Aluno",
+        type: "aluno",
+        highlight: row.nome_completo || row.nome || null,
+        score: 0,
+        updated_at: row.updated_at || row.created_at || new Date().toISOString(),
+        created_at: row.created_at || new Date().toISOString(),
+      }));
+
+      const items = payload.map((a) => ({
+        id: a.id,
+        label: a.label,
+        type: a.type,
+        highlight: a.highlight,
+        href: `/secretaria/alunos/${a.id}`,
+      }));
+
+      setResults(items);
+      setCursor(null);
+      setHasMore(false);
+
+      cacheRef.current.set(cacheKey, {
+        ts: now,
+        data: payload,
+        cursor: null,
+        hasMore: false,
+      });
+    };
+
     const fetchPage = async (pageCursor: Cursor | null, append: boolean) => {
       const { data, error } = await supabase.rpc(
         "search_alunos_global_min",
@@ -109,7 +151,17 @@ export function useGlobalSearch(escolaId?: string | null) {
           p_cursor_id: pageCursor?.id ?? null,
         });
 
-      if (error) throw error;
+      if (error) {
+        const shouldFallback =
+          error.code === "42883" ||
+          error.message?.includes("search_alunos_global_min") ||
+          error.message?.includes("similarity");
+        if (!append && shouldFallback) {
+          await fetchFallback();
+          return;
+        }
+        throw error;
+      }
 
       const payload = ((data as SearchResult[]) ?? []);
       const nextCursor = payload.length === limit ? toCursor(payload[payload.length - 1]) : null;

@@ -17,7 +17,17 @@ function cn(...c: Array<string | false | null | undefined>) {
   return c.filter(Boolean).join(" ");
 }
 
-export default function Sidebar({ items }: { items: NavItem[] }) {
+export default function Sidebar({
+  items,
+  escolaNome,
+  planoNome,
+  portalTitle,
+}: {
+  items: NavItem[];
+  escolaNome?: string | null;
+  planoNome?: string | null;
+  portalTitle?: string;
+}) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -114,8 +124,14 @@ export default function Sidebar({ items }: { items: NavItem[] }) {
           </div>
           {!collapsed && (
             <div className="min-w-0">
-              <div className="text-sm font-medium truncate">Escola</div>
-              <div className="text-xs text-slate-400 truncate">Admin</div>
+              <div className="text-sm font-medium truncate">
+                {escolaNome || portalTitle || "Escola"}
+              </div>
+              <div className="text-xs text-slate-400 truncate">
+                {escolaNome
+                  ? `${planoNome ? `Plano ${planoNome}` : "Plano Essencial"}`
+                  : portalTitle || "Portal"}
+              </div>
             </div>
           )}
         </div>

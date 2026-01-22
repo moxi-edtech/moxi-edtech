@@ -17,10 +17,6 @@ const RelatoriosPage = () => {
           <div className="text-lg font-semibold mb-1">Pagamentos por Status</div>
           <div className="text-sm text-gray-600">Distribuição entre pago, pendente, atrasado</div>
         </Link>
-        <Link href="/financeiro/relatorios/detalhados" className="block bg-white rounded-xl shadow border p-5 hover:shadow-md transition">
-          <div className="text-lg font-semibold mb-1">Relatórios Detalhados</div>
-          <div className="text-sm text-gray-600">Eventos e ações (auditoria) do financeiro</div>
-        </Link>
         <Link href="/financeiro/relatorios/extratos-alunos" className="block bg-white rounded-xl shadow border p-5 hover:shadow-md transition">
           <div className="text-lg font-semibold mb-1">Extratos de Alunos</div>
           <div className="text-sm text-gray-600">Gerar extrato (JSON/PDF) por aluno</div>

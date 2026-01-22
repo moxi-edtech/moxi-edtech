@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabaseClient";
+import { enqueueOfflineAction } from "@/lib/offline/queue";
 
 const formatKz = (valor: number) =>
   new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA" }).format(
@@ -19,7 +19,6 @@ export function RegistrarPagamentoButton({
 }) {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
 
   async function handlePay() {
     if (
@@ -33,16 +32,31 @@ export function RegistrarPagamentoButton({
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc("registrar_pagamento", {
-        p_mensalidade_id: mensalidadeId,
-        p_metodo_pagamento: "numerario",
-        p_observacao: "Pagamento via balcão",
-      });
-      if (error) throw error;
-      const payload = (typeof data === "object" && data !== null) ? (data as { ok?: boolean; erro?: string }) : null;
-      if (payload?.ok === false) {
-        throw new Error(payload.erro || "Falha ao registrar pagamento");
+      const payload = {
+        mensalidade_id: mensalidadeId,
+        metodo_pagamento: "numerario",
+        observacao: "Pagamento via balcão",
+      };
+
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        await enqueueOfflineAction({
+          url: "/api/financeiro/pagamentos/registrar",
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          type: "registrar_pagamento",
+        });
+        alert("Sem internet. Pagamento será sincronizado quando a conexão voltar.");
+        return;
       }
+
+      const res = await fetch("/api/financeiro/pagamentos/registrar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao registrar pagamento");
       router.refresh();
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Falha ao registrar pagamento";

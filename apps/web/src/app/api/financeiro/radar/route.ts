@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 
+export const dynamic = "force-dynamic";
+
 // Radar de Inadimplência
 // Usa a view materializada vw_radar_inadimplencia que já consolida dados.
 export async function GET() {
@@ -35,16 +37,17 @@ export async function GET() {
           "dias_em_atraso",
           "status_risco",
           "status_mensalidade",
-          // inner join para validar existência do aluno (não retorna dados adicionais ao cliente)
-          "alunos!inner(id,deleted_at,status)",
         ].join(", ")
       )
-      .is("alunos.deleted_at", null)
-      .neq("alunos.status", "inativo")
-      .not("aluno_id", "is", null)
-      .limit(5000);
+      .not("aluno_id", "is", null);
 
-    query = applyKf2ListInvariants(query, { defaultLimit: 5000 });
+    query = applyKf2ListInvariants(query, {
+      defaultLimit: 50,
+      order: [
+        { column: "data_vencimento", ascending: false },
+        { column: "mensalidade_id", ascending: false },
+      ],
+    });
 
     const { data, error } = await query;
 

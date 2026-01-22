@@ -65,6 +65,8 @@ type CandidaturaDraft = {
   turma_preferencial_id?: string | null;
   ano_letivo?: number | null;
   status?: string | null;
+  cursos?: { nome?: string | null } | null;
+  classes?: { nome?: string | null } | null;
 };
 
 type SimpleResult = { ok: boolean; message?: string; error?: string };
@@ -671,6 +673,9 @@ function Step3Pagamento(props: {
   classeId: string | null;
   anoLetivo?: number | null;
   candidaturaStatus?: string | null;
+  initialData: CandidaturaDraft | null;
+  resumeMode: boolean;
+  onEditDados: () => void;
 }) {
   const {
     onBack,
@@ -681,6 +686,9 @@ function Step3Pagamento(props: {
     classeId,
     anoLetivo,
     candidaturaStatus,
+    initialData,
+    resumeMode,
+    onEditDados,
   } = props;
 
   const [payment, setPayment] = useState({
@@ -809,6 +817,52 @@ function Step3Pagamento(props: {
 
   return (
     <div className="space-y-5">
+      {resumeMode && (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-700">Resumo do Candidato</h3>
+              <p className="text-xs text-slate-500">
+                Dados bloqueados até ação explícita de edição.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onEditDados}
+              className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-white"
+            >
+              Editar Dados
+            </button>
+          </div>
+
+          <div className="mt-4 grid gap-3 text-sm md:grid-cols-2">
+            <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+              <p className="text-[10px] uppercase text-slate-400">Nome</p>
+              <p className="font-semibold text-slate-800">
+                {initialData?.nome_candidato || "—"}
+              </p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+              <p className="text-[10px] uppercase text-slate-400">Nº do BI</p>
+              <p className="font-semibold text-slate-800">
+                {initialData?.dados_candidato?.bi_numero || "—"}
+              </p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+              <p className="text-[10px] uppercase text-slate-400">Curso</p>
+              <p className="font-semibold text-slate-800">
+                {initialData?.cursos?.nome || "—"}
+              </p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+              <p className="text-[10px] uppercase text-slate-400">Classe</p>
+              <p className="font-semibold text-slate-800">
+                {initialData?.classes?.nome || "—"}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       <div>
         <h2 className="text-lg font-semibold text-klasse-green">Pagamento</h2>
         <p className="text-sm text-slate-500">Enviar para validação do financeiro.</p>
@@ -901,7 +955,11 @@ export default function AdmissaoWizardClient({ escolaId }: { escolaId: string })
   const [classeId, setClasseId] = useState<string | null>(null);
   const [initialData, setInitialData] = useState<CandidaturaDraft | null>(null);
   const [hydrated, setHydrated] = useState(false);
-  const [canEditDraft, setCanEditDraft] = useState(true);
+  const [baseCanEditDraft, setBaseCanEditDraft] = useState(true);
+  const [resumeMode, setResumeMode] = useState(false);
+  const [editOverride, setEditOverride] = useState(false);
+
+  const canEditDraft = baseCanEditDraft || editOverride;
 
   const searchParams = useSearchParams();
 
@@ -919,15 +977,29 @@ export default function AdmissaoWizardClient({ escolaId }: { escolaId: string })
           setClasseId(json.item?.classe_id ?? null);
           setTurmaId(json.item?.turma_preferencial_id ?? null);
           const status = String(json.item?.status ?? '').toLowerCase();
-          setCanEditDraft(status === 'rascunho' || status === '');
+          const isResumeStatus = ['aguardando_pagamento', 'aguardando_compensacao'].includes(status);
+          setBaseCanEditDraft(status === 'rascunho' || status === '');
+          setResumeMode(isResumeStatus);
+          setEditOverride(false);
+          if (isResumeStatus) {
+            setStep(3);
+          }
         }
         setHydrated(true);
       })();
     } else {
-      setCanEditDraft(true);
+      setBaseCanEditDraft(true);
+      setResumeMode(false);
+      setEditOverride(false);
       setHydrated(true);
     }
   }, [searchParams]);
+
+  const handleEditDados = () => {
+    setEditOverride(true);
+    setResumeMode(false);
+    setStep(1);
+  };
 
   return (
     <div className="space-y-4">
@@ -971,6 +1043,9 @@ export default function AdmissaoWizardClient({ escolaId }: { escolaId: string })
             classeId={classeId}
             anoLetivo={initialData?.ano_letivo ?? null}
             candidaturaStatus={initialData?.status ?? null}
+            initialData={initialData}
+            resumeMode={resumeMode}
+            onEditDados={handleEditDados}
           />
         )}
       </div>

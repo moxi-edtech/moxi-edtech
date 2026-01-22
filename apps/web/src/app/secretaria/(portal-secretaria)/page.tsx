@@ -3,10 +3,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Loader2, Users, FileText, Banknote, CalendarX, FileEdit,
-  AlertCircle, Bell,
+  AlertCircle,
   UserPlus, Building, BarChart3,
   RefreshCcw, Upload, Crown,
-  LayoutDashboard, Clock, UserCheck, KeyRound
+  Clock, UserCheck, KeyRound
 } from "lucide-react";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { GlobalSearch } from "@/components/GlobalSearch";
@@ -98,41 +98,6 @@ export default function SecretariaDashboardPage() {
 
   return (
     <div className="flex flex-col h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden">
-      
-      {/* HEADER */}
-      <header className="flex-none h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between z-20 sticky top-0">
-        <div className="flex items-center gap-8 w-full max-w-3xl">
-          <div className="flex items-center gap-3">
-             <div className="w-8 h-8 bg-slate-900 rounded-lg flex items-center justify-center text-white">
-                <LayoutDashboard className="w-4 h-4"/>
-             </div>
-             <span className="font-bold text-lg tracking-tight hidden md:block">Secretaria</span>
-          </div>
-
-          <GlobalSearch
-            escolaId={escolaId}
-            placeholder="Buscar aluno, matrícula ou documento..."
-            disabledText={escolaLoading ? "Carregando escola..." : "Vincule-se a uma escola para pesquisar"}
-          />
-        </div>
-
-        <div className="flex items-center gap-4">
-          <div className="hidden md:flex flex-col items-end">
-             <span className="text-xs font-bold text-slate-700">Maria Silva</span>
-             <span className="text-[10px] text-slate-400 uppercase tracking-wide">Secretária Chefe</span>
-          </div>
-          <button className="relative p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition">
-            <Bell className="w-5 h-5" />
-            {data?.counts.pendencias ? (
-                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full"></span>
-            ) : null}
-          </button>
-          <div className="w-9 h-9 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center font-bold border-2 border-white shadow-sm">
-            MS
-          </div>
-        </div>
-      </header>
-
       {/* LAYOUT PRINCIPAL */}
       <div className="flex-1 flex overflow-hidden">
         
@@ -147,11 +112,16 @@ export default function SecretariaDashboardPage() {
                     { label: "Secretaria" },
                   ]}
                   actions={
-                    <>
+                    <div className="flex flex-col gap-3 items-stretch sm:flex-row sm:items-center sm:justify-end">
+                      <GlobalSearch
+                        escolaId={escolaId}
+                        placeholder="Buscar aluno, matrícula ou documento..."
+                        disabledText={escolaLoading ? "Carregando escola..." : "Vincule-se a uma escola para pesquisar"}
+                      />
                       <Link
                         href="/secretaria/admissoes?nova=1"
                         className="
-                          inline-flex items-center gap-2
+                          inline-flex items-center justify-center gap-2
                           rounded-xl bg-klasse-gold px-4 py-2
                           text-sm font-semibold text-white
                           hover:brightness-95
@@ -160,7 +130,7 @@ export default function SecretariaDashboardPage() {
                       >
                         Nova Matrícula
                       </Link>
-                    </>
+                    </div>
                   }
                 />
                 

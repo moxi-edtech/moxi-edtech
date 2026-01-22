@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
 
     if (authToken) {
       const valid = twilio.validateRequest(authToken, signature || "", request.url, Object.fromEntries(params));
-      if (!valid) return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+      if (!valid) return NextResponse.json({ ok: false, error: "Invalid signature" }, { status: 401 });
     }
 
     const messageSid = params.get("MessageSid");
@@ -26,9 +26,9 @@ export async function POST(request: NextRequest) {
         .eq("mensagem_id", messageSid);
     }
 
-    return new Response(null, { status: 200 });
+    return NextResponse.json({ ok: true });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

@@ -19,6 +19,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { fetchJsonWithOffline } from "@/lib/offline/fetch";
+import { OfflineBanner } from "@/components/system/OfflineBanner";
 
 /**
  * KLASSE UI notes:
@@ -71,23 +73,7 @@ function useDebounce<T>(value: T, delayMs: number) {
   return debounced;
 }
 
-async function fetchJson<T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> {
-  const res = await fetch(input, init);
-  const contentType = res.headers.get("content-type") || "";
-  const data = contentType.includes("application/json") ? await res.json() : null;
-
-  if (!res.ok) {
-    const msg =
-      data?.error ||
-      (res.status === 401
-        ? "Não autenticado. Faça login novamente."
-        : res.status === 403
-          ? "Sem permissão para acessar este recurso."
-          : "Falha na requisição.");
-    throw new Error(msg);
-  }
-  return data as T;
-}
+type OfflineMeta = { fromCache: boolean; updatedAt: string | null };
 
 // -----------------------------
 // UI micro-components
@@ -182,6 +168,10 @@ export default function AlunosListClient() {
   // UI state
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [offlineMeta, setOfflineMeta] = useState<OfflineMeta>({
+    fromCache: false,
+    updatedAt: null,
+  });
 
   // Delete modal
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -221,12 +211,18 @@ export default function AlunosListClient() {
           params.set("page", String(p));
         }
 
-        const json = await fetchJson<ApiResponse>(`/api/secretaria/alunos?${params.toString()}`);
+        const cacheKey = `secretaria:alunos:${params.toString()}`;
+        const { data: json, fromCache, updatedAt } = await fetchJsonWithOffline<ApiResponse>(
+          `/api/secretaria/alunos?${params.toString()}`,
+          undefined,
+          cacheKey
+        );
 
         if (!json?.ok) throw new Error(json?.error || "Falha ao carregar.");
 
         setItems(json.items || []);
         setTotal(json.total ?? json.items?.length ?? 0);
+        setOfflineMeta({ fromCache, updatedAt });
 
         const more = Boolean(json.page?.hasMore);
         setHasMore(more);
@@ -238,6 +234,7 @@ export default function AlunosListClient() {
         setItems([]);
         setTotal(0);
         setHasMore(false);
+        setOfflineMeta({ fromCache: false, updatedAt: null });
       } finally {
         setLoading(false);
       }
@@ -340,6 +337,8 @@ export default function AlunosListClient() {
           Nova Admissão
         </Link>
       </div>
+
+      <OfflineBanner fromCache={offlineMeta.fromCache} updatedAt={offlineMeta.updatedAt} />
 
       {/* Error */}
       {error ? (

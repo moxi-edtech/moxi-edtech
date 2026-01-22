@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus } from 'lucide-react'
+import { Archive, Plus } from 'lucide-react'
 
 type AdmissaoStatus =
   | 'rascunho'
@@ -25,6 +25,7 @@ type RadarItem = {
   id: string
   escola_id: string
   status: AdmissaoStatus
+  status_raw?: string | null
   created_at: string
   updated_at?: string | null
 
@@ -111,6 +112,28 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
         reload()
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Falha ao aprovar')
+      } finally {
+        setActionLoadingId(null)
+      }
+    },
+    [reload]
+  )
+
+  const archive = useCallback(
+    async (item: RadarItem) => {
+      const motivo = window.prompt("Motivo (opcional):")?.trim() || undefined
+      setActionLoadingId(item.id)
+      try {
+        const res = await fetch('/api/secretaria/admissoes/archive', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ candidatura_id: item.id, motivo }),
+        })
+        const json = await res.json().catch(() => null)
+        if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao arquivar')
+        reload()
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Falha ao arquivar')
       } finally {
         setActionLoadingId(null)
       }
@@ -276,6 +299,8 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                   const classe = item.classes?.nome?.trim() || '—'
                   const dt = formatDateShort(item.created_at)
                   const busy = actionLoadingId === item.id
+                  const rawStatus = (item.status_raw || '').toLowerCase()
+                  const canArchive = ['submetida', 'em_analise', 'aprovada', 'aguardando_pagamento', 'aguardando_compensacao'].includes(rawStatus || item.status)
 
                   return (
                     <div
@@ -296,6 +321,9 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                         {curso} • {classe}
                       </div>
                       <div className="mt-1 text-[11px] text-slate-500">{dt}</div>
+                      {rawStatus === 'aguardando_pagamento' && (
+                        <div className="mt-1 text-[11px] text-amber-300">Aguardando pagamento</div>
+                      )}
                       {item.status !== 'matriculado' && (
                         <div className="mt-2 flex flex-wrap gap-2">
                           {(item.status === 'submetida' || item.status === 'em_analise') && (
@@ -334,6 +362,22 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                               className="rounded-lg bg-klasse-green px-2.5 py-1 text-[11px] font-semibold text-white hover:brightness-95"
                             >
                               Matricular
+                            </button>
+                          )}
+                          {canArchive && (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                void archive(item)
+                              }}
+                              disabled={busy}
+                              className="rounded-lg border border-slate-700 px-2.5 py-1 text-[11px] font-semibold text-slate-200 hover:border-slate-500 hover:text-slate-100 disabled:opacity-60"
+                            >
+                              <span className="inline-flex items-center gap-1">
+                                <Archive className="h-3 w-3" />
+                                Arquivar
+                              </span>
                             </button>
                           )}
                         </div>

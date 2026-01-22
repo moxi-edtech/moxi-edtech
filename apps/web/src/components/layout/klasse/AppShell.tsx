@@ -7,6 +7,7 @@ import { useEscolaId } from "@/hooks/useEscolaId";
 import { sidebarConfig } from "@/lib/sidebarNav";
 import { useMemo, useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { PLAN_NAMES, type PlanTier } from "@/config/plans";
 
 const TOPBAR_LABELS: Record<UserRole, { title: string; subtitle: string }> = {
   superadmin: { title: "Super Admin", subtitle: "Painel central" },
@@ -24,6 +25,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const { escolaId: escolaIdFromSession } = useEscolaId();
   const [escolaIdState, setEscolaIdState] = useState<string | null>(null);
   const [financeBadges, setFinanceBadges] = useState<Record<string, string>>({});
+  const [escolaNome, setEscolaNome] = useState<string | null>(null);
+  const [planoNome, setPlanoNome] = useState<string | null>(null);
 
   // Extract escolaId from the pathname if available
   useEffect(() => {
@@ -47,11 +50,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return null;
   }, [userRole, pathname]);
 
+  const navEscolaId = escolaIdState || escolaIdFromSession;
+
   const navItems = useMemo(() => {
     if (isLoadingRole || !inferredRole) return [];
     let items = sidebarConfig[inferredRole] || [];
-
-    const navEscolaId = escolaIdState || escolaIdFromSession;
     if ((inferredRole === "admin" || inferredRole === "secretaria" || inferredRole === "financeiro") && navEscolaId) {
       return items.map((item) => ({
         ...item,
@@ -62,7 +65,44 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       items = items.map((item) => ({ ...item, badge: financeBadges[item.href] || item.badge }));
     }
     return items;
-  }, [inferredRole, isLoadingRole, escolaIdState, escolaIdFromSession, financeBadges]);
+  }, [inferredRole, isLoadingRole, navEscolaId, financeBadges]);
+
+  useEffect(() => {
+    if (!navEscolaId) {
+      setEscolaNome(null);
+      setPlanoNome(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const res = await fetch(`/api/escolas/${navEscolaId}/nome`, { cache: "no-store" });
+        const json = await res.json().catch(() => null);
+        if (cancelled) return;
+
+        if (!res.ok || !json?.ok) {
+          setEscolaNome(null);
+          setPlanoNome(null);
+          return;
+        }
+
+        setEscolaNome(json.nome || null);
+        setPlanoNome(json.plano ? PLAN_NAMES[json.plano as PlanTier] : null);
+      } catch {
+        if (!cancelled) {
+          setEscolaNome(null);
+          setPlanoNome(null);
+        }
+      }
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [navEscolaId]);
 
   useEffect(() => {
     if (inferredRole !== "financeiro") return;
@@ -108,11 +148,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="flex">
-        <Sidebar items={navItems} />
+        <Sidebar
+          items={navItems}
+          escolaNome={escolaNome}
+          planoNome={planoNome}
+          portalTitle={topbarLabels?.title}
+        />
         <div className="flex-1 min-w-0">
           <Topbar
             portalTitle={topbarLabels?.title}
             portalSubtitle={topbarLabels?.subtitle}
+            contextLabel="Dashboard"
+            escolaNome={escolaNome}
+            planoNome={planoNome}
           />
           <main className="p-4 md:p-6">{children}</main>
         </div>

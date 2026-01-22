@@ -11,14 +11,31 @@ function cn(...c: Array<string | false | null | undefined>) {
 type TopbarProps = {
   portalTitle?: string;
   portalSubtitle?: string;
+  contextLabel?: string;
+  escolaNome?: string | null;
+  planoNome?: string | null;
 };
 
-export default function Topbar({ portalTitle = "Portal", portalSubtitle = "MoxiNexa" }: TopbarProps) {
+export default function Topbar({
+  portalTitle = "Portal",
+  portalSubtitle = "MoxiNexa",
+  contextLabel = "Dashboard",
+  escolaNome,
+  planoNome,
+}: TopbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const infoText = escolaNome || planoNome
+    ? `${planoNome ? `Plano: ${planoNome}` : "Plano: Essencial"}${escolaNome ? ` • Escola: ${escolaNome}` : ""}`
+    : portalSubtitle;
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/80 backdrop-blur">
-      <div className="h-16 flex items-center gap-3 px-4">
+      <div className="h-16 flex items-center gap-4 px-4">
+        <div className="hidden lg:flex flex-col min-w-0">
+          <span className="text-sm font-semibold text-slate-900">{contextLabel}</span>
+          <span className="text-xs text-slate-500 truncate">{infoText}</span>
+        </div>
+
         {/* Search */}
         <div className="hidden md:flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 w-[420px]">
           <Search className="h-4 w-4 text-slate-400" />

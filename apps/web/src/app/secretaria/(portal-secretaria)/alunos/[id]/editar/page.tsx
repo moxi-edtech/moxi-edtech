@@ -4,6 +4,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
 import { ArrowLeftIcon, CheckCircleIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
+import { enqueueOfflineAction } from "@/lib/offline/queue";
+import { fetchJsonWithOffline } from "@/lib/offline/fetch";
+import { OfflineBanner } from "@/components/system/OfflineBanner";
 
 type AlunoDetails = {
   id: string;
@@ -31,6 +34,11 @@ export default function EditarAlunoPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [queued, setQueued] = useState(false);
+  const [offlineMeta, setOfflineMeta] = useState<{ fromCache: boolean; updatedAt: string | null }>({
+    fromCache: false,
+    updatedAt: null,
+  });
 
   const [form, setForm] = useState<AlunoDetails | null>(null);
 
@@ -41,10 +49,17 @@ export default function EditarAlunoPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/secretaria/alunos/${encodeURIComponent(alunoId)}`);
-        const json = await res.json();
-        if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao carregar aluno");
-        if (active) setForm(json.item as AlunoDetails);
+        const cacheKey = `secretaria:alunos:${alunoId}:edit`;
+        const { data: json, fromCache, updatedAt } = await fetchJsonWithOffline<{ ok: boolean; item?: AlunoDetails; error?: string }>(
+          `/api/secretaria/alunos/${encodeURIComponent(alunoId)}`,
+          undefined,
+          cacheKey
+        );
+        if (!json?.ok) throw new Error(json?.error || "Falha ao carregar aluno");
+        if (active) {
+          setForm(json.item as AlunoDetails);
+          setOfflineMeta({ fromCache, updatedAt });
+        }
       } catch (e) {
         if (active) setError(e instanceof Error ? e.message : String(e));
       } finally {
@@ -64,6 +79,7 @@ export default function EditarAlunoPage() {
     setSaving(true);
     setError(null);
     setSuccess(false);
+    setQueued(false);
     try {
       const payload: Partial<AlunoDetails> = {
         nome: form.nome,
@@ -78,6 +94,19 @@ export default function EditarAlunoPage() {
         provincia: form.provincia,
         encarregado_relacao: form.encarregado_relacao,
       };
+
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        await enqueueOfflineAction({
+          url: `/api/secretaria/alunos/${encodeURIComponent(alunoId)}`,
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          type: "editar_aluno",
+        });
+        setQueued(true);
+        setSuccess(true);
+        return;
+      }
 
       const res = await fetch(`/api/secretaria/alunos/${encodeURIComponent(alunoId)}`, {
         method: 'PATCH',
@@ -117,6 +146,9 @@ export default function EditarAlunoPage() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+          <div className="mb-4">
+            <OfflineBanner fromCache={offlineMeta.fromCache} updatedAt={offlineMeta.updatedAt} />
+          </div>
           {loading ? (
             <div>Carregando…</div>
           ) : error ? (
@@ -124,12 +156,18 @@ export default function EditarAlunoPage() {
           ) : form ? (
             <form onSubmit={handleSubmit} className="space-y-6">
               {success && (
-                <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
+                <div className={`rounded-xl p-4 flex items-center gap-3 ${
+                  queued ? "bg-amber-50 border border-amber-200" : "bg-green-50 border border-green-200"
+                }`}>
                   <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                    <CheckCircleIcon className="w-5 h-5 text-green-600" />
+                    <CheckCircleIcon className={`w-5 h-5 ${queued ? "text-amber-600" : "text-green-600"}`} />
                   </div>
                   <div>
-                    <p className="font-medium text-green-800">Cadastro atualizado com sucesso!</p>
+                    <p className={`font-medium ${queued ? "text-amber-800" : "text-green-800"}`}>
+                      {queued
+                        ? "Sem internet. Atualização salva para sincronizar depois."
+                        : "Cadastro atualizado com sucesso!"}
+                    </p>
                   </div>
                 </div>
               )}

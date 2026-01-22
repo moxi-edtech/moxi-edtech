@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export const dynamic = "force-dynamic";
 
@@ -8,19 +9,12 @@ export async function GET(_req: Request) {
   try {
     const supabase = await supabaseServerTyped<any>();
     const { data: userRes } = await supabase.auth.getUser();
-    if (!userRes?.user) {
+    const user = userRes?.user;
+    if (!user) {
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     }
 
-    const { data: prof, error: profErr } = await supabase
-      .from('profiles')
-      .select('escola_id')
-      .order('created_at', { ascending: false })
-      .limit(1);
-    if (profErr) {
-      return NextResponse.json({ ok: false, error: profErr.message }, { status: 500 });
-    }
-    const escolaId = prof?.[0]?.escola_id as string | null;
+    const escolaId = await resolveEscolaIdForUser(supabase, user.id);
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: "Perfil sem escola vinculada" }, { status: 400 });
     }
@@ -30,7 +24,10 @@ export async function GET(_req: Request) {
       .select('status, total')
       .eq('escola_id', escolaId);
 
-    query = applyKf2ListInvariants(query);
+    query = applyKf2ListInvariants(query, {
+      defaultLimit: 50,
+      order: [{ column: "status", ascending: true }],
+    });
 
     const { data, error } = await query;
 
