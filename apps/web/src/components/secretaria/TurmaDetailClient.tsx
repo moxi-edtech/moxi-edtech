@@ -130,6 +130,14 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
     window.open(`/api/secretaria/turmas/${turmaId}/alunos/lista?format=pdf`, "_blank");
   };
 
+  const handleDownloadPautaBranca = () => {
+    window.location.href = `/api/secretaria/turmas/${turmaId}/pauta-branca`;
+  };
+
+  const handleDownloadMiniPautas = () => {
+    window.location.href = `/api/secretaria/turmas/${turmaId}/mini-pautas`;
+  };
+
   if (loading) return (
     <div className="h-[60vh] flex flex-col items-center justify-center gap-3 text-slate-400">
       <Loader2 className="w-8 h-8 animate-spin text-[#1F6B3B]"/>
@@ -415,8 +423,18 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
                     desc="Relatório PDF oficial da turma."
                     onClick={handleListaPdf}
                   />
-                  <DocCard icon={LayoutDashboard} title="Pauta em Branco" desc="Grelha vazia para preenchimento." />
-                  <DocCard icon={BookOpen} title="Mini-Pautas" desc="Fichas individuais por disciplina." />
+                  <DocCard
+                    icon={LayoutDashboard}
+                    title="Pauta em Branco"
+                    desc="Grelha vazia para preenchimento."
+                    onClick={handleDownloadPautaBranca}
+                  />
+                  <DocCard
+                    icon={BookOpen}
+                    title="Mini-Pautas"
+                    desc="Fichas individuais por disciplina."
+                    onClick={handleDownloadMiniPautas}
+                  />
                </div>
             </div>
          )}

@@ -36,7 +36,80 @@ type CacheEntry = {
   hasMore: boolean;
 };
 
-export function useGlobalSearch(escolaId?: string | null) {
+type PortalKey = "secretaria" | "financeiro" | "admin" | "professor" | "aluno" | "gestor" | "superadmin";
+
+type GlobalSearchOptions = {
+  transformQuery?: (query: string) => string;
+  types?: string[];
+  portal?: PortalKey;
+};
+
+const PORTAL_TYPES: Record<PortalKey, string[]> = {
+  secretaria: ["aluno", "matricula", "turma", "documento"],
+  financeiro: ["aluno", "mensalidade", "pagamento", "recibo"],
+  admin: ["turma", "professor", "classe", "curso", "usuario"],
+  professor: ["aluno"],
+  aluno: ["aluno"],
+  gestor: ["aluno"],
+  superadmin: ["usuario"],
+};
+
+function resolveHref(
+  portal: PortalKey | undefined,
+  escolaId: string | null | undefined,
+  item: { id: string; label: string; type: string }
+) {
+  const basePortal = portal || "secretaria";
+  if (basePortal === "professor") {
+    return `/professor/notas?alunoId=${item.id}`;
+  }
+
+  if (basePortal === "financeiro") {
+    if (item.type === "recibo") {
+      return "/financeiro/cobrancas";
+    }
+    return escolaId
+      ? `/escola/${escolaId}/financeiro/pagamentos?q=${encodeURIComponent(item.label)}`
+      : `/financeiro/cobrancas?q=${encodeURIComponent(item.label)}`;
+  }
+
+  if (basePortal === "admin") {
+    if (!escolaId) return "/admin";
+    switch (item.type) {
+      case "turma":
+        return `/escola/${escolaId}/admin/turmas`;
+      case "professor":
+        return `/escola/${escolaId}/admin/professores`;
+      case "classe":
+      case "curso":
+        return `/escola/${escolaId}/admin/configuracoes`;
+      case "usuario":
+        return `/escola/${escolaId}/admin/funcionarios`;
+      default:
+        return `/escola/${escolaId}/admin`;
+    }
+  }
+
+  switch (item.type) {
+    case "turma":
+      return `/secretaria/turmas/${item.id}`;
+    case "matricula":
+      return `/secretaria/admissoes?matricula=${item.id}`;
+    case "documento":
+      return `/secretaria/documentos`;
+    case "mensalidade":
+    case "pagamento":
+    case "recibo":
+      return escolaId
+        ? `/escola/${escolaId}/financeiro/pagamentos?q=${encodeURIComponent(item.label)}`
+        : `/financeiro/cobrancas?q=${encodeURIComponent(item.label)}`;
+    case "aluno":
+    default:
+      return `/secretaria/alunos/${item.id}`;
+  }
+}
+
+export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearchOptions) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<MinimalResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -44,7 +117,16 @@ export function useGlobalSearch(escolaId?: string | null) {
   const [hasMore, setHasMore] = useState(false);
 
   const normalizedQuery = useMemo(() => query.trim().replace(/\s+/g, " "), [query]);
-  const debouncedQuery = useDebounce(normalizedQuery, 300);
+  const effectiveQuery = useMemo(() => {
+    const next = options?.transformQuery ? options.transformQuery(normalizedQuery) : normalizedQuery;
+    return next.trim().replace(/\s+/g, " ");
+  }, [normalizedQuery, options?.transformQuery]);
+  const debouncedQuery = useDebounce(effectiveQuery, 300);
+  const resolvedTypes = useMemo(() => {
+    if (options?.types && options.types.length > 0) return options.types;
+    if (options?.portal && PORTAL_TYPES[options.portal]) return PORTAL_TYPES[options.portal];
+    return ["aluno"];
+  }, [options?.types, options?.portal]);
 
   const supabase = useMemo(() => createClient(), []);
 
@@ -64,7 +146,7 @@ export function useGlobalSearch(escolaId?: string | null) {
     setCursor(null);
     setHasMore(false);
 
-    const cacheKey = `${escolaId}:${q.toLowerCase()}`;
+    const cacheKey = `${escolaId}:${resolvedTypes.join("|")}:${q.toLowerCase()}`;
     const cached = cacheRef.current.get(cacheKey);
     const now = Date.now();
 
@@ -75,7 +157,7 @@ export function useGlobalSearch(escolaId?: string | null) {
         label: a.label,
         type: a.type,
         highlight: a.highlight,
-        href: `/secretaria/alunos/${a.id}`,
+        href: resolveHref(options?.portal, escolaId, a),
       }));
 
       setResults(items);
@@ -123,7 +205,7 @@ export function useGlobalSearch(escolaId?: string | null) {
         label: a.label,
         type: a.type,
         highlight: a.highlight,
-        href: `/secretaria/alunos/${a.id}`,
+        href: resolveHref(options?.portal, escolaId, a),
       }));
 
       setResults(items);
@@ -140,10 +222,11 @@ export function useGlobalSearch(escolaId?: string | null) {
 
     const fetchPage = async (pageCursor: Cursor | null, append: boolean) => {
       const { data, error } = await supabase.rpc(
-        "search_alunos_global_min",
+        "search_global_entities",
         {
           p_escola_id: escolaId,
           p_query: q,
+          p_types: resolvedTypes,
           p_limit: limit,
           p_cursor_score: pageCursor?.score ?? null,
           p_cursor_updated_at: pageCursor?.updated_at ?? null,
@@ -154,6 +237,7 @@ export function useGlobalSearch(escolaId?: string | null) {
       if (error) {
         const shouldFallback =
           error.code === "42883" ||
+          error.message?.includes("search_global_entities") ||
           error.message?.includes("search_alunos_global_min") ||
           error.message?.includes("similarity");
         if (!append && shouldFallback) {
@@ -170,7 +254,7 @@ export function useGlobalSearch(escolaId?: string | null) {
         label: a.label,
         type: a.type,
         highlight: a.highlight,
-        href: `/secretaria/alunos/${a.id}`,
+        href: resolveHref(options?.portal, escolaId, a),
       }));
 
       setResults((prev) => (append ? [...prev, ...items] : items));
@@ -204,7 +288,7 @@ export function useGlobalSearch(escolaId?: string | null) {
     })();
 
     return () => ac.abort();
-  }, [debouncedQuery, escolaId, supabase]);
+  }, [debouncedQuery, escolaId, resolvedTypes, supabase, options?.portal]);
 
   const loadMore = async () => {
     if (!cursor || loading || !escolaId || debouncedQuery.length < 2) return;
@@ -212,10 +296,11 @@ export function useGlobalSearch(escolaId?: string | null) {
     const ac = new AbortController();
     try {
       const { data, error } = await supabase.rpc(
-        "search_alunos_global_min",
+        "search_global_entities",
         {
           p_escola_id: escolaId,
           p_query: debouncedQuery,
+          p_types: resolvedTypes,
           p_limit: Math.min(8, 50),
           p_cursor_score: cursor.score,
           p_cursor_updated_at: cursor.updated_at,
@@ -240,7 +325,7 @@ export function useGlobalSearch(escolaId?: string | null) {
         label: a.label,
         type: a.type,
         highlight: a.highlight,
-        href: `/secretaria/alunos/${a.id}`,
+        href: resolveHref(options?.portal, escolaId, a),
       }));
 
       setResults((prev) => [...prev, ...items]);

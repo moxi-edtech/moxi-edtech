@@ -4,9 +4,9 @@
 Evoluir o Global Search para cobrir entidades críticas por portal, mantendo performance (p95 ≤ 300 ms) e consistência multi-tenant.
 
 ## Estado atual
-- RPC: `public.search_alunos_global_min`.
-- Cobertura: apenas `alunos`.
-- UI: `GlobalSearch` + `useGlobalSearch`.
+- RPC: `public.search_global_entities` (cursor e filtros por tipo).
+- Cobertura: Secretaria (alunos, matrículas, turmas, documentos), Financeiro (mensalidades, pagamentos, recibos) e Admin (professores, cursos, classes, usuários).
+- UI: `GlobalSearch` + `useGlobalSearch` com `portal` e `types`.
 - Debounce: 300ms (OK no range 250–400ms).
 
 ## Escopo por portal (entidades)
