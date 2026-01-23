@@ -9,12 +9,13 @@ type Props = {
   escolaId?: string | null;
   placeholder?: string;
   disabledText?: string;
+  portal?: "secretaria" | "financeiro" | "admin" | "professor" | "aluno" | "gestor" | "superadmin";
 };
 
-export function GlobalSearch({ escolaId, placeholder, disabledText }: Props) {
+export function GlobalSearch({ escolaId, placeholder, disabledText, portal }: Props) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
-  const { query, setQuery, results, loading, hasMore, loadMore } = useGlobalSearch(escolaId);
+  const { query, setQuery, results, loading, hasMore, loadMore } = useGlobalSearch(escolaId, { portal });
 
   const isDisabled = !escolaId;
 

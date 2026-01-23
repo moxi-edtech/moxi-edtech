@@ -11,6 +11,7 @@ interface Turma {
 interface Aluno {
   id: string;
   nome: string;
+  status?: string | null;
 }
 
 type SugestaoRematricula = {
@@ -34,6 +35,8 @@ export default function RematriculaPage() {
   const [rpcResult, setRpcResult] = useState<{ inserted: number; skipped: number } | null>(null);
   const [gerarMensalidades, setGerarMensalidades] = useState(false);
   const [gerarTodas, setGerarTodas] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("todos");
 
   useEffect(() => {
     const fetchTurmas = async () => {
@@ -54,11 +57,18 @@ export default function RematriculaPage() {
     const fetchAlunos = async () => {
       if (originTurmaId) {
         try {
-          // This endpoint does not exist yet. I will create it later.
-          const res = await fetch(`/api/secretaria/turmas/${originTurmaId}/alunos`);
+          const res = await fetch(`/api/secretaria/turmas/${originTurmaId}/alunos`, { cache: "no-store" });
           const json = await res.json();
           if (json.ok) {
-            setAlunos(json.items);
+            const rows = (json.alunos || json.items || []) as any[];
+            setAlunos(
+              rows.map((row) => ({
+                id: row.aluno_id || row.id,
+                nome: row.aluno_nome || row.nome,
+                status: row.status_matricula || row.status || null,
+              }))
+            );
+            setSelectedAlunos([]);
           }
         } catch {
           setError("Falha ao carregar alunos.");
@@ -85,9 +95,16 @@ export default function RematriculaPage() {
     }
   };
 
+  const filteredAlunos = alunos.filter((aluno) => {
+    const matchesSearch = !searchTerm.trim() || aluno.nome.toLowerCase().includes(searchTerm.toLowerCase());
+    if (statusFilter === "todos") return matchesSearch;
+    if (statusFilter === "ativos") return matchesSearch && ["ativo", "ativa", "active"].includes(aluno.status || "");
+    return matchesSearch && aluno.status === statusFilter;
+  });
+
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
-      setSelectedAlunos(alunos.map((a) => a.id));
+      setSelectedAlunos(filteredAlunos.map((a) => a.id));
     } else {
       setSelectedAlunos([]);
     }
@@ -115,7 +132,7 @@ export default function RematriculaPage() {
         throw new Error(json.error || "Falha ao realizar rematrícula em massa");
       }
 
-      alert("Rematrícula em massa realizada com sucesso!");
+      alert("Promoção em massa realizada com sucesso!");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -134,6 +151,7 @@ export default function RematriculaPage() {
         body: JSON.stringify({
           origin_turma_id: originTurmaId,
           destination_turma_id: destinationTurmaId,
+          aluno_ids: filteredAlunos.map((aluno) => aluno.id),
           use_rpc: true,
           gerar_mensalidades: gerarMensalidades,
           gerar_todas: gerarTodas,
@@ -151,17 +169,17 @@ export default function RematriculaPage() {
 
   return (
     <div className="bg-white rounded-xl shadow border p-5">
-      <h1 className="text-lg font-semibold mb-4">Rematrícula em Massa</h1>
+      <h1 className="text-lg font-semibold mb-4">Promoção em Massa</h1>
       <div className="mb-4 flex items-center gap-3">
         <button onClick={loadSugestoes} className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
           {loadingSugestoes ? "Carregando..." : "Carregar Sugestões"}
         </button>
         <button
           onClick={handleRpcAll}
-          disabled={loading || !originTurmaId || !destinationTurmaId}
+          disabled={loading || !originTurmaId || !destinationTurmaId || filteredAlunos.length === 0}
           className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 disabled:opacity-50"
         >
-          {loading ? 'Processando...' : 'Rematricular todos (RPC)'}
+          {loading ? 'Processando...' : 'Promover todos'}
         </button>
       </div>
       <div className="mb-4 flex items-center gap-4">
@@ -176,7 +194,7 @@ export default function RematriculaPage() {
       </div>
       {rpcResult && (
         <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-          Rematrícula concluída: {rpcResult.inserted} inseridos, {rpcResult.skipped} ignorados (já ativos na sessão).
+          Promoção concluída: {rpcResult.inserted} inseridos, {rpcResult.skipped} ignorados (já ativos na sessão).
         </div>
       )}
         {sugestoes.length > 0 && (
@@ -267,7 +285,31 @@ export default function RematriculaPage() {
 
         {alunos.length > 0 && (
           <div>
-            <h2 className="text-md font-semibold mb-2">Alunos na Turma de Origem</h2>
+            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <div>
+                <h2 className="text-md font-semibold">Prévia da Promoção</h2>
+                <p className="text-xs text-slate-500">Selecione quem vai seguir para a turma destino.</p>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <input
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Filtrar por nome"
+                  className="border rounded-md px-3 py-2 text-sm"
+                />
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="border rounded-md px-3 py-2 text-sm"
+                >
+                  <option value="todos">Todos os status</option>
+                  <option value="ativos">Aprovados/Ativos</option>
+                  <option value="concluido">Concluídos</option>
+                  <option value="transferido">Transferidos</option>
+                  <option value="desistente">Desistentes</option>
+                </select>
+              </div>
+            </div>
             <div className="border rounded-md p-4 max-h-64 overflow-y-auto">
               <table className="min-w-full text-sm">
                 <thead>
@@ -276,10 +318,11 @@ export default function RematriculaPage() {
                       <input type="checkbox" onChange={handleSelectAll} />
                     </th>
                     <th className="py-2 pr-4 text-left">Nome</th>
+                    <th className="py-2 pr-4 text-left">Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {alunos.map((aluno) => (
+                  {filteredAlunos.map((aluno) => (
                     <tr key={aluno.id}>
                       <td>
                         <input
@@ -296,10 +339,21 @@ export default function RematriculaPage() {
                         />
                       </td>
                       <td className="py-2 pr-4">{aluno.nome}</td>
+                      <td className="py-2 pr-4 text-xs text-slate-500">{aluno.status || "—"}</td>
                     </tr>
                   ))}
+                  {filteredAlunos.length === 0 && (
+                    <tr>
+                      <td colSpan={3} className="py-4 text-sm text-slate-500">
+                        Nenhum aluno encontrado com o filtro atual.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
+            </div>
+            <div className="mt-3 text-xs text-slate-500">
+              Selecionados: {selectedAlunos.length} de {filteredAlunos.length}
             </div>
           </div>
         )}
@@ -312,7 +366,7 @@ export default function RematriculaPage() {
             disabled={loading || selectedAlunos.length === 0}
             className="inline-flex justify-center rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50"
           >
-            {loading ? "Rematriculando..." : "Rematricular Selecionados"}
+            {loading ? "Promovendo..." : "Promover Selecionados"}
           </button>
         </div>
       </form>

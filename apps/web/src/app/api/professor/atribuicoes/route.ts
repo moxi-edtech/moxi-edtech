@@ -48,19 +48,32 @@ export async function GET() {
       matrizIds.length
         ? supabase
             .from('curso_matriz')
-            .select('id, disciplina:disciplinas_catalogo(id, nome)')
+            .select('id, disciplina_id, disciplina:disciplinas_catalogo(id, nome)')
             .in('id', matrizIds)
             .eq('escola_id', escolaId)
         : Promise.resolve({ data: [] as any[] }),
     ])
-    const turmaMap = new Map<string, string>(); for (const t of (turmasRes as any).data || []) turmaMap.set(t.id, t.nome)
-    const discMap = new Map<string, string>(); for (const d of (matrizRes as any).data || []) discMap.set(d.id, (d as any)?.disciplina?.nome)
+    const turmaMap = new Map<string, string>();
+    for (const t of (turmasRes as any).data || []) turmaMap.set(t.id, t.nome)
 
-    const items = (tdp || []).map((r: any) => ({
-      id: r.id,
-      turma: { id: r.turma_id, nome: turmaMap.get(r.turma_id) || null },
-      disciplina: { id: r.curso_matriz_id, nome: discMap.get(r.curso_matriz_id) || null },
-    }))
+    const matrizMap = new Map<string, { disciplinaId: string | null; disciplinaNome: string | null }>();
+    for (const d of (matrizRes as any).data || []) {
+      matrizMap.set(d.id, {
+        disciplinaId: d.disciplina_id ?? (d as any)?.disciplina?.id ?? null,
+        disciplinaNome: (d as any)?.disciplina?.nome ?? null,
+      })
+    }
+
+    const items = (tdp || []).map((r: any) => {
+      const matriz = matrizMap.get(r.curso_matriz_id) || { disciplinaId: null, disciplinaNome: null }
+      return {
+        id: r.id,
+        turma_disciplina_id: r.id,
+        curso_matriz_id: r.curso_matriz_id,
+        turma: { id: r.turma_id, nome: turmaMap.get(r.turma_id) || null },
+        disciplina: { id: matriz.disciplinaId, nome: matriz.disciplinaNome },
+      }
+    })
     return NextResponse.json({ ok: true, items })
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)

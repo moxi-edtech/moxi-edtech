@@ -161,6 +161,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             contextLabel="Dashboard"
             escolaNome={escolaNome}
             planoNome={planoNome}
+            escolaId={navEscolaId}
+            portal={inferredRole ?? undefined}
           />
           <main className="p-4 md:p-6">{children}</main>
         </div>

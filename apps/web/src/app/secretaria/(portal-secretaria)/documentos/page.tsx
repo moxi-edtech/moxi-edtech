@@ -1,5 +1,5 @@
 import AuditPageView from "@/components/audit/AuditPageView";
-import DocumentosEmissaoHubClient from "./DocumentosEmissaoHubClient";
+import DocumentosEmissaoHubClient from "@/components/secretaria/DocumentosEmissaoHubClient";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 

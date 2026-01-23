@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, Search, ChevronDown } from "lucide-react";
+import { Bell, ChevronDown } from "lucide-react";
 import SignOutButton from "@/components/auth/SignOutButton";
+import { CommandPalette } from "@/components/CommandPalette";
 
 function cn(...c: Array<string | false | null | undefined>) {
   return c.filter(Boolean).join(" ");
@@ -14,6 +15,8 @@ type TopbarProps = {
   contextLabel?: string;
   escolaNome?: string | null;
   planoNome?: string | null;
+  escolaId?: string | null;
+  portal?: "secretaria" | "financeiro" | "admin" | "professor" | "aluno" | "gestor" | "superadmin";
 };
 
 export default function Topbar({
@@ -22,6 +25,8 @@ export default function Topbar({
   contextLabel = "Dashboard",
   escolaNome,
   planoNome,
+  escolaId,
+  portal,
 }: TopbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const infoText = escolaNome || planoNome
@@ -37,14 +42,8 @@ export default function Topbar({
         </div>
 
         {/* Search */}
-        <div className="hidden md:flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 w-[420px]">
-          <Search className="h-4 w-4 text-slate-400" />
-          <input
-            id="search"
-            name="search"
-            className="w-full bg-transparent text-sm text-slate-900 placeholder:text-slate-400 outline-none"
-            placeholder="Pesquisar alunos, turmas, faturas..."
-          />
+        <div className="hidden md:flex w-[420px]">
+          <CommandPalette escolaId={escolaId} portal={portal} />
         </div>
 
         <div className="ml-auto flex items-center gap-2">

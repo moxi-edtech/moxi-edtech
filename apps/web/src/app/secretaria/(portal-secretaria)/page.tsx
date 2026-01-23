@@ -115,6 +115,7 @@ export default function SecretariaDashboardPage() {
                     <div className="flex flex-col gap-3 items-stretch sm:flex-row sm:items-center sm:justify-end">
                       <GlobalSearch
                         escolaId={escolaId}
+                        portal="secretaria"
                         placeholder="Buscar aluno, matrícula ou documento..."
                         disabledText={escolaLoading ? "Carregando escola..." : "Vincule-se a uma escola para pesquisar"}
                       />

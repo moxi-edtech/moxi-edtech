@@ -8,6 +8,13 @@ Principais URLs (App Router)
 - Rematrícula em Massa (Secretaria): `/secretaria/rematricula`
 - Nova Matrícula (individual): `/secretaria/matriculas/nova`
 
+Atualizações recentes (Nov/2026)
+- Pauta do professor virou grade “Excel-like” com autosave, navegação por teclado e validação instantânea.
+- Command Palette agora entende intenção (pagamento/nota) e dispara ações diretas.
+- Rematrícula ganhou fluxo de promoção em massa com filtro e pré-visualização.
+- Global Search passou a cobrir Secretaria, Financeiro e Admin (RPC unificada + views).
+- Central de documentos da turma passou a gerar Pauta em Branco e Mini‑Pautas.
+
 Variáveis de ambiente (Web/API)
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`

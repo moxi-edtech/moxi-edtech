@@ -21,19 +21,7 @@
     padding: 12mm;
   }
 
-  aside {
-    display: none !important;
-  }
-
-  header.sticky {
-    display: none !important;
-  }
-
-  main {
-    padding: 0 !important;
-  }
-
-  body {
+  .printRoot {
     background: white !important;
   }
 }
