@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { supabaseServer } from "@/lib/supabaseServer";
 import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
+import { createRouteClient } from "@/lib/supabase/route-client";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 // POST /api/escolas/[id]/cursos
 export async function POST(
@@ -36,8 +35,8 @@ export async function POST(
     const periodo_id: string | undefined =
       (parse.data as any).periodo_id || (parse.data as any).semestre_id;
 
-    const s = await supabaseServer();
-    const { data: auth } = await s.auth.getUser();
+    const supabase = await createRouteClient();
+    const { data: auth } = await supabase.auth.getUser();
     const user = auth?.user;
     if (!user)
       return NextResponse.json(
@@ -45,7 +44,20 @@ export async function POST(
         { status: 401 }
       );
 
-    const authz = await authorizeEscolaAction(s as any, escolaId, user.id, ['configurar_escola', 'gerenciar_disciplinas']);
+    const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
+    if (!userEscolaId || userEscolaId !== escolaId) {
+      return NextResponse.json(
+        { ok: false, error: "Sem permissão" },
+        { status: 403 }
+      );
+    }
+
+    const authz = await authorizeEscolaAction(
+      supabase as any,
+      escolaId,
+      user.id,
+      ['configurar_escola', 'gerenciar_disciplinas']
+    );
     if (!authz.allowed)
       return NextResponse.json(
         { ok: false, error: authz.reason || "Sem permissão" },
@@ -53,7 +65,7 @@ export async function POST(
       );
 
     // Hard check: perfil deve pertencer à escola
-    const { data: profCheck } = await s
+    const { data: profCheck } = await supabase
       .from("profiles" as any)
       .select("escola_id")
       .eq("user_id", user.id)
@@ -65,21 +77,8 @@ export async function POST(
       );
     }
 
-    const supabaseUrl =
-      process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json(
-        { ok: false, error: "Configuração Supabase ausente." },
-        { status: 500 }
-      );
-    }
-
-    const admin = createAdminClient<Database>(supabaseUrl, serviceRoleKey);
-
     // Evita curso duplicado
-    const { data: existing } = await (admin as any)
+    const { data: existing } = await (supabase as any)
       .from("cursos")
       .select("id, nome")
       .eq("escola_id", escolaId)
@@ -107,7 +106,7 @@ export async function POST(
       };
       if (periodo_id) insertObj.semestre_id = periodo_id;
 
-      const { data: ins, error: err } = await (admin as any)
+      const { data: ins, error: err } = await (supabase as any)
         .from("cursos")
         .insert(insertObj)
         .select("id")
@@ -116,7 +115,7 @@ export async function POST(
       insertErr = err;
 
       if (!insertId && insertErr) {
-        const { data: ins2, error: err2 } = await (admin as any)
+        const { data: ins2, error: err2 } = await (supabase as any)
           .from("cursos")
           .insert({ escola_id: escolaId, nome, codigo } as any)
           .select("id")
@@ -155,8 +154,8 @@ export async function GET(
 ) {
   const { id: escolaId } = await context.params;
   try {
-    const s = await supabaseServer();
-    const { data: auth } = await s.auth.getUser();
+    const supabase = await createRouteClient();
+    const { data: auth } = await supabase.auth.getUser();
     const user = auth?.user;
     if (!user)
       return NextResponse.json(
@@ -166,9 +165,9 @@ export async function GET(
 
     let allowed = false;
     try {
-      const { data: prof } = await s
-        .from("profiles")
-        .select("role")
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("role")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(1);
@@ -177,7 +176,7 @@ export async function GET(
     } catch {}
     if (!allowed) {
       try {
-        const { data: vinc } = await s
+        const { data: vinc } = await supabase
           .from("escola_users")
           .select("papel")
           .eq("escola_id", escolaId)
@@ -188,7 +187,7 @@ export async function GET(
     }
     if (!allowed) {
       try {
-        const { data: adminLink } = await s
+        const { data: adminLink } = await supabase
           .from("escola_administradores")
           .select("user_id")
           .eq("escola_id", escolaId)
@@ -199,7 +198,7 @@ export async function GET(
     }
     if (!allowed) {
       try {
-        const { data: prof } = await s
+        const { data: prof } = await supabase
           .from("profiles")
           .select("role, escola_id")
           .eq("user_id", user.id)
@@ -216,28 +215,24 @@ export async function GET(
         { status: 403 }
       );
 
-    const supabaseUrl =
-      process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !serviceRoleKey) {
+    const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
+    if (!userEscolaId || userEscolaId !== escolaId) {
       return NextResponse.json(
-        { ok: false, error: "Configuração Supabase ausente." },
-        { status: 500 }
+        { ok: false, error: "Sem permissão" },
+        { status: 403 }
       );
     }
-    const admin = createAdminClient<Database>(supabaseUrl, serviceRoleKey);
 
     let rows: any[] = [];
     {
-      const { data, error } = await (admin as any)
+      const { data, error } = await (supabase as any)
         .from("cursos")
         .select("id, nome, nivel, descricao")
         .eq("escola_id", escolaId)
         .order("nome", { ascending: true });
       if (!error) rows = data || [];
       else {
-        const retry = await (admin as any)
+        const retry = await (supabase as any)
           .from("cursos")
           .select("id, nome")
           .eq("escola_id", escolaId)

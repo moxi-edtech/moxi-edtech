@@ -27,7 +27,7 @@ export default function ConfigHealthBanner() {
     let active = true
     const run = async () => {
       try {
-        const res = await fetch('/api/health', { cache: 'force-cache' })
+        const res = await fetch('/api/health', { cache: 'no-store' })
         const json: Health = await res.json()
         if (!active) return
         const miss: string[] = []

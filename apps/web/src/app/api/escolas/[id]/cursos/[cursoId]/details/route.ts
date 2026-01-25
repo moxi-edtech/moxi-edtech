@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-
-import { supabaseServer } from "@/lib/supabaseServer";
+import { createRouteClient } from "@/lib/supabase/route-client";
 import { canManageEscolaResources } from "../../../permissions";
-import type { Database } from "~types/supabase";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 const mapTurno = (turno: string | null) => {
   const normalized = (turno || "").toUpperCase();
@@ -21,23 +19,20 @@ export async function GET(
   const { id: escolaId, cursoId } = await context.params;
 
   try {
-    const supabase = await supabaseServer();
+    const supabase = await createRouteClient();
     const { data: auth } = await supabase.auth.getUser();
     const user = auth?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
-    const supabaseUrl = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json({ ok: false, error: "Configuração Supabase ausente." }, { status: 500 });
+    const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
+    if (!userEscolaId || userEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
-    const admin = createAdminClient<Database>(supabaseUrl, serviceRoleKey);
-    const allowed = await canManageEscolaResources(admin, escolaId, user.id);
+    const allowed = await canManageEscolaResources(supabase as any, escolaId, user.id);
     if (!allowed) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
 
-    let turmasQuery = (admin as any)
+    let turmasQuery = (supabase as any)
       .from("turmas")
       .select("id, nome, classe_id, turno, capacidade_maxima, status_validacao, classes(id, nome)")
       .eq("escola_id", escolaId)
@@ -57,7 +52,7 @@ export async function GET(
 
     const turmaIds = turmas.map((t: any) => t.id);
 
-    let matriculasQuery = (admin as any)
+    let matriculasQuery = (supabase as any)
       .from("matriculas")
       .select("id, turma_id, status, aluno:alunos(id, nome, bi_numero)")
       .in("turma_id", turmaIds)

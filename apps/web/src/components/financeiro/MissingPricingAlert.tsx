@@ -13,15 +13,22 @@ type MissingItem = {
 export function MissingPricingAlert({
   escolaId,
   anoLetivo,
+  initialItems,
 }: {
   escolaId?: string | null;
   anoLetivo: number;
+  initialItems?: MissingItem[];
 }) {
   const [isVisible, setIsVisible] = useState(true);
-  const [items, setItems] = useState<MissingItem[] | null>(null);
+  const [items, setItems] = useState<MissingItem[] | null>(initialItems ?? null);
+  const initialItemsProvided = initialItems !== undefined;
 
   useEffect(() => {
     if (!escolaId || !anoLetivo) return;
+    if (initialItemsProvided) {
+      setItems(initialItems ?? []);
+      return;
+    }
 
     let active = true;
 
@@ -29,7 +36,7 @@ export function MissingPricingAlert({
       try {
         const res = await fetch(
           `/api/financeiro/missing-pricing?escola_id=${escolaId}&ano_letivo=${anoLetivo}`,
-          { cache: "force-cache" }
+          { cache: "no-store" }
         );
 
         if (!res.ok) throw new Error(`Request failed (${res.status})`);
@@ -53,7 +60,7 @@ export function MissingPricingAlert({
     return () => {
       active = false;
     };
-  }, [escolaId, anoLetivo]);
+  }, [escolaId, anoLetivo, initialItemsProvided, initialItems]);
 
   if (!isVisible || !escolaId || !anoLetivo) return null;
   if (!items || items.length === 0) return null;

@@ -9,6 +9,9 @@ export const dynamic = "force-dynamic"
 const searchParamsSchema = z
   .object({
     escolaId: z.string().uuid(),
+    limit: z.string().regex(/^\d+$/).optional(),
+    cursor_open: z.string().optional(),
+    cursor_mat: z.string().optional(),
   })
   .strict()
 
@@ -63,37 +66,19 @@ export async function GET(request: Request) {
   if (authError) return authError
 
   const sinceIso = sevenDaysAgoIso()
+  const limit = Math.min(Math.max(Number(parsed.data.limit || 30), 1), 50)
+  const cursorOpen = parsed.data.cursor_open ?? null
+  const cursorMat = parsed.data.cursor_mat ?? null
 
   try {
     // 1) Counts (canônico por status)
-    const [cSub, cAna, cApr, cMat] = await Promise.all([
-      supabase
-        .from('candidaturas')
-        .select('id', { count: 'exact', head: true })
-        .eq('escola_id', escolaId)
-        .or(statusOr(SUBMETIDA_STATUSES)),
-      supabase
-        .from('candidaturas')
-        .select('id', { count: 'exact', head: true })
-        .eq('escola_id', escolaId)
-        .or(statusOr(EM_ANALISE_STATUSES)),
-      supabase
-        .from('candidaturas')
-        .select('id', { count: 'exact', head: true })
-        .eq('escola_id', escolaId)
-        .or(statusOr(APROVADA_STATUSES)),
-      // “Matriculados (7 dias)” — ideal: matriculado_em.
-      supabase
-        .from('candidaturas')
-        .select('id', { count: 'exact', head: true })
-        .eq('escola_id', escolaId)
-        .or(statusOr(MATRICULADO_STATUSES))
-        .gte('matriculado_em', sinceIso),
-    ])
+    const { data: countsRow, error: countsError } = await supabase
+      .from('vw_admissoes_counts_por_status')
+      .select('submetida_total, em_analise_total, aprovada_total, matriculado_7d_total')
+      .eq('escola_id', escolaId)
+      .maybeSingle()
 
-    for (const r of [cSub, cAna, cApr, cMat]) {
-      if (r.error) throw r.error
-    }
+    if (countsError) throw countsError
 
     // 2) Items para o Kanban (separado para evitar problemas com .or e datas ISO)
     const baseSelect = `
@@ -109,24 +94,47 @@ export async function GET(request: Request) {
     `
 
     const [openRes, matRes] = await Promise.all([
-      // Candidaturas abertas (submetida, em_analise, aprovada)
-      supabase
-        .from('candidaturas')
-        .select(baseSelect)
-        .eq('escola_id', escolaId)
-        .or(statusOr([...SUBMETIDA_STATUSES, ...EM_ANALISE_STATUSES, ...APROVADA_STATUSES]))
-        .order('created_at', { ascending: false })
-        .limit(200),
+      (() => {
+        let query = supabase
+          .from('candidaturas')
+          .select(baseSelect)
+          .eq('escola_id', escolaId)
+          .or(statusOr([...SUBMETIDA_STATUSES, ...EM_ANALISE_STATUSES, ...APROVADA_STATUSES]))
+          .order('created_at', { ascending: false })
+          .order('id', { ascending: false })
 
-      // Matriculados recentes
-      supabase
-        .from('candidaturas')
-        .select(baseSelect)
-        .eq('escola_id', escolaId)
-        .or(statusOr(MATRICULADO_STATUSES))
-        .gte('matriculado_em', sinceIso)
-        .order('created_at', { ascending: false })
-        .limit(200),
+        if (cursorOpen) {
+          const [cursorCreatedAt, cursorId] = cursorOpen.split(',')
+          if (cursorCreatedAt && cursorId) {
+            query = query.or(
+              `created_at.lt.${cursorCreatedAt},and(created_at.eq.${cursorCreatedAt},id.lt.${cursorId})`
+            )
+          }
+        }
+
+        return query.limit(limit)
+      })(),
+      (() => {
+        let query = supabase
+          .from('candidaturas')
+          .select(baseSelect)
+          .eq('escola_id', escolaId)
+          .or(statusOr(MATRICULADO_STATUSES))
+          .gte('matriculado_em', sinceIso)
+          .order('matriculado_em', { ascending: false })
+          .order('id', { ascending: false })
+
+        if (cursorMat) {
+          const [cursorCreatedAt, cursorId] = cursorMat.split(',')
+          if (cursorCreatedAt && cursorId) {
+            query = query.or(
+              `matriculado_em.lt.${cursorCreatedAt},and(matriculado_em.eq.${cursorCreatedAt},id.lt.${cursorId})`
+            )
+          }
+        }
+
+        return query.limit(limit)
+      })(),
     ])
 
     if (openRes.error) throw openRes.error
@@ -140,14 +148,17 @@ export async function GET(request: Request) {
         status: normalizeStatus(item.status),
       }))
       .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
-      .slice(0, 200)
+      .slice(0, limit * 2)
 
     const counts: Record<Status, number> = {
-      submetida: cSub.count ?? 0,
-      em_analise: cAna.count ?? 0,
-      aprovada: cApr.count ?? 0,
-      matriculado: cMat.count ?? 0,
+      submetida: countsRow?.submetida_total ?? 0,
+      em_analise: countsRow?.em_analise_total ?? 0,
+      aprovada: countsRow?.aprovada_total ?? 0,
+      matriculado: countsRow?.matriculado_7d_total ?? 0,
     }
+
+    const lastOpen = (openRes.data ?? [])[Math.max((openRes.data?.length ?? 1) - 1, 0)]
+    const lastMat = (matRes.data ?? [])[Math.max((matRes.data?.length ?? 1) - 1, 0)]
 
     return NextResponse.json(
       {
@@ -155,6 +166,12 @@ export async function GET(request: Request) {
         counts,
         items,
         meta: { matriculados_since: sinceIso },
+        next_cursor_open: openRes.data && openRes.data.length === limit && lastOpen
+          ? `${lastOpen.created_at},${lastOpen.id}`
+          : null,
+        next_cursor_mat: matRes.data && matRes.data.length === limit && lastMat
+          ? `${lastMat.matriculado_em},${lastMat.id}`
+          : null,
       },
       { status: 200 }
     )

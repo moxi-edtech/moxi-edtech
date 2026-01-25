@@ -2,17 +2,6 @@ import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 
-type CobrancaRow = {
-  status: string;
-  enviado_em: string;
-  mensalidades?: { valor_previsto?: number | null } | { valor_previsto?: number | null }[] | null;
-};
-
-function normalizeMensalidade(mensalidade: CobrancaRow["mensalidades"]) {
-  if (!mensalidade) return null;
-  return Array.isArray(mensalidade) ? mensalidade[0] ?? null : mensalidade;
-}
-
 export async function GET() {
   try {
     const supabase = await supabaseServerTyped<any>();
@@ -26,11 +15,12 @@ export async function GET() {
     since.setDate(since.getDate() - 30);
 
     let query = supabase
-      .from("financeiro_cobrancas")
-      .select("status, enviado_em, mensalidades(valor_previsto)")
-      .gte("enviado_em", since.toISOString());
+      .from("vw_financeiro_cobrancas_diario")
+      .select("dia, enviadas, respondidas, pagos, valor_recuperado")
+      .gte("dia", since.toISOString().slice(0, 10))
+      .order("dia", { ascending: true });
 
-    query = applyKf2ListInvariants(query);
+    query = applyKf2ListInvariants(query, { defaultLimit: 90 });
 
     const { data, error } = await query;
 
@@ -38,32 +28,30 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
     }
 
-    const rows = (data ?? []) as CobrancaRow[];
+    const rows = (data ?? []) as Array<{
+      dia: string;
+      enviadas: number | null;
+      respondidas: number | null;
+      pagos: number | null;
+      valor_recuperado: number | null;
+    }>;
 
-    const resumo = {
-      totalEnviadas: rows.length,
-      totalRespondidas: rows.filter((r) => r.status === "respondida").length,
-      totalPagos: rows.filter((r) => r.status === "paga").length,
-      valorRecuperado: rows.reduce((acc, row) => {
-        if (row.status !== "paga") return acc;
-        const mensalidade = normalizeMensalidade(row.mensalidades);
-        return acc + Number(mensalidade?.valor_previsto ?? 0);
-      }, 0),
-    };
+    const resumo = rows.reduce(
+      (acc, row) => {
+        acc.totalEnviadas += Number(row.enviadas ?? 0);
+        acc.totalRespondidas += Number(row.respondidas ?? 0);
+        acc.totalPagos += Number(row.pagos ?? 0);
+        acc.valorRecuperado += Number(row.valor_recuperado ?? 0);
+        return acc;
+      },
+      { totalEnviadas: 0, totalRespondidas: 0, totalPagos: 0, valorRecuperado: 0 }
+    );
 
-    const historicoMap = new Map<string, { enviadas: number; respondidas: number; pagos: number }>();
-    for (const row of rows) {
-      const dateKey = row.enviado_em.slice(0, 10);
-      const entry = historicoMap.get(dateKey) ?? { enviadas: 0, respondidas: 0, pagos: 0 };
-      entry.enviadas += 1;
-      if (row.status === "respondida") entry.respondidas += 1;
-      if (row.status === "paga") entry.pagos += 1;
-      historicoMap.set(dateKey, entry);
-    }
-
-    const historico = Array.from(historicoMap.entries()).map(([date, values]) => ({
-      data: date,
-      ...values,
+    const historico = rows.map((row) => ({
+      data: row.dia,
+      enviadas: Number(row.enviadas ?? 0),
+      respondidas: Number(row.respondidas ?? 0),
+      pagos: Number(row.pagos ?? 0),
     }));
 
     const taxaResposta =
@@ -80,9 +68,9 @@ export async function GET() {
           totalPagos: resumo.totalPagos,
           taxaResposta,
           taxaConversao,
-          valorRecuperado: resumo.valorRecuperado,
-        },
-        historico,
+        valorRecuperado: resumo.valorRecuperado,
+      },
+      historico,
       },
       { status: 200 }
     );

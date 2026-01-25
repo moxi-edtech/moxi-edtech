@@ -14,7 +14,7 @@ export default async function FichaAlunoPage({ params }: { params: Promise<Param
 
   try {
     const res = await fetch(`${baseUrl}/api/secretaria/alunos/${encodeURIComponent(id)}`, {
-      cache: "force-cache",
+      cache: "no-store",
       headers: { cookie },
     });
 

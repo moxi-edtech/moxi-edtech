@@ -10,7 +10,7 @@ export function FinanceiroResumo() {
     let mounted = true;
     (async () => {
       try {
-        const res = await fetch('/api/aluno/financeiro', { cache: 'force-cache' });
+        const res = await fetch('/api/aluno/financeiro', { cache: 'no-store' });
         const json = await res.json();
         if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao carregar financeiro');
         const pend = (json.mensalidades || []).filter((m: any) => m.status === 'pendente' || m.status === 'atrasado').length;

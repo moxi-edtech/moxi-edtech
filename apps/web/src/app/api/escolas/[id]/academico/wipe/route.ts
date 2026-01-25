@@ -217,7 +217,7 @@ export async function POST(
       try {
         let q: any = (admin as any)
           .from(table)
-          .select("id", { count: "exact", head: true });
+          .select("id", { count: "estimated", head: true });
         for (const [col, val] of filters) q = q.eq(col, val as any);
         const res = await q;
         return res?.count ?? 0;

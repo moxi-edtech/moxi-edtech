@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-01-21T08:31:50.832Z",
+  "timestamp": "2026-01-24T17:15:23.172Z",
   "repoRoot": "/Users/gundja/moxi-edtech",
   "summary": {
     "critical": 0,
@@ -16,7 +16,11 @@
       "status": "PARTIAL",
       "evidence": [
         {
-          "file": "apps/web/src/app/financeiro/page.tsx",
+          "file": "apps/web/src/lib/auth-admin-job.ts",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/components/financeiro/MissingPricingAlert.tsx",
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
         },
         {
@@ -24,11 +28,59 @@
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
         },
         {
+          "file": "apps/web/src/components/secretaria/TurmaDetailClient.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
           "file": "apps/web/src/components/secretaria/TurmaForm.tsx",
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
         },
         {
-          "file": "apps/web/src/app/escola/[id]/financeiro/page.tsx",
+          "file": "apps/web/src/app/documentos/[publicId]/page.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/app/financeiro/fecho/page.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/app/professor/frequencias/page.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/app/professor/notas/page.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/components/escola/onboarding/AcademicSetupWizard.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/components/escola/settings/SettingsHub.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/components/layout/klasse/AppShell.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/app/secretaria/(portal-secretaria)/rematricula/page.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/app/escola/[id]/admin/configuracoes/page.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/app/escola/[id]/admin/turmas/page.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/app/escola/[id]/admin/configuracoes/avaliacao-frequencia/AvaliacaoFrequenciaClient.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/app/escola/[id]/financeiro/configuracoes/precos/usePrecosLogic.ts",
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
         }
       ],

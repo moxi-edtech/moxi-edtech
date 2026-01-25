@@ -12,17 +12,15 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     const url = new URL(req.url);
     const status = (url.searchParams.get("status") || "active").toLowerCase();
     const q = (url.searchParams.get("q") || "").trim();
+    const limit = Number(url.searchParams.get("limit") || 30);
+    const cursor = url.searchParams.get("cursor");
 
     let query = s
       .from("alunos")
       .select(
-        "id, nome, status, created_at, profile_id, escola_id, profiles!alunos_profile_id_fkey ( email, numero_login )",
-        { count: "exact" }
+        "id, nome, status, created_at, profile_id, escola_id, profiles!alunos_profile_id_fkey ( email, numero_login )"
       )
-      .eq("escola_id", escolaId)
-      .order("created_at", { ascending: false });
-
-    query = applyKf2ListInvariants(query, { defaultLimit: 500 });
+      .eq("escola_id", escolaId);
 
     if (status === "archived") {
       query = query.not("deleted_at", "is", null);
@@ -35,28 +33,32 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       if (uuidRe.test(q)) {
         query = query.or(`id.eq.${q}`);
       } else {
-        // buscar por nome/responsavel e numero_login via profiles
-        let profileIds: string[] = [];
-        try {
-          let profQuery = s
-            .from("profiles")
-            .select("user_id, numero_login")
-            .ilike("numero_login", `%${q}%`)
-            .eq("escola_id", escolaId)
-
-          profQuery = applyKf2ListInvariants(profQuery, { defaultLimit: 500 });
-
-          const { data: profRows } = await profQuery;
-          profileIds = (profRows ?? []).map((r: any) => r.user_id).filter(Boolean);
-        } catch {}
-        const orParts = [`nome.ilike.%${q}%`, `responsavel.ilike.%${q}%`];
-        if (profileIds.length > 0) {
-          const inList = profileIds.join(",");
-          orParts.push(`profile_id.in.(${inList})`);
-        }
+        const normalized = q.toLowerCase();
+        const orParts = [
+          `nome_busca.like.${normalized}%`,
+          `responsavel.ilike.${normalized}%`,
+          `profiles.numero_login.ilike.${normalized}%`,
+        ];
         query = query.or(orParts.join(","));
       }
     }
+
+    if (cursor) {
+      const [cursorCreatedAt, cursorId] = cursor.split(",");
+      if (cursorCreatedAt && cursorId) {
+        query = query.or(
+          `created_at.lt.${cursorCreatedAt},and(created_at.eq.${cursorCreatedAt},id.lt.${cursorId})`
+        );
+      }
+    }
+
+    query = applyKf2ListInvariants(query, {
+      limit,
+      order: [
+        { column: "created_at", ascending: false },
+        { column: "id", ascending: false },
+      ],
+    });
 
     const { data, error } = await query;
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
@@ -132,7 +134,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       });
     }
 
-    return NextResponse.json({ ok: true, items: [...candidaturaItems, ...alunoItems] });
+    const items = [...candidaturaItems, ...alunoItems];
+    const last = alunoItems[alunoItems.length - 1];
+    const nextCursor =
+      alunoItems.length === limit && last
+        ? `${last.created_at},${last.id}`
+        : null;
+
+    return NextResponse.json({ ok: true, items, next_cursor: nextCursor });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

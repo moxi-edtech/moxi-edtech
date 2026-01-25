@@ -34,6 +34,14 @@ Documentar o fluxo Pedagógico (UI → API → DB), com origem única de dados e
 - Listagens p95 ≤ 500 ms
 - Ação financeira p95 ≤ 200 ms
 - Dashboards via derivados/MVs
+- Pauta/grade: primeira render p95 ≤ 300 ms (skeleton imediato)
+- Mutations pedagógicas: feedback visual ≤ 50 ms
+
+## Metas p95 por fluxo acadêmico
+- Turma › Aba Pedagógico: p95 ≤ 500 ms (origem única, sem cache).
+- Estrutura › Currículo/Disciplinas: p95 ≤ 500 ms (cursor + `limit <= 30`).
+- Avaliações e Notas: p95 ≤ 500 ms (listar) e feedback ≤ 50 ms.
+- Presenças: p95 ≤ 500 ms (listar) e feedback ≤ 50 ms.
 
 ## Riscos conhecidos
 - `turma_disciplinas` e `curso_matriz` com RLS restrito (service role em alguns endpoints).
@@ -47,3 +55,15 @@ Documentar o fluxo Pedagógico (UI → API → DB), com origem única de dados e
 ## Próximos passos
 - Consolidar owners e SLAs por tela.
 - Definir view derivada para indicadores pedagógicos.
+
+## Sessão atual — evidências
+- Paginação/cursor em listas de cursos/classes/disciplinas:
+  - `apps/web/src/app/api/escolas/[id]/cursos/route.ts`
+  - `apps/web/src/app/api/escolas/[id]/cursos/stats/route.ts`
+  - `apps/web/src/app/api/escolas/[id]/classes/route.ts`
+- Onboarding paginado (sem select tudo):
+  - `apps/web/src/components/escola/onboarding/AcademicSetupWizard.tsx`
+- Setup/estrutura via MV:
+  - `supabase/migrations/20261101120000_mv_escola_setup_status.sql`
+  - `supabase/migrations/20261101121000_mv_escola_estrutura_counts.sql`
+  - `apps/web/src/app/api/escola/[id]/admin/setup/status/route.ts`

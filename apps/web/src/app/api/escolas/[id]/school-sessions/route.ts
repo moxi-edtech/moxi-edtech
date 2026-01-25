@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
+import { createRouteClient } from "@/lib/supabase/route-client";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export async function GET(
   _req: NextRequest,
@@ -11,7 +10,7 @@ export async function GET(
   const { id: escolaId } = await context.params;
 
   try {
-    const supabase = await supabaseServerTyped<any>();
+    const supabase = await createRouteClient();
     const { data: auth } = await supabase.auth.getUser();
     const user = auth?.user;
     if (!user) {
@@ -78,9 +77,6 @@ export async function GET(
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
-    const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
     const mapAnoLetivoRows = (rows: any[]) =>
       (rows || []).map((row: any) => ({
         id: row.id,
@@ -92,28 +88,12 @@ export async function GET(
         ano_letivo: `${row.ano}/${row.ano + 1}`,
       }));
 
-    if (!adminUrl || !serviceRole) {
-      let query = supabase
-        .from("anos_letivos")
-        .select("id, ano, data_inicio, data_fim, ativo")
-        .eq("escola_id", escolaId)
-        .order("ano", { ascending: false });
-
-      query = applyKf2ListInvariants(query, { defaultLimit: 200 });
-
-      const { data, error } = await query;
-
-      if (error) {
-        return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
-      }
-
-      const items = mapAnoLetivoRows(data || []);
-
-      return NextResponse.json({ ok: true, items });
+    const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
+    if (!userEscolaId || userEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
-    const admin = createAdminClient<Database>(adminUrl, serviceRole);
-    let adminQuery = (admin as any)
+    let adminQuery = (supabase as any)
       .from("anos_letivos")
       .select("id, ano, data_inicio, data_fim, ativo")
       .eq("escola_id", escolaId)

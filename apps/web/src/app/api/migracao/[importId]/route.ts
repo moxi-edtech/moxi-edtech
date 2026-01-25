@@ -4,6 +4,41 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 import { userHasAccessToEscola } from "../auth-helpers";
 
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ importId: string }> }
+) {
+  const { importId } = await params;
+  const routeClient = await createRouteClient();
+  const { data: userRes } = await routeClient.auth.getUser();
+  const authUser = userRes?.user;
+  if (!authUser) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+
+  const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!adminUrl || !serviceKey) {
+    return NextResponse.json({ error: "SUPABASE configuration missing" }, { status: 500 });
+  }
+  const admin = createAdminClient<Database>(adminUrl, serviceKey);
+
+  const { data: im } = await admin
+    .from("import_migrations")
+    .select(
+      "id, escola_id, file_name, status, total_rows, imported_rows, error_rows, processed_at, created_at"
+    )
+    .eq("id", importId)
+    .maybeSingle();
+  const escolaId = (im as any)?.escola_id as string | undefined;
+  if (!escolaId || !im) {
+    return NextResponse.json({ error: "Importação não encontrada" }, { status: 404 });
+  }
+
+  const hasAccess = await userHasAccessToEscola(admin, escolaId, authUser.id);
+  if (!hasAccess) return NextResponse.json({ error: "Sem vínculo com a escola" }, { status: 403 });
+
+  return NextResponse.json({ ok: true, item: im });
+}
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ importId: string }> }
@@ -93,4 +128,3 @@ export async function DELETE(
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   return NextResponse.json({ ok: true });
 }
-

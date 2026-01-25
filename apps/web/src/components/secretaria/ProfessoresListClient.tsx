@@ -62,7 +62,7 @@ export default function ProfessoresListClient() {
         pageSize: String(pageSize) 
       });
       
-      const res = await fetch(`/api/secretaria/professores?${params.toString()}`, { cache: 'force-cache' });
+      const res = await fetch(`/api/secretaria/professores?${params.toString()}`, { cache: 'no-store' });
       const json = await res.json();
       
       if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao carregar professores');

@@ -33,22 +33,26 @@ export async function GET(
     const identidadeCompleta = !!(escolaData?.nome && escolaData?.nif);
 
     // 2. Check Academico (pelo menos 1 curso)
-    const { count: cursoCount, error: cursoError } = await supabaseAdmin
+    const { data: cursoRow, error: cursoError } = await supabaseAdmin
       .from("cursos")
-      .select("id", { count: "exact", head: true })
-      .eq("escola_id", escolaId);
+      .select("id")
+      .eq("escola_id", escolaId)
+      .limit(1)
+      .maybeSingle();
 
     if (cursoError) throw new Error("Erro ao verificar estrutura académica.");
-    const academicoCompleto = (cursoCount ?? 0) > 0;
+    const academicoCompleto = Boolean(cursoRow);
 
     // 3. Check Financeiro (pelo menos 1 tabela de preço)
-    const { count: financeiroCount, error: financeiroError } = await supabaseAdmin
+    const { data: financeiroRow, error: financeiroError } = await supabaseAdmin
       .from("financeiro_tabelas")
-      .select("id", { count: "exact", head: true })
-      .eq("escola_id", escolaId);
+      .select("id")
+      .eq("escola_id", escolaId)
+      .limit(1)
+      .maybeSingle();
       
     if (financeiroError) throw new Error("Erro ao verificar configuração financeira.");
-    const financeiroCompleto = (financeiroCount ?? 0) > 0;
+    const financeiroCompleto = Boolean(financeiroRow);
 
     // Build the final status object
     const configStatus = {

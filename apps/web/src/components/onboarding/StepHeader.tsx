@@ -7,13 +7,17 @@ export function StepHeader({ step, totalSteps }: Props) {
   const pct = (step / totalSteps) * 100;
 
   const labels: Record<number, string> = {
-    1: "Identidade & Operação",
-    2: "Estrutura Académica",
+    1: "Ano Letivo & Períodos",
+    2: "Frequência & Avaliação",
+    3: "Presets Curriculares",
+    4: "Gerar Turmas",
   };
 
   const desc: Record<number, string> = {
-    1: "Confirme a identidade da escola e o contexto temporal.",
-    2: "Configure cursos, classes, turmas e disciplinas (wizard inteligente).",
+    1: "Defina o ano letivo e os trimestres.",
+    2: "Escolha o modelo de frequência e avaliação.",
+    3: "Aplique presets para o currículo anual.",
+    4: "Gere turmas a partir do currículo publicado.",
   };
 
   return (
@@ -33,33 +37,30 @@ export function StepHeader({ step, totalSteps }: Props) {
       </div>
 
       <div className="hidden md:flex items-center gap-3 flex-1 justify-center">
-        <div className="flex items-center gap-2">
-          <div
-            className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold ${
-              step >= 1
-                ? "bg-slate-900 text-white shadow-md"
-                : "bg-slate-100 text-slate-400"
-            }`}
-          >
-            1
-          </div>
-        </div>
-        <div
-          className={`w-14 h-0.5 rounded-full ${
-            step > 1 ? "bg-teal-500" : "bg-slate-200"
-          }`}
-        />
-        <div className="flex items-center gap-2">
-          <div
-            className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold ${
-              step >= 2
-                ? "bg-slate-900 text-white shadow-md"
-                : "bg-slate-100 text-slate-400"
-            }`}
-          >
-            2
-          </div>
-        </div>
+        {Array.from({ length: totalSteps }, (_, index) => {
+          const value = index + 1;
+          const active = step >= value;
+          return (
+            <div key={value} className="flex items-center gap-3">
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold ${
+                  active
+                    ? "bg-slate-900 text-white shadow-md"
+                    : "bg-slate-100 text-slate-400"
+                }`}
+              >
+                {value}
+              </div>
+              {value < totalSteps && (
+                <div
+                  className={`w-10 h-0.5 rounded-full ${
+                    step > value ? "bg-teal-500" : "bg-slate-200"
+                  }`}
+                />
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <div className="w-40">

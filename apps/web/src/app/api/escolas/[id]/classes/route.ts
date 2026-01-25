@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { supabaseServer } from "@/lib/supabaseServer";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
+import { createRouteClient } from "@/lib/supabase/route-client";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { canManageEscolaResources } from "../permissions";
 import { CURRICULUM_PRESETS_META, type CurriculumKey } from "@/lib/academico/curriculum-presets";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 const CURRICULUM_CLASS_RANGES: Record<CurriculumKey, { min: number; max: number }> = {
   primario_base: { min: 1, max: 6 },
@@ -42,43 +42,75 @@ export async function GET(
   try {
     const url = new URL(_req.url);
     const cursoId = url.searchParams.get('curso_id');
-    const s = await supabaseServer();
-    const { data: auth } = await s.auth.getUser();
+    const limitParam = url.searchParams.get('limit');
+    const cursor = url.searchParams.get('cursor');
+    const limit = limitParam ? Number(limitParam) : undefined;
+    const supabase = await createRouteClient();
+    const { data: auth } = await supabase.auth.getUser();
     const user = auth?.user;
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: 'Configuração Supabase ausente.' }, { status: 500 });
-    }
-    const admin = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
 
-    const allowed = await canManageEscolaResources(admin, escolaId, user.id);
+    const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
+    if (!userEscolaId || userEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
+    }
+
+    const allowed = await canManageEscolaResources(supabase as any, escolaId, user.id);
     if (!allowed) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
 
     let rows: any[] = [];
     {
-      let query = (admin as any)
+      let query = (supabase as any)
         .from('classes')
         .select('id, nome, descricao, ordem, nivel, curso_id') // Adicionei curso_id
-        .eq('escola_id', escolaId)
-        .order('ordem', { ascending: true });
+        .eq('escola_id', escolaId);
 
       if (cursoId) query = query.eq('curso_id', cursoId);
+
+      if (cursor) {
+        const [cursorOrdem, cursorId] = cursor.split(',');
+        if (cursorOrdem && cursorId) {
+          query = query.or(`ordem.gt.${cursorOrdem},and(ordem.eq.${cursorOrdem},id.gt.${cursorId})`);
+        }
+      }
+
+      query = applyKf2ListInvariants(query, {
+        limit,
+        defaultLimit: limit ? undefined : 500,
+        order: [
+          { column: 'ordem', ascending: true },
+          { column: 'id', ascending: true },
+        ],
+      });
 
       const { data, error } = await query;
       
       if (!error) rows = data || [];
       else {
         // Retry simples (opcional)
-        const retry = await (admin as any)
+        let retry = (supabase as any)
           .from('classes')
           .select('id, nome, ordem')
-          .eq('escola_id', escolaId)
-          .order('ordem', { ascending: true });
-        if (retry.error) return NextResponse.json({ ok: false, error: retry.error.message }, { status: 400 });
-        rows = retry.data || [];
+          .eq('escola_id', escolaId);
+
+        if (cursor) {
+          const [cursorOrdem, cursorId] = cursor.split(',');
+          if (cursorOrdem && cursorId) {
+            retry = retry.or(`ordem.gt.${cursorOrdem},and(ordem.eq.${cursorOrdem},id.gt.${cursorId})`);
+          }
+        }
+
+        retry = applyKf2ListInvariants(retry, {
+          limit,
+          defaultLimit: limit ? undefined : 500,
+          order: [
+            { column: 'ordem', ascending: true },
+            { column: 'id', ascending: true },
+          ],
+        });
+        const retryRes = await retry;
+        if (retryRes.error) return NextResponse.json({ ok: false, error: retryRes.error.message }, { status: 400 });
+        rows = retryRes.data || [];
       }
     }
 
@@ -91,7 +123,10 @@ export async function GET(
       curso_id: r.curso_id ?? undefined,
     }));
 
-    return NextResponse.json({ ok: true, data: payload });
+    const pageLimit = limit ?? 500;
+    const last = rows[rows.length - 1];
+    const nextCursor = rows.length === pageLimit && last ? `${last.ordem},${last.id}` : null;
+    return NextResponse.json({ ok: true, data: payload, next_cursor: nextCursor });
   } catch (e: any) {
     const rawMessage =
       e?.message || e?.error || (typeof e === 'string' ? e : null);
@@ -125,19 +160,17 @@ export async function POST(
 ) {
   const { id: escolaId } = await context.params;
   try {
-    const s = await supabaseServer();
-    const { data: auth } = await s.auth.getUser();
+    const supabase = await createRouteClient();
+    const { data: auth } = await supabase.auth.getUser();
     const user = auth?.user;
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: 'Configuração Supabase ausente.' }, { status: 500 });
-    }
-    const admin = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
 
-    const allowed = await canManageEscolaResources(admin, escolaId, user.id);
+    const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
+    if (!userEscolaId || userEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
+    }
+
+    const allowed = await canManageEscolaResources(supabase as any, escolaId, user.id);
     if (!allowed) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
@@ -162,7 +195,7 @@ export async function POST(
     if (ordem === undefined) {
       ordem = 1;
       try {
-        const { data } = await (admin as any)
+        const { data } = await (supabase as any)
           .from('classes')
           .select('ordem')
           .eq('escola_id', escolaId)
@@ -182,7 +215,7 @@ export async function POST(
     if (parsed.data.nivel !== undefined) payload.nivel = parsed.data.nivel;
     if (parsed.data.descricao !== undefined) payload.descricao = parsed.data.descricao;
 
-    const { data: cursoInfo, error: cursoErr } = await (admin as any)
+    const { data: cursoInfo, error: cursoErr } = await (supabase as any)
       .from("cursos")
       .select("id, curriculum_key, course_code")
       .eq("id", parsed.data.curso_id)
@@ -214,7 +247,7 @@ export async function POST(
       }
     }
 
-    const { data: ins, error } = await (admin as any)
+    const { data: ins, error } = await (supabase as any)
       .from('classes')
       .insert(payload)
       .select('id, nome, nivel, descricao, ordem')

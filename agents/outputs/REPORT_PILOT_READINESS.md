@@ -36,3 +36,12 @@ Evidence: `select event_type, count(*) from outbox_events` retornou 0 linhas par
 PILOT READINESS: NO-GO
 BLOCKERS: P0.1, P0.2, P0.3, P1.1, P1.3, P3.1, OUTBOX
 WARNINGS: P1.2, P2.1, P2.2, P3.2
+
+## Atualizações recentes (não revalidadas)
+- RLS `anos_letivos` e `periodos_letivos` (SELECT) aplicado.
+- RLS `curso_matriz` e `turma_disciplinas` (SELECT/INSERT/UPDATE) aplicado.
+- Índices UNIQUE para `curso_matriz` (upsert) aplicados.
+- Fluxo `install-preset` ajustado para devolver erros reais.
+- Cockpit financeiro atualizado + MVs operacionais criadas.
+
+**Nota:** este relatório precisa de nova rodada de evidências para atualizar status acima.

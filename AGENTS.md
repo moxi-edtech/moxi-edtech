@@ -59,7 +59,9 @@ O agente deve FALHAR o scan se detectar qualquer um dos itens abaixo:
 
 ### Output
 Gera obrigatoriamente:
-- `REPORT_SCAN.md`
+- `agents/outputs/REPORT_SCAN.md`
+- `agents/ACADEMIC_REPORT_SCAN.md`
+- `agents/outputs/REPORT_INDEX.md`
 - Severidade: CRITICAL | HIGH | MEDIUM | LOW
 - Evidências com paths reais
 - Recomendação objetiva (1 linha)

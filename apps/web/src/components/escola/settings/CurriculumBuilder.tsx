@@ -128,7 +128,7 @@ interface CustomDataPayload {
 
 interface CurriculumApplyPayload {
   presetKey: CurriculumKey;
-  sessionId?: string | null;
+  ano_letivo_id?: string | null;
   customData?: CustomDataPayload;
   advancedConfig: AdvancedConfigPayload;
 }
@@ -489,7 +489,7 @@ export default function CurriculumBuilder({
 
     const payload: CurriculumApplyPayload = {
       presetKey: presetKeyToUse,
-      sessionId,
+      ano_letivo_id: sessionId,
       advancedConfig,
       customData: config.isCustom
         ? {
@@ -505,7 +505,7 @@ export default function CurriculumBuilder({
       setIsSaving(true);
 
       const res = await fetch(
-        `/api/escolas/${escolaId}/onboarding/curriculum/apply`,
+        `/api/escola/${escolaId}/admin/curriculo/apply-preset`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

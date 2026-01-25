@@ -41,10 +41,17 @@ Evoluir o Global Search para cobrir entidades críticas por portal, mantendo per
 - **Nota**: `id`, `label` (aluno + disciplina), `highlight` (trimestre), `href` `/professor/notas?aluno=:aluno_id`
 
 ## Contratos e regras
+- SLA: p95 ≤ 300 ms (busca global).
 - Limite máximo por consulta: 50.
 - Ordenação determinística (score, updated_at, created_at, id).
 - RLS obrigatório ou `SECURITY DEFINER` com `current_tenant_escola_id()`.
 - Sem cache persistente em portais críticos (secretaria/financeiro/relatórios).
+
+## Metas p95 por cenário de busca
+- Query curta (1–2 termos): p95 ≤ 250 ms.
+- Query longa (3+ termos): p95 ≤ 300 ms.
+- Resultados com múltiplas entidades: p95 ≤ 300 ms com `limit <= 50`.
+- Paginação/"carregar mais": p95 ≤ 300 ms (cursor determinístico).
 
 ## Desenho técnico (proposta)
 ### 1) RPC unificada
@@ -120,3 +127,7 @@ Criar `vw_search_*` para normalizar campos e ranking:
 - Cobertura por portal implementada.
 - P95 ≤ 300 ms em busca global.
 - Erros zero de multi-tenant.
+
+## Sessão atual — evidências
+- Metas p95 reforçadas e alinhadas com `ROADMAP.md`.
+- Nenhuma alteração funcional direta na busca global nesta sessão.

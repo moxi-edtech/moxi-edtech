@@ -1,96 +1,46 @@
 {
   "priorities": {
     "P0": {
-      "description": "Fundação obrigatória antes de escalar ou vender",
-      "features": [
-        {
-          "code": "GF1",
-          "name": "PWA Offline-First",
-          "scope": [
-            "Service Worker",
-            "Cache estratégico (read-only)",
-            "Offline fallback",
-            "Sync seguro quando online"
-          ],
-          "status": "OBRIGATORIO_V1"
-        },
-        {
-          "code": "GF4",
-          "name": "Audit Trail Forense",
-          "scope": [
-            "Logs imutáveis",
-            "IP, timestamp, actor",
-            "Before/After state",
-            "Operações financeiras e críticas"
-          ],
-          "status": "OBRIGATORIO_V1"
-        },
-        {
-          "code": "PERF_BASE",
-          "name": "Base de Performance",
-          "scope": [
-            "pg_trgm",
-            "GIN indexes",
-            "LIMIT + paginação",
-            "Debounce frontend",
-            "Virtualização de listas",
-            "Bundle split"
-          ],
-          "status": "OBRIGATORIO_V1"
-        }
+      "description": "Bloqueadores de produção: tenant, rls, integrity, service role",
+      "items": [
+        "Tenant isolation (escola_id NOT NULL + indexes + anti-cross-tenant)",
+        "RLS real por role (secretaria/professor/aluno/admin_escola)",
+        "Service role fora de endpoints humanos"
       ]
     },
     "P1": {
-      "description": "Diferenciais ativos e UX de velocidade",
-      "features": [
-        {
-          "code": "KF2",
-          "name": "Pesquisa Global (Command Palette)",
-          "status": "IMPLEMENTADO_VALIDAR"
-        },
-        {
-          "code": "F09",
-          "name": "Radar de Inadimplência",
-          "requires": [
-            "MATERIALIZED_VIEW"
-          ],
-          "status": "IMPLEMENTADO_VALIDAR"
-        },
-        {
-          "code": "F18",
-          "name": "Relatório de Caixa/Propinas",
-          "requires": [
-            "MATERIALIZED_VIEW"
-          ],
-          "status": "IMPLEMENTADO_VALIDAR"
-        }
+      "description": "Core do Portal Admin (Config Acadêmica) para piloto Angola",
+      "items": [
+        "Ano letivo ativo + periodos_letivos TRIMESTRE (1/2/3) + trava_notas_em",
+        "Currículo versionado por ano (draft/published) + publish único",
+        "Aplicar preset => cria currículo draft + itens",
+        "Gerar turmas => turmas + auto turma_disciplinas do currículo published",
+        "Setup status view/RPC sem join bugado"
       ]
     },
     "P2": {
-      "description": "Crescimento e monetização",
-      "features": [
-        {
-          "code": "KF1",
-          "name": "Matrícula Sem Filas",
-          "status": "PLANEADO"
-        },
-        {
-          "code": "KF3",
-          "name": "Notificações WhatsApp",
-          "status": "PLANEADO"
-        },
-        {
-          "code": "F12",
-          "name": "Recibos com QR Code",
-          "status": "BAIXA_PRIORIDADE"
-        }
+      "description": "Operação diária (professor/aluno) que segura o piloto",
+      "items": [
+        "SSOT frequência = frequencias (upsert + unique por aula/dia)",
+        "Avaliações + notas trimestrais on-demand (schema alinhado + upsert)",
+        "Boletim mínimo com missing_count/has_missing"
+      ]
+    },
+    "P3": {
+      "description": "Não bloqueia piloto, mas registrar",
+      "items": [
+        "Comparar currículo por ano",
+        "Exportar PDF/Excel",
+        "Migrar alunos para próximo ano",
+        "Atribuição de professores por disciplina"
       ]
     }
   },
-  "global_invariants": [
-    "Nunca gerar código redundante",
-    "Nunca assumir que algo está correto sem validar",
-    "Performance > Feature nova",
-    "Relatório antes de ação"
+  "invariants": [
+    "Sem evidência executada = FAIL/WARN",
+    "Performance > feature nova",
+    "Nada de placeholders em notas",
+    "Currículo por ano precisa ser versionado e auditável",
+    "SSOT de frequência é único (frequencias)"
   ]
 }

@@ -25,6 +25,7 @@ type Aluno = {
 type TurmaData = {
   turma: {
     id: string;
+    escola_id: string;
     nome: string;
     classe_id: string;
     classe_nome: string;
@@ -91,6 +92,10 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
   const [data, setData] = useState<TurmaData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [periodos, setPeriodos] = useState<Array<{ id: string; numero: number; tipo: string; data_inicio: string; data_fim: string }>>([]);
+  const [periodoId, setPeriodoId] = useState('');
+  const [periodoClosed, setPeriodoClosed] = useState(false);
+  const [closing, setClosing] = useState(false);
   const alunosScrollRef = useRef<HTMLDivElement | null>(null);
   const { isEnabled: canQrDocs } = usePlanFeature("doc_qr_code");
   const alunos = data?.alunos ?? [];
@@ -137,6 +142,45 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
   const handleDownloadMiniPautas = () => {
     window.location.href = `/api/secretaria/turmas/${turmaId}/mini-pautas`;
   };
+
+  const escolaId = data?.turma.escola_id;
+
+  useEffect(() => {
+    async function fetchPeriodos() {
+      if (!escolaId || !turmaId) return;
+      const res = await fetch(
+        `/api/escola/${escolaId}/admin/periodos-por-turma?turma_id=${encodeURIComponent(turmaId)}`,
+        { cache: 'no-store' }
+      );
+      const json = await res.json().catch(() => null);
+      if (res.ok && json?.ok) {
+        const items = json.items || [];
+        setPeriodos(items);
+        if (!periodoId && items.length > 0) {
+          setPeriodoId(items[0].id);
+        }
+      }
+    }
+    fetchPeriodos();
+  }, [escolaId, turmaId]);
+
+  useEffect(() => {
+    async function fetchStatus() {
+      if (!escolaId || !turmaId || !periodoId) {
+        setPeriodoClosed(false);
+        return;
+      }
+      const res = await fetch(
+        `/api/escola/${escolaId}/admin/frequencias/fechar-periodo?turma_id=${encodeURIComponent(turmaId)}&periodo_letivo_id=${encodeURIComponent(periodoId)}`,
+        { cache: 'no-store' }
+      );
+      const json = await res.json().catch(() => null);
+      if (res.ok && json?.ok) {
+        setPeriodoClosed(Boolean(json.closed));
+      }
+    }
+    fetchStatus();
+  }, [escolaId, turmaId, periodoId]);
 
   if (loading) return (
     <div className="h-[60vh] flex flex-col items-center justify-center gap-3 text-slate-400">
@@ -191,6 +235,26 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
       </td>
     </tr>
   );
+
+  const handleClosePeriodo = async () => {
+    if (!escolaId || !turmaId || !periodoId) return;
+    setClosing(true);
+    try {
+      const res = await fetch(`/api/escola/${escolaId}/admin/frequencias/fechar-periodo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ turma_id: turmaId, periodo_letivo_id: periodoId }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao fechar período');
+      setPeriodoClosed(true);
+      alert('Período fechado com sucesso.');
+    } catch (e: any) {
+      alert(e.message || 'Erro ao fechar período.');
+    } finally {
+      setClosing(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50/50 pb-20 font-sora">
@@ -380,6 +444,45 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
          {/* CONTENT: PEDAGÓGICO */}
          {activeTab === 'pedagogico' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+               <div className="col-span-full bg-white p-5 rounded-xl border border-slate-200">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                     <div>
+                        <h4 className="font-bold text-slate-800 text-sm">Fechamento de Frequência</h4>
+                        <p className="text-xs text-slate-500">Selecione o período e confirme o fechamento.</p>
+                     </div>
+                     <span className={`text-xs font-semibold ${periodoClosed ? 'text-emerald-600' : 'text-amber-600'}`}>
+                        {periodoClosed ? 'Fechado ✅' : 'Aberto ⚠️'}
+                     </span>
+                  </div>
+               <div className="mt-4 flex flex-col md:flex-row md:items-center gap-3">
+                  <select
+                     value={periodoId}
+                     onChange={(e) => setPeriodoId(e.target.value)}
+                     className="border rounded p-2 text-sm"
+                     disabled={periodos.length === 0}
+                  >
+                    <option value="">Selecione o período</option>
+                    {periodos.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.tipo} {p.numero} ({p.data_inicio} → {p.data_fim})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                        type="button"
+                        onClick={handleClosePeriodo}
+                        disabled={closing || !periodoId || periodoClosed}
+                        className="px-4 py-2 bg-slate-900 text-white rounded text-xs font-bold disabled:opacity-50"
+                     >
+                     {closing ? 'Fechando...' : 'Fechar período'}
+                  </button>
+                </div>
+                {periodos.length === 0 && (
+                  <p className="mt-3 text-xs text-amber-600">
+                    Nenhum período encontrado para o ano letivo da turma.
+                  </p>
+                )}
+            </div>
                {disciplinas.length === 0 ? (
                   <div className="col-span-full p-12 text-center bg-white rounded-xl border border-dashed border-slate-200">
                      <p className="text-slate-400 text-sm">Nenhuma disciplina vinculada.</p>

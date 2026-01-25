@@ -5,7 +5,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 
   let escolaNome: string | undefined = undefined
   try {
-    const res = await fetch(`/api/escolas/${id}/nome`, { cache: 'force-cache' })
+    const res = await fetch(`/api/escolas/${id}/nome`, { cache: 'no-store' })
     const json = await res.json().catch(() => null)
     if (res.ok && json?.ok && json?.nome) escolaNome = String(json.nome)
   } catch {}

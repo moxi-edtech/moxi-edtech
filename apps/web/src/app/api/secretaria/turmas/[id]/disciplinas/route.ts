@@ -53,7 +53,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       professorIds.length
         ? supabase
             .from('professores')
-            .select('id, profile_id')
+            .select('id, profiles!professores_profile_id_fkey ( user_id, nome, email )')
             .in('id', professorIds)
             .eq('escola_id', escolaId)
         : Promise.resolve({ data: [] as any[] }),
@@ -65,15 +65,6 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       if (nome) discMap.set((d as any).id, nome)
     }
 
-    // Load profiles for professores
-    const profileIds = Array.from(
-      new Set(((profRes as any).data || []).map((p: any) => p.profile_id).filter(Boolean))
-    )
-    const { data: profiles } = profileIds.length
-      ? await supabase.from('profiles').select('user_id, nome, email').in('user_id', profileIds)
-      : { data: [] as any[] }
-    const profByProfile = new Map<string, { nome: string | null; email: string | null }>()
-    for (const p of profiles || []) profByProfile.set(p.user_id, { nome: p.nome ?? null, email: p.email ?? null })
     const profRowById = new Map<string, any>()
     for (const r of ((profRes as any).data || [])) profRowById.set(r.id, r)
 
@@ -82,49 +73,53 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     for (const row of rows || []) {
       const disciplinaNome = discMap.get(row.curso_matriz_id) || null
       const profRow = profRowById.get(row.professor_id)
-      const profile = profRow ? profByProfile.get(profRow.profile_id) : undefined
+      const profile = Array.isArray(profRow?.profiles) ? profRow?.profiles?.[0] : profRow?.profiles
 
       // Check notas: try disciplina_id FK first; fallback to disciplina (texto)
       let notasCount = 0
       if (row.curso_matriz_id) {
-        const { count } = await supabase
+        const { data: notasRows } = await supabase
           .from('notas')
-          .select('id', { count: 'exact', head: true })
+          .select('id')
           .eq('escola_id', escolaId)
           .eq('turma_id', turmaId)
           .eq('curso_matriz_id', row.curso_matriz_id)
-        notasCount = count ?? 0
+          .limit(1)
+        notasCount = (notasRows ?? []).length
       }
 
       // Check rotinas (horário) by turma and professor profile
       let rotinasCount = 0
-      if (profRow?.profile_id) {
-        const { count } = await supabase
+      if (profile?.user_id) {
+        const { data: rotinasRows } = await supabase
           .from('rotinas')
-          .select('id', { count: 'exact', head: true })
+          .select('id')
           .eq('escola_id', escolaId)
           .eq('turma_id', turmaId)
-          .eq('professor_user_id', profRow.profile_id)
-        rotinasCount = count ?? 0
+          .eq('professor_user_id', profile.user_id)
+          .limit(1)
+        rotinasCount = (rotinasRows ?? []).length
       }
 
       // Check presenças: tenta filtrar por disciplina_id quando houver; senão, nível de turma
       let presencasCount = 0
       if (row.curso_matriz_id) {
-        const { count } = await supabase
+        const { data: presencasRows } = await supabase
           .from('presencas')
-          .select('id', { count: 'exact', head: true })
+          .select('id')
           .eq('escola_id', escolaId)
           .eq('turma_id', turmaId)
           .eq('curso_matriz_id', row.curso_matriz_id)
-        presencasCount = count ?? 0
+          .limit(1)
+        presencasCount = (presencasRows ?? []).length
       } else {
-        const { count } = await supabase
+        const { data: presencasRows } = await supabase
           .from('presencas')
-          .select('id', { count: 'exact', head: true })
+          .select('id')
           .eq('escola_id', escolaId)
           .eq('turma_id', turmaId)
-        presencasCount = count ?? 0
+          .limit(1)
+        presencasCount = (presencasRows ?? []).length
       }
 
       // Planejamento: placeholder (não há tabela unificada) – considerar future link com syllabi/planos

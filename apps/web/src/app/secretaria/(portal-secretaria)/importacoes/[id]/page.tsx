@@ -22,21 +22,21 @@ type ErrorRow = {
   raw_value: string | null;
 };
 
-async function getHistorico(): Promise<ImportItem[]> {
+async function getImportacao(importId: string): Promise<ImportItem | null> {
   const cookieStore = await cookies();
   const cookie = cookieStore.getAll().map(({ name, value }) => `${name}=${value}`).join('; ');
-  
+
   const baseUrl = process.env.VERCEL_URL
     ? `https://${process.env.VERCEL_URL}`
     : `http://localhost:${process.env.PORT || 3000}`;
-    
-  const res = await fetch(`${baseUrl}/api/migracao/historico`, {
-    cache: 'force-cache',
+
+  const res = await fetch(`${baseUrl}/api/migracao/${importId}`, {
+    cache: 'no-store',
     headers: { cookie },
   });
-  if (!res.ok) return [];
+  if (!res.ok) return null;
   const json = await res.json().catch(() => ({}));
-  return json?.items ?? [];
+  return json?.item ?? null;
 }
 
 async function getErros(importId: string): Promise<ErrorRow[]> {
@@ -48,7 +48,7 @@ async function getErros(importId: string): Promise<ErrorRow[]> {
     : `http://localhost:${process.env.PORT || 3000}`;
 
   const res = await fetch(`${baseUrl}/api/migracao/${importId}/erros`, {
-    cache: 'force-cache',
+    cache: 'no-store',
     headers: { cookie },
   });
   if (!res.ok) return [];
@@ -58,8 +58,7 @@ async function getErros(importId: string): Promise<ErrorRow[]> {
 
 export default async function ImportacaoDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: importId } = await params;
-  const [items, erros] = await Promise.all([getHistorico(), getErros(importId)]);
-  const item = items.find((i) => i.id === importId);
+  const [item, erros] = await Promise.all([getImportacao(importId), getErros(importId)]);
   if (!item) {
     // Se o histórico não contém, ainda assim mostramos erros com cabeçalho simples
     if (erros.length === 0) return notFound();

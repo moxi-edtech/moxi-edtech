@@ -10,6 +10,7 @@ import {
   ArrowRight,
   AlertCircle 
 } from "lucide-react";
+import type { SetupStatus } from "./setupStatus";
 
 export type KpiStats = {
   turmas: number;
@@ -24,7 +25,8 @@ type Props = {
   stats: KpiStats;
   loading?: boolean;
   error?: string | null;
-  onboardingComplete: boolean;
+  setupStatus: SetupStatus;
+  financeiroHref?: string;
 };
 
 export default function KpiSection({
@@ -32,7 +34,8 @@ export default function KpiSection({
   stats,
   loading = false,
   error,
-  onboardingComplete,
+  setupStatus,
+  financeiroHref,
 }: Props) {
   
   // Tratamento de Erro (Clean)
@@ -47,13 +50,14 @@ export default function KpiSection({
 
   const safeStats: KpiStats = stats ?? { turmas: 0, alunos: 0, professores: 0, avaliacoes: 0 };
   const getHref = (path: string) => `/escola/${escolaId}/admin/${path}`;
+  const { turmasOk } = setupStatus;
 
   const kpis = [
     {
       title: "Turmas",
       value: safeStats.turmas,
       icon: UsersRound, // Icon token correto
-      status: onboardingComplete ? "Ativas" : "Estrutura",
+      status: turmasOk ? "Ativas" : "Estrutura",
       href: getHref("turmas"),
       disabled: false, 
     },
@@ -61,25 +65,25 @@ export default function KpiSection({
       title: "Alunos",
       value: safeStats.alunos,
       icon: Users, // Icon token correto
-      status: onboardingComplete ? "Matriculados" : "Aguardando",
+      status: turmasOk ? "Matriculados" : "Aguardando",
       href: getHref("alunos"),
-      disabled: !onboardingComplete,
+      disabled: !turmasOk,
     },
     {
       title: "Professores",
       value: safeStats.professores,
       icon: UserCheck, // Icon token correto
-      status: onboardingComplete ? "Docentes" : "Pendente",
+      status: turmasOk ? "Docentes" : "Pendente",
       href: getHref("professores"),
-      disabled: !onboardingComplete,
+      disabled: !turmasOk,
     },
     {
       title: "Financeiro", // Alterado título para consistência
       value: (safeStats.financeiro ?? 0) + "%",
       icon: Wallet,
-      status: onboardingComplete ? "Arrecadação" : "Configurar",
-      href: getHref("financeiro"),
-      disabled: !onboardingComplete,
+      status: turmasOk ? "Arrecadação" : "Configurar",
+      href: financeiroHref ?? getHref("financeiro"),
+      disabled: !turmasOk,
     },
   ] as const;
 

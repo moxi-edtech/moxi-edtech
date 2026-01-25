@@ -88,7 +88,9 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   const [activeTab, setActiveTab] = useState<'my_courses' | 'catalog'>('my_courses');
   const [courses, setCourses] = useState<ActiveCourse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sessions, setSessions] = useState<Array<{ id: string; nome: string; status?: string; ano?: number }>>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [setupStatus, setSetupStatus] = useState<{ periodos_ok?: boolean; ano_letivo_ok?: boolean } | null>(null);
   
   // --- ESTADO DO GERENCIADOR (CRUD DETALHADO) ---
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
@@ -112,15 +114,14 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     const res = await fetch(url, { ...opts, headers: { ...(opts?.headers || {}), 'X-Proxy-Used': 'canonical' } });
     const json = await res.json().catch(() => ({}));
     if (!res.ok || json?.ok === false) {
-      throw new Error(json?.error || `Falha na requisição (${res.status})`);
+      const issues = Array.isArray(json?.issues)
+        ? json.issues.map((issue: any) => issue.message).join(', ')
+        : null;
+      const detail = issues || json?.message || json?.error;
+      throw new Error(detail || `Falha na requisição (${res.status})`);
     }
     return json;
   };
-
-  const activeSession = useMemo(() => {
-    const active = sessions.find((s) => s.status === 'ativa');
-    return active || sessions[0];
-  }, [sessions]);
 
   const disciplinas = details?.disciplinas ?? [];
   const hasDisciplinas = disciplinas.length > 0;
@@ -132,35 +133,65 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   });
 
   // --- CARREGAR CURSOS ATIVOS ---
-  const fetchCourses = async () => {
-    setLoading(true);
+  const fetchCourses = async (options?: { cursor?: string | null; append?: boolean }) => {
+    if (options?.append) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+      setNextCursor(null);
+    }
     try {
       if (!resolvedEscolaId) return;
-      const json = await fetchJson(buildEscolaUrl(resolvedEscolaId, '/cursos/stats'));
-      setCourses(json.data || json.items || []);
+      const params = new URLSearchParams();
+      params.set('limit', '30');
+      if (options?.cursor) params.set('cursor', options.cursor);
+      const json = await fetchJson(buildEscolaUrl(resolvedEscolaId, '/cursos/stats', params));
+      const next = json.next_cursor ?? null;
+      setNextCursor(next);
+      if (options?.append) {
+        setCourses((prev) => [...prev, ...(json.data || json.items || [])]);
+      } else {
+        setCourses(json.data || json.items || []);
+      }
     } catch (error) {
       console.error(error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
   useEffect(() => { if (resolvedEscolaId) fetchCourses(); }, [resolvedEscolaId]);
 
-  // --- CARREGAR SESSÕES (para ano letivo e vínculo de turma) ---
+  const loadMoreCourses = async () => {
+    if (!nextCursor || loadingMore) return;
+    await fetchCourses({ cursor: nextCursor, append: true });
+  };
+
+  // --- CARREGAR STATUS DO SETUP ---
   useEffect(() => {
-    const loadSessions = async () => {
+    const loadSetupStatus = async () => {
       try {
-        if (!resolvedEscolaId) return setSessions([]);
-        const json = await fetchJson(buildEscolaUrl(resolvedEscolaId, '/school-sessions'));
-        setSessions(json.data || json.items || []);
+        if (!resolvedEscolaId) return setSetupStatus(null);
+        const json = await fetchJson(`/api/escola/${resolvedEscolaId}/admin/setup/status`);
+        setSetupStatus(json?.data ?? null);
       } catch (e) {
-        console.warn('Falha ao carregar sessões escolares', e);
-        setSessions([]);
+        console.warn('Falha ao carregar status de setup', e);
+        setSetupStatus(null);
       }
     };
-    loadSessions();
+    loadSetupStatus();
   }, [resolvedEscolaId]);
+
+  const installBlockedReason = useMemo(() => {
+    if (setupStatus?.ano_letivo_ok === false) {
+      return 'Defina o ano letivo ativo antes de instalar.';
+    }
+    if (setupStatus?.periodos_ok === false) {
+      return 'Configurar períodos do ano letivo antes de instalar.';
+    }
+    return null;
+  }, [setupStatus]);
 
   if (escolaLoading) {
     return (
@@ -264,12 +295,11 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     subjects: string[];
     turnos: string[];
   }) => {
-    const sessionObj = activeSession;
-    const anoLetivoInt = sessionObj?.ano ?? (() => {
-      const label = sessionObj?.nome;
-      const parsed = label ? parseInt(label.replace(/\D/g, ''), 10) : NaN;
-      return Number.isFinite(parsed) ? parsed : new Date().getFullYear();
-    })();
+    const anoLetivoId = null;
+
+    if (installBlockedReason) {
+      throw new Error(installBlockedReason);
+    }
 
     const turnosFlags = {
       manha: args.turnos.includes('Manhã'),
@@ -288,8 +318,12 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
 
     const payload = {
       presetKey: args.presetKey,
-      customData: { label: args.label },
-      anoLetivo: anoLetivoInt,
+      customData: {
+        label: args.label,
+        associatedPreset: args.presetKey,
+        classes: args.classes,
+        subjects: args.subjects,
+      },
       advancedConfig: {
         classes: args.classes,
         subjects: args.subjects,
@@ -299,10 +333,13 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     };
 
     if (!resolvedEscolaId) throw new Error('Escola não identificada');
-    await fetchJson(`/api/escolas/${resolvedEscolaId}/onboarding/curriculum/apply`, {
+    await fetchJson(`/api/escola/${resolvedEscolaId}/admin/curriculo/install-preset`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        ...payload,
+        options: { autoPublish: true, generateTurmas: true },
+      }),
     });
   };
 
@@ -360,7 +397,14 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         toast.success('Estrutura criada com sucesso.');
         fetchCourses();
       } catch (e: any) {
-        toast.error(e?.message || 'Falha ao instalar estrutura');
+      const msg = e?.message || 'Falha ao instalar estrutura';
+      if (msg.includes('publish')) {
+        toast.error('Falha ao publicar currículo.', { description: msg });
+      } else if (msg.includes('generate')) {
+        toast.error('Falha ao gerar turmas.', { description: msg });
+      } else {
+        toast.error(msg);
+      }
       } finally {
         setQuickInstallingKey(null);
       }
@@ -414,7 +458,14 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       setShowModal(false);
       fetchCourses();
     } catch (e: any) {
-      toast.error(e?.message || 'Falha ao criar curso');
+      const msg = e?.message || 'Falha ao criar curso';
+      if (msg.includes('publish')) {
+        toast.error('Falha ao publicar currículo.', { description: msg });
+      } else if (msg.includes('generate')) {
+        toast.error('Falha ao gerar turmas.', { description: msg });
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setInstalling(false);
     }
@@ -674,7 +725,8 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
 
       {/* ABA: MEUS CURSOS */}
       {activeTab === 'my_courses' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in">
+        <div className="space-y-4 animate-in fade-in">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {courses.length === 0 && !loading && (
                 <div className="col-span-3 text-center py-16 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
                     <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-3"/>
@@ -720,6 +772,18 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                   </div>
                 )
             })}
+          </div>
+          {nextCursor && (
+            <div className="flex justify-center">
+              <button
+                onClick={loadMoreCourses}
+                disabled={loadingMore}
+                className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              >
+                {loadingMore ? 'Carregando...' : 'Carregar mais'}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -753,10 +817,11 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                                 <span className="text-xs font-bold text-emerald-600 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Instalado</span>
                             ) : (
                                 <div className="flex gap-2">
-                                    <button 
-                                        onClick={() => handleQuickInstall(preset.id)} 
-                                        disabled={!!quickInstallingKey}
-                                        className="text-xs font-medium border border-slate-300 px-3 py-1.5 rounded-lg hover:bg-slate-50 flex items-center gap-1"
+                                    <button
+                                        onClick={() => handleQuickInstall(preset.id)}
+                                        disabled={!!quickInstallingKey || !!installBlockedReason}
+                                        title={installBlockedReason ?? undefined}
+                                        className="text-xs font-medium border border-slate-300 px-3 py-1.5 rounded-lg hover:bg-slate-50 flex items-center gap-1 disabled:opacity-60 disabled:cursor-not-allowed"
                                     >
                                         {quickInstallingKey === preset.id ? <Loader2 className="w-3 h-3 animate-spin"/> : "Instalar"}
                                     </button>
@@ -767,6 +832,11 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                                         <Settings className="w-3 h-3"/> Configurar
                                     </button>
                                 </div>
+                            )}
+                            {installBlockedReason && (
+                              <p className="mt-2 text-[11px] text-amber-600">
+                                {installBlockedReason}
+                              </p>
                             )}
                         </div>
                     )

@@ -198,8 +198,8 @@ export function usePrecosLogic(escolaId: string) {
     return async () => {
     try {
       const [cursosRes, classesRes] = await Promise.all([
-        fetch(`/api/escolas/${escolaId}/cursos`, { cache: "force-cache" }),
-        fetch(`/api/escolas/${escolaId}/classes`, { cache: "force-cache" }),
+        fetch(`/api/escolas/${escolaId}/cursos`, { cache: "no-store" }),
+        fetch(`/api/escolas/${escolaId}/classes`, { cache: "no-store" }),
       ])
 
       const cursosJson = await cursosRes.json().catch(() => null)
@@ -253,7 +253,7 @@ export function usePrecosLogic(escolaId: string) {
         `/api/financeiro/tabelas?escola_id=${encodeURIComponent(escolaId)}&ano_letivo=${encodeURIComponent(
           anoLetivoParam
         )}`,
-        { cache: "force-cache" }
+        { cache: "no-store" }
       )
       const json = await res.json().catch(() => null)
       if (tabelasRequestRef.current !== requestId) return
@@ -286,7 +286,7 @@ export function usePrecosLogic(escolaId: string) {
         `/api/financeiro/tabelas?escola_id=${encodeURIComponent(escolaId)}&ano_letivo=${encodeURIComponent(
           anoLetivoParam
         )}&curso_id=${encodeURIComponent(cursoIdValido)}&classe_id=${encodeURIComponent(classeIdValido)}`,
-        { cache: "force-cache" }
+        { cache: "no-store" }
       )
       const json = await res.json().catch(() => null)
       if (simulacaoRequestRef.current !== requestId) return

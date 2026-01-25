@@ -4,7 +4,7 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 
-export async function GET() {
+export async function GET(req: Request) {
   const supa = await createRouteClient();
   const { data: userRes } = await supa.auth.getUser();
   const authUser = userRes?.user;
@@ -43,6 +43,10 @@ export async function GET() {
 
   if (escolaIds.length === 0) return NextResponse.json({ items: [] });
 
+  const url = new URL(req.url)
+  const limit = Math.min(Math.max(Number(url.searchParams.get('limit') || 30), 1), 50)
+  const cursor = url.searchParams.get('cursor')
+
   let query = admin
     .from("import_migrations")
     .select(
@@ -60,7 +64,22 @@ export async function GET() {
     )
     .in("escola_id", escolaIds);
 
-  query = applyKf2ListInvariants(query);
+  if (cursor) {
+    const [cursorCreatedAt, cursorId] = cursor.split(',')
+    if (cursorCreatedAt && cursorId) {
+      query = query.or(
+        `created_at.lt.${cursorCreatedAt},and(created_at.eq.${cursorCreatedAt},id.lt.${cursorId})`
+      )
+    }
+  }
+
+  query = applyKf2ListInvariants(query, {
+    limit,
+    order: [
+      { column: 'created_at', ascending: false },
+      { column: 'id', ascending: false },
+    ],
+  });
 
   const { data, error } = await query;
 
@@ -69,5 +88,8 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ items: data ?? [] });
+  const items = data ?? [];
+  const last = items[items.length - 1];
+  const nextCursor = items.length === limit && last ? `${last.created_at},${last.id}` : null;
+  return NextResponse.json({ items, next_cursor: nextCursor });
 }

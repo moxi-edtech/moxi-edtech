@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { ArrowRight, Settings, TrendingUp, CreditCard, Users, BookOpen, Lock } from "lucide-react";
+import type { SetupStatus } from "./setupStatus";
 
 type Item = {
   title: string;
@@ -10,13 +11,28 @@ type Item = {
   icon: React.ElementType;
   href: string;
   locked?: boolean;
+  badge?: string;
 };
 
 function cn(...c: Array<string | false | null | undefined>) {
   return c.filter(Boolean).join(" ");
 }
 
-export default function AcademicSection({ escolaId }: { escolaId: string }) {
+export default function AcademicSection({
+  escolaId,
+  setupStatus,
+  missingPricingCount = 0,
+  financeiroHref,
+}: {
+  escolaId: string;
+  setupStatus: SetupStatus;
+  missingPricingCount?: number;
+  financeiroHref?: string;
+}) {
+  const { avaliacaoFrequenciaOk, turmasOk } = setupStatus;
+  const canFinanceiro = turmasOk;
+  const canPromocao = avaliacaoFrequenciaOk && turmasOk;
+  const pagamentosHref = financeiroHref ?? `/escola/${escolaId}/financeiro`;
   const items: Item[] = [
     {
       title: "Configurações Acadêmicas",
@@ -36,22 +52,23 @@ export default function AcademicSection({ escolaId }: { escolaId: string }) {
       title: "Pagamentos",
       description: "Gestão financeira e cobranças",
       icon: CreditCard,
-      href: `/escola/${escolaId}/admin/financeiro`,
-      locked: true,
+      href: pagamentosHref,
+      locked: !canFinanceiro,
+      badge: missingPricingCount > 0 ? "Preços pendentes" : undefined,
     },
     {
       title: "Promoção",
       description: "Progressão de alunos",
       icon: TrendingUp,
       href: `/escola/${escolaId}/admin/promocao`,
-      locked: true,
+      locked: !canPromocao,
     },
     {
       title: "Biblioteca",
       description: "Acervo e empréstimos",
       icon: BookOpen,
       href: `/escola/${escolaId}/admin/biblioteca`,
-      locked: true,
+      locked: false,
     },
   ];
 
@@ -97,6 +114,11 @@ export default function AcademicSection({ escolaId }: { escolaId: string }) {
                   {/* ✅ 1 linha */}
                   <div className="text-xs text-slate-500 truncate">{it.description}</div>
 
+                  {it.badge && (
+                    <div className="mt-1 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                      {it.badge}
+                    </div>
+                  )}
                   {it.locked && (
                     <div className="mt-1 text-[10px] font-bold text-slate-500">Bloqueado</div>
                   )}

@@ -1,12 +1,13 @@
 // apps/web/src/app/api/escolas/[id]/usuarios/invite/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
 import type { Database, TablesInsert } from '~types/supabase'
-import { supabaseServer } from '@/lib/supabaseServer'
+import { createRouteClient } from '@/lib/supabase/route-client'
 import { recordAuditServer } from '@/lib/audit'
 import { hasPermission, mapPapelToGlobalRole, normalizePapel } from '@/lib/permissions'
 import { sanitizeEmail } from '@/lib/sanitize'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import { callAuthAdminJob } from '@/lib/auth-admin-job'
 
 // ❌ REMOVIDO: generateNumeroLogin
 
@@ -39,12 +40,16 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     // -------------------------------
     // 2) Permission (secretaria/admin/etc)
     // -------------------------------
-    const s = await supabaseServer()
-    const { data: userRes } = await s.auth.getUser()
+    const supabase = await createRouteClient()
+    const { data: userRes } = await supabase.auth.getUser()
     const requesterId = userRes?.user?.id
     if (!requesterId) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
-    const { data: vinc } = await s
+    const userEscolaId = await resolveEscolaIdForUser(supabase as any, requesterId, escolaId)
+    if (!userEscolaId || userEscolaId !== escolaId)
+      return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
+
+    const { data: vinc } = await supabase
       .from('escola_users')
       .select('papel, role')
       .eq('user_id', requesterId)
@@ -53,7 +58,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
     const papelReq = normalizePapel(vinc?.[0]?.papel ?? (vinc?.[0] as any)?.role)
 
-    const profCheckRes = await s
+    const profCheckRes = await supabase
       .from('profiles' as any)
       .select('escola_id, role')
       .eq('user_id', requesterId)
@@ -66,7 +71,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     let adminLink: { user_id: string | null }[] | null = null
 
     if (!allowed) {
-      const { data } = await s
+      const { data } = await supabase
         .from('escola_administradores')
         .select('user_id')
         .eq('escola_id', escolaId)
@@ -87,18 +92,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     // -------------------------------
     // 3) Admin client
     // -------------------------------
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY)
-      return NextResponse.json({ ok: false, error: 'Falta SUPABASE_SERVICE_ROLE_KEY' }, { status: 500 })
-
-    const admin = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    )
-
     // -------------------------------
     // 4) Check school status
     // -------------------------------
-    const { data: esc } = await admin
+    const { data: esc } = await supabase
       .from('escolas')
       .select('status')
       .eq('id', escolaId)
@@ -113,7 +110,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     // -------------------------------
     // 5) Check if user exists
     // -------------------------------
-    const { data: prof } = await admin
+    const { data: prof } = await supabase
       .from('profiles')
       .select('user_id, numero_login')
       .eq('email', email)
@@ -142,22 +139,19 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     if (!userId) {
       tempPassword = generateStrongPassword(12)
 
-      const { data: inv, error: invErr } = await admin.auth.admin.createUser({
+      const created = await callAuthAdminJob(req, 'createUser', {
         email,
         password: tempPassword,
         email_confirm: true,
         user_metadata: { nome, role: roleEnum, must_change_password: true },
       })
 
-      if (invErr)
-        return NextResponse.json({ ok: false, error: invErr.message }, { status: 400 })
-
-      userId = inv?.user?.id
+      userId = created?.user?.id
       if (!userId)
         return NextResponse.json({ ok: false, error: 'Falha ao criar usuário' }, { status: 400 })
 
       // Create profile
-      await admin.from('profiles').insert({
+      await supabase.from('profiles').insert({
         user_id: userId,
         email,
         nome,
@@ -169,7 +163,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       } as TablesInsert<'profiles'>)
     } else {
       // User exists, update profile info (BUT DO NOT GENERATE numero_login)
-      await admin
+      await supabase
         .from('profiles')
         .update({
           telefone: body.telefone ?? null,
@@ -181,21 +175,22 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     }
 
     // Always sync app_metadata
-    await admin.auth.admin.updateUserById(userId!, {
-      app_metadata: { role: roleEnum, escola_id: escolaId }
+    await callAuthAdminJob(req, 'updateUserById', {
+      userId: userId!,
+      attributes: { app_metadata: { role: roleEnum, escola_id: escolaId } },
     })
 
     // -------------------------------
     // 7) Link to escola_users
     // -------------------------------
     try {
-      await admin.from('escola_users').insert({
+      await supabase.from('escola_users').insert({
         escola_id: escolaId,
         user_id: userId!,
         papel,
       })
     } catch {
-      await admin
+      await supabase
         .from('escola_users')
         .update({ papel })
         .eq('user_id', userId!)

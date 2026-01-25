@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
-import type { Database } from '~types/supabase'
-import { supabaseServer } from '@/lib/supabaseServer'
+import { createRouteClient } from '@/lib/supabase/route-client'
 import { recordAuditServer } from '@/lib/audit'
 import { mapPapelToGlobalRole } from '@/lib/permissions'
 import { hasPermission } from '@/lib/permissions'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import { callAuthAdminJob } from '@/lib/auth-admin-job'
 
 const BodySchema = z.object({
   email: z.string().email(),
@@ -22,39 +22,40 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     const { email, papel, roleEnum } = parse.data
 
     // permission check via papel -> permission mapping
-    const s = await supabaseServer()
-    const { data: userRes } = await s.auth.getUser()
+    const supabase = await createRouteClient()
+    const { data: userRes } = await supabase.auth.getUser()
     const requesterId = userRes?.user?.id
     if (!requesterId) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
-    const { data: vinc } = await s.from('escola_users').select('papel').eq('user_id', requesterId).eq('escola_id', escolaId).limit(1)
+
+    const userEscolaId = await resolveEscolaIdForUser(supabase as any, requesterId, escolaId)
+    if (!userEscolaId || userEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
+    }
+
+    const { data: vinc } = await supabase.from('escola_users').select('papel').eq('user_id', requesterId).eq('escola_id', escolaId).limit(1)
     const papelReq = vinc?.[0]?.papel as any
     if (!hasPermission(papelReq, 'editar_usuario')) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
-    const { data: profCheck } = await s.from('profiles' as any).select('escola_id').eq('user_id', requesterId).maybeSingle()
+    const { data: profCheck } = await supabase.from('profiles' as any).select('escola_id').eq('user_id', requesterId).maybeSingle()
     if (!profCheck || (profCheck as any).escola_id !== escolaId) return NextResponse.json({ ok: false, error: 'Perfil não vinculado à escola' }, { status: 403 })
-
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: 'Falta SUPABASE_SERVICE_ROLE_KEY.' }, { status: 500 })
-    }
-    const admin = createAdminClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
     // Bloqueia atualizações quando escola suspensa/excluída
-    const { data: esc } = await admin.from('escolas').select('status').eq('id', escolaId).limit(1)
+    const { data: esc } = await supabase.from('escolas').select('status').eq('id', escolaId).limit(1)
     const status = (esc?.[0] as any)?.status as string | undefined
     if (status === 'excluida') return NextResponse.json({ ok: false, error: 'Escola excluída não permite alterações.' }, { status: 400 })
     if (status === 'suspensa') return NextResponse.json({ ok: false, error: 'Escola suspensa por pagamento. Regularize para alterar usuários.' }, { status: 400 })
     const lower = email.toLowerCase()
-    const { data: prof } = await admin.from('profiles').select('user_id').eq('email', lower).limit(1)
+    const { data: prof } = await supabase.from('profiles').select('user_id').eq('email', lower).limit(1)
     const userId = prof?.[0]?.user_id as string | undefined
     if (!userId) return NextResponse.json({ ok: false, error: 'Usuário não encontrado' }, { status: 404 })
 
     // Fetch current values before update
-    const { data: linkBefore } = await admin
+    const { data: linkBefore } = await supabase
       .from('escola_users')
       .select('papel')
       .eq('escola_id', escolaId)
       .eq('user_id', userId)
       .limit(1)
     const papelBefore = linkBefore?.[0]?.papel as string | undefined
-    const { data: profBefore } = await admin
+    const { data: profBefore } = await supabase
       .from('profiles')
       .select('role')
       .eq('user_id', userId)
@@ -62,15 +63,21 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     const roleBefore = (profBefore?.[0] as any)?.role as string | undefined
 
     if (papel) {
-      await admin.from('escola_users').update({ papel }).eq('escola_id', escolaId).eq('user_id', userId)
+      await supabase.from('escola_users').update({ papel }).eq('escola_id', escolaId).eq('user_id', userId)
       // Force global role to match papel mapping when papel changes
       const mapped = mapPapelToGlobalRole(papel as any)
-      await admin.from('profiles').update({ role: mapped as any }).eq('user_id', userId)
-      await admin.auth.admin.updateUserById(userId, { app_metadata: { role: mapped } as any }).catch(() => null)
+      await supabase.from('profiles').update({ role: mapped as any }).eq('user_id', userId)
+      await callAuthAdminJob(req, 'updateUserById', {
+        userId,
+        attributes: { app_metadata: { role: mapped } as any },
+      }).catch(() => null)
     } else if (roleEnum) {
       // Only update role when explicitly provided and papel not being changed
-      await admin.from('profiles').update({ role: roleEnum as any }).eq('user_id', userId)
-      await admin.auth.admin.updateUserById(userId, { app_metadata: { role: roleEnum } as any }).catch(() => null)
+      await supabase.from('profiles').update({ role: roleEnum as any }).eq('user_id', userId)
+      await callAuthAdminJob(req, 'updateUserById', {
+        userId,
+        attributes: { app_metadata: { role: roleEnum } as any },
+      }).catch(() => null)
     }
 
     const papelAfter = papel ?? papelBefore

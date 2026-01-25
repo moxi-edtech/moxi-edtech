@@ -63,17 +63,18 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     // 2. Ocupação da turma
-    const { count: ocupacao, error: ocupacaoError } = await supabase
-      .from('matriculas')
-      .select('id', { count: 'exact', head: true })
-      .eq('turma_id', turmaId)
+    const { data: ocupacaoRow, error: ocupacaoError } = await supabase
+      .from('vw_turmas_para_matricula')
+      .select('ocupacao_atual')
       .eq('escola_id', escolaId)
-      .in('status', ['ativa', 'ativo']);
+      .eq('id', turmaId)
+      .maybeSingle();
 
     if (ocupacaoError) {
       console.error('Error fetching ocupacao:', ocupacaoError);
       return NextResponse.json({ ok: false, error: 'Erro ao buscar ocupação' }, { status: 500 });
     }
+    const ocupacao = Number(ocupacaoRow?.ocupacao_atual ?? 0);
 
     // 3. Buscar diretor separadamente para evitar problemas de relacionamento
     let diretor: { id: string; nome: string; email: string } | null = null;
@@ -229,6 +230,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     // 6. Montar resposta final
     const turma = {
       id: turmaResult.id,
+      escola_id: turmaResult.escola_id,
       nome: turmaResult.nome,
       turma_codigo: turmaResult.turma_codigo,
       classe_id: turmaResult.classes?.id || '',
