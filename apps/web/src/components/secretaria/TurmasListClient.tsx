@@ -30,6 +30,7 @@ interface TurmasResponse {
     totalAlunos: number;
     porTurno: Array<{ turno: string; total: number }>;
   };
+  next_cursor?: string | null;
 }
 
 const TURNO_LABELS: Record<string, string> = {
@@ -96,9 +97,14 @@ function KpiCard({ title, value, icon: Icon, active, onClick }: KpiCardProps) {
 
 // --- COMPONENT: Row ---
 function TurmaRow({ 
-    turma, isExpanded, onToggleExpand, onEdit, style 
+    turma, isExpanded, onToggleExpand, onEdit, style, detailHrefBase
 }: { 
-    turma: TurmaItem, isExpanded: boolean, onToggleExpand: () => void, onEdit: (t: TurmaItem) => void, style?: CSSProperties 
+    turma: TurmaItem,
+    isExpanded: boolean,
+    onToggleExpand: () => void,
+    onEdit: (t: TurmaItem) => void,
+    style?: CSSProperties,
+    detailHrefBase: string,
 }) {
     // 1. BLINDAGEM VISUAL: Garante que existam valores antes de processar
     const safeNome = turma.nome || "Sem Nome";
@@ -135,7 +141,7 @@ function TurmaRow({
                             {isDraft ? (
                                 <span className="font-bold text-sm text-slate-800">{safeNome}</span>
                             ) : (
-                                <Link href={`/secretaria/turmas/${turma.id}`} className="font-bold text-sm text-slate-900 hover:text-[#1F6B3B] hover:underline decoration-[#1F6B3B]/30 underline-offset-4 transition-colors">
+                                <Link href={`${detailHrefBase}/${turma.id}`} className="font-bold text-sm text-slate-900 hover:text-[#1F6B3B] hover:underline decoration-[#1F6B3B]/30 underline-offset-4 transition-colors">
                                     {safeNome}
                                 </Link>
                             )}
@@ -192,7 +198,7 @@ function TurmaRow({
                             </button>
                         ) : (
                             <>
-                                <Link href={`/secretaria/turmas/${turma.id}`} className="p-2 text-slate-400 hover:text-[#1F6B3B] hover:bg-green-50 rounded-lg transition-colors">
+                                <Link href={`${detailHrefBase}/${turma.id}`} className="p-2 text-slate-400 hover:text-[#1F6B3B] hover:bg-green-50 rounded-lg transition-colors">
                                     <Eye size={16}/>
                                 </Link>
                                 <button onClick={() => onEdit(turma)} className="p-2 text-slate-400 hover:text-[#E3B23C] hover:bg-amber-50 rounded-lg transition-colors">
@@ -210,58 +216,85 @@ function TurmaRow({
 }
 
 // --- MAIN PAGE COMPONENT ---
-export default function TurmasListClient() {
+export default function TurmasListClient({ adminMode = false }: { adminMode?: boolean }) {
   const { escolaId } = useEscolaId();
   
   const [data, setData] = useState<TurmasResponse | null>(null);
+  const [items, setItems] = useState<TurmaItem[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState("");
   const [turnoFilter, setTurnoFilter] = useState("todos");
+  const [statusFilter, setStatusFilter] = useState("todos");
   
   const [showForm, setShowForm] = useState(false);
   const [editingTurma, setEditingTurma] = useState<TurmaItem | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const scrollParentRef = useRef<HTMLDivElement | null>(null);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (options?: { cursor?: string | null; append?: boolean }) => {
     if (!escolaId) return;
     try {
-      setLoading(true);
+      if (options?.append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
       const params = new URLSearchParams();
       if (turnoFilter !== 'todos') params.set('turno', turnoFilter);
+      if (adminMode && statusFilter !== 'todos') params.set('status', statusFilter);
+      if (busca.trim()) params.set('busca', busca.trim());
+      params.set('limit', '30');
+      if (options?.cursor) params.set('cursor', options.cursor);
       
       const res = await fetch(buildEscolaUrl(escolaId, '/turmas', params), {
           headers: { 'X-Proxy-Used': 'canonical' }
       });
       const json = await res.json();
-      if (json.ok) setData(json);
+      if (json.ok) {
+        setData(json);
+        setNextCursor(json.next_cursor ?? null);
+        if (options?.append) {
+          setItems((prev) => [...prev, ...(json.items || [])]);
+        } else {
+          setItems(json.items || []);
+        }
+      }
     } catch (err) {
       console.error("Erro ao buscar turmas", err);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
-  }, [escolaId, turnoFilter]);
+  }, [escolaId, turnoFilter, statusFilter, adminMode, busca]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setNextCursor(null);
+      fetchData({ append: false });
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [fetchData, turnoFilter, statusFilter, adminMode, busca]);
+
+  const loadMore = useCallback(async () => {
+    if (!nextCursor || loadingMore) return;
+    await fetchData({ cursor: nextCursor, append: true });
+  }, [fetchData, nextCursor, loadingMore]);
 
   // --- AQUI ESTAVA O ERRO ---
   // CORRIGIDO: Adicionado (|| "") antes de .toLowerCase()
-  const filteredItems = useMemo(() => {
-    if (!data?.items) return [];
-    
-    // Safety check na busca
-    const lowerBusca = (busca || "").toLowerCase();
+  const filteredItems = useMemo(() => items, [items]);
 
-    return data.items.filter(t => {
-        // Safety check nas propriedades do objeto
-        const nomeSafe = (t.nome || "").toLowerCase();
-        const codigoSafe = (t.turma_codigo || "").toLowerCase();
-        
-        return nomeSafe.includes(lowerBusca) || codigoSafe.includes(lowerBusca);
-    });
-  }, [data, busca]);
+  const rascunhos = useMemo(() => items.filter(t => t.status_validacao === 'rascunho').length || 0, [items]);
+  const pendingItems = useMemo(() => {
+    if (!adminMode || statusFilter !== 'rascunho') return [];
+    return filteredItems.filter((turma) => turma.status_validacao === 'rascunho');
+  }, [adminMode, statusFilter, filteredItems]);
 
-  const rascunhos = useMemo(() => data?.items.filter(t => t.status_validacao === 'rascunho').length || 0, [data]);
+  const detailHrefBase = adminMode && escolaId
+    ? `/escola/${escolaId}/admin/turmas`
+    : `/secretaria/turmas`;
   const displayRows = useMemo(() => {
     const rows: Array<{ key: string; type: "turma" | "expanded"; turma: TurmaItem }> = [];
     filteredItems.forEach((turma) => {
@@ -295,6 +328,17 @@ export default function TurmasListClient() {
             <button className="hidden md:flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-50 transition-colors">
                 <Filter size={16} /> Filtros
             </button>
+            {adminMode && (
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 outline-none focus:border-[#E3B23C] cursor-pointer"
+              >
+                <option value="todos">Todos</option>
+                <option value="rascunho">Pendentes</option>
+                <option value="ativos">Ativos</option>
+              </select>
+            )}
             <button 
                 onClick={() => { setEditingTurma(null); setShowForm(true); }}
                 className="flex items-center gap-2 px-5 py-2.5 bg-[#E3B23C] text-white rounded-xl text-sm font-bold hover:brightness-95 shadow-sm shadow-orange-500/20 transition-all active:scale-95"
@@ -303,6 +347,33 @@ export default function TurmasListClient() {
             </button>
         </div>
       </div>
+
+      {adminMode && statusFilter === 'rascunho' && pendingItems.length > 0 && (
+        <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+          <span>{pendingItems.length} turmas pendentes.</span>
+          <button
+            onClick={async () => {
+              if (!escolaId) return;
+              if (!confirm(`Aprovar ${pendingItems.length} turmas pendentes?`)) return;
+              try {
+                const res = await fetch(buildEscolaUrl(escolaId, '/admin/turmas/aprovar'), {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ turma_ids: pendingItems.map((t) => t.id) }),
+                });
+                const json = await res.json().catch(() => null);
+                if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao aprovar turmas');
+                await fetchData();
+              } catch (err: any) {
+                alert(err?.message || 'Falha ao aprovar turmas');
+              }
+            }}
+            className="rounded-lg bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-700"
+          >
+            Aprovar pendentes
+          </button>
+        </div>
+      )}
 
       {/* KPI GRID */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -423,6 +494,7 @@ export default function TurmasListClient() {
                                 setEditingTurma(t);
                                 setShowForm(true);
                               }}
+                              detailHrefBase={detailHrefBase}
                               style={{
                                 position: "absolute",
                                 top: 0,
@@ -439,6 +511,17 @@ export default function TurmasListClient() {
                 </tbody>
             </table>
             </div>
+            {nextCursor && (
+              <div className="flex justify-center py-4">
+                <button
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                >
+                  {loadingMore ? 'Carregando...' : 'Carregar mais'}
+                </button>
+              </div>
+            )}
         </div>
       </div>
 

@@ -33,16 +33,35 @@ export interface TurnosState {
 export interface AcademicStep1Props {
   schoolDisplayName: string;
   setSchoolDisplayName: (val: string) => void;
-  regime: string;
-  setRegime: (val: string) => void;
   anoLetivo: number;
   setAnoLetivo: (val: number) => void;
+  dataInicio: string;
+  setDataInicio: (val: string) => void;
+  dataFim: string;
+  setDataFim: (val: string) => void;
+  periodosConfig: {
+    numero: number;
+    data_inicio: string;
+    data_fim: string;
+    trava_notas_em: string;
+  }[];
+  onPeriodoChange: (numero: number, field: "data_inicio" | "data_fim" | "trava_notas_em", value: string) => void;
   turnos: TurnosState;
   onTurnoToggle: (turno: keyof TurnosState) => void;
   sessaoAtiva: AcademicSession | null;
   periodos: Periodo[];
   creatingSession: boolean;
   onCreateSession: () => void;
+}
+
+export interface AcademicStep2ConfigProps {
+  frequenciaModelo: 'POR_AULA' | 'POR_PERIODO';
+  onFrequenciaModeloChange: (val: 'POR_AULA' | 'POR_PERIODO') => void;
+  frequenciaMinPercent: number;
+  onFrequenciaMinPercentChange: (val: number) => void;
+  modeloAvaliacao: 'SIMPLIFICADO' | 'ANGOLANO_TRADICIONAL' | 'COMPETENCIAS' | 'DEPOIS';
+  onModeloAvaliacaoChange: (val: 'SIMPLIFICADO' | 'ANGOLANO_TRADICIONAL' | 'COMPETENCIAS' | 'DEPOIS') => void;
+  avaliacaoConfig: { componentes?: { code: string; peso: number; ativo: boolean }[] };
 }
 
 export type CurriculumCategory = "geral" | "tecnico_ind" | "tecnico_serv";

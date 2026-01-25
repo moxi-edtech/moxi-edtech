@@ -130,12 +130,31 @@ export default function ConfiguracoesAcademicasPage() {
         }
       };
 
+      const fetchAllPaginated = async <T,>(endpoint: string, limit = 50) => {
+        const items: T[] = [];
+        let cursor: string | null = null;
+        do {
+          const url = new URL(endpoint, window.location.origin);
+          url.searchParams.set("limit", String(limit));
+          if (cursor) url.searchParams.set("cursor", cursor);
+          const res = await fetch(url.toString(), { cache: "no-store" });
+          const json = await res.json().catch(() => null);
+          if (!res.ok || json?.ok === false) {
+            throw new Error(json?.error || "Falha ao carregar dados");
+          }
+          const pageItems = (json?.data ?? json?.items ?? []) as T[];
+          items.push(...pageItems);
+          cursor = json?.next_cursor ?? null;
+        } while (cursor);
+        return items;
+      };
+
       // 1) Sessões — usar API (service role) para leitura consistente
       let mapSessions: AcademicSession[] = [];
       try {
         const res = await fetch(
           `/api/escolas/${escolaId}/onboarding/core/session`,
-          { cache: "force-cache" }
+          { cache: "no-store" }
         );
         const json = await res.json().catch(() => null);
         const rows = res.ok && Array.isArray(json?.data) ? json.data : [];
@@ -166,7 +185,7 @@ export default function ConfiguracoesAcademicasPage() {
             `/api/escolas/${escolaId}/semestres?session_id=${encodeURIComponent(
               ativa.id
             )}`,
-            { cache: "force-cache" }
+            { cache: "no-store" }
           );
           const json = await res.json().catch(() => null);
           const rows: any[] =
@@ -197,50 +216,38 @@ export default function ConfiguracoesAcademicasPage() {
       // 3) Cursos — usar API (service role) para evitar RLS retornar vazio
       let cursosRows: Course[] = [] as any;
       try {
-        const res = await fetch(`/api/escolas/${escolaId}/cursos`, {
-          cache: "force-cache",
-        });
-        const json = await res.json().catch(() => null);
-        if (res.ok) cursosRows = (json?.data as any) || [];
-        else if (json?.error) console.warn("Cursos GET error:", json.error);
+        cursosRows = await fetchAllPaginated<Course>(`/api/escolas/${escolaId}/cursos`);
         if (mounted) setCursos(cursosRows as any);
-      } catch {}
+      } catch (error) {
+        console.warn("Cursos GET error:", error);
+      }
 
       // 4) Classes — usar API para leitura consistente
       let classesRows: Class[] = [] as any;
       try {
-        const res = await fetch(`/api/escolas/${escolaId}/classes`, {
-          cache: "force-cache",
-        });
-        const json = await res.json().catch(() => null);
-        let rows: any[] = Array.isArray(json?.data) ? json.data : [];
-        rows = rows.sort(
+        const rows = await fetchAllPaginated<Class>(`/api/escolas/${escolaId}/classes`);
+        classesRows = rows.sort(
           (a: any, b: any) => (a?.ordem ?? 0) - (b?.ordem ?? 0)
         );
-        classesRows = rows as any;
-        if (mounted && res.ok) setClasses(classesRows as any);
-        else if (mounted && json?.error)
-          console.warn("Classes GET error:", json.error);
-      } catch {}
+        if (mounted) setClasses(classesRows as any);
+      } catch (error) {
+        console.warn("Classes GET error:", error);
+      }
 
       // 5) Disciplinas — usar API para leitura consistente
       let disciplinasRows: Discipline[] = [] as any;
       try {
-        const res = await fetch(`/api/escolas/${escolaId}/disciplinas`, {
-          cache: "force-cache",
-        });
-        const json = await res.json().catch(() => null);
-        if (res.ok) disciplinasRows = (json?.data as any) || [];
-        else if (json?.error)
-          console.warn("Disciplinas GET error:", json.error);
+        disciplinasRows = await fetchAllPaginated<Discipline>(`/api/escolas/${escolaId}/disciplinas`);
         if (mounted) setDisciplinas(disciplinasRows as any);
-      } catch {}
+      } catch (error) {
+        console.warn("Disciplinas GET error:", error);
+      }
 
       // 6) Preferências
       try {
         const res = await fetch(
           `/api/escolas/${escolaId}/onboarding/preferences`,
-          { cache: "force-cache" }
+          { cache: "no-store" }
         );
         const json = await res.json().catch(() => null);
         if (mounted && res.ok && json?.data) {
@@ -311,13 +318,15 @@ const handleApplyCurriculumPreset = async () => {
 
   try {
     // 1) Aplica o preset no backend
-    const res = await fetch(
-      `/api/escolas/${escolaId}/onboarding/curriculum/apply`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch(
+        `/api/escola/${escolaId}/admin/curriculo/install-preset`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           presetKey: curriculumPreset,
+          ano_letivo_id: sessaoAtiva?.id ?? undefined,
+          options: { autoPublish: true, generateTurmas: true },
           // se depois quisermos semântica de overwrite, mandamos aqui
           // overwrite: false,
         }),
@@ -326,14 +335,21 @@ const handleApplyCurriculumPreset = async () => {
 
     const json = await res.json().catch(() => null);
     if (!res.ok || !json?.ok) {
-      throw new Error(json?.error || "Falha ao aplicar modelo curricular.");
+      const step = json?.step;
+      if (step === 'publish') {
+        throw new Error(json?.message || json?.error || 'Falha ao publicar currículo.');
+      }
+      if (step === 'generate_turmas') {
+        throw new Error(json?.message || json?.error || 'Falha ao gerar turmas.');
+      }
+      throw new Error(json?.message || json?.error || "Falha ao aplicar modelo curricular.");
     }
 
     // 2) Recarrega cursos, classes e disciplinas usando as APIs oficiais
     const [cursosRes, classesRes, disciplinasRes] = await Promise.all([
-      fetch(`/api/escolas/${escolaId}/cursos`, { cache: "force-cache" }),
-      fetch(`/api/escolas/${escolaId}/classes`, { cache: "force-cache" }),
-      fetch(`/api/escolas/${escolaId}/disciplinas`, { cache: "force-cache" }),
+      fetch(`/api/escolas/${escolaId}/cursos`, { cache: "no-store" }),
+      fetch(`/api/escolas/${escolaId}/classes`, { cache: "no-store" }),
+      fetch(`/api/escolas/${escolaId}/disciplinas`, { cache: "no-store" }),
     ]);
 
     const cursosJson = await cursosRes.json().catch(() => null);
@@ -689,7 +705,7 @@ const handleApplyCurriculumPreset = async () => {
                     if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao criar classe');
                     toast.success('Classe criada');
                     // reload classes
-                    const r = await fetch(`/api/escolas/${escolaId}/classes`, { cache: 'force-cache' });
+                    const r = await fetch(`/api/escolas/${escolaId}/classes`, { cache: 'no-store' });
                     const j = await r.json().catch(() => null);
                     if (r.ok && Array.isArray(j?.data)) setClasses(j.data as any);
                   } catch (e: any) {
@@ -719,7 +735,7 @@ const handleApplyCurriculumPreset = async () => {
                     const json = await res.json().catch(() => null);
                     if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao criar curso');
                     toast.success('Curso criado');
-                    const r = await fetch(`/api/escolas/${escolaId}/cursos`, { cache: 'force-cache' });
+                    const r = await fetch(`/api/escolas/${escolaId}/cursos`, { cache: 'no-store' });
                     const j = await r.json().catch(() => null);
                     if (r.ok && Array.isArray(j?.data)) setCursos(j.data as any);
                   } catch (e: any) {
@@ -749,7 +765,7 @@ const handleApplyCurriculumPreset = async () => {
                     const json = await res.json().catch(() => null);
                     if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao criar disciplina');
                     toast.success('Disciplina criada');
-                    const r = await fetch(`/api/escolas/${escolaId}/disciplinas`, { cache: 'force-cache' });
+                    const r = await fetch(`/api/escolas/${escolaId}/disciplinas`, { cache: 'no-store' });
                     const j = await r.json().catch(() => null);
                     if (r.ok && Array.isArray(j?.data)) setDisciplinas(j.data as any);
                   } catch (e: any) {

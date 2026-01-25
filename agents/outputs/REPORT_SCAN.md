@@ -12,10 +12,23 @@
 - Severidade: **HIGH**
 - Status: **PARTIAL**
 - Evidências:
-  - `apps/web/src/app/financeiro/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/lib/auth-admin-job.ts` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/financeiro/MissingPricingAlert.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/components/secretaria/MatriculasListClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/secretaria/TurmaDetailClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/components/secretaria/TurmaForm.tsx` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/web/src/app/escola/[id]/financeiro/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/app/documentos/[publicId]/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/app/financeiro/fecho/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/app/professor/frequencias/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/app/professor/notas/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/escola/onboarding/AcademicSetupWizard.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/escola/settings/SettingsHub.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/layout/klasse/AppShell.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/app/secretaria/(portal-secretaria)/rematricula/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/app/escola/[id]/admin/configuracoes/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/app/escola/[id]/admin/turmas/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/app/escola/[id]/admin/configuracoes/avaliacao-frequencia/AvaliacaoFrequenciaClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/app/escola/[id]/financeiro/configuracoes/precos/usePrecosLogic.ts` — match: /cache:\s*['\"]no-store['\"]/i
 - Recomendação: Remover no-store onde houver MV/camadas cacheáveis; manter só em rotas realmente sensíveis.
 
 ### KF2 — KF2 — Pesquisa Global (Command Palette) invariants

@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from "@tanstack/react-table"
+import { enqueueOfflineAction } from "@/lib/offline/queue"
+import { createIdempotencyKey } from "@/lib/idempotency"
+import { useOfflineStatus } from "@/hooks/useOfflineStatus"
 
 type Atrib = {
   id: string
@@ -75,8 +78,11 @@ export default function ProfessorNotasPage() {
   const [savingCells, setSavingCells] = useState<Record<string, boolean>>({})
   const [savedCells, setSavedCells] = useState<Record<string, boolean>>({})
   const [invalidCells, setInvalidCells] = useState<Record<string, boolean>>({})
+  const [pendingCells, setPendingCells] = useState<Record<string, boolean>>({})
+  const [failedCells, setFailedCells] = useState<Record<string, boolean>>({})
 
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({})
+  const { online } = useOfflineStatus()
 
   useEffect(() => {
     let active = true
@@ -158,20 +164,54 @@ export default function ProfessorNotasPage() {
 
     setSavingCells((prev) => ({ ...prev, [cellKey]: true }))
     try {
+      const idempotencyKey = createIdempotencyKey(
+        `nota-${turmaId}-${disciplinaId}-${trimestre}-${alunoId}`
+      )
+      const payload = {
+        turma_id: turmaId,
+        disciplina_id: disciplinaId,
+        turma_disciplina_id: turmaDisciplinaId || undefined,
+        trimestre,
+        disciplina_nome: disciplinaNome || undefined,
+        notas: [{ aluno_id: alunoId, valor }],
+      }
+      const request = {
+        url: "/api/professor/notas",
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "idempotency-key": idempotencyKey,
+        },
+        body: JSON.stringify(payload),
+        type: "professor_notas",
+      }
+
+      if (!online) {
+        await enqueueOfflineAction(request)
+        setPendingCells((prev) => ({ ...prev, [cellKey]: true }))
+        setFailedCells((prev) => {
+          const next = { ...prev }
+          delete next[cellKey]
+          return next
+        })
+        return
+      }
+
       const res = await fetch("/api/professor/notas", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          turma_id: turmaId,
-          disciplina_id: disciplinaId,
-          turma_disciplina_id: turmaDisciplinaId || undefined,
-          trimestre,
-          disciplina_nome: disciplinaNome || undefined,
-          notas: [{ aluno_id: alunoId, valor }],
-        }),
+        headers: request.headers,
+        body: request.body,
       })
       const json = await res.json().catch(() => null)
-      if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao salvar nota")
+      if (!res.ok || !json?.ok) {
+        setFailedCells((prev) => ({ ...prev, [cellKey]: true }))
+        setPendingCells((prev) => {
+          const next = { ...prev }
+          delete next[cellKey]
+          return next
+        })
+        throw new Error(json?.error || "Falha ao salvar nota")
+      }
 
       setPauta((prev) =>
         prev.map((row) =>
@@ -184,6 +224,16 @@ export default function ProfessorNotasPage() {
         )
       )
       setSavedCells((prev) => ({ ...prev, [cellKey]: true }))
+      setPendingCells((prev) => {
+        const next = { ...prev }
+        delete next[cellKey]
+        return next
+      })
+      setFailedCells((prev) => {
+        const next = { ...prev }
+        delete next[cellKey]
+        return next
+      })
       setTimeout(() => {
         setSavedCells((prev) => {
           const next = { ...prev }
@@ -192,6 +242,9 @@ export default function ProfessorNotasPage() {
         })
       }, 1500)
     } catch (err) {
+      if (!online) {
+        setPendingCells((prev) => ({ ...prev, [cellKey]: true }))
+      }
       playErrorTone()
     } finally {
       setSavingCells((prev) => {
@@ -235,6 +288,8 @@ export default function ProfessorNotasPage() {
           const invalid = Boolean(invalidCells[cellKey])
           const saving = Boolean(savingCells[cellKey])
           const saved = Boolean(savedCells[cellKey])
+          const pending = Boolean(pendingCells[cellKey])
+          const failed = Boolean(failedCells[cellKey])
           const rowIndex = row.index
           const colIndex = index
 
@@ -289,13 +344,32 @@ export default function ProfessorNotasPage() {
                 }`}
               />
               {saving && <span className="absolute -right-5 top-2 text-[10px] text-slate-400">…</span>}
-              {saved && <span className="absolute -right-5 top-1.5 text-xs text-green-600">✅</span>}
+              {!saving && pending && (
+                <span className="absolute -right-5 top-1.5 text-xs text-amber-500">🟡</span>
+              )}
+              {!saving && failed && (
+                <span className="absolute -right-5 top-1.5 text-xs text-red-500">🔴</span>
+              )}
+              {!saving && !pending && !failed && saved && (
+                <span className="absolute -right-5 top-1.5 text-xs text-green-600">✅</span>
+              )}
             </div>
           )
         },
       })),
     ]
-  }, [drafts, invalidCells, savingCells, savedCells, disciplinaId, turmaId, turmaDisciplinaId, disciplinaNome])
+  }, [
+    drafts,
+    invalidCells,
+    savingCells,
+    savedCells,
+    pendingCells,
+    failedCells,
+    disciplinaId,
+    turmaId,
+    turmaDisciplinaId,
+    disciplinaNome,
+  ])
 
   const table = useReactTable({
     data,

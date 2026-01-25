@@ -1,29 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { supabaseServer } from "@/lib/supabaseServer";
-import { createClient as createAdminClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
+import { createRouteClient } from "@/lib/supabase/route-client";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { canManageEscolaResources } from "../../permissions";
 
 // --- AUTH HELPER (Mantido igual) ---
 type AuthResult =
-  | { ok: true; admin: SupabaseClient<Database> }
+  | { ok: true; supabase: Awaited<ReturnType<typeof createRouteClient>> }
   | { ok: false; status: number; error: string };
 
 async function authorize(escolaId: string): Promise<AuthResult> {
-  const s = await supabaseServer();
-  const { data: auth } = await s.auth.getUser();
+  const supabase = await createRouteClient();
+  const { data: auth } = await supabase.auth.getUser();
   const user = auth?.user;
   if (!user) return { ok: false as const, status: 401, error: "Não autenticado" };
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceRoleKey) return { ok: false as const, status: 500, error: 'Configuração ausente.' };
+  const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
+  if (!userEscolaId || userEscolaId !== escolaId) {
+    return { ok: false as const, status: 403, error: 'Sem permissão' };
+  }
 
-  const admin = createAdminClient<Database>(supabaseUrl, serviceRoleKey);
-  const allowed = await canManageEscolaResources(admin, escolaId, user.id);
+  const allowed = await canManageEscolaResources(supabase as any, escolaId, user.id);
   if (!allowed) return { ok: false as const, status: 403, error: 'Sem permissão' };
-  return { ok: true as const, admin };
+  return { ok: true as const, supabase };
 }
 
 // --- PUT: ATUALIZAR CURSO ---
@@ -35,7 +34,7 @@ export async function PUT(
   
   const authz = await authorize(escolaId);
   if (!authz.ok) return NextResponse.json({ ok: false, error: authz.error }, { status: authz.status });
-  const admin = authz.admin!;
+  const supabase = authz.supabase!;
 
   try {
     const raw = await req.json();
@@ -52,7 +51,7 @@ export async function PUT(
       return NextResponse.json({ ok: false, error: parsed.error.issues[0].message }, { status: 400 });
     }
 
-    const { data, error } = await (admin as any)
+    const { data, error } = await (supabase as any)
       .from('cursos')
       .update(parsed.data)
       .eq('id', cursoId)
@@ -89,10 +88,10 @@ export async function DELETE(
 
   const authz = await authorize(escolaId);
   if (!authz.ok) return NextResponse.json({ ok: false, error: authz.error }, { status: authz.status });
-  const admin = authz.admin!;
+  const supabase = authz.supabase!;
 
   try {
-    const { count: turmasCount, error: countErr } = await (admin as any)
+    const { count: turmasCount, error: countErr } = await (supabase as any)
       .from('turmas')
       .select('id', { count: 'exact', head: true })
       .eq('escola_id', escolaId)
@@ -108,7 +107,7 @@ export async function DELETE(
     }
 
     if (hardDelete) {
-      const { data: turmas } = await (admin as any)
+      const { data: turmas } = await (supabase as any)
         .from('turmas')
         .select('id')
         .eq('escola_id', escolaId)
@@ -116,16 +115,46 @@ export async function DELETE(
       const turmaIds = (turmas || []).map((t: any) => t.id).filter(Boolean);
 
       if (turmaIds.length > 0) {
-        await (admin as any).from('matriculas').delete().in('turma_id', turmaIds);
-        await (admin as any).from('turmas').delete().in('id', turmaIds);
+        await (supabase as any).from('matriculas').delete().in('turma_id', turmaIds);
+        await (supabase as any).from('turmas').delete().in('id', turmaIds);
       }
     }
 
-    // LIMPEZA EM CASCATA
-    await (admin as any).from('disciplinas').delete().eq('curso_escola_id', cursoId);
-    await (admin as any).from('classes').delete().eq('curso_id', cursoId);
+    // LIMPEZA EM CASCATA (sem turmas)
+    const { data: matrizRows, error: matrizErr } = await (supabase as any)
+      .from('curso_matriz')
+      .select('id')
+      .eq('escola_id', escolaId)
+      .eq('curso_id', cursoId);
+    if (matrizErr) throw matrizErr;
 
-    const { error } = await (admin as any)
+    const matrizIds = (matrizRows || []).map((row: any) => row.id).filter(Boolean);
+    if (matrizIds.length > 0) {
+      const { error: tdErr } = await (supabase as any)
+        .from('turma_disciplinas')
+        .delete()
+        .in('curso_matriz_id', matrizIds);
+      if (tdErr) throw tdErr;
+    }
+
+    const { error: matrizDeleteErr } = await (supabase as any)
+      .from('curso_matriz')
+      .delete()
+      .eq('escola_id', escolaId)
+      .eq('curso_id', cursoId);
+    if (matrizDeleteErr) throw matrizDeleteErr;
+
+    const { error: curriculoErr } = await (supabase as any)
+      .from('curso_curriculos')
+      .delete()
+      .eq('escola_id', escolaId)
+      .eq('curso_id', cursoId);
+    if (curriculoErr) throw curriculoErr;
+
+    await (supabase as any).from('disciplinas').delete().eq('curso_escola_id', cursoId);
+    await (supabase as any).from('classes').delete().eq('curso_id', cursoId);
+
+    const { error } = await (supabase as any)
       .from('cursos')
       .delete()
       .eq('id', cursoId)

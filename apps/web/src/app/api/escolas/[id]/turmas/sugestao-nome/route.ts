@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabaseServer";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
+import { createRouteClient } from "@/lib/supabase/route-client";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { canManageEscolaResources } from "../../permissions";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 
@@ -14,21 +13,17 @@ export async function GET(
   const { id: escolaId } = await context.params;
 
   try {
-    const s = await supabaseServer();
-    const { data: auth } = await s.auth.getUser();
+    const supabase = await createRouteClient();
+    const { data: auth } = await supabase.auth.getUser();
     const user = auth?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: "Configuração Supabase ausente." }, { status: 500 });
+    const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
+    if (!userEscolaId || userEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
-    const admin = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-
-    const allowed = await canManageEscolaResources(admin, escolaId, user.id);
+    const allowed = await canManageEscolaResources(supabase as any, escolaId, user.id);
     if (!allowed) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
 
     const url = new URL(req.url);
@@ -48,7 +43,7 @@ export async function GET(
       anoLetivo = undefined;
     }
 
-    let query = admin
+    let query = supabase
       .from("turmas")
       .select("nome")
       .eq("escola_id", escolaId)

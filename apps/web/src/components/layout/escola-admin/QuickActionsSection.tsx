@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { PlusCircle, UserPlus, Users, FileText, Megaphone, Calendar } from "lucide-react";
+import type { SetupStatus } from "./setupStatus";
 
 type QuickAction = {
   label: string;
@@ -16,7 +17,16 @@ function cn(...c: Array<string | false | null | undefined>) {
   return c.filter(Boolean).join(" ");
 }
 
-export default function QuickActionsSection({ escolaId }: { escolaId: string }) {
+export default function QuickActionsSection({
+  escolaId,
+  setupStatus,
+}: {
+  escolaId: string;
+  setupStatus: SetupStatus;
+}) {
+  const { anoLetivoOk, avaliacaoFrequenciaOk, turmasOk } = setupStatus;
+  const canCreateProfessor = anoLetivoOk;
+  const canLaunchNota = avaliacaoFrequenciaOk && turmasOk;
   const actions: QuickAction[] = [
     {
       label: "Novo Funcionário",
@@ -28,29 +38,27 @@ export default function QuickActionsSection({ escolaId }: { escolaId: string }) 
       label: "Novo Professor",
       icon: Users,
       href: `/escola/${escolaId}/admin/professores/novo`,
-      disabled: true,
-      badge: "Bloqueado",
+      disabled: !canCreateProfessor,
+      badge: canCreateProfessor ? undefined : "Bloqueado",
     },
     {
       label: "Lançar Nota",
       icon: FileText,
       href: `/escola/${escolaId}/admin/avaliacoes`,
-      disabled: true,
-      badge: "Bloqueado",
+      disabled: !canLaunchNota,
+      badge: canLaunchNota ? undefined : "Bloqueado",
     },
     {
       label: "Criar Aviso",
       icon: Megaphone,
       href: `/escola/${escolaId}/admin/avisos/novo`,
-      disabled: true,
-      badge: "Bloqueado",
+      disabled: false,
     },
     {
       label: "Agendar Evento",
       icon: Calendar,
       href: `/escola/${escolaId}/admin/calendario/novo`,
-      disabled: true,
-      badge: "Bloqueado",
+      disabled: false,
     },
   ];
 

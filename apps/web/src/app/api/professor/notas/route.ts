@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { recordAuditServer } from '@/lib/audit'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import { enqueueOutboxEvent, markOutboxEventFailed, markOutboxEventProcessed } from '@/lib/outbox'
 
 const Body = z.object({
   turma_id: z.string().uuid(),
@@ -16,11 +17,18 @@ const Body = z.object({
 })
 
 export async function POST(req: Request) {
+  let supabase: any = null
+  let outboxEventId: string | null = null
   try {
-    const supabase = await supabaseServerTyped<any>()
+    supabase = await supabaseServerTyped<any>()
     const { data: userRes } = await supabase.auth.getUser()
     const user = userRes?.user
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
+
+    const idempotencyKey = req.headers.get('idempotency-key')
+    if (!idempotencyKey) {
+      return NextResponse.json({ ok: false, error: 'Idempotency-Key header is required' }, { status: 400 })
+    }
 
     const parsed = Body.safeParse(await req.json().catch(() => ({})))
     if (!parsed.success) {
@@ -187,10 +195,30 @@ export async function POST(req: Request) {
       valor: n.valor,
     }))
 
+    outboxEventId = await enqueueOutboxEvent(supabase, {
+      escolaId,
+      eventType: 'professor_notas',
+      idempotencyKey,
+      scope: 'professor',
+      payload: {
+        turma_id: body.turma_id,
+        turma_disciplina_id: resolvedTurmaDisciplinaId,
+        disciplina_id: disciplinaId,
+        trimestre,
+        ano_letivo: anoLetivo,
+        notas: body.notas,
+      },
+    })
+
     const { error } = await supabase
       .from('notas')
       .upsert(rows as any, { onConflict: 'escola_id,matricula_id,avaliacao_id' })
-    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
+    if (error) {
+      await markOutboxEventFailed(supabase, outboxEventId, error.message).catch(() => null)
+      return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
+    }
+
+    await markOutboxEventProcessed(supabase, outboxEventId).catch(() => null)
 
     recordAuditServer({
       escolaId,
@@ -211,6 +239,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, avaliacao_id: avaliacao.id })
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
+    if (supabase) {
+      await markOutboxEventFailed(supabase, outboxEventId, message).catch(() => null)
+    }
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
 }

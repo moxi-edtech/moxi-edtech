@@ -61,6 +61,9 @@ O agente deve **GRITAR** se detectar:
 - Falta de debounce em buscas
 - Dashboards agregados sem MV
 
+Latência é requisito funcional: toda entrega deve explicitar metas p95 por tipo de tela
+em `ROADMAP.md`, `docs/pedagogico-map.md` e `docs/global-search-roadmap.md`.
+
 ---
 
 ## MATERIALIZED VIEWS
@@ -82,7 +85,9 @@ PROIBIDO usar MV para:
 ## SAÍDA ESPERADA (SCAN)
 
 Gerar:
-- REPORT_SCAN.md
+- agents/outputs/REPORT_SCAN.md
+- agents/ACADEMIC_REPORT_SCAN.md
+- agents/outputs/REPORT_INDEX.md
 - Lista de pendências por prioridade (P0, P1, P2)
 - Alertas críticos
 - Métricas estimadas (latência, risco, impacto)
@@ -94,12 +99,24 @@ Nada além disso.
 ## PRINCÍPIOS OPERACIONAIS (HARD GATE)
 
 1) Latência é requisito funcional (p95 por tela; regressão = bloqueio)
+   - Dashboards: <200ms (MV)
+   - Grids/pauta: primeira render <300ms com skeleton
+   - Mutations: feedback visual <50ms + retry em background
 2) Derivados > dados brutos (dashboards só via MV/derivados)
 3) Gates duplos (UX + backend) para features premium
 4) Fail fast, fail quiet (timeouts claros + fallback visual)
 5) One way to do things (um padrão de MV, audit, search, virtualização)
 6) Infra que protege o humano (flags, kill-switch, wrappers, audit)
 7) Context over cleverness (SQL explícito, front previsível, pouca mágica)
+
+---
+
+## REGISTRO DE SESSÃO (OBRIGATÓRIO)
+
+Toda sessão com mudanças deve registrar:
+- Evidências com paths reais (arquivos e migrations).
+- Próximos passos objetivos (1–3 bullets).
+- Metas p95 relacionadas ao fluxo afetado.
 
 ---
 

@@ -57,7 +57,7 @@ export default function VendaCaixaClient({ escolaId }: VendaProps) {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch("/api/financeiro/itens?ativos=false", { cache: "force-cache" })
+      const res = await fetch("/api/financeiro/itens?ativos=false", { cache: "no-store" })
       const json = await res.json()
       if (!json.ok) throw new Error(json.error || "Erro ao carregar itens")
       setItems(json.items || [])

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { applyKf2ListInvariants } from '@/lib/kf2'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 
 // GET /api/professor/atribuicoes
 // Lista atribuições (turma, disciplina) para o professor logado
@@ -12,12 +13,7 @@ export async function GET() {
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
     // Resolve escola ativa
-    const { data: prof } = await supabase
-      .from('profiles')
-      .select('current_escola_id, escola_id')
-      .eq('user_id', user.id)
-      .maybeSingle()
-    const escolaId = ((prof as any)?.current_escola_id || (prof as any)?.escola_id) as string | undefined
+    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
     if (!escolaId) return NextResponse.json({ ok: true, items: [] })
 
     let query = supabase
@@ -74,7 +70,7 @@ export async function GET() {
         disciplina: { id: matriz.disciplinaId, nome: matriz.disciplinaNome },
       }
     })
-    return NextResponse.json({ ok: true, items })
+    return NextResponse.json({ ok: true, escola_id: escolaId, items })
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })

@@ -2,12 +2,12 @@ import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { applyKf2ListInvariants } from '@/lib/kf2'
 
-// Totais em aberto por mês, com base na view v_total_em_aberto_por_mes
+// Totais em aberto por mês, com base na view vw_total_em_aberto_por_mes
 export async function GET() {
   try {
     const s = await supabaseServer()
     let query = s
-      .from('v_total_em_aberto_por_mes')
+      .from('vw_total_em_aberto_por_mes')
       .select('ano, mes, total_aberto')
       .order('ano', { ascending: true })
       .order('mes', { ascending: true })

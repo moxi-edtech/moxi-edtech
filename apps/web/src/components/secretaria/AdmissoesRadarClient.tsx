@@ -41,6 +41,8 @@ type RadarItem = {
 type RadarData = {
   counts?: RadarCounts
   items: RadarItem[]
+  next_cursor_open?: string | null
+  next_cursor_mat?: string | null
 }
 
 type UiColKey = 'submetida' | 'em_analise' | 'aprovada' | 'matriculado'
@@ -92,6 +94,10 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
+  const [nextCursorOpen, setNextCursorOpen] = useState<string | null>(null)
+  const [nextCursorMat, setNextCursorMat] = useState<string | null>(null)
+  const [loadingMoreOpen, setLoadingMoreOpen] = useState(false)
+  const [loadingMoreMat, setLoadingMoreMat] = useState(false)
 
   const reload = useCallback(() => {
     window.location.reload()
@@ -164,17 +170,28 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
     [reload]
   )
 
-  useEffect(() => {
-    const ctrl = new AbortController()
+  const fetchData = useCallback(
+    async (options?: { cursorOpen?: string | null; cursorMat?: string | null; append?: boolean }) => {
+      const ctrl = new AbortController()
 
-    async function fetchData() {
-      setLoading(true)
+      if (options?.append) {
+        if (options.cursorOpen) setLoadingMoreOpen(true)
+        if (options.cursorMat) setLoadingMoreMat(true)
+      } else {
+        setLoading(true)
+      }
+
       setError(null)
 
       try {
-        const res = await fetch(`/api/secretaria/admissoes/radar?escolaId=${encodeURIComponent(escolaId)}`, {
+        const params = new URLSearchParams({ escolaId })
+        params.set('limit', '30')
+        if (options?.cursorOpen) params.set('cursor_open', options.cursorOpen)
+        if (options?.cursorMat) params.set('cursor_mat', options.cursorMat)
+
+        const res = await fetch(`/api/secretaria/admissoes/radar?${params.toString()}`, {
           signal: ctrl.signal,
-          headers: { 'Accept': 'application/json' },
+          headers: { Accept: 'application/json' },
         })
 
         if (!res.ok) {
@@ -184,18 +201,33 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
         }
 
         const json = (await res.json()) as RadarData
-        setData({ counts: json.counts ?? {}, items: Array.isArray(json.items) ? json.items : [] })
+        setNextCursorOpen(json.next_cursor_open ?? null)
+        setNextCursorMat(json.next_cursor_mat ?? null)
+        if (options?.append) {
+          setData((prev) => ({
+            counts: prev?.counts ?? json.counts ?? {},
+            items: [...(prev?.items ?? []), ...(json.items ?? [])],
+          }))
+        } else {
+          setData({ counts: json.counts ?? {}, items: Array.isArray(json.items) ? json.items : [] })
+        }
       } catch (e: unknown) {
         if (typeof e === 'object' && e && 'name' in e && e.name === 'AbortError') return
         setError(e instanceof Error ? e.message : 'Erro inesperado.')
       } finally {
         setLoading(false)
+        setLoadingMoreOpen(false)
+        setLoadingMoreMat(false)
       }
-    }
 
-    fetchData()
-    return () => ctrl.abort()
-  }, [escolaId])
+      return () => ctrl.abort()
+    },
+    [escolaId]
+  )
+
+  useEffect(() => {
+    fetchData({ append: false })
+  }, [fetchData])
 
   const columns = useMemo(() => {
     const items = data?.items ?? []
@@ -220,6 +252,16 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
 
     return byStatus
   }, [data])
+
+  const loadMoreOpen = async () => {
+    if (!nextCursorOpen || loadingMoreOpen) return
+    await fetchData({ cursorOpen: nextCursorOpen, append: true })
+  }
+
+  const loadMoreMat = async () => {
+    if (!nextCursorMat || loadingMoreMat) return
+    await fetchData({ cursorMat: nextCursorMat, append: true })
+  }
 
   if (loading) {
     return (
@@ -392,6 +434,32 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                   </div>
                 )}
               </div>
+              {col.key !== 'matriculado' && nextCursorOpen && (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    void loadMoreOpen()
+                  }}
+                  disabled={loadingMoreOpen}
+                  className="mt-3 w-full rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 hover:border-klasse-gold/40 hover:text-white disabled:opacity-60"
+                >
+                  {loadingMoreOpen ? 'Carregando...' : 'Carregar mais'}
+                </button>
+              )}
+              {col.key === 'matriculado' && nextCursorMat && (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    void loadMoreMat()
+                  }}
+                  disabled={loadingMoreMat}
+                  className="mt-3 w-full rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 hover:border-klasse-gold/40 hover:text-white disabled:opacity-60"
+                >
+                  {loadingMoreMat ? 'Carregando...' : 'Carregar mais'}
+                </button>
+              )}
             </div>
           )
         })}

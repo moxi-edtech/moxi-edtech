@@ -12,7 +12,7 @@ export async function GET(req: Request) {
     const supabase = await createRouteClient();
 
     let query = supabase
-      .from("v_total_em_aberto_por_mes")
+      .from("vw_total_em_aberto_por_mes")
       .select("escola_id, ano, mes, total_aberto")
       .eq("ano", ano)
       .order("mes", { ascending: true });

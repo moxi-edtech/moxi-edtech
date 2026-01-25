@@ -12,10 +12,14 @@ import {
 export default function AcademicStep1({
   schoolDisplayName,
   setSchoolDisplayName,
-  regime,
-  setRegime,
   anoLetivo,
   setAnoLetivo,
+  dataInicio,
+  setDataInicio,
+  dataFim,
+  setDataFim,
+  periodosConfig,
+  onPeriodoChange,
   turnos,
   onTurnoToggle,
   sessaoAtiva,
@@ -90,23 +94,34 @@ export default function AcademicStep1({
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">
                   Sistema Avaliativo
                 </label>
-                <div className="flex gap-2 mt-2">
-                  {(["trimestral", "semestral", "bimestral"] as const).map((opt) => (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => setRegime(opt)}
-                      className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg border transition-all ${
-                        regime === opt
-                          ? "bg-slate-900 text-white border-slate-900 shadow-md"
-                          : "bg-white text-slate-400 border-slate-200 hover:border-slate-300 hover:text-slate-600"
-                      }`}
-                    >
-                      {opt === "trimestral" ? "Trimestral" : 
-                       opt === "semestral" ? "Semestral" : "Bimestral"}
-                    </button>
-                  ))}
+                <div className="mt-2 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700">
+                  Trimestral (Angola)
                 </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">
+                  Data início do ano
+                </label>
+                <input
+                  type="date"
+                  value={dataInicio}
+                  onChange={(e) => setDataInicio(e.target.value)}
+                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">
+                  Data fim do ano
+                </label>
+                <input
+                  type="date"
+                  value={dataFim}
+                  onChange={(e) => setDataFim(e.target.value)}
+                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700"
+                />
               </div>
             </div>
           </div>
@@ -146,6 +161,40 @@ export default function AcademicStep1({
               );
             })}
           </div>
+        </div>
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-slate-800">Períodos letivos (Trimestres)</h3>
+            <p className="text-xs text-slate-500">Edite datas e travas de notas.</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-4">
+          {periodosConfig.map((periodo) => (
+            <div key={periodo.numero} className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div className="text-sm font-semibold text-slate-700">Trimestre {periodo.numero}</div>
+              <input
+                type="date"
+                value={periodo.data_inicio}
+                onChange={(e) => onPeriodoChange(periodo.numero, "data_inicio", e.target.value)}
+                className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              />
+              <input
+                type="date"
+                value={periodo.data_fim}
+                onChange={(e) => onPeriodoChange(periodo.numero, "data_fim", e.target.value)}
+                className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              />
+              <input
+                type="datetime-local"
+                value={periodo.trava_notas_em}
+                onChange={(e) => onPeriodoChange(periodo.numero, "trava_notas_em", e.target.value)}
+                className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              />
+            </div>
+          ))}
         </div>
       </div>
 

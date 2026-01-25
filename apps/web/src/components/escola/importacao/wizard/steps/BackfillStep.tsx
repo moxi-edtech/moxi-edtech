@@ -85,7 +85,7 @@ export default function BackfillStep({ importId, escolaId, onNext, onBack }: Bac
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(`/api/migracao/${encodeURIComponent(importId)}/academico/backfill?escola_id=${encodeURIComponent(escolaId)}`, { cache: "force-cache" });
+      const res = await fetch(`/api/migracao/${encodeURIComponent(importId)}/academico/backfill?escola_id=${encodeURIComponent(escolaId)}`, { cache: "no-store" });
       if (!res.ok) throw new Error("Falha ao analisar estrutura acadêmica.");
       const json = (await res.json()) as any;
       // Nosso endpoint retorna { ok, preview, create }

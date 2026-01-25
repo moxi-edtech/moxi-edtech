@@ -22,11 +22,15 @@ import {
 
 
 // --- TIPOS ---
-type DashboardData = {
-  ok: boolean;
-  counts: { alunos: number; matriculas: number; turmas: number; pendencias: number };
-  resumo_status: Array<{ status: string; total: number }>;
-  turmas_destaque: Array<{ id: string; nome: string; total_alunos: number }>;
+type DashboardCounts = {
+  alunos: number;
+  matriculas: number;
+  turmas: number;
+  pendencias: number;
+};
+
+type DashboardRecentes = {
+  pendencias: number;
   novas_matriculas: Array<{
     id: string;
     created_at: string;
@@ -40,7 +44,8 @@ type Plano = PlanTier | "enterprise";
 
 
 export default function SecretariaDashboardPage() {
-  const [data, setData] = useState<DashboardData | null>(null);
+  const [counts, setCounts] = useState<DashboardCounts | null>(null);
+  const [recentes, setRecentes] = useState<DashboardRecentes | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { escolaId, isLoading: escolaLoading } = useEscolaId();
@@ -53,11 +58,11 @@ export default function SecretariaDashboardPage() {
     (async () => {
       try {
         setLoading(true);
-        const res = await fetch('/api/secretaria/dashboard', { cache: 'force-cache' });
+        const res = await fetch('/api/secretaria/dashboard', { cache: 'no-store' });
         const json = await res.json();
         if (mounted) {
-            if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao carregar');
-            setData(json);
+          if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao carregar');
+          setCounts(json.counts);
         }
       } catch (e: any) {
         if (mounted) setError(e.message);
@@ -67,6 +72,21 @@ export default function SecretariaDashboardPage() {
     })();
     return () => { mounted = false };
   }, []);
+
+  useEffect(() => {
+    if (!counts) return;
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/secretaria/dashboard/recentes', { cache: 'no-store' });
+        const json = await res.json();
+        if (mounted && res.ok && json?.ok) {
+          setRecentes(json);
+        }
+      } catch {}
+    })();
+    return () => { mounted = false };
+  }, [counts]);
 
   // --- LOADING STATE ---
   if (loading) {
@@ -137,10 +157,10 @@ export default function SecretariaDashboardPage() {
                 
                 {/* 1. KPI CARDS (Resumo do Dia) */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <KpiCard label="Total Alunos" value={data?.counts.alunos} icon={Users} variant="brand" />
-                    <KpiCard label="Matrículas Hoje" value={data?.counts.matriculas} icon={UserPlus} variant="success" />
-                    <KpiCard label="Turmas Ativas" value={data?.counts.turmas} icon={Building} />
-                    <KpiCard label="Pendências" value={data?.counts.pendencias} icon={AlertCircle} variant="warning" />
+                    <KpiCard label="Total Alunos" value={counts?.alunos} icon={Users} variant="brand" />
+                    <KpiCard label="Matrículas Hoje" value={counts?.matriculas} icon={UserPlus} variant="success" />
+                    <KpiCard label="Turmas Ativas" value={counts?.turmas} icon={Building} />
+                    <KpiCard label="Pendências" value={recentes?.pendencias ?? counts?.pendencias} icon={AlertCircle} variant="warning" />
                 </div>
 
                 {/* 2. BALCÃO DE ATENDIMENTO (Ações Rápidas) */}
@@ -168,7 +188,7 @@ export default function SecretariaDashboardPage() {
                             <button className="text-xs font-bold text-teal-600 hover:text-teal-700">Ver tudo</button>
                         </div>
 
-                        <TaskList items={data?.novas_matriculas ?? []} />
+                        <TaskList items={recentes?.novas_matriculas ?? []} />
 
                         {/* Atalhos Secundários */}
                         <div>
@@ -190,7 +210,7 @@ export default function SecretariaDashboardPage() {
                     <div className="space-y-6">
                         
                         {/* Quadro de Avisos */}
-                        <NoticePanel items={data?.avisos_recentes ?? []} />
+                        <NoticePanel items={recentes?.avisos_recentes ?? []} />
 
                         {/* Lembrete Operacional */}
                         <div className="bg-slate-900 rounded-2xl p-5 text-white shadow-lg">

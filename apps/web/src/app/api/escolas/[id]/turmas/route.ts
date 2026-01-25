@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabaseServer";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
+import { createRouteClient } from "@/lib/supabase/route-client";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { canManageEscolaResources } from "../permissions";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 
@@ -30,19 +29,23 @@ const normalizeTurno = (turno: string | undefined): "M" | "T" | "N" | null => {
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: escolaId } = await params;
   try {
-    const s = await supabaseServer();
-    const { data: auth } = await s.auth.getUser();
+    const supabase = await createRouteClient();
+    const { data: auth } = await supabase.auth.getUser();
     const user = auth?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: "Configuração Supabase ausente." }, { status: 500 });
-    }
-    const admin = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
 
-    const allowed = await canManageEscolaResources(admin, escolaId, user.id);
+    const metaEscolaId = (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? undefined;
+    const userEscolaId = await resolveEscolaIdForUser(
+      supabase as any,
+      user.id,
+      escolaId,
+      metaEscolaId ? String(metaEscolaId) : null
+    );
+    if (!userEscolaId || userEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
+    }
+
+    const allowed = await canManageEscolaResources(supabase as any, escolaId, user.id);
     if (!allowed) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
 
     // 3. Parâmetros da URL
@@ -50,17 +53,29 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const turno = url.searchParams.get('turno');
     const cursoId = url.searchParams.get('curso_id');
     const status = url.searchParams.get('status');
+    const limit = Number(url.searchParams.get('limit') || 30);
+    const cursor = url.searchParams.get('cursor');
 
     // 4. Query usando a view que resolve curso/classe
-    let query = admin
+    let query = supabase
       .from('vw_turmas_para_matricula')
-      .select('id, turma_nome, turno, sala, capacidade_maxima, curso_nome, classe_nome, status_validacao, ocupacao_atual, ultima_matricula, escola_id, curso_id')
+      .select('id, turma_nome, turma_codigo, turno, sala, capacidade_maxima, curso_nome, classe_nome, status_validacao, ocupacao_atual, ultima_matricula, escola_id, curso_id')
       .eq('escola_id', escolaId)
     
+    if (cursor) {
+      const [cursorNome, cursorId] = cursor.split(',');
+      if (cursorNome && cursorId) {
+        query = query.or(
+          `turma_nome.gt.${cursorNome},and(turma_nome.eq.${cursorNome},id.gt.${cursorId})`
+        );
+      }
+    }
+
     query = applyKf2ListInvariants(query, {
+      limit,
       order: [
         { column: 'turma_nome', ascending: true },
-        { column: 'id', ascending: false },
+        { column: 'id', ascending: true },
       ],
     });
 
@@ -93,15 +108,25 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         throw error;
       }
 
-      let fallbackQuery = admin
+      let fallbackQuery = supabase
         .from('turmas' as any)
-        .select('id, nome, turno, sala, capacidade_maxima, status_validacao, escola_id, curso_id, classe_id')
+        .select('id, nome, turma_codigo, turno, sala, capacidade_maxima, status_validacao, escola_id, curso_id, classe_id')
         .eq('escola_id', escolaId)
 
+      if (cursor) {
+        const [cursorNome, cursorId] = cursor.split(',');
+        if (cursorNome && cursorId) {
+          fallbackQuery = fallbackQuery.or(
+            `nome.gt.${cursorNome},and(nome.eq.${cursorNome},id.gt.${cursorId})`
+          );
+        }
+      }
+
       fallbackQuery = applyKf2ListInvariants(fallbackQuery, {
+        limit,
         order: [
           { column: 'nome', ascending: true },
-          { column: 'id', ascending: false },
+          { column: 'id', ascending: true },
         ],
       })
 
@@ -118,6 +143,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       rows = (fallbackRows || []).map((t: any) => ({
         id: t.id,
         turma_nome: t.nome ?? null,
+        turma_codigo: t.turma_codigo ?? null,
         turno: t.turno ?? null,
         sala: t.sala ?? null,
         capacidade_maxima: t.capacidade_maxima ?? null,
@@ -133,19 +159,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       rows = viewRows as any[]
     }
 
-    // Busca turma_codigo original para rótulos de rascunho
-    let codigoMap: Record<string, string | null> = {};
-    const turmaIds = (rows || []).map((r) => r.id).filter(Boolean);
-    if (turmaIds.length > 0) {
-      const { data: codigoRows } = await admin
-        .from('turmas')
-        .select('id, turma_codigo')
-        .in('id', turmaIds as string[]);
-      codigoRows?.forEach((c) => {
-        codigoMap[c.id] = c.turma_codigo;
-      });
-    }
-
     // Enriquecimento para o frontend exibir Curso/Classe corretamente
     const items = (rows || []).map((t: any) => ({
       ...t,
@@ -158,7 +171,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       status_validacao: t.status_validacao ?? 'ativo',
       ocupacao_atual: t.ocupacao_atual ?? 0,
       ultima_matricula: t.ultima_matricula ?? null,
-      turma_codigo: codigoMap[t.id] ?? '',
+      turma_codigo: t.turma_codigo ?? '',
     }));
 
     const porTurnoMap: Record<string, number> = {};
@@ -179,11 +192,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       porTurno: Object.entries(porTurnoMap).map(([turnoKey, total]) => ({ turno: turnoKey, total })),
     };
 
+    const last = items[items.length - 1];
+    const nextCursor = items.length === limit && last ? `${last.nome},${last.id}` : null;
+
     return NextResponse.json({
       ok: true,
       items,
       total: items.length,
       stats,
+      next_cursor: nextCursor,
     });
 
   } catch (e: any) {
@@ -216,20 +233,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const { id: escolaId } = await params;
   
   try {
-    const s = await supabaseServer();
-    const { data: auth } = await s.auth.getUser();
+    const supabase = await createRouteClient();
+    const { data: auth } = await supabase.auth.getUser();
     const user = auth?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: "Configuração Supabase ausente." }, { status: 500 });
+    const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
+    if (!userEscolaId || userEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: "Permissão negada" }, { status: 403 });
     }
-    const admin = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
 
-    const allowed = await canManageEscolaResources(admin, escolaId, user.id);
+    const allowed = await canManageEscolaResources(supabase as any, escolaId, user.id);
     if (!allowed) {
       return NextResponse.json({ ok: false, error: "Permissão negada" }, { status: 403 });
     }
@@ -255,7 +269,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     // Valida ano_letivo contra anos_letivos da escola
     try {
-      const { data: anoRow } = await (admin as any)
+      const { data: anoRow } = await (supabase as any)
         .from('anos_letivos')
         .select('ano')
         .eq('escola_id', escolaId)
@@ -269,7 +283,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     // Insert direto na tabela
-    const { data, error } = await (admin as any)
+    const { data, error } = await (supabase as any)
       .from('turmas')
       .insert({
         escola_id: escolaId,

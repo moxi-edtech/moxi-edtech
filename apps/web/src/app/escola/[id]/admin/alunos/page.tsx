@@ -21,36 +21,56 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
   const [tab, setTab] = useState<"ativos" | "arquivados">("ativos");
   const [q, setQ] = useState("");
   const [alunos, setAlunos] = useState<Aluno[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [creating, startCreateTransition] = useTransition();
   const [invite, setInvite] = useState({ nome: "", email: "" });
 
-  async function fetchAlunos() {
-    setLoading(true);
+  async function fetchAlunos(options?: { cursor?: string | null; append?: boolean }) {
+    if (options?.append) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
     try {
       const url = new URL(`/api/escolas/${escolaId}/admin/alunos`, window.location.origin);
       url.searchParams.set("status", tab === "ativos" ? "active" : "archived");
       if (q.trim()) url.searchParams.set("q", q.trim());
-      const res = await fetch(url.toString(), { cache: "force-cache" });
+      url.searchParams.set("limit", "30");
+      if (options?.cursor) url.searchParams.set("cursor", options.cursor);
+      const res = await fetch(url.toString(), { cache: "no-store" });
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "Falha ao listar");
-      setAlunos(json.items || []);
+      if (options?.append) {
+        setAlunos((prev) => [...prev, ...(json.items || [])]);
+      } else {
+        setAlunos(json.items || []);
+      }
+      setNextCursor(json.next_cursor ?? null);
     } catch (e) {
       console.error(e);
       setAlunos([]);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }
 
   useEffect(() => {
-    fetchAlunos();
+    fetchAlunos({ append: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
   const onSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchAlunos();
+    setNextCursor(null);
+    fetchAlunos({ append: false });
+  };
+
+  const loadMore = async () => {
+    if (!nextCursor || loadingMore) return;
+    await fetchAlunos({ cursor: nextCursor, append: true });
   };
 
   async function archiveAluno(id: string) {
@@ -336,6 +356,17 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
             </tbody>
           </table>
         </div>
+        {nextCursor && (
+          <div className="flex justify-center border-t border-slate-100 bg-slate-50/30 p-4">
+            <button
+              onClick={loadMore}
+              disabled={loadingMore}
+              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+            >
+              {loadingMore ? 'Carregando...' : 'Carregar mais'}
+            </button>
+          </div>
+        )}
       </section>
     </div>
   );

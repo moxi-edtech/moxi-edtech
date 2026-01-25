@@ -1,258 +1,335 @@
-# 🧠 AGENT INSTRUCTIONS — PILOT READINESS CHECK (KLASSE)
+# AGENT_INSTRUCTION.md — KLASSE (Admin Academic Setup) + Pilot Readiness Workflow
 
 ## OBJETIVO
+Implementar e verificar, com evidência real, o core vital do "Portal do Admin → Configurações Acadêmicas" para piloto (3–5 escolas):
+- Ano letivo + períodos (TRIMESTRES Angola)
+- Currículo versionado por ano (draft/published)
+- Turmas geradas a partir do currículo publicado
+- Frequência (SSOT = frequencias)
+- Avaliações/Notas trimestrais on-demand
+- Boletim mínimo (view/RPC) com missing flags
+- Status do setup (view/RPC) sem contagens bugadas
 
-Verificar end-to-end, com evidência real, se o KLASSE está pronto para piloto com 3–5 escolas, cobrindo Secretaria, Admin e Financeiro.
-
-O agente NÃO assume nada.
-Tudo que não tiver evidência explícita = FAIL ou WARN.
+O agente NÃO assume nada. Sem evidência explícita = FAIL ou WARN.
 
 ---
 
-## ORDEM DE PRIORIDADE (NÃO ALTERAR)
+## REGRA GERAL (NÃO QUEBRAR)
+1) DB/migrations primeiro (SSOT, constraints, índices).
+2) RPCs/views de leitura (status, boletim, frequencia).
+3) Endpoints (Admin/Professor).
+4) UI (ConfigPage + Wizard 1-4).
+5) Testes E2E manuais com evidência (SQL + HTTP).
 
-### 🔴 P0 — SEGURANÇA, TENANT E CONSISTÊNCIA (BLOCKER)
+---
 
-#### P0.1 — Tenant Isolation (G0)
+# 🔥 ORDEM DE PRIORIDADE DE IMPLEMENTAÇÃO (NÃO ALTERAR)
 
-Verificar:
-- Todas as tabelas core têm escola_id NOT NULL
-- Índices iniciando por escola_id
-- Triggers ou constraints impedem cross-tenant write
-
-Evidência (SQL):
-
-```
+## 🔴 P0 — MULTI-TENANT + INTEGRIDADE (BLOCKER)
+### P0.1 — escola_id NOT NULL em tabelas core
+**Verificar (SQL):**
+```sql
 select table_name, is_nullable
 from information_schema.columns
-where column_name = 'escola_id'
-  and table_schema = 'public'
+where table_schema='public'
+  and column_name='escola_id'
   and table_name in (
-    'alunos','matriculas','pagamentos','mensalidades',
-    'notas','avaliacoes','presencas','frequencias','candidaturas'
+    'escolas','anos_letivos','periodos_letivos',
+    'cursos','classes','turmas','matriculas',
+    'turma_disciplinas','curso_curriculos','curriculo_itens',
+    'avaliacoes','notas',
+    'frequencias', -- SSOT
+    'financeiro_titulos','financeiro_cobrancas','pagamentos'
   );
-```
 
-Resultado esperado: nenhum is_nullable = YES.
+Esperado: nenhum is_nullable='YES'.
 
----
+P0.2 — índices começando por escola_id (tabelas grandes)
 
-#### P0.2 — RLS REAL POR ROLE (não teórico)
+Verificar (SQL):
 
-Testar com usuários reais:
-- secretaria
-- professor
-- aluno
-- admin
+select tablename, indexname, indexdef
+from pg_indexes
+where schemaname='public'
+  and tablename in ('alunos','matriculas','turmas','notas','avaliacoes','frequencias','financeiro_titulos','pagamentos')
+order by tablename, indexname;
 
-Verificar:
-- professor não acessa aluno fora da turma
-- aluno só acessa próprios dados
-- secretaria/admin acessam apenas da própria escola
+Esperado: pelo menos 1 índice composto por tabela crítica começando com escola_id.
 
-Evidência:
-- chamadas HTTP retornando 200/403 corretamente
-- policies existentes e aplicadas
+P0.3 — RLS real por role (secretaria/professor/aluno/admin_escola)
 
-```
+Evidência (SQL policies):
+
 select tablename, policyname, roles, cmd
 from pg_policies
-where tablename in ('alunos','notas','avaliacoes','pagamentos');
-```
+where schemaname='public'
+  and tablename in ('alunos','matriculas','turmas','notas','avaliacoes','frequencias','pagamentos');
 
----
+Evidência (HTTP):
+	•	professor não lê alunos de outra escola (403)
+	•	aluno lê só dados próprios (200) e não lê de outro (403)
+	•	secretaria/admin_escola lê só da própria escola (200)
 
-#### P0.3 — Service Role fora do fluxo humano
+P0.4 — Service Role fora de endpoints humanos
 
-Verificar:
-- Nenhuma rota de secretaria/admin usa SUPABASE_SERVICE_ROLE_KEY
-- Service role só em:
-  - jobs
-  - workers
-  - provisioning
+Verificar (repo-wide):
+	•	FAIL se SUPABASE_SERVICE_ROLE_KEY aparecer em apps/web/src/app/api/**/route.ts fora de jobs|workers|provisioning|cron.
+Comandos:
+	•	rg -n "SUPABASE_SERVICE_ROLE_KEY|supabaseAdmin|service_role" apps/web/src/app/api
+	•	rg -n "createClient<Database>\(" apps/web/src/app/api
 
+⸻
+
+🔴 P1 — CORE DO PORTAL CONFIG (Admin Setup) (BLOCKER)
+
+Aqui é onde teu wireframe vira realidade.
+
+P1.1 — Ano letivo + Períodos (TRIMESTRE 1/2/3 Angola)
+
+DB Required:
+	•	anos_letivos(escola_id, ano, dt_inicio, dt_fim, ativo)
+	•	periodos_letivos(escola_id, ano_letivo_id, tipo='TRIMESTRE', numero=1..3, dt_inicio, dt_fim, trava_notas_em)
+Constraints:
+	•	UNIQUE(escola_id, ano) em anos_letivos (ou por intervalo se preferir)
+	•	UNIQUE(escola_id, ano_letivo_id, tipo, numero) em periodos_letivos
+Evidência (SQL):
+
+select al.ano, pl.tipo, pl.numero, pl.dt_inicio, pl.dt_fim, pl.trava_notas_em
+from anos_letivos al
+join periodos_letivos pl on pl.ano_letivo_id=al.id
+where al.escola_id = '<ESCOLA_ID>' and al.ativo=true
+order by pl.numero;
+
+Esperado: 3 linhas TRIMESTRE (1,2,3).
+
+P1.2 — Currículo versionado por ano (draft/published)
+
+SSOT recomendado:
+	•	curso_curriculos(id, escola_id, curso_id, ano_letivo_id, version int, status 'draft'|'published'|'archived', created_at, created_by)
+	•	curriculo_itens(id, escola_id, curso_curriculo_id, classe_id, disciplina_id, aulas_semana int, obrigatoria bool, modelo_avaliacao jsonb)
+Constraints vitais:
+	•	UNIQUE(escola_id, curso_id, ano_letivo_id, version)
+	•	UNIQUE publicado: (escola_id, curso_id, ano_letivo_id) WHERE status=‘published’
+Evidência (SQL):
+
+select escola_id, curso_id, ano_letivo_id, version, status, created_at
+from curso_curriculos
+where escola_id='<ESCOLA_ID>' and ano_letivo_id='<ANO_LETIVO_ID>'
+order by curso_id, version desc;
+
+P1.3 — Aplicar Preset → cria versão draft + itens
+
+RPC/Endpoint requerido:
+	•	POST /api/escola/:id/admin/curriculo/apply-preset
 Evidência:
-- grep no repo
-- revisão das rotas API
+	•	cria 1 curso_curriculos(status='draft')
+	•	cria N curriculo_itens
+SQL:
 
----
+select count(*) from curriculo_itens where escola_id='<ESCOLA_ID>' and curso_curriculo_id='<CURR_ID>';
 
-### 🔴 P1 — FLUXOS CRÍTICOS END-TO-END (PILOTO NÃO SOBREVIVE SEM)
+P1.4 — Publicar Currículo (trava published único)
 
-#### P1.1 — Candidatura → Matrícula
+RPC/Endpoint requerido:
+	•	POST /api/escola/:id/admin/curriculo/publish
+Evidência:
+	•	troca draft → published
+	•	se já existir published, arquiva o anterior ou falha com mensagem clara
+SQL:
 
-Verificar:
-- Confirmar candidatura cria matrícula
-- Reconfirmar é idempotente
-- Ano letivo consistente
+select curso_id, count(*) 
+from curso_curriculos
+where escola_id='<ESCOLA_ID>' and ano_letivo_id='<ANO_LETIVO_ID>' and status='published'
+group by curso_id having count(*)>1;
 
-```
-select c.id, c.status, m.id as matricula_id, m.ano_letivo
-from candidaturas c
-left join matriculas m
-  on m.aluno_id = c.aluno_id
- and m.ano_letivo = c.ano_letivo
-where c.id = '<CANDIDATURA_ID>';
-```
+Esperado: 0 linhas.
 
----
+Testes (Agent):
+1) Attempt call via raw DB_URL/psql as postgres:
+   Expect: ERROR permission denied admin_escola required
+   => This is PASS (security gate working), not FAIL.
 
-#### P1.2 — Matrícula & Rematrícula
+2) Run real test as authenticated admin_escola:
+   - create draft v2 (insert curso_curriculos version=2 + backfill curso_matriz.curso_curriculo_id)
+   - call RPC curriculo_publish(...)
+   Expect:
+     - returns ok=true
+     - v2 status='published'
+     - previous published becomes 'archived'
+     - uniqueness holds: only 1 published per (escola,curso,ano)
+     - turma_disciplinas rebuilt for turmas in that (curso,ano) only
 
-Verificar:
-- 1 matrícula ativa por aluno/ano/escola
-- Rematrícula em massa é idempotente
-- Matrícula antiga vira transferido
+3) Idempotency:
+   - call RPC again same params
+   Expect: ok=true + message contains 'idempotent'
 
-```
-select aluno_id, ano_letivo, count(*)
-from matriculas
-where status = 'ativa'
-group by aluno_id, ano_letivo
-having count(*) > 1;
-```
+P1.5 — Turmas: gerar + hidratar turma_disciplinas a partir do currículo published
 
----
+Endpoint requerido:
+	•	POST /api/escola/:id/admin/turmas/generate (gera turmas por curso/classe/turno/capacidade)
+DB:
+	•	turmas referenciando curso_id, classe_id, ano_letivo_id, turno
+Evidência:
+	•	 ao criar turma, turma_disciplinas preenchida (trigger/RPC) usando curriculo published
+SQL:
 
-#### P1.3 — Pagamento Manual (base para webhook)
+select td.turma_id, count(*) as disciplinas
+from turma_disciplinas td
+where td.escola_id='<ESCOLA_ID>' and td.turma_id='<TURMA_ID>'
+group by td.turma_id;
 
-Verificar E2E:
-1. gerar mensalidade
-2. confirmar pagamento
-3. mensalidade atualiza
-4. outbox dispara evento
-5. audit log registrado
+P1.6 — Setup Status (ConfigPage) sem bug de contagem (NUNCA JOIN multiplicando)
 
-```
-select * from pagamentos
-order by created_at desc limit 5;
+SSOT: view/RPC agregando por subqueries separadas.
+Requisito:
+	•	has_ano_letivo_ativo
+	•	has_3_trimestres
+	•	has_curriculo_published
+	•	has_turmas_no_ano
+	•	percentage = 0/25/50/75/100
+Evidência (SQL):
 
-select * from mensalidades
-where id = '<MENSALIDADE_ID>';
+select * from vw_escola_setup_status where escola_id='<ESCOLA_ID>';
 
-select * from outbox_events
-where event_type = 'FINANCE_PAYMENT_CONFIRMED'
-order by created_at desc;
 
-select * from audit_logs
-where action = 'FINANCE_PAYMENT_CONFIRMED'
-order by created_at desc;
-```
+⸻
 
-Idempotência obrigatória:
+🔴 P2 — OPERAÇÃO DIÁRIA (Professor/Aluno) (BLOCKER)
 
-```
-select count(*), count(distinct transacao_id_externo)
-from pagamentos
-where transacao_id_externo is not null;
-```
+P2.1 — Frequência (SSOT = frequencias)
 
----
+Modelo mínimo recomendado:
+	•	registro por aula: UNIQUE(escola_id, matricula_id, aula_id)
+OU registro por dia: UNIQUE(escola_id, matricula_id, data)
+Exigir: rota do professor escreve em frequencias.
+Evidência (SQL):
 
-### 🔴 P2 — OPERAÇÃO DIÁRIA (SECRETARIA / PROFESSOR)
-
-#### P2.1 — Presenças / Frequências
-
-Verificar:
-- Qual tabela é SSOT (presencas OU frequencias)
-- Lançar mesma aula 2x não duplica
-- Unique key por partição existe
-
-```
 select indexname, indexdef
 from pg_indexes
-where tablename like 'frequencias%';
-```
+where schemaname='public' and tablename like 'frequencias%';
 
----
+Teste: lançar 2x mesma aula/data → não duplica (upsert).
+P2.2 — Avaliações + Notas trimestrais (on-demand) (sem placeholder)
 
-#### P2.2 — Notas & Boletim
+Constraints vitais:
+	•	avaliacoes UNIQUE(escola_id, turma_disciplina_id, ano_letivo, trimestre, tipo)
+	•	notas UNIQUE(escola_id, matricula_id, avaliacao_id)
+Endpoint requerido (professor):
+	•	POST /api/professor/notas
+	•	resolve matricula_id via (turma_id + aluno_id)
+	•	resolve turma_disciplina_id
+	•	cria avaliacao on-demand (trimestre atual) se não existir
+	•	upsert nota (matricula_id + avaliacao_id)
+Evidência:
 
-Verificar:
-- professor lança nota
-- aluno consulta nota
-- secretaria/admin consulta tudo
-- existe consolidação mínima (média por disciplina/ano)
+select * from avaliacoes where escola_id='<ESCOLA_ID>' order by created_at desc limit 5;
+select * from notas where escola_id='<ESCOLA_ID>' order by created_at desc limit 5;
 
-```
-select count(*) from notas;
-select count(*) from avaliacoes;
-```
+P2.3 — Boletim mínimo (view/RPC) com missing flags
 
-Se não houver view/RPC de consolidação → WARN explícito.
+Requisito:
+	•	por matrícula + trimestre:
+	•	lista disciplinas (turma_disciplinas)
+	•	agrega notas existentes
+	•	calcula missing_count e has_missing
+Evidência:
 
----
+select * from vw_boletim_por_matricula
+where escola_id='<ESCOLA_ID>' and matricula_id='<MATRICULA_ID>' and trimestre=1;
 
-### 🟡 P3 — SUPORTE AO CRESCIMENTO (NÃO BLOQUEIA PILOTO, MAS REGISTRAR)
 
-#### P3.1 — Transferência de Turma
+⸻
 
-Verificar:
-- Existe endpoint explícito que:
-  - encerra matrícula atual
-  - cria nova matrícula
-  - audita evento
+🧩 IMPLEMENTAÇÃO — WORKFLOW PARA O AGENTE (DB → API → UI)
 
-Se só existe checagem, marcar FAIL OPERACIONAL.
+FASE 1 — DB/MIGRATIONS (obrigatório antes de UI)
+	1.	Criar/ajustar:
 
----
+	•	anos_letivos, periodos_letivos
+	•	curso_curriculos, curriculo_itens
+	•	constraints/índices/rls necessários
 
-#### P3.2 — Importação (Backfill)
+	2.	Ajustar SSOT:
 
-Verificar:
-- Importar mesmo CSV 2x não duplica
-- Aprovação é idempotente
-- Cursos/turmas criados apenas após aprovação
+	•	garantir frequencias como SSOT (rota escreve nela + unique/upsert)
 
----
+	3.	Notas:
 
-### 🟢 EVENTOS MÍNIMOS (OUTBOX)
+	•	alinhar schema avaliacoes + notas com uniques corretos
 
-Obrigatórios no piloto:
-- AUTH_PROVISION_USER
-- FINANCE_PAYMENT_CONFIRMED
+	4.	Views/RPCs:
 
-Verificar:
+	•	vw_escola_setup_status
+	•	vw_boletim_por_matricula
+	•	vw_frequencia_resumo_aluno (ou RPC)
 
-```
-select event_type, count(*)
-from outbox_events
-group by event_type;
-```
+Output esperado: migrações novas em supabase/migrations/.
 
-Payload mínimo esperado:
-- escola_id
-- entidade principal (user_id ou pagamento_id)
-- timestamp
-- dedupe_key
+⸻
 
----
+FASE 2 — ENDPOINTS (Admin + Professor)
 
-## SAÍDA DO AGENTE (FORMATO OBRIGATÓRIO)
+Admin
+	•	GET /api/escola/:id/admin/setup/status
+	•	POST /api/escola/:id/admin/ano-letivo/upsert
+	•	POST /api/escola/:id/admin/periodos-letivos/upsert-bulk
+	•	POST /api/escola/:id/admin/curriculo/apply-preset
+	•	POST /api/escola/:id/admin/curriculo/publish
+	•	POST /api/escola/:id/admin/turmas/generate
+
+Professor
+	•	POST /api/professor/frequencias (SSOT)
+	•	POST /api/professor/notas (on-demand)
+
+Regra: endpoints humanos SEM service role.
+
+⸻
+
+FASE 3 — UI (Wireframe novo)
+
+Tela 1 — ConfiguracoesPage
+	•	consome setup/status
+	•	renderiza cards (academic/financial/users)
+	•	banner NeedsAcademicSetupBanner com:
+	•	botão “Iniciar Assistente” → Wizard
+	•	botão “Ver o que falta” → lista checks + links diretos
+
+Wizard 1/4 — Ano Letivo + Períodos
+	•	cria/edita ano letivo ativo
+	•	gera 3 trimestres automaticamente com datas editáveis + trava_notas_em
+
+Wizard 2/4 — Frequência + Avaliação
+	•	fixa SSOT = frequencias (por aula, recomendado)
+	•	modelo de avaliação (mínimo): “Simplificado” ou “Tradicional (MAC/NPP/PT)”
+	•	grava config (pode ser tabela escola_avaliacao_config ou JSON em escolas.settings)
+
+Wizard 3/4 — Presets
+	•	aplica preset → cria currículo draft
+	•	preview real (contagem de classes/disciplinas)
+
+Wizard 4/4 — Turmas
+	•	gera turmas por classe/turno/capacidade
+	•	confirma → cria turmas + turma_disciplinas
+
+⸻
+
+✅ SAÍDA DO AGENTE (FORMATO OBRIGATÓRIO)
 
 Para cada item:
-
-```
-[P0.1] Tenant Isolation — PASS
-Evidence: <SQL / endpoint / log>
-
-[P1.3] Pagamentos E2E — FAIL
-Reason: mensalidade não atualiza após confirmação
-Evidence: <query result>
-```
+	•	[P1.2] Currículo versionado por ano — PASS
+Evidence: <SQL result + migration file + endpoint>
+	•	[P2.2] Notas trimestrais on-demand — FAIL
+Reason: endpoint insere em schema antigo
+Evidence: <HTTP + query>
 
 Ao final:
+	•	PILOT READINESS: GO / NO-GO
+	•	BLOCKERS: 
+	•	WARNINGS: 
 
-```
-PILOT READINESS: GO / NO-GO
-BLOCKERS: <lista>
-WARNINGS: <lista>
-```
+⸻
 
----
+❌ REGRA FINAL
 
-## REGRA FINAL (IMPORTANTE)
-
-❌ Nada de “parece que”
-❌ Nada de “acho que”
-✅ Só PASS se houver evidência executada
+Nada de “parece”.
+PASS só com evidência executada (SQL/HTTP/log).

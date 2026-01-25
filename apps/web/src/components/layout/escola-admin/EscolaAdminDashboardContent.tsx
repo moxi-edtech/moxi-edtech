@@ -10,6 +10,7 @@ import AcademicSection from "./AcademicSection";
 import QuickActionsSection from "./QuickActionsSection";
 import ChartsSection from "./ChartsSection";
 import type { PagamentosResumo } from "./definitions";
+import type { SetupStatus } from "./setupStatus";
 
 type Aviso = { id: string; titulo: string; dataISO: string };
 type Evento = { id: string; titulo: string; dataISO: string };
@@ -24,7 +25,9 @@ type Props = {
   charts?: { meses: string[]; alunosPorMes: number[]; pagamentos: PagamentosResumo };
   stats: KpiStats;
   pendingTurmasCount?: number | null;
-  onboardingComplete: boolean;
+  setupStatus: SetupStatus;
+  missingPricingCount?: number;
+  financeiroHref?: string;
   pagamentosKpis?: any; // Add this line
 };
 
@@ -38,7 +41,9 @@ export default function EscolaAdminDashboardContent({
   charts,
   stats,
   pendingTurmasCount,
-  onboardingComplete,
+  setupStatus,
+  missingPricingCount = 0,
+  financeiroHref,
 }: Props) {
   return (
     <div className="space-y-8 pb-10">
@@ -59,7 +64,14 @@ export default function EscolaAdminDashboardContent({
           </div>
         </div>
 
-        <KpiSection escolaId={escolaId} stats={stats} loading={loading} error={error} onboardingComplete={onboardingComplete} />
+        <KpiSection
+          escolaId={escolaId}
+          stats={stats}
+          loading={loading}
+          error={error}
+          setupStatus={setupStatus}
+          financeiroHref={financeiroHref}
+        />
 
         {typeof pendingTurmasCount === "number" && pendingTurmasCount > 0 && (
           <div className="animate-in fade-in duration-500">
@@ -93,13 +105,18 @@ export default function EscolaAdminDashboardContent({
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
           {/* esquerda 2/3 */}
           <div className="lg:col-span-2 space-y-6">
-            <QuickActionsSection escolaId={escolaId} />
+            <QuickActionsSection escolaId={escolaId} setupStatus={setupStatus} />
             <NoticesSection notices={notices} />
           </div>
 
           {/* direita 1/3 */}
           <div className="space-y-6">
-            <AcademicSection escolaId={escolaId} />
+            <AcademicSection
+              escolaId={escolaId}
+              setupStatus={setupStatus}
+              missingPricingCount={missingPricingCount}
+              financeiroHref={financeiroHref}
+            />
             <EventsSection events={events} />
           </div>
         </div>

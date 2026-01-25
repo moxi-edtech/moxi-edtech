@@ -14,7 +14,7 @@ export function DisciplinasList() {
     (async () => {
       try {
         setLoading(true);
-        const res = await fetch('/api/aluno/disciplinas', { cache: 'force-cache' });
+        const res = await fetch('/api/aluno/disciplinas', { cache: 'no-store' });
         const json = await res.json();
         if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao carregar disciplinas');
         if (mounted) setDisciplinas(json.disciplinas || []);

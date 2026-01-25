@@ -57,7 +57,7 @@ export default function SchoolsTableClient({
       setErrorMsg(null);
 
       // List of schools
-      const listRes = await fetch('/api/super-admin/escolas/list', { cache: 'force-cache' });
+      const listRes = await fetch('/api/super-admin/escolas/list', { cache: 'no-store' });
       const listJson = await listRes.json().catch(() => ({ ok: false }));
       if (!listRes.ok || !listJson?.ok || !Array.isArray(listJson.items)) {
         throw new Error((listJson && listJson.error) || 'Falha ao recarregar escolas.');
@@ -84,7 +84,7 @@ export default function SchoolsTableClient({
       setSchools(normalized);
 
       // Progress map
-      const progRes = await fetch('/api/super-admin/escolas/onboarding/progress', { cache: 'force-cache' });
+      const progRes = await fetch('/api/super-admin/escolas/onboarding/progress', { cache: 'no-store' });
       const progJson = await progRes.json().catch(() => ({ ok: false }));
       if (progRes.ok && progJson?.ok && Array.isArray(progJson.items)) {
         const map: Record<string, OnboardingProgress> = {};

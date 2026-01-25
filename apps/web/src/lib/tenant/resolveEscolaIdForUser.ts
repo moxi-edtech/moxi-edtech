@@ -6,61 +6,26 @@ type Client = SupabaseClient<Database>;
 export async function resolveEscolaIdForUser(
   client: Client,
   userId: string,
-  requestedEscolaId?: string | null
+  requestedEscolaId?: string | null,
+  metadataEscolaId?: string | null
 ): Promise<string | null> {
-  let currentEscolaId: string | null = null;
-  let legacyEscolaId: string | null = null;
-
-  try {
-    const { data: prof } = await client
-      .from("profiles")
-      .select("current_escola_id, escola_id")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(1);
-    const perfil = prof?.[0] as any;
-    currentEscolaId = perfil?.current_escola_id ? String(perfil.current_escola_id) : null;
-    legacyEscolaId = perfil?.escola_id ? String(perfil.escola_id) : null;
-  } catch {}
-
-  if (currentEscolaId) return currentEscolaId;
-
-  if (requestedEscolaId) {
-    try {
-      const { data: vinc } = await client
-        .from("escola_users")
-        .select("escola_id")
-        .eq("user_id", userId)
-        .eq("escola_id", requestedEscolaId)
-        .maybeSingle();
-      const escolaId = (vinc as any)?.escola_id;
-      if (escolaId) return String(escolaId);
-    } catch {
-      return legacyEscolaId && String(legacyEscolaId) === String(requestedEscolaId)
-        ? legacyEscolaId
-        : null;
-    }
-
-    return legacyEscolaId && String(legacyEscolaId) === String(requestedEscolaId)
-      ? legacyEscolaId
-      : null;
+  if (metadataEscolaId && !requestedEscolaId) {
+    return String(metadataEscolaId);
   }
 
-  try {
-    const { data: vincRows } = await client
-      .from("escola_users")
-      .select("escola_id")
-      .eq("user_id", userId)
-      .order("escola_id", { ascending: true })
-      .limit(2);
-    const uniqueIds = new Set(
-      (vincRows || [])
-        .map((row: any) => row?.escola_id)
-        .filter((id: string | null | undefined) => Boolean(id))
-        .map((id: string) => String(id))
-    );
-    if (uniqueIds.size === 1) return Array.from(uniqueIds)[0];
-  } catch {}
+  if (requestedEscolaId) {
+    if (metadataEscolaId && String(metadataEscolaId) === String(requestedEscolaId)) {
+      return String(requestedEscolaId);
+    }
+    const { data: allowed, error } = await client.rpc("has_access_to_escola_fast", {
+      p_escola_id: requestedEscolaId,
+    });
+    if (error) return null;
+    return allowed ? String(requestedEscolaId) : null;
+  }
 
-  return legacyEscolaId ?? null;
+  const { data: fallbackEscolaId } = await client.rpc("get_my_escola_id");
+  if (fallbackEscolaId) return String(fallbackEscolaId);
+
+  return null;
 }

@@ -41,28 +41,28 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const turno = url.searchParams.get('turno');
     const busca = url.searchParams.get('busca')?.trim().toLowerCase() || "";
-    const status = url.searchParams.get('status'); // Novo: Captura o parâmetro de status
+    const status = url.searchParams.get('status');
+    const limit = Number(url.searchParams.get('limit') || 30);
+    const cursor = url.searchParams.get('cursor');
 
     // 4. Query ao Banco (SELECT *)
     let query = supabase
-      .from('turmas') 
+      .from('vw_turmas_para_matricula')
       .select(`
         id,
-        nome,
+        turma_nome,
         turma_codigo,
         ano_letivo,
         turno,
         sala,
         session_id,
         capacidade_maxima,
-        curso:cursos(nome),
-        classe:classes(nome),
-        matriculas(count),
+        curso_nome,
+        classe_nome,
+        ocupacao_atual,
         status_validacao
       `)
       .eq('escola_id', escolaId);
-
-    query = applyKf2ListInvariants(query);
 
     // Filtro de turno no Nível do Banco (Mais performático)
     if (turno && turno !== 'todos') {
@@ -77,6 +77,36 @@ export async function GET(req: Request) {
       query = query.eq('status_validacao', status);
     }
     
+    if (busca) {
+      const like = `${busca}%`;
+      query = query.or(
+        [
+          `turma_codigo.ilike.${like}`,
+          `turma_nome.ilike.${like}`,
+          `sala.ilike.${like}`,
+          `curso_nome.ilike.${like}`,
+          `classe_nome.ilike.${like}`,
+        ].join(',')
+      );
+    }
+
+    if (cursor) {
+      const [cursorNome, cursorId] = cursor.split(',');
+      if (cursorNome && cursorId) {
+        query = query.or(
+          `turma_nome.gt.${cursorNome},and(turma_nome.eq.${cursorNome},id.gt.${cursorId})`
+        );
+      }
+    }
+
+    query = applyKf2ListInvariants(query, {
+      limit,
+      order: [
+        { column: 'turma_nome', ascending: true },
+        { column: 'id', ascending: true },
+      ],
+    });
+
     const { data: rows, error } = await query;
 
     if (error) {
@@ -88,37 +118,18 @@ export async function GET(req: Request) {
     // Transforma dados brutos em dados seguros para o Frontend
     let items = rows?.map((t: any) => ({
         id: t.id,
-        // BLINDAGEM: Se vier null, entrega string vazia ou valor default.
-        // Isso impede o erro "toLowerCase of undefined" no client.
-        nome: t.nome ?? "Sem Nome", 
+        nome: t.turma_nome ?? "Sem Nome",
         turma_codigo: t.turma_codigo ?? "",
-        
-        ano_letivo: t.ano_letivo, // Pode ser null se não definido, mas não quebra string functions
+        ano_letivo: t.ano_letivo,
         turno: t.turno ?? "N/D",
         sala: t.sala ?? "",
         session_id: t.session_id,
-        capacidade_maxima: t.capacidade_maxima || 35, // Default visual
-        
-        // Flattening das Relações (Trazendo pra raiz do objeto)
-        curso_nome: t.curso?.nome ?? "",
-        classe_nome: t.classe?.nome ?? "",
-        
-        // Status & Stats
+        capacidade_maxima: t.capacidade_maxima || 35,
+        curso_nome: t.curso_nome ?? "",
+        classe_nome: t.classe_nome ?? "",
         status_validacao: t.status_validacao ?? 'rascunho',
-        ocupacao_atual: t.matriculas?.[0]?.count || 0
+        ocupacao_atual: Number(t.ocupacao_atual ?? 0),
     })) || [];
-
-    // 6. Filtro de Busca Texto (In-Memory)
-    // Usado para filtrar por campos relacionados que são difíceis de filtrar no Supabase simples
-    if (busca) {
-        items = items.filter((t) => 
-            t.turma_codigo.toLowerCase().includes(busca) ||
-            t.nome.toLowerCase().includes(busca) || 
-            t.sala.toLowerCase().includes(busca) ||
-            t.curso_nome.toLowerCase().includes(busca) ||
-            t.classe_nome.toLowerCase().includes(busca)
-        );
-    }
 
     // 7. Cálculo de Estatísticas (KPIs)
     let totalAlunos = 0;
@@ -137,11 +148,15 @@ export async function GET(req: Request) {
         porTurno: Object.entries(porTurnoMap).map(([k, v]) => ({ turno: k, total: v }))
     };
 
+    const last = items[items.length - 1];
+    const nextCursor = items.length === limit && last ? `${last.nome},${last.id}` : null;
+
     return NextResponse.json({
       ok: true,
       items,
       total: items.length,
-      stats
+      stats,
+      next_cursor: nextCursor,
     }, { headers });
 
   } catch (e) {

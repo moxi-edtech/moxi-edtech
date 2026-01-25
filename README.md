@@ -29,6 +29,11 @@ Liberação de acesso de alunos (novo)
 - Cron: Supabase pg_cron permanece como fonte de verdade (refresh MVs + requeue de outbox). Para executar `/api/jobs/outbox`, use a Edge Function `supabase/functions/outbox-dispatch` com `OUTBOX_JOB_URL` e `CRON_SECRET`.
 - Runbook: `docs/outbox-worker-runbook.md`.
 
+Relatórios de scan
+- `agents/outputs/REPORT_SCAN.md` (scan automatizado)
+- `agents/ACADEMIC_REPORT_SCAN.md` (notas acadêmicas manuais)
+- Índice: `agents/outputs/REPORT_INDEX.md`
+
 Fluxo recomendado (produção)
 1) Backfill Acadêmico (opcional, via Wizard)
    - Analisar e criar Sessões (anos letivos), Classes, Cursos e Turmas em falta a partir do CSV (staging).

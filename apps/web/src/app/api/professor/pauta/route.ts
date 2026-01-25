@@ -30,6 +30,25 @@ export async function GET(req: Request) {
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
     if (!escolaId) return NextResponse.json({ error: 'Escola não encontrada' }, { status: 400 })
 
+    const { data: configuracoes } = await supabase
+      .from('configuracoes_escola')
+      .select('modelo_avaliacao, avaliacao_config')
+      .eq('escola_id', escolaId)
+      .maybeSingle()
+
+    const modeloAvaliacao = String(configuracoes?.modelo_avaliacao ?? 'SIMPLIFICADO').toUpperCase()
+    const componentes = Array.isArray((configuracoes as any)?.avaliacao_config?.componentes)
+      ? (configuracoes as any).avaliacao_config.componentes
+      : []
+    const pesoPorTipo = new Map<string, number>()
+    for (const comp of componentes as Array<{ code?: string; peso?: number; ativo?: boolean }>) {
+      if (!comp?.code || comp?.ativo === false) continue
+      const peso = typeof comp.peso === 'number' ? comp.peso : Number(comp.peso)
+      if (Number.isFinite(peso)) {
+        pesoPorTipo.set(comp.code.toString().trim().toUpperCase(), peso)
+      }
+    }
+
     const { data: professor } = await supabase
       .from('professores')
       .select('id')
@@ -122,13 +141,18 @@ export async function GET(req: Request) {
 
     const notasPorMatricula = new Map<
       string,
-      { sum: Record<number, number>; count: Record<number, number> }
+      {
+        sum: Record<number, number>
+        count: Record<number, number>
+        weightedSum: Record<number, number>
+        weightSum: Record<number, number>
+      }
     >()
 
     if (matriculaIds.length > 0) {
       const { data: notasRows, error: notasError } = await supabase
         .from('notas')
-        .select('valor, matricula_id, avaliacoes ( trimestre, turma_disciplina_id )')
+        .select('valor, matricula_id, avaliacoes ( trimestre, turma_disciplina_id, tipo, nome, peso )')
         .eq('escola_id', escolaId)
         .eq('avaliacoes.turma_disciplina_id', turmaDisciplina.id)
         .in('matricula_id', matriculaIds)
@@ -140,27 +164,52 @@ export async function GET(req: Request) {
       for (const row of (notasRows || []) as Array<{
         valor: number | null
         matricula_id: string
-        avaliacoes: { trimestre: number | null } | null
+        avaliacoes: { trimestre: number | null; tipo?: string | null; nome?: string | null; peso?: number | null } | null
       }>) {
         const trimestre = row.avaliacoes?.trimestre ?? null
         if (!trimestre) continue
         if (!notasPorMatricula.has(row.matricula_id)) {
-          notasPorMatricula.set(row.matricula_id, { sum: {}, count: {} })
+          notasPorMatricula.set(row.matricula_id, { sum: {}, count: {}, weightedSum: {}, weightSum: {} })
         }
         const stats = notasPorMatricula.get(row.matricula_id)!
         if (typeof row.valor === 'number') {
+          const tipoRaw = row.avaliacoes?.tipo ?? row.avaliacoes?.nome
+          const tipo = tipoRaw ? tipoRaw.toString().trim().toUpperCase() : null
+          const peso = (tipo && pesoPorTipo.get(tipo)) ?? row.avaliacoes?.peso ?? 1
           stats.sum[trimestre] = (stats.sum[trimestre] ?? 0) + row.valor
           stats.count[trimestre] = (stats.count[trimestre] ?? 0) + 1
+          stats.weightedSum[trimestre] = (stats.weightedSum[trimestre] ?? 0) + row.valor * Number(peso)
+          stats.weightSum[trimestre] = (stats.weightSum[trimestre] ?? 0) + Number(peso)
         }
       }
+    }
+
+    const calcularNota = (stats: {
+      sum: Record<number, number>
+      count: Record<number, number>
+      weightedSum: Record<number, number>
+      weightSum: Record<number, number>
+    } | undefined, trimestre: number) => {
+      if (!stats) return null
+      const count = stats.count[trimestre] ?? 0
+      if (count === 0) return null
+      const mediaSimples = stats.sum[trimestre] / count
+      if (modeloAvaliacao === 'DEPOIS') return null
+
+      const weightSum = stats.weightSum[trimestre] ?? 0
+      if (weightSum > 0) {
+        return Number((stats.weightedSum[trimestre] / weightSum).toFixed(2))
+      }
+
+      return Number(mediaSimples.toFixed(2))
     }
 
     const payload = matriculaRows.map((row: any) => {
       const stats = notasPorMatricula.get(row.id)
       const notas = {
-        t1: stats?.count[1] ? Number((stats.sum[1] / stats.count[1]).toFixed(2)) : null,
-        t2: stats?.count[2] ? Number((stats.sum[2] / stats.count[2]).toFixed(2)) : null,
-        t3: stats?.count[3] ? Number((stats.sum[3] / stats.count[3]).toFixed(2)) : null,
+        t1: calcularNota(stats, 1),
+        t2: calcularNota(stats, 2),
+        t3: calcularNota(stats, 3),
       }
       return {
         aluno_id: row.aluno_id,
