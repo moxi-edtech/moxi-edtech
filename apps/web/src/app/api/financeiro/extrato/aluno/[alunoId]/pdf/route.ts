@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/supabase/resolveEscolaIdForUser";
 import { createInstitutionalPdf } from "@/lib/pdf/documentTemplate";
 import { buildSignatureLine, createQrImage } from "@/lib/pdf/qr";
 import { requireFeature } from "@/lib/plan/requireFeature";
@@ -107,6 +108,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ alunoId
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     }
 
+    const userEscolaId = await resolveEscolaIdForUser(supabase, user.id);
+    if (!userEscolaId) {
+      return NextResponse.json({ ok: false, error: "Usuário sem escola associada" }, { status: 403 });
+    }
+
     await requireFeature("doc_qr_code");
 
     const { alunoId } = await params;
@@ -159,6 +165,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ alunoId
       `
       )
       .eq("id", alunoId)
+      .eq("escola_id", userEscolaId) // Add this condition to filter by escola_id
       .order("created_at", { ascending: false })
       .limit(1);
 
@@ -168,6 +175,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ alunoId
 
     if (alunoError || !alunoRow) {
       return NextResponse.json({ ok: false, error: "Aluno não encontrado" }, { status: 404 });
+    }
+
+    // Additional check if aluno.escola_id is different from userEscolaId (should be caught by .eq above but good for defense)
+    if (alunoRow.escola_id !== userEscolaId) {
+      return NextResponse.json({ ok: false, error: "Acesso negado: Aluno não pertence à sua escola" }, { status: 403 });
     }
 
     const aluno = alunoRow as AlunoRow;
