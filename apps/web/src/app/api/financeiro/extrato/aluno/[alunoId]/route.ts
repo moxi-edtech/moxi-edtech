@@ -1,3 +1,4 @@
+// apps/web/src/app/api/financeiro/extrato/aluno/[alunoId]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { applyKf2ListInvariants } from "@/lib/kf2"; // Keep this import if applyKf2ListInvariants is used elsewhere or in a fallback scenario not shown
@@ -75,6 +76,7 @@ interface AlunoRow {
   escolas?: EscolaRow | null;
   nome_completo?: string | null; // Added for new aluno structure in the provided code
   turma_atual?: string | null; // Added for new aluno structure in the provided code
+  status?: string | null; // Added for direct query in fallback
 }
 // --- END TYPE INTERFACES ---
 
@@ -108,116 +110,166 @@ export async function GET(
     const { alunoId } = await params;
     const supabase = await supabaseServer(); // Using supabaseServer directly as per debug endpoint and user's suggestion
     
+    console.log(`[EXTRATO-REMOTO] Buscando aluno: ${alunoId}`);
+    
     // 1. Autenticação
     const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
     if (authError || !user) {
-      return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+      console.error('[EXTRATO-REMOTO] Erro de autenticação:', authError);
+      return NextResponse.json({ 
+        ok: false, 
+        error: "Não autenticado" 
+      }, { status: 401 });
     }
     
-    // 2. Obter escola_id CONSISTENTE com a busca
-    // Usar EXATAMENTE o mesmo método que a busca usa
+    console.log(`[EXTRATO-REMOTO] Usuário: ${user.email} (${user.id})`);
+    
+    // 2. Obter escola_id (usando mesma lógica da busca)
     const escolaId = user.user_metadata?.escola_id || user.app_metadata?.escola_id;
     
     if (!escolaId) {
+      console.error('[EXTRATO-REMOTO] Usuário sem escola_id nos metadados');
       return NextResponse.json({ 
         ok: false, 
-        error: "Escola não identificada. Contacte o administrador." 
+        error: "Usuário não associado a nenhuma escola" 
       }, { status: 400 });
     }
     
-    // 3. Usar a MESMA RPC que a busca usa (garante consistência)
+    console.log(`[EXTRATO-REMOTO] Escola ID: ${escolaId}`);
+    
+    // 3. USAR A RPC COM ASSINATURA CORRETA
     const { data: alunosRPC, error: rpcError } = await supabase.rpc(
-      "secretaria_list_alunos_kf2",
+      'secretaria_list_alunos_kf2',
       {
         p_escola_id: escolaId,
-        p_search: "",
-        p_status: "ativo",
-        p_page: 1,
-        p_page_size: 1,
-        p_extra_filter: `alunos.id = '${alunoId}'`
+        p_q: '', // string vazia para não filtrar por nome
+        p_status: 'ativo',
+        p_limit: 100, // Busca vários e filtra localmente
+        p_offset: 0,
+        p_ano_letivo: null, // ou o ano letivo atual se necessário
+        p_cursor_id: null,
+        p_cursor_created_at: null
       }
     );
     
-    if (rpcError || !alunosRPC || alunosRPC.length === 0) {
-      console.error("RPC não encontrou aluno:", { alunoId, escolaId, rpcError });
+    if (rpcError) {
+      console.error('[EXTRATO-REMOTO] Erro na RPC:', rpcError);
       
-      // Fallback: tentar busca direta (com mesma escola_id)
-      const { data: alunoFallback, error: fallbackError } = await supabase
-        .from("alunos")
+      // Fallback: busca direta se RPC falhar
+      console.log('[EXTRATO-REMOTO] Usando busca direta como fallback');
+      const { data: alunoDireto, error: alunoError } = await supabase
+        .from('alunos')
         .select(`
           id,
           nome_completo,
           bi_numero,
           telefone_responsavel,
-          escola_id
+          escola_id,
+          status,
+          turma_atual
         `)
-        .eq("id", alunoId)
-        .eq("escola_id", escolaId)
+        .eq('id', alunoId)
+        .eq('escola_id', escolaId)
+        .eq('status', 'ativo')
         .single();
       
-      if (fallbackError || !alunoFallback) {
+      if (alunoError || !alunoDireto) {
+        console.error('[EXTRATO-REMOTO] Aluno não encontrado (busca direta):', alunoError);
         return NextResponse.json({ 
           ok: false, 
-          error: "Aluno não encontrado ou não pertence à sua escola",
-          debug: { alunoId, escolaId, userEmail: user.email }
+          error: "Aluno não encontrado na sua escola" 
         }, { status: 404 });
       }
+      
+      // Buscar mensalidades para o aluno encontrado
+      const { data: mensalidades } = await supabase
+        .from('mensalidades')
+        .select('*')
+        .eq('aluno_id', alunoId)
+        .eq('status', 'pendente')
+        .order('ano', { ascending: true })
+        .order('mes', { ascending: true });
+      
+      const totalEmAtraso = mensalidades?.reduce((sum, m) => sum + (m.valor || 0), 0) || 0;
       
       return NextResponse.json({
         ok: true,
         aluno: {
-          id: alunoFallback.id,
-          nome_completo: alunoFallback.nome_completo,
-          bi_numero: alunoFallback.bi_numero,
-          telefone_responsavel: alunoFallback.telefone_responsavel,
-          escola_id: alunoFallback.escola_id
+          id: alunoDireto.id,
+          nome_completo: alunoDireto.nome_completo,
+          bi_numero: alunoDireto.bi_numero,
+          telefone_responsavel: alunoDireto.telefone_responsavel,
+          turma_atual: alunoDireto.turma_atual,
+          escola_id: alunoDireto.escola_id
         },
-        mensalidades: [],
-        total_em_atraso: 0,
-        total_pago: 0
+        mensalidades: mensalidades || [],
+        total_em_atraso: totalEmAtraso,
+        total_pago: 0,
+        fonte: 'busca direta (fallback)'
       });
     }
     
-    const aluno = alunosRPC[0];
+    console.log(`[EXTRATO-REMOTO] RPC retornou ${alunosRPC?.length || 0} alunos`);
     
-    // 4. Buscar mensalidades (agora com aluno confirmado)
+    // 4. Filtrar pelo alunoId específico
+    const alunoEncontrado = alunosRPC?.find((aluno: any) => aluno.id === alunoId);
+    
+    if (!alunoEncontrado) {
+      console.error('[EXTRATO-REMOTO] Aluno não encontrado na lista RPC');
+      return NextResponse.json({ 
+        ok: false, 
+        error: "Aluno não encontrado na sua escola",
+        debug: {
+          totalAlunosRetornados: alunosRPC?.length,
+          alunoIdsRetornados: alunosRPC?.map((a: any) => a.id).slice(0, 5)
+        }
+      }, { status: 404 });
+    }
+    
+    console.log(`[EXTRATO-REMOTO] Aluno encontrado: ${alunoEncontrado.nome_completo}`);
+    
+    // 5. Buscar mensalidades
     const { data: mensalidades, error: mensError } = await supabase
-      .from("mensalidades")
-      .select("*")
-      .eq("aluno_id", alunoId)
-      .eq("status", "pendente") // Only pending payments
-      .order("ano", { ascending: true })
-      .order("mes", { ascending: true });
+      .from('mensalidades')
+      .select('*')
+      .eq('aluno_id', alunoId)
+      .eq('status', 'pendente')
+      .order('ano', { ascending: true })
+      .order('mes', { ascending: true });
     
     if (mensError) {
-      console.error("Erro ao buscar mensalidades:", mensError);
-      return NextResponse.json({ ok: false, error: "Erro ao carregar mensalidades" }, { status: 500 });
+      console.error('[EXTRATO-REMOTO] Erro ao buscar mensalidades:', mensError);
     }
-
-    // 5. Calcular totais
+    
+    // 6. Calcular total
     const totalEmAtraso = mensalidades?.reduce((sum, m) => sum + (m.valor || 0), 0) || 0;
     
-    // 6. Retornar dados consistentes
+    // 7. Retornar sucesso
     return NextResponse.json({
       ok: true,
       aluno: {
-        id: aluno.id,
-        nome_completo: aluno.nome_completo,
-        bi_numero: aluno.bi_numero,
-        telefone_responsavel: aluno.telefone_responsavel,
-        turma_atual: aluno.turma_atual,
-        escola_id: aluno.escola_id
+        id: alunoEncontrado.id,
+        nome_completo: alunoEncontrado.nome_completo,
+        bi_numero: alunoEncontrado.bi_numero,
+        telefone_responsavel: alunoEncontrado.telefone_responsavel,
+        turma_atual: alunoEncontrado.turma_atual,
+        escola_id: alunoEncontrado.escola_id
       },
       mensalidades: mensalidades || [],
       total_em_atraso: totalEmAtraso,
-      total_pago: 0 // Implementar se necessário, ou calcular a partir das mensalidades (se houver pagas)
+      total_pago: 0,
+      fonte: 'RPC secretaria_list_alunos_kf2'
     });
     
-  } catch (error) {
-    console.error("Erro interno no endpoint de extrato:", error);
-    return NextResponse.json(
-      { ok: false, error: "Erro interno do servidor" },
-      { status: 500 }
-    );
+  } catch (error: any) {
+    console.error('[EXTRATO-REMOTO] Erro interno:', error);
+    
+    return NextResponse.json({
+      ok: false,
+      error: "Erro interno do servidor",
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    }, { status: 500 });
   }
 }
