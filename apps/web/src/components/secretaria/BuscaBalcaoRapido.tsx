@@ -88,9 +88,10 @@ export function BuscaBalcaoRapido() {
     setQuery("");
   };
 
-  const buscarMensalidades = async (aluno: AlunoResult) => {
+  const handlePagarClick = async (alunoId: string) => {
+    setCarregando(true); // Set loading state when starting API call
     try {
-      const res = await fetch(`/api/financeiro/extrato/aluno/${encodeURIComponent(aluno.id)}`, {
+      const res = await fetch(`/api/financeiro/extrato/aluno/${encodeURIComponent(alunoId)}`, {
         cache: "no-store",
       });
       const data = await res.json();
@@ -117,7 +118,7 @@ export function BuscaBalcaoRapido() {
           });
         }
         
-        setMensalidades([]);
+        setMensalidades([]); // Clear previous mensalidades
         return;
       }
       
@@ -125,25 +126,22 @@ export function BuscaBalcaoRapido() {
       setMensalidades(data.mensalidades || []);
       setTotalEmAtraso(data.total_em_atraso || 0);
 
-      const parcelas = (data.mensalidades || []) as Array<{
-        id: string;
-        mes: number;
-        ano: number;
-        valor: number;
-        status: string;
-        vencimento?: string | null;
-      }>;
-      
-      const pendentes = parcelas.filter(
-        (m) => m.status === "pendente" || m.status === "pago_parcial"
+      const mensalidadePendente = (data.mensalidades || []).find(
+        (m: any) => m.status === "pendente" || m.status === "atrasado"
       );
-      const mensalidade = pendentes[0] ?? parcelas[0] ?? null;
-      if (!mensalidade) {
-        toast.error("Não há mensalidades pendentes para este aluno.");
+      
+      if (!mensalidadePendente) {
+        toast.info("Este aluno não possui mensalidades pendentes.");
         return;
       }
-      setAlunoSelecionado(aluno);
-      setMensalidadeAtual(mensalidade);
+      
+      setAlunoSelecionado({
+        id: data.aluno.id,
+        nome: data.aluno.nome || "Aluno",
+        turma: data.aluno.turma || undefined,
+        bi: data.aluno.bi || undefined,
+      });
+      setMensalidadeAtual(mensalidadePendente);
       setModalAberto(true);
       
     } catch (error) {
@@ -153,6 +151,8 @@ export function BuscaBalcaoRapido() {
         description: "Não foi possível conectar ao servidor. Verifique sua internet.",
         variant: "destructive",
       });
+    } finally {
+      setCarregando(false); // Reset loading state
     }
   };
 
@@ -210,10 +210,7 @@ export function BuscaBalcaoRapido() {
                 type="button"
                 onClick={(event) => {
                   event.stopPropagation();
-                  buscarMensalidades({
-                    ...aluno,
-                    id: aluno.aluno_id ?? aluno.id,
-                  });
+                  handlePagarClick(aluno.aluno_id ?? aluno.id);
                 }}
                 className="inline-flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs font-semibold text-green-700 hover:bg-green-100"
               >
