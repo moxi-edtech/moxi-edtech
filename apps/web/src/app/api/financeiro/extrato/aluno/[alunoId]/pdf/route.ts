@@ -108,7 +108,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ alunoId
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     }
 
-    const userEscolaId = await resolveEscolaIdForUser(supabase, user.id);
+    const metadataEscolaId =
+      (user.user_metadata as { escola_id?: string | null } | null)?.escola_id ??
+      (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ??
+      null;
+
+    const userEscolaId = await resolveEscolaIdForUser(supabase, user.id, undefined, metadataEscolaId);
     if (!userEscolaId) {
       return NextResponse.json({ ok: false, error: "Usuário sem escola associada" }, { status: 403 });
     }

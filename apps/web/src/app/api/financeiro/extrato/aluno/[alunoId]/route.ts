@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 interface PaymentRow {
   valor_pago: number | null;
@@ -90,7 +91,7 @@ function normalizePagamentos(pagamentos: PaymentRow | PaymentRow[] | null | unde
   return Array.isArray(pagamentos) ? pagamentos : [pagamentos];
 }
 
-export async function GET(_req: Request, { params }: { params: Promise<{ alunoId: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ alunoId: string }> }) {
   try {
     const supabase = await supabaseServerTyped<any>();
 
@@ -98,6 +99,16 @@ export async function GET(_req: Request, { params }: { params: Promise<{ alunoId
     const user = userRes?.user;
     if (!user) {
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+    }
+
+    const metadataEscolaId =
+      (user.user_metadata as { escola_id?: string | null } | null)?.escola_id ??
+      (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ??
+      null;
+
+    const escolaId = await resolveEscolaIdForUser(supabase, user.id, undefined, metadataEscolaId);
+    if (!escolaId) {
+      return NextResponse.json({ ok: false, error: "Sem escola vinculada" }, { status: 403 });
     }
 
     const { alunoId } = await params;
@@ -142,6 +153,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ alunoId
       `
       )
       .eq("id", alunoId)
+      .eq("escola_id", escolaId)
       .order("created_at", { ascending: false })
       .limit(1);
 
@@ -189,6 +201,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ alunoId
       `
       )
       .eq("aluno_id", alunoId)
+      .eq("escola_id", escolaId)
       .order("data_vencimento", { ascending: true });
 
     mensalidadesQuery = applyKf2ListInvariants(mensalidadesQuery, { defaultLimit: 2000 });
