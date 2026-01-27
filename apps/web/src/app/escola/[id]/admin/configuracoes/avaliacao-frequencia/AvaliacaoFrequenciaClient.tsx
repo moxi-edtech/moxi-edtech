@@ -37,11 +37,17 @@ const hasComponentes = (config?: { componentes?: { code: string }[] }) => (
   Array.isArray(config?.componentes) && config.componentes.length > 0
 );
 
+const cloneConfig = (config?: { componentes?: ReadonlyArray<{ code: string; peso: number; ativo: boolean }> }) => ({
+  componentes: config?.componentes ? config.componentes.map((item) => ({ ...item })) : undefined,
+});
+
 export default function AvaliacaoFrequenciaClient({ escolaId }: Props) {
   const [frequenciaModelo, setFrequenciaModelo] = useState<'POR_AULA' | 'POR_PERIODO'>('POR_AULA');
   const [frequenciaMinPercent, setFrequenciaMinPercent] = useState(75);
   const [modeloAvaliacao, setModeloAvaliacao] = useState<'SIMPLIFICADO' | 'ANGOLANO_TRADICIONAL' | 'COMPETENCIAS' | 'DEPOIS'>('SIMPLIFICADO');
-  const [avaliacaoConfig, setAvaliacaoConfig] = useState<{ componentes?: { code: string; peso: number; ativo: boolean }[] }>(DEFAULT_AVALIACAO_CONFIG.SIMPLIFICADO);
+  const [avaliacaoConfig, setAvaliacaoConfig] = useState<{ componentes?: { code: string; peso: number; ativo: boolean }[] }>(
+    () => cloneConfig(DEFAULT_AVALIACAO_CONFIG.SIMPLIFICADO)
+  );
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -64,9 +70,11 @@ export default function AvaliacaoFrequenciaClient({ escolaId }: Props) {
         setFrequenciaMinPercent(Number.isFinite(data?.frequencia_min_percent) ? data.frequencia_min_percent : 75);
         setModeloAvaliacao(modelo);
         setAvaliacaoConfig(
-          hasComponentes(data?.avaliacao_config)
-            ? data.avaliacao_config
-            : DEFAULT_AVALIACAO_CONFIG[modelo as keyof typeof DEFAULT_AVALIACAO_CONFIG]
+          cloneConfig(
+            hasComponentes(data?.avaliacao_config)
+              ? data.avaliacao_config
+              : DEFAULT_AVALIACAO_CONFIG[modelo as keyof typeof DEFAULT_AVALIACAO_CONFIG]
+          )
         );
       } catch (error) {
         console.error(error);
@@ -151,7 +159,7 @@ export default function AvaliacaoFrequenciaClient({ escolaId }: Props) {
             modeloAvaliacao={modeloAvaliacao}
             onModeloAvaliacaoChange={(value) => {
               setModeloAvaliacao(value);
-              setAvaliacaoConfig(DEFAULT_AVALIACAO_CONFIG[value]);
+              setAvaliacaoConfig(cloneConfig(DEFAULT_AVALIACAO_CONFIG[value]));
             }}
             avaliacaoConfig={avaliacaoConfig}
           />

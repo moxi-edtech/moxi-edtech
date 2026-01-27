@@ -131,3 +131,8 @@ Criar `vw_search_*` para normalizar campos e ranking:
 ## Sessão atual — evidências
 - Metas p95 reforçadas e alinhadas com `ROADMAP.md`.
 - Nenhuma alteração funcional direta na busca global nesta sessão.
+
+---
+
+## Referências
+- `docs/big-tech-performance.md`

@@ -21,7 +21,7 @@ type FechoTotals = {
 };
 
 type FechoResponse = {
-  ok: boolean;
+  ok: true;
   date: string;
   operador_id: string | null;
   operador_label: string;

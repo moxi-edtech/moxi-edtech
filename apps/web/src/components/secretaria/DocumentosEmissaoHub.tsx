@@ -174,7 +174,7 @@ export default function DocumentosEmissaoHub({ escolaId }: { escolaId: string })
                 </div>
                 <div>
                   <div className="font-semibold text-slate-900">{item.label}</div>
-                  <div className="text-xs text-slate-500">{item.highlight || item.type}</div>
+                  <div className="text-xs text-slate-500">{item.highlight ?? ""}</div>
                 </div>
               </button>
             ))}

@@ -30,7 +30,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ ok: false, error: 'Acesso negado a esta escola.' }, { status: 403 });
     }
 
-    const { data: roles, error: rolesError } = await supabase
+    const { data: roles, error: rolesError } = await (supabase as any)
       .rpc('get_my_roles', { p_escola_id: userEscolaId });
 
     if (rolesError) {

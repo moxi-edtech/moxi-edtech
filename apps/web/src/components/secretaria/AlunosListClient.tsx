@@ -61,6 +61,12 @@ type ApiResponse = {
   error?: string;
 };
 
+const fetchJson = async <T,>(url: string, opts?: RequestInit): Promise<T> => {
+  const res = await fetch(url, opts);
+  const json = await res.json().catch(() => ({}));
+  return json as T;
+};
+
 // -----------------------------
 // Small utilities
 // -----------------------------

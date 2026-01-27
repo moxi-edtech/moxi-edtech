@@ -127,7 +127,7 @@ export async function GET(req: Request) {
       .eq('escola_id', escolaId)
       .eq('turma_id', turmaId)
       .in('status', ['ativo', 'ativa', 'active'])
-      .order('numero_chamada', { ascending: true, nullsLast: true })
+      .order('numero_chamada', { ascending: true, nullsFirst: false })
 
     matriculasQuery = applyKf2ListInvariants(matriculasQuery, { defaultLimit: 500 })
 
@@ -164,18 +164,22 @@ export async function GET(req: Request) {
       for (const row of (notasRows || []) as Array<{
         valor: number | null
         matricula_id: string
-        avaliacoes: { trimestre: number | null; tipo?: string | null; nome?: string | null; peso?: number | null } | null
+        avaliacoes:
+          | { trimestre: number | null; tipo?: string | null; nome?: string | null; peso?: number | null }
+          | Array<{ trimestre: number | null; tipo?: string | null; nome?: string | null; peso?: number | null }>
+          | null
       }>) {
-        const trimestre = row.avaliacoes?.trimestre ?? null
+        const avaliacao = Array.isArray(row.avaliacoes) ? row.avaliacoes[0] : row.avaliacoes
+        const trimestre = avaliacao?.trimestre ?? null
         if (!trimestre) continue
         if (!notasPorMatricula.has(row.matricula_id)) {
           notasPorMatricula.set(row.matricula_id, { sum: {}, count: {}, weightedSum: {}, weightSum: {} })
         }
         const stats = notasPorMatricula.get(row.matricula_id)!
         if (typeof row.valor === 'number') {
-          const tipoRaw = row.avaliacoes?.tipo ?? row.avaliacoes?.nome
+          const tipoRaw = avaliacao?.tipo ?? avaliacao?.nome
           const tipo = tipoRaw ? tipoRaw.toString().trim().toUpperCase() : null
-          const peso = (tipo && pesoPorTipo.get(tipo)) ?? row.avaliacoes?.peso ?? 1
+          const peso = (tipo && pesoPorTipo.get(tipo)) ?? avaliacao?.peso ?? 1
           stats.sum[trimestre] = (stats.sum[trimestre] ?? 0) + row.valor
           stats.count[trimestre] = (stats.count[trimestre] ?? 0) + 1
           stats.weightedSum[trimestre] = (stats.weightedSum[trimestre] ?? 0) + row.valor * Number(peso)

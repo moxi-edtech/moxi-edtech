@@ -160,7 +160,11 @@ export default async function FinanceiroDashboardPage({
 
     try {
       const missing = await findClassesSemPreco(supabase as any, escolaId, anoLetivo);
-      missingPricingItems = missing.items || [];
+      missingPricingItems = (missing.items || []).map((item) => ({
+        curso_nome: item.curso_nome ?? "—",
+        classe_nome: item.classe_nome ?? "—",
+        missing_type: item.missing_type ?? "desconhecido",
+      }));
     } catch (err) {
       console.error("Erro ao carregar preços pendentes", err);
     }

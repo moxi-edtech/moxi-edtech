@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { performance } from "node:perf_hooks";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { canManageEscolaResources } from "../permissions";
@@ -28,25 +29,48 @@ const normalizeTurno = (turno: string | undefined): "M" | "T" | "N" | null => {
 // --- GET: Listar Turmas (Admin) ---
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id: escolaId } = await params;
+  const shouldLog = process.env.NODE_ENV !== 'production';
+  const logId = shouldLog ? `escolas.turmas.${Date.now()}.${Math.random().toString(36).slice(2, 8)}` : '';
+  const log = (label: string, durationMs: number) => {
+    if (shouldLog) {
+      console.log(`${logId}.${label}: ${durationMs.toFixed(1)}ms`);
+    }
+  };
+  const totalStart = shouldLog ? performance.now() : 0;
   try {
+    const clientStart = shouldLog ? performance.now() : 0;
     const supabase = await createRouteClient();
+    if (shouldLog) log('client', performance.now() - clientStart);
+    const authStart = shouldLog ? performance.now() : 0;
     const { data: auth } = await supabase.auth.getUser();
+    if (shouldLog) log('auth', performance.now() - authStart);
     const user = auth?.user;
-    if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+    if (!user) {
+      if (shouldLog) log('total', performance.now() - totalStart);
+      return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+    }
 
     const metaEscolaId = (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? undefined;
+    const resolveStart = shouldLog ? performance.now() : 0;
     const userEscolaId = await resolveEscolaIdForUser(
       supabase as any,
       user.id,
       escolaId,
       metaEscolaId ? String(metaEscolaId) : null
     );
+    if (shouldLog) log('resolve', performance.now() - resolveStart);
     if (!userEscolaId || userEscolaId !== escolaId) {
+      if (shouldLog) log('total', performance.now() - totalStart);
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
+    const permsStart = shouldLog ? performance.now() : 0;
     const allowed = await canManageEscolaResources(supabase as any, escolaId, user.id);
-    if (!allowed) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
+    if (shouldLog) log('perms', performance.now() - permsStart);
+    if (!allowed) {
+      if (shouldLog) log('total', performance.now() - totalStart);
+      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
+    }
 
     // 3. Parâmetros da URL
     const url = new URL(request.url);
@@ -100,7 +124,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     let rows: any[] | null = null
+    const queryStart = shouldLog ? performance.now() : 0;
     const { data: viewRows, error } = await query;
+    if (shouldLog) log('query', performance.now() - queryStart);
 
     if (error) {
       console.error("Erro na view vw_turmas_para_matricula:", error);
@@ -134,7 +160,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       if (cursoId) fallbackQuery = fallbackQuery.eq('curso_id', cursoId);
       if (status && status !== 'todos') fallbackQuery = fallbackQuery.eq('status_validacao', status);
 
+      const fallbackStart = shouldLog ? performance.now() : 0;
       const { data: fallbackRows, error: fallbackError } = await fallbackQuery
+      if (shouldLog) log('fallback.query', performance.now() - fallbackStart);
       if (fallbackError) {
         console.error('Erro no fallback de turmas:', fallbackError)
         throw fallbackError
@@ -195,13 +223,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const last = items[items.length - 1];
     const nextCursor = items.length === limit && last ? `${last.nome},${last.id}` : null;
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       ok: true,
       items,
       total: items.length,
       stats,
       next_cursor: nextCursor,
     });
+    if (shouldLog) log('total', performance.now() - totalStart);
+    return response;
 
   } catch (e: any) {
     const rawMessage =
@@ -215,7 +245,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       }
     })();
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         ok: false,
         error: fallbackMessage,
@@ -225,6 +255,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       },
       { status: 500 }
     );
+    if (shouldLog) log('total', performance.now() - totalStart);
+    return response;
   }
 }
 

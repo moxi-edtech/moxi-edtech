@@ -126,3 +126,10 @@ Antes de mexer em UI, consultar:
 - `docs/icon-map.md`
 - `docs/design-tokens.md`
 - `docs/storybook-guide.md`
+
+---
+
+## PERFORMANCE — REFERÊNCIAS OBRIGATÓRIAS
+
+Para garantir performance, consultar:
+- `docs/big-tech-performance.md`

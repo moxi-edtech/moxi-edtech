@@ -7554,6 +7554,10 @@ export type Database = {
         Returns: undefined
       }
       has_access_to_escola: { Args: { _escola_id: string }; Returns: boolean }
+      has_access_to_escola_fast: {
+        Args: { p_escola_id: string }
+        Returns: boolean
+      }
       immutable_unaccent: { Args: { "": string }; Returns: string }
       importar_alunos: {
         Args: { p_ano_letivo: number; p_escola_id: string; p_import_id: string }

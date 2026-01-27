@@ -27,7 +27,7 @@ export default async function FechoPrintPage({
 
   return (
     <div className={`min-h-screen ${styles.printRoot} font-sans text-slate-900`}>
-      <PrintTrigger />
+      <PrintTrigger bodyClassName={styles.printRoot} />
       <div className={`${styles.receipt} shadow-lg`}>
         <div className="space-y-5">
           <header className="text-center space-y-1">

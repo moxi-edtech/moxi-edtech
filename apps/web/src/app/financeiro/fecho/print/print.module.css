@@ -21,13 +21,13 @@
     padding: 10mm;
   }
 
-  aside,
-  header.sticky,
-  main {
+  :global(body).printRoot :global(aside),
+  :global(body).printRoot :global(header.sticky),
+  :global(body).printRoot :global(main) {
     display: none !important;
   }
 
-  body {
+  :global(body).printRoot {
     background: white !important;
   }
 }

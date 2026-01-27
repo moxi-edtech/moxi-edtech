@@ -4,6 +4,7 @@ import { createHash, randomUUID } from "crypto";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
+import type { Database } from "~types/supabase";
 
 const payloadSchema = z.object({
   alunoId: z.string().uuid(),
@@ -82,15 +83,19 @@ export async function POST(request: Request) {
     hash_validacao: hashValidacao,
   };
 
+  const insertPayload: Database["public"]["Tables"]["documentos_emitidos"]["Insert"] = {
+    escola_id: escolaId,
+    aluno_id: alunoId,
+    tipo: tipoDocumento,
+    dados_snapshot:
+      snapshot as Database["public"]["Tables"]["documentos_emitidos"]["Row"]["dados_snapshot"],
+    created_by: user.id,
+    hash_validacao: hashValidacao,
+  };
+
   const { data: doc, error: docError } = await supabase
     .from("documentos_emitidos")
-    .insert({
-      escola_id: escolaId,
-      aluno_id: alunoId,
-      tipo: tipoDocumento,
-      dados_snapshot: snapshot,
-      created_by: user.id,
-    })
+    .insert(insertPayload)
     .select("id, public_id")
     .single();
 
