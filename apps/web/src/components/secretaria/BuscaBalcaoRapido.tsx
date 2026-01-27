@@ -36,6 +36,8 @@ export function BuscaBalcaoRapido() {
   const [modalAberto, setModalAberto] = useState(false);
   const [alunoSelecionado, setAlunoSelecionado] = useState<AlunoResult | null>(null);
   const [mensalidadeAtual, setMensalidadeAtual] = useState<MensalidadeResumo | null>(null);
+  const [mensalidades, setMensalidades] = useState<MensalidadeResumo[]>([]);
+  const [totalEmAtraso, setTotalEmAtraso] = useState<number>(0);
   const debouncedQuery = useDebounce(query.trim(), 300);
 
   useEffect(() => {
