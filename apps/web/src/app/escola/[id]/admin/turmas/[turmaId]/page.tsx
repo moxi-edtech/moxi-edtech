@@ -10,7 +10,7 @@ export default async function Page({
 
   return (
     <>
-      <AuditPageView portal="admin" acao="PAGE_VIEW" entity="turma_detail" entityId={turmaId} />
+      <AuditPageView portal="admin_escola" acao="PAGE_VIEW" entity="turma_detail" entityId={turmaId} />
       <TurmaDetailClient turmaId={turmaId} />
     </>
   );

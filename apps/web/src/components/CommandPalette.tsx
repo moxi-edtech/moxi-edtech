@@ -93,7 +93,7 @@ export function CommandPalette({ escolaId, portal }: Props) {
   }, [intent, primaryResult, escolaId]);
 
   useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         setIsOpen(true);

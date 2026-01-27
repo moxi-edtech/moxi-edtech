@@ -13,6 +13,8 @@ export type BuilderTurnos = {
   noite: boolean;
 };
 
+export type { CurriculumKey };
+
 type MatrixKey = string;
 
 export interface AdvancedConfigPayload {

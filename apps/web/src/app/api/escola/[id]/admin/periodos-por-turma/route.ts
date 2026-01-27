@@ -61,11 +61,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ ok: false, error: 'Turma não encontrada.' }, { status: 404 });
     }
 
+    if (turma.ano_letivo == null) {
+      return NextResponse.json({ ok: true, items: [] });
+    }
+
     const { data: anoLetivo } = await supabase
       .from('anos_letivos')
       .select('id')
       .eq('escola_id', effectiveEscolaId)
-      .eq('ano', turma.ano_letivo)
+      .eq('ano', Number(turma.ano_letivo))
       .maybeSingle();
 
     if (!anoLetivo?.id) {

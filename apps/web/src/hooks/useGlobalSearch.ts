@@ -228,10 +228,10 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
           p_query: q,
           p_types: resolvedTypes,
           p_limit: limit,
-          p_cursor_score: pageCursor?.score ?? null,
-          p_cursor_updated_at: pageCursor?.updated_at ?? null,
-          p_cursor_created_at: pageCursor?.created_at ?? null,
-          p_cursor_id: pageCursor?.id ?? null,
+          p_cursor_score: pageCursor?.score ?? undefined,
+          p_cursor_updated_at: pageCursor?.updated_at ?? undefined,
+          p_cursor_created_at: pageCursor?.created_at ?? undefined,
+          p_cursor_id: pageCursor?.id ?? undefined,
         });
 
       if (error) {

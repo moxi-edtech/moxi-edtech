@@ -188,13 +188,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       autogerar_periodos: false,
     };
 
-    const upsertData = {
+    const upsertData: Database['public']['Tables']['configuracoes_escola']['Insert'] = {
       escola_id: effectiveEscolaId,
       ...baseConfig,
       frequencia_modelo: payload.frequencia_modelo,
       frequencia_min_percent: payload.frequencia_min_percent,
       modelo_avaliacao: payload.modelo_avaliacao,
-      avaliacao_config: avaliacaoConfig,
+      avaliacao_config:
+        avaliacaoConfig as Database['public']['Tables']['configuracoes_escola']['Row']['avaliacao_config'],
       updated_at: new Date().toISOString(),
     };
 

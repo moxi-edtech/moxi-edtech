@@ -67,3 +67,8 @@ Documentar o fluxo Pedagógico (UI → API → DB), com origem única de dados e
   - `supabase/migrations/20261101120000_mv_escola_setup_status.sql`
   - `supabase/migrations/20261101121000_mv_escola_estrutura_counts.sql`
   - `apps/web/src/app/api/escola/[id]/admin/setup/status/route.ts`
+
+---
+
+## Referências
+- `docs/big-tech-performance.md`

@@ -94,13 +94,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     const { presetKey, ano_letivo_id, customData, advancedConfig, options } = parsed.data;
+    const effectiveAnoLetivoId = ano_letivo_id ?? null;
 
-    const { data: anoLetivo, error: anoError } = await (ano_letivo_id
+    const { data: anoLetivo, error: anoError } = await (effectiveAnoLetivoId
       ? supabase
           .from('anos_letivos')
           .select('id, ano, ativo')
           .eq('escola_id', userEscolaId)
-          .eq('id', ano_letivo_id)
+          .eq('id', effectiveAnoLetivoId)
           .maybeSingle()
       : supabase
           .from('anos_letivos')
@@ -146,7 +147,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         .select('id')
         .eq('escola_id', userEscolaId)
         .eq('curso_id', cursoExistente.id)
-        .eq('ano_letivo_id', ano_letivo_id)
+        .eq('ano_letivo_id', effectiveAnoLetivoId ?? anoLetivo.id)
         .eq('status', 'published')
         .limit(1);
       publishedExists = Boolean(published && published.length > 0);

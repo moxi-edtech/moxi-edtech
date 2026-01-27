@@ -55,10 +55,11 @@ export async function getDocumentoEmitido(docId: string) {
     .select("nome, validation_base_url")
     .eq("id", doc.escola_id)
     .maybeSingle();
+  const escolaRow = escola as { nome?: string | null; validation_base_url?: string | null } | null;
 
   return {
     doc: doc as DocumentoEmitido,
-    escolaNome: escola?.nome ?? "Escola",
-    validationBaseUrl: escola?.validation_base_url ?? null,
+    escolaNome: escolaRow?.nome ?? "Escola",
+    validationBaseUrl: escolaRow?.validation_base_url ?? null,
   } as const;
 }

@@ -76,6 +76,10 @@ const hasComponentes = (config?: { componentes?: { code: string }[] }) => (
   Array.isArray(config?.componentes) && config.componentes.length > 0
 );
 
+const cloneConfig = (config?: { componentes?: ReadonlyArray<{ code: string; peso: number; ativo: boolean }> }) => ({
+  componentes: config?.componentes ? config.componentes.map((item) => ({ ...item })) : undefined,
+});
+
 export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoolName }: Props) {
   const [step, setStep] = useState(1);
 
@@ -241,9 +245,11 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
         setFrequenciaMinPercent(Number.isFinite(data?.frequencia_min_percent) ? data.frequencia_min_percent : 75);
         setModeloAvaliacao(modelo);
         setAvaliacaoConfig(
-          hasComponentes(data?.avaliacao_config)
-            ? data.avaliacao_config
-            : DEFAULT_AVALIACAO_CONFIG[modelo as keyof typeof DEFAULT_AVALIACAO_CONFIG]
+          cloneConfig(
+            hasComponentes(data?.avaliacao_config)
+              ? data.avaliacao_config
+              : DEFAULT_AVALIACAO_CONFIG[modelo as keyof typeof DEFAULT_AVALIACAO_CONFIG]
+          )
         );
       } catch (error) {
         console.error(error);
@@ -367,7 +373,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Erro ao salvar preferências.");
       if (json?.data?.avaliacao_config) {
-        setAvaliacaoConfig(json.data.avaliacao_config);
+        setAvaliacaoConfig(cloneConfig(json.data.avaliacao_config));
       }
       toast.success("Preferências salvas.", { id: toastId });
       return true;
@@ -656,7 +662,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
           modeloAvaliacao={modeloAvaliacao}
           onModeloAvaliacaoChange={(value) => {
             setModeloAvaliacao(value);
-            setAvaliacaoConfig(DEFAULT_AVALIACAO_CONFIG[value]);
+            setAvaliacaoConfig(cloneConfig(DEFAULT_AVALIACAO_CONFIG[value]));
           }}
           avaliacaoConfig={avaliacaoConfig}
         />

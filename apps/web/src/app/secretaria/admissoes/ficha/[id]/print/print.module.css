@@ -23,19 +23,19 @@
     background: white !important;
   }
 
-  aside {
+  :global(body).printRoot :global(aside) {
     display: none !important;
   }
 
-  header.sticky {
+  :global(body).printRoot :global(header.sticky) {
     display: none !important;
   }
 
-  main {
+  :global(body).printRoot :global(main) {
     padding: 0 !important;
   }
 
-  body {
+  :global(body).printRoot {
     background: white !important;
   }
 }

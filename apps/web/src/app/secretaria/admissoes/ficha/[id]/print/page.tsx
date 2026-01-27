@@ -80,7 +80,7 @@ export default async function FichaPreInscricaoPrintPage({
 
   return (
     <div className={`bg-slate-100 min-h-screen print:bg-white ${styles.printRoot}`}>
-      <PrintTrigger />
+      <PrintTrigger bodyClassName={styles.printRoot} />
 
       <div className={`${styles.sheet} text-black shadow-lg print:shadow-none`}>
         <div className="space-y-8">

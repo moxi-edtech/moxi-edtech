@@ -105,7 +105,19 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
       ? { label: "Configurado", tone: "bg-emerald-100 text-emerald-800" }
       : { label: "Etapa por configurar", tone: "bg-amber-100 text-amber-800" };
 
-  const setupCards = [
+  type SettingsCard = {
+    title: string;
+    desc: string;
+    icon: typeof Building2;
+    href?: string;
+    action?: () => void;
+    color: string;
+    statusLabel?: string | null;
+    statusTone?: string;
+    meta?: string | null;
+  };
+
+  const setupCards: SettingsCard[] = [
     ...((progress ?? 0) < 100 ? [
       {
         title: "Assistente de Setup",
@@ -159,7 +171,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
     },
   ];
 
-  const adminCards = [
+  const adminCards: SettingsCard[] = [
     {
       title: "Identidade da Escola",
       desc: "Logo, nome, NIF e contactos.",
