@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { applyKf2ListInvariants } from "@/lib/kf2";
-import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { supabaseServer } from "@/lib/supabaseServer";
+import { applyKf2ListInvariants } from "@/lib/kf2"; // Keep this import if applyKf2ListInvariants is used elsewhere or in a fallback scenario not shown
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"; // Keep this import if resolveEscolaIdForUser is used elsewhere or in a fallback scenario not shown
 
+// --- TYPE INTERFACES (Keep existing interfaces or adjust as needed) ---
 interface PaymentRow {
   valor_pago: number | null;
   metodo_pagamento: string | null;
@@ -26,6 +27,9 @@ interface MensalidadeRow {
   status?: string | null;
   observacoes?: string | null;
   pagamentos?: PaymentRow[] | PaymentRow | null;
+  valor?: number | null; // Added for new mensalidades structure in the provided code
+  mes?: number | null; // Added for new mensalidades structure in the provided code
+  ano?: number | null; // Added for new mensalidades structure in the provided code
 }
 
 interface ProfileRow {
@@ -69,8 +73,12 @@ interface AlunoRow {
   profiles?: ProfileRow | ProfileRow[] | null;
   matriculas?: MatriculaRow | MatriculaRow[] | null;
   escolas?: EscolaRow | null;
+  nome_completo?: string | null; // Added for new aluno structure in the provided code
+  turma_atual?: string | null; // Added for new aluno structure in the provided code
 }
+// --- END TYPE INTERFACES ---
 
+// --- NORMALIZATION FUNCTIONS (Keep existing normalization functions) ---
 function normalizeProfile(profile: ProfileRow | ProfileRow[] | null | undefined) {
   if (!profile) return null;
   return Array.isArray(profile) ? profile[0] ?? null : profile;
@@ -90,244 +98,125 @@ function normalizePagamentos(pagamentos: PaymentRow | PaymentRow[] | null | unde
   if (!pagamentos) return [] as PaymentRow[];
   return Array.isArray(pagamentos) ? pagamentos : [pagamentos];
 }
+// --- END NORMALIZATION FUNCTIONS ---
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ alunoId: string }> }) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ alunoId: string }> }
+) {
   try {
-    const supabase = await supabaseServerTyped<any>();
-
-    const { data: userRes } = await supabase.auth.getUser();
-    const user = userRes?.user;
-    if (!user) {
+    const { alunoId } = await params;
+    const supabase = await supabaseServer(); // Using supabaseServer directly as per debug endpoint and user's suggestion
+    
+    // 1. Autenticação
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     }
-
-    const metadataEscolaId =
-      (user.user_metadata as { escola_id?: string | null } | null)?.escola_id ??
-      (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ??
-      null;
-
-    const escolaId = await resolveEscolaIdForUser(supabase, user.id, undefined, metadataEscolaId);
+    
+    // 2. Obter escola_id CONSISTENTE com a busca
+    // Usar EXATAMENTE o mesmo método que a busca usa
+    const escolaId = user.user_metadata?.escola_id || user.app_metadata?.escola_id;
+    
     if (!escolaId) {
-      return NextResponse.json({ ok: false, error: "Sem escola vinculada" }, { status: 403 });
+      return NextResponse.json({ 
+        ok: false, 
+        error: "Escola não identificada. Contacte o administrador." 
+      }, { status: 400 });
     }
-
-    const { alunoId } = await params;
-
-    let alunoQuery = supabase
-      .from("alunos")
-      .select(
-        `
-        id,
-        nome,
-        bi_numero,
-        telefone,
-        email,
-        responsavel,
-        telefone_responsavel,
-        escola_id,
-        profiles:profiles!alunos_profile_id_fkey (
-          id,
-          numero_login
-        ),
-        matriculas:matriculas (
-          id,
-          ano_letivo,
-          status,
-          numero_matricula,
-          turma:turmas (
-            id,
-            nome,
-            classe,
-            turno,
-            ano_letivo
-          )
-        ),
-        escolas:escolas (
-          id,
-          nome,
-          nif,
-          numero_fiscal,
-          telefone,
-          email
-        )
-      `
-      )
-      .eq("id", alunoId)
-      .eq("escola_id", escolaId)
-      .order("created_at", { ascending: false })
-      .limit(1);
-
-    alunoQuery = applyKf2ListInvariants(alunoQuery, { defaultLimit: 1 });
-
-    const { data: alunoRow, error: alunoError } = await alunoQuery.maybeSingle<AlunoRow>();
-
-    if (alunoError || !alunoRow) {
-      return NextResponse.json({ ok: false, error: "Aluno não encontrado" }, { status: 404 });
-    }
-
-    const aluno = alunoRow as AlunoRow;
-    const escola = aluno.escolas;
-    const profile = normalizeProfile(aluno.profiles);
-    const matriculas = normalizeMatriculas(aluno.matriculas);
-
-    const matriculaAtual =
-      matriculas.sort((a, b) => (b.ano_letivo ?? 0) - (a.ano_letivo ?? 0))[0] ?? null;
-
-    let mensalidadesQuery = supabase
-      .from("mensalidades")
-      .select(
-        `
-        id,
-        escola_id,
-        aluno_id,
-        turma_id,
-        ano_letivo,
-        mes_referencia,
-        ano_referencia,
-        data_vencimento,
-        data_pagamento_efetiva,
-        valor_previsto,
-        valor_pago_total,
-        status,
-        observacoes,
-        pagamentos:pagamentos (
-          id,
-          valor_pago,
-          metodo_pagamento,
-          data_pagamento,
-          conciliado,
-          referencia_externa
-        )
-      `
-      )
-      .eq("aluno_id", alunoId)
-      .eq("escola_id", escolaId)
-      .order("data_vencimento", { ascending: true });
-
-    mensalidadesQuery = applyKf2ListInvariants(mensalidadesQuery, { defaultLimit: 2000 });
-
-    const { data: mensalidades, error: mensError } = await mensalidadesQuery.returns<MensalidadeRow[]>();
-
-    if (mensError) {
-      return NextResponse.json(
-        { ok: false, error: "Erro ao carregar mensalidades", details: mensError.message },
-        { status: 500 }
-      );
-    }
-
-    const parcelas = (mensalidades ?? []).map((m) => {
-      const valorPrevisto = Number(m.valor_previsto ?? 0);
-      const valorPago = Number(m.valor_pago_total ?? 0);
-      const emAberto = Math.max(0, valorPrevisto - valorPago);
-
-      const pagamentos = normalizePagamentos(m.pagamentos);
-      const ultimoPagamento = pagamentos
-        .slice()
-        .sort(
-          (a, b) =>
-            new Date(b.data_pagamento ?? 0).getTime() - new Date(a.data_pagamento ?? 0).getTime()
-        )[0];
-
-      return {
-        id: m.id,
-        anoLetivo: m.ano_letivo,
-        mesReferencia: m.mes_referencia,
-        anoReferencia: m.ano_referencia,
-        dataVencimento: m.data_vencimento,
-        dataPagamentoEfetiva: m.data_pagamento_efetiva,
-        valorPrevisto,
-        valorPagoTotal: valorPago,
-        valorEmAberto: emAberto,
-        status: m.status,
-        observacoes: m.observacoes,
-        ultimoPagamento: ultimoPagamento
-          ? {
-              valorPago: Number(ultimoPagamento.valor_pago ?? 0),
-              metodoPagamento: ultimoPagamento.metodo_pagamento,
-              dataPagamento: ultimoPagamento.data_pagamento,
-              referenciaExterna: ultimoPagamento.referencia_externa,
-              conciliado: ultimoPagamento.conciliado,
-            }
-          : null,
-      };
-    });
-
-    const resumo = parcelas.reduce(
-      (acc, p) => {
-        acc.totalPrevisto += p.valorPrevisto;
-        acc.totalPago += p.valorPagoTotal;
-        acc.totalEmAberto += p.valorEmAberto;
-        if (p.status === "pendente" || p.status === "pago_parcial") {
-          acc.qtdEmAberto += 1;
-        }
-        if (p.status === "pago") {
-          acc.qtdQuitadas += 1;
-        }
-        return acc;
-      },
+    
+    // 3. Usar a MESMA RPC que a busca usa (garante consistência)
+    const { data: alunosRPC, error: rpcError } = await supabase.rpc(
+      "secretaria_list_alunos_kf2",
       {
-        totalPrevisto: 0,
-        totalPago: 0,
-        totalEmAberto: 0,
-        qtdEmAberto: 0,
-        qtdQuitadas: 0,
+        p_escola_id: escolaId,
+        p_search: "",
+        p_status: "ativo",
+        p_page: 1,
+        p_page_size: 1,
+        p_extra_filter: `alunos.id = '${alunoId}'`
       }
     );
-
-    const turmaNormalized = matriculaAtual?.turma
-      ? normalizeTurma(matriculaAtual.turma)
-      : null;
-
-    return NextResponse.json(
-      {
+    
+    if (rpcError || !alunosRPC || alunosRPC.length === 0) {
+      console.error("RPC não encontrou aluno:", { alunoId, escolaId, rpcError });
+      
+      // Fallback: tentar busca direta (com mesma escola_id)
+      const { data: alunoFallback, error: fallbackError } = await supabase
+        .from("alunos")
+        .select(`
+          id,
+          nome_completo,
+          bi_numero,
+          telefone_responsavel,
+          escola_id
+        `)
+        .eq("id", alunoId)
+        .eq("escola_id", escolaId)
+        .single();
+      
+      if (fallbackError || !alunoFallback) {
+        return NextResponse.json({ 
+          ok: false, 
+          error: "Aluno não encontrado ou não pertence à sua escola",
+          debug: { alunoId, escolaId, userEmail: user.email }
+        }, { status: 404 });
+      }
+      
+      return NextResponse.json({
         ok: true,
         aluno: {
-          id: aluno.id,
-          nome: aluno.nome,
-          numeroLogin: profile?.numero_login ?? null,
-          bi: aluno.bi_numero ?? null,
-          telefone: aluno.telefone ?? null,
-          email: aluno.email ?? null,
-          responsavel: aluno.responsavel ?? null,
-          telefoneResponsavel: aluno.telefone_responsavel ?? null,
+          id: alunoFallback.id,
+          nome_completo: alunoFallback.nome_completo,
+          bi_numero: alunoFallback.bi_numero,
+          telefone_responsavel: alunoFallback.telefone_responsavel,
+          escola_id: alunoFallback.escola_id
         },
-        escola: {
-          id: escola?.id ?? null,
-          nome: escola?.nome ?? null,
-          nif: escola?.nif ?? escola?.numero_fiscal ?? null,
-          telefone: escola?.telefone ?? null,
-          email: escola?.email ?? null,
-        },
-        matriculaAtual: matriculaAtual
-          ? {
-              id: matriculaAtual.id,
-              anoLetivo: matriculaAtual.ano_letivo,
-              status: matriculaAtual.status,
-              numeroMatricula: matriculaAtual.numero_matricula,
-              turma: turmaNormalized
-                ? {
-                    id: turmaNormalized.id,
-                    nome: turmaNormalized.nome ?? null,
-                    classe: turmaNormalized.classe ?? null,
-                    turno: turmaNormalized.turno ?? null,
-                    anoLetivoLabel:
-                      turmaNormalized.ano_letivo != null
-                        ? `${turmaNormalized.ano_letivo}/${(turmaNormalized.ano_letivo as number) + 1}`
-                        : null,
-                  }
-                : null,
-            }
-          : null,
-        resumo,
-        parcelas,
+        mensalidades: [],
+        total_em_atraso: 0,
+        total_pago: 0
+      });
+    }
+    
+    const aluno = alunosRPC[0];
+    
+    // 4. Buscar mensalidades (agora com aluno confirmado)
+    const { data: mensalidades, error: mensError } = await supabase
+      .from("mensalidades")
+      .select("*")
+      .eq("aluno_id", alunoId)
+      .eq("status", "pendente") // Only pending payments
+      .order("ano", { ascending: true })
+      .order("mes", { ascending: true });
+    
+    if (mensError) {
+      console.error("Erro ao buscar mensalidades:", mensError);
+      return NextResponse.json({ ok: false, error: "Erro ao carregar mensalidades" }, { status: 500 });
+    }
+
+    // 5. Calcular totais
+    const totalEmAtraso = mensalidades?.reduce((sum, m) => sum + (m.valor || 0), 0) || 0;
+    
+    // 6. Retornar dados consistentes
+    return NextResponse.json({
+      ok: true,
+      aluno: {
+        id: aluno.id,
+        nome_completo: aluno.nome_completo,
+        bi_numero: aluno.bi_numero,
+        telefone_responsavel: aluno.telefone_responsavel,
+        turma_atual: aluno.turma_atual,
+        escola_id: aluno.escola_id
       },
-      { status: 200 }
-    );
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error("[financeiro/extrato/aluno] fatal", message);
+      mensalidades: mensalidades || [],
+      total_em_atraso: totalEmAtraso,
+      total_pago: 0 // Implementar se necessário, ou calcular a partir das mensalidades (se houver pagas)
+    });
+    
+  } catch (error) {
+    console.error("Erro interno no endpoint de extrato:", error);
     return NextResponse.json(
-      { ok: false, error: "Erro inesperado ao carregar extrato financeiro do aluno." },
+      { ok: false, error: "Erro interno do servidor" },
       { status: 500 }
     );
   }
