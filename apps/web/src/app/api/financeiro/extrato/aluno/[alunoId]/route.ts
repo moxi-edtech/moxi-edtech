@@ -188,8 +188,8 @@ export async function GET(
         .select('*')
         .eq('aluno_id', alunoId)
         .eq('status', 'pendente')
-        .order('ano', { ascending: true })
-        .order('mes', { ascending: true });
+        .order('ano_referencia', { ascending: true })
+        .order('mes_referencia', { ascending: true });
       
       const totalEmAtraso = mensalidades?.reduce((sum, m) => sum + (m.valor || 0), 0) || 0;
       
@@ -197,10 +197,10 @@ export async function GET(
         ok: true,
         aluno: {
           id: alunoDireto.id,
-          nome_completo: alunoDireto.nome_completo,
-          bi_numero: alunoDireto.bi_numero,
+          nome: alunoDireto.nome_completo,
+          bi: alunoDireto.bi_numero,
           telefone_responsavel: alunoDireto.telefone_responsavel,
-          turma_atual: alunoDireto.turma_atual,
+          turma: alunoDireto.turma_atual,
           escola_id: alunoDireto.escola_id
         },
         mensalidades: mensalidades || [],
@@ -235,8 +235,8 @@ export async function GET(
       .select('*')
       .eq('aluno_id', alunoId)
       .eq('status', 'pendente')
-      .order('ano', { ascending: true })
-      .order('mes', { ascending: true });
+      .order('ano_referencia', { ascending: true })
+      .order('mes_referencia', { ascending: true });
     
     if (mensError) {
       console.error('[EXTRATO-REMOTO] Erro ao buscar mensalidades:', mensError);
@@ -250,10 +250,10 @@ export async function GET(
       ok: true,
       aluno: {
         id: alunoEncontrado.id,
-        nome_completo: alunoEncontrado.nome_completo,
-        bi_numero: alunoEncontrado.bi_numero,
+        nome: alunoEncontrado.nome_completo,
+        bi: alunoEncontrado.bi_numero,
         telefone_responsavel: alunoEncontrado.telefone_responsavel,
-        turma_atual: alunoEncontrado.turma_atual,
+        turma: alunoEncontrado.turma_atual,
         escola_id: alunoEncontrado.escola_id
       },
       mensalidades: mensalidades || [],
