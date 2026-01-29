@@ -1,54 +1,52 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
-// Minimal middleware: gate by presence of Supabase auth cookies only.
-// Role-based authorization should be enforced in Server Components and API routes.
-export function middleware(req: NextRequest) {
-  const res = NextResponse.next();
-  const { pathname } = req.nextUrl;
+export async function middleware(req: NextRequest) {
+  const res = NextResponse.next()
+  const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim()
+  const supabaseAnonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim()
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return req.cookies.getAll()
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          res.cookies.set(name, value, options)
+        })
+      },
+    },
+  })
 
-  // Allow Next.js assets and common static files without auth/redirects
-  if (
-    pathname.startsWith("/_next") || // JS chunks, HMR, fonts, etc.
-    pathname.startsWith("/favicon") ||
-    pathname.startsWith("/manifest") ||
-    pathname.startsWith("/sitemap") ||
-    pathname.startsWith("/robots.txt") ||
-    pathname.startsWith("/api/_next") || // safety for any nested proxies
-    /\.(?:js|mjs|css|json|map|png|jpg|jpeg|gif|svg|ico|webp|avif|txt|woff2?)$/i.test(pathname)
-  ) {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+
+  // Allow guest onboarding links without auth
+  const allowGuestOnboarding = /^\/escola\/[^/]+\/onboarding\/?$/.test(req.nextUrl.pathname);
+  if (allowGuestOnboarding) {
     return res;
   }
 
-  // Allow guest onboarding links without auth
-  const allowGuestOnboarding = /^\/escola\/[^/]+\/onboarding\/?$/.test(pathname);
-  if (allowGuestOnboarding) return res;
-
-  // Heuristic: presence of Supabase auth cookies indicates a session
-  const cookies = req.cookies.getAll();
-  const hasAuthCookie = cookies.some((c) =>
-    c.name === "sb-access-token" ||
-    c.name === "sb-refresh-token" ||
-    c.name.includes("supabase") ||
-    c.name.startsWith("sb-") ||
-    c.name.startsWith("sb:")
-  );
-
-  if (!hasAuthCookie) {
-    return NextResponse.redirect(new URL("/login", req.url));
+  // if user is not signed in and the current path is not /login, redirect the user to /login
+  if (!session && req.nextUrl.pathname !== '/login') {
+    return NextResponse.redirect(new URL('/login', req.url))
   }
 
-  return res;
+  return res
 }
 
 export const config = {
   matcher: [
-    "/super-admin/:path*",
-    "/admin/:path*",
-    "/aluno/:path*",
-    "/professor/:path*",
-    "/secretaria/:path*",
-    "/financeiro/:path*",
-    "/escola/:path*",
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     *
+     * This also covers all API routes.
+     */
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
-};
+}

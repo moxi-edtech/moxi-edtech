@@ -30,9 +30,9 @@ export default async function Page() {
   const eid: string = escolaId
   let plan: PlanTier = 'essencial'
   try {
-    const res = await fetch(`/api/escolas/${eid}/nome`, { cache: 'no-store' })
+    const res = await fetch(`/api/secretaria/dashboard/summary`, { cache: 'no-store' })
     const json = await res.json().catch(() => null)
-    plan = parsePlanTier(json?.plano)
+    plan = parsePlanTier(json?.escola?.plano)
   } catch {}
   const allowed = plan === 'profissional' || plan === 'premium'
 

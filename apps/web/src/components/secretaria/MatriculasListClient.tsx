@@ -690,7 +690,7 @@ export default function MatriculasListClient() {
                     return Number.isNaN(d.getTime()) ? null : d.toLocaleDateString("pt-BR");
                   })();
 
-                  const fichaHref = m.aluno_id ? `/secretaria/alunos/${m.aluno_id}/ficha` : null;
+                  const fichaHref = m.aluno_id ? `/secretaria/alunos/${m.aluno_id}` : null;
                   const statusKey = (m.status || "").toLowerCase();
                   const numeroMatriculaVisivel =
                     statusKey === "ativa" && m.numero_matricula

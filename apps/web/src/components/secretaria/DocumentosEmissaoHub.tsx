@@ -4,7 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BookOpen, FileText, Loader2, Search, User } from "lucide-react";
 
-type DocumentoTipo = "declaracao_frequencia" | "declaracao_notas";
+type DocumentoTipo =
+  | "declaracao_frequencia"
+  | "declaracao_notas"
+  | "cartao_estudante"
+  | "ficha_inscricao";
 
 type DocumentoResponse = {
   ok: boolean;
@@ -32,6 +36,18 @@ const TIPOS: Array<{
     title: "Declaração com Notas",
     description: "Aproveitamento escolar para transferência.",
     icon: BookOpen,
+  },
+  {
+    id: "cartao_estudante",
+    title: "Cartão de Estudante",
+    description: "Identificação estudantil rápida.",
+    icon: FileText,
+  },
+  {
+    id: "ficha_inscricao",
+    title: "Ficha de Inscrição",
+    description: "Dados básicos para inscrição.",
+    icon: FileText,
   },
 ];
 
@@ -121,7 +137,11 @@ export default function DocumentosEmissaoHub({ escolaId }: { escolaId: string })
       const destino =
         tipo === "declaracao_frequencia"
           ? `/secretaria/documentos/${json.docId}/frequencia/print`
-          : `/secretaria/documentos/${json.docId}/notas/print`;
+          : tipo === "declaracao_notas"
+          ? `/secretaria/documentos/${json.docId}/notas/print`
+          : tipo === "cartao_estudante"
+          ? `/secretaria/documentos/${json.docId}/cartao/print`
+          : `/secretaria/documentos/${json.docId}/ficha/print`;
 
       router.push(destino);
     } catch (err: unknown) {

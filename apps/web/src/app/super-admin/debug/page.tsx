@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import Button from "@/components/ui/Button";
+import { Button } from "@/components/ui/Button";
 import RequireSuperAdmin from "@/app/(guards)/RequireSuperAdmin";
 
 type DebugPayload = {

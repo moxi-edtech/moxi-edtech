@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Button from "@/components/ui/Button";
+import { Button } from "@/components/ui/Button";
 import { ArrowLeftIcon, UserPlusIcon, CheckCircleIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 
 type Papel = "admin" | "staff_admin" | "secretaria" | "financeiro" | "professor";

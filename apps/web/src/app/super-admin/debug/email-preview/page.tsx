@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import RequireSuperAdmin from "@/app/(guards)/RequireSuperAdmin";
-import Button from "@/components/ui/Button";
+import { Button } from "@/components/ui/Button";
 
 type PreviewResponse = {
   ok: boolean

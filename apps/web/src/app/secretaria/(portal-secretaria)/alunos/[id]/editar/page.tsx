@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Button from "@/components/ui/Button";
+import { Button } from "@/components/ui/Button";
 import { ArrowLeftIcon, CheckCircleIcon, PencilSquareIcon } from "@heroicons/react/24/outline";
 import { enqueueOfflineAction } from "@/lib/offline/queue";
 import { fetchJsonWithOffline } from "@/lib/offline/fetch";

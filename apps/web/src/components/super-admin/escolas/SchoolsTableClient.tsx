@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import toast, { Toaster } from "react-hot-toast";
-import Button from "@/components/ui/Button";
+import { Button } from "@/components/ui/Button";
 import ConfigHealthBanner from "@/components/system/ConfigHealthBanner";
 import { SchoolsHeader } from "./SchoolsHeader";
 import { SchoolsFilters } from "./SchoolsFilters";

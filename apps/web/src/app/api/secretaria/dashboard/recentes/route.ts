@@ -37,8 +37,8 @@ function normalizeStatus(status: string): { label: string; context: 'success' | 
 export async function GET() {
   try {
     const supabase = await supabaseServerTyped<Database>();
-    const { data: sessionRes } = await supabase.auth.getSession();
-    const user = sessionRes?.session?.user ?? null;
+    const { data: userRes } = await supabase.auth.getUser();
+    const user = userRes?.user ?? null;
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
 
     const metaEscolaId = (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? undefined;

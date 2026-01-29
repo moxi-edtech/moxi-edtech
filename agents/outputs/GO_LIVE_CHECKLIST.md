@@ -12,7 +12,7 @@
   - secretaria
   - professor
   - admin_escola
-  - aluno
+  - alunoz
 - Service Role NUNCA acessa endpoints humanos.
 
 ### Integridade Temporal
@@ -130,8 +130,8 @@
 
 ## 🟢 Admin / Super Admin (produção real)
 - Confirmação de billing
-- Relatórios de onboarding
 - Dashboard funcionando sem N+1 queries
+- Relatórios de onboarding
 - Limpeza do cache incremental (paginação, filtros)
 
 ---

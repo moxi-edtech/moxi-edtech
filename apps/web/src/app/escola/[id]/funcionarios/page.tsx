@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { useParams } from "next/navigation";
-import Button from "@/components/ui/Button";
+import { Button } from "@/components/ui/Button";
 import { UserGroupIcon, PlusIcon } from "@heroicons/react/24/outline";
 
 export default function FuncionariosPage() {
@@ -31,4 +31,3 @@ export default function FuncionariosPage() {
     </div>
   );
 }
-

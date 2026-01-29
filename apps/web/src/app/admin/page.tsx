@@ -12,6 +12,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { redirect } from 'next/navigation';
 import { supabaseServer } from '@/lib/supabaseServer';
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { getSession } from '@/lib/auth';
 import Link from 'next/link';
 import SignOutButton from '@/components/auth/SignOutButton';
@@ -120,36 +121,45 @@ export default async function Page() {
     redirect('/login');
   }
 
-const supabase = await supabaseServer()
+  const supabase = await supabaseServer()
+  const escolaId = await resolveEscolaIdForUser(
+    supabase,
+    session.user.id,
+    session.user.escola_id
+  );
 
-// KPIs reais (ordem correta)
+  const { data: countsRow } = escolaId
+    ? await supabase
+        .from('vw_admin_dashboard_counts')
+        .select('alunos_ativos, turmas_total, professores_total')
+        .eq('escola_id', escolaId)
+        .maybeSingle()
+    : { data: null };
 
-const { count: escolasCount } = await supabase
-  .from('escolas')
-  .select('id', { count: 'exact', head: true })
-  .eq('status', 'ativa')
+  const { data: pagamentosRows } = escolaId
+    ? await supabase
+        .from('pagamentos_status')
+        .select('status, total')
+        .eq('escola_id', escolaId)
+    : { data: [] };
 
-const { count: usuariosCount } = await supabase
-  .from('profiles')
-  .select('user_id', { count: 'exact', head: true })
-
-const { count: matriculasCount } = await supabase
-  .from('matriculas')
-  .select('id', { count: 'exact', head: true })
-
-const { count: pagamentosCount } = await supabase
-  .from('pagamentos')
-  .select('id', { count: 'exact', head: true }) // 👈 select primeiro
-  .eq('status', 'pago')                          // 👈 filtro depois
+  const alunosCount = countsRow?.alunos_ativos ?? 0;
+  const turmasCount = countsRow?.turmas_total ?? 0;
+  const professoresCount = countsRow?.professores_total ?? 0;
+  const pagamentosCount = (pagamentosRows || []).reduce((acc, row: any) => {
+    const status = String(row?.status || '').toLowerCase();
+    if (status === 'pago' || status === 'concluido') return acc + Number(row?.total || 0);
+    return acc;
+  }, 0);
 
 
 
 
   const kpis: KPI[] = [
-    { title: 'Escolas ativas', value: escolasCount ?? 0, icon: BuildingLibraryIcon },
-    { title: 'Usuários', value: usuariosCount ?? 0, icon: UserGroupIcon },
-    { title: 'Matrículas', value: matriculasCount ?? 0, icon: ChartBarIcon },
-    { title: 'Pagamentos pagos', value: pagamentosCount ?? 0, icon: BanknotesIcon },
+    { title: 'Alunos ativos', value: alunosCount, icon: BuildingLibraryIcon },
+    { title: 'Turmas', value: turmasCount, icon: ChartBarIcon },
+    { title: 'Professores', value: professoresCount, icon: UserGroupIcon },
+    { title: 'Pagamentos pagos', value: pagamentosCount, icon: BanknotesIcon },
   ];
 
   // Mock inicial de atividades (trocar por audit_logs futuramente)

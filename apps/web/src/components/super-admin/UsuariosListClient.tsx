@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Button from "@/components/ui/Button";
+import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 import RequireSuperAdmin from "@/app/(guards)/RequireSuperAdmin";
 

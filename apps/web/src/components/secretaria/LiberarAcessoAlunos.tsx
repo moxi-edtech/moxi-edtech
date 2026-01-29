@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Button from "@/components/ui/Button";
+import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { useAlunosSemAcesso } from "@/hooks/useAlunosSemAcesso";
 import { AlertCircle, CheckCircle, Loader2, Send, Users } from "lucide-react";

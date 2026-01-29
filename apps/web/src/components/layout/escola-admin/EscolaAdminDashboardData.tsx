@@ -57,36 +57,38 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
           order: [{ column: "mes_ref", ascending: false }],
         });
 
-        const [
-          dashboardCounts,
-          pendingTurmasCount,
-          setupStatusResult,
-          configResult,
-          missingPricingCount,
-          financeiroKpiResult,
-        ] = await Promise.all([
-          s.from("vw_admin_dashboard_counts")
-            .select("alunos_ativos, turmas_total, professores_total, avaliacoes_total")
-            .eq("escola_id", escolaId)
-            .maybeSingle(),
+  const [
+    dashboardCounts,
+    pendingTurmasCount,
+    setupStatusResult,
+    configResult,
+    missingPricingCount,
+    financeiroKpiResult,
+    escolaNomeResult,
+  ] = await Promise.all([
+    s.from("vw_admin_dashboard_counts")
+      .select("alunos_ativos, turmas_total, professores_total, avaliacoes_total")
+      .eq("escola_id", escolaId)
+      .maybeSingle(),
 
-          s.from("vw_admin_pending_turmas_count")
-            .select("pendentes_total")
-            .eq("escola_id", escolaId)
-            .maybeSingle(),
+    s.from("vw_admin_pending_turmas_count")
+      .select("pendentes_total")
+      .eq("escola_id", escolaId)
+      .maybeSingle(),
 
-          s.from("vw_escola_setup_status")
-            .select("has_ano_letivo_ativo, has_3_trimestres, has_curriculo_published, has_turmas_no_ano")
-            .eq("escola_id", escolaId)
-            .maybeSingle(),
+    s.from("vw_escola_setup_status")
+      .select("has_ano_letivo_ativo, has_3_trimestres, has_curriculo_published, has_turmas_no_ano")
+      .eq("escola_id", escolaId)
+      .maybeSingle(),
 
-          s.from("configuracoes_escola")
-            .select("frequencia_modelo, frequencia_min_percent, modelo_avaliacao, avaliacao_config")
-            .eq("escola_id", escolaId)
-            .maybeSingle(),
-          missingPricingPromise,
-          financeiroKpiQuery,
-        ]);
+    s.from("configuracoes_escola")
+      .select("frequencia_modelo, frequencia_min_percent, modelo_avaliacao, avaliacao_config")
+      .eq("escola_id", escolaId)
+      .maybeSingle(),
+    missingPricingPromise,
+    financeiroKpiQuery,
+    s.from("escolas").select("nome").eq("id", escolaId).maybeSingle(),
+  ]);
 
         const setupData = setupStatusResult.data;
         const config = configResult.data;
@@ -153,7 +155,7 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
         return (
           <EscolaAdminDashboardContent
             escolaId={escolaId}
-            escolaNome={escolaNome}
+            escolaNome={escolaNome ?? escolaNomeResult.data?.nome ?? undefined}
             loading={false}
             error={null}
             stats={payload.kpis}
@@ -184,7 +186,7 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
         return (
           <EscolaAdminDashboardContent
             escolaId={escolaId}
-            escolaNome={escolaNome}
+            escolaNome={escolaNome ?? escolaNomeResult.data?.nome ?? undefined}
             loading={false}
             error={e?.message ?? "Falha ao carregar dashboard"}
             stats={stats}

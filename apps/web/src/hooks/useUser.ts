@@ -25,10 +25,10 @@ export function useUser(): UseUserResult {
         setLoading(true);
         setError(null);
 
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        const { data: userData, error: userError } = await supabase.auth.getUser();
         if (sessionError) throw sessionError;
 
-        const currentUser = sessionData?.session?.user ?? null;
+        const user = userData?.user;
         if (!active) return;
 
         setUser(currentUser);

@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import RequireSuperAdmin from "@/app/(guards)/RequireSuperAdmin";
-import Button from "@/components/ui/Button";
+import { Button } from "@/components/ui/Button";
 import {
   BuildingLibraryIcon,
   UserPlusIcon,

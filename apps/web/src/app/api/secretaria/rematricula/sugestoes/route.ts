@@ -74,16 +74,23 @@ export async function GET(req: Request) {
       }
     }
 
-    // Carrega contagem de matriculas ativas por turma
-    const { data: matsResumo } = await supabase
-      .from('matriculas')
-      .select('turma_id, count:turma_id', { count: 'exact', head: false, group: 'turma_id' } as any)
+    // Carrega contagem de matriculas ativas por turma (MV-backed)
+    let matsResumoQuery = supabase
+      .from('vw_secretaria_matriculas_turma_status')
+      .select('turma_id, status, total')
       .eq('escola_id', escolaId)
       .in('status', ['ativo', 'ativa', 'active'])
-      .order('turma_id', { ascending: true })
+
+    matsResumoQuery = applyKf2ListInvariants(matsResumoQuery, { defaultLimit: 500 })
+
+    const { data: matsResumo } = await matsResumoQuery
 
     const countByTurma = new Map<string, number>()
-    for (const r of matsResumo || []) countByTurma.set((r as any).turma_id, Number((r as any).count || 0))
+    for (const r of matsResumo || []) {
+      const turmaId = (r as any).turma_id as string
+      const total = Number((r as any).total || 0)
+      countByTurma.set(turmaId, (countByTurma.get(turmaId) || 0) + total)
+    }
 
     const sugestoes: any[] = []
     // Para cada turma de origem, derive classe.numero e sugerir destino por classe_id

@@ -7,13 +7,10 @@ type Props = {
 }
 
 export default function ChartsStaticSection({ data }: Props) {
-  const totalPorStatus = data.pagamentos.reduce<Record<string, number>>((acc, p) => {
-    const key = (p.status ?? 'desconhecido') as string
-    acc[key] = (acc[key] ?? 0) + 1
-    return acc
-  }, {})
-
-  const pagamentosList = Object.entries(totalPorStatus).map(([label, value]) => ({ label, value }))
+  const pagamentosList = data.pagamentos.map((p) => ({
+    label: p.status ?? 'desconhecido',
+    value: Number(p.total ?? 0),
+  }))
 
   return (
     <section className="grid md:grid-cols-2 gap-6 mb-6">

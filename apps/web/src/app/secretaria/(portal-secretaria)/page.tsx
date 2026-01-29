@@ -11,29 +11,44 @@ export default function SecretariaDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const [plan] = useState<Plano>('profissional');
+  const [plan, setPlan] = useState<Plano>('profissional');
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
         setLoading(true);
-        const [countsRes, recentesRes] = await Promise.all([
-          fetch('/api/secretaria/dashboard', { cache: 'no-store' }),
-          fetch('/api/secretaria/dashboard/recentes', { cache: 'no-store' }),
-        ]);
+        const cacheKey = "secretaria:dashboard:summary";
+        const cacheRaw = typeof sessionStorage !== "undefined" ? sessionStorage.getItem(cacheKey) : null;
+        if (cacheRaw) {
+          const cached = JSON.parse(cacheRaw) as { ts: number; payload: any };
+          if (cached?.payload && Date.now() - cached.ts < 60_000) {
+            if (mounted) {
+              setCounts(cached.payload.counts ?? null);
+              setRecentes(cached.payload.recentes ?? null);
+              if (cached.payload.escola?.plano) {
+                setPlan(cached.payload.escola.plano as Plano);
+              }
+              setLoading(false);
+            }
+            return;
+          }
+        }
 
-        const countsJson = await countsRes.json();
-        const recentesJson = await recentesRes.json();
+        const summaryRes = await fetch('/api/secretaria/dashboard/summary', { cache: 'no-store' });
+        const summaryJson = await summaryRes.json();
 
         if (mounted) {
-          if (!countsRes.ok || !countsJson?.ok) {
-            throw new Error(countsJson?.error || 'Falha ao carregar dados do dashboard');
+          if (!summaryRes.ok || !summaryJson?.ok) {
+            throw new Error(summaryJson?.error || 'Falha ao carregar dados do dashboard');
           }
-          setCounts(countsJson.counts);
-
-          if (recentesRes.ok && recentesJson?.ok) {
-            setRecentes(recentesJson);
+          setCounts(summaryJson.counts ?? null);
+          setRecentes(summaryJson.recentes ?? null);
+          if (summaryJson.escola?.plano) {
+            setPlan(summaryJson.escola.plano as Plano);
+          }
+          if (typeof sessionStorage !== "undefined") {
+            sessionStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), payload: summaryJson }));
           }
         }
       } catch (e: any) {

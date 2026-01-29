@@ -1,0 +1,457 @@
+import { NextResponse } from "next/server";
+import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { createClient as createAdminClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "~types/supabase";
+import { normalizeAnoLetivo, resolveTabelaPreco } from "@/lib/financeiro/tabela-preco";
+
+// Mantivemos o GET intacto pois ele é apenas leitura e listagem
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const q = (searchParams.get("q") || "").trim();
+  const daysParam = searchParams.get("days");
+  const days = daysParam === null || daysParam === "" ? 0 : Number(daysParam) || 0;
+  const page = Number(searchParams.get("page")) || 1;
+  const pageSize = Number(searchParams.get("pageSize")) || 20;
+  const turmaId = (searchParams.get("turma_id") || "").trim();
+  const status = (searchParams.get("status") || "").trim();
+  const statusIn = (searchParams.get("status_in") || "")
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  try {
+    const supabase = await supabaseServerTyped();
+    const { data: userRes, error: authErr } = await supabase.auth.getUser();
+    if (authErr) throw authErr;
+    const user = userRes.user;
+
+    let escolaId: string | undefined = undefined;
+    if (user) {
+      try {
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("current_escola_id, escola_id, user_id")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(1);
+        escolaId = ((prof?.[0] as any)?.current_escola_id || (prof?.[0] as any)?.escola_id) as string | undefined;
+        if (!escolaId) {
+          const { data: vinc } = await supabase.from("escola_usuarios").select("escola_id").eq("user_id", user.id).limit(1);
+          escolaId = (vinc?.[0] as any)?.escola_id as string | undefined;
+        }
+      } catch {}
+    }
+
+    if (!escolaId) {
+      return NextResponse.json({ ok: false, error: "Escola não encontrada para o usuário" }, { status: 400 });
+    }
+
+    let query = supabase
+      .from("matriculas")
+      .select(
+        `id, numero_matricula, numero_chamada, aluno_id, turma_id, status, data_matricula, created_at,
+         alunos ( id, nome, profiles!alunos_profile_id_fkey ( nome ) ),
+         turmas ( nome )`,
+        { count: "exact" }
+      )
+      .eq("escola_id", escolaId);
+
+    if (turmaId) query = query.eq("turma_id", turmaId);
+    if (statusIn.length > 0) {
+      query = query.in('status', statusIn);
+    } else if (status) {
+      query = query.eq('status', status);
+    }
+
+    if (q) {
+      const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(q);
+      const [profilesRes, turmasRes] = await Promise.all([
+        supabase.from('profiles').select('user_id').eq('escola_id', escolaId).ilike('nome', `%${q}%`),
+        supabase.from('turmas').select('id').eq('escola_id', escolaId).ilike('nome', `%${q}%`),
+      ]);
+
+      let alunoIds: string[] = [];
+      const profileIds = (profilesRes.data || []).map((p: any) => p.user_id).filter(Boolean);
+      if (profileIds.length) {
+        const { data: alunosViaPerfil } = await supabase.from('alunos').select('id').eq('escola_id', escolaId).in('profile_id', profileIds);
+        alunoIds = (alunosViaPerfil || []).map((a: any) => a.id).filter(Boolean);
+      }
+      const turmaIds: string[] = (turmasRes.data || []).map((t: any) => t.id).filter(Boolean);
+
+      const conditions: string[] = [`numero_matricula.ilike.%${q}%`, `status.ilike.%${q}%`];
+      if (isUuid) conditions.push(`id.eq.${q}`);
+      if (alunoIds.length) conditions.push(`aluno_id.in.(${alunoIds.join(',')})`);
+      if (turmaIds.length) conditions.push(`turma_id.in.(${turmaIds.join(',')})`);
+      query = query.or(conditions.join(','));
+    }
+
+    if (days) {
+      const date = new Date();
+      date.setDate(date.getDate() - days);
+      query = query.gte("created_at", date.toISOString());
+    }
+
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize - 1;
+    query = query.range(start, end).order("created_at", { ascending: false });
+
+    const { data, error, count } = await query;
+    if (error) {
+      console.error("Error fetching matriculas:", error);
+      return NextResponse.json({ ok: false, error: "Erro ao buscar matrículas." }, { status: 500 });
+    }
+
+    const items = (data || []).map((row: any) => {
+      const alunoProfile = row.alunos?.profiles?.[0] ?? row.alunos?.profiles;
+      const alunoNome = row.alunos?.nome ?? alunoProfile?.nome ?? null;
+      return {
+        id: row.id,
+        numero_matricula: row.numero_matricula ?? null,
+        numero_chamada: row.numero_chamada ?? null,
+        aluno_id: row.aluno_id,
+        turma_id: row.turma_id,
+        aluno_nome: alunoNome,
+        turma_nome: row.turmas?.nome ?? null,
+        status: row.status,
+        data_matricula: row.data_matricula ?? null,
+        created_at: row.created_at,
+      } as any;
+    });
+
+    return NextResponse.json({ ok: true, items, total: count ?? 0 });
+  } catch (error: any) {
+    console.error("An unexpected error occurred:", error);
+    return NextResponse.json({ ok: false, error: "Ocorreu um erro inesperado." }, { status: 500 });
+  }
+}
+
+// ============================================================================
+// HELPER: Lançamento Financeiro (Taxa de Matrícula)
+// ============================================================================
+type PagamentoMatriculaPayload = {
+  pagar_agora?: boolean;
+  metodo_pagamento?: string | null;
+  valor_pago?: number | null;
+  comprovativo_url?: string | null;
+};
+
+async function registrarLancamentoMatricula(
+  client: any,
+  opts: {
+    escolaId: string;
+    alunoId: string;
+    matriculaId: string;
+    valorMatricula?: number | null;
+    pagamento?: PagamentoMatriculaPayload;
+    createdBy?: string | null;
+  }
+) {
+  const valor = Number(opts.valorMatricula || 0);
+  if (!Number.isFinite(valor) || valor <= 0) return;
+
+  const pagarAgora = Boolean(opts.pagamento?.pagar_agora);
+  const metodo = (opts.pagamento?.metodo_pagamento || "")?.trim() || null;
+  const comprovativoUrl = opts.pagamento?.comprovativo_url || null;
+  const valorPago = Number(typeof opts.pagamento?.valor_pago === "number" ? opts.pagamento?.valor_pago : valor);
+
+  const lancInsert = await client
+    .from("financeiro_lancamentos")
+    .insert({
+      escola_id: opts.escolaId,
+      aluno_id: opts.alunoId,
+      matricula_id: opts.matriculaId,
+      tipo: "debito",
+      origem: "matricula",
+      descricao: "Matrícula",
+      valor_original: valor,
+      status: pagarAgora ? "pago" : "pendente",
+      data_pagamento: pagarAgora ? new Date().toISOString() : null,
+      metodo_pagamento: pagarAgora ? (metodo as any) : null,
+      comprovativo_url: pagarAgora ? comprovativoUrl : null,
+      created_by: opts.createdBy || null,
+    })
+    .select("id")
+    .single();
+
+  if (lancInsert.error || !lancInsert.data) {
+    throw new Error(lancInsert.error?.message || "Falha ao registrar lançamento da matrícula");
+  }
+
+  if (pagarAgora && Number.isFinite(valorPago) && valorPago > 0) {
+    const pagamentoInsert = await client
+      .from("pagamentos")
+      .insert({
+        escola_id: opts.escolaId,
+        aluno_id: opts.alunoId,
+        valor: valorPago as any,
+        status: "pago",
+        metodo: metodo,
+        referencia: `matricula:${opts.matriculaId}`,
+        descricao: "Pagamento de matrícula",
+        comprovante_url: comprovativoUrl,
+      })
+      .select("id")
+      .single();
+
+    if (pagamentoInsert.error || !pagamentoInsert.data) {
+      await client.from("financeiro_lancamentos").delete().eq("id", (lancInsert.data as any).id).eq("escola_id", opts.escolaId);
+      throw new Error(pagamentoInsert.error?.message || "Falha ao registrar pagamento da matrícula");
+    }
+    await client.rpc("refresh_all_materialized_views").catch(() => null);
+  }
+}
+
+// ============================================================================
+// POST: Criar Matrícula (Agora simplificado com RPC)
+// ============================================================================
+export async function POST(req: Request) {
+  try {
+    const supabase = await supabaseServerTyped<Database>();
+    const { data: userRes } = await supabase.auth.getUser();
+    const user = userRes?.user;
+
+    if (!user) {
+      return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { aluno_id, session_id, turma_id, data_matricula, numero_chamada } = body;
+    // Nota: numero_matricula do body agora é ignorado (ou usado apenas para log),
+    // pois o banco gera o oficial.
+
+    const body_classe_id: string | undefined = body?.classe_id || undefined;
+    const body_curso_id: string | undefined = body?.curso_id || undefined;
+    const gerar_todas: boolean = body?.gerar_mensalidades_todas ?? true;
+
+    const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+    const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+
+    // 1. Resolve Escola
+    let escolaId: string | undefined = undefined;
+    if (aluno_id) {
+      const { data: aluno } = await supabase.from("alunos").select("escola_id").eq("id", aluno_id).maybeSingle();
+      escolaId = (aluno as any)?.escola_id as string | undefined;
+    }
+    if (!escolaId) {
+      const { data: prof } = await supabase.from("profiles").select("current_escola_id, escola_id").eq("user_id", user.id).limit(1).maybeSingle();
+      escolaId = ((prof as any)?.current_escola_id || (prof as any)?.escola_id) as string | undefined;
+    }
+    if (!escolaId) {
+      return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 400 });
+    }
+
+    if (!aluno_id || !session_id || !turma_id) {
+      return NextResponse.json({ ok: false, error: "Campos obrigatórios em falta" }, { status: 400 });
+    }
+
+    let numeroChamada: number | undefined;
+    if (numero_chamada !== undefined && numero_chamada !== null) {
+      const numeroVal = Number(numero_chamada);
+      if (!Number.isInteger(numeroVal) || numeroVal <= 0) {
+        return NextResponse.json({ ok: false, error: "Número de chamada inválido" }, { status: 400 });
+      }
+      numeroChamada = numeroVal;
+    }
+
+    // 2. Validação de Staff
+    const { data: perfil } = await supabase.from("profiles").select("role, escola_id, current_escola_id").eq("user_id", user.id).maybeSingle();
+    const role = perfil?.role ?? undefined;
+    const staffRoles = ["admin", "secretaria", "financeiro", "professor"];
+    const isStaff = role === "super_admin" || role === "global_admin" || (staffRoles.includes(role || "") && [perfil?.escola_id, perfil?.current_escola_id].some(id => String(id) === String(escolaId)));
+
+    if (!isStaff) {
+      return NextResponse.json({ ok: false, error: "Permissão negada" }, { status: 403 });
+    }
+
+    // 3. Validar Turma e Obter Ano Letivo
+    let anoLetivo: number = new Date().getFullYear();
+    try {
+      const { data: turma } = await supabase.from('turmas').select('id, escola_id, session_id, ano_letivo').eq('id', turma_id).maybeSingle();
+      if (!turma) return NextResponse.json({ ok: false, error: 'Turma não encontrada' }, { status: 400 });
+      if (String((turma as any).escola_id) !== String(escolaId)) return NextResponse.json({ ok: false, error: 'Turma de outra escola' }, { status: 403 });
+      
+      // Normalizar Ano Letivo
+      if ((turma as any).ano_letivo) {
+        anoLetivo = normalizeAnoLetivo((turma as any).ano_letivo);
+      }
+    } catch (err) {
+      return NextResponse.json({ ok: false, error: 'Erro ao validar turma' }, { status: 400 });
+    }
+
+    // 4. Resolver Preços (Para o Financeiro)
+    // Precisamos disso ANTES de matricular para garantir que não falta preço
+    let cursoResolvedId = body_curso_id;
+    let classeResolvedId = body_classe_id;
+
+    if (!cursoResolvedId || !classeResolvedId) {
+        const { data: turmaView } = await supabase.from('vw_turmas_para_matricula').select('curso_id, classe_id').eq('id', turma_id).maybeSingle();
+        if (turmaView) {
+            cursoResolvedId = cursoResolvedId || (turmaView as any).curso_id;
+            classeResolvedId = classeResolvedId || (turmaView as any).classe_id;
+        }
+    }
+
+    const pricingParams = { escolaId, anoLetivo, cursoId: cursoResolvedId, classeId: classeResolvedId, allowMensalidadeFallback: true };
+    const adminClient = createAdminClient<Database>(adminUrl, serviceRole);
+    
+    // Tenta resolver preço (usa adminClient para garantir acesso a tabelas globais se precisar)
+    let { tabela: tabelaPreco } = await resolveTabelaPreco(adminClient as any, pricingParams);
+
+    if (!tabelaPreco) {
+      return NextResponse.json({ ok: false, error: 'Bloqueio Financeiro: Curso sem preço definido.' }, { status: 400 });
+    }
+
+    const valorMatriculaTabela = Number(tabelaPreco.valor_matricula) || 0;
+    const valorMensalidadeTabela = Number(tabelaPreco.valor_mensalidade);
+    const diaVencimentoTabela = Number(tabelaPreco.dia_vencimento);
+
+    if (!Number.isFinite(valorMensalidadeTabela) || !Number.isFinite(diaVencimentoTabela)) {
+       return NextResponse.json({ ok: false, code: 'INCOMPLETE_PRICE_TABLE', error: 'Tabela de preços incompleta.' }, { status: 400 });
+    }
+
+    // ========================================================================
+    // A GRANDE MUDANÇA: CHAMADA RPC AO BANCO
+    // ========================================================================
+    
+    // Chama a função SQL segura que criamos. Ela cuida de numeração, conflitos e profile.
+    const { data: numeroGerado, error: rpcError } = await adminClient.rpc('create_or_confirm_matricula', {
+      p_aluno_id: aluno_id,
+      p_turma_id: turma_id,
+      p_ano_letivo: anoLetivo
+    });
+
+    if (rpcError) {
+      return NextResponse.json({ ok: false, error: rpcError.message || "Erro ao processar matrícula no banco." }, { status: 400 });
+    }
+
+    // ========================================================================
+    // PÓS-MATRÍCULA: FINANCEIRO
+    // ========================================================================
+    
+    // Recuperar o ID da matrícula recém-criada/confirmada para vincular o financeiro
+    // (A RPC retorna o número, mas precisamos do UUID para as tabelas financeiras)
+    let { data: matriculaData, error: fetchMatErr } = await adminClient
+      .from('matriculas')
+      .select('id, numero_matricula, data_matricula, numero_chamada')
+      .eq('escola_id', escolaId)
+      .eq('aluno_id', aluno_id)
+      .eq('ano_letivo', anoLetivo)
+      .single();
+
+    if (fetchMatErr || !matriculaData) {
+      // Isso seria muito raro, pois a RPC acabou de rodar com sucesso
+      return NextResponse.json({ ok: true, warning: "Matrícula criada, mas falha ao recuperar ID para financeiro." });
+    }
+
+    // Atualiza campos logísticos da matrícula (data e número de chamada)
+    const updates: Record<string, any> = {};
+    if (data_matricula) updates.data_matricula = data_matricula;
+    if (numeroChamada !== undefined) updates.numero_chamada = numeroChamada;
+
+    if (Object.keys(updates).length > 0) {
+      const { data: updatedMatricula } = await adminClient
+        .from('matriculas')
+        .update(updates)
+        .eq('id', matriculaData.id)
+        .eq('escola_id', escolaId)
+        .select('data_matricula, numero_chamada')
+        .maybeSingle()
+        .catch((err) => {
+          console.warn('Não foi possível atualizar data/numero_chamada da matrícula:', err?.message || err);
+        });
+
+      if (updatedMatricula) {
+        matriculaData = { ...matriculaData, ...updatedMatricula } as any;
+      }
+    }
+
+    // Registrar Taxa de Matrícula
+    const pagamentoMatricula: PagamentoMatriculaPayload = {
+      pagar_agora: Boolean(body?.pagar_matricula_agora ?? body?.pagamento_imediato),
+      metodo_pagamento: body?.metodo_pagamento?.trim() || null,
+      valor_pago: Number(body?.valor_matricula_pago),
+      comprovativo_url: body?.comprovativo_url || null,
+    };
+
+    try {
+      await registrarLancamentoMatricula(adminClient, {
+        escolaId,
+        alunoId: aluno_id,
+        matriculaId: matriculaData.id,
+        valorMatricula: valorMatriculaTabela > 0 ? valorMatriculaTabela : null,
+        pagamento: pagamentoMatricula,
+        createdBy: user.id,
+      });
+    } catch (finErr) {
+      console.error("Erro no financeiro (taxa):", finErr);
+      // Não bloqueia o retorno de sucesso da matrícula, apenas loga
+    }
+
+    // Gerar Mensalidades
+    try {
+        const { data: sess } = await supabase.from("school_sessions").select("data_inicio, data_fim").eq("id", session_id).maybeSingle();
+        const dataInicio = (sess as any)?.data_inicio ? new Date((sess as any).data_inicio) : new Date();
+        const dataFim = (sess as any)?.data_fim ? new Date((sess as any).data_fim) : new Date(new Date().getFullYear(), 11, 31);
+        const dataRef = data_matricula ? new Date(data_matricula) : new Date();
+
+        // Lógica simplificada de geração (similar à anterior)
+        const rows: any[] = [];
+        let cursor = new Date(Math.max(dataInicio.getTime(), dataRef.getTime()));
+        cursor.setDate(1); // Normaliza para dia 1 para iterar meses
+        
+        const limite = gerar_todas ? new Date(dataFim.getFullYear(), dataFim.getMonth(), 1) : cursor;
+
+        while (cursor <= limite) {
+             const ano = cursor.getFullYear();
+             const mes = cursor.getMonth() + 1;
+             const vencimento = new Date(ano, mes - 1, Math.min(diaVencimentoTabela, 28)); // Safe day logic
+
+             // Cálculo de pro-rata simples se for o primeiro mês
+             let valor = valorMensalidadeTabela;
+             
+             const matriculaId = (matriculaData as any)?.id as string | undefined;
+             if (!matriculaId) {
+               console.warn("matriculaData.id ausente, pulando geração de mensalidades.");
+               break;
+             }
+
+             rows.push({
+               escola_id: escolaId,
+               aluno_id,
+               turma_id,
+               ano_letivo: String(anoLetivo),
+               mes_referencia: mes,
+               ano_referencia: ano,
+               valor_previsto: valor,
+               data_vencimento: vencimento.toISOString().slice(0, 10),
+               status: "pendente",
+               matricula_id: matriculaId // Importante: Vincular à matrícula
+             });
+             cursor.setMonth(cursor.getMonth() + 1);
+        }
+
+        if (rows.length > 0) {
+            // Usa upsert para não duplicar se rodar duas vezes
+            await adminClient.from("mensalidades").upsert(rows, { onConflict: 'escola_id, aluno_id, ano_referencia, mes_referencia' });
+        }
+
+    } catch (mensalidadeErr) {
+        console.warn("Erro ao gerar mensalidades:", mensalidadeErr);
+    }
+
+    return NextResponse.json({ 
+        ok: true, 
+        data: { 
+            id: matriculaData?.id ?? null, 
+            numero_matricula: numeroGerado, // Retorna o número oficial gerado pelo banco
+            data_matricula: matriculaData?.data_matricula ?? null,
+            numero_chamada: matriculaData?.numero_chamada ?? null
+        } 
+    });
+
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  }
+}
+

@@ -82,3 +82,21 @@ This report details the "hardening" actions taken to address the risks identifie
 - **Status Change Guard**: Trigger `trg_guard_candidaturas_status_change` que bloqueia qualquer alteração na coluna `status` que não venha de um RPC autorizado (`app.rpc_internal`).
 - **RLS Refined**: Políticas de `UPDATE` e `DELETE` restritas apenas a registros em estado de `rascunho` para usuários comuns.
 - **Legacy Fix**: Funções `is_escola_admin/member/diretor` corrigidas para apontar para `escola_users`, eliminando erros de referência circular ou tabelas inexistentes.
+
+## 6. Integração Financeira (Pós-P0)
+Após a estabilização do fluxo de admissão, foi identificado um gap crítico: a conversão de uma matrícula não gerava automaticamente as mensalidades recorrentes, criando uma desconexão entre o módulo acadêmico e o financeiro.
+
+- **Status:** ✅ **RESOLVIDO**
+- **Ação 1: Geração Automática de Mensalidades (DB-First)**
+  - Foi implementado um novo trigger de banco de dados (`tr_gerar_mensalidades_matricula` on `public.matriculas`).
+  - **Mecanismo:** `AFTER INSERT` na tabela `matriculas`, se o `status` for `'ativo'`, o trigger chama a função `gerar_mensalidades_nova_matricula()`.
+  - **Lógica da Função:** A função busca a tabela de preços (`financeiro_tabelas`) com uma lógica de fallback (turma/curso, depois classe, etc.) e insere as 10-12 mensalidades do ano letivo para o aluno.
+  - **Benefício:** A geração de dívida agora é atômica e inseparável da matrícula, eliminando o risco de alunos matriculados sem registro financeiro.
+- **Ação 2: Backfill de Dados Existentes**
+  - Um script SQL de backfill foi executado para gerar as mensalidades em falta para todos os alunos já existentes na escola-alvo, garantindo a consistência dos dados históricos.
+- **Ação 3: Nova UI de Gestão Financeira**
+  - Foi criada a página `/financeiro/turmas-alunos`.
+  - **Propósito:** Oferecer ao departamento financeiro uma visão centralizada para acompanhar o status de pagamento por turma e por aluno, além de permitir ações rápidas como registro de pagamento e envio de cobranças.
+
+- **Conclusão:** O ciclo de vida do aluno, da candidatura à gestão financeira, está agora totalmente integrado e automatizado.
+
