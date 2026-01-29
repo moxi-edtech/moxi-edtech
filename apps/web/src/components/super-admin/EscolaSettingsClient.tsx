@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import Button from "@/components/ui/Button"
+import { Button } from "@/components/ui/Button"
 import { PLAN_NAMES, type PlanTier } from "@/config/plans"
 
 type Props = {

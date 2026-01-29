@@ -18,6 +18,7 @@ type SidebarConfig = {
 export const sidebarConfig: SidebarConfig = {
   superadmin: [
     { href: "/super-admin", label: "Dashboard", icon: "LayoutDashboard" },
+    { href: "/super-admin/health", label: "Saúde", icon: "HeartPulse" },
     { href: "/super-admin/diagnostics", label: "Diagnostics", icon: "Activity" },
     { href: "/super-admin/escolas", label: "Escolas", icon: "Building2" },
     { href: "/super-admin/usuarios", label: "Usuários", icon: "Users" },
@@ -46,10 +47,12 @@ export const sidebarConfig: SidebarConfig = {
   ],
   financeiro: [
     { href: "/financeiro", label: "Dashboard", icon: "LayoutDashboard" },
+    { href: "/financeiro/turmas-alunos", label: "Turmas & Alunos", icon: "UsersRound" },
     { href: "/financeiro/radar", label: "Radar", icon: "Radar", badge: "Novo" },
     { href: "/financeiro/candidaturas", label: "Candidaturas", icon: "FileText" },
     { href: "/financeiro/configuracoes/precos", label: "Tabelas de Preço", icon: "Table" },
     { href: "/financeiro/tabelas-mensalidade", label: "Tabelas de Mensalidade", icon: "Table" },
+    { href: "/financeiro/conciliacao", label: "Conciliação Bancária", icon: "ArrowsRightLeft" },
     { href: "/financeiro/conciliacao", label: "Conciliação", icon: "Scale" },
     { href: "/financeiro/cobrancas", label: "Cobranças", icon: "BadgeDollarSign" },
     { href: "/financeiro/relatorios", label: "Relatórios", icon: "BarChart" },

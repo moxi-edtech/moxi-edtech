@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { GlobalSearch } from "@/components/GlobalSearch";
+import { BuscaBalcaoRapido } from "@/components/secretaria/BuscaBalcaoRapido";
 import type { PlanTier } from "@/config/plans";
 import {
   DashboardHeader,
@@ -72,6 +73,16 @@ export function Dashboard({
                 <KpiCard label="Matrículas Hoje" value={counts?.matriculas} icon={UserPlus} variant="success" />
                 <KpiCard label="Turmas Ativas" value={counts?.turmas} icon={Building} />
                 <KpiCard label="Pendências" value={recentes?.pendencias ?? counts?.pendencias} icon={AlertCircle} variant="warning" />
+            </div>
+
+            <div className="bg-white rounded-xl border p-4">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                🔍 Busca Rápida para Atendimento
+              </h3>
+              <BuscaBalcaoRapido escolaId={escolaId} />
+              <p className="text-xs text-gray-500 mt-2">
+                Digite BI, nome completo ou telefone do encarregado
+              </p>
             </div>
 
             <div>

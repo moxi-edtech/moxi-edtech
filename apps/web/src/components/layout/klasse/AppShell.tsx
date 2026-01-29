@@ -54,16 +54,28 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const navItems = useMemo(() => {
     if (isLoadingRole || !inferredRole) return [];
+    
     let items = sidebarConfig[inferredRole] || [];
-    if ((inferredRole === "admin" || inferredRole === "secretaria" || inferredRole === "financeiro") && navEscolaId) {
-      return items.map((item) => ({
-        ...item,
-        href: item.href.replace("[escolaId]", navEscolaId),
-      }));
+    
+    if (inferredRole === "admin" || inferredRole === "secretaria" || inferredRole === "financeiro") {
+      items = items
+        .map((item) => {
+          if (item.href.includes("[escolaId]")) {
+            if (!navEscolaId) return null;
+            return {
+              ...item,
+              href: item.href.replace("[escolaId]", navEscolaId),
+            };
+          }
+          return item;
+        })
+        .filter(Boolean) as NavItem[];
     }
+    
     if (inferredRole === "financeiro" && Object.keys(financeBadges).length) {
       items = items.map((item) => ({ ...item, badge: financeBadges[item.href] || item.badge }));
     }
+    
     return items;
   }, [inferredRole, isLoadingRole, navEscolaId, financeBadges]);
 
@@ -78,6 +90,56 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
     const load = async () => {
       try {
+        const cacheKey = `escolas:nome:${navEscolaId}`;
+        if (typeof sessionStorage !== "undefined") {
+          if (inferredRole === "secretaria") {
+            const summaryCache = sessionStorage.getItem("secretaria:dashboard:summary");
+            if (summaryCache) {
+              const parsed = JSON.parse(summaryCache) as {
+                escola?: { nome?: string | null; plano?: PlanTier | null };
+              };
+              if (parsed.escola?.nome) {
+                setEscolaNome(parsed.escola.nome);
+                setPlanoNome(parsed.escola.plano ? PLAN_NAMES[parsed.escola.plano] : null);
+                return;
+              }
+            }
+          }
+          if (inferredRole === "admin") {
+            const summaryCache = sessionStorage.getItem("admin:dashboard:summary");
+            if (summaryCache) {
+              const parsed = JSON.parse(summaryCache) as {
+                escola?: { nome?: string | null; plano?: PlanTier | null };
+              };
+              if (parsed.escola?.nome) {
+                setEscolaNome(parsed.escola.nome);
+                setPlanoNome(parsed.escola.plano ? PLAN_NAMES[parsed.escola.plano] : null);
+                return;
+              }
+            }
+          }
+          if (inferredRole === "financeiro") {
+            const summaryCache = sessionStorage.getItem("financeiro:dashboard:summary");
+            if (summaryCache) {
+              const parsed = JSON.parse(summaryCache) as {
+                escola?: { nome?: string | null; plano?: PlanTier | null };
+              };
+              if (parsed.escola?.nome) {
+                setEscolaNome(parsed.escola.nome);
+                setPlanoNome(parsed.escola.plano ? PLAN_NAMES[parsed.escola.plano] : null);
+                return;
+              }
+            }
+          }
+          const cached = sessionStorage.getItem(cacheKey);
+          if (cached) {
+            const parsed = JSON.parse(cached) as { nome?: string | null; plano?: PlanTier | null };
+            setEscolaNome(parsed.nome ?? null);
+            setPlanoNome(parsed.plano ? PLAN_NAMES[parsed.plano] : null);
+            return;
+          }
+        }
+
         const res = await fetch(`/api/escolas/${navEscolaId}/nome`, { cache: "no-store" });
         const json = await res.json().catch(() => null);
         if (cancelled) return;
@@ -90,6 +152,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
         setEscolaNome(json.nome || null);
         setPlanoNome(json.plano ? PLAN_NAMES[json.plano as PlanTier] : null);
+        if (typeof sessionStorage !== "undefined") {
+          sessionStorage.setItem(
+            cacheKey,
+            JSON.stringify({ nome: json.nome ?? null, plano: json.plano ?? null })
+          );
+        }
       } catch {
         if (!cancelled) {
           setEscolaNome(null);
@@ -102,7 +170,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [navEscolaId]);
+  }, [navEscolaId, inferredRole]);
 
   useEffect(() => {
     if (inferredRole !== "financeiro") return;

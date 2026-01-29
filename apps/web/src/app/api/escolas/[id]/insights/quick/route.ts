@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id: escolaId } = await context.params
   try {
@@ -27,8 +30,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       topTurmas: (topT || []).map((r: any) => ({ turma_nome: r.turma_nome, percent: Number(r.percent) || 0 })),
       topCursos: (topC || []).map((r: any) => ({ curso_nome: r.curso_nome, media: Number(r.media) || 0 })),
     })
-    // Cache hints for edge/CDN
-    res.headers.set('Cache-Control', 's-maxage=60, stale-while-revalidate=120')
+    res.headers.set('Cache-Control', 'no-store')
     return res
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

@@ -1,37 +1,10 @@
-import { headers } from "next/headers";
-import { notFound } from "next/navigation";
-import FichaAluno360Client from "@/components/secretaria/FichaAluno360Client";
+import { redirect } from "next/navigation";
 
-type Params = { id: string };
-
-export default async function FichaAlunoPage({ params }: { params: Promise<Params> }) {
+export default async function FichaAlunoRedirect({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
-  const cookie = (await headers()).get("cookie") ?? "";
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-
-  let aluno: any | null = null;
-  let error: string | null = null;
-
-  try {
-    const res = await fetch(`${baseUrl}/api/secretaria/alunos/${encodeURIComponent(id)}`, {
-      cache: "no-store",
-      headers: { cookie },
-    });
-
-    if (!res.ok) {
-      const json = await res.json().catch(() => null);
-      throw new Error(json?.error || `HTTP ${res.status}`);
-    }
-    
-    const json = await res.json().catch(() => null);
-    if (!json?.ok || !json.item) {
-      throw new Error(json?.error || 'Resposta da API inválida');
-    }
-
-    aluno = json.item;
-  } catch (e) {
-    error = e instanceof Error ? e.message : String(e);
-  }
-
-  return <FichaAluno360Client aluno={aluno} error={error} />;
+  redirect(`/secretaria/alunos/${id}`);
 }

@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import Button from "@/components/ui/Button";
+import { Button } from "@/components/ui/Button";
 
 export default function SeedSuperAdminCard() {
   const [loading, setLoading] = useState(false);

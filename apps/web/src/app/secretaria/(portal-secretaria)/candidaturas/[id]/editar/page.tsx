@@ -9,7 +9,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import Button from '@/components/ui/Button';
+import { Button } from '@/components/ui/Button';
 
 interface CandidaturaForm {
   nome: string;

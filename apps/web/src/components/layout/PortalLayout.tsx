@@ -109,8 +109,18 @@ export default function PortalLayout({
         if (!mounted || !escolaId) return
         setEscolaIdState(escolaId); // Set the new state variable
 
-        // Carrega nome e plano da escola via API (service role)
+        // Carrega nome e plano da escola via cache local
         try {
+          const cacheKey = `escolas:nome:${escolaId}`
+          if (typeof sessionStorage !== 'undefined') {
+            const cached = sessionStorage.getItem(cacheKey)
+            if (cached) {
+              const parsed = JSON.parse(cached) as { nome?: string | null; plano?: PlanTier | null }
+              if (mounted && parsed?.nome) setEscolaNome(String(parsed.nome))
+              if (mounted && parsed?.plano) setPlan(parsePlanTier(parsed.plano))
+              return
+            }
+          }
           const res = await fetch(`/api/escolas/${escolaId}/nome`, { cache: 'no-store' })
           const json = await res.json().catch(() => null)
           if (mounted && res.ok && json?.ok && json?.nome) {
@@ -119,6 +129,9 @@ export default function PortalLayout({
           if (mounted) {
             const p = json?.plano ?? null
             if (p) setPlan(parsePlanTier(p))
+          }
+          if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.setItem(cacheKey, JSON.stringify({ nome: json?.nome ?? null, plano: json?.plano ?? null }))
           }
         } catch {}
         

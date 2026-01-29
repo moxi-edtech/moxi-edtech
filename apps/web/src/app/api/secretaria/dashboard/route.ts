@@ -18,8 +18,8 @@ export async function GET() {
     const supabase = await supabaseServerTyped<Database>();
     if (shouldLog) log('client', performance.now() - clientStart);
     const authStart = shouldLog ? performance.now() : 0;
-    const { data: sessionRes } = await supabase.auth.getSession();
-    const user = sessionRes?.session?.user ?? null;
+    const { data: userRes } = await supabase.auth.getUser();
+    const user = userRes?.user ?? null;
     if (shouldLog) log('auth', performance.now() - authStart);
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
 

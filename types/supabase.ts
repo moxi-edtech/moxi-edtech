@@ -14,6 +14,180 @@ export type Database = {
   }
   public: {
     Tables: {
+      aggregates_financeiro: {
+        Row: {
+          aluno_id: string
+          alunos_em_dia: number
+          alunos_inadimplentes: number
+          created_at: string
+          data_referencia: string
+          escola_id: string
+          sync_status: string
+          sync_updated_at: string
+          total_inadimplente: number
+          total_pago: number
+          total_pendente: number
+          updated_at: string
+        }
+        Insert: {
+          aluno_id: string
+          alunos_em_dia?: number
+          alunos_inadimplentes?: number
+          created_at?: string
+          data_referencia: string
+          escola_id: string
+          sync_status?: string
+          sync_updated_at?: string
+          total_inadimplente?: number
+          total_pago?: number
+          total_pendente?: number
+          updated_at?: string
+        }
+        Update: {
+          aluno_id?: string
+          alunos_em_dia?: number
+          alunos_inadimplentes?: number
+          created_at?: string
+          data_referencia?: string
+          escola_id?: string
+          sync_status?: string
+          sync_updated_at?: string
+          total_inadimplente?: number
+          total_pago?: number
+          total_pendente?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aggregates_financeiro_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aggregates_financeiro_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      aggregates_pedagogico: {
+        Row: {
+          created_at: string
+          disciplina_id: string
+          escola_id: string
+          maior_nota: number | null
+          media_geral: number | null
+          menor_nota: number | null
+          periodo_letivo_id: string
+          sync_status: string
+          sync_updated_at: string
+          total_lancamentos: number
+          turma_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          disciplina_id: string
+          escola_id: string
+          maior_nota?: number | null
+          media_geral?: number | null
+          menor_nota?: number | null
+          periodo_letivo_id: string
+          sync_status?: string
+          sync_updated_at?: string
+          total_lancamentos?: number
+          turma_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          disciplina_id?: string
+          escola_id?: string
+          maior_nota?: number | null
+          media_geral?: number | null
+          menor_nota?: number | null
+          periodo_letivo_id?: string
+          sync_status?: string
+          sync_updated_at?: string
+          total_lancamentos?: number
+          turma_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aggregates_pedagogico_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aggregates_pedagogico_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      aggregates_secretaria: {
+        Row: {
+          alunos_ativos: number
+          alunos_inativos: number
+          created_at: string
+          data_referencia: string
+          escola_id: string
+          sync_status: string
+          sync_updated_at: string
+          total_alunos: number
+          turma_id: string
+          updated_at: string
+        }
+        Insert: {
+          alunos_ativos?: number
+          alunos_inativos?: number
+          created_at?: string
+          data_referencia: string
+          escola_id: string
+          sync_status?: string
+          sync_updated_at?: string
+          total_alunos?: number
+          turma_id: string
+          updated_at?: string
+        }
+        Update: {
+          alunos_ativos?: number
+          alunos_inativos?: number
+          created_at?: string
+          data_referencia?: string
+          escola_id?: string
+          sync_status?: string
+          sync_updated_at?: string
+          total_alunos?: number
+          turma_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aggregates_secretaria_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aggregates_secretaria_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       aluno_processo_counters: {
         Row: {
           escola_id: string
@@ -615,6 +789,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vw_alunos_active"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidaturas_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_balcao_secretaria"
+            referencedColumns: ["aluno_id"]
           },
           {
             foreignKeyName: "candidaturas_aluno_id_fkey"
@@ -1334,6 +1515,13 @@ export type Database = {
             foreignKeyName: "documentos_emitidos_aluno_id_fkey"
             columns: ["aluno_id"]
             isOneToOne: false
+            referencedRelation: "vw_balcao_secretaria"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "documentos_emitidos_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
             referencedRelation: "vw_matriculas_secretaria"
             referencedColumns: ["aluno_id"]
           },
@@ -1715,6 +1903,13 @@ export type Database = {
             foreignKeyName: "finance_payment_intents_aluno_id_fkey"
             columns: ["aluno_id"]
             isOneToOne: false
+            referencedRelation: "vw_balcao_secretaria"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "finance_payment_intents_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
             referencedRelation: "vw_matriculas_secretaria"
             referencedColumns: ["aluno_id"]
           },
@@ -1817,6 +2012,13 @@ export type Database = {
             foreignKeyName: "financeiro_cobrancas_aluno_id_fkey"
             columns: ["aluno_id"]
             isOneToOne: false
+            referencedRelation: "vw_balcao_secretaria"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "financeiro_cobrancas_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
             referencedRelation: "vw_matriculas_secretaria"
             referencedColumns: ["aluno_id"]
           },
@@ -1905,6 +2107,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vw_alunos_active"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_contratos_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_balcao_secretaria"
+            referencedColumns: ["aluno_id"]
           },
           {
             foreignKeyName: "financeiro_contratos_aluno_id_fkey"
@@ -2189,6 +2398,13 @@ export type Database = {
             foreignKeyName: "financeiro_lancamentos_aluno_id_fkey"
             columns: ["aluno_id"]
             isOneToOne: false
+            referencedRelation: "vw_balcao_secretaria"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "financeiro_lancamentos_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
             referencedRelation: "vw_matriculas_secretaria"
             referencedColumns: ["aluno_id"]
           },
@@ -2413,6 +2629,13 @@ export type Database = {
             foreignKeyName: "financeiro_titulos_aluno_id_fkey"
             columns: ["aluno_id"]
             isOneToOne: false
+            referencedRelation: "vw_balcao_secretaria"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "financeiro_titulos_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
             referencedRelation: "vw_matriculas_secretaria"
             referencedColumns: ["aluno_id"]
           },
@@ -2512,6 +2735,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vw_alunos_active"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "frequencia_status_periodo_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_balcao_secretaria"
+            referencedColumns: ["aluno_id"]
           },
           {
             foreignKeyName: "frequencia_status_periodo_aluno_id_fkey"
@@ -3042,6 +3272,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vw_alunos_active"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historico_anos_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_balcao_secretaria"
+            referencedColumns: ["aluno_id"]
           },
           {
             foreignKeyName: "historico_anos_aluno_id_fkey"
@@ -3659,6 +3896,13 @@ export type Database = {
             foreignKeyName: "matriculas_aluno_id_fkey"
             columns: ["aluno_id"]
             isOneToOne: false
+            referencedRelation: "vw_balcao_secretaria"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "matriculas_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
             referencedRelation: "vw_matriculas_secretaria"
             referencedColumns: ["aluno_id"]
           },
@@ -3884,6 +4128,13 @@ export type Database = {
             foreignKeyName: "mensalidades_aluno_id_fkey"
             columns: ["aluno_id"]
             isOneToOne: false
+            referencedRelation: "vw_balcao_secretaria"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "mensalidades_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
             referencedRelation: "vw_matriculas_secretaria"
             referencedColumns: ["aluno_id"]
           },
@@ -4071,6 +4322,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vw_alunos_active"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notas_avaliacoes_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_balcao_secretaria"
+            referencedColumns: ["aluno_id"]
           },
           {
             foreignKeyName: "notas_avaliacoes_aluno_id_fkey"
@@ -4385,6 +4643,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vw_alunos_active"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outbox_notificacoes_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_balcao_secretaria"
+            referencedColumns: ["aluno_id"]
           },
           {
             foreignKeyName: "outbox_notificacoes_aluno_id_fkey"
@@ -6074,6 +6339,56 @@ export type Database = {
           },
         ]
       }
+      vw_balcao_secretaria: {
+        Row: {
+          aluno_id: string | null
+          aluno_nome: string | null
+          encarregado_telefone: string | null
+          escola_id: string | null
+          esta_inadimplente: boolean | null
+          sync_status: string | null
+          total_pendente: number | null
+          turma_id: string | null
+          turma_nome: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alunos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "alunos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_secretaria"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "matriculas_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_turmas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vw_boletim_consolidado: {
         Row: {
           aluno_id: string | null
@@ -6098,6 +6413,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vw_alunos_active"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_balcao_secretaria"
+            referencedColumns: ["aluno_id"]
           },
           {
             foreignKeyName: "matriculas_aluno_id_fkey"
@@ -6156,6 +6478,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vw_alunos_active"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_balcao_secretaria"
+            referencedColumns: ["aluno_id"]
           },
           {
             foreignKeyName: "matriculas_aluno_id_fkey"
@@ -6277,6 +6606,57 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_financeiro_dashboard: {
+        Row: {
+          alunos_em_dia: number | null
+          alunos_inadimplentes: number | null
+          data_referencia: string | null
+          escola_id: string | null
+          sync_status: string | null
+          sync_updated_at: string | null
+          total_inadimplente: number | null
+          total_pago: number | null
+          total_pendente: number | null
+        }
+        Insert: {
+          alunos_em_dia?: number | null
+          alunos_inadimplentes?: number | null
+          data_referencia?: string | null
+          escola_id?: string | null
+          sync_status?: string | null
+          sync_updated_at?: string | null
+          total_inadimplente?: number | null
+          total_pago?: number | null
+          total_pendente?: number | null
+        }
+        Update: {
+          alunos_em_dia?: number | null
+          alunos_inadimplentes?: number | null
+          data_referencia?: string | null
+          escola_id?: string | null
+          sync_status?: string | null
+          sync_updated_at?: string | null
+          total_inadimplente?: number | null
+          total_pago?: number | null
+          total_pendente?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aggregates_financeiro_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aggregates_financeiro_escola_fk"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vw_financeiro_kpis_geral: {
         Row: {
           escola_id: string | null
@@ -6346,6 +6726,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vw_alunos_active"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_balcao_secretaria"
+            referencedColumns: ["aluno_id"]
           },
           {
             foreignKeyName: "matriculas_aluno_id_fkey"
@@ -6470,6 +6857,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "vw_alunos_active"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_balcao_secretaria"
+            referencedColumns: ["aluno_id"]
           },
           {
             foreignKeyName: "matriculas_aluno_id_fkey"
@@ -7122,6 +7516,8 @@ export type Database = {
           month_start: string
         }[]
       }
+      admin_get_system_health: { Args: never; Returns: Json }
+      admin_recalc_all_aggregates: { Args: never; Returns: Json }
       admissao_approve: {
         Args: {
           p_candidatura_id: string
@@ -7708,6 +8104,13 @@ export type Database = {
         Returns: string
       }
       process_outbox_batch: { Args: { p_limit?: number }; Returns: number }
+      process_outbox_batch_p0_v2: {
+        Args: { p_batch_size?: number; p_max_retries?: number }
+        Returns: {
+          failed_count: number
+          processed_count: number
+        }[]
+      }
       professor_list_presencas_turma: {
         Args: { p_data_fim: string; p_data_inicio: string; p_turma_id: string }
         Returns: {
@@ -7730,6 +8133,18 @@ export type Database = {
           payload: Json
           tipo: string
         }[]
+      }
+      recalc_escola_financeiro_totals: {
+        Args: { p_data_referencia: string; p_escola_id: string }
+        Returns: undefined
+      }
+      recalc_secretaria_turma_counts: {
+        Args: {
+          p_data_referencia: string
+          p_escola_id: string
+          p_turma_id: string
+        }
+        Returns: undefined
       }
       refresh_all_materialized_views: { Args: never; Returns: undefined }
       refresh_frequencia_status_periodo: {
@@ -7943,9 +8358,25 @@ export type Database = {
         Returns: undefined
       }
       unaccent: { Args: { "": string }; Returns: string }
+      update_financeiro_from_pagamento: {
+        Args: { p_event: Json }
+        Returns: undefined
+      }
       update_import_configuration: {
         Args: { p_cursos_data: Json; p_import_id: string; p_turmas_data: Json }
         Returns: Json
+      }
+      update_pedagogico_from_nota: {
+        Args: { p_event: Json }
+        Returns: undefined
+      }
+      update_secretaria_from_matricula: {
+        Args: { p_event: Json }
+        Returns: undefined
+      }
+      update_secretaria_from_presenca: {
+        Args: { p_event: Json }
+        Returns: undefined
       }
       user_has_role_in_school: {
         Args: { p_escola_id: string; p_roles: string[] }

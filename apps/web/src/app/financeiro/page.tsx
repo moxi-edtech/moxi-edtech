@@ -55,14 +55,13 @@ export default async function FinanceiroDashboardPage({
     escolaId = await resolveEscolaIdForUser(supabase, user.id);
   }
 
-  let kpisQuery = supabase
-    .from("vw_financeiro_kpis_mes")
-    .select("mes_ref, previsto_total, realizado_total, inadimplencia_total")
-    .eq("escola_id", escolaId || "");
-  kpisQuery = applyKf2ListInvariants(kpisQuery, {
-    defaultLimit: 1,
-    order: [{ column: "mes_ref", ascending: false }],
-  });
+  const dashboardQuery = supabase
+    .from("vw_financeiro_dashboard")
+    .select(
+      "total_pendente, total_pago, total_inadimplente, alunos_inadimplentes, alunos_em_dia"
+    )
+    .eq("escola_id", escolaId || "")
+    .maybeSingle();
 
   let pagamentosStatusQuery = supabase
     .from("pagamentos_status")
@@ -82,24 +81,25 @@ export default async function FinanceiroDashboardPage({
     order: [{ column: "valor_total_atraso", ascending: false }],
   });
 
-  const [kpisRes, pagamentosStatusRes, radarResumoRes] = escolaId
-    ? await Promise.all([kpisQuery, pagamentosStatusQuery, radarResumoQuery])
-    : [{ data: [] }, { data: [] }, { data: [] }];
+  const [dashboardRes, pagamentosStatusRes, radarResumoRes] = escolaId
+    ? await Promise.all([dashboardQuery, pagamentosStatusQuery, radarResumoQuery])
+    : [{ data: null }, { data: [] }, { data: [] }];
 
-  const now = new Date();
-  const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-    .toISOString()
-    .slice(0, 10);
-  const kpisRows = (kpisRes.data || []) as Array<{
-    mes_ref?: string | null;
-    previsto_total?: number | null;
-    realizado_total?: number | null;
-    inadimplencia_total?: number | null;
-  }>;
-  const kpiAtual = kpisRows.find((row) => row.mes_ref === currentMonth) ?? kpisRows[0];
-  const previsto = Number(kpiAtual?.previsto_total ?? 0);
-  const realizado = Number(kpiAtual?.realizado_total ?? 0);
-  const inadimplenciaTotal = Number(kpiAtual?.inadimplencia_total ?? 0);
+  const dashboardRow = dashboardRes.data as {
+    total_pendente?: number | null;
+    total_pago?: number | null;
+    total_inadimplente?: number | null;
+    alunos_inadimplentes?: number | null;
+    alunos_em_dia?: number | null;
+  } | null;
+  const totalPago = Number(dashboardRow?.total_pago ?? 0);
+  const totalPendente = Number(dashboardRow?.total_pendente ?? 0);
+  const totalInadimplente = Number(dashboardRow?.total_inadimplente ?? 0);
+  const alunosInadimplentes = Number(dashboardRow?.alunos_inadimplentes ?? 0);
+  const alunosEmDia = Number(dashboardRow?.alunos_em_dia ?? 0);
+  const previsto = totalPago + totalPendente + totalInadimplente;
+  const realizado = totalPago;
+  const inadimplenciaTotal = totalInadimplente;
   const percentPago = previsto ? Math.round((realizado / previsto) * 100) : 0;
   const percentInadimplencia = previsto ? Math.round((inadimplenciaTotal / previsto) * 100) : 0;
 
@@ -450,11 +450,12 @@ export default async function FinanceiroDashboardPage({
         )}
       </section>
 
-      {/* Resumo da semana (placeholder) */}
+      {/* Resumo do mês */}
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold text-slate-900">Resumo da Semana</h2>
-        <div className="grid gap-4 md:grid-cols-3">
-          <MiniStat label="Cobranças Enviadas" value={0} />
+        <h2 className="text-lg font-semibold text-slate-900">Resumo do Mês</h2>
+        <div className="grid gap-4 md:grid-cols-4">
+          <MiniStat label="Alunos Inadimplentes" value={alunosInadimplentes} />
+          <MiniStat label="Alunos em Dia" value={alunosEmDia} />
           <MiniStat label="Pagamentos Confirmados" value={totalConfirmados} />
           <MiniStat label="Conciliações Pendentes" value={totalPendentes} />
         </div>

@@ -9,7 +9,12 @@ import type { Database } from "~types/supabase";
 const payloadSchema = z.object({
   alunoId: z.string().uuid(),
   escolaId: z.string().uuid(),
-  tipoDocumento: z.enum(["declaracao_frequencia", "declaracao_notas"]),
+  tipoDocumento: z.enum([
+    "declaracao_frequencia",
+    "declaracao_notas",
+    "cartao_estudante",
+    "ficha_inscricao",
+  ]),
 });
 
 export async function POST(request: Request) {

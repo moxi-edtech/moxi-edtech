@@ -27,18 +27,37 @@ type MensalidadeResumo = {
   vencimento?: string | null;
 };
 
-export function BuscaBalcaoRapido() {
+export function BuscaBalcaoRapido({ escolaId }: { escolaId: string | null }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [resultados, setResultados] = useState<AlunoResult[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [mostrarResultados, setMostrarResultados] = useState(false);
-  const [modalAberto, setModalAberto] = useState(false);
-  const [alunoSelecionado, setAlunoSelecionado] = useState<AlunoResult | null>(null);
-  const [mensalidadeAtual, setMensalidadeAtual] = useState<MensalidadeResumo | null>(null);
+  const [modalAberto, setModalAberto] = useState(false); // Old state, still used for other modal.
+  const [alunoSelecionado, setAlunoSelecionado] = useState<AlunoResult | null>(null); // Old state, still used for other modal.
+  const [mensalidadeAtual, setMensalidadeAtual] = useState<MensalidadeResumo | null>(null); // Old state, still used for other modal.
   const [mensalidades, setMensalidades] = useState<MensalidadeResumo[]>([]);
   const [totalEmAtraso, setTotalEmAtraso] = useState<number>(0);
   const debouncedQuery = useDebounce(query.trim(), 300);
+
+  // Novos estados para o modal de pagamento rápido
+  const [modalPagamentoAberto, setModalPagamentoAberto] = useState(false);
+  const [alunoParaPagamento, setAlunoParaPagamento] = useState<{
+    id: string;
+    nome: string;
+    bi?: string;
+    turma?: string;
+  } | null>(null);
+  const [mensalidadeParaPagamento, setMensalidadeParaPagamento] = useState<{
+    id: string;
+    mes: number;
+    ano: number;
+    valor: number;
+    vencimento?: string;
+    status: string;
+  } | null>(null);
+  const [carregandoPagamento, setCarregandoPagamento] = useState(false);
+
 
   useEffect(() => {
     let active = true;
@@ -83,78 +102,67 @@ export function BuscaBalcaoRapido() {
   const results = useMemo(() => resultados.slice(0, 5), [resultados]);
 
   const selecionarAluno = (alunoId: string) => {
-    router.push(`/secretaria/alunos/${alunoId}`);
+    if (!escolaId) {
+      toast.error("Não foi possível identificar a escola para navegar.");
+      return;
+    }
+    router.push(`/escola/${escolaId}/secretaria/alunos/${alunoId}`);
     setMostrarResultados(false);
     setQuery("");
   };
 
   const handlePagarClick = async (alunoId: string) => {
-    setCarregando(true); // Set loading state when starting API call
+    console.log('🎯 Iniciando pagamento rápido para aluno:', alunoId);
+    setCarregandoPagamento(true);
+    
     try {
-      const res = await fetch(`/api/financeiro/extrato/aluno/${encodeURIComponent(alunoId)}`, {
-        cache: "no-store",
-      });
-      const data = await res.json();
+      // 1. Buscar dados específicos para pagamento rápido
+      const response = await fetch(`/api/alunos/${alunoId}/pagamento-rapido`);
+      const data = await response.json();
       
       if (!data.ok) {
-        // Erro específico - mostrar mensagem útil
-        if (data.error?.includes("não pertence à sua escola")) {
-          toast({
-            title: "Aluno não encontrado",
-            description: "Este aluno pertence a outra escola. Contacte o administrador.",
-            variant: "destructive",
-          });
-        } else if (data.error?.includes("Escola não identificada")) {
-          toast({
-            title: "Problema de configuração",
-            description: "Sua conta não está associada a uma escola. Contacte o administrador.",
-            variant: "destructive",
-          });
-        } else {
-          toast({
-            title: "Erro ao buscar dados financeiros",
-            description: data.error || "Tente novamente ou contacte o suporte.",
-            variant: "destructive",
-          });
-        }
-        
-        setMensalidades([]); // Clear previous mensalidades
+        throw new Error(data.error || 'Erro ao buscar dados do aluno');
+      }
+      
+      if (!data.mensalidade) {
+        toast.info('Este aluno não possui mensalidades pendentes.');
         return;
       }
       
-      // Sucesso - processar dados
-      setMensalidades(data.mensalidades || []);
-      setTotalEmAtraso(data.total_em_atraso || 0);
-
-      const mensalidadePendente = (data.mensalidades || []).find(
-        (m: any) => m.status === "pendente" || m.status === "atrasado"
-      );
+      console.log('📦 Dados recebidos:', data);
       
-      if (!mensalidadePendente) {
-        toast.info("Este aluno não possui mensalidades pendentes.");
-        return;
-      }
-      
-      setAlunoSelecionado({
+      // 2. Preparar dados para o modal
+      setAlunoParaPagamento({
         id: data.aluno.id,
-        nome: data.aluno.nome || "Aluno",
-        turma: data.aluno.turma || undefined,
-        bi: data.aluno.bi || undefined,
+        nome: data.aluno.nome,
+        bi: data.aluno.bi,
+        turma: data.aluno.turma
       });
-      setMensalidadeAtual(mensalidadePendente);
-      setModalAberto(true);
+      
+      // 3. Mapear os nomes das colunas (ano_referencia → ano, mes_referencia → mes)
+      setMensalidadeParaPagamento({
+        id: data.mensalidade.id,
+        mes: data.mensalidade.mes, // Já vem mapeado da API
+        ano: data.mensalidade.ano, // Já vem mapeado da API
+        valor: data.mensalidade.valor,
+        vencimento: data.mensalidade.vencimento,
+        status: data.mensalidade.status
+      });
+      
+      // 4. Abrir o modal
+      setModalPagamentoAberto(true);
+      toast.success('Pronto para registrar pagamento');
       
     } catch (error) {
-      console.error("Erro na requisição:", error);
-      toast({
-        title: "Erro de conexão",
-        description: "Não foi possível conectar ao servidor. Verifique sua internet.",
-        variant: "destructive",
-      });
+      console.error('❌ Erro ao preparar pagamento:', error);
+      toast.error(
+        error instanceof Error ? error.message : 'Erro ao processar pagamento'
+      );
     } finally {
-      setCarregando(false); // Reset loading state
+      setCarregandoPagamento(false);
     }
   };
+
 
   return (
     <div className="relative">
@@ -180,42 +188,57 @@ export function BuscaBalcaoRapido() {
           {results.map((aluno) => (
             <div
               key={aluno.id}
-              role="button"
-              tabIndex={0}
-              className="w-full p-3 hover:bg-gray-50 text-left border-b last:border-b-0 flex items-center gap-3"
-              onClick={() => selecionarAluno(aluno.aluno_id ?? aluno.id)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") selecionarAluno(aluno.aluno_id ?? aluno.id);
-              }}
+              className="w-full p-3 text-left border-b last:border-b-0 flex items-center gap-3"
             >
-              <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
-                <User className="h-4 w-4 text-gray-500" />
-              </div>
-              <div className="flex-1">
-                <div className="font-medium text-sm text-gray-900">{aluno.nome || "Aluno"}</div>
-                <div className="text-xs text-gray-600">
-                  BI: {aluno.bi_numero || "N/A"} • Tel: {aluno.telefone_responsavel || "N/A"}
-                  {aluno.turma_atual ? ` • Turma: ${aluno.turma_atual}` : ""}
+              <div
+                role="button"
+                tabIndex={0}
+                className="flex-1 flex items-center gap-3 cursor-pointer"
+                onClick={() => selecionarAluno(aluno.aluno_id ?? aluno.id)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") selecionarAluno(aluno.aluno_id ?? aluno.id);
+                }}
+              >
+                <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
+                  <User className="h-4 w-4 text-gray-500" />
                 </div>
-                <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-gray-400">
-                  {aluno.numero_processo ? <span>Processo: {aluno.numero_processo}</span> : null}
-                  {Number(aluno.total_em_atraso ?? 0) > 0 ? (
-                    <span className="text-red-600 font-medium">
-                      Dívida: {Number(aluno.total_em_atraso ?? 0).toLocaleString("pt-AO")} AOA
-                    </span>
-                  ) : null}
+                <div className="flex-1">
+                  <div className="font-medium text-sm text-gray-900">{aluno.nome || "Aluno"}</div>
+                  <div className="text-xs text-gray-600">
+                    BI: {aluno.bi_numero || "N/A"} • Tel: {aluno.telefone_responsavel || "N/A"}
+                    {aluno.turma_atual ? ` • Turma: ${aluno.turma_atual}` : ""}
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-gray-400">
+                    {aluno.numero_processo ? <span>Processo: {aluno.numero_processo}</span> : null}
+                    {Number(aluno.total_em_atraso ?? 0) > 0 ? (
+                      <span className="text-red-600 font-medium">
+                        Dívida: {Number(aluno.total_em_atraso ?? 0).toLocaleString("pt-AO")} AOA
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={(event) => {
+                  event.preventDefault();
                   event.stopPropagation();
                   handlePagarClick(aluno.aluno_id ?? aluno.id);
                 }}
+                disabled={carregandoPagamento}
                 className="inline-flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs font-semibold text-green-700 hover:bg-green-100"
               >
-                <CreditCard className="h-4 w-4" />
-                Pagar
+                {carregandoPagamento ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Carregando...
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="h-4 w-4" />
+                    Pagar
+                  </>
+                )}
               </button>
             </div>
           ))}
@@ -229,23 +252,21 @@ export function BuscaBalcaoRapido() {
         />
       )}
 
-      {alunoSelecionado && (
+      {/* Modal de Pagamento Rápido (novo) */}
+      {modalPagamentoAberto && alunoParaPagamento && (
         <ModalPagamentoRapido
-          aluno={{
-            id: alunoSelecionado.id,
-            nome: alunoSelecionado.nome || "Aluno",
-            turma: alunoSelecionado.turma_atual ?? undefined,
-            bi: alunoSelecionado.bi_numero ?? undefined,
-          }}
-          mensalidade={mensalidadeAtual}
-          open={modalAberto}
+          aluno={alunoParaPagamento}
+          mensalidade={mensalidadeParaPagamento}
+          open={modalPagamentoAberto}
           onClose={() => {
-            setModalAberto(false);
-            setAlunoSelecionado(null);
-            setMensalidadeAtual(null);
+            setModalPagamentoAberto(false);
+            setAlunoParaPagamento(null);
+            setMensalidadeParaPagamento(null);
+            router.refresh(); // Refresh after payment
           }}
           onSuccess={() => {
-            router.refresh();
+            toast.success('Pagamento registrado com sucesso!');
+            router.refresh(); // Refresh after payment
           }}
         />
       )}

@@ -33,14 +33,9 @@ export default async function Page() {
     console.log('✅ Dados carregados no servidor:', data)
 
     const kpis: KpiItem[] = [
-      { title: "Escolas", value: data.escolas, icon: BuildingLibraryIcon },
-      {
-        title: "Usuários Globais",
-        value: data.usuarios,
-        icon: UsersIcon,
-        href: "/super-admin/usuarios",
-      },
-      { title: "Matrículas", value: data.matriculas, icon: AcademicCapIcon },
+      { title: "Alunos ativos", value: data.alunos, icon: UsersIcon },
+      { title: "Turmas", value: data.turmas, icon: BuildingLibraryIcon },
+      { title: "Professores", value: data.professores, icon: AcademicCapIcon },
       {
         title: "Financeiro",
         value: `${data.pagamentosPercent.toFixed(1)}% pago`,
@@ -93,9 +88,9 @@ export default async function Page() {
     
     // Fallback para erro
     const kpis: KpiItem[] = [
-      { title: "Escolas", value: 0, icon: BuildingLibraryIcon },
-      { title: "Usuários Globais", value: 0, icon: UsersIcon },
-      { title: "Matrículas", value: 0, icon: AcademicCapIcon },
+      { title: "Alunos ativos", value: 0, icon: UsersIcon },
+      { title: "Turmas", value: 0, icon: BuildingLibraryIcon },
+      { title: "Professores", value: 0, icon: AcademicCapIcon },
       { title: "Financeiro", value: "0% pago", icon: BanknotesIcon },
     ]
 

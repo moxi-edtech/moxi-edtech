@@ -1,1 +1,0 @@
-DROP FUNCTION IF EXISTS public.search_alunos_global_min(uuid, text, integer);

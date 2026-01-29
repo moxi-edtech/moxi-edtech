@@ -1,10 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { BookOpen, FileText, Loader2, Search, User } from "lucide-react";
 
-type DocumentoTipo = "declaracao_frequencia" | "declaracao_notas";
+type DocumentoTipo =
+  | "declaracao_frequencia"
+  | "declaracao_notas"
+  | "cartao_estudante"
+  | "ficha_inscricao";
 
 type DocumentoResponse = {
   ok: boolean;
@@ -33,10 +37,23 @@ const TIPOS: Array<{
     description: "Aproveitamento escolar para transferência.",
     icon: BookOpen,
   },
+  {
+    id: "cartao_estudante",
+    title: "Cartão de Estudante",
+    description: "Identificação estudantil rápida.",
+    icon: FileText,
+  },
+  {
+    id: "ficha_inscricao",
+    title: "Ficha de Inscrição",
+    description: "Dados básicos para inscrição.",
+    icon: FileText,
+  },
 ];
 
 export default function DocumentosEmissaoHubClient({ escolaId }: { escolaId: string }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Array<{ id: string; label: string; highlight?: string | null }>>([]);
   const [loading, setLoading] = useState(false);
@@ -45,6 +62,8 @@ export default function DocumentosEmissaoHubClient({ escolaId }: { escolaId: str
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [debouncedQuery, setDebouncedQuery] = useState("");
+  const alunoIdParam = searchParams.get("alunoId");
+  const tipoParam = searchParams.get("tipo") as DocumentoTipo | null;
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -52,6 +71,33 @@ export default function DocumentosEmissaoHubClient({ escolaId }: { escolaId: str
     }, 300);
     return () => clearTimeout(handler);
   }, [query]);
+
+  useEffect(() => {
+    if (!alunoIdParam || selectedAluno) return;
+
+    const loadAluno = async () => {
+      try {
+        const res = await fetch(`/api/secretaria/alunos/${encodeURIComponent(alunoIdParam)}`, {
+          cache: "no-store",
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json?.ok || !json?.item) return;
+        const label = json.item.nome || json.item.nome_completo || "Aluno";
+        setSelectedAluno({ id: json.item.id, label });
+        setQuery(label);
+      } catch (err) {
+        console.error("Erro ao carregar aluno:", err);
+      }
+    };
+
+    loadAluno();
+  }, [alunoIdParam, selectedAluno]);
+
+  useEffect(() => {
+    if (tipoParam && TIPOS.some((t) => t.id === tipoParam)) {
+      setTipo(tipoParam);
+    }
+  }, [tipoParam]);
 
   useEffect(() => {
     let active = true;
@@ -121,7 +167,11 @@ export default function DocumentosEmissaoHubClient({ escolaId }: { escolaId: str
       const destino =
         tipo === "declaracao_frequencia"
           ? `/secretaria/documentos/${json.docId}/frequencia/print`
-          : `/secretaria/documentos/${json.docId}/notas/print`;
+          : tipo === "declaracao_notas"
+          ? `/secretaria/documentos/${json.docId}/notas/print`
+          : tipo === "cartao_estudante"
+          ? `/secretaria/documentos/${json.docId}/cartao/print`
+          : `/secretaria/documentos/${json.docId}/ficha/print`;
 
       router.push(destino);
     } catch (err: unknown) {

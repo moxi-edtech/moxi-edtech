@@ -1,5 +1,5 @@
 import type { School, OnboardingProgress, EditForm } from "./types";
-import Button from "@/components/ui/Button";
+import { Button } from "@/components/ui/Button";
 
 type SchoolRowProps = {
   school: School;

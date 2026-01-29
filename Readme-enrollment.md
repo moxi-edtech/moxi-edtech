@@ -13,7 +13,7 @@ matriculas: Vincula Aluno -> Turma.
 
 ### Funil de Admissão (para novos candidatos)
 - Cadastro (lead): cria `alunos` com número de processo automático e registra a intenção em `candidaturas` (curso/ano_letivo). Nenhuma matrícula ou profile é criada aqui.
-- Conversão: a matrícula oficial acontece ao confirmar a candidatura via endpoint dedicado, que insere em `matriculas`, gera `numero_matricula` (e login) e marca a candidatura como `matriculado`.
+- Conversão: a matrícula oficial acontece ao confirmar a candidatura via endpoint dedicado, que insere em `matriculas`, gera `numero_matricula` (e login), marca a candidatura como `matriculado` e automaticamente gera as mensalidades recorrentes para o aluno via trigger de banco de dados.
 - Identificadores: `numero_processo` vive em `alunos` (fixo por escola); `numero_matricula` nasce em `matriculas` no momento da conversão.
 
 ### Fluxo de Matrícula via Importação (Modo 'migracao')
@@ -35,6 +35,17 @@ Para alunos existentes que são migrados para o sistema via planilha, o fluxo é
 - Cadastro envia método/ref/comprovativo de pagamento e gera notificação `target_role=financeiro`.
 - Inbox em `/financeiro/candidaturas` lista candidaturas `pendente/aguardando_compensacao` com ação de Compensar/Rejeitar.
 - A confirmação chama a RPC oficial `confirmar_matricula` (gera número via trigger) e conclui o funil end-to-end.
+
+### Gestão Financeira de Turmas e Alunos (Novo)
+Para uma visão detalhada e gestão ativa das mensalidades por turma e aluno, foi criada a página `Turmas & Alunos` no portal Financeiro.
+
+-   **Acesso:** Disponível em `/financeiro/turmas-alunos`.
+-   **Funcionalidades:**
+    *   Visualização agrupada de turmas com resumo financeiro (pagas, pendentes, atrasadas).
+    *   Listagem de alunos por turma com status individual de mensalidades.
+    *   Ações rápidas por aluno: registrar pagamento (via modal multifásico), enviar cobrança, ver histórico detalhado.
+    *   Filtros avançados por turma, ano letivo e status de validação.
+    *   Funcionalidade de `Backfill` via script SQL para gerar mensalidades para alunos existentes.
 
 #### Retomada Inteligente (Pagamento posterior)
 - Ao abrir uma candidatura em `aguardando_pagamento`, o Wizard salta direto para o Passo 3 (Pagamento/Conversão).

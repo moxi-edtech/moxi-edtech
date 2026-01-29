@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabaseClient'
 import { recordAuditClient } from '@/lib/auditClient'
-import Button from '@/components/ui/Button'
+import { Button } from '@/components/ui/Button'
 
 export default function Page() {
   const supabase = createClient()
@@ -18,7 +18,7 @@ export default function Page() {
   const [ok, setOk] = useState<string>('')
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getUser().then(({ data }) => {
       const user = data.session?.user
       if (!user) {
         router.replace('/login')
