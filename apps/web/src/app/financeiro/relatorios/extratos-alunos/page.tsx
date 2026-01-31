@@ -1,5 +1,6 @@
 import { supabaseServer } from "@/lib/supabaseServer";
 import { ExtratoActions } from "@/components/financeiro/ExtratoActions";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export const dynamic = 'force-dynamic'
 
@@ -10,8 +11,12 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
   const q = (searchParams.q || '').trim()
 
   const s = await supabaseServer()
-  const { data: prof } = await s.from('profiles').select('escola_id').order('created_at', { ascending: false }).limit(1)
-  const escolaId = prof?.[0]?.escola_id as string | null
+  const { data: userRes } = await s.auth.getUser()
+  const user = userRes?.user
+  const metaEscolaId = (user?.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? null
+  const escolaId = user
+    ? await resolveEscolaIdForUser(s, user.id, null, metaEscolaId ? String(metaEscolaId) : null)
+    : null
 
   let alunos: { id: string; nome: string | null; bi_numero: string | null; responsavel: string | null; telefone_responsavel: string | null }[] = []
   if (escolaId) {

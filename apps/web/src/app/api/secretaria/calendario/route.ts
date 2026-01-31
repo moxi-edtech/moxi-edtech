@@ -21,7 +21,7 @@ export async function GET(req: Request) {
       .eq('escola_id', escolaId)
       .order('inicio_at', { ascending: true });
 
-    query = applyKf2ListInvariants(query, { defaultLimit: 200 });
+    query = applyKf2ListInvariants(query, { defaultLimit: 50 });
 
     const { data, error } = await query;
 

@@ -26,21 +26,25 @@ export async function GET() {
     }
 
     const { data: escola, error } = await supabase
-      .from("escolas")
+      .from("vw_escola_info" as any)
       .select("nome, plano_atual, status")
-      .eq("id", escolaId)
+      .eq("escola_id", escolaId)
       .maybeSingle();
 
     if (error) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     }
 
+    const escolaData = escola as
+      | { nome?: string | null; plano_atual?: string | null; status?: string | null }
+      | null;
+
     return NextResponse.json({
       ok: true,
       escola: {
-        nome: escola?.nome ?? null,
-        plano: escola?.plano_atual ? parsePlanTier(escola.plano_atual) : null,
-        status: escola?.status ?? null,
+        nome: escolaData?.nome ?? null,
+        plano: escolaData?.plano_atual ? parsePlanTier(escolaData.plano_atual) : null,
+        status: escolaData?.status ?? null,
       },
     });
   } catch (e) {

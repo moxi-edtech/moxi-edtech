@@ -138,7 +138,7 @@ export default async function Page() {
 
   const { data: pagamentosRows } = escolaId
     ? await supabase
-        .from('pagamentos_status')
+        .from('vw_pagamentos_status')
         .select('status, total')
         .eq('escola_id', escolaId)
     : { data: [] };

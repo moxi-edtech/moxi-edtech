@@ -1,46 +1,215 @@
 {
-  "priorities": {
-    "P0": {
-      "description": "Bloqueadores de produção: tenant, rls, integrity, service role",
-      "items": [
-        "Tenant isolation (escola_id NOT NULL + indexes + anti-cross-tenant)",
-        "RLS real por role (secretaria/professor/aluno/admin_escola)",
-        "Service role fora de endpoints humanos"
-      ]
+  "version": "1.1-PILOT-ANGOLA",
+  "strategy": "CASH-FIRST & ANTI-CHURN + FULL ACADEMIC CYCLE (MINIMAL REAL)",
+  "goal": "Cobrir o ciclo acadêmico inteiro com o mínimo de módulos que realmente rodam uma escola (sem ERP pesado).",
+  "definition_of_done": {
+    "secretaria": [
+      "Cadastrar/Matricular aluno",
+      "Mover aluno (transferir, reativar, encerrar)",
+      "Emitir documentos oficiais",
+      "Operar balcão e fechar caixa",
+      "Resolver pendências (docs, financeiro, histórico)"
+    ],
+    "academico": [
+      "Definir ano letivo + períodos (trimestres)",
+      "Currículo published por ano letivo",
+      "Criar turmas e disciplinas aplicadas",
+      "Lançar frequência e notas",
+      "Gerar boletim e pautas",
+      "Fechar trimestre e ano com trilha auditável"
+    ],
+    "financeiro": [
+      "Gerar mensalidades idempotente",
+      "Registrar pagamentos e estornos",
+      "Conciliar extrato",
+      "Fecho de caixa cego",
+      "Relatórios básicos para decisão"
+    ],
+    "admin": [
+      "Setup health dashboard",
+      "Gestão de staff (kill switch)",
+      "Branding + documentos",
+      "Governança e auditoria"
+    ]
+  },
+  "priorities_by_portal": {
+    "portal_secretaria": {
+      "P0": {
+        "description": "INFRA DE GUERRA: Segurança máxima, zero perda de dados, balcão rápido.",
+        "items": [
+          "TENANT HARD ISOLATION: escola_id NOT NULL + indexes + anti-cross-tenant em TODA query/RPC do portal.",
+          "RLS DE VERDADE: Policies separadas para Secretaria (RW), Aluno (R próprio), Professor (R), Admin (ALL).",
+          "SEARCH GLOBAL OTIMIZADO (Ctrl+K): Nome/BI (com/sem máscara)/Telefone/Processo com ranking + tenant filter.",
+          "AUDIT TRAIL IMUTÁVEL: Log obrigatório de 'Quem/Quando/De onde/O quê' para toda escrita crítica.",
+          "VALIDAÇÕES DURAS PRÉ-AÇÃO: pagar/estornar/matricular/emitir doc nunca pode gerar duplicidade nem estado inválido.",
+          "SERVICE ROLE BANIDA de endpoints humanos (somente jobs/cron/workers)."
+        ]
+      },
+      "P1": {
+        "description": "OPERAÇÃO DIÁRIA: o que faz a escola andar.",
+        "items": [
+          "DOCUMENTOS OFICIAIS: Declarações/Certificados com Timbre + Assinatura + QR + numeração sequencial por escola.",
+          "MAPA DE PENDÊNCIAS por aluno: Docs em falta, Dívidas, Bloqueios, Histórico incompleto, pendência de matrícula.",
+          "MATRÍCULAS EM LOTE: Transferir/Reativar/Encerrar/Desistência por turma inteira com auditoria.",
+          "FILA DE ATENDIMENTO: registrar atendimento (motivo, resolução, tempo) para reduzir suporte e provar valor."
+        ]
+      },
+      "P1.5": {
+        "description": "FINANCEIRO BLINDADO (Anti-fraude & controle operacional).",
+        "items": [
+          "POS VIRTUAL (Frente de Caixa): Buscar aluno → selecionar mensalidades → método → recibo.",
+          "FECHO DE CAIXA CEGO: operador declara valor físico ANTES de ver saldo do sistema (anti-roubo).",
+          "RECIBO NÃO NEGOCIÁVEL: PDF server-side com hash + QR para lookup (fallback se PDF falhar).",
+          "UPLOAD DE COMPROVATIVOS: obrigatório para transferência/depósito (foto/PDF).",
+          "ESTORNO FORMAL: nunca deletar; estornar com motivo + usuário + timestamp + vínculo.",
+          "PAGAMENTO PARCIAL CONTROLADO: regras claras (saldo restante, travas, auditoria), sem 'pago_parcial' bagunçado."
+        ]
+      },
+      "P2": {
+        "description": "ROBUSTEZ: operação forte mesmo com internet ruim.",
+        "items": [
+          "RESILIÊNCIA (Unitel Proof): idempotency keys em ações críticas + retry seguro.",
+          "CONCILIAÇÃO BANCÁRIA ASSISTIDA: upload CSV → matching → confirmação com anti-duplicidade.",
+          "PERFORMANCE PASS: paginação, evitar N+1, cache leve onde fizer sentido, <500ms server quando possível.",
+          "BOLETIM BLOQUEADO POR INADIMPLÊNCIA: regra configurável no admin; secretaria aplica e explica."
+        ]
+      }
     },
-    "P1": {
-      "description": "Core do Portal Admin (Config Acadêmica) para piloto Angola",
-      "items": [
-        "Ano letivo ativo + periodos_letivos TRIMESTRE (1/2/3) + trava_notas_em",
-        "Currículo versionado por ano (draft/published) + publish único",
-        "Aplicar preset => cria currículo draft + itens",
-        "Gerar turmas => turmas + auto turma_disciplinas do currículo published",
-        "Setup status view/RPC sem join bugado"
-      ]
+    "portal_admin": {
+      "P0": {
+        "description": "GOVERNANÇA: escola pronta pra operar sem suporte infinito.",
+        "items": [
+          "TENANT ISOLATION (hard) + RLS com testes automatizados para tabelas críticas.",
+          "SETUP HEALTH DASHBOARD: ano letivo ativo, currículo published, turmas ok, preços ok, caixa habilitado.",
+          "GESTÃO DE STAFF: convidar, resetar senha, atribuir role, KILL SWITCH (bloqueio imediato).",
+          "BRANDING: logo/cabeçalho/rodapé/assinatura oficial para documentos.",
+          "SERVICE ROLE BANIDA de endpoints de UI."
+        ]
+      },
+      "P1": {
+        "description": "CONFIG ACADÊMICA: o esqueleto da escola (mínimo real).",
+        "items": [
+          "ANO LETIVO ATIVO + TRIMESTRES (I/II/III) + trava_notas_em por período.",
+          "CURRÍCULO VERSIONADO POR ANO: draft/published + publish único + auditoria + rollback controlado.",
+          "APLICAR PRESET: cria currículo draft + itens (disciplinas/estrutura) para o ano letivo.",
+          "GERAR TURMAS: cria turmas + turma_disciplinas a partir do currículo published.",
+          "SETUP WIZARD em 7 passos com validações e status (sem join bugado)."
+        ]
+      },
+      "P1.5": {
+        "description": "ENGENHARIA FINANCEIRA: regras para operar caixa sem caos.",
+        "items": [
+          "TABELAS DE PREÇO: por classe/turno/ano letivo (granular).",
+          "GERAÇÃO DE MENSALIDADES: job/trigger idempotente com anti-duplicidade.",
+          "POLÍTICAS: vencimento, tolerância, bloqueios, regras de cobrança mínima.",
+          "CONTAS BANCÁRIAS DA ESCOLA: IBAN/contas/referências para recibos e conciliação.",
+          "APROVAÇÃO DE FECHO: admin vê diferenças declaradas vs sistema e aprova/justifica."
+        ]
+      },
+      "P2": {
+        "description": "AUDITORIA & ESCALA: reduzir risco e suporte.",
+        "items": [
+          "AUDIT EXPLORER: investigar ações (por usuário/módulo/período/aluno) com trilha completa.",
+          "IMPORTAÇÃO CONTROLADA: Rascunho Inteligente + relatório de inconsistências + aprovação admin.",
+          "RELATÓRIOS SIMPLES: inadimplência por turma, recebimentos por dia, conciliados vs pendentes."
+        ]
+      }
     },
-    "P2": {
-      "description": "Operação diária (professor/aluno) que segura o piloto",
-      "items": [
-        "SSOT frequência = frequencias (upsert + unique por aula/dia)",
-        "Avaliações + notas trimestrais on-demand (schema alinhado + upsert)",
-        "Boletim mínimo com missing_count/has_missing"
-      ]
+    "portal_professor": {
+      "P2.5": {
+        "description": "VIDA ACADÊMICA REAL (mínimo para cobrir o ciclo inteiro).",
+        "items": [
+          "DIÁRIO DE CLASSE: selecionar turma/disciplina/período → lançar frequência (SSOT) + observações.",
+          "LANÇAMENTO DE NOTAS: por avaliação/trimestre com regras claras e sem placeholders.",
+          "PAUTA (mini pauta / pauta final): export/print do que foi lançado e do que está em falta.",
+          "TRAVA POR PERÍODO: quando admin fecha trimestre, professor não altera; só via retificação auditada."
+        ]
+      }
     },
-    "P3": {
-      "description": "Não bloqueia piloto, mas registrar",
-      "items": [
-        "Comparar currículo por ano",
-        "Exportar PDF/Excel",
-        "Migrar alunos para próximo ano",
-        "Atribuição de professores por disciplina"
-      ]
+    "portal_aluno": {
+      "P1": {
+        "description": "AUTOATENDIMENTO (redução de fila e churn).",
+        "items": [
+          "LOGIN SIMPLIFICADO: nº processo + senha (ou SMS quando possível).",
+          "DASHBOARD: notas/faltas/avisos numa tela só (carregamento <3s).",
+          "EXTRATO FINANCEIRO: o que deve, o que pagou, 2ª via de recibo.",
+          "CARTEIRA DIGITAL: QR Code para identificação."
+        ]
+      },
+      "P2": {
+        "description": "INTERATIVIDADE LEVE (sem virar rede social).",
+        "items": [
+          "ENVIAR COMPROVATIVO: aluno fotografa talão/ATM e envia (fila da secretaria).",
+          "SOLICITAR DOCUMENTO: pedido cai na fila com SLA e status."
+        ]
+      }
     }
   },
-  "invariants": [
-    "Sem evidência executada = FAIL/WARN",
-    "Performance > feature nova",
-    "Nada de placeholders em notas",
-    "Currículo por ano precisa ser versionado e auditável",
-    "SSOT de frequência é único (frequencias)"
+  "academic_cycle_minimal": {
+    "scope": "Cobrir do setup do ano letivo até o fechamento anual e emissão de documentos finais.",
+    "phases": [
+      {
+        "name": "Setup do Ano",
+        "must_have": [
+          "Ano letivo ativo",
+          "Trimestres configurados",
+          "Currículo published por ano",
+          "Turmas geradas e vinculadas ao currículo"
+        ]
+      },
+      {
+        "name": "Operação Trimestral",
+        "must_have": [
+          "Frequência SSOT (upsert único por aula/dia)",
+          "Notas por avaliação/trimestre (sem placeholders)",
+          "Boletim com missing_count/has_missing",
+          "Trava de período ao fechar trimestre"
+        ]
+      },
+      {
+        "name": "Fechamento Anual",
+        "must_have": [
+          "Fecho do 3º trimestre",
+          "Status final de matrícula (concluída/reprovada/transferida)",
+          "Histórico acadêmico consistente",
+          "Documentos finais emitíveis (declarações/certificados)"
+        ]
+      }
+    ]
+  },
+  "cross_cutting_invariants": [
+    "Sem evidência executada = FAIL/WARN.",
+    "Performance > feature nova.",
+    "Nada de placeholders em notas.",
+    "Currículo por ano precisa ser versionado e auditável.",
+    "SSOT de frequência é único (frequencias).",
+    "Financeiro: cada transação financeira deve ter comprovante ou referência bancária.",
+    "Financeiro: saldo de caixa deve fechar diariamente (entradas - saídas = diferença física).",
+    "Financeiro: dados financeiros imutáveis após conciliação (só estornos auditados).",
+    "UX: internet pode cair por 30s — ações críticas precisam de idempotência.",
+    "Relatórios devem rodar para qualquer período histórico (não só 'este mês')."
+  ],
+  "invariants_angola": [
+    "MOEDA ÚNICA: Kwanza (Kz) em 100% do sistema.",
+    "IDENTIDADE: validação estrita BI (com/sem máscara) e NIF quando aplicável.",
+    "CULTURA DO PAPEL: todo digital deve ter PDF/impresso impecável.",
+    "ANTI-FRAUDE: Fecho de Caixa Cego é obrigatório e inegociável.",
+    "PERFORMANCE: Portal do Aluno <3s em 3G instável.",
+    "UNITEL PROOF: retry seguro + idempotência + UX que não quebra em rede lenta."
+  ],
+  "implementation_order": [
+    "P0 Secretaria + P0 Admin (tenant/RLS/audit/search/service-role ban)",
+    "P1 Admin (ano letivo/trimestres/currículo versionado/publish/turmas)",
+    "P1.5 Secretaria + Admin (caixa/recibo/fecho/estorno/parcial/regras)",
+    "P2 Secretaria (conciliação/bloqueios/performance pass)",
+    "P2.5 Professor (diário, frequência, notas, pautas, travas)",
+    "P1 Aluno (dashboard + extrato + recibos) + P2 Aluno (comprovativos/pedidos)"
+  ],
+  "explicit_non_goals_for_pilot": [
+    "ERP de RH completo",
+    "Biblioteca, cantina, transporte",
+    "Comunicação estilo rede social",
+    "Relatórios avançados (DRE complexa, BI pesado)",
+    "Automação de cobrança multi-canal total (fica P3)"
   ]
 }

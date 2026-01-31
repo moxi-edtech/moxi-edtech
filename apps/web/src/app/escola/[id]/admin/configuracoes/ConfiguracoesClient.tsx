@@ -1054,7 +1054,7 @@ const handleApplyCurriculumPreset = async () => {
 
               <div className="flex items-center gap-3 justify-end">
                 <Button
-                  variant="danger"
+                  variant="destructive"
                   onClick={async () => {
                     if (!escolaId) return;
                     if (

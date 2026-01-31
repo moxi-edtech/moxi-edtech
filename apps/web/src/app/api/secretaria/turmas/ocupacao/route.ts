@@ -70,7 +70,7 @@ export async function GET(req: Request) {
       .order("turno", { ascending: true })
       .order("nome", { ascending: true });
 
-    query = applyKf2ListInvariants(query, { defaultLimit: 200 });
+    query = applyKf2ListInvariants(query, { defaultLimit: 50 });
 
     if (classeFilter) {
       query = query.eq("classe", classeFilter);

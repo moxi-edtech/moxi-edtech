@@ -15,7 +15,7 @@ async function listarClassesBase(client: any, escolaId: string) {
     .eq('escola_id', escolaId)
     .order('nome')
 
-  query = applyKf2ListInvariants(query, { defaultLimit: 200 })
+  query = applyKf2ListInvariants(query, { defaultLimit: 50 })
 
   const { data, error } = await query
 
@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
                 .eq('curso_id', cursoId)
                 .order('nome');
 
-            directQuery = applyKf2ListInvariants(directQuery, { defaultLimit: 200 });
+            directQuery = applyKf2ListInvariants(directQuery, { defaultLimit: 50 });
 
             const { data: directClasses } = await directQuery;
             
@@ -87,7 +87,7 @@ export async function GET(req: NextRequest) {
           .in('id', classeIds)
           .order('nome')
 
-        classesQuery = applyKf2ListInvariants(classesQuery, { defaultLimit: 200 });
+        classesQuery = applyKf2ListInvariants(classesQuery, { defaultLimit: 50 });
 
         const { data, error } = await classesQuery
 

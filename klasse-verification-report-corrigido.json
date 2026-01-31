@@ -1,0 +1,64 @@
+{
+  "data_verificacao": "2026-01-29T12:30:00Z",
+  "versao_sistema": "unknown",
+  "resumo": {
+    "total_checks": 20,
+    "pass": 11,
+    "fail": 5,
+    "warning": 1,
+    "skipped": 1,
+    "critical_failures": 2
+  },
+  "bloqueadores": [
+    {
+      "id": "P4.1",
+      "descricao": "Todas as 26 Materialized Views (MVs) não estão populadas.",
+      "criticidade": "ALTA",
+      "evidencia": "Query em pg_matviews mostra 'ispopulated = f' para todas as MVs. A query em 'vw_radar_inadimplencia' falha porque sua MV base ('mv_radar_inadimplencia') não foi populada.",
+      "impacto": "Dashboards, relatórios, KPIs e o radar de inadimplência em todo o sistema estão inoperantes. A performance será severamente degradada sem estes dados pré-agregados."
+    },
+    {
+      "id": "P3.1-revisado",
+      "descricao": "Tabela para 'Fechamento de Caixa' ('caixa_diario') não existe.",
+      "criticidade": "ALTA",
+      "evidencia": "A tabela 'caixa_diario' não foi encontrada no schema. Nenhuma tabela substituta com colunas como 'valor_inicial', 'valor_final' foi identificada.",
+      "impacto": "O fluxo de fechamento de caixa diário, uma funcionalidade financeira crítica, não pode ser implementado."
+    }
+  ],
+  "warnings": [
+    {
+      "id": "P6-geral",
+      "descricao": "Wireframes essenciais de gestão e descoberta não foram implementados.",
+      "criticidade": "MEDIA",
+      "evidencia": "Os arquivos 'StructureMarketplace.tsx' e '*curriculum*manager*' não foram encontrados no projeto.",
+      "impacto": "Usuários não podem visualizar ou gerenciar currículos e cursos de forma centralizada, como planejado nos wireframes K e F."
+    }
+  ],
+  "analise_corrigida": {
+    "comentario": "Após receber o schema detalhado do banco de dados, a verificação foi refeita. A análise inicial continha imprecisões significativas, especialmente nos módulos acadêmico e financeiro, pois baseava-se em suposições do pseudocódigo que não refletiam a arquitetura real. O modelo de dados é mais robusto do que o inicialmente avaliado.",
+    "academic_flow_score": 9.0,
+    "financeiro_score": 6.0,
+    "pontos_positivos": [
+      "O fluxo acadêmico (matrícula, turmas, currículo) está bem estruturado, com versionamento de currículos por ano letivo.",
+      "O fluxo financeiro (mensalidade -> pagamento -> recibo) está funcional, utilizando 'documentos_emitidos' para gerar recibos.",
+      "As regras de Tenant Isolation (RLS) e os índices de performance estão bem implementados.",
+      "A base de UX (skeletons, offline, error handling) é sólida."
+    ]
+  },
+  "tenant_isolation_score": 9.0,
+  "performance_score": 4.0,
+  "ux_score": 10.0,
+  "wireframes_implementados": ["B"],
+  "wireframes_faltando": ["K", "F"],
+  "veredito": "NO_GO",
+  "razoes": [
+    "BLOQUEADOR CRÍTICO: Nenhuma das Materialized Views está populada, tornando dashboards e relatórios de performance inúteis e impactando funcionalidades como o radar de inadimplência.",
+    "BLOQUEADOR CRÍTICO: Falta uma tabela para o fluxo de 'Fechamento de Caixa', impedindo uma funcionalidade financeira essencial.",
+    "Wireframes importantes para a gestão do sistema (Marketplace e Gestor de Currículo) não foram implementados."
+  ],
+  "recomendacoes_7_dias": [
+    "1. [CRÍTICO] Investigar e corrigir o processo de atualização das Materialized Views. Implementar uma rotina de refresh (ex: via pg_cron ou trigger) para garantir que os dados estejam sempre atualizados (2 dias).",
+    "2. [CRÍTICO] Projetar e criar a tabela para 'Fechamento de Caixa' (ex: 'caixa_movimentos' ou similar) para registrar as operações diárias (2 dias).",
+    "3. Implementar as páginas faltantes dos wireframes: Marketplace de Currículos (StructureMarketplace) e Gestor de Currículo (Curriculum Manager) (3 dias)."
+  ]
+}

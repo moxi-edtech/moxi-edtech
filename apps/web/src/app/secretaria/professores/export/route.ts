@@ -52,26 +52,36 @@ export async function GET(req: Request) {
     const ids = vincList.map(v => v.user_id)
     if (ids.length === 0) return NextResponse.json([])
 
-    let profQ = s
-      .from('profiles')
-      .select('user_id, nome, email, telefone, numero_login, created_at')
-      .in('user_id', ids)
-      .gte('created_at', since)
-      .order('created_at', { ascending: false })
-      .limit(5000)
+    const { data, error } = await (s as any).rpc('tenant_profiles_by_ids', { p_user_ids: ids })
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    let rows = (data ?? []) as ProfileRow[]
+
+    const sinceMs = Date.parse(since)
+    rows = rows.filter((row) => {
+      if (!row.created_at) return true
+      return Date.parse(String(row.created_at)) >= sinceMs
+    })
 
     if (q) {
       const uuidRe = /^[0-9a-fA-F-]{36}$/
       if (uuidRe.test(q)) {
-        profQ = profQ.eq('user_id', q)
+        rows = rows.filter((row) => String(row.user_id) === q)
       } else {
-        profQ = profQ.or(`nome.ilike.%${q}%,email.ilike.%${q}%,telefone.ilike.%${q}%`)
+        const term = q.toLowerCase()
+        rows = rows.filter((row) =>
+          [row.nome, row.email, row.telefone]
+            .filter(Boolean)
+            .some((value) => String(value).toLowerCase().includes(term))
+        )
       }
     }
 
-    const { data, error } = await profQ
-    const rows = (data ?? []) as ProfileRow[]
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    rows.sort((a, b) => {
+      const aDate = a.created_at ? Date.parse(String(a.created_at)) : 0
+      const bDate = b.created_at ? Date.parse(String(b.created_at)) : 0
+      return bDate - aDate
+    })
 
     const ts = new Date().toISOString().replace(/[:.]/g, '-')
     

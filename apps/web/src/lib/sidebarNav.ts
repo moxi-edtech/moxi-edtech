@@ -53,7 +53,6 @@ export const sidebarConfig: SidebarConfig = {
     { href: "/financeiro/configuracoes/precos", label: "Tabelas de Preço", icon: "Table" },
     { href: "/financeiro/tabelas-mensalidade", label: "Tabelas de Mensalidade", icon: "Table" },
     { href: "/financeiro/conciliacao", label: "Conciliação Bancária", icon: "ArrowsRightLeft" },
-    { href: "/financeiro/conciliacao", label: "Conciliação", icon: "Scale" },
     { href: "/financeiro/cobrancas", label: "Cobranças", icon: "BadgeDollarSign" },
     { href: "/financeiro/relatorios", label: "Relatórios", icon: "BarChart" },
   ],

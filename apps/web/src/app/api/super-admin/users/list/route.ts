@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import type { Database } from '~types/supabase'
-import { applyKf2ListInvariants } from '@/lib/kf2'
 
 type UsuarioItem = {
   id: string
@@ -58,63 +57,14 @@ export async function GET() {
       return code === '42P01' || (msg && /relation .* does not exist|does not exist/i.test(msg))
     }
 
-    // 1) Carrega perfis básicos
-    let profiles: any[] | null = null
-    {
-      const attempts = [
-        {
-          select: 'user_id, nome, email, telefone, role, numero_login, escola_id, current_escola_id',
-          withDeletedAt: true,
-        },
-        {
-          select: 'user_id, nome, email, telefone, role, escola_id, current_escola_id',
-          withDeletedAt: true,
-        },
-        {
-          select: 'user_id, nome, email, telefone, role, escola_id',
-          withDeletedAt: true,
-        },
-        {
-          select: 'user_id, nome, email, telefone, role, escola_id',
-          withDeletedAt: false,
-        },
-      ]
+    // 1) Carrega perfis básicos via RPC segura
+    const { data: profiles, error: profilesError } = await admin.rpc('admin_list_profiles', {
+      p_roles: Array.from(allowedRoles),
+      p_limit: 5000,
+    })
 
-      for (const attempt of attempts) {
-        let profilesQuery = admin
-          .from('profiles' as any)
-          .select(attempt.select)
-          .in('role', Array.from(allowedRoles) as any)
-
-        if (attempt.withDeletedAt) {
-          profilesQuery = profilesQuery.is('deleted_at', null)
-        }
-
-        profilesQuery = applyKf2ListInvariants(profilesQuery, {
-          defaultLimit: 5000,
-          order: [
-            { column: 'nome', ascending: true },
-            { column: 'user_id', ascending: false },
-          ],
-        })
-
-        const { data, error: pErr } = await profilesQuery
-        if (pErr) {
-          if (isMissingColumn(pErr)) {
-            continue
-          }
-          return NextResponse.json({ ok: false, error: pErr.message }, { status: 400 })
-        }
-        profiles = data as any[]
-        break
-      }
-
-      if (!profiles) {
-        return NextResponse.json(
-          { ok: false, error: 'Falha ao carregar profiles (schema incompatível)' },
-          { status: 400 }
-        )
-      }
+    if (profilesError) {
+      return NextResponse.json({ ok: false, error: profilesError.message }, { status: 400 })
     }
 
     const pRows = ((profiles || []) as any[]).filter((p) =>

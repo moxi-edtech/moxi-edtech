@@ -48,7 +48,7 @@ export async function GET(req: Request) {
         `)
         .eq('escola_id', escolaId)
 
-    query = applyKf2ListInvariants(query, { defaultLimit: 200 });
+    query = applyKf2ListInvariants(query, { defaultLimit: 50 });
 
     if (cursoId) query = query.eq('curso_id', cursoId)
     if (classeId) query = query.eq('classe_id', classeId)

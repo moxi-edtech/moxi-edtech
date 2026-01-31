@@ -1,49 +1,30 @@
-export const dynamic = 'force-dynamic'
+import EscolaAdminDashboard from "@/components/layout/escola-admin/EscolaAdminDashboard";
+import { supabaseServer } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
-import EscolaAdminDashboard from "@/components/layout/escola-admin/EscolaAdminDashboard"
+export const dynamic = "force-dynamic";
 
-"use client";
+export default async function Page(props: { params: Promise<{ id: string }> }) {
+  const { id: escolaId } = await props.params;
+  const s = await supabaseServer();
+  const { data: userRes } = await s.auth.getUser();
+  const user = userRes?.user;
+  let escolaNome: string | undefined = undefined;
 
-import { useEffect, useState } from "react";
+  if (user) {
+    const metaEscolaId = (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? null;
+    const resolved = await resolveEscolaIdForUser(
+      s as any,
+      user.id,
+      escolaId,
+      metaEscolaId ? String(metaEscolaId) : null
+    );
 
-export default function Page(props: { params: Promise<{ id: string }> }) {
-  const [escolaId, setEscolaId] = useState<string | null>(null);
-  const [escolaNome, setEscolaNome] = useState<string | undefined>(undefined);
+    if (resolved) {
+      const { data } = await s.from("escolas").select("nome").eq("id", resolved).maybeSingle();
+      escolaNome = data?.nome ?? undefined;
+    }
+  }
 
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      const { id } = await props.params;
-      if (!mounted) return;
-      setEscolaId(id);
-
-      const cacheKey = "admin:dashboard:summary";
-      const cacheRaw = typeof sessionStorage !== "undefined" ? sessionStorage.getItem(cacheKey) : null;
-      if (cacheRaw) {
-        const cached = JSON.parse(cacheRaw) as { ts: number; payload: any };
-        if (cached?.payload?.escola?.nome) {
-          setEscolaNome(cached.payload.escola.nome);
-          return;
-        }
-      }
-
-      try {
-        const res = await fetch("/api/admin/dashboard/summary", { cache: "no-store" });
-        const json = await res.json().catch(() => null);
-        if (mounted && res.ok && json?.ok && json?.escola?.nome) {
-          setEscolaNome(json.escola.nome);
-          if (typeof sessionStorage !== "undefined") {
-            sessionStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), payload: json }));
-          }
-        }
-      } catch {}
-    })();
-
-    return () => {
-      mounted = false;
-    };
-  }, [props.params]);
-
-  if (!escolaId) return null;
   return <EscolaAdminDashboard escolaId={escolaId} escolaNome={escolaNome} />;
 }

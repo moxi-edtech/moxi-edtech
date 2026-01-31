@@ -33,18 +33,67 @@ export async function POST(request: Request) {
     }
     // Conta can be optional if not all banks provide it
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const workbook = XLSX.read(buffer, { type: 'buffer' });
+    const fileBuffer = Buffer.from(await file.arrayBuffer());
+    const importId = crypto.randomUUID();
+    const filePath = `${escolaId}/${importId}-${file.name}`;
 
-    // Assuming the first sheet contains the data
+    // 1. Salvar o arquivo original no Storage
+    const { error: storageError } = await supabase.storage
+      .from('conciliacao-extratos') // Nome do bucket
+      .upload(filePath, fileBuffer, {
+        contentType: file.type,
+      });
+
+    if (storageError) {
+      console.error('Erro ao salvar arquivo no Storage:', storageError);
+      return NextResponse.json({ error: 'Falha ao salvar o arquivo do extrato.' }, { status: 500 });
+    }
+
+    // 2. Criar registro de controle do upload
+    const { data: uploadRecord, error: uploadRecordError } = await supabase
+      .from('conciliacao_uploads')
+      .insert({
+        id: importId,
+        escola_id: escolaId,
+        file_name: file.name,
+        file_path: filePath,
+        file_size_kb: Math.round(file.size / 1024),
+        banco: banco,
+        conta: conta,
+        status: 'pending_parsing',
+        uploaded_by: user.id,
+      })
+      .select('id')
+      .single();
+
+    if (uploadRecordError) {
+      console.error('Erro ao criar registro de upload:', uploadRecordError);
+      return NextResponse.json({ error: 'Falha ao registrar o upload.' }, { status: 500 });
+    }
+    
+    // 3. Auditoria do Upload
+    // Note: This could also be a DB trigger on the `conciliacao_uploads` table
+    const { error: auditError } = await supabase.from('audit_logs').insert({
+        escola_id: escolaId,
+        actor_id: user.id,
+        action: 'CONCILIACAO_EXTRATO_UPLOAD',
+        entity: 'conciliacao_uploads',
+        entity_id: importId,
+        portal: 'financeiro',
+        details: { filename: file.name, size: file.size, banco, conta },
+    });
+
+    if (auditError) {
+      console.warn('Falha ao criar log de auditoria para upload de extrato:', auditError);
+    }
+
+    // --- Lógica de Parsing (mantida por enquanto) ---
+    const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
-
-    // Convert sheet to JSON array, using the first row as headers
     const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-    const transactionsToInsert = [];
-    const importId = crypto.randomUUID(); // Generate a unique ID for this import batch
+    const transactionsToInsert: Array<any> = [];
 
     if (jsonData.length > 1) {
       const headers = jsonData[0] as string[];
@@ -95,21 +144,25 @@ export async function POST(request: Request) {
     }
     
     if (transactionsToInsert.length === 0) {
+      await supabase.from('conciliacao_uploads').update({ status: 'parsed', processed_at: new Date().toISOString() }).eq('id', importId);
       return NextResponse.json({ ok: true, message: 'Nenhuma transação válida encontrada no arquivo.' });
     }
 
-    const { data: insertedTransactions, error: insertError } = await supabase
+    const { data: insertedTransactions, error: insertError } = await (supabase as any)
       .from('financeiro_transacoes_importadas')
-      .insert(transactionsToInsert)
-      .select('*'); // Select all to return the actual inserted data
+      .insert(transactionsToInsert as any)
+      .select();
 
     if (insertError) {
+      await supabase.from('conciliacao_uploads').update({ status: 'error', error_details: insertError.message }).eq('id', importId);
       console.error('Erro ao inserir transações no banco de dados:', insertError);
       throw insertError;
     }
 
-    // Return the newly inserted transactions to the frontend
-    return NextResponse.json({ ok: true, transactions: insertedTransactions });
+    // Atualiza o status do upload para 'parsed'
+    await supabase.from('conciliacao_uploads').update({ status: 'parsed', processed_at: new Date().toISOString() }).eq('id', importId);
+
+    return NextResponse.json({ ok: true, transactions: insertedTransactions, importId: importId });
   } catch (e: any) {
     console.error('Erro no upload de extrato:', e);
     return NextResponse.json({ error: e.message || 'Erro interno do servidor ao processar extrato.' }, { status: 500 });

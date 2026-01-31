@@ -21,7 +21,7 @@ export async function GET(req: Request) {
       .in('status', ['pendente', 'aguardando_compensacao'])
       .order('created_at', { ascending: false })
 
-    query = applyKf2ListInvariants(query, { defaultLimit: 200 })
+    query = applyKf2ListInvariants(query, { defaultLimit: 50 })
 
     const { data, error } = await query
 

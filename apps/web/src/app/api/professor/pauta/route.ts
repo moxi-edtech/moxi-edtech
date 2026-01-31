@@ -129,7 +129,7 @@ export async function GET(req: Request) {
       .in('status', ['ativo', 'ativa', 'active'])
       .order('numero_chamada', { ascending: true, nullsFirst: false })
 
-    matriculasQuery = applyKf2ListInvariants(matriculasQuery, { defaultLimit: 500 })
+    matriculasQuery = applyKf2ListInvariants(matriculasQuery, { defaultLimit: 50 })
 
     const { data: matriculas, error: matriculasError } = await matriculasQuery
     if (matriculasError) {

@@ -88,7 +88,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         .not("status", "in", "(matriculado,rejeitada,cancelada)")
         .order("created_at", { ascending: false });
 
-      candQuery = applyKf2ListInvariants(candQuery, { defaultLimit: 500 });
+      candQuery = applyKf2ListInvariants(candQuery, { defaultLimit: 50 });
 
       if (q) {
         const uuidRe = /^[0-9a-fA-F-]{36}$/;

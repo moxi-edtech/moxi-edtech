@@ -99,9 +99,10 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
             <div>
               <h3 className="text-lg font-semibold text-slate-800 mb-4">Selecione as Mensalidades</h3>
               <div className="space-y-3">
-                {mensalidadesPendentes.map((mensalidade) => (
+                {mensalidadesPendentes.map((mensalidade, mi) => (
                   <label
-                    key={mensalidade.id}
+                    // top-level element returned by map must have a unique key
+                    key={mensalidade.id ?? `mensalidade-${mi}`}
                     className="flex items-center p-3 border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer"
                   >
                     <input
@@ -153,7 +154,7 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
                       : 'border-slate-200 hover:border-slate-300'
                   }`}
                 >
-                  <BanknotesIcon className="h-8 w-8 text-slate-600 mb-2" />
+                  <Landmark className="h-8 w-8 text-slate-600 mb-2" />
                   <span>Dinheiro</span>
                 </button>
                 <button

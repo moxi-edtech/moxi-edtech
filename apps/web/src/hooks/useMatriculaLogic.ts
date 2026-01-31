@@ -122,7 +122,7 @@ export function useMatriculaLogic() {
 
         const candRes = await fetch(
           `/api/secretaria/candidaturas?status=pendente,aguardando_compensacao`,
-          { cache: "force-cache" }
+          { cache: "no-store" }
         ).catch(() => undefined);
         const candJson = await parseDirectJson(candRes);
         let candidaturas = Array.isArray(candJson?.items)

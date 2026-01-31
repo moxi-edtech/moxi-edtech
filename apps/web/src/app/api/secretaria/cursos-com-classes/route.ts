@@ -41,7 +41,7 @@ export async function GET() {
       .from('classes')
       .select('id, nome')
       .eq('escola_id', escolaId);
-    classesQuery = applyKf2ListInvariants(classesQuery, { defaultLimit: 2000 });
+    classesQuery = applyKf2ListInvariants(classesQuery, { defaultLimit: 50 });
     const { data: classesCatalog } = await classesQuery;
     const classByName = new Map<string, { id: string; nome: string }>();
     const normalizeClassName = (value: string) => value.trim().toLowerCase();
@@ -54,7 +54,7 @@ export async function GET() {
       .from('configuracoes_curriculo')
       .select('curso_id, config')
       .eq('escola_id', escolaId);
-    configsQuery = applyKf2ListInvariants(configsQuery, { defaultLimit: 2000 });
+    configsQuery = applyKf2ListInvariants(configsQuery, { defaultLimit: 50 });
     const { data: configs } = await configsQuery;
     const configByCourse = new Map<string, any>();
     for (const cfg of (configs || []) as Array<{ curso_id: string; config: any }>) {
@@ -67,7 +67,7 @@ export async function GET() {
       .select('id, nome, codigo, tipo')
       .eq('escola_id', escolaId)
       .order('nome', { ascending: true });
-    cursosQuery = applyKf2ListInvariants(cursosQuery, { defaultLimit: 500 });
+    cursosQuery = applyKf2ListInvariants(cursosQuery, { defaultLimit: 50 });
     const { data: cursos, error: cursosErr } = await cursosQuery;
     if (cursosErr) return NextResponse.json({ ok: false, error: cursosErr.message }, { status: 400 });
 

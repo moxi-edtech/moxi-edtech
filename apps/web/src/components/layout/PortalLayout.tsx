@@ -15,6 +15,7 @@ import clsx from "clsx";
 import { parsePlanTier, PLAN_NAMES, type PlanTier } from "@/config/plans";
 import { useUserRole } from "@/hooks/useUserRole"; // Import useUserRole
 import { sidebarConfig, type IconName } from "@/lib/sidebarNav"; // Import sidebarConfig and IconName
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 import Image from "next/image";
 import { usePathname } from "next/navigation"; // Import usePathname
@@ -104,8 +105,16 @@ export default function PortalLayout({
     ;(async () => {
       try {
         const supabaseClient = await supabase
-        const { data: prof } = await supabaseClient.from('profiles').select('escola_id').order('created_at', { ascending: false }).limit(1)
-        const escolaId = (prof?.[0] as { escola_id: string | null })?.escola_id
+        const { data: userRes } = await supabaseClient.auth.getUser()
+        const user = userRes?.user
+        if (!user) return
+        const metaEscolaId = (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? null
+        const escolaId = await resolveEscolaIdForUser(
+          supabaseClient,
+          user.id,
+          null,
+          metaEscolaId ? String(metaEscolaId) : null
+        )
         if (!mounted || !escolaId) return
         setEscolaIdState(escolaId); // Set the new state variable
 

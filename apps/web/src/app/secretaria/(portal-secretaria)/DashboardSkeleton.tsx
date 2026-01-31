@@ -42,6 +42,15 @@ export function DashboardSkeleton() {
               <KpiCardSkeleton />
             </div>
 
+            <div className="bg-white rounded-xl border p-4">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <div className="h-4 w-48 bg-slate-200 rounded-md animate-pulse"></div>
+                <div className="h-8 w-36 bg-slate-200 rounded-lg animate-pulse"></div>
+              </div>
+              <div className="h-10 w-full bg-slate-200 rounded-lg animate-pulse"></div>
+              <div className="h-3 w-40 bg-slate-200 rounded-md animate-pulse mt-2"></div>
+            </div>
+
             <div>
               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 ml-1">Balcão de Atendimento</h3>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -98,6 +107,39 @@ export function DashboardSkeleton() {
             </div>
           </div>
         </main>
+      </div>
+      <div className="fixed inset-0 z-50 hidden items-center justify-center bg-black/30 px-4 py-10">
+        <div className="w-full max-w-3xl rounded-2xl bg-white shadow-xl">
+          <div className="border-b border-slate-200 px-6 py-4">
+            <div className="h-5 w-40 bg-slate-200 rounded-md animate-pulse"></div>
+          </div>
+          <div className="grid gap-6 px-6 py-5 lg:grid-cols-[1.2fr_1fr]">
+            <div className="space-y-3">
+              <div className="h-8 w-32 bg-slate-200 rounded-full animate-pulse"></div>
+              <div className="h-24 bg-slate-200 rounded-xl animate-pulse"></div>
+              <div className="h-24 bg-slate-200 rounded-xl animate-pulse"></div>
+            </div>
+            <div className="space-y-3">
+              <div className="h-8 w-40 bg-slate-200 rounded-md animate-pulse"></div>
+              <div className="h-10 bg-slate-200 rounded-lg animate-pulse"></div>
+              <div className="h-20 bg-slate-200 rounded-lg animate-pulse"></div>
+              <div className="h-10 bg-slate-200 rounded-lg animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="fixed inset-0 z-50 hidden items-center justify-center bg-black/30 px-4 py-10">
+        <div className="w-full max-w-3xl rounded-2xl bg-white shadow-xl">
+          <div className="border-b border-slate-200 px-6 py-4">
+            <div className="h-5 w-40 bg-slate-200 rounded-md animate-pulse"></div>
+            <div className="mt-2 h-3 w-56 bg-slate-200 rounded-md animate-pulse"></div>
+          </div>
+          <div className="px-6 py-5 space-y-3">
+            <div className="h-10 bg-slate-200 rounded-lg animate-pulse"></div>
+            <div className="h-10 bg-slate-200 rounded-lg animate-pulse"></div>
+            <div className="h-10 bg-slate-200 rounded-lg animate-pulse"></div>
+          </div>
+        </div>
       </div>
     </div>
   );

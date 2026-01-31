@@ -55,15 +55,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ ok: false, error: 'Dados inválidos.', issues: parseResult.error.issues }, { status: 400 });
     }
 
-    const upsertData = parseResult.data.map(p => ({
-      ...p,
-      escola_id: userEscolaId,
-    }));
-
-    const { data, error } = await supabase
-      .from('periodos_letivos')
-      .upsert(upsertData, { onConflict: 'escola_id,ano_letivo_id,tipo,numero' })
-      .select();
+    const { data, error } = await (supabase as any).rpc('upsert_bulk_periodos_letivos', {
+      p_escola_id: userEscolaId,
+      p_periodos_data: parseResult.data,
+    });
 
     if (error) {
       console.error('Error upserting periodos letivos:', error);

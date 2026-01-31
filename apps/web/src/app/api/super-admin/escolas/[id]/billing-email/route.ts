@@ -49,7 +49,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     }
     if (!userIds.length) return NextResponse.json({ ok: false, error: 'Nenhum destinatário encontrado (financeiro/admin).' }, { status: 400 })
 
-    const { data: profiles } = await admin.from('profiles').select('user_id, email, nome').in('user_id', userIds)
+    const { data: profiles, error: profilesError } = await admin
+      .rpc('admin_profiles_by_ids', { p_user_ids: userIds })
+
+    if (profilesError) {
+      return NextResponse.json({ ok: false, error: profilesError.message }, { status: 400 })
+    }
+
     const recipients = ((profiles || []).map((p: any) => ({ email: String(p.email), nome: (p.nome as string | null) || undefined })) as Array<{ email: string; nome?: string }>)
       .filter((r: { email: string; nome?: string }) => !!r.email)
 

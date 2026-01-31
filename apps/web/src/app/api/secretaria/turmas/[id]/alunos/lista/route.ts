@@ -143,7 +143,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       .eq("escola_id", escolaId)
       .in("status", ["ativo", "ativa"]);
 
-    matriculasQuery = applyKf2ListInvariants(matriculasQuery, { defaultLimit: 200 });
+    matriculasQuery = applyKf2ListInvariants(matriculasQuery, { defaultLimit: 50 });
 
     const { data: matriculas, error: matriculasError } = await matriculasQuery;
 

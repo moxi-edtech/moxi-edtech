@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
-import { applyKf2ListInvariants } from '@/lib/kf2'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 
 export const dynamic = 'force-dynamic'
@@ -61,30 +60,38 @@ export async function GET(req: Request) {
     const user_ids = vincList.map(v => v.user_id)
     if (user_ids.length === 0) return NextResponse.json({ ok: true, items: [], total: 0 })
 
-    let profilesQuery = (s as any)
-      .from('profiles')
-      .select('user_id, nome, email, telefone, numero_login, created_at')
-      .in('user_id', user_ids)
+    const { data: rows, error: rowsErr } = await (s as any)
+      .rpc('tenant_profiles_by_ids', { p_user_ids: user_ids })
 
-    profilesQuery = applyKf2ListInvariants(profilesQuery, { defaultLimit: 50 })
+    if (rowsErr) return NextResponse.json({ ok: false, error: rowsErr.message }, { status: 500 })
 
-    if (q) {
-      profilesQuery = profilesQuery.or(`nome.ilike.%${q}%,email.ilike.%${q}%,telefone.ilike.%${q}%`)
-    }
+    const list = (rows || []) as Array<{
+      user_id: string
+      nome: string | null
+      email: string | null
+      telefone: string | null
+      numero_login: string | null
+      created_at: string | null
+    }>
+
+    const filtered = q
+      ? list.filter((row) => {
+          const term = q.toLowerCase()
+          return [row.nome, row.email, row.telefone]
+            .filter(Boolean)
+            .some((value) => String(value).toLowerCase().includes(term))
+        })
+      : list
+
+    filtered.sort((a, b) => {
+      const aDate = a.created_at ? Date.parse(a.created_at) : 0
+      const bDate = b.created_at ? Date.parse(b.created_at) : 0
+      if (aDate !== bDate) return bDate - aDate
+      return String(b.user_id).localeCompare(String(a.user_id))
+    })
 
     const from = (page - 1) * pageSize
-    const to = from + pageSize - 1
-    const [{ data: rows, error: rowsErr }, countRes] = await Promise.all([
-      profilesQuery
-        .order('created_at', { ascending: false })
-        .order('user_id', { ascending: false })
-        .range(from, to),
-      (s as any)
-        .from('profiles')
-        .select('user_id', { count: 'estimated', head: true })
-        .in('user_id', user_ids)
-    ])
-    if (rowsErr) return NextResponse.json({ ok: false, error: rowsErr.message }, { status: 500 })
+    const paged = filtered.slice(from, from + pageSize)
 
     const vincMap = new Map(vincList.map(v => [v.user_id, v]))
     const mapPapelToCargo = (p: string | undefined): string => {
@@ -99,7 +106,7 @@ export async function GET(req: Request) {
           return 'professor'
       }
     }
-    const items = (rows || []).map((p: any) => {
+    const items = paged.map((p: any) => {
       const vincData = vincMap.get(p.user_id)
       return {
         id: vincData?.id,
@@ -112,7 +119,7 @@ export async function GET(req: Request) {
         profiles: { numero_login: p.numero_login }
       }
     })
-    const total = (countRes as any)?.count ?? items.length
+    const total = filtered.length
     return NextResponse.json({ ok: true, items, total })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)

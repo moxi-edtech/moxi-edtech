@@ -1,4 +1,5 @@
 import { supabaseServer } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { 
   Users, 
   Mail, 
@@ -32,11 +33,29 @@ export default async function ProfessoresPage({ params }: { params: Promise<{ id
   const { id: escolaId } = await params;
   const s = await supabaseServer();
 
+  const { data: userRes } = await s.auth.getUser();
+  const user = userRes?.user;
+  if (!user) {
+    return <div className="p-6 text-sm text-slate-600">Não autenticado.</div>;
+  }
+
+  const metaEscolaId = (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? null;
+  const resolvedEscolaId = await resolveEscolaIdForUser(
+    s as any,
+    user.id,
+    escolaId,
+    metaEscolaId ? String(metaEscolaId) : null
+  );
+
+  if (!resolvedEscolaId) {
+    return <div className="p-6 text-sm text-slate-600">Sem permissão.</div>;
+  }
+
   // 1. Buscar Vínculos (Professores da Escola)
   const { data: vinculados } = await s
     .from('escola_users')
     .select('user_id, created_at')
-    .eq('escola_id', escolaId)
+    .eq('escola_id', resolvedEscolaId)
     .eq('papel', 'professor');
 
   const userIds = (vinculados || []).map((v: any) => v.user_id).filter(Boolean);
@@ -44,12 +63,13 @@ export default async function ProfessoresPage({ params }: { params: Promise<{ id
   // 2. Buscar Detalhes dos Perfis
   let perfis: any[] = [];
   if (userIds.length > 0) {
-    const { data } = await s
-      .from('profiles')
-      .select('user_id, nome, email, created_at')
-      .in('user_id', userIds)
-      .order('nome');
-    perfis = data || [];
+    const { data, error } = await (s as any)
+      .rpc('tenant_profiles_by_ids', { p_user_ids: userIds });
+    if (!error) {
+      perfis = (data || []).sort((a: any, b: any) =>
+        String(a?.nome || '').localeCompare(String(b?.nome || ''))
+      );
+    }
   }
 
   // 3. Calcular Métricas

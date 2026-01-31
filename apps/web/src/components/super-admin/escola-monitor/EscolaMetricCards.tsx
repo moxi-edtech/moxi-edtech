@@ -1,7 +1,7 @@
 // apps/web/src/components/super-admin/escola-monitor/EscolaMetricCards.tsx
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/badge';
 import type { EscolaMetricas, PerformanceMetrics } from '@/app/super-admin/escolas/[id]/types';
 import { Users, School, CreditCard, Activity } from 'lucide-react';

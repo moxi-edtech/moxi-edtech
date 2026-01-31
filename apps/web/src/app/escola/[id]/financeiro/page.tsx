@@ -23,7 +23,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   });
 
   let pagamentosStatusQuery = s
-    .from("pagamentos_status")
+    .from("vw_pagamentos_status")
     .select("status, total")
     .eq("escola_id", escolaId);
   pagamentosStatusQuery = applyKf2ListInvariants(pagamentosStatusQuery, {
@@ -43,7 +43,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const [kpisRes, pagamentosStatusRes, detalhes, radarResumoRes, anoAtivoRes] = await Promise.all([
     kpisQuery,
     pagamentosStatusQuery,
-    s.from("escolas").select("plano").eq("id", escolaId).maybeSingle(),
+    s.from("vw_escola_info" as any).select("plano_atual").eq("escola_id", escolaId).maybeSingle(),
     radarResumoQuery,
     s
       .from("anos_letivos")
@@ -90,7 +90,9 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     telefone_responsavel: string | null
   }>;
 
-  const plan: PlanTier = parsePlanTier((detalhes?.data as { plano?: string | null } | null)?.plano);
+  const plan: PlanTier = parsePlanTier(
+    (detalhes?.data as { plano_atual?: string | null } | null)?.plano_atual
+  );
 
   const isStandard = plan === 'profissional' || plan === 'premium';
   const isPremium = plan === 'premium';

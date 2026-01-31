@@ -7,9 +7,15 @@ import {
   RefreshCcw, Upload, Crown,
   Clock, UserCheck, KeyRound
 } from "lucide-react";
+import { useState } from "react";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { BuscaBalcaoRapido } from "@/components/secretaria/BuscaBalcaoRapido";
+import { FilaAtendimentoModal } from "@/components/secretaria/FilaAtendimentoModal";
+import DocumentosEmissaoHubClient from "@/components/secretaria/DocumentosEmissaoHubClient";
+import AdmissaoWizardClient from "@/components/secretaria/AdmissaoWizardClient";
+import { PautaRapidaModal } from "@/components/secretaria/PautaRapidaModal";
+import { JustificarFaltaModal } from "@/components/secretaria/JustificarFaltaModal";
 import type { PlanTier } from "@/config/plans";
 import {
   DashboardHeader,
@@ -21,6 +27,77 @@ import {
 } from "@/components/dashboard";
 import type { DashboardCounts, DashboardRecentes, Plano } from "./types";
 
+type BalcaoModal =
+  | "matricular"
+  | "documentos"
+  | "cobranca"
+  | "faltas"
+  | "notas"
+  | null;
+
+function ModalShell({
+  open,
+  title,
+  description,
+  onClose,
+  children,
+}: {
+  open: boolean;
+  title: string;
+  description?: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10">
+      <div className="w-full max-w-3xl rounded-2xl bg-white shadow-xl">
+        <div className="flex items-start justify-between border-b border-slate-200 px-6 py-4">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
+            {description ? <p className="text-xs text-slate-500">{description}</p> : null}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+          >
+            Fechar
+          </button>
+        </div>
+        <div className="max-h-[70vh] overflow-y-auto px-6 py-5">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function ActionButton({
+  title,
+  sub,
+  icon: Icon,
+  onClick,
+}: {
+  title: string;
+  sub: string;
+  icon: any;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group bg-white p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition text-left"
+    >
+      <div className="h-10 w-10 rounded-xl bg-klasse-green/10 text-klasse-green ring-1 ring-klasse-green/20 flex items-center justify-center mb-3 group-hover:bg-klasse-green/15">
+        <Icon className="h-5 w-5" />
+      </div>
+      <h4 className="text-sm font-semibold text-slate-900">{title}</h4>
+      <p className="text-[11px] text-slate-500 mt-0.5">{sub}</p>
+    </button>
+  );
+}
+
 export function Dashboard({
   counts,
   recentes,
@@ -31,6 +108,8 @@ export function Dashboard({
   plan: Plano;
 }) {
   const { escolaId, isLoading: escolaLoading } = useEscolaId();
+  const [filaOpen, setFilaOpen] = useState(false);
+  const [balcaoModal, setBalcaoModal] = useState<BalcaoModal>(null);
 
   return (
     <div className="flex flex-col h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden">
@@ -76,9 +155,16 @@ export function Dashboard({
             </div>
 
             <div className="bg-white rounded-xl border p-4">
-              <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                🔍 Busca Rápida para Atendimento
-              </h3>
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                <h3 className="text-sm font-semibold text-gray-700">🔍 Busca Rápida para Atendimento</h3>
+                <button
+                  type="button"
+                  onClick={() => setFilaOpen(true)}
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Abrir fila de atendimento
+                </button>
+              </div>
               <BuscaBalcaoRapido escolaId={escolaId} />
               <p className="text-xs text-gray-500 mt-2">
                 Digite BI, nome completo ou telefone do encarregado
@@ -88,11 +174,36 @@ export function Dashboard({
             <div>
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 ml-1">Balcão de Atendimento</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                    <ActionCard title="Matricular" sub="Novo ou Confirmação" icon={UserPlus} href="/secretaria/admissoes?nova=1" />
-                    <ActionCard title="Emitir Declaração" sub="Com ou sem notas" icon={FileText} href="/secretaria/documentos" />
-                    <ActionCard title="Cobrar Propina" sub="Pagamento Rápido" icon={Banknote} href="/secretaria/financeiro" />
-                    <ActionCard title="Justificar Falta" sub="Registar ausência" icon={CalendarX} href="/secretaria/faltas" />
-                    <ActionCard title="Lançar Nota" sub="Pauta Rápida" icon={FileEdit} href="/secretaria/notas" />
+                    <ActionButton
+                      title="Cobrar Propina"
+                      sub="Pagamento imediato"
+                      icon={Banknote}
+                      onClick={() => setBalcaoModal("cobranca")}
+                    />
+                    <ActionButton
+                      title="Emitir Declaração"
+                      sub="Documento oficial"
+                      icon={FileText}
+                      onClick={() => setBalcaoModal("documentos")}
+                    />
+                    <ActionButton
+                      title="Matricular"
+                      sub="Novo ou confirmação"
+                      icon={UserPlus}
+                      onClick={() => setBalcaoModal("matricular")}
+                    />
+                    <ActionButton
+                      title="Justificar Falta"
+                      sub="Registrar ausência"
+                      icon={CalendarX}
+                      onClick={() => setBalcaoModal("faltas")}
+                    />
+                    <ActionButton
+                      title="Lançar Nota"
+                      sub="Abrir pauta"
+                      icon={FileEdit}
+                      onClick={() => setBalcaoModal("notas")}
+                    />
                 </div>
             </div>
 
@@ -155,6 +266,68 @@ export function Dashboard({
           </div>
         </main>
       </div>
+      <FilaAtendimentoModal open={filaOpen} onClose={() => setFilaOpen(false)} />
+      <ModalShell
+        open={balcaoModal === "matricular"}
+        title="Nova matrícula"
+        description="Admissão rápida sem sair do dashboard."
+        onClose={() => setBalcaoModal(null)}
+      >
+        {escolaId ? (
+          <div className="space-y-4">
+            <AdmissaoWizardClient escolaId={escolaId} />
+            <Link
+              href="/secretaria/admissoes"
+              className="inline-flex items-center justify-center rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            >
+              Abrir admissões completas
+            </Link>
+          </div>
+        ) : (
+          <div className="text-sm text-slate-500">Escola não identificada.</div>
+        )}
+      </ModalShell>
+      <ModalShell
+        open={balcaoModal === "documentos"}
+        title="Emitir declaração"
+        description="Selecione o aluno e o tipo de documento."
+        onClose={() => setBalcaoModal(null)}
+      >
+        {escolaId ? (
+          <DocumentosEmissaoHubClient escolaId={escolaId} />
+        ) : (
+          <div className="text-sm text-slate-500">Escola não identificada.</div>
+        )}
+      </ModalShell>
+      <ModalShell
+        open={balcaoModal === "cobranca"}
+        title="Cobrar propina"
+        description="Busque o aluno e finalize o pagamento."
+        onClose={() => setBalcaoModal(null)}
+      >
+        <div className="space-y-3">
+          <BuscaBalcaoRapido escolaId={escolaId} />
+          <p className="text-xs text-slate-500">
+            Use a busca rápida para localizar o aluno e registrar o pagamento.
+          </p>
+        </div>
+      </ModalShell>
+      <ModalShell
+        open={balcaoModal === "faltas"}
+        title="Justificar falta"
+        description="Selecione a turma e registre as faltas."
+        onClose={() => setBalcaoModal(null)}
+      >
+        <JustificarFaltaModal />
+      </ModalShell>
+      <ModalShell
+        open={balcaoModal === "notas"}
+        title="Lançar nota"
+        description="Selecione a turma e gere a pauta rapidamente."
+        onClose={() => setBalcaoModal(null)}
+      >
+        <PautaRapidaModal />
+      </ModalShell>
     </div>
   );
 }

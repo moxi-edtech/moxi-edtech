@@ -2,12 +2,25 @@ import PortalLayout from "@/components/layout/PortalLayout"
 import AuditPageView from "@/components/audit/AuditPageView"
 import { supabaseServer } from "@/lib/supabaseServer"
 import { parsePlanTier, PLAN_NAMES, type PlanTier } from "@/config/plans"
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 
 export default async function Page() {
   const s = await supabaseServer()
-  const { data: prof } = await s.from('profiles').select('escola_id, role').order('created_at', { ascending: false }).limit(1)
-  const escolaId = prof?.[0]?.escola_id as string | null
-  const isSuperAdmin = ((prof?.[0] as any)?.role) === 'super_admin'
+  const { data: userRes } = await s.auth.getUser()
+  const user = userRes?.user
+  const metaEscolaId = (user?.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? null
+  const { data: profile } = user
+    ? await s.from('profiles').select('escola_id, role').eq('user_id', user.id).maybeSingle()
+    : { data: null }
+  const escolaId = user
+    ? await resolveEscolaIdForUser(
+        s,
+        user.id,
+        profile?.escola_id ?? null,
+        metaEscolaId ? String(metaEscolaId) : null
+      )
+    : null
+  const isSuperAdmin = profile?.role === 'super_admin'
   if (!escolaId) {
     return (
       <PortalLayout>

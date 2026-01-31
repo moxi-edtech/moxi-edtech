@@ -53,7 +53,7 @@ export async function GET(
     if (anoLetivo) query = query.eq("ano_letivo", anoLetivo);
     if (sessionId) query = query.eq("session_id", sessionId);
 
-    query = applyKf2ListInvariants(query, { defaultLimit: 200 });
+    query = applyKf2ListInvariants(query, { defaultLimit: 50 });
 
     const { data: existing, error } = await query;
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });

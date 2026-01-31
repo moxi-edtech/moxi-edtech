@@ -21,9 +21,9 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const statusFilter = searchParams.get('status') || 'pendente'; // Default to pending
 
-    let query = supabase
+    let query = (supabase as any)
       .from('financeiro_transacoes_importadas')
-      .select('*')
+      .select('id, data, descricao, referencia, valor, tipo, banco, conta, status, match_confianca, aluno_match_details')
       .eq('escola_id', escolaId);
 
     if (statusFilter !== 'todos') {
@@ -37,7 +37,12 @@ export async function GET(request: Request) {
       throw error;
     }
 
-    const formattedTransactions = transactions.map(t => ({
+    const formattedTransactions = transactions.map((t: any) => {
+      const details = t.aluno_match_details as
+        | { alunoMatch?: unknown; mensalidadesPendentes?: unknown[] }
+        | null
+        | undefined;
+      return ({
         id: t.id,
         data: new Date(t.data), // Convert date string to Date object
         descricao: t.descricao,
@@ -49,9 +54,10 @@ export async function GET(request: Request) {
         status: t.status,
         matchConfianca: t.match_confianca,
         // alunoMatch and mensalidadesPendentes will be populated by matching logic later
-        alunoMatch: t.aluno_match_details?.alunoMatch || null,
-        mensalidadesPendentes: t.aluno_match_details?.mensalidadesPendentes || [],
-    }));
+        alunoMatch: details?.alunoMatch || null,
+        mensalidadesPendentes: details?.mensalidadesPendentes || [],
+      });
+    });
 
     return NextResponse.json({ ok: true, transactions: formattedTransactions });
   } catch (e: any) {

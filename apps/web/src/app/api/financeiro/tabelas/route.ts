@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveTabelaPreco } from "@/lib/financeiro/tabela-preco";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 function parseAnoLetivo(value: unknown) {
   const n = typeof value === "string" ? Number(value) : Number(value ?? "");
@@ -9,71 +10,6 @@ function parseAnoLetivo(value: unknown) {
   const year = Math.trunc(n);
   if (year < 1900 || year > 3000) return null;
   return year;
-}
-
-async function usuarioTemAcessoEscola(client: any, userId: string, escolaId: string) {
-  if (!escolaId) return false;
-  try {
-    const { data: prof } = await client
-      .from("profiles")
-      .select("current_escola_id, escola_id, role")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(1);
-    const perfil = prof?.[0] as any;
-    const role = perfil?.role as string | undefined;
-    if (role === "super_admin") return true;
-    if (perfil?.current_escola_id === escolaId || perfil?.escola_id === escolaId) return true;
-  } catch {}
-
-  try {
-    const { data: vinc } = await client
-      .from("escola_users")
-      .select("papel")
-      .eq("escola_id", escolaId)
-      .eq("user_id", userId)
-      .maybeSingle();
-    if ((vinc as any)?.papel) return true;
-  } catch {}
-
-  try {
-    const { data: adminLink } = await client
-      .from("escola_administradores")
-      .select("user_id")
-      .eq("escola_id", escolaId)
-      .eq("user_id", userId)
-      .limit(1);
-    if (adminLink && (adminLink as any[]).length > 0) return true;
-  } catch {}
-
-  return false;
-}
-
-async function resolverEscola(client: any, userId: string, provided?: string | null) {
-  if (provided) return provided;
-
-  try {
-    const { data: prof } = await client
-      .from("profiles" as any)
-      .select("current_escola_id, escola_id")
-      .eq("user_id", userId)
-      .limit(1);
-    const perfil = prof?.[0] as any;
-    if (perfil?.current_escola_id) return perfil.current_escola_id as string;
-    if (perfil?.escola_id) return perfil.escola_id as string;
-  } catch {}
-
-  try {
-    const { data: vinc } = await client
-      .from("escola_users")
-      .select("escola_id")
-      .eq("user_id", userId)
-      .limit(1);
-    const vinculo = vinc?.[0] as any;
-    if (vinculo?.escola_id) return vinculo.escola_id as string;
-  } catch {}
-
-  return null;
 }
 
 function dinheiroValido(v: any) {
@@ -108,11 +44,14 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: "Ano letivo inválido" }, { status: 400 });
     }
 
-    const escolaId = await resolverEscola(s as any, user.id, escolaParam);
+    const metaEscolaId = (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? null;
+    const escolaId = await resolveEscolaIdForUser(
+      s as any,
+      user.id,
+      escolaParam,
+      metaEscolaId ? String(metaEscolaId) : null
+    );
     if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 400 });
-
-    const autorizado = await usuarioTemAcessoEscola(s as any, user.id, escolaId);
-    if (!autorizado) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
 
     let query = s
       .from("financeiro_tabelas")
@@ -123,22 +62,24 @@ export async function GET(req: Request) {
       .eq("ano_letivo", anoLetivo)
       .order("created_at", { ascending: false });
 
-    query = applyKf2ListInvariants(query, { defaultLimit: 200 });
+    query = applyKf2ListInvariants(query, { defaultLimit: 50 });
 
     const { data, error } = await query;
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
 
     let resolved: any = null;
-    try {
-      resolved = await resolveTabelaPreco(s as any, {
-        escolaId,
-        anoLetivo,
-        cursoId: cursoId || undefined,
-        classeId: classeId || undefined,
-        allowMensalidadeFallback: true,
-      });
-    } catch {}
+    if (cursoId || classeId) {
+      try {
+        resolved = await resolveTabelaPreco(s as any, {
+          escolaId,
+          anoLetivo,
+          cursoId: cursoId || undefined,
+          classeId: classeId || undefined,
+          allowMensalidadeFallback: true,
+        });
+      } catch {}
+    }
 
     return NextResponse.json({ ok: true, items: data || [], resolved });
   } catch (e) {
@@ -166,10 +107,14 @@ export async function POST(req: Request) {
       multa_atraso_percentual,
     } = body || {};
 
-    const escolaId = await resolverEscola(s as any, user.id, escola_id);
+    const metaEscolaId = (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? null;
+    const escolaId = await resolveEscolaIdForUser(
+      s as any,
+      user.id,
+      escola_id,
+      metaEscolaId ? String(metaEscolaId) : null
+    );
     if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 400 });
-    const autorizado = await usuarioTemAcessoEscola(s as any, user.id, escolaId);
-    if (!autorizado) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
 
     const anoLetivo = parseAnoLetivo(ano_letivo ?? new Date().getFullYear());
     if (!anoLetivo) return NextResponse.json({ ok: false, error: "Ano letivo inválido" }, { status: 400 });
@@ -228,8 +173,14 @@ export async function PATCH(req: Request) {
     if (findErr) return NextResponse.json({ ok: false, error: findErr.message }, { status: 400 });
     if (!existente) return NextResponse.json({ ok: false, error: "Registro não encontrado" }, { status: 404 });
 
-    const autorizado = await usuarioTemAcessoEscola(s as any, user.id, (existente as any).escola_id as string);
-    if (!autorizado) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
+    const metaEscolaId = (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? null;
+    const allowedEscolaId = await resolveEscolaIdForUser(
+      s as any,
+      user.id,
+      (existente as any).escola_id as string,
+      metaEscolaId ? String(metaEscolaId) : null
+    );
+    if (!allowedEscolaId) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
 
     const updates: any = { updated_at: new Date().toISOString() };
     if (ano_letivo !== undefined) {

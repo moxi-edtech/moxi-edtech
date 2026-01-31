@@ -99,7 +99,7 @@ export async function GET(
       .eq("escola_id", escolaId)
       .order("ano", { ascending: false });
 
-    adminQuery = applyKf2ListInvariants(adminQuery, { defaultLimit: 200 });
+    adminQuery = applyKf2ListInvariants(adminQuery, { defaultLimit: 50 });
 
     const { data, error } = await adminQuery;
 

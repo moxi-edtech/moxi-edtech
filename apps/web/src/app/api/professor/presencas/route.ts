@@ -130,97 +130,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Professor não atribuído à disciplina' }, { status: 403 })
     }
 
-    const alunoIds = body.presencas.map((p) => p.aluno_id)
-    const { data: matriculas } = await supabase
-      .from('matriculas')
-      .select('id, aluno_id, status')
-      .eq('escola_id', escolaId)
-      .eq('turma_id', body.turma_id)
-      .eq('ano_letivo', turma.ano_letivo)
-      .in('aluno_id', alunoIds)
+    // A maior parte da lógica de validação foi movida para a RPC `upsert_frequencias_batch`.
+    // A RPC irá resolver a aula, o período, as matrículas e fará o upsert de forma atômica e auditada.
+    const { data, error } = await supabase.rpc('upsert_frequencias_batch', {
+      p_escola_id: escolaId,
+      p_turma_id: body.turma_id,
+      p_disciplina_id: body.disciplina_id,
+      p_data: body.data,
+      p_presencas: body.presencas,
+    });
 
-    const matriculaByAluno = new Map<string, string>()
-    for (const m of (matriculas || []) as Array<{ id: string; aluno_id: string; status: string | null }>) {
-      if (m.status && ['ativo', 'ativa', 'active'].includes(m.status)) {
-        matriculaByAluno.set(m.aluno_id, m.id)
-      }
+    if (error) {
+      console.error('Error calling upsert_frequencias_batch RPC:', error);
+      return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     }
 
-    const missing = alunoIds.filter((id) => !matriculaByAluno.has(id))
-    if (missing.length > 0) {
-      return NextResponse.json({ ok: false, error: 'Matrícula ativa não encontrada para todos os alunos.' }, { status: 400 })
-    }
-
-    const dataAula = body.data
-    let periodoLetivoId: string | null = null
-
-    if (anoLetivo?.id) {
-      const { data: periodo } = await supabase
-        .from('periodos_letivos')
-        .select('id')
-        .eq('escola_id', escolaId)
-        .eq('ano_letivo_id', anoLetivo.id)
-        .eq('tipo', 'TRIMESTRE')
-        .lte('data_inicio', dataAula)
-        .gte('data_fim', dataAula)
-        .maybeSingle()
-
-      periodoLetivoId = periodo?.id ?? null
-    }
-
-    if (!periodoLetivoId) {
-      return NextResponse.json({ ok: false, error: 'Período letivo não resolvido para a data informada.' }, { status: 400 })
-    }
-
-    outboxEventId = await enqueueOutboxEvent(supabase, {
-      escolaId,
-      eventType: 'professor_presencas',
-      idempotencyKey,
-      scope: 'professor',
-      payload: {
-        turma_id: body.turma_id,
-        disciplina_id: body.disciplina_id,
-        data: dataAula,
-        presencas: body.presencas,
-      },
-    })
-    const frequenciasRows = body.presencas.map((p) => ({
-      escola_id: escolaId,
-      matricula_id: matriculaByAluno.get(p.aluno_id) as string,
-      data: dataAula,
-      status: p.status,
-      periodo_letivo_id: periodoLetivoId,
-    }))
-
-    const { error: frequenciasError } = await supabase
-      .from('frequencias')
-      .upsert(frequenciasRows as any, { onConflict: 'escola_id,matricula_id,data' })
-
-    if (frequenciasError) {
-      await markOutboxEventFailed(supabase, outboxEventId, frequenciasError.message).catch(() => null)
-      return NextResponse.json({ ok: false, error: frequenciasError.message }, { status: 400 })
-    }
-
-    const presencasRows = body.presencas.map(p => ({
-      escola_id: escolaId,
-      aluno_id: p.aluno_id,
-      turma_id: body.turma_id,
-      data: dataAula,
-      status: p.status,
-      disciplina_id: body.disciplina_id,
-    }))
-
-    const { error: presencasError } = await supabase
-      .from('presencas')
-      .upsert(presencasRows as any, { onConflict: 'aluno_id,turma_id,data' })
-    if (presencasError) {
-      await markOutboxEventFailed(supabase, outboxEventId, presencasError.message).catch(() => null)
-      return NextResponse.json({ ok: false, error: presencasError.message }, { status: 400 })
-    }
-
-    await markOutboxEventProcessed(supabase, outboxEventId).catch(() => null)
-
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true, data });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     if (supabase) {

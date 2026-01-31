@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/lib/supabaseClient';
 import { 
   EscolaDetalhes, 
   EscolaMetricas, 
@@ -22,7 +22,7 @@ const mapAuditActionToType = (acao: string): AtividadeRecente['tipo'] => {
 };
 
 export function useEscolaMonitorData(escolaId: string) {
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   
@@ -76,25 +76,24 @@ export function useEscolaMonitorData(escolaId: string) {
 
 // Sub-fetching functions
 async function loadMetricas(supabase: any, id: string): Promise<EscolaMetricas> {
-  const { count: alunosAtivos } = await supabase.from('alunos').select('*', { count: 'exact', head: true }).eq('escola_id', id).eq('status', 'ativo');
-  const { count: alunosInativos } = await supabase.from('alunos').select('*', { count: 'exact', head: true }).eq('escola_id', id).eq('status', 'inativo');
-  const { count: professores } = await supabase.from('professores').select('*', { count: 'exact', head: true }).eq('escola_id', id);
-  const { count: turmasAtivas } = await supabase.from('turmas').select('*', { count: 'exact', head: true }).eq('escola_id', id).eq('status_validacao', 'ativo');
-  const { count: turmasTotal } = await supabase.from('turmas').select('*', { count: 'exact', head: true }).eq('escola_id', id);
-  const { count: matriculasAtivas } = await supabase.from('matriculas').select('*', { count: 'exact', head: true }).eq('escola_id', id).eq('status', 'ativa');
+  const { data: metrics } = await supabase
+    .from('vw_super_admin_escola_metrics')
+    .select('alunos_ativos, alunos_inativos, professores, turmas_ativas, turmas_total, matriculas_ativas')
+    .eq('escola_id', id)
+    .maybeSingle();
   
   const { data: aggregate } = await supabase.from('aggregates_financeiro').select('*').eq('escola_id', id).is('aluno_id', null).eq('data_referencia', new Date().toISOString().slice(0, 7) + '-01').single();
   const { data: ultimoPagamento } = await supabase.from('financeiro_lancamentos').select('created_at').eq('escola_id', id).eq('tipo', 'credito').eq('status', 'pago').order('created_at', { ascending: false }).limit(1).single();
   const { data: proximoVencimento } = await supabase.from('mensalidades').select('data_vencimento').eq('escola_id', id).eq('status', 'pendente').order('data_vencimento', { ascending: true }).limit(1).single();
   
   return {
-    alunos_ativos: alunosAtivos || 0,
-    alunos_inativos: alunosInativos || 0,
-    alunos_total: (alunosAtivos || 0) + (alunosInativos || 0),
-    professores: professores || 0,
-    turmas_ativas: turmasAtivas || 0,
-    turmas_total: turmasTotal || 0,
-    matriculas_ativas: matriculasAtivas || 0,
+    alunos_ativos: metrics?.alunos_ativos || 0,
+    alunos_inativos: metrics?.alunos_inativos || 0,
+    alunos_total: (metrics?.alunos_ativos || 0) + (metrics?.alunos_inativos || 0),
+    professores: metrics?.professores || 0,
+    turmas_ativas: metrics?.turmas_ativas || 0,
+    turmas_total: metrics?.turmas_total || 0,
+    matriculas_ativas: metrics?.matriculas_ativas || 0,
     mensalidades_pendentes: 0,
     mensalidades_pagas: 0,
     valor_pendente: aggregate?.total_pendente || 0,
@@ -106,22 +105,23 @@ async function loadMetricas(supabase: any, id: string): Promise<EscolaMetricas> 
 }
 
 async function loadPerformance(supabase: any, id: string): Promise<PerformanceMetrics> {
-  const { data: ultimoAcesso } = await supabase.from('audit_logs').select('created_at').eq('escola_id', id).order('created_at', { ascending: false }).limit(1).single();
-  const { count: accessos24h } = await supabase.from('audit_logs').select('*', { count: 'exact', head: true }).eq('escola_id', id).gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+  const { data: auditMetrics } = await supabase
+    .from('vw_super_admin_audit_metrics')
+    .select('ultimo_acesso, accessos_24h, error_count_24h, last_error')
+    .eq('escola_id', id)
+    .maybeSingle();
   const { data: syncStatus } = await supabase.from('aggregates_financeiro').select('sync_status, sync_updated_at').eq('escola_id', id).is('aluno_id', null).order('sync_updated_at', { ascending: false }).limit(1).single();
-  const { count: errorCount } = await supabase.from('audit_logs').select('*', { count: 'exact', head: true }).eq('escola_id', id).eq('acao', 'error').gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
-  const { data: lastError } = await supabase.from('audit_logs').select('mensagem').eq('escola_id', id).eq('acao', 'error').order('created_at', { ascending: false }).limit(1).single();
 
   return {
     latencia_media: 180, // Simulado
-    ultimo_acesso: ultimoAcesso?.created_at || new Date().toISOString(),
-    accessos_24h: accessos24h || 0,
+    ultimo_acesso: auditMetrics?.ultimo_acesso || new Date().toISOString(),
+    accessos_24h: auditMetrics?.accessos_24h || 0,
     sync_status: syncStatus?.sync_status || 'synced',
     sync_updated_at: syncStatus?.sync_updated_at || new Date().toISOString(),
     api_calls_24h: 0, // Simulado
     storage_usage_mb: 0, // Simulado
-    last_error: lastError?.mensagem || null,
-    error_count_24h: errorCount || 0
+    last_error: auditMetrics?.last_error || null,
+    error_count_24h: auditMetrics?.error_count_24h || 0
   };
 }
 

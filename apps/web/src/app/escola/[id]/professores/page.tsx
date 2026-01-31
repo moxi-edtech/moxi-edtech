@@ -55,10 +55,8 @@ export default function ProfessoresPage() {
 
         let profs: Professor[] = []
         if (ids.length > 0) {
-          const { data: profiles, error: profErr } = await supabase
-            .from("profiles")
-            .select("user_id, email, nome, last_login")
-            .in("user_id", ids)
+          const { data: profiles, error: profErr } = await (supabase as any)
+            .rpc("tenant_profiles_by_ids", { p_user_ids: ids })
           if (profErr) throw profErr
           profs = (profiles || []).map((pp: any) => ({
             user_id: pp.user_id,

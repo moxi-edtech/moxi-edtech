@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "~/lib/supabase/server";
-import type { Database } from "~types/supabase";
-import { applyKf2ListInvariants } from "@/lib/kf2";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export const dynamic = "force-dynamic";
 
@@ -20,23 +19,39 @@ export async function GET(
 
   const supabase = await createClient();
 
+  const { data: userRes } = await supabase.auth.getUser();
+  const user = userRes?.user;
+  if (!user) {
+    return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+  }
+
+  const metaEscolaId = (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? null;
+  const resolvedEscolaId = await resolveEscolaIdForUser(
+    supabase,
+    user.id,
+    escolaId,
+    metaEscolaId ? String(metaEscolaId) : null
+  );
+
+  if (!resolvedEscolaId) {
+    return NextResponse.json({ error: "Sem acesso à escola." }, { status: 403 });
+  }
+
   try {
-    let rpcQuery = supabase.rpc("get_pending_turmas_count", {
-      p_escola_id: escolaId,
-    });
-
-    rpcQuery = applyKf2ListInvariants(rpcQuery, { defaultLimit: 1 });
-
-    const { data, error } = await rpcQuery.single();
+    const { data, error } = await supabase
+      .from("vw_admin_pending_turmas_count")
+      .select("pendentes_total")
+      .eq("escola_id", resolvedEscolaId)
+      .maybeSingle();
 
     if (error) {
-      console.error("[API pending-turmas-count] Erro ao chamar RPC get_pending_turmas_count:", error);
+      console.error("[API pending-turmas-count] Erro ao buscar view:", error);
       throw new Error(
         `Falha ao buscar contagem de turmas pendentes: ${error.message}`
       );
     }
 
-    return NextResponse.json({ ok: true, count: data || 0 });
+    return NextResponse.json({ ok: true, count: data?.pendentes_total || 0 });
   } catch (e: any) {
     return NextResponse.json(
       {
