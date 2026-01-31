@@ -116,7 +116,7 @@ export async function GET(req: Request) {
         p_ano_letivo: anoLetivo,
       });
 
-      rpcQuery = applyKf2ListInvariants(rpcQuery, { defaultLimit: 2000 });
+      rpcQuery = applyKf2ListInvariants(rpcQuery, { defaultLimit: 50 });
 
       const { data, error } = await rpcQuery;
 

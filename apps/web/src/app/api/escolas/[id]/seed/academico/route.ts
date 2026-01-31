@@ -68,15 +68,63 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       semestre2 = (sIns as any)[1].id
     }
 
-    // 3) Turma and secoes
-    const turmaNome = '1º Ano A'
-    const { data: turmaEx } = await admin.from('turmas').select('id').eq('escola_id', escolaId).eq('nome', turmaNome).maybeSingle()
-    let turmaId = (turmaEx as any)?.id as string | undefined
-    if (!turmaId) {
-      const { data: tIns, error: tErr } = await admin.from('turmas').insert({ escola_id: escolaId, nome: turmaNome, ano_letivo: `${year}` } as TablesInsert<'turmas'>).select('id').single()
-      if (tErr) return NextResponse.json({ ok: false, error: tErr.message }, { status: 400 })
-      turmaId = (tIns as any).id
+    // 3) Turma and secoes (AGORA USANDO RPC gerar_turmas_from_curriculo)
+    // Precisamos de um cursoId para gerar a turma via RPC.
+    // Usamos o primeiro curso criado/encontrado.
+    const firstCursoEntry = cursosMap.entries().next().value;
+    const firstCursoId = firstCursoEntry ? firstCursoEntry[1] : null;
+
+    if (!firstCursoId) {
+        return NextResponse.json({ ok: false, error: 'Nenhum curso disponível para gerar turmas.' }, { status: 400 });
     }
+
+    const turmaNomeParaSeed = '1º Ano A';
+    let turmaId: string | undefined;
+
+    // A RPC gera uma turma com um nome, mas precisamos de um nome para a classe aqui.
+    // A RPC espera um objeto de geração de turma.
+    const generationParams = {
+        classes: [{ classeId: 'uuid-dummy-class-id', quantidade: 1, nome: '1º Ano' }], // '1º Ano' é apenas um placeholder para o nome da classe
+        turmas: [{ classeId: 'uuid-dummy-class-id', turno: 'M', quantidade: 1, nome: turmaNomeParaSeed }], // Nome da turma com letra 'A'
+        capacidadeMaxima: 35,
+    };
+    
+    // Antes de chamar a RPC, precisamos de um ID de classe existente.
+    // Vamos criar uma classe "1º Ano" se não existir.
+    const { data: existingClasse } = await admin.from('classes').select('id').eq('escola_id', escolaId).eq('nome', '1º Ano').maybeSingle();
+    let classePrimeiroAnoId: string;
+
+    if (existingClasse) {
+        classePrimeiroAnoId = existingClasse.id;
+    } else {
+        const { data: newClasse, error: classErr } = await admin.from('classes').insert({
+            escola_id: escolaId,
+            nome: '1º Ano',
+            curso_id: firstCursoId,
+        }).select('id').single();
+        if (classErr) {
+            return NextResponse.json({ ok: false, error: classErr.message || 'Falha ao criar classe para turma seed.' }, { status: 400 });
+        }
+        classePrimeiroAnoId = newClasse.id;
+    }
+    // Agora ajustamos os generationParams com o ID da classe real
+    generationParams.classes[0].classeId = classePrimeiroAnoId;
+    generationParams.turmas[0].classeId = classePrimeiroAnoId;
+
+
+    const { data: generatedTurmas, error: genTurmasErr } = await admin.rpc('gerar_turmas_from_curriculo', {
+        p_escola_id: escolaId,
+        p_curso_id: firstCursoId,
+        p_ano_letivo: year,
+        p_generation_params: generationParams,
+    });
+
+    if (genTurmasErr || !generatedTurmas || generatedTurmas.length === 0) {
+        return NextResponse.json({ ok: false, error: genTurmasErr?.message || 'Falha ao gerar turma seed via RPC.' }, { status: 400 });
+    }
+    // A RPC retorna uma tabela, pegamos o ID da primeira turma gerada
+    turmaId = generatedTurmas[0].turma_id;
+
     // Link turma to session
     try { await admin.from('turmas').update({ session_id: sessionId } as any).eq('id', turmaId) } catch {}
 

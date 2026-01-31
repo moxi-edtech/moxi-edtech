@@ -3,10 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function GET(
   req: NextRequest,
-  context: { params: Promise<{ id: string }> } // <-- params pode ser async em Next 15
+  context: { params: Promise<{ id: string }> } // awaitable params for Next 15
 ) {
   try {
-    const { id: alunoId } = await context.params; // <-- await aqui
+    const { id: alunoId } = await context.params;
     const supabase = await createClient();
 
     console.log(`🔍 Buscando dados para pagamento rápido do aluno: ${alunoId}`);
@@ -89,7 +89,7 @@ export async function GET(
     console.log('✅ Dados para pagamento rápido:', resposta);
     return NextResponse.json(resposta);
   } catch (err: any) {
-    console.error("Erro pagamento-rapido:", err);
-    return NextResponse.json({ ok: false, error: err?.message || "Erro interno" }, { status: 500 });
-  }
-}
+     console.error("Erro pagamento-rapido:", err);
+     return NextResponse.json({ ok: false, error: err?.message || "Erro interno" }, { status: 500 });
+   }
+ }

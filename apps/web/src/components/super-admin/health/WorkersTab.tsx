@@ -1,7 +1,7 @@
 // apps/web/src/components/super-admin/health/WorkersTab.tsx
 'use client';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/Button';
 import type { OutboxMetrics } from '@/app/super-admin/health/types';

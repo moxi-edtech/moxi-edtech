@@ -42,7 +42,7 @@ export default function AdminSeedClient() {
     <div className="max-w-lg mx-auto p-6 bg-white shadow rounded-lg">
       <h1 className="text-xl font-bold mb-4">🚀 Seed Super Admin</h1>
 
-      <Button onClick={handleSeed} disabled={loading} tone="blue">
+      <Button onClick={handleSeed} disabled={loading}>
         {loading ? "Processando..." : "Criar/Resetar Super Admin"}
       </Button>
 

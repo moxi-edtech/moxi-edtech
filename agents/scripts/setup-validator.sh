@@ -17,7 +17,7 @@ echo "✅ Arquivo .env.validator criado"
 # 2. Instalar dependências se necessário
 if [ ! -d "node_modules" ]; then
   echo "📦 Instalando dependências..."
-  npm install postgres ts-morph glob
+  pnpm install postgres ts-morph glob
 fi
 
 # 3. Verificar estrutura do monorepo

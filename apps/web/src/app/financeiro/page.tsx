@@ -24,7 +24,6 @@ import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { FinanceiroAlerts } from "@/components/financeiro/FinanceiroAlerts";
 import { MissingPricingAlert } from "@/components/financeiro/MissingPricingAlert";
 import { applyKf2ListInvariants } from "@/lib/kf2";
-import { findClassesSemPreco } from "@/lib/financeiro/missing-pricing";
 
 export const dynamic = 'force-dynamic';
 
@@ -52,7 +51,13 @@ export default async function FinanceiroDashboardPage({
   const user = userRes?.user;
   let escolaId: string | null = null;
   if (user) {
-    escolaId = await resolveEscolaIdForUser(supabase, user.id);
+    const metaEscolaId = (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? null;
+    escolaId = await resolveEscolaIdForUser(
+      supabase as any,
+      user.id,
+      null,
+      metaEscolaId ? String(metaEscolaId) : null
+    );
   }
 
   const dashboardQuery = supabase
@@ -64,7 +69,7 @@ export default async function FinanceiroDashboardPage({
     .maybeSingle();
 
   let pagamentosStatusQuery = supabase
-    .from("pagamentos_status")
+    .from("vw_pagamentos_status")
     .select("status, total")
     .eq("escola_id", escolaId || "");
   pagamentosStatusQuery = applyKf2ListInvariants(pagamentosStatusQuery, {
@@ -128,7 +133,6 @@ export default async function FinanceiroDashboardPage({
   let financeNotifications: Notification[] = [];
   let escolaNome = "Escola";
   let anoLetivo = new Date().getFullYear();
-  let missingPricingItems: Array<{ curso_nome: string; classe_nome: string; missing_type: string }> = [];
 
   if (aluno) {
     const { data } = await supabase
@@ -148,45 +152,33 @@ export default async function FinanceiroDashboardPage({
   }
 
   if (escolaId) {
-    const { data: anoAtivo } = await supabase
-      .from("anos_letivos")
-      .select("ano")
-      .eq("escola_id", escolaId)
-      .eq("ativo", true)
-      .order("ano", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (anoAtivo?.ano) anoLetivo = Number(anoAtivo.ano);
+    const [anoAtivoRes, escolaRes, notificationsRes] = await Promise.all([
+      supabase
+        .from("anos_letivos")
+        .select("ano")
+        .eq("escola_id", escolaId)
+        .eq("ativo", true)
+        .order("ano", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from("escolas")
+        .select("nome")
+        .eq("id", escolaId)
+        .maybeSingle(),
+      supabase
+        .from("notifications")
+        .select("id, titulo, mensagem, link_acao, lida, created_at, tipo, target_role")
+        .eq("escola_id", escolaId)
+        .eq("target_role", "financeiro")
+        .eq("lida", false)
+        .order("created_at", { ascending: false })
+        .limit(5),
+    ]);
 
-    try {
-      const missing = await findClassesSemPreco(supabase as any, escolaId, anoLetivo);
-      missingPricingItems = (missing.items || []).map((item) => ({
-        curso_nome: item.curso_nome ?? "—",
-        classe_nome: item.classe_nome ?? "—",
-        missing_type: item.missing_type ?? "desconhecido",
-      }));
-    } catch (err) {
-      console.error("Erro ao carregar preços pendentes", err);
-    }
-
-    const { data: escolaRow } = await supabase
-      .from("escolas")
-      .select("nome")
-      .eq("id", escolaId)
-      .maybeSingle();
-
-    escolaNome = escolaRow?.nome ?? escolaNome;
-
-    const { data } = await supabase
-      .from("notifications")
-      .select("id, titulo, mensagem, link_acao, lida, created_at, tipo, target_role")
-      .eq("escola_id", escolaId)
-      .eq("target_role", "financeiro")
-      .eq("lida", false)
-      .order("created_at", { ascending: false })
-      .limit(5);
-
-    financeNotifications = (data as Notification[]) || [];
+    if (anoAtivoRes.data?.ano) anoLetivo = Number(anoAtivoRes.data.ano);
+    escolaNome = escolaRes.data?.nome ?? escolaNome;
+    financeNotifications = (notificationsRes.data as Notification[]) || [];
   }
 
   return (
@@ -205,11 +197,7 @@ export default async function FinanceiroDashboardPage({
       />
 
       {escolaId ? (
-        <MissingPricingAlert
-          escolaId={escolaId}
-          anoLetivo={anoLetivo}
-          initialItems={missingPricingItems}
-        />
+        <MissingPricingAlert escolaId={escolaId} anoLetivo={anoLetivo} />
       ) : null}
 
       <FinanceiroAlerts notifications={financeNotifications} />

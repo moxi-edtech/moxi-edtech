@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export const dynamic = "force-dynamic";
 
@@ -12,29 +13,25 @@ export async function GET(_req: Request) {
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     }
 
-    // Resolve escola vinculada ao usuário atual
-    const { data: prof, error: profErr } = await supabase
-      .from('profiles')
-      .select('escola_id')
-      .order('created_at', { ascending: false })
-      .limit(1);
-
-    if (profErr) {
-      return NextResponse.json({ ok: false, error: profErr.message }, { status: 500 });
-    }
-    const escolaId = prof?.[0]?.escola_id as string | null;
+    const metaEscolaId = (userRes?.user?.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? null;
+    const escolaId = await resolveEscolaIdForUser(
+      supabase,
+      userRes.user.id,
+      null,
+      metaEscolaId ? String(metaEscolaId) : null
+    );
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: "Perfil sem escola vinculada" }, { status: 400 });
     }
 
-    // Prefer view simples (v_financeiro_escola_dia). Se não existir, retorna vazio.
+    // Prefer view simples (vw_financeiro_escola_dia). Se não existir, retorna vazio.
     let query = supabase
-      .from('v_financeiro_escola_dia')
+      .from('vw_financeiro_escola_dia')
       .select('dia, qtd_pagos, qtd_total')
       .eq('escola_id', escolaId)
       .order('dia', { ascending: true });
 
-    query = applyKf2ListInvariants(query, { defaultLimit: 500 });
+    query = applyKf2ListInvariants(query, { defaultLimit: 50 });
 
     const { data, error } = await query;
 

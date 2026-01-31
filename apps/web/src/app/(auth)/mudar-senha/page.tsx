@@ -19,7 +19,7 @@ export default function Page() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
-      const user = data.session?.user
+      const user = data.user
       if (!user) {
         router.replace('/login')
         return
@@ -128,7 +128,7 @@ export default function Page() {
           {error && <p className="text-center text-sm text-red-500 font-medium">{error}</p>}
           {ok && <p className="text-center text-sm text-green-600 font-medium">{ok}</p>}
 
-          <Button type="submit" disabled={loading} tone="teal" fullWidth>
+          <Button type="submit" disabled={loading} className="w-full">
             {loading ? 'Salvando...' : 'Salvar nova senha'}
           </Button>
         </form>

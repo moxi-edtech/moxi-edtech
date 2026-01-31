@@ -29,6 +29,7 @@ export default async function FichaInscricaoPrintPage({
     validationBaseUrl ??
     (await getRequestOrigin());
   const hash = snapshot.hash_validacao || "";
+  const numero = snapshot.numero_sequencial;
   const urlValidacao = hash
     ? `${String(baseUrl).replace(/\/$/, "")}/documentos/${doc.public_id}?hash=${hash}`
     : null;
@@ -46,6 +47,9 @@ export default async function FichaInscricaoPrintPage({
             </p>
             <h1 className="text-2xl font-semibold">Ficha de Inscrição</h1>
             <p className="text-xs text-slate-500">Data: {hoje}</p>
+            {numero ? (
+              <p className="text-[11px] text-slate-500">Nº {String(numero).padStart(4, "0")}</p>
+            ) : null}
           </header>
 
           <section className="space-y-3 text-sm">

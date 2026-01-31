@@ -14,6 +14,7 @@ import {
   GraduationCap
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { recordAuditClient } from "@/lib/auditClient";
 
 import TurmaForm from "./TurmaForm"; 
 import { useEscolaId } from "@/hooks/useEscolaId";
@@ -217,7 +218,7 @@ function TurmaRow({
 
 // --- MAIN PAGE COMPONENT ---
 export default function TurmasListClient({ adminMode = false }: { adminMode?: boolean }) {
-  const { escolaId } = useEscolaId();
+  const { escolaId, isLoading: escolaLoading } = useEscolaId();
   
   const [data, setData] = useState<TurmasResponse | null>(null);
   const [items, setItems] = useState<TurmaItem[]>([]);
@@ -232,9 +233,25 @@ export default function TurmasListClient({ adminMode = false }: { adminMode?: bo
   const [editingTurma, setEditingTurma] = useState<TurmaItem | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const scrollParentRef = useRef<HTMLDivElement | null>(null);
+  const auditSentRef = useRef(false);
+
+  useEffect(() => {
+    if (auditSentRef.current || escolaLoading || !escolaId) return;
+    auditSentRef.current = true;
+    recordAuditClient({
+      escolaId,
+      portal: adminMode ? "admin_escola" : "secretaria",
+      acao: "PAGE_VIEW",
+      entity: "turmas_list",
+      details: {},
+    });
+  }, [adminMode, escolaId, escolaLoading]);
 
   const fetchData = useCallback(async (options?: { cursor?: string | null; append?: boolean }) => {
-    if (!escolaId) return;
+    if (!escolaId) {
+      setLoading(false);
+      return;
+    }
     try {
       if (options?.append) {
         setLoadingMore(true);
@@ -270,12 +287,17 @@ export default function TurmasListClient({ adminMode = false }: { adminMode?: bo
   }, [escolaId, turnoFilter, statusFilter, adminMode, busca]);
 
   useEffect(() => {
+    if (escolaLoading) return;
+    if (!escolaId) {
+      setLoading(false);
+      return;
+    }
     const handler = setTimeout(() => {
       setNextCursor(null);
       fetchData({ append: false });
     }, 300);
     return () => clearTimeout(handler);
-  }, [fetchData, turnoFilter, statusFilter, adminMode, busca]);
+  }, [fetchData, turnoFilter, statusFilter, adminMode, busca, escolaId, escolaLoading]);
 
   const loadMore = useCallback(async () => {
     if (!nextCursor || loadingMore) return;

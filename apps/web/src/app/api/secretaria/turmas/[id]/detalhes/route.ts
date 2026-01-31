@@ -121,7 +121,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       .in('status', ['ativa', 'ativo'])
       .order('numero_chamada', { ascending: true });
 
-    alunosQuery = applyKf2ListInvariants(alunosQuery, { defaultLimit: 500 });
+    alunosQuery = applyKf2ListInvariants(alunosQuery, { defaultLimit: 50 });
 
     const { data: alunosData, error: alunosError } = await alunosQuery;
 
@@ -154,7 +154,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         .eq('escola_id', escolaId)
         .order('created_at', { ascending: false });
 
-      disciplinasQuery = applyKf2ListInvariants(disciplinasQuery, { defaultLimit: 200 });
+      disciplinasQuery = applyKf2ListInvariants(disciplinasQuery, { defaultLimit: 50 });
 
       const { data, error } = await disciplinasQuery;
       disciplinasData = data ?? [];
@@ -185,7 +185,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         .eq('escola_id', escolaId)
         .order('created_at', { ascending: false });
 
-      fallbackQuery = applyKf2ListInvariants(fallbackQuery, { defaultLimit: 200 });
+      fallbackQuery = applyKf2ListInvariants(fallbackQuery, { defaultLimit: 50 });
 
       const { data: fallbackRows, error: fallbackError } = await fallbackQuery;
       if (fallbackError) {
@@ -212,7 +212,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         matrizQuery = matrizQuery.eq('curso_id', turmaResult.cursos.id);
       }
 
-      matrizQuery = applyKf2ListInvariants(matrizQuery, { defaultLimit: 200 });
+      matrizQuery = applyKf2ListInvariants(matrizQuery, { defaultLimit: 50 });
 
       const { data: matrizRows, error: matrizError } = await matrizQuery;
       if (matrizError) {

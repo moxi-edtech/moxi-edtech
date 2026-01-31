@@ -29,6 +29,7 @@ export default async function CartaoEstudantePrintPage({
     validationBaseUrl ??
     (await getRequestOrigin());
   const hash = snapshot.hash_validacao || "";
+  const numero = snapshot.numero_sequencial;
   const urlValidacao = hash
     ? `${String(baseUrl).replace(/\/$/, "")}/documentos/${doc.public_id}?hash=${hash}`
     : null;
@@ -41,6 +42,9 @@ export default async function CartaoEstudantePrintPage({
           <header className="text-center space-y-1">
             <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Cartão de Estudante</p>
             <h1 className="text-lg font-semibold">{escolaNome}</h1>
+            {numero ? (
+              <p className="text-[11px] text-slate-500">Nº {String(numero).padStart(4, "0")}</p>
+            ) : null}
           </header>
 
           <section className="flex items-center gap-4">

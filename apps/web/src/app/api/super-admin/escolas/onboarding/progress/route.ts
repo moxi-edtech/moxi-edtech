@@ -25,7 +25,7 @@ export async function GET() {
         .select(sel)
         .order('nome', { ascending: true })
 
-      escolasQuery = applyKf2ListInvariants(escolasQuery, { defaultLimit: 500 })
+      escolasQuery = applyKf2ListInvariants(escolasQuery, { defaultLimit: 50 })
 
       const { data, error } = await escolasQuery
       if (error) {
@@ -36,7 +36,7 @@ export async function GET() {
             .select('id, nome, onboarding_finalizado')
             .order('nome', { ascending: true })
 
-          fallbackQuery = applyKf2ListInvariants(fallbackQuery, { defaultLimit: 500 })
+          fallbackQuery = applyKf2ListInvariants(fallbackQuery, { defaultLimit: 50 })
 
           const { data: data2, error: err2 } = await fallbackQuery
           if (err2) {
@@ -57,7 +57,7 @@ export async function GET() {
       .select('escola_id, step, updated_at')
       .order('updated_at', { ascending: false })
 
-    draftsQuery = applyKf2ListInvariants(draftsQuery, { defaultLimit: 2000 })
+    draftsQuery = applyKf2ListInvariants(draftsQuery, { defaultLimit: 50 })
 
     const { data: drafts } = await draftsQuery
 

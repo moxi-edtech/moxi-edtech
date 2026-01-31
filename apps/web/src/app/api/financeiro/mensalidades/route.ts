@@ -58,9 +58,9 @@ export async function GET(request: Request) {
 
     const formattedData = mensalidades.map(m => {
         const dataVencimento = new Date(m.data_vencimento);
-        const diasAtraso = m.status === 'atrasada' 
+        const diasAtraso = m.status === 'atrasada'
             ? Math.floor((new Date().getTime() - dataVencimento.getTime()) / (1000 * 3600 * 24))
-            : undefined;
+            : 0;
 
         return {
             alunoId: m.aluno_id,

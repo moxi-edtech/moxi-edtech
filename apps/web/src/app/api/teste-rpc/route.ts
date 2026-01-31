@@ -35,7 +35,7 @@ export async function GET(request: Request) {
       }
     ];
     
-    const resultados = [];
+    const resultados: any[] = [];
     
     for (const teste of testes) {
       // Use the correct argument types for the RPC call

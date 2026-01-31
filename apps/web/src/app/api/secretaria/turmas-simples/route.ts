@@ -98,7 +98,7 @@ export async function GET(req: Request) {
     if (turno) query = query.eq('turno', turno);
 
     query = applyKf2ListInvariants(query, {
-      defaultLimit: 200,
+      defaultLimit: 50,
       order: [
         { column: 'turma_nome', ascending: true },
         { column: 'id', ascending: false },

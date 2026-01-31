@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { FinalizarMatriculaButton } from "@/components/secretaria/alunos/FinalizarMatriculaButton";
 import Link from "next/link";
 import {
   Users,
@@ -168,8 +169,8 @@ function SummaryCard(props: { title: string; value: string }) {
 // ------------------------------------------------------------
 // Page
 // ------------------------------------------------------------
-export default async function AlunoDossierPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default async function AlunoDossierPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
 
   const supabase = await supabaseServer();
   const {
@@ -193,10 +194,20 @@ export default async function AlunoDossierPage({ params }: { params: { id: strin
     : [];
 
   const alunoNome = perfil.nome_completo || perfil.nome || "Aluno";
-  const responsavelNome = perfil.encarregado_nome || perfil.responsavel || "—";
-  const responsavelTel = perfil.encarregado_telefone || perfil.telefone_responsavel || "—";
+  const responsavelNomeRaw = perfil.encarregado_nome || perfil.responsavel || null;
+  const responsavelTelRaw = perfil.encarregado_telefone || perfil.telefone_responsavel || null;
+  const responsavelNome = responsavelNomeRaw || "—";
+  const responsavelTel = responsavelTelRaw || "—";
   const provincia = perfil.provincia || perfil.provincia_residencia || "—";
   const bairro = perfil.endereco_bairro || "—";
+
+  const pendencias: string[] = [];
+  if (!perfil.bi_numero) pendencias.push("BI");
+  if (!responsavelNomeRaw) pendencias.push("Responsável");
+  if (!responsavelTelRaw) pendencias.push("Contacto");
+  if (!perfil.endereco) pendencias.push("Endereço");
+  if ((financeiro.total_em_atraso ?? 0) > 0) pendencias.push("Financeiro em atraso");
+  if (historico.length === 0) pendencias.push("Sem histórico de matrícula");
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 md:p-10 font-sans">
@@ -261,8 +272,10 @@ export default async function AlunoDossierPage({ params }: { params: { id: strin
                   className="flex-1 md:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-klasse-gold text-white hover:brightness-95 text-sm font-medium"
                 >
                   <Pencil className="h-4 w-4" />
-                  Editar
                 </Link>
+
+                {/* Botão Finalizar Matrícula */}
+                <FinalizarMatriculaButton matriculaId={historico[0]?.matricula_id || id} alunoNome={alunoNome} escolaId={escolaId} />
               </div>
             </div>
           </div>
@@ -272,6 +285,25 @@ export default async function AlunoDossierPage({ params }: { params: { id: strin
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Col 1 */}
           <div className="space-y-8">
+            <section className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+              <SectionHeader icon={BarChart3} title="Pendências do Aluno" />
+              {pendencias.length === 0 ? (
+                <div className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                  Nenhuma pendência aberta.
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {pendencias.map((pendencia) => (
+                    <span
+                      key={pendencia}
+                      className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800"
+                    >
+                      {pendencia}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </section>
             <section className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
               <SectionHeader icon={Users} title="Dados Pessoais" />
               <div className="space-y-5">

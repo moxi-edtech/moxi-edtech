@@ -24,7 +24,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     const admin = createAdminClient(url, key)
 
     let partitionsQuery = (admin as any).rpc('partitions_info')
-    partitionsQuery = applyKf2ListInvariants(partitionsQuery, { defaultLimit: 200 })
+    partitionsQuery = applyKf2ListInvariants(partitionsQuery, { defaultLimit: 50 })
 
     const { data, error: pErr } = await partitionsQuery
     if (pErr) return NextResponse.json({ ok: false, error: pErr.message }, { status: 500 })

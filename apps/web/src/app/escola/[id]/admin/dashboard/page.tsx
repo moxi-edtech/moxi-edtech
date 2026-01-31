@@ -1,14 +1,30 @@
 import EscolaAdminDashboard from "@/components/layout/escola-admin/EscolaAdminDashboard";
+import { supabaseServer } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+
+export const dynamic = "force-dynamic";
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+  const { id: escolaId } = await params;
+  const s = await supabaseServer();
+  const { data: userRes } = await s.auth.getUser();
+  const user = userRes?.user;
+  let escolaNome: string | undefined = undefined;
 
-  let escolaNome: string | undefined = undefined
-  try {
-    const res = await fetch(`/api/escolas/${id}/nome`, { cache: 'no-store' })
-    const json = await res.json().catch(() => null)
-    if (res.ok && json?.ok && json?.nome) escolaNome = String(json.nome)
-  } catch {}
+  if (user) {
+    const metaEscolaId = (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? null;
+    const resolved = await resolveEscolaIdForUser(
+      s as any,
+      user.id,
+      escolaId,
+      metaEscolaId ? String(metaEscolaId) : null
+    );
 
-  return <EscolaAdminDashboard escolaId={id} escolaNome={escolaNome} />;
+    if (resolved) {
+      const { data } = await s.from("escolas").select("nome").eq("id", resolved).maybeSingle();
+      escolaNome = data?.nome ?? undefined;
+    }
+  }
+
+  return <EscolaAdminDashboard escolaId={escolaId} escolaNome={escolaNome} />;
 }

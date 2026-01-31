@@ -39,7 +39,7 @@ export async function GET(req: Request) {
       .select('id, nome, turno, ano_letivo, classe_id')
       .eq('escola_id', escolaId)
 
-    turmasQuery = applyKf2ListInvariants(turmasQuery, { defaultLimit: 200 })
+    turmasQuery = applyKf2ListInvariants(turmasQuery, { defaultLimit: 50 })
 
     const { data: turmas } = await turmasQuery
 
@@ -58,7 +58,7 @@ export async function GET(req: Request) {
       .select('id, nome, numero')
       .eq('escola_id', escolaId)
 
-    classesQuery = applyKf2ListInvariants(classesQuery, { defaultLimit: 200 })
+    classesQuery = applyKf2ListInvariants(classesQuery, { defaultLimit: 50 })
 
     const { data: classes } = await classesQuery
 
@@ -81,7 +81,7 @@ export async function GET(req: Request) {
       .eq('escola_id', escolaId)
       .in('status', ['ativo', 'ativa', 'active'])
 
-    matsResumoQuery = applyKf2ListInvariants(matsResumoQuery, { defaultLimit: 500 })
+    matsResumoQuery = applyKf2ListInvariants(matsResumoQuery, { defaultLimit: 50 })
 
     const { data: matsResumo } = await matsResumoQuery
 

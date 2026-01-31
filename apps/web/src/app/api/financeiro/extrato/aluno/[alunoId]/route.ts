@@ -147,9 +147,9 @@ export async function GET(
         p_status: 'ativo',
         p_limit: 100, // Busca vários e filtra localmente
         p_offset: 0,
-        p_ano_letivo: null, // ou o ano letivo atual se necessário
-        p_cursor_id: null,
-        p_cursor_created_at: null
+        p_ano_letivo: undefined, // ou o ano letivo atual se necessário
+        p_cursor_id: undefined,
+        p_cursor_created_at: undefined
       }
     );
     
@@ -166,8 +166,7 @@ export async function GET(
           bi_numero,
           telefone_responsavel,
           escola_id,
-          status,
-          turma_atual
+          status
         `)
         .eq('id', alunoId)
         .eq('escola_id', escolaId)
@@ -200,7 +199,7 @@ export async function GET(
           nome: alunoDireto.nome_completo,
           bi: alunoDireto.bi_numero,
           telefone_responsavel: alunoDireto.telefone_responsavel,
-          turma: alunoDireto.turma_atual,
+          turma: null,
           escola_id: alunoDireto.escola_id
         },
         mensalidades: mensalidades || [],
@@ -213,7 +212,7 @@ export async function GET(
     console.log(`[EXTRATO-REMOTO] RPC retornou ${alunosRPC?.length || 0} alunos`);
     
     // 4. Filtrar pelo alunoId específico
-    const alunoEncontrado = alunosRPC?.find((aluno: any) => aluno.id === alunoId);
+    const alunoEncontrado = (alunosRPC?.find((aluno: any) => aluno.id === alunoId) as any) || null;
     
     if (!alunoEncontrado) {
       console.error('[EXTRATO-REMOTO] Aluno não encontrado na lista RPC');
@@ -227,7 +226,7 @@ export async function GET(
       }, { status: 404 });
     }
     
-    console.log(`[EXTRATO-REMOTO] Aluno encontrado: ${alunoEncontrado.nome_completo}`);
+    console.log(`[EXTRATO-REMOTO] Aluno encontrado: ${alunoEncontrado.nome || alunoEncontrado.nome_completo || alunoEncontrado.id}`);
     
     // 5. Buscar mensalidades
     const { data: mensalidades, error: mensError } = await supabase
@@ -250,10 +249,10 @@ export async function GET(
       ok: true,
       aluno: {
         id: alunoEncontrado.id,
-        nome: alunoEncontrado.nome_completo,
+        nome: alunoEncontrado.nome || alunoEncontrado.nome_completo || "",
         bi: alunoEncontrado.bi_numero,
         telefone_responsavel: alunoEncontrado.telefone_responsavel,
-        turma: alunoEncontrado.turma_atual,
+        turma: alunoEncontrado.turma_atual ?? null,
         escola_id: alunoEncontrado.escola_id
       },
       mensalidades: mensalidades || [],

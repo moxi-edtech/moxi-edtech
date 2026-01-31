@@ -10,7 +10,7 @@ export default async function ChartsStaticSectionForEscola({ escolaId }: Props) 
   // Views may not exist in all environments; guard errors
   
   const { data: p } = await supabase
-    .from('pagamentos_status' as unknown as never)
+    .from('vw_pagamentos_status' as unknown as never)
     .select('status, total')
     .eq('escola_id', escolaId)
 
@@ -42,4 +42,3 @@ export default async function ChartsStaticSectionForEscola({ escolaId }: Props) 
     </section>
   )
 }
-

@@ -1,12 +1,12 @@
 // apps/web/src/components/super-admin/escola-monitor/ConfigTab.tsx
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
+import { Label } from '@/components/ui/Label';
 import type { EscolaDetalhes } from '@/app/super-admin/escolas/[id]/types';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/lib/supabaseClient';
 
 interface ConfigTabProps {
   escola: EscolaDetalhes;
@@ -14,7 +14,7 @@ interface ConfigTabProps {
 }
 
 export function ConfigTab({ escola, onUpdate }: ConfigTabProps) {
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
 
   const togglePortalAluno = async () => {
     if (!escola) return;

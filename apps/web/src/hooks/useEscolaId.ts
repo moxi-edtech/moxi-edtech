@@ -24,7 +24,7 @@ export function useEscolaId(): UseEscolaIdState {
         setError(null);
 
         const { data: userData } = await supabase.auth.getUser();
-        const userId = userData?.user?.id;
+        const user = userData?.user;
         if (!user) {
           if (active) setEscolaId(null);
           return;

@@ -51,39 +51,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ ok: false, error: 'Dados inválidos.', issues: parseResult.error.issues }, { status: 400 });
     }
 
-    const { id, ano, data_inicio, data_fim, ativo } = parseResult.data;
-
-    // Se um ano letivo for ativado, desativar todos os outros da mesma escola
-    if (ativo) {
-      const { error: deactivateError } = await supabase
-        .from('anos_letivos')
-        .update({ ativo: false })
-        .eq('escola_id', userEscolaId)
-        .neq('id', id || '00000000-0000-0000-0000-000000000000'); // Exclui o atual se já existir
-      
-      if (deactivateError) {
-        console.error('Error deactivating other anos letivos:', deactivateError);
-        return NextResponse.json({ ok: false, error: 'Erro ao desativar outros anos letivos.' }, { status: 500 });
-      }
-    }
-
-    const upsertData = {
-      id: id,
-      escola_id: userEscolaId,
-      ano,
-      data_inicio,
-      data_fim,
-      ativo,
-    };
-
-    const { data, error } = await supabase
-      .from('anos_letivos')
-      .upsert(upsertData, { onConflict: 'escola_id,ano' })
-      .select()
-      .single();
+    const { data, error } = await (supabase as any).rpc('setup_active_ano_letivo', {
+      p_escola_id: userEscolaId,
+      p_ano_data: parseResult.data,
+    });
 
     if (error) {
-      console.error('Error upserting ano letivo:', error);
+      console.error('Error in RPC setup_active_ano_letivo:', error);
       return NextResponse.json({ ok: false, error: 'Erro ao salvar o ano letivo.' }, { status: 500 });
     }
 

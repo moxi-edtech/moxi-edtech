@@ -14,7 +14,7 @@ export async function getChartsData(): Promise<ChartsData> {
 
   const { data: pagamentos } = escolaId
     ? await supabase
-        .from("pagamentos_status")
+        .from("vw_pagamentos_status" as any)
         .select("status, total")
         .eq("escola_id", escolaId)
     : { data: [] }

@@ -54,9 +54,9 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
 
     const queryStart = shouldLog ? performance.now() : 0;
     const { data, error } = await supabase
-      .from("escolas")
+      .from("vw_escola_info" as any)
       .select("nome, plano_atual, status")
-      .eq("id", resolvedEscolaId || escolaId)
+      .eq("escola_id", resolvedEscolaId || escolaId)
       .maybeSingle();
     if (shouldLog) log('query', performance.now() - queryStart);
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });

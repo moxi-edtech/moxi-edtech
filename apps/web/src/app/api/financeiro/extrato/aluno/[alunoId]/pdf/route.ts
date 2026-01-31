@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { resolveEscolaIdForUser } from "@/lib/supabase/resolveEscolaIdForUser";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { createInstitutionalPdf } from "@/lib/pdf/documentTemplate";
 import { buildSignatureLine, createQrImage } from "@/lib/pdf/qr";
 import { requireFeature } from "@/lib/plan/requireFeature";
@@ -220,7 +220,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ alunoId
       .eq("aluno_id", alunoId)
       .order("data_vencimento", { ascending: true });
 
-    mensalidadesQuery = applyKf2ListInvariants(mensalidadesQuery, { defaultLimit: 2000 });
+    mensalidadesQuery = applyKf2ListInvariants(mensalidadesQuery, { defaultLimit: 50 });
 
     const { data: mensalidades, error: mensError } = await mensalidadesQuery.returns<MensalidadeRow[]>();
 

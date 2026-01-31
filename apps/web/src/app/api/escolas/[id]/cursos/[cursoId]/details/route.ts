@@ -40,7 +40,7 @@ export async function GET(
       .eq("status_validacao", "ativo")
       .order("nome", { ascending: true });
 
-    turmasQuery = applyKf2ListInvariants(turmasQuery, { defaultLimit: 200 });
+    turmasQuery = applyKf2ListInvariants(turmasQuery, { defaultLimit: 50 });
 
     const { data: turmas, error: turmasError } = await turmasQuery;
 
@@ -60,7 +60,7 @@ export async function GET(
       .eq("status", "ativo")
       .order("created_at", { ascending: false });
 
-    matriculasQuery = applyKf2ListInvariants(matriculasQuery, { defaultLimit: 500 });
+    matriculasQuery = applyKf2ListInvariants(matriculasQuery, { defaultLimit: 50 });
 
     const { data: matriculas, error: matriculasError } = await matriculasQuery;
 

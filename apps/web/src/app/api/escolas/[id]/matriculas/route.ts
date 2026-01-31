@@ -73,7 +73,7 @@ export async function GET(
       .eq("ano_letivo_id", anoLetivoId)
       .order("created_at", { ascending: false });
 
-    query = applyKf2ListInvariants(query, { defaultLimit: 200 });
+    query = applyKf2ListInvariants(query, { defaultLimit: 50 });
 
     if (scope === "pending") {
       return NextResponse.json({ ok: true, filters: { anoLetivoId, classeId, courseId, scope, turmaId: turmaId ?? null }, meta: { total: 0, pendentes: 0 }, matriculas: [] });

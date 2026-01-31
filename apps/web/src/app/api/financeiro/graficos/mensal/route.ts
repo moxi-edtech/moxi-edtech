@@ -17,7 +17,7 @@ export async function GET(req: Request) {
       .eq("ano", ano)
       .order("mes", { ascending: true });
 
-    query = applyKf2ListInvariants(query, { defaultLimit: 500 });
+    query = applyKf2ListInvariants(query, { defaultLimit: 50 });
 
     const { data, error } = await query;
 

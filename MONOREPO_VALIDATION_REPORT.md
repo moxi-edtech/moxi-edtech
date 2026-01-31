@@ -1,27 +1,24 @@
 # RELATÓRIO DE VALIDAÇÃO KLASSE - MONOREPO EDITION
 
-**Data**: 2026-01-21T23:19:19.502Z
-**Arquivos carregados**: 696
-
-**Avisos**:
-- Falha ao conectar no banco: 
+**Data**: 2026-01-29T16:28:20.217Z
+**Arquivos carregados**: 796
 
 ## 📁 ESTATÍSTICAS DO MONOREPO
 
 | Tipo | Quantidade |
 |------|------------|
-| components | 177 |
-| pages | 144 |
-| api | 210 |
+| components | 200 |
+| pages | 161 |
+| api | 249 |
 | hooks | 10 |
-| lib | 55 |
+| lib | 60 |
 
 ## 📈 STATUS DAS VERIFICAÇÕES
 
 ### P0 (0/1 ✅)
 
 #### ❌ P0.5: FAIL
-Service Role usada em rotas humanas (76 ocorrências). PRIMEIRAS:
+Service Role usada em rotas humanas (59 ocorrências). PRIMEIRAS:
 
 **Evidências**:
 - apps/web/src/app/api/health/route.ts: SUPABASE_SERVICE_ROLE_KEY
@@ -35,10 +32,10 @@ Service Role usada em rotas humanas (76 ocorrências). PRIMEIRAS:
 13 endpoints sem handlers de método HTTP explícitos
 
 **Evidências**:
-- Módulos de API encontrados: financeiro, health, migracao, seed-superadmin, aluno, alunos, auth, debug, escolas, jobs, matriculas, professor, secretaria, super-admin, test, webhooks
-- financeiro: 30 endpoints
+- Módulos de API encontrados: financeiro, health, migracao, seed-superadmin, teste-rpc, aluno, alunos, auth, debug, escolas, jobs, matriculas, professor, secretaria, super-admin, test, webhooks, admin, public, escola
+- financeiro: 45 endpoints
 - health: 2 endpoints
-- ... e mais 14
+- ... e mais 18
 
 #### ❌ API.2: FAIL
 16 endpoints com possíveis problemas de segurança
@@ -68,7 +65,7 @@ Service Role usada em rotas humanas (76 ocorrências). PRIMEIRAS:
 
 **Evidências**:
 - React: 46 componentes
-- Next.js: 29 componentes
+- Next.js: 33 componentes
 - Supabase: 0 componentes
 - ... e mais 2
 
@@ -82,7 +79,7 @@ Service Role usada em rotas humanas (76 ocorrências). PRIMEIRAS:
 - ... e mais 2
 
 #### ⚠️ UI.3: WARNING
-55 componentes sem estados explícitos de loading/error
+51 componentes sem estados explícitos de loading/error
 
 **Evidências**:
 - src/components/dashboard/ActionCard.stories.tsx: sem estados de loading/error

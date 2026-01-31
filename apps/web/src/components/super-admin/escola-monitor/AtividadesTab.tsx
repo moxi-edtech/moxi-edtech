@@ -1,7 +1,7 @@
 // apps/web/src/components/super-admin/escola-monitor/AtividadesTab.tsx
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/badge';
 import type { AtividadeRecente } from '@/app/super-admin/escolas/[id]/types';
 import { 

@@ -24,7 +24,7 @@ export async function GET() {
         await supabase.from('professores').select('id').eq('profile_id', user.id).eq('escola_id', escolaId)
       ).data?.map((r: any) => r.id) || [] )
 
-    query = applyKf2ListInvariants(query, { defaultLimit: 200 })
+    query = applyKf2ListInvariants(query, { defaultLimit: 50 })
 
     const { data: tdp, error } = await query
 

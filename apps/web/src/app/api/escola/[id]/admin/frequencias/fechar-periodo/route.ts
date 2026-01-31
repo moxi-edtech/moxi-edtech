@@ -189,49 +189,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
   }
 
-    outboxEventId = await enqueueOutboxEvent(supabase, {
-      escolaId: effectiveEscolaId,
-      eventType: 'frequencias_fechar_periodo',
-      idempotencyKey,
-      scope: 'professor',
-      payload: { turma_id, periodo_letivo_id },
+    // A lógica de negócio foi movida para a RPC `fechar_periodo_academico`.
+    // A RPC irá travar tanto as frequências quanto as notas de forma atômica e auditada.
+    const { error } = await supabase.rpc('fechar_periodo_academico', {
+      p_escola_id: effectiveEscolaId,
+      p_turma_id: turma_id,
+      p_periodo_letivo_id: periodo_letivo_id,
     });
 
-    const { data: turma, error: turmaError } = await supabase
-      .from('turmas')
-      .select('id')
-      .eq('escola_id', effectiveEscolaId)
-      .eq('id', turma_id)
-      .maybeSingle();
-
-    if (turmaError || !turma) {
-      return NextResponse.json({ ok: false, error: 'Turma não encontrada.' }, { status: 404 });
+    if (error) {
+      console.error('Error calling fechar_periodo_academico RPC:', error);
+      return NextResponse.json({ ok: false, error: 'Erro ao fechar o período.' }, { status: 500 });
     }
-
-    const { data: periodo, error: periodoError } = await supabase
-      .from('periodos_letivos')
-      .select('id')
-      .eq('escola_id', effectiveEscolaId)
-      .eq('id', periodo_letivo_id)
-      .maybeSingle();
-
-    if (periodoError || !periodo) {
-      return NextResponse.json({ ok: false, error: 'Período letivo não encontrado.' }, { status: 404 });
-    }
-
-    const { error: refreshError } = await supabase
-      .rpc('refresh_frequencia_status_periodo', {
-        p_turma_id: turma_id,
-        p_periodo_letivo_id: periodo_letivo_id,
-      });
-
-    if (refreshError) {
-      console.error('Error refreshing frequencia status:', refreshError);
-      await markOutboxEventFailed(supabase, outboxEventId, refreshError.message).catch(() => null);
-      return NextResponse.json({ ok: false, error: 'Erro ao fechar frequência.' }, { status: 500 });
-    }
-
-    await markOutboxEventProcessed(supabase, outboxEventId).catch(() => null);
 
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (e) {

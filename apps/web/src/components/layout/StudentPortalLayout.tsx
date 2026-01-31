@@ -15,6 +15,7 @@ import {
 import SignOutButton from '@/components/auth/SignOutButton'
 import BackButton from '@/components/navigation/BackButton'
 import { parsePlanTier, PLAN_NAMES, type PlanTier } from "@/config/plans"
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 
 type Item = { name: string, icon: React.ComponentType<React.SVGProps<SVGSVGElement>> }
 
@@ -36,8 +37,16 @@ export default function StudentPortalLayout({ children }: { children: React.Reac
     let mounted = true
     ;(async () => {
       try {
-        const { data: prof } = await supabase.from('profiles').select('escola_id').order('created_at', { ascending: false }).limit(1)
-        const escolaId = (prof?.[0] as any)?.escola_id as string | null
+        const { data: userRes } = await supabase.auth.getUser()
+        const user = userRes?.user
+        if (!user) return
+        const metaEscolaId = (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? null
+        const escolaId = await resolveEscolaIdForUser(
+          supabase,
+          user.id,
+          null,
+          metaEscolaId ? String(metaEscolaId) : null
+        )
         if (!mounted || !escolaId) return
         try {
           const res = await fetch(`/api/escolas/${escolaId}/nome`, { cache: 'no-store' })

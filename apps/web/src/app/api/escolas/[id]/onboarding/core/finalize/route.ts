@@ -216,28 +216,9 @@ export async function POST(
       }
     }
 
-    // 3.2) Create turma if provided (idempotent by escola_id+nome)
-    if (className && className.trim()) {
-      const nomeTurma = className.trim()
-      const { data: existingClass } = await admin
-        .from('turmas')
-        .select('id')
-        .eq('escola_id', escolaId)
-        .eq('nome', nomeTurma)
-        .limit(1)
-      if (!existingClass || existingClass.length === 0) {
-        const turmaRows: TablesInsert<'turmas'>[] = [
-          { nome: nomeTurma, escola_id: escolaId } as TablesInsert<'turmas'>,
-        ]
-        const { error: classError } = await admin.from('turmas').insert(turmaRows)
-        if (classError) {
-          return NextResponse.json(
-            { ok: false, error: classError.message || 'Falha ao criar turma' },
-            { status: 400 }
-          )
-        }
-      }
-    }
+    // 3.2) Lógica de criação de turma legada removida pois não está em conformidade com o novo modelo acadêmico.
+    // A criação de turmas deve ser feita via fluxo de configuração acadêmica, que exige mais contexto (currículo, ano letivo).
+
 
     // 3.3) Create cursos if provided
     if (subjects && subjects.trim()) {

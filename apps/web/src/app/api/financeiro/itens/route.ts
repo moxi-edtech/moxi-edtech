@@ -42,7 +42,7 @@ export async function GET(req: Request) {
 
     if (onlyActive) query = query.eq('ativo', true)
 
-    query = applyKf2ListInvariants(query, { defaultLimit: 200 })
+    query = applyKf2ListInvariants(query, { defaultLimit: 50 })
 
     const { data, error } = await query
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })

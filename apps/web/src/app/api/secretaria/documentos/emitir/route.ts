@@ -14,11 +14,16 @@ const payloadSchema = z.object({
     "declaracao_notas",
     "cartao_estudante",
     "ficha_inscricao",
+    "historico",
+    "certificado",
   ]),
+  ano_letivo: z.number().int().optional(), // Ano letivo para documentos finais
 });
 
+const FINAL_DOCUMENT_TYPES = ["declaracao_notas", "historico", "certificado"];
+
 export async function POST(request: Request) {
-  const supabase = await supabaseServerTyped();
+  const supabase = await supabaseServerTyped<any>();
   const { data: auth } = await supabase.auth.getUser();
   const user = auth?.user;
 
@@ -32,7 +37,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: parsed.error.format() }, { status: 400 });
   }
 
-  const { alunoId, escolaId, tipoDocumento } = parsed.data;
+  const { alunoId, escolaId, tipoDocumento, ano_letivo } = parsed.data;
   const resolvedEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
 
   if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
@@ -46,6 +51,28 @@ export async function POST(request: Request) {
   });
   if (authError) return authError;
 
+  // Se for um documento final, usa a nova RPC baseada no histórico
+  if (FINAL_DOCUMENT_TYPES.includes(tipoDocumento)) {
+    if (!ano_letivo) {
+      return NextResponse.json({ ok: false, error: "O ano letivo é obrigatório para este tipo de documento." }, { status: 400 });
+    }
+
+    const { data: result, error: rpcError } = await supabase
+      .rpc("emitir_documento_final", {
+        p_escola_id: escolaId,
+        p_aluno_id: alunoId,
+        p_ano_letivo: ano_letivo,
+        p_tipo_documento: tipoDocumento,
+      })
+      .single();
+
+    if (rpcError) {
+      return NextResponse.json({ ok: false, error: rpcError.message }, { status: 400 });
+    }
+    return NextResponse.json(result);
+  }
+
+  // Lógica antiga para documentos baseados na matrícula ativa
   const { data: matricula, error: matriculaError } = await supabase
     .from("matriculas")
     .select(
@@ -73,6 +100,12 @@ export async function POST(request: Request) {
   const hashBase = `${randomUUID()}-${matricula.id}-${Date.now()}`;
   const hashValidacao = createHash("sha256").update(hashBase).digest("hex");
 
+  const { data: numeroSequencial, error: numeroError } = await supabase
+    .rpc("next_documento_numero", { p_escola_id: escolaId });
+  if (numeroError) {
+    return NextResponse.json({ ok: false, error: numeroError.message }, { status: 400 });
+  }
+
   const snapshot = {
     aluno_id: alunoId,
     aluno_nome: aluno.nome_completo || aluno.nome || "",
@@ -85,13 +118,15 @@ export async function POST(request: Request) {
     curso_nome: turma.cursos?.nome || null,
     ano_letivo: matricula.ano_letivo || null,
     tipo_documento: tipoDocumento,
+    numero_sequencial: numeroSequencial ?? null,
     hash_validacao: hashValidacao,
   };
 
   const insertPayload: Database["public"]["Tables"]["documentos_emitidos"]["Insert"] = {
     escola_id: escolaId,
     aluno_id: alunoId,
-    tipo: tipoDocumento,
+    numero_sequencial: numeroSequencial ?? null,
+    tipo: tipoDocumento as Database["public"]["Tables"]["documentos_emitidos"]["Row"]["tipo"],
     dados_snapshot:
       snapshot as Database["public"]["Tables"]["documentos_emitidos"]["Row"]["dados_snapshot"],
     created_by: user.id,
@@ -115,4 +150,3 @@ export async function POST(request: Request) {
     hash: hashValidacao,
     tipo: tipoDocumento,
   });
-}

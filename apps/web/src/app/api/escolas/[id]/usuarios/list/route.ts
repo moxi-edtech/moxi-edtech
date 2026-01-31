@@ -32,7 +32,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       .select('user_id, papel')
       .eq('escola_id', escolaId)
 
-    linksQuery = applyKf2ListInvariants(linksQuery, { defaultLimit: 2000 })
+    linksQuery = applyKf2ListInvariants(linksQuery, { defaultLimit: 50 })
 
     const { data: links, error } = await linksQuery
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
@@ -40,16 +40,14 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
     const ids = (links || []).map(l => l.user_id)
     if (ids.length === 0) return NextResponse.json({ ok: true, users: [], page, perPage, total: 0 })
 
-    let profilesQuery = supabase
-      .from('profiles')
-      .select('user_id, email, nome')
-      .in('user_id', ids)
+    const { data: profiles, error: profilesError } = await (supabase as any)
+      .rpc('tenant_profiles_by_ids', { p_user_ids: ids })
 
-    profilesQuery = applyKf2ListInvariants(profilesQuery, { defaultLimit: 2000 })
-
-    const { data: profiles } = await profilesQuery
+    if (profilesError) {
+      return NextResponse.json({ ok: false, error: profilesError.message }, { status: 400 })
+    }
     let users = (links || []).map(l => {
-      const p = profiles?.find(pr => pr.user_id === l.user_id)
+      const p = profiles?.find((pr: any) => pr.user_id === l.user_id)
       return { user_id: l.user_id, papel: l.papel, email: p?.email || '', nome: p?.nome || '' }
     })
     if (q) {

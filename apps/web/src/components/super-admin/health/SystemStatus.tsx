@@ -1,7 +1,7 @@
 // apps/web/src/components/super-admin/health/SystemStatus.tsx
 'use client';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/badge';
 import type { SystemHealth, EscolaMetricas } from '@/app/super-admin/health/types';
 import { Activity, School, Users, CreditCard, Clock } from 'lucide-react';

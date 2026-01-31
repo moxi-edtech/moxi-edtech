@@ -20,7 +20,7 @@ export async function GET(_req: Request) {
     }
 
     let query = supabase
-      .from('pagamentos_status')
+      .from('vw_pagamentos_status')
       .select('status, total')
       .eq('escola_id', escolaId);
 

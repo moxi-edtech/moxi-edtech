@@ -1,8 +1,8 @@
 // apps/web/src/components/super-admin/health/InfraTab.tsx
 'use client';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card';
+import { Progress } from '@/components/ui/Progress';
 import type { InfraMetrics } from '@/app/super-admin/health/types';
 
 interface InfraTabProps {

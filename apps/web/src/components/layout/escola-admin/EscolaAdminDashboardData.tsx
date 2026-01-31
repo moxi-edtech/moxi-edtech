@@ -5,7 +5,6 @@ import EscolaAdminDashboardContent from "./EscolaAdminDashboardContent";
 import { supabaseServer } from "@/lib/supabaseServer";
 import type { KpiStats } from "./KpiSection";
 import type { SetupStatus } from "./setupStatus";
-import { findClassesSemPreco } from "@/lib/financeiro/missing-pricing";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 
 /**
@@ -44,9 +43,14 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
     // ✅ 1) KPIs (ajusta nomes de tabela/coluna conforme teu schema real)
     // Vou manter isso “agnóstico”: você substitui pelas tuas views/funcs.
     // O objetivo aqui é o padrão: tudo no server, nada de componente client buscando.
-        const missingPricingPromise = findClassesSemPreco(s as any, escolaId, null)
-          .then((result) => result.items.length)
-          .catch(() => 0);
+        let missingPricingQuery = s
+          .from("vw_financeiro_missing_pricing_count")
+          .select("ano_letivo, missing_count")
+          .eq("escola_id", escolaId);
+        missingPricingQuery = applyKf2ListInvariants(missingPricingQuery, {
+          defaultLimit: 1,
+          order: [{ column: "ano_letivo", ascending: false }],
+        });
 
         let financeiroKpiQuery = s
           .from("vw_financeiro_kpis_mes")
@@ -62,7 +66,7 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
     pendingTurmasCount,
     setupStatusResult,
     configResult,
-    missingPricingCount,
+    missingPricingResult,
     financeiroKpiResult,
     escolaNomeResult,
   ] = await Promise.all([
@@ -85,7 +89,7 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
       .select("frequencia_modelo, frequencia_min_percent, modelo_avaliacao, avaliacao_config")
       .eq("escola_id", escolaId)
       .maybeSingle(),
-    missingPricingPromise,
+    missingPricingQuery,
     financeiroKpiQuery,
     s.from("escolas").select("nome").eq("id", escolaId).maybeSingle(),
   ]);
@@ -138,6 +142,7 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
         };
     
         const pendingCount = pendingTurmasCount.data?.pendentes_total ?? 0;
+        const missingPricingCount = Number(missingPricingResult.data?.missing_count ?? 0);
     
         // ✅ 2) Avisos / Eventos (placeholder, ajusta origem real)
         const avisos: Aviso[] = [];

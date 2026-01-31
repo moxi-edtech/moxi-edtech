@@ -14,6 +14,7 @@ export type DocumentoSnapshot = {
   curso_nome?: string | null;
   ano_letivo?: number | null;
   tipo_documento?: string | null;
+  numero_sequencial?: number | null;
   hash_validacao?: string | null;
 };
 
@@ -37,7 +38,7 @@ export async function getDocumentoEmitido(docId: string) {
 
   const { data: doc, error } = await supabase
     .from("documentos_emitidos")
-    .select("id, public_id, escola_id, tipo, created_at, dados_snapshot")
+    .select("id, public_id, escola_id, tipo, created_at, dados_snapshot, numero_sequencial")
     .eq("id", docId)
     .single();
 
@@ -58,7 +59,13 @@ export async function getDocumentoEmitido(docId: string) {
   const escolaRow = escola as { nome?: string | null; validation_base_url?: string | null } | null;
 
   return {
-    doc: doc as DocumentoEmitido,
+    doc: {
+      ...(doc as DocumentoEmitido),
+      dados_snapshot: {
+        ...(doc as DocumentoEmitido).dados_snapshot,
+        numero_sequencial: (doc as any).numero_sequencial ?? (doc as any).dados_snapshot?.numero_sequencial ?? null,
+      },
+    },
     escolaNome: escolaRow?.nome ?? "Escola",
     validationBaseUrl: escolaRow?.validation_base_url ?? null,
   } as const;

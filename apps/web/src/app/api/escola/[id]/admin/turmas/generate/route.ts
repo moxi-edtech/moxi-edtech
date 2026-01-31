@@ -90,59 +90,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ ok: false, error: 'Currículo publicado não encontrado.' }, { status: 400 });
     }
 
-    const inserts: any[] = [];
-    if (turmas && turmas.length > 0) {
-      turmas.forEach((item) => {
-        const quantidade = item.quantidade ?? 1;
-        const turmaLetters = letters.slice(0, quantidade);
-        turmaLetters.forEach((letter) => {
-          inserts.push({
-            escola_id: userEscolaId,
-            curso_id: cursoId,
-            classe_id: item.classeId,
-            ano_letivo: anoLetivo,
-            nome: letter,
-            turno: item.turno,
-            capacidade_maxima: capacidadeMaxima ?? 35,
-            status_validacao: 'ativo',
-          });
-        });
-      });
-    } else if (classes && classes.length > 0 && turnos && turnos.length > 0) {
-      classes.forEach((cls) => {
-        const quantidade = cls.quantidade ?? 1;
-        const turmaLetters = letters.slice(0, quantidade);
-        turmaLetters.forEach((letter) => {
-          turnos.forEach((turno) => {
-            inserts.push({
-              escola_id: userEscolaId,
-              curso_id: cursoId,
-              classe_id: cls.classeId,
-              ano_letivo: anoLetivo,
-              nome: letter,
-              turno,
-              capacidade_maxima: capacidadeMaxima ?? 35,
-              status_validacao: 'ativo',
-            });
-          });
-        });
-      });
-    }
-
-    if (inserts.length === 0) {
-      return NextResponse.json({ ok: false, error: 'Nenhuma turma para gerar.' }, { status: 400 });
-    }
-
-    const { data, error } = await supabase
-      .from('turmas')
-      .upsert(inserts, {
-        onConflict: 'escola_id,curso_id,classe_id,ano_letivo,nome,turno',
-        ignoreDuplicates: false,
-      })
-      .select('id, classe_id, turno, nome');
+    const { data, error } = await supabase.rpc('gerar_turmas_from_curriculo', {
+      p_escola_id: userEscolaId,
+      p_curso_id: cursoId,
+      p_ano_letivo: anoLetivo,
+      p_generation_params: JSON.parse(JSON.stringify(parsed.data)), // Pass generation params as JSONB
+    });
 
     if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+      console.error('Error calling gerar_turmas_from_curriculo RPC:', error);
+      return NextResponse.json({ ok: false, error: 'Erro ao gerar turmas.' }, { status: 500 });
     }
 
     return NextResponse.json({ ok: true, data });

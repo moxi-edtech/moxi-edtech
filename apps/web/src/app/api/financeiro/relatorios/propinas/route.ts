@@ -42,7 +42,7 @@ export async function GET(req: Request) {
       .order("ano", { ascending: true })
       .order("mes", { ascending: true });
 
-    mensalQuery = applyKf2ListInvariants(mensalQuery, { defaultLimit: 500 });
+    mensalQuery = applyKf2ListInvariants(mensalQuery, { defaultLimit: 50 });
 
     const { data: mensal, error: mensalError } = await mensalQuery;
 
@@ -58,13 +58,30 @@ export async function GET(req: Request) {
       );
     }
 
-    // 2) Ranking por turma (para tabela)
+    // 2) Ranking por turma (MV)
     let turmaQuery = supabase
-      .rpc("get_propinas_por_turma", { p_ano_letivo: anoLetivo })
+      .from("vw_financeiro_propinas_por_turma")
+      .select(
+        `
+        escola_id,
+        ano_letivo,
+        turma_id,
+        turma_nome,
+        classe_label,
+        turno,
+        qtd_mensalidades,
+        qtd_em_atraso,
+        total_previsto,
+        total_pago,
+        total_em_atraso,
+        inadimplencia_pct
+      `
+      )
+      .eq("ano_letivo", anoLetivo)
       .order("inadimplencia_pct", { ascending: false })
       .order("total_em_atraso", { ascending: false });
 
-    turmaQuery = applyKf2ListInvariants(turmaQuery, { defaultLimit: 500 });
+    turmaQuery = applyKf2ListInvariants(turmaQuery, { defaultLimit: 50 });
 
     const { data: porTurma, error: turmaError } = await turmaQuery;
 

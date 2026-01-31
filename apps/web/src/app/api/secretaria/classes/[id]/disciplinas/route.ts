@@ -23,7 +23,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       .eq('classe_id', classeId)
       .order('nome')
 
-    query = applyKf2ListInvariants(query, { defaultLimit: 200 })
+    query = applyKf2ListInvariants(query, { defaultLimit: 50 })
 
     const { data, error } = await query
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })

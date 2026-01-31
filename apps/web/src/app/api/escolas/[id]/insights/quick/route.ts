@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -8,19 +9,36 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
   const { id: escolaId } = await context.params
   try {
     const s = await supabaseServer()
-    // Touch auth to ensure RLS context
-    await s.auth.getUser()
+    const { data: userRes } = await s.auth.getUser()
+    const user = userRes?.user
+    if (!user) {
+      return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
+    }
+
+    const metaEscolaId = (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? null
+    const resolvedEscolaId = await resolveEscolaIdForUser(
+      s as any,
+      user.id,
+      escolaId,
+      metaEscolaId ? String(metaEscolaId) : null
+    )
+
+    if (!resolvedEscolaId) {
+      return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
+    }
 
     // Query scoped views (RLS function handles tenant)
     const [{ data: topT }, { data: topC }] = await Promise.all([
       s
-        .from('v_top_turmas_hoje' as any)
+        .from('vw_top_turmas_hoje' as any)
         .select('turma_nome, percent')
+        .eq('escola_id', resolvedEscolaId)
         .order('percent', { ascending: false })
         .limit(10),
       s
-        .from('v_top_cursos_media' as any)
+        .from('vw_top_cursos_media' as any)
         .select('curso_nome, media')
+        .eq('escola_id', resolvedEscolaId)
         .order('media', { ascending: false })
         .limit(10),
     ])
