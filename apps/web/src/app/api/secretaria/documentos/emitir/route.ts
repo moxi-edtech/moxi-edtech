@@ -143,10 +143,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: docError?.message || "Falha ao emitir" }, { status: 400 });
   }
 
-  return NextResponse.json({
-    ok: true,
-    docId: doc.id,
-    publicId: doc.public_id,
-    hash: hashValidacao,
-    tipo: tipoDocumento,
-  });
+      return NextResponse.json({
+        ok: true,
+        docId: doc.id,
+        publicId: doc.public_id,
+        hash: hashValidacao,
+        tipo: tipoDocumento,
+      });
+    }
