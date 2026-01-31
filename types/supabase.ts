@@ -12,1740 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
-  internal: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      mv_admin_dashboard_counts: {
-        Row: {
-          alunos_ativos: number | null
-          avaliacoes_total: number | null
-          escola_id: string | null
-          professores_total: number | null
-          turmas_total: number | null
-        }
-        Relationships: []
-      }
-      mv_admin_matriculas_por_mes: {
-        Row: {
-          escola_id: string | null
-          mes: string | null
-          total: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
-      }
-      mv_admin_pending_turmas_count: {
-        Row: {
-          escola_id: string | null
-          pendentes_total: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
-      }
-      mv_admissoes_counts_por_status: {
-        Row: {
-          aprovada_total: number | null
-          em_analise_total: number | null
-          escola_id: string | null
-          matriculado_7d_total: number | null
-          submetida_total: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "candidaturas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
-      }
-      mv_boletim_por_matricula: {
-        Row: {
-          aluno_id: string | null
-          ano_letivo: number | null
-          disciplina_id: string | null
-          disciplina_nome: string | null
-          disciplina_sigla: string | null
-          escola_id: string | null
-          has_missing: boolean | null
-          matricula_id: string | null
-          missing_count: number | null
-          needs_config: boolean | null
-          nota_final: number | null
-          notas_por_tipo: Json | null
-          status: string | null
-          total_avaliacoes: number | null
-          total_notas: number | null
-          trimestre: number | null
-          turma_id: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_propinas_por_turma"
-            referencedColumns: ["turma_id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "mv_migracao_turmas_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "mv_ocupacao_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "mv_turmas_para_matricula"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      mv_cursos_reais: {
-        Row: {
-          codigo: string | null
-          course_code: string | null
-          curriculum_key: string | null
-          descricao: string | null
-          escola_id: string | null
-          id: string | null
-          nivel: string | null
-          nome: string | null
-          semestre_id: string | null
-          status_aprovacao: string | null
-          tipo: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
-      }
-      mv_escola_cursos_stats: {
-        Row: {
-          codigo: string | null
-          course_code: string | null
-          curriculum_key: string | null
-          descricao: string | null
-          escola_id: string | null
-          id: string | null
-          nivel: string | null
-          nome: string | null
-          tipo: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
-      }
-      mv_escola_estrutura_counts: {
-        Row: {
-          classes_total: number | null
-          cursos_total: number | null
-          disciplinas_total: number | null
-          escola_id: string | null
-        }
-        Relationships: []
-      }
-      mv_escola_info: {
-        Row: {
-          escola_id: string | null
-          nome: string | null
-          plano_atual: Database["public"]["Enums"]["app_plan_tier"] | null
-          status: string | null
-        }
-        Relationships: []
-      }
-      mv_escola_setup_status: {
-        Row: {
-          escola_id: string | null
-          has_3_trimestres: boolean | null
-          has_ano_letivo_ativo: boolean | null
-          has_curriculo_published: boolean | null
-          has_turmas_no_ano: boolean | null
-          percentage: number | null
-        }
-        Relationships: []
-      }
-      mv_financeiro_cobrancas_diario: {
-        Row: {
-          dia: string | null
-          enviadas: number | null
-          escola_id: string | null
-          pagos: number | null
-          respondidas: number | null
-          valor_recuperado: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "financeiro_cobrancas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_cobrancas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_cobrancas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_cobrancas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_cobrancas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_cobrancas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_cobrancas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_cobrancas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_cobrancas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
-      }
-      mv_financeiro_dashboard: {
-        Row: {
-          alunos_em_dia: number | null
-          alunos_inadimplentes: number | null
-          data_referencia: string | null
-          escola_id: string | null
-          sync_status: string | null
-          sync_updated_at: string | null
-          total_inadimplente: number | null
-          total_pago: number | null
-          total_pendente: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "aggregates_financeiro_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_financeiro_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_financeiro_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_financeiro_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_financeiro_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_financeiro_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_financeiro_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_financeiro_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_financeiro_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
-      }
-      mv_financeiro_kpis_geral: {
-        Row: {
-          escola_id: string | null
-          inadimplentes_total: number | null
-          matriculados_total: number | null
-          pagos_total: number | null
-          pagos_valor: number | null
-          pendentes_total: number | null
-          pendentes_valor: number | null
-          risco_total: number | null
-        }
-        Relationships: []
-      }
-      mv_financeiro_kpis_mes: {
-        Row: {
-          escola_id: string | null
-          inadimplencia_total: number | null
-          mes_ref: string | null
-          previsto_total: number | null
-          realizado_total: number | null
-        }
-        Relationships: []
-      }
-      mv_financeiro_missing_pricing_count: {
-        Row: {
-          ano_letivo: number | null
-          escola_id: string | null
-          missing_count: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
-      }
-      mv_financeiro_propinas_mensal_escola: {
-        Row: {
-          ano: number | null
-          ano_letivo: string | null
-          competencia_mes: string | null
-          escola_id: string | null
-          inadimplencia_pct: number | null
-          mes: number | null
-          qtd_em_atraso: number | null
-          qtd_mensalidades: number | null
-          total_em_atraso: number | null
-          total_pago: number | null
-          total_previsto: number | null
-        }
-        Relationships: []
-      }
-      mv_financeiro_propinas_por_turma: {
-        Row: {
-          ano_letivo: number | null
-          classe_label: string | null
-          escola_id: string | null
-          inadimplencia_pct: number | null
-          qtd_em_atraso: number | null
-          qtd_mensalidades: number | null
-          total_em_atraso: number | null
-          total_pago: number | null
-          total_previsto: number | null
-          turma_id: string | null
-          turma_nome: string | null
-          turno: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
-      }
-      mv_financeiro_radar_resumo: {
-        Row: {
-          aluno_id: string | null
-          aluno_nome: string | null
-          escola_id: string | null
-          meses_atraso: string[] | null
-          responsavel_nome: string | null
-          telefone_responsavel: string | null
-          turma_nome: string | null
-          valor_total_atraso: number | null
-        }
-        Relationships: []
-      }
-      mv_financeiro_sidebar_badges: {
-        Row: {
-          candidaturas_pendentes: number | null
-          cobrancas_pendentes: number | null
-          escola_id: string | null
-        }
-        Relationships: []
-      }
-      mv_migracao_cursos_lookup: {
-        Row: {
-          codigo: string | null
-          course_code: string | null
-          escola_id: string | null
-          id: string | null
-          status_aprovacao: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
-      }
-      mv_migracao_turmas_lookup: {
-        Row: {
-          ano_letivo: number | null
-          escola_id: string | null
-          id: string | null
-          nome: string | null
-          turma_code: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
-      }
-      mv_ocupacao_turmas: {
-        Row: {
-          capacidade_maxima: number | null
-          classe: string | null
-          escola_id: string | null
-          id: string | null
-          nome: string | null
-          ocupacao_percentual: number | null
-          sala: string | null
-          status_ocupacao: string | null
-          total_matriculas_ativas: number | null
-          turno: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
-      }
-      mv_pagamentos_status: {
-        Row: {
-          escola_id: string | null
-          status: string | null
-          total: number | null
-        }
-        Relationships: []
-      }
-      mv_radar_inadimplencia: {
-        Row: {
-          aluno_id: string | null
-          data_vencimento: string | null
-          dias_em_atraso: number | null
-          escola_id: string | null
-          mensalidade_id: string | null
-          nome_aluno: string | null
-          nome_turma: string | null
-          responsavel: string | null
-          status_mensalidade: string | null
-          status_risco: string | null
-          telefone: string | null
-          valor_em_atraso: number | null
-          valor_pago_total: number | null
-          valor_previsto: number | null
-        }
-        Relationships: []
-      }
-      mv_secretaria_dashboard_counts: {
-        Row: {
-          alunos_ativos: number | null
-          escola_id: string | null
-          matriculas_total: number | null
-          turmas_total: number | null
-        }
-        Relationships: []
-      }
-      mv_secretaria_dashboard_kpis: {
-        Row: {
-          alunos_sem_turma: number | null
-          avisos_recentes: Json | null
-          escola_id: string | null
-          inadimplentes_total: number | null
-          matriculas_ativas: number | null
-          novas_matriculas: Json | null
-          pendencias_importacao: number | null
-          resumo_status: Json | null
-          risco_total: number | null
-          total_alunos: number | null
-          total_turmas: number | null
-          turmas_destaque: Json | null
-          turmas_sem_professor: number | null
-        }
-        Relationships: []
-      }
-      mv_secretaria_matriculas_status: {
-        Row: {
-          escola_id: string | null
-          status: string | null
-          total: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
-      }
-      mv_secretaria_matriculas_turma_status: {
-        Row: {
-          escola_id: string | null
-          status: string | null
-          total: number | null
-          turma_id: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_propinas_por_turma"
-            referencedColumns: ["turma_id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "mv_migracao_turmas_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "mv_ocupacao_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "mv_turmas_para_matricula"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      mv_staging_alunos_summary: {
-        Row: {
-          ano_letivo: number | null
-          escola_id: string | null
-          import_id: string | null
-          total_alunos: number | null
-          turma_codigo: string | null
-        }
-        Relationships: []
-      }
-      mv_super_admin_audit_metrics: {
-        Row: {
-          accessos_24h: number | null
-          error_count_24h: number | null
-          escola_id: string | null
-          last_error: string | null
-          ultimo_acesso: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "audit_logs_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "audit_logs_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "audit_logs_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "audit_logs_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "audit_logs_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "audit_logs_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "audit_logs_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "audit_logs_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "audit_logs_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
-      }
-      mv_super_admin_escola_metrics: {
-        Row: {
-          alunos_ativos: number | null
-          alunos_inativos: number | null
-          escola_id: string | null
-          matriculas_ativas: number | null
-          professores: number | null
-          turmas_ativas: number | null
-          turmas_total: number | null
-        }
-        Relationships: []
-      }
-      mv_top_cursos_media: {
-        Row: {
-          curso_id: string | null
-          curso_nome: string | null
-          escola_id: string | null
-          media: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "notas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
-      }
-      mv_top_turmas_hoje: {
-        Row: {
-          dia: string | null
-          escola_id: string | null
-          percent: number | null
-          presentes: number | null
-          total: number | null
-          turma_id: string | null
-          turma_nome: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_propinas_por_turma"
-            referencedColumns: ["turma_id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "mv_migracao_turmas_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "mv_ocupacao_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "mv_turmas_para_matricula"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      mv_total_em_aberto_por_mes: {
-        Row: {
-          ano: number | null
-          escola_id: string | null
-          mes: number | null
-          total_aberto: number | null
-        }
-        Relationships: []
-      }
-      mv_turmas_para_matricula: {
-        Row: {
-          ano_letivo: number | null
-          capacidade_maxima: number | null
-          classe_id: string | null
-          classe_nome: string | null
-          curso_global_hash: string | null
-          curso_id: string | null
-          curso_is_custom: boolean | null
-          curso_nome: string | null
-          curso_tipo: string | null
-          escola_id: string | null
-          id: string | null
-          ocupacao_atual: number | null
-          sala: string | null
-          session_id: string | null
-          status_validacao: string | null
-          turma_codigo: string | null
-          turma_nome: string | null
-          turno: string | null
-          ultima_matricula: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "mv_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
-      }
-    }
-    Functions: {
-      [_ in never]: never
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       aggregates_financeiro: {
@@ -1805,69 +71,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "aggregates_financeiro_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_financeiro_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_financeiro_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_financeiro_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_financeiro_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_financeiro_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_financeiro_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_financeiro_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_financeiro_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -1929,69 +132,6 @@ export type Database = {
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "aggregates_pedagogico_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_pedagogico_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_pedagogico_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_pedagogico_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_pedagogico_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_pedagogico_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_pedagogico_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_pedagogico_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_pedagogico_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
         ]
       }
       aggregates_secretaria: {
@@ -2045,69 +185,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "aggregates_secretaria_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_secretaria_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_secretaria_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_secretaria_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_secretaria_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_secretaria_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_secretaria_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_secretaria_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_secretaria_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -2267,69 +344,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "alunos_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
@@ -2400,69 +414,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "alunos_excluidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_excluidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_excluidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_excluidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_excluidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_excluidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_excluidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_excluidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_excluidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "alunos_excluidos_excluido_por_fkey"
             columns: ["excluido_por"]
             isOneToOne: false
@@ -2513,69 +464,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -2669,69 +557,6 @@ export type Database = {
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "atendimentos_balcao_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "atendimentos_balcao_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "atendimentos_balcao_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "atendimentos_balcao_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "atendimentos_balcao_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "atendimentos_balcao_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "atendimentos_balcao_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "atendimentos_balcao_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "atendimentos_balcao_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
         ]
       }
       atribuicoes_prof: {
@@ -2770,69 +595,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "atribuicoes_prof_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "atribuicoes_prof_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "atribuicoes_prof_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "atribuicoes_prof_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "atribuicoes_prof_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "atribuicoes_prof_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "atribuicoes_prof_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "atribuicoes_prof_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "atribuicoes_prof_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
           {
             foreignKeyName: "atribuicoes_prof_professor_user_id_fkey"
@@ -2930,69 +692,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "audit_logs_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "audit_logs_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "audit_logs_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "audit_logs_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "audit_logs_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "audit_logs_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "audit_logs_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "audit_logs_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "audit_logs_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "audit_logs_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
@@ -3046,69 +745,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "aulas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aulas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aulas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aulas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aulas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aulas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aulas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aulas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aulas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -3166,69 +802,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "avaliacoes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "avaliacoes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "avaliacoes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "avaliacoes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "avaliacoes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "avaliacoes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "avaliacoes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "avaliacoes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "avaliacoes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
           {
             foreignKeyName: "avaliacoes_periodo_letivo_id_fkey"
@@ -3355,36 +928,8 @@ export type Database = {
             foreignKeyName: "candidaturas_curso_id_fkey"
             columns: ["curso_id"]
             isOneToOne: false
-            referencedRelation: "vw_cursos_reais"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "candidaturas_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_cursos_stats"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "candidaturas_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
-            referencedRelation: "vw_migracao_cursos_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "candidaturas_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_cursos"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "candidaturas_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
-            referencedRelation: "vw_top_cursos_media"
-            referencedColumns: ["curso_id"]
           },
           {
             foreignKeyName: "candidaturas_escola_id_fkey"
@@ -3401,81 +946,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "candidaturas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "candidaturas_turma_preferencial_id_fkey"
             columns: ["turma_preferencial_id"]
             isOneToOne: false
             referencedRelation: "turmas"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "candidaturas_turma_preferencial_id_fkey"
-            columns: ["turma_preferencial_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_propinas_por_turma"
-            referencedColumns: ["turma_id"]
           },
           {
             foreignKeyName: "candidaturas_turma_preferencial_id_fkey"
@@ -3488,28 +963,7 @@ export type Database = {
             foreignKeyName: "candidaturas_turma_preferencial_id_fkey"
             columns: ["turma_preferencial_id"]
             isOneToOne: false
-            referencedRelation: "vw_migracao_turmas_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "candidaturas_turma_preferencial_id_fkey"
-            columns: ["turma_preferencial_id"]
-            isOneToOne: false
-            referencedRelation: "vw_ocupacao_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "candidaturas_turma_preferencial_id_fkey"
-            columns: ["turma_preferencial_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "candidaturas_turma_preferencial_id_fkey"
-            columns: ["turma_preferencial_id"]
-            isOneToOne: false
-            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
         ]
@@ -3570,69 +1024,6 @@ export type Database = {
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "candidaturas_status_log_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_status_log_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_status_log_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_status_log_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_status_log_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_status_log_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_status_log_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_status_log_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_status_log_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
         ]
       }
       classes: {
@@ -3681,36 +1072,8 @@ export type Database = {
             foreignKeyName: "classes_curso_id_fkey"
             columns: ["curso_id"]
             isOneToOne: false
-            referencedRelation: "vw_cursos_reais"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "classes_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_cursos_stats"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "classes_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
-            referencedRelation: "vw_migracao_cursos_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "classes_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_cursos"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "classes_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
-            referencedRelation: "vw_top_cursos_media"
-            referencedColumns: ["curso_id"]
           },
           {
             foreignKeyName: "classes_escola_id_fkey"
@@ -3726,68 +1089,65 @@ export type Database = {
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      conciliacao_uploads: {
+        Row: {
+          banco: string | null
+          conta: string | null
+          error_details: string | null
+          escola_id: string
+          file_name: string
+          file_path: string
+          file_size_kb: number | null
+          id: string
+          processed_at: string | null
+          status: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          banco?: string | null
+          conta?: string | null
+          error_details?: string | null
+          escola_id: string
+          file_name: string
+          file_path: string
+          file_size_kb?: number | null
+          id?: string
+          processed_at?: string | null
+          status?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          banco?: string | null
+          conta?: string | null
+          error_details?: string | null
+          escola_id?: string
+          file_name?: string
+          file_path?: string
+          file_size_kb?: number | null
+          id?: string
+          processed_at?: string | null
+          status?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
           {
-            foreignKeyName: "classes_escola_id_fkey"
+            foreignKeyName: "conciliacao_uploads_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "classes_escola_id_fkey"
+            foreignKeyName: "conciliacao_uploads_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "classes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "classes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "classes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "classes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "classes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "classes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "classes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -3828,36 +1188,8 @@ export type Database = {
             foreignKeyName: "configuracoes_curriculo_curso_id_fkey"
             columns: ["curso_id"]
             isOneToOne: false
-            referencedRelation: "vw_cursos_reais"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "configuracoes_curriculo_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_cursos_stats"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "configuracoes_curriculo_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
-            referencedRelation: "vw_migracao_cursos_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "configuracoes_curriculo_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_cursos"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "configuracoes_curriculo_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
-            referencedRelation: "vw_top_cursos_media"
-            referencedColumns: ["curso_id"]
           },
           {
             foreignKeyName: "configuracoes_curriculo_escola_id_fkey"
@@ -3872,69 +1204,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "configuracoes_curriculo_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "configuracoes_curriculo_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "configuracoes_curriculo_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "configuracoes_curriculo_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "configuracoes_curriculo_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "configuracoes_curriculo_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "configuracoes_curriculo_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "configuracoes_curriculo_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "configuracoes_curriculo_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -3989,69 +1258,6 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "configuracoes_escola_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "configuracoes_escola_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "configuracoes_escola_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "configuracoes_escola_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "configuracoes_escola_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "configuracoes_escola_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "configuracoes_escola_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "configuracoes_escola_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "configuracoes_escola_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -4112,36 +1318,8 @@ export type Database = {
             foreignKeyName: "curso_curriculos_curso_id_fkey"
             columns: ["curso_id"]
             isOneToOne: false
-            referencedRelation: "vw_cursos_reais"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "curso_curriculos_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_cursos_stats"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "curso_curriculos_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
-            referencedRelation: "vw_migracao_cursos_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "curso_curriculos_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_cursos"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "curso_curriculos_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
-            referencedRelation: "vw_top_cursos_media"
-            referencedColumns: ["curso_id"]
           },
           {
             foreignKeyName: "curso_curriculos_escola_id_fkey"
@@ -4156,69 +1334,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "curso_curriculos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "curso_curriculos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "curso_curriculos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "curso_curriculos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "curso_curriculos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "curso_curriculos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "curso_curriculos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "curso_curriculos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "curso_curriculos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -4295,36 +1410,8 @@ export type Database = {
             foreignKeyName: "curso_matriz_curso_id_fkey"
             columns: ["curso_id"]
             isOneToOne: false
-            referencedRelation: "vw_cursos_reais"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "curso_matriz_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_cursos_stats"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "curso_matriz_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
-            referencedRelation: "vw_migracao_cursos_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "curso_matriz_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_cursos"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "curso_matriz_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
-            referencedRelation: "vw_top_cursos_media"
-            referencedColumns: ["curso_id"]
           },
           {
             foreignKeyName: "curso_matriz_disciplina_id_fkey"
@@ -4346,69 +1433,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "curso_matriz_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "curso_matriz_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "curso_matriz_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "curso_matriz_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "curso_matriz_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "curso_matriz_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "curso_matriz_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "curso_matriz_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "curso_matriz_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -4476,13 +1500,6 @@ export type Database = {
             referencedColumns: ["hash"]
           },
           {
-            foreignKeyName: "cursos_curso_global_id_fkey"
-            columns: ["curso_global_id"]
-            isOneToOne: false
-            referencedRelation: "vw_turmas_para_matricula"
-            referencedColumns: ["curso_global_hash"]
-          },
-          {
             foreignKeyName: "cursos_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
@@ -4495,69 +1512,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -4607,69 +1561,6 @@ export type Database = {
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "cursos_globais_cache_created_by_escola_fkey"
-            columns: ["created_by_escola"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_globais_cache_created_by_escola_fkey"
-            columns: ["created_by_escola"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_globais_cache_created_by_escola_fkey"
-            columns: ["created_by_escola"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_globais_cache_created_by_escola_fkey"
-            columns: ["created_by_escola"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_globais_cache_created_by_escola_fkey"
-            columns: ["created_by_escola"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_globais_cache_created_by_escola_fkey"
-            columns: ["created_by_escola"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_globais_cache_created_by_escola_fkey"
-            columns: ["created_by_escola"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_globais_cache_created_by_escola_fkey"
-            columns: ["created_by_escola"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_globais_cache_created_by_escola_fkey"
-            columns: ["created_by_escola"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
         ]
       }
       disciplinas_catalogo: {
@@ -4711,69 +1602,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "disciplinas_catalogo_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "disciplinas_catalogo_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "disciplinas_catalogo_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "disciplinas_catalogo_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "disciplinas_catalogo_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "disciplinas_catalogo_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "disciplinas_catalogo_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "disciplinas_catalogo_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "disciplinas_catalogo_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -4874,81 +1702,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "documentos_emitidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_emitidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_emitidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_emitidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_emitidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_emitidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_emitidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_emitidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_emitidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "documentos_emitidos_mensalidade_id_fkey"
             columns: ["mensalidade_id"]
             isOneToOne: false
             referencedRelation: "mensalidades"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "documentos_emitidos_mensalidade_id_fkey"
-            columns: ["mensalidade_id"]
-            isOneToOne: false
-            referencedRelation: "vw_radar_inadimplencia"
-            referencedColumns: ["mensalidade_id"]
           },
           {
             foreignKeyName: "documentos_emitidos_mensalidade_id_fkey"
@@ -4989,69 +1747,6 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "documentos_sequencia_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_sequencia_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_sequencia_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_sequencia_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_sequencia_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_sequencia_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_sequencia_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_sequencia_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_sequencia_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -5096,69 +1791,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "escola_administradores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_administradores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_administradores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_administradores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_administradores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_administradores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_administradores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_administradores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_administradores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "fk_escola_admin_escola"
             columns: ["escola_id"]
             isOneToOne: false
@@ -5171,69 +1803,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_escola_admin_escola"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "fk_escola_admin_escola"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "fk_escola_admin_escola"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "fk_escola_admin_escola"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "fk_escola_admin_escola"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "fk_escola_admin_escola"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "fk_escola_admin_escola"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "fk_escola_admin_escola"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "fk_escola_admin_escola"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
           {
             foreignKeyName: "fk_escola_admin_user"
@@ -5284,69 +1853,6 @@ export type Database = {
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "escola_auditoria_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_auditoria_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_auditoria_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_auditoria_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_auditoria_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_auditoria_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_auditoria_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_auditoria_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_auditoria_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
         ]
       }
       escola_configuracoes: {
@@ -5379,69 +1885,6 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "escola_configuracoes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_configuracoes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_configuracoes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_configuracoes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_configuracoes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_configuracoes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_configuracoes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_configuracoes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_configuracoes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -5484,69 +1927,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "escola_users_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_users_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_users_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_users_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_users_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_users_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_users_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_users_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_users_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -5641,68 +2021,86 @@ export type Database = {
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      fecho_caixa: {
+        Row: {
+          aprovado_em: string | null
+          aprovado_por: string | null
+          created_at: string
+          data_fecho: string
+          diferenca_especie: number | null
+          diferenca_tpa: number | null
+          diferenca_transferencia: number | null
+          escola_id: string
+          id: string
+          observacao_aprovador: string | null
+          operador_id: string
+          status: string
+          updated_at: string
+          valor_declarado_especie: number
+          valor_declarado_tpa: number
+          valor_declarado_transferencia: number
+          valor_sistema_especie: number | null
+          valor_sistema_tpa: number | null
+          valor_sistema_transferencia: number | null
+        }
+        Insert: {
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          created_at?: string
+          data_fecho: string
+          diferenca_especie?: number | null
+          diferenca_tpa?: number | null
+          diferenca_transferencia?: number | null
+          escola_id: string
+          id?: string
+          observacao_aprovador?: string | null
+          operador_id: string
+          status?: string
+          updated_at?: string
+          valor_declarado_especie: number
+          valor_declarado_tpa: number
+          valor_declarado_transferencia: number
+          valor_sistema_especie?: number | null
+          valor_sistema_tpa?: number | null
+          valor_sistema_transferencia?: number | null
+        }
+        Update: {
+          aprovado_em?: string | null
+          aprovado_por?: string | null
+          created_at?: string
+          data_fecho?: string
+          diferenca_especie?: number | null
+          diferenca_tpa?: number | null
+          diferenca_transferencia?: number | null
+          escola_id?: string
+          id?: string
+          observacao_aprovador?: string | null
+          operador_id?: string
+          status?: string
+          updated_at?: string
+          valor_declarado_especie?: number
+          valor_declarado_tpa?: number
+          valor_declarado_transferencia?: number
+          valor_sistema_especie?: number | null
+          valor_sistema_tpa?: number | null
+          valor_sistema_transferencia?: number | null
+        }
+        Relationships: [
           {
-            foreignKeyName: "events_escola_id_fkey"
+            foreignKeyName: "fecho_caixa_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "events_escola_id_fkey"
+            foreignKeyName: "fecho_caixa_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "events_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "events_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "events_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "events_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "events_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "events_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "events_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -5806,81 +2204,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "finance_payment_intents_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "finance_payment_intents_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "finance_payment_intents_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "finance_payment_intents_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "finance_payment_intents_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "finance_payment_intents_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "finance_payment_intents_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "finance_payment_intents_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "finance_payment_intents_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "finance_payment_intents_mensalidade_id_fkey"
             columns: ["mensalidade_id"]
             isOneToOne: false
             referencedRelation: "mensalidades"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "finance_payment_intents_mensalidade_id_fkey"
-            columns: ["mensalidade_id"]
-            isOneToOne: false
-            referencedRelation: "vw_radar_inadimplencia"
-            referencedColumns: ["mensalidade_id"]
           },
           {
             foreignKeyName: "finance_payment_intents_mensalidade_id_fkey"
@@ -5948,69 +2276,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "financeiro_campanhas_cobranca_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_campanhas_cobranca_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_campanhas_cobranca_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_campanhas_cobranca_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_campanhas_cobranca_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_campanhas_cobranca_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_campanhas_cobranca_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_campanhas_cobranca_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_campanhas_cobranca_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
           {
             foreignKeyName: "financeiro_campanhas_cobranca_template_id_fkey"
@@ -6115,81 +2380,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "financeiro_cobrancas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_cobrancas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_cobrancas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_cobrancas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_cobrancas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_cobrancas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_cobrancas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_cobrancas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_cobrancas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "financeiro_cobrancas_mensalidade_id_fkey"
             columns: ["mensalidade_id"]
             isOneToOne: false
             referencedRelation: "mensalidades"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "financeiro_cobrancas_mensalidade_id_fkey"
-            columns: ["mensalidade_id"]
-            isOneToOne: false
-            referencedRelation: "vw_radar_inadimplencia"
-            referencedColumns: ["mensalidade_id"]
           },
           {
             foreignKeyName: "financeiro_cobrancas_mensalidade_id_fkey"
@@ -6285,81 +2480,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "financeiro_contratos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_contratos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_contratos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_contratos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_contratos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_contratos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_contratos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_contratos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_contratos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "financeiro_contratos_matricula_id_fkey"
             columns: ["matricula_id"]
             isOneToOne: false
             referencedRelation: "matriculas"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "financeiro_contratos_matricula_id_fkey"
-            columns: ["matricula_id"]
-            isOneToOne: false
-            referencedRelation: "vw_boletim_por_matricula"
-            referencedColumns: ["matricula_id"]
           },
           {
             foreignKeyName: "financeiro_contratos_matricula_id_fkey"
@@ -6442,81 +2567,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "financeiro_estornos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_estornos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_estornos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_estornos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_estornos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_estornos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_estornos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_estornos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_estornos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "financeiro_estornos_mensalidade_id_fkey"
             columns: ["mensalidade_id"]
             isOneToOne: false
             referencedRelation: "mensalidades"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "financeiro_estornos_mensalidade_id_fkey"
-            columns: ["mensalidade_id"]
-            isOneToOne: false
-            referencedRelation: "vw_radar_inadimplencia"
-            referencedColumns: ["mensalidade_id"]
           },
           {
             foreignKeyName: "financeiro_estornos_mensalidade_id_fkey"
@@ -6578,69 +2633,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "financeiro_itens_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_itens_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_itens_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_itens_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_itens_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_itens_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_itens_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_itens_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_itens_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -6774,81 +2766,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "financeiro_lancamentos_matricula_id_fkey"
             columns: ["matricula_id"]
             isOneToOne: false
             referencedRelation: "matriculas"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "financeiro_lancamentos_matricula_id_fkey"
-            columns: ["matricula_id"]
-            isOneToOne: false
-            referencedRelation: "vw_boletim_por_matricula"
-            referencedColumns: ["matricula_id"]
           },
           {
             foreignKeyName: "financeiro_lancamentos_matricula_id_fkey"
@@ -6956,36 +2878,8 @@ export type Database = {
             foreignKeyName: "financeiro_tabelas_curso_id_fkey"
             columns: ["curso_id"]
             isOneToOne: false
-            referencedRelation: "vw_cursos_reais"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "financeiro_tabelas_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_cursos_stats"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "financeiro_tabelas_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
-            referencedRelation: "vw_migracao_cursos_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "financeiro_tabelas_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_cursos"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "financeiro_tabelas_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
-            referencedRelation: "vw_top_cursos_media"
-            referencedColumns: ["curso_id"]
           },
           {
             foreignKeyName: "financeiro_tabelas_escola_id_fkey"
@@ -7000,69 +2894,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "financeiro_tabelas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_tabelas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_tabelas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_tabelas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_tabelas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_tabelas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_tabelas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_tabelas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_tabelas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -7111,69 +2942,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "financeiro_templates_mensagem_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_templates_mensagem_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_templates_mensagem_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_templates_mensagem_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_templates_mensagem_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_templates_mensagem_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_templates_mensagem_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_templates_mensagem_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_templates_mensagem_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -7283,69 +3051,6 @@ export type Database = {
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "financeiro_titulos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_titulos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_titulos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_titulos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_titulos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_titulos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_titulos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_titulos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_titulos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
         ]
       }
       financeiro_transacoes_importadas: {
@@ -7417,69 +3122,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "financeiro_transacoes_importadas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_transacoes_importadas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_transacoes_importadas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_transacoes_importadas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_transacoes_importadas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_transacoes_importadas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_transacoes_importadas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_transacoes_importadas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_transacoes_importadas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -7586,81 +3228,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "frequencia_status_periodo_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencia_status_periodo_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencia_status_periodo_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencia_status_periodo_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencia_status_periodo_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencia_status_periodo_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencia_status_periodo_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencia_status_periodo_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencia_status_periodo_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "frequencia_status_periodo_matricula_id_fkey"
             columns: ["matricula_id"]
             isOneToOne: false
             referencedRelation: "matriculas"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "frequencia_status_periodo_matricula_id_fkey"
-            columns: ["matricula_id"]
-            isOneToOne: false
-            referencedRelation: "vw_boletim_por_matricula"
-            referencedColumns: ["matricula_id"]
           },
           {
             foreignKeyName: "frequencia_status_periodo_matricula_id_fkey"
@@ -7715,13 +3287,6 @@ export type Database = {
             foreignKeyName: "frequencia_status_periodo_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
-            referencedRelation: "vw_financeiro_propinas_por_turma"
-            referencedColumns: ["turma_id"]
-          },
-          {
-            foreignKeyName: "frequencia_status_periodo_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
             referencedRelation: "vw_matriculas_secretaria"
             referencedColumns: ["turma_id"]
           },
@@ -7729,28 +3294,7 @@ export type Database = {
             foreignKeyName: "frequencia_status_periodo_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
-            referencedRelation: "vw_migracao_turmas_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "frequencia_status_periodo_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_ocupacao_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "frequencia_status_periodo_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "frequencia_status_periodo_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
         ]
@@ -7813,69 +3357,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -8162,13 +3643,6 @@ export type Database = {
             foreignKeyName: "frequencias_matricula_id_fkey"
             columns: ["matricula_id"]
             isOneToOne: false
-            referencedRelation: "vw_boletim_por_matricula"
-            referencedColumns: ["matricula_id"]
-          },
-          {
-            foreignKeyName: "frequencias_matricula_id_fkey"
-            columns: ["matricula_id"]
-            isOneToOne: false
             referencedRelation: "vw_boletim_por_matricula_legacy"
             referencedColumns: ["matricula_id"]
           },
@@ -8291,81 +3765,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "historico_anos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "historico_anos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "historico_anos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "historico_anos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "historico_anos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "historico_anos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "historico_anos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "historico_anos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "historico_anos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "historico_anos_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
             referencedRelation: "turmas"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "historico_anos_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_propinas_por_turma"
-            referencedColumns: ["turma_id"]
           },
           {
             foreignKeyName: "historico_anos_turma_id_fkey"
@@ -8378,28 +3782,7 @@ export type Database = {
             foreignKeyName: "historico_anos_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
-            referencedRelation: "vw_migracao_turmas_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "historico_anos_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_ocupacao_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "historico_anos_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "historico_anos_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
         ]
@@ -8538,69 +3921,6 @@ export type Database = {
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "import_migrations_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "import_migrations_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "import_migrations_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "import_migrations_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "import_migrations_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "import_migrations_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "import_migrations_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "import_migrations_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "import_migrations_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
         ]
       }
       lancamentos: {
@@ -8648,69 +3968,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lancamentos_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "lancamentos_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "lancamentos_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "lancamentos_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "lancamentos_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "lancamentos_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "lancamentos_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "lancamentos_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "lancamentos_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -8955,13 +4212,6 @@ export type Database = {
             foreignKeyName: "lancamentos_matricula_id_fkey"
             columns: ["matricula_id"]
             isOneToOne: false
-            referencedRelation: "vw_boletim_por_matricula"
-            referencedColumns: ["matricula_id"]
-          },
-          {
-            foreignKeyName: "lancamentos_matricula_id_fkey"
-            columns: ["matricula_id"]
-            isOneToOne: false
             referencedRelation: "vw_boletim_por_matricula_legacy"
             referencedColumns: ["matricula_id"]
           },
@@ -9025,69 +4275,6 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matricula_counters_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matricula_counters_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matricula_counters_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matricula_counters_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matricula_counters_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matricula_counters_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matricula_counters_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matricula_counters_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matricula_counters_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: true
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -9197,69 +4384,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "matriculas_import_id_fkey"
             columns: ["import_id"]
             isOneToOne: false
@@ -9284,13 +4408,6 @@ export type Database = {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
-            referencedRelation: "vw_financeiro_propinas_por_turma"
-            referencedColumns: ["turma_id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
             referencedRelation: "vw_matriculas_secretaria"
             referencedColumns: ["turma_id"]
           },
@@ -9298,28 +4415,7 @@ export type Database = {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
-            referencedRelation: "vw_migracao_turmas_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_ocupacao_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
         ]
@@ -9359,81 +4455,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "matriculas_cursos_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_cursos_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_cursos_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_cursos_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_cursos_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_cursos_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_cursos_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_cursos_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_cursos_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "matriculas_cursos_matricula_id_fkey"
             columns: ["matricula_id"]
             isOneToOne: false
             referencedRelation: "matriculas"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_cursos_matricula_id_fkey"
-            columns: ["matricula_id"]
-            isOneToOne: false
-            referencedRelation: "vw_boletim_por_matricula"
-            referencedColumns: ["matricula_id"]
           },
           {
             foreignKeyName: "matriculas_cursos_matricula_id_fkey"
@@ -9586,13 +4612,6 @@ export type Database = {
             foreignKeyName: "mensalidades_matricula_id_fkey"
             columns: ["matricula_id"]
             isOneToOne: false
-            referencedRelation: "vw_boletim_por_matricula"
-            referencedColumns: ["matricula_id"]
-          },
-          {
-            foreignKeyName: "mensalidades_matricula_id_fkey"
-            columns: ["matricula_id"]
-            isOneToOne: false
             referencedRelation: "vw_boletim_por_matricula_legacy"
             referencedColumns: ["matricula_id"]
           },
@@ -9674,81 +4693,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "notas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "notas_matricula_id_fkey"
             columns: ["matricula_id"]
             isOneToOne: false
             referencedRelation: "matriculas"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "notas_matricula_id_fkey"
-            columns: ["matricula_id"]
-            isOneToOne: false
-            referencedRelation: "vw_boletim_por_matricula"
-            referencedColumns: ["matricula_id"]
           },
           {
             foreignKeyName: "notas_matricula_id_fkey"
@@ -9862,13 +4811,6 @@ export type Database = {
             foreignKeyName: "notas_avaliacoes_matricula_id_fkey"
             columns: ["matricula_id"]
             isOneToOne: false
-            referencedRelation: "vw_boletim_por_matricula"
-            referencedColumns: ["matricula_id"]
-          },
-          {
-            foreignKeyName: "notas_avaliacoes_matricula_id_fkey"
-            columns: ["matricula_id"]
-            isOneToOne: false
             referencedRelation: "vw_boletim_por_matricula_legacy"
             referencedColumns: ["matricula_id"]
           },
@@ -9942,69 +4884,6 @@ export type Database = {
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "notices_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notices_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notices_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notices_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notices_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notices_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notices_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notices_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notices_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
         ]
       }
       notifications: {
@@ -10056,68 +4935,41 @@ export type Database = {
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      numero_counters: {
+        Row: {
+          escola_id: string
+          last_value: number
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          escola_id: string
+          last_value?: number
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          escola_id?: string
+          last_value?: number
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
           {
-            foreignKeyName: "notifications_escola_id_fkey"
+            foreignKeyName: "numero_counters_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "notifications_escola_id_fkey"
+            foreignKeyName: "numero_counters_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notifications_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notifications_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notifications_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notifications_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notifications_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notifications_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notifications_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -10160,69 +5012,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "onboarding_drafts_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "onboarding_drafts_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "onboarding_drafts_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "onboarding_drafts_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "onboarding_drafts_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "onboarding_drafts_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "onboarding_drafts_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "onboarding_drafts_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "onboarding_drafts_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -10382,69 +5171,6 @@ export type Database = {
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "outbox_notificacoes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "outbox_notificacoes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "outbox_notificacoes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "outbox_notificacoes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "outbox_notificacoes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "outbox_notificacoes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "outbox_notificacoes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "outbox_notificacoes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "outbox_notificacoes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
         ]
       }
       pagamentos: {
@@ -10500,13 +5226,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "mensalidades"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pagamentos_mensalidade_id_fkey"
-            columns: ["mensalidade_id"]
-            isOneToOne: false
-            referencedRelation: "vw_radar_inadimplencia"
-            referencedColumns: ["mensalidade_id"]
           },
           {
             foreignKeyName: "pagamentos_mensalidade_id_fkey"
@@ -10579,69 +5298,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "periodos_letivos_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "periodos_letivos_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "periodos_letivos_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "periodos_letivos_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "periodos_letivos_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "periodos_letivos_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "periodos_letivos_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "periodos_letivos_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "periodos_letivos_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -10721,81 +5377,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "presencas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "presencas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "presencas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "presencas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "presencas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "presencas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "presencas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "presencas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "presencas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "presencas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
             referencedRelation: "turmas"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "presencas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_propinas_por_turma"
-            referencedColumns: ["turma_id"]
           },
           {
             foreignKeyName: "presencas_turma_id_fkey"
@@ -10808,28 +5394,7 @@ export type Database = {
             foreignKeyName: "presencas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
-            referencedRelation: "vw_migracao_turmas_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "presencas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_ocupacao_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "presencas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "presencas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
         ]
@@ -10873,69 +5438,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "professores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "professores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "professores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "professores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "professores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "professores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "professores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "professores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "professores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
           {
             foreignKeyName: "professores_profile_id_fkey"
@@ -11029,69 +5531,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "profiles_current_escola_id_fkey"
-            columns: ["current_escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "profiles_current_escola_id_fkey"
-            columns: ["current_escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "profiles_current_escola_id_fkey"
-            columns: ["current_escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "profiles_current_escola_id_fkey"
-            columns: ["current_escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "profiles_current_escola_id_fkey"
-            columns: ["current_escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "profiles_current_escola_id_fkey"
-            columns: ["current_escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "profiles_current_escola_id_fkey"
-            columns: ["current_escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "profiles_current_escola_id_fkey"
-            columns: ["current_escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "profiles_current_escola_id_fkey"
-            columns: ["current_escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "profiles_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: false
@@ -11104,69 +5543,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "profiles_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "profiles_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "profiles_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "profiles_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "profiles_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "profiles_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "profiles_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "profiles_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "profiles_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -11271,69 +5647,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "regras_escala_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "regras_escala_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "regras_escala_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "regras_escala_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "regras_escala_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "regras_escala_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "regras_escala_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "regras_escala_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "regras_escala_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "regras_escala_sistema_notas_id_fkey"
             columns: ["sistema_notas_id"]
             isOneToOne: false
@@ -11410,69 +5723,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "rotinas_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "rotinas_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "rotinas_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "rotinas_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "rotinas_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "rotinas_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "rotinas_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "rotinas_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "rotinas_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "rotinas_professor_user_id_fkey"
             columns: ["professor_user_id"]
             isOneToOne: false
@@ -11497,13 +5747,6 @@ export type Database = {
             foreignKeyName: "rotinas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
-            referencedRelation: "vw_financeiro_propinas_por_turma"
-            referencedColumns: ["turma_id"]
-          },
-          {
-            foreignKeyName: "rotinas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
             referencedRelation: "vw_matriculas_secretaria"
             referencedColumns: ["turma_id"]
           },
@@ -11511,28 +5754,7 @@ export type Database = {
             foreignKeyName: "rotinas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
-            referencedRelation: "vw_migracao_turmas_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rotinas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_ocupacao_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rotinas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rotinas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
         ]
@@ -11575,81 +5797,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "secoes_escola_fk_linter_fix"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "secoes_escola_fk_linter_fix"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "secoes_escola_fk_linter_fix"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "secoes_escola_fk_linter_fix"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "secoes_escola_fk_linter_fix"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "secoes_escola_fk_linter_fix"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "secoes_escola_fk_linter_fix"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "secoes_escola_fk_linter_fix"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "secoes_escola_fk_linter_fix"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "secoes_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
             referencedRelation: "turmas"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "secoes_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_propinas_por_turma"
-            referencedColumns: ["turma_id"]
           },
           {
             foreignKeyName: "secoes_turma_id_fkey"
@@ -11662,28 +5814,58 @@ export type Database = {
             foreignKeyName: "secoes_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
-            referencedRelation: "vw_migracao_turmas_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "secoes_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_ocupacao_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "secoes_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_turmas"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      servicos_catalogo: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          descricao: string | null
+          escola_id: string
+          id: string
+          nome: string
+          preco: number
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          escola_id: string
+          id?: string
+          nome: string
+          preco?: number
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          escola_id?: string
+          id?: string
+          nome?: string
+          preco?: number
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
           {
-            foreignKeyName: "secoes_turma_id_fkey"
-            columns: ["turma_id"]
+            foreignKeyName: "servicos_catalogo_escola_id_fkey"
+            columns: ["escola_id"]
             isOneToOne: false
-            referencedRelation: "vw_turmas_para_matricula"
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "servicos_catalogo_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
         ]
@@ -11729,81 +5911,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "sistemas_notas_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "sistemas_notas_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "sistemas_notas_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "sistemas_notas_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "sistemas_notas_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "sistemas_notas_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "sistemas_notas_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "sistemas_notas_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "sistemas_notas_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "sistemas_notas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
             referencedRelation: "turmas"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sistemas_notas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_propinas_por_turma"
-            referencedColumns: ["turma_id"]
           },
           {
             foreignKeyName: "sistemas_notas_turma_id_fkey"
@@ -11816,28 +5928,7 @@ export type Database = {
             foreignKeyName: "sistemas_notas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
-            referencedRelation: "vw_migracao_turmas_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sistemas_notas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_ocupacao_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sistemas_notas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sistemas_notas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
         ]
@@ -11977,69 +6068,6 @@ export type Database = {
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "syllabi_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "syllabi_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "syllabi_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "syllabi_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "syllabi_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "syllabi_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "syllabi_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "syllabi_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "syllabi_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
         ]
       }
       tabelas_mensalidade: {
@@ -12102,36 +6130,8 @@ export type Database = {
             foreignKeyName: "tabelas_mensalidade_curso_id_fkey"
             columns: ["curso_id"]
             isOneToOne: false
-            referencedRelation: "vw_cursos_reais"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tabelas_mensalidade_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_cursos_stats"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tabelas_mensalidade_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
-            referencedRelation: "vw_migracao_cursos_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tabelas_mensalidade_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_cursos"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tabelas_mensalidade_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
-            referencedRelation: "vw_top_cursos_media"
-            referencedColumns: ["curso_id"]
           },
           {
             foreignKeyName: "tabelas_mensalidade_escola_id_fkey"
@@ -12146,69 +6146,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "tabelas_mensalidade_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "tabelas_mensalidade_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "tabelas_mensalidade_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "tabelas_mensalidade_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "tabelas_mensalidade_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "tabelas_mensalidade_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "tabelas_mensalidade_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "tabelas_mensalidade_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "tabelas_mensalidade_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -12260,81 +6197,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "turma_disciplinas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turma_disciplinas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turma_disciplinas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turma_disciplinas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turma_disciplinas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turma_disciplinas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turma_disciplinas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turma_disciplinas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turma_disciplinas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "turma_disciplinas_turma_id_fkey1"
             columns: ["turma_id"]
             isOneToOne: false
             referencedRelation: "turmas"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "turma_disciplinas_turma_id_fkey1"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_propinas_por_turma"
-            referencedColumns: ["turma_id"]
           },
           {
             foreignKeyName: "turma_disciplinas_turma_id_fkey1"
@@ -12347,28 +6214,7 @@ export type Database = {
             foreignKeyName: "turma_disciplinas_turma_id_fkey1"
             columns: ["turma_id"]
             isOneToOne: false
-            referencedRelation: "vw_migracao_turmas_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "turma_disciplinas_turma_id_fkey1"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_ocupacao_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "turma_disciplinas_turma_id_fkey1"
-            columns: ["turma_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "turma_disciplinas_turma_id_fkey1"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
         ]
@@ -12426,69 +6272,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "turma_disciplinas_professores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turma_disciplinas_professores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turma_disciplinas_professores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turma_disciplinas_professores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turma_disciplinas_professores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turma_disciplinas_professores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turma_disciplinas_professores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turma_disciplinas_professores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turma_disciplinas_professores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "turma_disciplinas_professores_professor_id_fkey"
             columns: ["professor_id"]
             isOneToOne: false
@@ -12520,13 +6303,6 @@ export type Database = {
             foreignKeyName: "turma_disciplinas_professores_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
-            referencedRelation: "vw_financeiro_propinas_por_turma"
-            referencedColumns: ["turma_id"]
-          },
-          {
-            foreignKeyName: "turma_disciplinas_professores_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
             referencedRelation: "vw_matriculas_secretaria"
             referencedColumns: ["turma_id"]
           },
@@ -12534,28 +6310,7 @@ export type Database = {
             foreignKeyName: "turma_disciplinas_professores_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
-            referencedRelation: "vw_migracao_turmas_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "turma_disciplinas_professores_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_ocupacao_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "turma_disciplinas_professores_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "turma_disciplinas_professores_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
         ]
@@ -12653,36 +6408,8 @@ export type Database = {
             foreignKeyName: "turmas_curso_id_fkey"
             columns: ["curso_id"]
             isOneToOne: false
-            referencedRelation: "vw_cursos_reais"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "turmas_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_cursos_stats"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "turmas_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
-            referencedRelation: "vw_migracao_cursos_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "turmas_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_cursos"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "turmas_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
-            referencedRelation: "vw_top_cursos_media"
-            referencedColumns: ["curso_id"]
           },
           {
             foreignKeyName: "turmas_escola_id_fkey"
@@ -12697,69 +6424,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -12803,69 +6467,6 @@ export type Database = {
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "turmas_auditoria_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_auditoria_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_auditoria_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_auditoria_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_auditoria_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_auditoria_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_auditoria_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_auditoria_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_auditoria_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
         ]
       }
     }
@@ -12907,69 +6508,6 @@ export type Database = {
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "escola_users_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_users_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_users_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_users_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_users_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_users_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_users_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_users_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_users_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
         ]
       }
       escolas_view: {
@@ -13008,69 +6546,6 @@ export type Database = {
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
         ]
       }
       mv_financeiro_escola_dia: {
@@ -13106,81 +6581,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
             referencedRelation: "turmas"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_propinas_por_turma"
-            referencedColumns: ["turma_id"]
           },
           {
             foreignKeyName: "matriculas_turma_id_fkey"
@@ -13193,28 +6598,7 @@ export type Database = {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
-            referencedRelation: "vw_migracao_turmas_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_ocupacao_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
         ]
@@ -13258,69 +6642,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
           {
             foreignKeyName: "matriculas_aluno_id_fkey"
@@ -13368,13 +6689,6 @@ export type Database = {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
-            referencedRelation: "vw_financeiro_propinas_por_turma"
-            referencedColumns: ["turma_id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
             referencedRelation: "vw_matriculas_secretaria"
             referencedColumns: ["turma_id"]
           },
@@ -13382,28 +6696,7 @@ export type Database = {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
-            referencedRelation: "vw_migracao_turmas_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_ocupacao_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
         ]
@@ -13441,81 +6734,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
             referencedRelation: "turmas"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_propinas_por_turma"
-            referencedColumns: ["turma_id"]
           },
           {
             foreignKeyName: "matriculas_turma_id_fkey"
@@ -13528,28 +6751,7 @@ export type Database = {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
-            referencedRelation: "vw_migracao_turmas_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_ocupacao_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
         ]
@@ -13579,81 +6781,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
             referencedRelation: "turmas"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_propinas_por_turma"
-            referencedColumns: ["turma_id"]
           },
           {
             foreignKeyName: "matriculas_turma_id_fkey"
@@ -13666,28 +6798,7 @@ export type Database = {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
-            referencedRelation: "vw_migracao_turmas_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_ocupacao_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
         ]
@@ -13717,170 +6828,14 @@ export type Database = {
           mes: string | null
           total: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
+        Relationships: []
       }
       vw_admin_pending_turmas_count: {
         Row: {
           escola_id: string | null
           pendentes_total: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
+        Relationships: []
       }
       vw_admissoes_counts_por_status: {
         Row: {
@@ -13890,85 +6845,7 @@ export type Database = {
           matriculado_7d_total: number | null
           submetida_total: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "candidaturas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "candidaturas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "candidaturas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "candidaturas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
+        Relationships: []
       }
       vw_alunos_active: {
         Row: {
@@ -14087,69 +6964,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "alunos_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
@@ -14186,81 +7000,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
             referencedRelation: "turmas"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_propinas_por_turma"
-            referencedColumns: ["turma_id"]
           },
           {
             foreignKeyName: "matriculas_turma_id_fkey"
@@ -14273,28 +7017,7 @@ export type Database = {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
-            referencedRelation: "vw_migracao_turmas_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_ocupacao_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
         ]
@@ -14367,176 +7090,7 @@ export type Database = {
           trimestre: number | null
           turma_id: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "curso_matriz_disciplina_id_fkey"
-            columns: ["disciplina_id"]
-            isOneToOne: false
-            referencedRelation: "disciplinas_catalogo"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_aluno_id_fkey"
-            columns: ["aluno_id"]
-            isOneToOne: false
-            referencedRelation: "alunos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_aluno_id_fkey"
-            columns: ["aluno_id"]
-            isOneToOne: false
-            referencedRelation: "vw_alunos_active"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_aluno_id_fkey"
-            columns: ["aluno_id"]
-            isOneToOne: false
-            referencedRelation: "vw_balcao_secretaria"
-            referencedColumns: ["aluno_id"]
-          },
-          {
-            foreignKeyName: "matriculas_aluno_id_fkey"
-            columns: ["aluno_id"]
-            isOneToOne: false
-            referencedRelation: "vw_matriculas_secretaria"
-            referencedColumns: ["aluno_id"]
-          },
-          {
-            foreignKeyName: "matriculas_aluno_id_fkey"
-            columns: ["aluno_id"]
-            isOneToOne: false
-            referencedRelation: "vw_search_alunos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_propinas_por_turma"
-            referencedColumns: ["turma_id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_matriculas_secretaria"
-            referencedColumns: ["turma_id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_migracao_turmas_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_ocupacao_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_search_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_turmas_para_matricula"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       vw_boletim_por_matricula_legacy: {
         Row: {
@@ -14616,81 +7170,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
             referencedRelation: "turmas"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_propinas_por_turma"
-            referencedColumns: ["turma_id"]
           },
           {
             foreignKeyName: "matriculas_turma_id_fkey"
@@ -14703,28 +7187,7 @@ export type Database = {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
-            referencedRelation: "vw_migracao_turmas_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_ocupacao_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
         ]
@@ -14743,85 +7206,7 @@ export type Database = {
           status_aprovacao: string | null
           tipo: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
+        Relationships: []
       }
       vw_escola_ano_letivo_preferido: {
         Row: {
@@ -14843,69 +7228,6 @@ export type Database = {
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
         ]
       }
       vw_escola_cursos_stats: {
@@ -14920,85 +7242,7 @@ export type Database = {
           nome: string | null
           tipo: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
+        Relationships: []
       }
       vw_escola_estrutura_counts: {
         Row: {
@@ -15038,85 +7282,7 @@ export type Database = {
           respondidas: number | null
           valor_recuperado: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "financeiro_cobrancas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "financeiro_cobrancas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "financeiro_cobrancas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_cobrancas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_cobrancas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_cobrancas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_cobrancas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_cobrancas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_cobrancas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_cobrancas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_cobrancas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
+        Relationships: []
       }
       vw_financeiro_dashboard: {
         Row: {
@@ -15130,85 +7296,7 @@ export type Database = {
           total_pago: number | null
           total_pendente: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "aggregates_financeiro_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "aggregates_financeiro_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "aggregates_financeiro_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_financeiro_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_financeiro_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_financeiro_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_financeiro_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_financeiro_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_financeiro_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_financeiro_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "aggregates_financeiro_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
+        Relationships: []
       }
       vw_financeiro_escola_dia: {
         Row: {
@@ -15248,85 +7336,7 @@ export type Database = {
           escola_id: string | null
           missing_count: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "anos_letivos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
+        Relationships: []
       }
       vw_financeiro_propinas_mensal_escola: {
         Row: {
@@ -15359,85 +7369,7 @@ export type Database = {
           turma_nome: string | null
           turno: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "financeiro_lancamentos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
+        Relationships: []
       }
       vw_financeiro_radar_resumo: {
         Row: {
@@ -15450,43 +7382,7 @@ export type Database = {
           turma_nome: string | null
           valor_total_atraso: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "mensalidades_aluno_id_fkey"
-            columns: ["aluno_id"]
-            isOneToOne: false
-            referencedRelation: "alunos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mensalidades_aluno_id_fkey"
-            columns: ["aluno_id"]
-            isOneToOne: false
-            referencedRelation: "vw_alunos_active"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mensalidades_aluno_id_fkey"
-            columns: ["aluno_id"]
-            isOneToOne: false
-            referencedRelation: "vw_balcao_secretaria"
-            referencedColumns: ["aluno_id"]
-          },
-          {
-            foreignKeyName: "mensalidades_aluno_id_fkey"
-            columns: ["aluno_id"]
-            isOneToOne: false
-            referencedRelation: "vw_matriculas_secretaria"
-            referencedColumns: ["aluno_id"]
-          },
-          {
-            foreignKeyName: "mensalidades_aluno_id_fkey"
-            columns: ["aluno_id"]
-            isOneToOne: false
-            referencedRelation: "vw_search_alunos"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       vw_financeiro_sidebar_badges: {
         Row: {
@@ -15520,81 +7416,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
             referencedRelation: "turmas"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_propinas_por_turma"
-            referencedColumns: ["turma_id"]
           },
           {
             foreignKeyName: "matriculas_turma_id_fkey"
@@ -15607,28 +7433,7 @@ export type Database = {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
-            referencedRelation: "vw_migracao_turmas_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_ocupacao_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
         ]
@@ -15695,81 +7500,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
             referencedRelation: "turmas"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_propinas_por_turma"
-            referencedColumns: ["turma_id"]
           },
           {
             foreignKeyName: "matriculas_turma_id_fkey"
@@ -15782,28 +7517,7 @@ export type Database = {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
-            referencedRelation: "vw_migracao_turmas_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_ocupacao_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
         ]
@@ -15836,69 +7550,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -15980,81 +7631,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
             referencedRelation: "turmas"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_propinas_por_turma"
-            referencedColumns: ["turma_id"]
           },
           {
             foreignKeyName: "matriculas_turma_id_fkey"
@@ -16067,28 +7648,7 @@ export type Database = {
             foreignKeyName: "matriculas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
-            referencedRelation: "vw_migracao_turmas_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_ocupacao_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
           {
@@ -16130,36 +7690,8 @@ export type Database = {
             foreignKeyName: "turmas_curso_id_fkey"
             columns: ["curso_id"]
             isOneToOne: false
-            referencedRelation: "vw_cursos_reais"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "turmas_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_cursos_stats"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "turmas_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
-            referencedRelation: "vw_migracao_cursos_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "turmas_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_cursos"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "turmas_curso_id_fkey"
-            columns: ["curso_id"]
-            isOneToOne: false
-            referencedRelation: "vw_top_cursos_media"
-            referencedColumns: ["curso_id"]
           },
         ]
       }
@@ -16171,85 +7703,7 @@ export type Database = {
           id: string | null
           status_aprovacao: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
+        Relationships: []
       }
       vw_migracao_turmas_lookup: {
         Row: {
@@ -16259,85 +7713,7 @@ export type Database = {
           nome: string | null
           turma_code: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
+        Relationships: []
       }
       vw_ocupacao_turmas: {
         Row: {
@@ -16352,85 +7728,7 @@ export type Database = {
           total_matriculas_ativas: number | null
           turno: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
+        Relationships: []
       }
       vw_pagamentos_status: {
         Row: {
@@ -16468,81 +7766,11 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "presencas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "presencas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "presencas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "presencas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "presencas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "presencas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "presencas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "presencas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "presencas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
             foreignKeyName: "presencas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
             referencedRelation: "turmas"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "presencas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_propinas_por_turma"
-            referencedColumns: ["turma_id"]
           },
           {
             foreignKeyName: "presencas_turma_id_fkey"
@@ -16555,28 +7783,7 @@ export type Database = {
             foreignKeyName: "presencas_turma_id_fkey"
             columns: ["turma_id"]
             isOneToOne: false
-            referencedRelation: "vw_migracao_turmas_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "presencas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_ocupacao_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "presencas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
             referencedRelation: "vw_search_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "presencas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_turmas_para_matricula"
             referencedColumns: ["id"]
           },
         ]
@@ -16598,43 +7805,7 @@ export type Database = {
           valor_pago_total: number | null
           valor_previsto: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "mensalidades_aluno_id_fkey"
-            columns: ["aluno_id"]
-            isOneToOne: false
-            referencedRelation: "alunos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mensalidades_aluno_id_fkey"
-            columns: ["aluno_id"]
-            isOneToOne: false
-            referencedRelation: "vw_alunos_active"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "mensalidades_aluno_id_fkey"
-            columns: ["aluno_id"]
-            isOneToOne: false
-            referencedRelation: "vw_balcao_secretaria"
-            referencedColumns: ["aluno_id"]
-          },
-          {
-            foreignKeyName: "mensalidades_aluno_id_fkey"
-            columns: ["aluno_id"]
-            isOneToOne: false
-            referencedRelation: "vw_matriculas_secretaria"
-            referencedColumns: ["aluno_id"]
-          },
-          {
-            foreignKeyName: "mensalidades_aluno_id_fkey"
-            columns: ["aluno_id"]
-            isOneToOne: false
-            referencedRelation: "vw_search_alunos"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       vw_search_alunos: {
         Row: {
@@ -16681,69 +7852,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "alunos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -16793,69 +7901,6 @@ export type Database = {
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "classes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "classes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "classes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "classes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "classes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "classes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "classes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "classes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "classes_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
         ]
       }
       vw_search_cursos: {
@@ -16904,69 +7949,6 @@ export type Database = {
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "cursos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
         ]
       }
       vw_search_documentos: {
@@ -16995,69 +7977,6 @@ export type Database = {
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "documentos_emitidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_emitidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_emitidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_emitidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_emitidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_emitidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_emitidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_emitidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_emitidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
         ]
       }
       vw_search_matriculas: {
@@ -17085,69 +8004,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -17203,69 +8059,6 @@ export type Database = {
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "professores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "professores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "professores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "professores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "professores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "professores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "professores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "professores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "professores_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
         ]
       }
       vw_search_recibos: {
@@ -17293,69 +8086,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "documentos_emitidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_emitidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_emitidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_emitidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_emitidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_emitidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_emitidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_emitidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "documentos_emitidos_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -17405,69 +8135,6 @@ export type Database = {
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
         ]
       }
       vw_search_usuarios: {
@@ -17495,69 +8162,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "escola_users_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_users_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_users_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_users_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_users_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_users_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_users_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_users_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "escola_users_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
           },
         ]
       }
@@ -17594,85 +8198,7 @@ export type Database = {
           status: string | null
           total: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
+        Relationships: []
       }
       vw_secretaria_matriculas_turma_status: {
         Row: {
@@ -17681,134 +8207,7 @@ export type Database = {
           total: number | null
           turma_id: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_propinas_por_turma"
-            referencedColumns: ["turma_id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_matriculas_secretaria"
-            referencedColumns: ["turma_id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_migracao_turmas_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_ocupacao_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_search_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_turmas_para_matricula"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       vw_staging_alunos_summary: {
         Row: {
@@ -17818,15 +8217,7 @@ export type Database = {
           total_alunos: number | null
           turma_codigo: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "staging_alunos_import_id_fkey"
-            columns: ["import_id"]
-            isOneToOne: false
-            referencedRelation: "import_migrations"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       vw_super_admin_audit_metrics: {
         Row: {
@@ -17836,85 +8227,7 @@ export type Database = {
           last_error: string | null
           ultimo_acesso: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "audit_logs_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "audit_logs_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "audit_logs_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "audit_logs_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "audit_logs_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "audit_logs_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "audit_logs_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "audit_logs_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "audit_logs_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "audit_logs_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "audit_logs_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
+        Relationships: []
       }
       vw_super_admin_escola_metrics: {
         Row: {
@@ -17935,85 +8248,7 @@ export type Database = {
           escola_id: string | null
           media: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "notas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "notas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "notas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "notas_escola_id_fkey1"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
+        Relationships: []
       }
       vw_top_turmas_hoje: {
         Row: {
@@ -18025,134 +8260,7 @@ export type Database = {
           turma_id: string | null
           turma_nome: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "frequencias_escola_fk"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_propinas_por_turma"
-            referencedColumns: ["turma_id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_matriculas_secretaria"
-            referencedColumns: ["turma_id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_migracao_turmas_lookup"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_ocupacao_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_search_turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "matriculas_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_turmas_para_matricula"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       vw_total_em_aberto_por_mes: {
         Row: {
@@ -18185,99 +8293,7 @@ export type Database = {
           turno: string | null
           ultima_matricula: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "turmas_classe_id_fkey"
-            columns: ["classe_id"]
-            isOneToOne: false
-            referencedRelation: "classes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "turmas_classe_id_fkey"
-            columns: ["classe_id"]
-            isOneToOne: false
-            referencedRelation: "vw_search_classes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_admin_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_estrutura_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_info"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_escola_setup_status"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_kpis_geral"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_financeiro_sidebar_badges"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_counts"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_secretaria_dashboard_kpis"
-            referencedColumns: ["escola_id"]
-          },
-          {
-            foreignKeyName: "turmas_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "vw_super_admin_escola_metrics"
-            referencedColumns: ["escola_id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Functions: {
@@ -18381,6 +8397,7 @@ export type Database = {
         }
         Returns: string
       }
+      aprovar_fecho_caixa: { Args: { p_fecho_caixa_id: string }; Returns: Json }
       aprovar_turmas:
         | {
             Args: { p_escola_id: string; p_turma_ids: string[] }
@@ -18433,6 +8450,10 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      conciliar_transacoes_auto_match: {
+        Args: { p_escola_id: string; p_import_id?: string }
+        Returns: Json
       }
       confirmar_conciliacao_transacao: {
         Args: {
@@ -18560,6 +8581,24 @@ export type Database = {
         Returns: undefined
       }
       dashboard: { Args: never; Returns: Json }
+      declarar_fecho_caixa: {
+        Args: {
+          p_escola_id: string
+          p_valor_declarado_especie: number
+          p_valor_declarado_tpa: number
+          p_valor_declarado_transferencia: number
+        }
+        Returns: Json
+      }
+      emitir_documento_final: {
+        Args: {
+          p_aluno_id: string
+          p_ano_letivo: number
+          p_escola_id: string
+          p_tipo_documento: string
+        }
+        Returns: Json
+      }
       emitir_recibo: { Args: { p_mensalidade_id: string }; Returns: Json }
       enqueue_outbox_event: {
         Args: {
@@ -18912,6 +8951,10 @@ export type Database = {
       }
       next_documento_numero: { Args: { p_escola_id: string }; Returns: number }
       next_matricula_number: { Args: { p_escola_id: string }; Returns: number }
+      next_numero_counter: {
+        Args: { p_escola_id: string; p_start?: number; p_tipo: string }
+        Returns: number
+      }
       next_numero_processo: {
         Args: { p_escola_id: string; p_year: number }
         Returns: string
@@ -18958,7 +9001,7 @@ export type Database = {
       partitions_info: { Args: never; Returns: Json }
       preview_matricula_number: {
         Args: { p_escola_id: string }
-        Returns: string
+        Returns: number
       }
       process_outbox_batch: { Args: { p_limit?: number }; Returns: number }
       process_outbox_batch_p0_v2: {
@@ -19015,6 +9058,7 @@ export type Database = {
         Args: never
         Returns: undefined
       }
+      refresh_mv_boletim_por_matricula: { Args: never; Returns: undefined }
       refresh_mv_cursos_reais: { Args: never; Returns: undefined }
       refresh_mv_escola_cursos_stats: { Args: never; Returns: undefined }
       refresh_mv_escola_estrutura_counts: { Args: never; Returns: undefined }
@@ -19496,9 +9540,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  internal: {
-    Enums: {},
-  },
   public: {
     Enums: {
       app_plan_tier: ["essencial", "profissional", "premium"],

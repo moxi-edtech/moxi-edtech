@@ -37,8 +37,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: e.message || 'Erro interno do servidor.' }, { status: 500 });
   }
 }
-  } catch (e: any) {
-    console.error('Erro na API de matching:', e);
-    return NextResponse.json({ error: e.message || 'Erro interno do servidor.' }, { status: 500 });
-  }
-}
