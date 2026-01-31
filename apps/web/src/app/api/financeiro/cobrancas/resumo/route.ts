@@ -20,7 +20,7 @@ export async function GET() {
       .gte("dia", since.toISOString().slice(0, 10))
       .order("dia", { ascending: true });
 
-    query = applyKf2ListInvariants(query, { defaultLimit: 90 });
+    query = applyKf2ListInvariants(query, { defaultLimit: 50 });
 
     const { data, error } = await query;
 

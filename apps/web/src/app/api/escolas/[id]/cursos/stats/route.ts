@@ -29,7 +29,8 @@ export async function GET(
     const url = new URL(_req.url);
     const limitParam = url.searchParams.get("limit");
     const cursor = url.searchParams.get("cursor");
-    const limit = limitParam ? Number(limitParam) : undefined;
+    const parsedLimit = limitParam ? Number(limitParam) : undefined;
+    const limit = parsedLimit ? Math.min(parsedLimit, 50) : undefined;
     const supabase = await createRouteClient();
     const { data: auth } = await supabase.auth.getUser();
     const user = auth?.user;
@@ -47,7 +48,7 @@ export async function GET(
     let rows: any[] = [];
     {
       let query = (supabase as any)
-        .from('cursos')
+        .from('vw_escola_cursos_stats' as any)
         .select('id, nome, nivel, descricao, codigo, course_code, curriculum_key, tipo')
         .eq('escola_id', escolaId);
 
@@ -60,7 +61,7 @@ export async function GET(
 
       query = applyKf2ListInvariants(query, {
         limit,
-        defaultLimit: limit ? undefined : 500,
+        defaultLimit: limit ? undefined : 50,
         order: [
           { column: "nome", ascending: true },
           { column: "id", ascending: true },
@@ -72,7 +73,7 @@ export async function GET(
       else {
         // Retry com menos colunas se falhar
         let retryQuery = (supabase as any)
-          .from('cursos')
+          .from('vw_escola_cursos_stats' as any)
           .select('id, nome, codigo')
           .eq('escola_id', escolaId);
 
@@ -85,7 +86,7 @@ export async function GET(
 
         retryQuery = applyKf2ListInvariants(retryQuery, {
           limit,
-          defaultLimit: limit ? undefined : 500,
+          defaultLimit: limit ? undefined : 50,
           order: [
             { column: "nome", ascending: true },
             { column: "id", ascending: true },
@@ -111,7 +112,7 @@ export async function GET(
       codigo: r.course_code || r.codigo || undefined,
       curriculum_key: r.curriculum_key ?? undefined,
     }));
-    const pageLimit = limit ?? 500;
+    const pageLimit = limit ?? 50;
     const last = rows[rows.length - 1];
     const nextCursor = rows.length === pageLimit && last ? `${last.nome},${last.id}` : null;
     return NextResponse.json({ ok: true, data: payload, next_cursor: nextCursor });
