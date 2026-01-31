@@ -26,9 +26,9 @@ export async function GET() {
     }
 
     const { data: escola, error } = await supabase
-      .from("escolas")
+      .from("vw_escola_info")
       .select("nome, plano_atual, status")
-      .eq("id", escolaId)
+      .eq("escola_id", escolaId)
       .maybeSingle();
 
     if (error) {

@@ -68,9 +68,9 @@ export async function GET() {
         .eq("escola_id", escolaId)
         .maybeSingle(),
       supabase
-        .from("escolas")
+        .from("vw_escola_info")
         .select("nome, plano_atual, status")
-        .eq("id", escolaId)
+        .eq("escola_id", escolaId)
         .maybeSingle(),
     ]);
 
