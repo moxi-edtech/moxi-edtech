@@ -33,6 +33,7 @@ interface Turma {
 }
 
 interface MensalidadeAluno {
+  id: string; // Adicionado para corresponder ao ModalRegistrarPagamento
   alunoId: string;
   alunoNome: string;
   turma: string;

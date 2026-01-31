@@ -31,20 +31,34 @@ export async function PUT(request: Request, { params }: { params: Promise<{ matr
     const user = userRes?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
-    const { error: authError, resolvedEscolaId } = await requireRoleInSchool({
+    // 1. Get escola_id from matricula
+    const { data: matriculaData, error: matriculaError } = await supabase
+      .from('matriculas')
+      .select('escola_id, turma_id')
+      .eq('id', matriculaId)
+      .single();
+
+    if (matriculaError || !matriculaData) {
+      return NextResponse.json({ ok: false, error: 'Matrícula não encontrada.' }, { status: 404 });
+    }
+
+    const escolaId = matriculaData.escola_id;
+
+    // 2. Authorization (check role in that school)
+    const { error: authError } = await requireRoleInSchool({
       supabase,
-      escolaIdFrom: { table: 'matriculas', column: 'escola_id', id: matriculaId },
+      escolaId, // Pass the already resolved escolaId
       roles: [...ALLOWED_ROLES],
     });
     if (authError) return authError;
 
-    if (matricula.turma_id === parsed.data.turma_id) {
+    if (matriculaData.turma_id === parsed.data.turma_id) {
       return NextResponse.json({ ok: false, error: "A turma destino deve ser diferente" }, { status: 400 });
     }
     
     const { data: result, error: rpcError } = await supabase
       .rpc('transferir_matricula', {
-        p_escola_id: resolvedEscolaId,
+        p_escola_id: escolaId,
         p_matricula_id: matriculaId,
         p_target_turma_id: parsed.data.turma_id,
       })
@@ -54,7 +68,11 @@ export async function PUT(request: Request, { params }: { params: Promise<{ matr
       return NextResponse.json({ ok: false, error: rpcError.message }, { status: 400 });
     }
 
-    return NextResponse.json({ ok: true, ...result });
+    if (!result || typeof result !== 'object') {
+      return NextResponse.json({ ok: false, error: 'Formato de resposta inesperado do RPC.' }, { status: 500 });
+    }
+
+    return NextResponse.json({ ok: true, ...(result as object) });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
