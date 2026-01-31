@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const importId = searchParams.get('import_id'); // import_id é opcional para processar todos
+    const importId = searchParams.get('import_id') ?? undefined; // import_id é opcional para processar todos
 
     const { data: result, error: rpcError } = await supabase.rpc('conciliar_transacoes_auto_match', {
       p_escola_id: escolaId,

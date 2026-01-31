@@ -30,17 +30,30 @@ export async function POST(
 
     const supabase = await supabaseServerTyped<any>();
 
-    // Authorization
-    const { error: authError, resolvedEscolaId } = await requireRoleInSchool({
+    // 1. Get escola_id from matricula
+    const { data: matriculaData, error: matriculaError } = await supabase
+      .from('matriculas')
+      .select('escola_id')
+      .eq('id', matriculaId)
+      .single();
+
+    if (matriculaError || !matriculaData) {
+      return NextResponse.json({ ok: false, error: 'Matrícula não encontrada.' }, { status: 404 });
+    }
+
+    const escolaId = matriculaData.escola_id;
+
+    // 2. Authorization (check role in that school)
+    const { error: authError } = await requireRoleInSchool({
       supabase,
-      escolaIdFrom: { table: 'matriculas', column: 'escola_id', id: matriculaId },
+      escolaId, // Pass the already resolved escolaId
       roles: [...ALLOWED_ROLES],
     });
     if (authError) return authError;
 
     // Call RPC
     const { error: rpcError } = await supabase.rpc("finalizar_matricula_anual", {
-      p_escola_id: resolvedEscolaId,
+      p_escola_id: escolaId,
       p_matricula_id: matriculaId,
       p_novo_status: parsed.data.novo_status,
       p_motivo: parsed.data.motivo,

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
-import { Button } from './ui/button'; // Assumindo que você tem um componente Button
+import { Button } from '@/components/ui/Button';
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from './ui/dialog'; // Assumindo componentes de Dialog
+} from '@/components/ui/dialog';
 import { toast } from 'react-hot-toast'; // Assumindo react-hot-toast para notificações
 
 interface FinalizarMatriculaButtonProps {
