@@ -126,17 +126,17 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
     {
       label: "Turmas",
       icon: Users,
-      href: `/escola/${escolaId}/admin/configuracoes/academico-completo`,
+      href: `/escola/${escolaId}/admin/turmas`,
     },
     {
       label: "Financeiro",
       icon: CreditCard,
-      href: `/escola/${escolaId}/admin/configuracoes/financeiro`,
+      href: `/escola/${escolaId}/financeiro/configuracoes/precos`,
     },
     {
       label: "Fluxos",
       icon: Layers,
-      href: `/escola/${escolaId}/secretaria/fluxo-academico`,
+      href: `/escola/${escolaId}/admin/configuracoes/fluxos`,
     },
     {
       label: "Avançado",
@@ -346,7 +346,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
                 Salvar e revisar
               </button>
               <Link
-                href={`/escola/${escolaId}/secretaria/fluxo-academico`}
+                href={`/escola/${escolaId}/admin/configuracoes/fluxos`}
                 className="w-full text-center rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white"
               >
                 Testar fluxo
