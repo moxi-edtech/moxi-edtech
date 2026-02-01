@@ -14,6 +14,7 @@ export async function GET(
   try {
     const url = new URL(_req.url);
     const cursoId = url.searchParams.get('curso_id');
+    const classeId = url.searchParams.get('classe_id');
     const limitParam = url.searchParams.get('limit');
     const cursor = url.searchParams.get('cursor');
     const limit = limitParam ? Number(limitParam) : undefined;
@@ -44,6 +45,7 @@ export async function GET(
         .eq("escola_id", escolaId);
 
       if (cursoId) query = query.eq('curso_id', cursoId);
+      if (classeId) query = query.eq('classe_id', classeId);
 
       if (cursor) {
         const [cursorClasse, cursorId] = cursor.split(',');

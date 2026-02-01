@@ -9,6 +9,7 @@ Esta é uma versão curta do resumo completo em:
 - Schema acadêmico ampliado (classes, disciplinas, turma_disciplinas).
 - Modelos de avaliação com RLS e backfill do default.
 - API/UI expõe novos campos, com bloqueio de edição em currículo publicado.
+- Editor visual de modelos de avaliação e filtros/paginação de disciplinas.
 
 ## Arquivos-chave
 - `agents/outputs/SESSION_SUMMARY_FULL_ACADEMIC_CYCLE.md`

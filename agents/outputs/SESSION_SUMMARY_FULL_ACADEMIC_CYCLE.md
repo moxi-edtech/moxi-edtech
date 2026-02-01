@@ -59,6 +59,8 @@ Arquivos:
 - Banner de bloqueio para currículo publicado.
 - Substituição de prompts por inputs/selects.
 - CTA “Solicitar nova versão” apontando para `/admin/configuracoes/academico-completo`.
+- Editor visual de modelos de avaliação (componentes + pesos) sem JSON raw.
+- Disciplinas com filtros por curso/classe e paginação com “Carregar mais”.
 
 Arquivo:
 - `apps/web/src/app/escola/[id]/admin/configuracoes/ConfiguracoesClient.tsx`
