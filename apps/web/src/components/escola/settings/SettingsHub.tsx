@@ -190,7 +190,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
       title: "Frequência & Avaliação",
       desc: "Defina regras globais e modelo de avaliação.",
       icon: BookOpen,
-      href: `/escola/${escolaId}/admin/configuracoes/avaliacao-frequencia`,
+      href: `/escola/${escolaId}/admin/configuracoes/avaliacao`,
       color: "bg-amber-50 text-amber-600",
       statusLabel: avaliacaoLabel,
       statusTone: avaliacaoTone,

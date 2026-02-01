@@ -95,15 +95,15 @@ export default function ConfigSystemShell({
           </div>
           {status.length > 0 && (
             <ul className="text-xs text-slate-600 space-y-2">
-              {status.map((item) => (
-                <li key={item}>{item}</li>
+              {status.map((item, index) => (
+                <li key={`${item}-${index}`}>{item}</li>
               ))}
             </ul>
           )}
           {impactSummary.length > 0 && (
             <ul className="text-xs text-slate-600 space-y-2">
-              {impactSummary.map((item) => (
-                <li key={item}>{item}</li>
+              {impactSummary.map((item, index) => (
+                <li key={`${item}-${index}`}>{item}</li>
               ))}
             </ul>
           )}
