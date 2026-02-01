@@ -62,6 +62,24 @@ export async function PUT(
       .maybeSingle();
 
     const disciplinaCatalogoId = cmRow?.disciplina_id ?? disciplinaId;
+
+    // Check if the discipline is part of a published curriculum
+    if (cmRow?.curriculo?.status === 'published') {
+      return NextResponse.json({ ok: false, error: 'Disciplina publicada não pode ser alterada.' }, { status: 409 });
+    }
+    // Fallback check if the provided ID was a catalog ID and not a matrix ID
+    if (!cmRow?.id) {
+      const { data: linkedCurriculos } = await (supabase as any)
+        .from('curso_matriz')
+        .select('id, curriculo:curso_curriculos(status)')
+        .eq('escola_id', escolaId)
+        .eq('disciplina_id', disciplinaCatalogoId)
+        .limit(25);
+      const hasPublished = (linkedCurriculos || []).some((row: any) => row.curriculo?.status === 'published');
+      if (hasPublished) {
+        return NextResponse.json({ ok: false, error: 'Disciplina publicada não pode ser alterada.' }, { status: 409 });
+      }
+    }
     const isAvaliavel = parsed.data.is_avaliavel ?? undefined;
     let modeloAvaliacaoId = parsed.data.aplica_modelo_avaliacao_id ?? null;
     if (isAvaliavel && !modeloAvaliacaoId) {
@@ -142,7 +160,9 @@ export async function DELETE(
 ) {
   const { id: escolaId, disciplinaId } = await params;
   const authz = await authorize(escolaId);
-  if (!authz.ok) return NextResponse.json({ ok: false, error: authz.error }, { status: authz.status });
+  if (!authz.ok) {
+    return NextResponse.json({ ok: false, error: authz.error }, { status: authz.status });
+  }
   const { supabase } = authz;
 
   try {
@@ -162,7 +182,9 @@ export async function DELETE(
         .delete()
         .eq('id', cmRow.id)
         .eq('escola_id', escolaId);
-      if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+      if (error) {
+        return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+      }
       return NextResponse.json({ ok: true });
     }
 
@@ -172,6 +194,7 @@ export async function DELETE(
       .eq('escola_id', escolaId)
       .eq('disciplina_id', disciplinaId)
       .limit(25);
+
     const hasPublished = (links || []).some((row: any) => row.curriculo?.status === 'published');
     if ((links || []).length > 0) {
       if (hasPublished) {
@@ -185,25 +208,12 @@ export async function DELETE(
       .delete()
       .eq('id', disciplinaId)
       .eq('escola_id', escolaId);
-    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+    if (error) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+    }
     return NextResponse.json({ ok: true });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Erro inesperado';
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
 }
-    if (cmRow?.curriculo?.status === 'published') {
-      return NextResponse.json({ ok: false, error: 'Disciplina publicada não pode ser alterada.' }, { status: 409 });
-    }
-    if (!cmRow?.id) {
-      const { data: linkedCurriculos } = await (supabase as any)
-        .from('curso_matriz')
-        .select('id, curriculo:curso_curriculos(status)')
-        .eq('escola_id', escolaId)
-        .eq('disciplina_id', disciplinaCatalogoId)
-        .limit(25);
-      const hasPublished = (linkedCurriculos || []).some((row: any) => row.curriculo?.status === 'published');
-      if (hasPublished) {
-        return NextResponse.json({ ok: false, error: 'Disciplina publicada não pode ser alterada.' }, { status: 409 });
-      }
-    }
