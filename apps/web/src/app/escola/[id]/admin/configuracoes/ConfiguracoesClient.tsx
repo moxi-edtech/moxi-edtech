@@ -440,8 +440,8 @@ export default function ConfiguracoesAcademicasPage() {
           ativa &&
             periodosCountLoaded > 0 &&
             (Array.isArray(classesRows) ? classesRows.length > 0 : false) &&
-            (Array.isArray(disciplinasRows)
-              ? disciplinasRows.length > 0
+            (Array.isArray(disciplinas)
+              ? disciplinas.length > 0
               : false)
         );
         setSetupComplete(hasBasicConfig);
