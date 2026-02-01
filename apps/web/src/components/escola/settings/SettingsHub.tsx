@@ -28,7 +28,9 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
   const [setupStatus, setSetupStatus] = useState<{
     ano_letivo_ok?: boolean;
     periodos_ok?: boolean;
-    curriculo_ok?: boolean;
+    avaliacao_ok?: boolean;
+    curriculo_draft_ok?: boolean;
+    curriculo_published_ok?: boolean;
     turmas_ok?: boolean;
   } | null>(null);
   const [estruturaCounts, setEstruturaCounts] = useState<{
@@ -42,7 +44,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
     async function fetchStatus() {
       if (!escolaId) return;
       try {
-        const res = await fetch(`/api/escola/${escolaId}/admin/setup/status`, {
+        const res = await fetch(`/api/escola/${escolaId}/admin/setup/state`, {
           cache: "no-store",
         });
         const json = await res.json().catch(() => null);
@@ -50,25 +52,27 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
         if (cancelled) return;
 
         const data = json?.data ?? {};
-        if (typeof data?.progress_percent === 'number') {
-          setProgress(data.progress_percent);
-        }
-        if (typeof data?.avaliacao_frequencia_ok === 'boolean') {
-          setAvaliacaoPending(!data.avaliacao_frequencia_ok);
-        }
         setSetupStatus({
-          ano_letivo_ok: data?.ano_letivo_ok,
-          periodos_ok: data?.periodos_ok,
-          curriculo_ok: data?.curriculo_ok,
-          turmas_ok: data?.turmas_ok,
+          ano_letivo_ok: data?.badges?.ano_letivo_ok,
+          periodos_ok: data?.badges?.periodos_ok,
+          avaliacao_ok: data?.badges?.avaliacao_ok,
+          curriculo_draft_ok: data?.badges?.curriculo_draft_ok,
+          curriculo_published_ok: data?.badges?.curriculo_published_ok,
+          turmas_ok: data?.badges?.turmas_ok,
         });
 
-        const counts = data?.estrutura_counts;
-        if (counts) {
+        const impactRes = await fetch(`/api/escola/${escolaId}/admin/setup/impact`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        const impactJson = await impactRes.json().catch(() => null);
+        if (impactRes.ok && impactJson?.ok) {
+          const counts = impactJson?.data?.counts;
           setEstruturaCounts({
-            cursos_total: counts.cursos_total ?? 0,
-            classes_total: counts.classes_total ?? 0,
-            disciplinas_total: counts.disciplinas_total ?? 0,
+            cursos_total: counts?.cursos_afetados ?? 0,
+            classes_total: counts?.classes_afetadas ?? 0,
+            disciplinas_total: counts?.disciplinas_afetadas ?? 0,
           });
         }
       } catch (error) {
@@ -92,7 +96,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
     : "bg-emerald-100 text-emerald-800";
 
   const anoLetivoOk = setupStatus?.ano_letivo_ok && setupStatus?.periodos_ok;
-  const curriculoOk = setupStatus?.curriculo_ok;
+  const curriculoOk = setupStatus?.curriculo_published_ok;
   const turmasOk = setupStatus?.turmas_ok;
   const estruturaMeta = estruturaCounts
     ? `Cursos: ${estruturaCounts.cursos_total ?? 0} · Classes: ${estruturaCounts.classes_total ?? 0} · Disciplinas: ${estruturaCounts.disciplinas_total ?? 0}`
