@@ -1,16 +1,11 @@
 import { use } from "react";
-import AvaliacaoFrequenciaClient from "./AvaliacaoFrequenciaClient";
-
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+import { redirect } from "next/navigation";
 
 type Props = {
   params: Promise<{ id: string }>;
 };
 
-export default function AvaliacaoFrequenciaPage({ params }: Props) {
-  const resolvedParams = use(params);
-  const escolaId = resolvedParams.id;
-
-  return <AvaliacaoFrequenciaClient escolaId={escolaId} />;
+export default function AvaliacaoFrequenciaRedirect({ params }: Props) {
+  const { id } = use(params);
+  redirect(`/escola/${id}/admin/configuracoes/avaliacao`);
 }
