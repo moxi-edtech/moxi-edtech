@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
+import Link from "next/link";
 import {
   BookOpen,
   Trash2,
@@ -100,6 +101,15 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   const { escolaId: escolaFromHook, isLoading: escolaLoading, error: escolaError } = useEscolaId();
   const resolvedEscolaId = escolaId || escolaFromHook || null;
   const disciplinasScrollRef = useRef<HTMLDivElement | null>(null);
+  const adminConfigUrl = resolvedEscolaId
+    ? `/escola/${resolvedEscolaId}/admin/configuracoes/academico-completo`
+    : "#";
+  const avaliacaoUrl = resolvedEscolaId
+    ? `/escola/${resolvedEscolaId}/admin/configuracoes/avaliacao-frequencia`
+    : "#";
+  const fluxoUrl = resolvedEscolaId
+    ? `/escola/${resolvedEscolaId}/secretaria/fluxo-academico`
+    : "#";
 
   // --- ESTADOS DE CRIAÇÃO (MODAL DE NOVO CURSO) ---
   const [showModal, setShowModal] = useState(false);
@@ -712,6 +722,100 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
 
   return (
     <div className="space-y-6">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-2">
+          <h2 className="text-lg font-semibold text-slate-900">Configuração Acadêmica Guiada</h2>
+          <p className="text-sm text-slate-500">
+            Experiência clara para montar o calendário, avaliação, currículo e turmas.
+          </p>
+        </div>
+
+        <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-slate-700">Estrutura temporal</h3>
+            <p className="text-xs text-slate-500">
+              Configure períodos letivos, pesos e travas de notas.
+            </p>
+            <Link
+              href={adminConfigUrl}
+              className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white"
+            >
+              Abrir calendário
+              <ArrowLeft className="w-3 h-3" />
+            </Link>
+          </div>
+
+          <div className="rounded-xl border border-slate-100 bg-white p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-slate-700">Modelo de avaliação</h3>
+            <p className="text-xs text-slate-500">
+              Escolha o modelo angolano, personalize pesos e visualize a pauta.
+            </p>
+            <Link
+              href={avaliacaoUrl}
+              className="inline-flex items-center gap-2 rounded-full bg-klasse-gold px-4 py-2 text-xs font-semibold text-white"
+            >
+              Configurar avaliação
+              <GraduationCap className="w-3 h-3" />
+            </Link>
+          </div>
+
+          <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-slate-700">Currículo & presets</h3>
+            <p className="text-xs text-slate-500">
+              Aplique presets nacionais e publique o currículo em um clique.
+            </p>
+            <button
+              onClick={() => setActiveTab('catalog')}
+              className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Ver catálogo
+              <ShoppingBag className="w-3 h-3" />
+            </button>
+          </div>
+
+          <div className="rounded-xl border border-slate-100 bg-white p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-slate-700">Gerar turmas</h3>
+            <p className="text-xs text-slate-500">
+              Gere turmas a partir do currículo publicado e valide a estrutura.
+            </p>
+            <button
+              onClick={() => setActiveTab('my_courses')}
+              className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Revisar cursos
+              <Users className="w-3 h-3" />
+            </button>
+          </div>
+
+          <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-slate-700">Fluxos de aprovação</h3>
+            <p className="text-xs text-slate-500">
+              Defina o fluxo de aprovação de notas com papéis claros.
+            </p>
+            <Link
+              href={fluxoUrl}
+              className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white"
+            >
+              Abrir fluxo
+              <Settings className="w-3 h-3" />
+            </Link>
+          </div>
+
+          <div className="rounded-xl border border-slate-100 bg-white p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-slate-700">Sandbox de testes</h3>
+            <p className="text-xs text-slate-500">
+              Simule impactos antes de aplicar mudanças reais.
+            </p>
+            <Link
+              href={`${adminConfigUrl}?mode=preview`}
+              className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Testar configurações
+              <AlertCircle className="w-3 h-3" />
+            </Link>
+          </div>
+        </div>
+      </div>
       
       {/* TABS PRINCIPAIS */}
       <div className="flex border-b border-slate-200">

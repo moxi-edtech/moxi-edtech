@@ -65,6 +65,10 @@ export async function PUT(
       descricao: z.string().nullable().optional(),
       ordem: z.number().int().positive().nullable().optional(),
       nivel: z.string().nullable().optional(),
+      ano_letivo_id: z.string().uuid().nullable().optional(),
+      turno: z.enum(['M', 'T', 'N']).nullable().optional(),
+      carga_horaria_semanal: z.number().int().positive().nullable().optional(),
+      min_disciplinas_core: z.number().int().min(0).nullable().optional(),
     });
     const parsed = schema.safeParse(raw);
     if (!parsed.success) {
@@ -78,7 +82,7 @@ export async function PUT(
       .update(updates)
       .eq("id", classId)
       .eq("escola_id", escolaId)
-      .select("id, nome, descricao, ordem, nivel")
+      .select("id, nome, descricao, ordem, nivel, ano_letivo_id, turno, carga_horaria_semanal, min_disciplinas_core")
       .single();
     if (error)
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 });

@@ -30,17 +30,18 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ ok: false, error: 'Acesso negado a esta escola.' }, { status: 403 });
     }
 
-    const { data: roles, error: rolesError } = await (supabase as any)
-      .rpc('get_my_roles', { p_escola_id: userEscolaId });
+    const { data: hasRole, error: rolesError } = await (supabase as any)
+      .rpc('user_has_role_in_school', {
+        p_escola_id: userEscolaId,
+        p_roles: ['admin_escola', 'secretaria', 'admin'],
+      });
 
     if (rolesError) {
-      console.error('Error fetching user roles:', rolesError);
+      console.error('Error verifying user roles:', rolesError);
       return NextResponse.json({ ok: false, error: 'Erro ao verificar permissões.' }, { status: 500 });
     }
 
-    const isAdminOrSecretaria = roles.includes('admin_escola') || roles.includes('secretaria');
-
-    if (!isAdminOrSecretaria) {
+    if (!hasRole) {
       return NextResponse.json({ ok: false, error: 'Você não tem permissão para executar esta ação.' }, { status: 403 });
     }
 
