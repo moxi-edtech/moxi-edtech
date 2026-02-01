@@ -624,7 +624,7 @@ export type Database = {
           details: Json | null
           entity: string | null
           entity_id: string | null
-          escola_id: string | null
+          escola_id: string
           id: number
           ip: string | null
           meta: Json | null
@@ -645,7 +645,7 @@ export type Database = {
           details?: Json | null
           entity?: string | null
           entity_id?: string | null
-          escola_id?: string | null
+          escola_id: string
           id?: number
           ip?: string | null
           meta?: Json | null
@@ -666,7 +666,7 @@ export type Database = {
           details?: Json | null
           entity?: string | null
           entity_id?: string | null
-          escola_id?: string | null
+          escola_id?: string
           id?: number
           ip?: string | null
           meta?: Json | null
@@ -1028,37 +1028,49 @@ export type Database = {
       }
       classes: {
         Row: {
+          ano_letivo_id: string | null
+          carga_horaria_semanal: number | null
           created_at: string
           curso_id: string | null
           descricao: string | null
           escola_id: string
           id: string
+          min_disciplinas_core: number | null
           nivel: string | null
           nome: string
           numero: number | null
           ordem: number | null
+          turno: string | null
         }
         Insert: {
+          ano_letivo_id?: string | null
+          carga_horaria_semanal?: number | null
           created_at?: string
           curso_id?: string | null
           descricao?: string | null
           escola_id: string
           id?: string
+          min_disciplinas_core?: number | null
           nivel?: string | null
           nome: string
           numero?: number | null
           ordem?: number | null
+          turno?: string | null
         }
         Update: {
+          ano_letivo_id?: string | null
+          carga_horaria_semanal?: number | null
           created_at?: string
           curso_id?: string | null
           descricao?: string | null
           escola_id?: string
           id?: string
+          min_disciplinas_core?: number | null
           nivel?: string | null
           nome?: string
           numero?: number | null
           ordem?: number | null
+          turno?: string | null
         }
         Relationships: [
           {
@@ -1565,25 +1577,43 @@ export type Database = {
       }
       disciplinas_catalogo: {
         Row: {
+          aplica_modelo_avaliacao_id: string | null
+          area: string | null
+          carga_horaria_semana: number | null
           created_at: string
           escola_id: string
+          herda_de_disciplina_id: string | null
           id: string
+          is_avaliavel: boolean | null
+          is_core: boolean | null
           nome: string
           nome_norm: string | null
           sigla: string | null
         }
         Insert: {
+          aplica_modelo_avaliacao_id?: string | null
+          area?: string | null
+          carga_horaria_semana?: number | null
           created_at?: string
           escola_id: string
+          herda_de_disciplina_id?: string | null
           id?: string
+          is_avaliavel?: boolean | null
+          is_core?: boolean | null
           nome: string
           nome_norm?: string | null
           sigla?: string | null
         }
         Update: {
+          aplica_modelo_avaliacao_id?: string | null
+          area?: string | null
+          carga_horaria_semana?: number | null
           created_at?: string
           escola_id?: string
+          herda_de_disciplina_id?: string | null
           id?: string
+          is_avaliavel?: boolean | null
+          is_core?: boolean | null
           nome?: string
           nome_norm?: string | null
           sigla?: string | null
@@ -1601,6 +1631,20 @@ export type Database = {
             columns: ["escola_id"]
             isOneToOne: false
             referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disciplinas_herda_de_fk"
+            columns: ["herda_de_disciplina_id"]
+            isOneToOne: false
+            referencedRelation: "disciplinas_catalogo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disciplinas_modelo_avaliacao_fk"
+            columns: ["aplica_modelo_avaliacao_id"]
+            isOneToOne: false
+            referencedRelation: "modelos_avaliacao"
             referencedColumns: ["id"]
           },
         ]
@@ -4717,6 +4761,36 @@ export type Database = {
           },
         ]
       }
+      modelos_avaliacao: {
+        Row: {
+          componentes: Json
+          created_at: string
+          escola_id: string
+          id: string
+          is_default: boolean | null
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          componentes?: Json
+          created_at?: string
+          escola_id: string
+          id?: string
+          is_default?: boolean | null
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          componentes?: Json
+          created_at?: string
+          escola_id?: string
+          id?: string
+          is_default?: boolean | null
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notas: {
         Row: {
           avaliacao_id: string
@@ -5317,6 +5391,7 @@ export type Database = {
           escola_id: string
           id: string
           numero: number
+          peso: number | null
           tipo: Database["public"]["Enums"]["periodo_tipo"]
           trava_notas_em: string | null
         }
@@ -5328,6 +5403,7 @@ export type Database = {
           escola_id: string
           id?: string
           numero: number
+          peso?: number | null
           tipo: Database["public"]["Enums"]["periodo_tipo"]
           trava_notas_em?: string | null
         }
@@ -5339,6 +5415,7 @@ export type Database = {
           escola_id?: string
           id?: string
           numero?: number
+          peso?: number | null
           tipo?: Database["public"]["Enums"]["periodo_tipo"]
           trava_notas_em?: string | null
         }
@@ -6227,6 +6304,7 @@ export type Database = {
           curso_matriz_id: string
           escola_id: string
           id: string
+          modelo_avaliacao_id: string | null
           professor_id: string | null
           turma_id: string
         }
@@ -6235,6 +6313,7 @@ export type Database = {
           curso_matriz_id: string
           escola_id: string
           id?: string
+          modelo_avaliacao_id?: string | null
           professor_id?: string | null
           turma_id: string
         }
@@ -6243,6 +6322,7 @@ export type Database = {
           curso_matriz_id?: string
           escola_id?: string
           id?: string
+          modelo_avaliacao_id?: string | null
           professor_id?: string | null
           turma_id?: string
         }
@@ -6266,6 +6346,13 @@ export type Database = {
             columns: ["escola_id"]
             isOneToOne: false
             referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turma_disciplinas_modelo_avaliacao_fk"
+            columns: ["modelo_avaliacao_id"]
+            isOneToOne: false
+            referencedRelation: "modelos_avaliacao"
             referencedColumns: ["id"]
           },
           {
@@ -6390,6 +6477,7 @@ export type Database = {
       turmas: {
         Row: {
           ano_letivo: number | null
+          ano_letivo_id: string | null
           capacidade_maxima: number | null
           classe_id: string | null
           classe_num: number | null
@@ -6412,6 +6500,7 @@ export type Database = {
         }
         Insert: {
           ano_letivo?: number | null
+          ano_letivo_id?: string | null
           capacidade_maxima?: number | null
           classe_id?: string | null
           classe_num?: number | null
@@ -6434,6 +6523,7 @@ export type Database = {
         }
         Update: {
           ano_letivo?: number | null
+          ano_letivo_id?: string | null
           capacidade_maxima?: number | null
           classe_id?: string | null
           classe_num?: number | null
@@ -8527,6 +8617,15 @@ export type Database = {
         Args: { p_escola_id: string; p_import_id?: string }
         Returns: Json
       }
+      config_commit: {
+        Args: {
+          p_ano_letivo: number
+          p_changes: Json
+          p_escola_id: string
+          p_idempotency_key: string
+        }
+        Returns: Json
+      }
       confirmar_conciliacao_transacao: {
         Args: {
           p_aluno_id: string
@@ -8598,6 +8697,7 @@ export type Database = {
         }
         Returns: {
           ano_letivo: number | null
+          ano_letivo_id: string | null
           capacidade_maxima: number | null
           classe_id: string | null
           classe_num: number | null
@@ -8793,19 +8893,30 @@ export type Database = {
             }
             Returns: Json
           }
-      gerar_turmas_from_curriculo: {
-        Args: {
-          p_ano_letivo: number
-          p_curso_id: string
-          p_escola_id: string
-          p_generation_params: Json
-        }
-        Returns: {
-          disciplinas_criadas: number
-          turma_id: string
-          turma_nome: string
-        }[]
-      }
+      gerar_turmas_from_curriculo:
+        | {
+            Args: {
+              p_ano_letivo: number
+              p_curso_id: string
+              p_escola_id: string
+              p_generation_params: Json
+            }
+            Returns: {
+              disciplinas_criadas: number
+              turma_id: string
+              turma_nome: string
+            }[]
+          }
+        | {
+            Args: {
+              p_ano_letivo: number
+              p_curso_id: string
+              p_escola_id: string
+              p_generation_params: Json
+              p_idempotency_key: string
+            }
+            Returns: Json
+          }
       get_aluno_dossier: {
         Args: { p_aluno_id: string; p_escola_id: string }
         Returns: Json
@@ -8817,6 +8928,10 @@ export type Database = {
           curso_nome: string
           missing_type: string
         }[]
+      }
+      get_config_impact: {
+        Args: { p_ano_letivo: number; p_changes?: Json; p_escola_id: string }
+        Returns: Json
       }
       get_import_summary: { Args: { p_import_id: string }; Returns: Json }
       get_metricas_acesso_alunos: {
@@ -8876,6 +8991,10 @@ export type Database = {
           start_time: string
           status: string
         }[]
+      }
+      get_setup_state: {
+        Args: { p_ano_letivo: number; p_escola_id: string }
+        Returns: Json
       }
       get_staging_alunos_summary: {
         Args: { p_escola_id: string; p_import_id: string }
@@ -9071,6 +9190,10 @@ export type Database = {
       }
       outbox_requeue_stuck: { Args: never; Returns: undefined }
       partitions_info: { Args: never; Returns: Json }
+      preview_apply_changes: {
+        Args: { p_ano_letivo: number; p_changes: Json; p_escola_id: string }
+        Returns: Json
+      }
       preview_matricula_number: {
         Args: { p_escola_id: string }
         Returns: number
@@ -9365,6 +9488,7 @@ export type Database = {
         Args: { p_deleted_by: string; p_id: string; p_reason: string }
         Returns: undefined
       }
+      sum_component_pesos: { Args: { p_componentes: Json }; Returns: number }
       tenant_profiles_by_ids: {
         Args: { p_user_ids: string[] }
         Returns: {
