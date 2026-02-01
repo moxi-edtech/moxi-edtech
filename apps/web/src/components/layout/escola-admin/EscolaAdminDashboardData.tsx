@@ -142,7 +142,7 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
         };
     
         const pendingCount = pendingTurmasCount.data?.pendentes_total ?? 0;
-        const missingPricingCount = Number(missingPricingResult.data?.missing_count ?? 0);
+        const missingPricingCount = Number(missingPricingResult.data?.[0]?.missing_count ?? 0);
     
         // ✅ 2) Avisos / Eventos (placeholder, ajusta origem real)
         const avisos: Aviso[] = [];
@@ -191,7 +191,7 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
         return (
           <EscolaAdminDashboardContent
             escolaId={escolaId}
-            escolaNome={escolaNome ?? escolaNomeResult.data?.nome ?? undefined}
+            escolaNome={escolaNome ?? undefined}
             loading={false}
             error={e?.message ?? "Falha ao carregar dashboard"}
             stats={stats}

@@ -200,6 +200,38 @@ function AlunoMigrationWizardContent() {
     } catch (e) { console.error(e); }
   };
 
+  const resetWizard = () => {
+    setStep(1);
+    setFile(null);
+    setHeaders([]);
+    setMapping({});
+    setPreview([]);
+    setApiErrors([]);
+    setImportErrors([]);
+    setImportResult(null);
+    setImportId(null);
+    setConfigSummary(null);
+    setMatriculaBatches([]);
+    setSelectedBatches({});
+    setMatriculaSummary([]);
+    setMatriculando(false);
+    setProgressTotal(0);
+    setProgressDone(0);
+    setLoading(false);
+    setSkipMatricula(false);
+    setStartMonth(new Date().getMonth() + 1);
+    setDataInicioFinanceiro(null);
+    setAnoLetivo(new Date().getFullYear());
+    deepApplied.current = false;
+    try {
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem(STORAGE_KEY);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   const handleUpload = async () => {
     if (!file || !escolaId) return setApiErrors(["Selecione um arquivo e verifique sua conexão."]);
     setLoading(true); setApiErrors([]);

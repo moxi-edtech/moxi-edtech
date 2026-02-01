@@ -3,5 +3,8 @@ module.exports = function stripLucideSourceMap(source) {
     this.cacheable();
   }
 
-  return source.replace(/\/\/\# sourceMappingURL=.*\.map\s*$/gm, "");
+  const sourceText = Buffer.isBuffer(source) ? source.toString("utf8") : source;
+  const stripped = sourceText.replace(/\/\/\# sourceMappingURL=.*\.map\s*$/gm, "");
+
+  return Buffer.from(stripped, "utf8");
 };

@@ -4,7 +4,7 @@ import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import { useUserRole, type UserRole } from "@/hooks/useUserRole";
 import { useEscolaId } from "@/hooks/useEscolaId";
-import { sidebarConfig } from "@/lib/sidebarNav";
+import { sidebarConfig, type NavItem } from "@/lib/sidebarNav";
 import { useMemo, useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { PLAN_NAMES, type PlanTier } from "@/config/plans";

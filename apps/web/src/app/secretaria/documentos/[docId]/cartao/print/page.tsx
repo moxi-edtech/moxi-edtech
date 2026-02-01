@@ -19,7 +19,7 @@ export default async function CartaoEstudantePrintPage({
   }
 
   const { doc, escolaNome, validationBaseUrl } = data;
-  if (doc.tipo !== "cartao_estudante") {
+  if (String(doc.tipo) !== "cartao_estudante") {
     return <div className="p-8">Documento inválido para esta página.</div>;
   }
 

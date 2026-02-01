@@ -2,7 +2,7 @@
 'use client';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import type { Alerta } from '@/app/super-admin/health/types';
 import { AlertTriangle, CheckCircle, MessageSquare } from 'lucide-react';

@@ -26,27 +26,27 @@ export function useUser(): UseUserResult {
         setError(null);
 
         const { data: userData, error: userError } = await supabase.auth.getUser();
-        if (sessionError) throw sessionError;
+        if (userError) throw userError;
 
         const user = userData?.user;
         if (!active) return;
 
-        setUser(currentUser);
+        setUser(user);
 
         const escolaId =
-          ((currentUser?.app_metadata as any)?.escola_id as string | undefined) ??
+          ((user?.app_metadata as any)?.escola_id as string | undefined) ??
           null;
 
         if (escolaId) {
-          setEscola({ id: escolaId, plano_atual: (currentUser as any)?.escola?.plano_atual });
+          setEscola({ id: escolaId, plano_atual: (user as any)?.escola?.plano_atual });
           return;
         }
 
-        if (currentUser?.id) {
+        if (user?.id) {
           const { data: profile } = await supabase
             .from("profiles")
             .select("escola_id, current_escola_id")
-            .eq("user_id", currentUser.id)
+            .eq("user_id", user.id)
             .maybeSingle();
 
           if (!active) return;

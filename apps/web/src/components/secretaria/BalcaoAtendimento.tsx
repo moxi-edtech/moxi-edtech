@@ -118,6 +118,7 @@ export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) 
         status_financeiro,
         divida_total,
         foto_url: perfil.foto_url,
+        matricula_id: turmaAtual?.matricula_id || null,
       });
 
       // Mapear mensalidades para o formato do carrinho

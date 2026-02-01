@@ -105,10 +105,13 @@ export const processarImportacaoAlunos = async (
     throw new Error("O arquivo não contém alunos válidos ou as colunas estão erradas.");
   }
 
+  const importId = crypto.randomUUID();
+
   const { data, error } = await supabase.rpc("importar_alunos_v2", {
     p_escola_id: escolaId,
     p_ano_letivo: anoLetivo,
     p_alunos: alunosPayload as unknown as Json,
+    p_import_id: importId,
   });
 
   if (error) {
