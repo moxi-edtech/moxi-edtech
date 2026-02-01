@@ -100,8 +100,19 @@ export default function ConfiguracoesAcademicasPage() {
   });
   const [newModeloForm, setNewModeloForm] = useState({
     nome: "",
-    componentes: '{"componentes":[{"code":"MAC","peso":50,"ativo":true},{"code":"PT","peso":50,"ativo":true}]}',
     isDefault: false,
+  });
+  const [modeloComponentes, setModeloComponentes] = useState<
+    Array<{ code: string; nome: string; peso: string; obrigatorio: boolean }>
+  >([
+    { code: "MAC", nome: "Média Contínua", peso: "50", obrigatorio: true },
+    { code: "PT", nome: "Prova Trimestral", peso: "50", obrigatorio: true },
+  ]);
+  const [novoComponente, setNovoComponente] = useState({
+    code: "",
+    nome: "",
+    peso: "",
+    obrigatorio: true,
   });
   const [editingClasse, setEditingClasse] = useState<Class | null>(null);
   const [editingDisciplina, setEditingDisciplina] = useState<Discipline | null>(null);
@@ -119,10 +130,25 @@ export default function ConfiguracoesAcademicasPage() {
     isCore: true,
     modeloId: "",
   });
+  const [disciplinaFilters, setDisciplinaFilters] = useState({
+    cursoId: "",
+    classeId: "",
+  });
+  const [disciplinasCursor, setDisciplinasCursor] = useState<string | null>(null);
+  const [disciplinasLoading, setDisciplinasLoading] = useState(false);
 
   const defaultModeloAvaliacao = useMemo(
     () => modelosAvaliacao.find((m) => m.is_default) ?? modelosAvaliacao[0] ?? null,
     [modelosAvaliacao]
+  );
+
+  const modeloPesoTotal = useMemo(
+    () =>
+      modeloComponentes.reduce(
+        (total, item) => total + (Number(item.peso) || 0),
+        0
+      ),
+    [modeloComponentes]
   );
 
   const isClasseLocked = useMemo(() => {
@@ -141,6 +167,38 @@ export default function ConfiguracoesAcademicasPage() {
       setNewDisciplinaForm((prev) => ({ ...prev, modeloId: defaultModeloAvaliacao.id }));
     }
   }, [defaultModeloAvaliacao, newDisciplinaForm.modeloId]);
+
+  const fetchDisciplinas = async (options?: { cursor?: string | null; append?: boolean }) => {
+    if (!escolaId) return;
+    if (options?.append) {
+      setDisciplinasLoading(true);
+    } else {
+      setDisciplinasLoading(true);
+      setDisciplinasCursor(null);
+    }
+    try {
+      const url = new URL(`/api/escolas/${escolaId}/disciplinas`, window.location.origin);
+      url.searchParams.set("limit", "50");
+      if (options?.cursor) url.searchParams.set("cursor", options.cursor);
+      if (disciplinaFilters.cursoId) url.searchParams.set("curso_id", disciplinaFilters.cursoId);
+      if (disciplinaFilters.classeId) url.searchParams.set("classe_id", disciplinaFilters.classeId);
+      const res = await fetch(url.toString(), { cache: "no-store" });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || json?.ok === false) {
+        throw new Error(json?.error || "Falha ao carregar disciplinas");
+      }
+      const items = (json?.data ?? json?.items ?? []) as Discipline[];
+      setDisciplinas((prev) => (options?.append ? [...prev, ...items] : items));
+      setDisciplinasCursor(json?.next_cursor ?? null);
+    } finally {
+      setDisciplinasLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!escolaId) return;
+    fetchDisciplinas();
+  }, [escolaId, disciplinaFilters.cursoId, disciplinaFilters.classeId]);
 
   // Dados da escola e Danger Zone (wipe)
   const [escolaNome, setEscolaNome] = useState<string>("");
@@ -314,10 +372,8 @@ export default function ConfiguracoesAcademicasPage() {
       }
 
       // 5) Disciplinas — usar API para leitura consistente
-      let disciplinasRows: Discipline[] = [] as any;
       try {
-        disciplinasRows = await fetchAllPaginated<Discipline>(`/api/escolas/${escolaId}/disciplinas`);
-        if (mounted) setDisciplinas(disciplinasRows as any);
+        await fetchDisciplinas();
       } catch (error) {
         console.warn("Disciplinas GET error:", error);
       }
@@ -935,6 +991,34 @@ const handleApplyCurriculumPreset = async () => {
             {/* Disciplinas */}
             <section>
               <h3 className="text-sm font-semibold text-[#0B2C45] mb-2">Disciplinas</h3>
+              <div className="mb-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+                <select
+                  className="rounded border border-slate-200 px-2 py-1 text-xs"
+                  value={disciplinaFilters.cursoId}
+                  onChange={(e) =>
+                    setDisciplinaFilters((prev) => ({ ...prev, cursoId: e.target.value, classeId: "" }))
+                  }
+                >
+                  <option value="">Todas os cursos</option>
+                  {cursos.map((c) => (
+                    <option key={c.id} value={c.id}>{c.nome}</option>
+                  ))}
+                </select>
+                <select
+                  className="rounded border border-slate-200 px-2 py-1 text-xs"
+                  value={disciplinaFilters.classeId}
+                  onChange={(e) =>
+                    setDisciplinaFilters((prev) => ({ ...prev, classeId: e.target.value }))
+                  }
+                >
+                  <option value="">Todas as classes</option>
+                  {classes
+                    .filter((c) => !disciplinaFilters.cursoId || c.curso_id === disciplinaFilters.cursoId)
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>{c.nome}</option>
+                    ))}
+                </select>
+              </div>
               {disciplinas.length === 0 ? (
                 <p className="text-sm text-gray-500">Nenhuma disciplina cadastrada.</p>
               ) : (
@@ -1003,6 +1087,17 @@ const handleApplyCurriculumPreset = async () => {
                     </li>
                   ))}
                 </ul>
+              )}
+              {disciplinasCursor && (
+                <div className="mt-3">
+                  <Button
+                    variant="outline"
+                    disabled={disciplinasLoading}
+                    onClick={() => fetchDisciplinas({ cursor: disciplinasCursor, append: true })}
+                  >
+                    {disciplinasLoading ? 'Carregando...' : 'Carregar mais'}
+                  </Button>
+                </div>
               )}
             </section>
 
@@ -1259,11 +1354,67 @@ const handleApplyCurriculumPreset = async () => {
                     value={newModeloForm.nome}
                     onChange={(e) => setNewModeloForm((prev) => ({ ...prev, nome: e.target.value }))}
                   />
-                  <textarea
-                    className="w-full rounded border border-slate-200 px-2 py-1 text-xs min-h-[90px]"
-                    value={newModeloForm.componentes}
-                    onChange={(e) => setNewModeloForm((prev) => ({ ...prev, componentes: e.target.value }))}
-                  />
+                  <div className="space-y-2">
+                    {modeloComponentes.map((comp, idx) => (
+                      <div key={`${comp.code}-${idx}`} className="rounded border border-slate-200 p-2 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span>{comp.nome} ({comp.code})</span>
+                          <button
+                            type="button"
+                            className="text-red-600"
+                            onClick={() => setModeloComponentes((prev) => prev.filter((_, i) => i !== idx))}
+                          >
+                            Remover
+                          </button>
+                        </div>
+                        <p className="text-slate-500">Peso: {comp.peso}% · {comp.obrigatorio ? 'Obrigatório' : 'Opcional'}</p>
+                      </div>
+                    ))}
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        className="rounded border border-slate-200 px-2 py-1 text-xs"
+                        placeholder="Código (ex: MAC)"
+                        value={novoComponente.code}
+                        onChange={(e) => setNovoComponente((prev) => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                      />
+                      <input
+                        className="rounded border border-slate-200 px-2 py-1 text-xs"
+                        placeholder="Nome"
+                        value={novoComponente.nome}
+                        onChange={(e) => setNovoComponente((prev) => ({ ...prev, nome: e.target.value }))}
+                      />
+                      <input
+                        className="rounded border border-slate-200 px-2 py-1 text-xs"
+                        placeholder="Peso (%)"
+                        value={novoComponente.peso}
+                        onChange={(e) => setNovoComponente((prev) => ({ ...prev, peso: e.target.value }))}
+                      />
+                      <label className="flex items-center gap-2 text-xs text-slate-600">
+                        <input
+                          type="checkbox"
+                          checked={novoComponente.obrigatorio}
+                          onChange={(e) => setNovoComponente((prev) => ({ ...prev, obrigatorio: e.target.checked }))}
+                        />
+                        Obrigatório
+                      </label>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        if (!novoComponente.code || !novoComponente.nome || !novoComponente.peso) {
+                          toast.error('Preencha código, nome e peso.');
+                          return;
+                        }
+                        setModeloComponentes((prev) => [...prev, novoComponente]);
+                        setNovoComponente({ code: "", nome: "", peso: "", obrigatorio: true });
+                      }}
+                    >
+                      Adicionar componente
+                    </Button>
+                    <p className={`text-xs ${modeloPesoTotal === 100 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                      Soma dos pesos: {modeloPesoTotal}%
+                    </p>
+                  </div>
                   <label className="flex items-center gap-2 text-xs text-slate-600">
                     <input
                       type="checkbox"
@@ -1281,13 +1432,19 @@ const handleApplyCurriculumPreset = async () => {
                         toast.error('Informe o nome do modelo.');
                         return;
                       }
-                      let componentes: Record<string, any> = {};
-                      try {
-                        componentes = newModeloForm.componentes ? JSON.parse(newModeloForm.componentes) : {};
-                      } catch {
-                        toast.error('JSON inválido para componentes.');
+                      if (modeloPesoTotal !== 100) {
+                        toast.error('A soma dos pesos deve ser 100%.');
                         return;
                       }
+                      const componentes = {
+                        componentes: modeloComponentes.map((comp) => ({
+                          code: comp.code,
+                          nome: comp.nome,
+                          peso: Number(comp.peso),
+                          obrigatorio: comp.obrigatorio,
+                          ativo: true,
+                        })),
+                      };
                       setQuickActionLoading('modelo');
                       try {
                         const res = await fetch(`/api/escolas/${escolaId}/modelos-avaliacao`, {
@@ -1302,7 +1459,7 @@ const handleApplyCurriculumPreset = async () => {
                           setModelosAvaliacao((prev) => prev.map((m:any) => ({ ...m, is_default: m.id === json.data.id })));
                         }
                         toast.success('Modelo criado');
-                        setNewModeloForm({ nome: "", componentes: newModeloForm.componentes, isDefault: false });
+                        setNewModeloForm({ nome: "", isDefault: false });
                       } catch (e:any) {
                         toast.error(e?.message || 'Erro ao criar modelo');
                       } finally {
