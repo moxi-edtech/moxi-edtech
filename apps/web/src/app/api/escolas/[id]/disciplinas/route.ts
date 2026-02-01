@@ -34,10 +34,11 @@ export async function GET(
       let query = (supabase as any)
         .from("curso_matriz")
         .select(
-          `id, curso_id, classe_id, disciplina_id, carga_horaria, obrigatoria, ordem,
-           disciplina:disciplinas_catalogo(id, nome, sigla),
-           classe:classes(id, nome),
-           curso:cursos(id, nome)
+          `id, curso_id, classe_id, disciplina_id, carga_horaria, obrigatoria, ordem, curso_curriculo_id,
+           disciplina:disciplinas_catalogo(id, nome, sigla, carga_horaria_semana, is_core, is_avaliavel, area, aplica_modelo_avaliacao_id, herda_de_disciplina_id),
+           classe:classes(id, nome, turno, ano_letivo_id, carga_horaria_semanal, min_disciplinas_core),
+           curso:cursos(id, nome),
+           curriculo:curso_curriculos(status)
           `
         )
         .eq("escola_id", escolaId);
@@ -75,9 +76,20 @@ export async function GET(
       curso_id: r.curso_id,
       classe_id: r.classe_id,
       classe_nome: r.classe?.nome ?? undefined,
+      classe_turno: r.classe?.turno ?? undefined,
+      classe_ano_letivo_id: r.classe?.ano_letivo_id ?? undefined,
+      classe_carga_horaria_semanal: r.classe?.carga_horaria_semanal ?? undefined,
+      classe_min_disciplinas_core: r.classe?.min_disciplinas_core ?? undefined,
       carga_horaria: r.carga_horaria ?? undefined,
       ordem: r.ordem ?? undefined,
       disciplina_id: r.disciplina_id,
+      carga_horaria_semana: r.disciplina?.carga_horaria_semana ?? undefined,
+      is_core: r.disciplina?.is_core ?? undefined,
+      is_avaliavel: r.disciplina?.is_avaliavel ?? undefined,
+      area: r.disciplina?.area ?? undefined,
+      aplica_modelo_avaliacao_id: r.disciplina?.aplica_modelo_avaliacao_id ?? undefined,
+      herda_de_disciplina_id: r.disciplina?.herda_de_disciplina_id ?? undefined,
+      curriculo_status: r.curriculo?.status ?? undefined,
     }));
 
     const pageLimit = limit ?? 500;
@@ -122,11 +134,34 @@ export async function POST(
       carga_horaria: z.number().int().nullable().optional(),
       ordem: z.number().int().nullable().optional(),
       sigla: z.string().trim().nullable().optional(),
+      carga_horaria_semana: z.number().int().positive().nullable().optional(),
+      is_core: z.boolean().optional(),
+      is_avaliavel: z.boolean().optional(),
+      area: z.string().trim().nullable().optional(),
+      aplica_modelo_avaliacao_id: z.string().uuid().nullable().optional(),
+      herda_de_disciplina_id: z.string().uuid().nullable().optional(),
     });
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
       const msg = parsed.error.issues?.[0]?.message || "Dados inválidos";
       return NextResponse.json({ ok: false, error: msg }, { status: 400 });
+    }
+
+    const isAvaliavel = parsed.data.is_avaliavel ?? true;
+    let modeloAvaliacaoId = parsed.data.aplica_modelo_avaliacao_id ?? null;
+    if (isAvaliavel && !modeloAvaliacaoId) {
+      const { data: defaultModel } = await (supabase as any)
+        .from('modelos_avaliacao')
+        .select('id')
+        .eq('escola_id', escolaId)
+        .eq('is_default', true)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      modeloAvaliacaoId = defaultModel?.id ?? null;
+    }
+    if (isAvaliavel && !modeloAvaliacaoId) {
+      return NextResponse.json({ ok: false, error: 'Modelo de avaliação obrigatório.' }, { status: 400 });
     }
 
     // Resolve/insere disciplina no catálogo
@@ -138,11 +173,39 @@ export async function POST(
         .eq('escola_id', escolaId)
         .eq('nome', parsed.data.nome)
         .maybeSingle();
-      if (exist?.id) disciplinaId = exist.id;
+      if (exist?.id) {
+        disciplinaId = exist.id;
+        const updatePayload: Record<string, any> = {};
+        if (parsed.data.sigla !== undefined) updatePayload.sigla = parsed.data.sigla;
+        if (parsed.data.carga_horaria_semana !== undefined) updatePayload.carga_horaria_semana = parsed.data.carga_horaria_semana;
+        if (parsed.data.is_core !== undefined) updatePayload.is_core = parsed.data.is_core;
+        if (parsed.data.is_avaliavel !== undefined) updatePayload.is_avaliavel = isAvaliavel;
+        if (parsed.data.area !== undefined) updatePayload.area = parsed.data.area;
+        if (modeloAvaliacaoId) updatePayload.aplica_modelo_avaliacao_id = modeloAvaliacaoId;
+        if (parsed.data.herda_de_disciplina_id !== undefined) updatePayload.herda_de_disciplina_id = parsed.data.herda_de_disciplina_id;
+        if (Object.keys(updatePayload).length > 0) {
+          const { error: updateErr } = await (supabase as any)
+            .from('disciplinas_catalogo')
+            .update(updatePayload)
+            .eq('id', disciplinaId)
+            .eq('escola_id', escolaId);
+          if (updateErr) return NextResponse.json({ ok: false, error: updateErr.message }, { status: 400 });
+        }
+      }
       else {
         const { data: nova, error: discErr } = await (supabase as any)
           .from('disciplinas_catalogo')
-          .insert({ escola_id: escolaId, nome: parsed.data.nome, sigla: parsed.data.sigla ?? null } as any)
+          .insert({
+            escola_id: escolaId,
+            nome: parsed.data.nome,
+            sigla: parsed.data.sigla ?? null,
+            carga_horaria_semana: parsed.data.carga_horaria_semana ?? null,
+            is_core: parsed.data.is_core ?? parsed.data.obrigatoria ?? true,
+            is_avaliavel: isAvaliavel,
+            area: parsed.data.area ?? null,
+            aplica_modelo_avaliacao_id: modeloAvaliacaoId,
+            herda_de_disciplina_id: parsed.data.herda_de_disciplina_id ?? null,
+          } as any)
           .select('id')
           .single();
         if (discErr) return NextResponse.json({ ok: false, error: discErr.message }, { status: 400 });

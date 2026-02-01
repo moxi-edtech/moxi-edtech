@@ -62,7 +62,7 @@ export async function GET(
     {
       let query = (supabase as any)
         .from('classes')
-        .select('id, nome, descricao, ordem, nivel, curso_id') // Adicionei curso_id
+        .select('id, nome, descricao, ordem, nivel, curso_id, ano_letivo_id, turno, carga_horaria_semanal, min_disciplinas_core')
         .eq('escola_id', escolaId);
 
       if (cursoId) query = query.eq('curso_id', cursoId);
@@ -114,13 +114,17 @@ export async function GET(
       }
     }
 
-    const payload = rows.map((r: any) => ({
+      const payload = rows.map((r: any) => ({
       id: r.id,
       nome: r.nome,
       descricao: r.descricao ?? undefined,
       ordem: r.ordem ?? 0,
       nivel: r.nivel ?? undefined,
       curso_id: r.curso_id ?? undefined,
+      ano_letivo_id: r.ano_letivo_id ?? undefined,
+      turno: r.turno ?? undefined,
+      carga_horaria_semanal: r.carga_horaria_semanal ?? undefined,
+      min_disciplinas_core: r.min_disciplinas_core ?? undefined,
     }));
 
     const pageLimit = limit ?? 500;
@@ -182,6 +186,10 @@ export async function POST(
       descricao: z.string().trim().nullable().optional(),
       curso_id: z.string().uuid(),
       ordem: z.number().optional(),
+      ano_letivo_id: z.string().uuid().nullable().optional(),
+      turno: z.enum(['M', 'T', 'N']).nullable().optional(),
+      carga_horaria_semanal: z.number().int().positive().nullable().optional(),
+      min_disciplinas_core: z.number().int().min(0).nullable().optional(),
     });
 
     const parsed = schema.safeParse(body);
@@ -214,6 +222,10 @@ export async function POST(
     };
     if (parsed.data.nivel !== undefined) payload.nivel = parsed.data.nivel;
     if (parsed.data.descricao !== undefined) payload.descricao = parsed.data.descricao;
+    if (parsed.data.ano_letivo_id !== undefined) payload.ano_letivo_id = parsed.data.ano_letivo_id;
+    if (parsed.data.turno !== undefined) payload.turno = parsed.data.turno;
+    if (parsed.data.carga_horaria_semanal !== undefined) payload.carga_horaria_semanal = parsed.data.carga_horaria_semanal;
+    if (parsed.data.min_disciplinas_core !== undefined) payload.min_disciplinas_core = parsed.data.min_disciplinas_core;
 
     const { data: cursoInfo, error: cursoErr } = await (supabase as any)
       .from("cursos")

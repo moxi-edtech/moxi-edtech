@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabaseClient";
 
@@ -13,6 +14,7 @@ import {
   type Class,
   type Discipline,
   type Teacher,
+  type ModeloAvaliacao,
 } from "@/types/academico.types";
 import {
   Card,
@@ -22,6 +24,14 @@ import {
   CardTitle,
 } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   CheckCircle2,
   Settings,
@@ -46,6 +56,9 @@ export default function ConfiguracoesAcademicasPage() {
   );
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
+  const publishUrl = escolaId
+    ? `/escola/${escolaId}/admin/configuracoes/academico-completo`
+    : "#";
 
   const [sessoes, setSessoes] = useState<AcademicSession[]>([]);
   const [sessaoAtiva, setSessaoAtiva] = useState<AcademicSession | null>(null);
@@ -53,6 +66,7 @@ export default function ConfiguracoesAcademicasPage() {
   const [cursos, setCursos] = useState<Course[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [disciplinas, setDisciplinas] = useState<Discipline[]>([]);
+  const [modelosAvaliacao, setModelosAvaliacao] = useState<ModeloAvaliacao[]>([]);
   const [professores, setProfessores] = useState<Teacher[]>([]);
   const [tipoPresenca, setTipoPresenca] = useState<"secao" | "curso">("secao");
   const [estrutura, setEstrutura] = useState<"classes" | "secoes" | "cursos">(
@@ -66,6 +80,67 @@ export default function ConfiguracoesAcademicasPage() {
     useState<CurriculumKey | null>(null);
   const [applyPresetLoading, setApplyPresetLoading] = useState(false);
   const [quickActionLoading, setQuickActionLoading] = useState<string | null>(null);
+  const [newClasseForm, setNewClasseForm] = useState({
+    nome: "",
+    cursoId: "",
+    anoLetivoId: "",
+    turno: "",
+    cargaSemanal: "",
+    minCore: "",
+  });
+  const [newDisciplinaForm, setNewDisciplinaForm] = useState({
+    nome: "",
+    cursoId: "",
+    classeId: "",
+    sigla: "",
+    cargaSemanal: "",
+    area: "",
+    isCore: true,
+    modeloId: "",
+  });
+  const [newModeloForm, setNewModeloForm] = useState({
+    nome: "",
+    componentes: '{"componentes":[{"code":"MAC","peso":50,"ativo":true},{"code":"PT","peso":50,"ativo":true}]}',
+    isDefault: false,
+  });
+  const [editingClasse, setEditingClasse] = useState<Class | null>(null);
+  const [editingDisciplina, setEditingDisciplina] = useState<Discipline | null>(null);
+  const [editingClasseForm, setEditingClasseForm] = useState({
+    nome: "",
+    turno: "",
+    cargaSemanal: "",
+    minCore: "",
+  });
+  const [editingDisciplinaForm, setEditingDisciplinaForm] = useState({
+    nome: "",
+    sigla: "",
+    cargaSemanal: "",
+    area: "",
+    isCore: true,
+    modeloId: "",
+  });
+
+  const defaultModeloAvaliacao = useMemo(
+    () => modelosAvaliacao.find((m) => m.is_default) ?? modelosAvaliacao[0] ?? null,
+    [modelosAvaliacao]
+  );
+
+  const isClasseLocked = useMemo(() => {
+    const publishedByClasse = new Map<string, boolean>();
+    disciplinas.forEach((disc) => {
+      if (!disc.classe_id) return;
+      if (disc.curriculo_status === 'published') {
+        publishedByClasse.set(disc.classe_id, true);
+      }
+    });
+    return (classeId: string) => publishedByClasse.get(classeId) === true;
+  }, [disciplinas]);
+
+  useEffect(() => {
+    if (defaultModeloAvaliacao && !newDisciplinaForm.modeloId) {
+      setNewDisciplinaForm((prev) => ({ ...prev, modeloId: defaultModeloAvaliacao.id }));
+    }
+  }, [defaultModeloAvaliacao, newDisciplinaForm.modeloId]);
 
   // Dados da escola e Danger Zone (wipe)
   const [escolaNome, setEscolaNome] = useState<string>("");
@@ -176,6 +251,10 @@ export default function ConfiguracoesAcademicasPage() {
       const ativa = mapSessions.find((x) => x.status === "ativa") || null;
       setSessaoAtiva(ativa);
       setWipeSessionId(ativa?.id);
+      setNewClasseForm((prev) => ({
+        ...prev,
+        anoLetivoId: ativa?.id ?? prev.anoLetivoId,
+      }));
 
       // 2) Períodos — usar API (service role) para leitura consistente
       let periodosCountLoaded = 0;
@@ -241,6 +320,16 @@ export default function ConfiguracoesAcademicasPage() {
         if (mounted) setDisciplinas(disciplinasRows as any);
       } catch (error) {
         console.warn("Disciplinas GET error:", error);
+      }
+
+      try {
+        const res = await fetch(`/api/escolas/${escolaId}/modelos-avaliacao`, { cache: "no-store" });
+        const json = await res.json().catch(() => null);
+        if (mounted && res.ok && Array.isArray(json?.data)) {
+          setModelosAvaliacao(json.data as ModeloAvaliacao[]);
+        }
+      } catch (error) {
+        console.warn("Modelos avaliação GET error:", error);
       }
 
       // 6) Preferências
@@ -401,6 +490,202 @@ const handleApplyCurriculumPreset = async () => {
   // Configuração completa - mostrar dashboard
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-8">
+      <Dialog open={!!editingClasse} onOpenChange={(open) => !open && setEditingClasse(null)}>
+        <DialogContent className="sm:max-w-[460px]">
+          <DialogHeader>
+            <DialogTitle>Editar classe</DialogTitle>
+            <DialogDescription>
+              Ajuste o turno e a carga horária semanal com segurança.
+            </DialogDescription>
+          </DialogHeader>
+          {editingClasse && isClasseLocked(editingClasse.id) && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              Esta classe está vinculada a currículo publicado e é somente leitura.
+            </div>
+          )}
+          <div className="space-y-3">
+            <label className="text-xs text-slate-600">Nome</label>
+            <input
+              className="w-full rounded border border-slate-200 px-2 py-2 text-sm"
+              value={editingClasseForm.nome}
+              onChange={(e) => setEditingClasseForm((prev) => ({ ...prev, nome: e.target.value }))}
+              disabled={editingClasse ? isClasseLocked(editingClasse.id) : false}
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-slate-600">Turno</label>
+                <select
+                  className="w-full rounded border border-slate-200 px-2 py-2 text-sm"
+                  value={editingClasseForm.turno}
+                  onChange={(e) => setEditingClasseForm((prev) => ({ ...prev, turno: e.target.value }))}
+                  disabled={editingClasse ? isClasseLocked(editingClasse.id) : false}
+                >
+                  <option value="">Não definido</option>
+                  <option value="M">Manhã</option>
+                  <option value="T">Tarde</option>
+                  <option value="N">Noite</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-slate-600">Carga semanal (h)</label>
+                <input
+                  className="w-full rounded border border-slate-200 px-2 py-2 text-sm"
+                  value={editingClasseForm.cargaSemanal}
+                  onChange={(e) => setEditingClasseForm((prev) => ({ ...prev, cargaSemanal: e.target.value }))}
+                  disabled={editingClasse ? isClasseLocked(editingClasse.id) : false}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs text-slate-600">Mínimo de disciplinas core</label>
+              <input
+                className="w-full rounded border border-slate-200 px-2 py-2 text-sm"
+                value={editingClasseForm.minCore}
+                onChange={(e) => setEditingClasseForm((prev) => ({ ...prev, minCore: e.target.value }))}
+                disabled={editingClasse ? isClasseLocked(editingClasse.id) : false}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingClasse(null)}>
+              Cancelar
+            </Button>
+            <Button
+              disabled={!editingClasse || isClasseLocked(editingClasse.id)}
+              onClick={async () => {
+                if (!editingClasse || !escolaId) return;
+                try {
+                  const res = await fetch(`/api/escolas/${escolaId}/classes/${editingClasse.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      nome: editingClasseForm.nome.trim(),
+                      turno: editingClasseForm.turno || null,
+                      carga_horaria_semanal: editingClasseForm.cargaSemanal ? Number(editingClasseForm.cargaSemanal) : null,
+                      min_disciplinas_core: editingClasseForm.minCore ? Number(editingClasseForm.minCore) : null,
+                    }),
+                  });
+                  const json = await res.json().catch(() => null);
+                  if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao atualizar classe');
+                  setClasses((prev) => prev.map((x:any) => x.id === editingClasse.id ? { ...x, ...json.data } : x));
+                  setEditingClasse(null);
+                } catch (e:any) {
+                  toast.error(e?.message || 'Erro ao atualizar classe');
+                }
+              }}
+            >
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editingDisciplina} onOpenChange={(open) => !open && setEditingDisciplina(null)}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>Editar disciplina</DialogTitle>
+            <DialogDescription>
+              Ajuste modelo de avaliação e carga semanal.
+            </DialogDescription>
+          </DialogHeader>
+          {editingDisciplina?.curriculo_status === 'published' && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              Esta disciplina está publicada e não pode ser alterada.
+            </div>
+          )}
+          <div className="space-y-3">
+            <label className="text-xs text-slate-600">Nome</label>
+            <input
+              className="w-full rounded border border-slate-200 px-2 py-2 text-sm"
+              value={editingDisciplinaForm.nome}
+              onChange={(e) => setEditingDisciplinaForm((prev) => ({ ...prev, nome: e.target.value }))}
+              disabled={editingDisciplina?.curriculo_status === 'published'}
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-slate-600">Sigla</label>
+                <input
+                  className="w-full rounded border border-slate-200 px-2 py-2 text-sm"
+                  value={editingDisciplinaForm.sigla}
+                  onChange={(e) => setEditingDisciplinaForm((prev) => ({ ...prev, sigla: e.target.value }))}
+                  disabled={editingDisciplina?.curriculo_status === 'published'}
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-600">Carga semanal (h)</label>
+                <input
+                  className="w-full rounded border border-slate-200 px-2 py-2 text-sm"
+                  value={editingDisciplinaForm.cargaSemanal}
+                  onChange={(e) => setEditingDisciplinaForm((prev) => ({ ...prev, cargaSemanal: e.target.value }))}
+                  disabled={editingDisciplina?.curriculo_status === 'published'}
+                />
+              </div>
+            </div>
+            <label className="text-xs text-slate-600">Área</label>
+            <input
+              className="w-full rounded border border-slate-200 px-2 py-2 text-sm"
+              value={editingDisciplinaForm.area}
+              onChange={(e) => setEditingDisciplinaForm((prev) => ({ ...prev, area: e.target.value }))}
+              disabled={editingDisciplina?.curriculo_status === 'published'}
+            />
+            <label className="text-xs text-slate-600">Modelo de avaliação</label>
+            <select
+              className="w-full rounded border border-slate-200 px-2 py-2 text-sm"
+              value={editingDisciplinaForm.modeloId}
+              onChange={(e) => setEditingDisciplinaForm((prev) => ({ ...prev, modeloId: e.target.value }))}
+              disabled={editingDisciplina?.curriculo_status === 'published'}
+            >
+              <option value="">Selecione</option>
+              {modelosAvaliacao.map((m) => (
+                <option key={m.id} value={m.id}>{m.nome}</option>
+              ))}
+            </select>
+            <label className="flex items-center gap-2 text-xs text-slate-600">
+              <input
+                type="checkbox"
+                checked={editingDisciplinaForm.isCore}
+                onChange={(e) => setEditingDisciplinaForm((prev) => ({ ...prev, isCore: e.target.checked }))}
+                disabled={editingDisciplina?.curriculo_status === 'published'}
+              />
+              Disciplina core
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingDisciplina(null)}>
+              Cancelar
+            </Button>
+            <Button
+              disabled={!editingDisciplina || editingDisciplina?.curriculo_status === 'published'}
+              onClick={async () => {
+                if (!editingDisciplina || !escolaId) return;
+                try {
+                  const res = await fetch(`/api/escolas/${escolaId}/disciplinas/${editingDisciplina.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      nome: editingDisciplinaForm.nome.trim(),
+                      sigla: editingDisciplinaForm.sigla || null,
+                      carga_horaria_semana: editingDisciplinaForm.cargaSemanal ? Number(editingDisciplinaForm.cargaSemanal) : null,
+                      area: editingDisciplinaForm.area || null,
+                      is_core: editingDisciplinaForm.isCore,
+                      aplica_modelo_avaliacao_id: editingDisciplinaForm.modeloId || null,
+                    }),
+                  });
+                  const json = await res.json().catch(() => null);
+                  if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao atualizar disciplina');
+                  setDisciplinas((prev) => prev.map((x:any) => x.id === editingDisciplina.id ? { ...x, ...json.data } : x));
+                  setEditingDisciplina(null);
+                } catch (e:any) {
+                  toast.error(e?.message || 'Erro ao atualizar disciplina');
+                }
+              }}
+            >
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <header className="text-center">
         <h1 className="text-3xl font-bold text-[#0B2C45]">
           Configurações Acadêmicas
@@ -535,28 +820,51 @@ const handleApplyCurriculumPreset = async () => {
                 <ul className="divide-y divide-slate-200 rounded border">
                   {classes.slice(0, 10).map((c: any) => (
                     <li key={c.id} className="flex items-center justify-between px-3 py-2">
-                      <span className="text-sm text-[#0B2C45]">{c.nome}</span>
+                      <div>
+                        <span className="text-sm text-[#0B2C45]">{c.nome}</span>
+                        <p className="text-xs text-slate-500">
+                          {c.turno ? `Turno ${c.turno}` : 'Turno indefinido'}
+                          {c.carga_horaria_semanal ? ` · ${c.carga_horaria_semanal}h/sem` : ''}
+                          {typeof c.min_disciplinas_core === 'number' ? ` · Core mín.: ${c.min_disciplinas_core}` : ''}
+                          {isClasseLocked(c.id) ? ' · Publicada' : ''}
+                        </p>
+                        {isClasseLocked(c.id) && (
+                          <div className="mt-1 inline-flex items-center gap-2 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700">
+                            Currículo publicado — edição bloqueada
+                            <Link className="underline" href={publishUrl}>
+                              Solicitar nova versão
+                            </Link>
+                          </div>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2">
                         <button
-                          className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded border hover:bg-slate-50"
-                          onClick={async () => {
-                            const novo = window.prompt('Novo nome da classe', c.nome);
-                            if (!novo || novo.trim() === c.nome) return;
-                            try {
-                              const res = await fetch(`/api/escolas/${escolaId}/classes/${c.id}`, {
-                                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: novo.trim() })
-                              });
-                              const json = await res.json().catch(()=>null);
-                              if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao atualizar classe');
-                              setClasses(prev => prev.map((x:any)=> x.id===c.id ? { ...x, nome: novo.trim() } : x));
-                            } catch (e:any) { toast.error(e?.message || 'Erro ao atualizar classe'); }
+                          className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded border hover:bg-slate-50 disabled:opacity-50"
+                          disabled={isClasseLocked(c.id)}
+                          onClick={() => {
+                            if (isClasseLocked(c.id)) {
+                              toast.error('Classe vinculada a currículo publicado.');
+                              return;
+                            }
+                            setEditingClasse(c);
+                            setEditingClasseForm({
+                              nome: c.nome ?? '',
+                              turno: c.turno ?? '',
+                              cargaSemanal: c.carga_horaria_semanal ? String(c.carga_horaria_semanal) : '',
+                              minCore: typeof c.min_disciplinas_core === 'number' ? String(c.min_disciplinas_core) : '',
+                            });
                           }}
                         >
                           <Pencil className="w-3.5 h-3.5" /> Editar
                         </button>
                         <button
-                          className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded border border-red-300 text-red-700 hover:bg-red-50"
+                          className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50"
+                          disabled={isClasseLocked(c.id)}
                           onClick={async () => {
+                            if (isClasseLocked(c.id)) {
+                              toast.error('Classe vinculada a currículo publicado.');
+                              return;
+                            }
                             if (!window.confirm(`Remover classe "${c.nome}"? Esta ação não pode ser desfeita.`)) return;
                             try {
                               const res = await fetch(`/api/escolas/${escolaId}/classes/${c.id}`, { method: 'DELETE' });
@@ -633,28 +941,53 @@ const handleApplyCurriculumPreset = async () => {
                 <ul className="divide-y divide-slate-200 rounded border">
                   {disciplinas.slice(0, 10).map((d: any) => (
                     <li key={d.id} className="flex items-center justify-between px-3 py-2">
-                      <span className="text-sm text-[#0B2C45]">{d.nome}</span>
+                      <div>
+                        <span className="text-sm text-[#0B2C45]">{d.nome}</span>
+                        <p className="text-xs text-slate-500">
+                          {d.sigla ? `Sigla ${d.sigla}` : 'Sem sigla'}
+                          {d.carga_horaria_semana ? ` · ${d.carga_horaria_semana}h/sem` : ''}
+                          {d.is_core ? ' · Core' : ' · Eletiva'}
+                          {d.curriculo_status === 'published' ? ' · Publicada' : ''}
+                        </p>
+                        {d.curriculo_status === 'published' && (
+                          <div className="mt-1 inline-flex items-center gap-2 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700">
+                            Currículo publicado — edição bloqueada
+                            <Link className="underline" href={publishUrl}>
+                              Solicitar nova versão
+                            </Link>
+                          </div>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2">
                         <button
-                          className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded border hover:bg-slate-50"
+                          className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded border hover:bg-slate-50 disabled:opacity-50"
+                          disabled={d.curriculo_status === 'published'}
                           onClick={async () => {
-                            const novo = window.prompt('Novo nome da disciplina', d.nome);
-                            if (!novo || novo.trim() === d.nome) return;
-                            try {
-                              const res = await fetch(`/api/escolas/${escolaId}/disciplinas/${d.id}`, {
-                                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: novo.trim() })
-                              });
-                              const json = await res.json().catch(()=>null);
-                              if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao atualizar disciplina');
-                              setDisciplinas(prev => prev.map((x:any)=> x.id===d.id ? { ...x, nome: novo.trim() } : x));
-                            } catch (e:any) { toast.error(e?.message || 'Erro ao atualizar disciplina'); }
+                            if (d.curriculo_status === 'published') {
+                              toast.error('Disciplina publicada não pode ser editada.');
+                              return;
+                            }
+                            setEditingDisciplina(d);
+                            setEditingDisciplinaForm({
+                              nome: d.nome ?? '',
+                              sigla: d.sigla ?? '',
+                              cargaSemanal: d.carga_horaria_semana ? String(d.carga_horaria_semana) : '',
+                              area: d.area ?? '',
+                              isCore: d.is_core ?? true,
+                              modeloId: d.aplica_modelo_avaliacao_id ?? defaultModeloAvaliacao?.id ?? '',
+                            });
                           }}
                         >
                           <Pencil className="w-3.5 h-3.5" /> Editar
                         </button>
                         <button
-                          className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded border border-red-300 text-red-700 hover:bg-red-50"
+                          className="text-xs inline-flex items-center gap-1 px-2 py-1 rounded border border-red-300 text-red-700 hover:bg-red-50 disabled:opacity-50"
+                          disabled={d.curriculo_status === 'published'}
                           onClick={async () => {
+                            if (d.curriculo_status === 'published') {
+                              toast.error('Disciplina publicada não pode ser removida.');
+                              return;
+                            }
                             if (!window.confirm(`Remover disciplina "${d.nome}"? Esta ação não pode ser desfeita.`)) return;
                             try {
                               const res = await fetch(`/api/escolas/${escolaId}/disciplinas/${d.id}`, { method: 'DELETE' });
@@ -672,6 +1005,7 @@ const handleApplyCurriculumPreset = async () => {
                 </ul>
               )}
             </section>
+
           </CardContent>
         </Card>
         {/* Ações rápidas: criar itens pós-onboarding */}
@@ -687,96 +1021,299 @@ const handleApplyCurriculumPreset = async () => {
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-3">
-              <Button
-                variant="default"
-                disabled={!!quickActionLoading}
-                onClick={async () => {
-                  if (!escolaId) return;
-                  const nome = window.prompt('Nome da classe (ex.: 10ª, 11ª, 12ª)');
-                  if (!nome) return;
-                  setQuickActionLoading('classe');
-                  try {
-                    const res = await fetch(`/api/escolas/${escolaId}/classes`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ nome }),
+              <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="rounded-lg border border-slate-200 p-3 space-y-2">
+                  <h4 className="text-xs font-semibold text-slate-600">Nova Classe</h4>
+                  <input
+                    className="w-full rounded border border-slate-200 px-2 py-1 text-xs"
+                    placeholder="Nome da classe"
+                    value={newClasseForm.nome}
+                    onChange={(e) => setNewClasseForm((prev) => ({ ...prev, nome: e.target.value }))}
+                  />
+                  <select
+                    className="w-full rounded border border-slate-200 px-2 py-1 text-xs"
+                    value={newClasseForm.cursoId}
+                    onChange={(e) => setNewClasseForm((prev) => ({ ...prev, cursoId: e.target.value }))}
+                  >
+                    <option value="">Curso</option>
+                    {cursos.map((c) => (
+                      <option key={c.id} value={c.id}>{c.nome}</option>
+                    ))}
+                  </select>
+                  <select
+                    className="w-full rounded border border-slate-200 px-2 py-1 text-xs"
+                    value={newClasseForm.anoLetivoId}
+                    onChange={(e) => setNewClasseForm((prev) => ({ ...prev, anoLetivoId: e.target.value }))}
+                  >
+                    <option value="">Ano letivo</option>
+                    {sessoes.map((s) => (
+                      <option key={s.id} value={s.id}>{s.nome}</option>
+                    ))}
+                  </select>
+                  <select
+                    className="w-full rounded border border-slate-200 px-2 py-1 text-xs"
+                    value={newClasseForm.turno}
+                    onChange={(e) => setNewClasseForm((prev) => ({ ...prev, turno: e.target.value }))}
+                  >
+                    <option value="">Turno</option>
+                    <option value="M">Manhã</option>
+                    <option value="T">Tarde</option>
+                    <option value="N">Noite</option>
+                  </select>
+                  <input
+                    className="w-full rounded border border-slate-200 px-2 py-1 text-xs"
+                    placeholder="Carga semanal (h)"
+                    value={newClasseForm.cargaSemanal}
+                    onChange={(e) => setNewClasseForm((prev) => ({ ...prev, cargaSemanal: e.target.value }))}
+                  />
+                  <input
+                    className="w-full rounded border border-slate-200 px-2 py-1 text-xs"
+                    placeholder="Mín. core"
+                    value={newClasseForm.minCore}
+                    onChange={(e) => setNewClasseForm((prev) => ({ ...prev, minCore: e.target.value }))}
+                  />
+                  <Button
+                    variant="default"
+                    disabled={!!quickActionLoading}
+                    onClick={async () => {
+                      if (!escolaId) return;
+                      if (!newClasseForm.nome || !newClasseForm.cursoId) {
+                        toast.error('Informe nome e curso.');
+                        return;
+                      }
+                      setQuickActionLoading('classe');
+                      try {
+                        const res = await fetch(`/api/escolas/${escolaId}/classes`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            nome: newClasseForm.nome,
+                            curso_id: newClasseForm.cursoId,
+                            ano_letivo_id: newClasseForm.anoLetivoId || null,
+                            turno: newClasseForm.turno || null,
+                            carga_horaria_semanal: newClasseForm.cargaSemanal ? Number(newClasseForm.cargaSemanal) : null,
+                            min_disciplinas_core: newClasseForm.minCore ? Number(newClasseForm.minCore) : null,
+                          }),
+                        });
+                        const json = await res.json().catch(() => null);
+                        if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao criar classe');
+                        toast.success('Classe criada');
+                        const r = await fetch(`/api/escolas/${escolaId}/classes`, { cache: 'no-store' });
+                        const j = await r.json().catch(() => null);
+                        if (r.ok && Array.isArray(j?.data)) setClasses(j.data as any);
+                    setNewClasseForm({
+                      nome: "",
+                      cursoId: newClasseForm.cursoId,
+                      anoLetivoId: newClasseForm.anoLetivoId,
+                      turno: "",
+                      cargaSemanal: "",
+                      minCore: "",
                     });
-                    const json = await res.json().catch(() => null);
-                    if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao criar classe');
-                    toast.success('Classe criada');
-                    // reload classes
-                    const r = await fetch(`/api/escolas/${escolaId}/classes`, { cache: 'no-store' });
-                    const j = await r.json().catch(() => null);
-                    if (r.ok && Array.isArray(j?.data)) setClasses(j.data as any);
-                  } catch (e: any) {
-                    toast.error(e?.message || 'Erro ao criar classe');
-                  } finally {
-                    setQuickActionLoading(null);
-                  }
-                }}
-              >
-                Nova Classe
-              </Button>
+                      } catch (e: any) {
+                        toast.error(e?.message || 'Erro ao criar classe');
+                      } finally {
+                        setQuickActionLoading(null);
+                      }
+                    }}
+                  >
+                    Criar Classe
+                  </Button>
+                </div>
 
-              <Button
-                variant="default"
-                disabled={!!quickActionLoading}
-                onClick={async () => {
-                  if (!escolaId) return;
-                  const nome = window.prompt('Nome do curso (ex.: Matemática, Ciências)');
-                  if (!nome) return;
-                  setQuickActionLoading('curso');
-                  try {
-                    const res = await fetch(`/api/escolas/${escolaId}/cursos`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ nome }),
-                    });
-                    const json = await res.json().catch(() => null);
-                    if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao criar curso');
-                    toast.success('Curso criado');
-                    const r = await fetch(`/api/escolas/${escolaId}/cursos`, { cache: 'no-store' });
-                    const j = await r.json().catch(() => null);
-                    if (r.ok && Array.isArray(j?.data)) setCursos(j.data as any);
-                  } catch (e: any) {
-                    toast.error(e?.message || 'Erro ao criar curso');
-                  } finally {
-                    setQuickActionLoading(null);
-                  }
-                }}
-              >
-                Novo Curso
-              </Button>
+                <div className="rounded-lg border border-slate-200 p-3 space-y-2">
+                  <h4 className="text-xs font-semibold text-slate-600">Nova Disciplina</h4>
+                  <input
+                    className="w-full rounded border border-slate-200 px-2 py-1 text-xs"
+                    placeholder="Nome"
+                    value={newDisciplinaForm.nome}
+                    onChange={(e) => setNewDisciplinaForm((prev) => ({ ...prev, nome: e.target.value }))}
+                  />
+                  <select
+                    className="w-full rounded border border-slate-200 px-2 py-1 text-xs"
+                    value={newDisciplinaForm.cursoId}
+                    onChange={(e) => {
+                      const cursoId = e.target.value;
+                      const classe = classes.find((c) => c.curso_id === cursoId);
+                      setNewDisciplinaForm((prev) => ({
+                        ...prev,
+                        cursoId,
+                        classeId: classe?.id ?? "",
+                      }));
+                    }}
+                  >
+                    <option value="">Curso</option>
+                    {cursos.map((c) => (
+                      <option key={c.id} value={c.id}>{c.nome}</option>
+                    ))}
+                  </select>
+                  <select
+                    className="w-full rounded border border-slate-200 px-2 py-1 text-xs"
+                    value={newDisciplinaForm.classeId}
+                    onChange={(e) => setNewDisciplinaForm((prev) => ({ ...prev, classeId: e.target.value }))}
+                  >
+                    <option value="">Classe</option>
+                    {classes
+                      .filter((c) => !newDisciplinaForm.cursoId || c.curso_id === newDisciplinaForm.cursoId)
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>{c.nome}</option>
+                      ))}
+                  </select>
+                  <input
+                    className="w-full rounded border border-slate-200 px-2 py-1 text-xs"
+                    placeholder="Sigla"
+                    value={newDisciplinaForm.sigla}
+                    onChange={(e) => setNewDisciplinaForm((prev) => ({ ...prev, sigla: e.target.value }))}
+                  />
+                  <input
+                    className="w-full rounded border border-slate-200 px-2 py-1 text-xs"
+                    placeholder="Carga semanal (h)"
+                    value={newDisciplinaForm.cargaSemanal}
+                    onChange={(e) => setNewDisciplinaForm((prev) => ({ ...prev, cargaSemanal: e.target.value }))}
+                  />
+                  <input
+                    className="w-full rounded border border-slate-200 px-2 py-1 text-xs"
+                    placeholder="Área"
+                    value={newDisciplinaForm.area}
+                    onChange={(e) => setNewDisciplinaForm((prev) => ({ ...prev, area: e.target.value }))}
+                  />
+                  <select
+                    className="w-full rounded border border-slate-200 px-2 py-1 text-xs"
+                    value={newDisciplinaForm.modeloId}
+                    onChange={(e) => setNewDisciplinaForm((prev) => ({ ...prev, modeloId: e.target.value }))}
+                  >
+                    <option value="">Modelo de avaliação</option>
+                    {modelosAvaliacao.map((m) => (
+                      <option key={m.id} value={m.id}>{m.nome}</option>
+                    ))}
+                  </select>
+                  <label className="flex items-center gap-2 text-xs text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={newDisciplinaForm.isCore}
+                      onChange={(e) => setNewDisciplinaForm((prev) => ({ ...prev, isCore: e.target.checked }))}
+                    />
+                    Disciplina core
+                  </label>
+                  <Button
+                    variant="default"
+                    disabled={!!quickActionLoading}
+                    onClick={async () => {
+                      if (!escolaId) return;
+                      if (!newDisciplinaForm.nome || !newDisciplinaForm.cursoId || !newDisciplinaForm.classeId) {
+                        toast.error('Informe nome, curso e classe.');
+                        return;
+                      }
+                      const modeloId = newDisciplinaForm.modeloId || defaultModeloAvaliacao?.id || "";
+                      if (!modeloId) {
+                        toast.error('Selecione um modelo de avaliação.');
+                        return;
+                      }
+                      setQuickActionLoading('disciplina');
+                      try {
+                        const res = await fetch(`/api/escolas/${escolaId}/disciplinas`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            nome: newDisciplinaForm.nome,
+                            curso_id: newDisciplinaForm.cursoId,
+                            classe_id: newDisciplinaForm.classeId,
+                            sigla: newDisciplinaForm.sigla || null,
+                            carga_horaria_semana: newDisciplinaForm.cargaSemanal ? Number(newDisciplinaForm.cargaSemanal) : null,
+                            area: newDisciplinaForm.area || null,
+                            is_core: newDisciplinaForm.isCore,
+                            aplica_modelo_avaliacao_id: modeloId,
+                          }),
+                        });
+                        const json = await res.json().catch(() => null);
+                        if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao criar disciplina');
+                        toast.success('Disciplina criada');
+                        const r = await fetch(`/api/escolas/${escolaId}/disciplinas`, { cache: 'no-store' });
+                        const j = await r.json().catch(() => null);
+                        if (r.ok && Array.isArray(j?.data)) setDisciplinas(j.data as any);
+                        setNewDisciplinaForm({
+                          nome: "",
+                          cursoId: newDisciplinaForm.cursoId,
+                          classeId: newDisciplinaForm.classeId,
+                          sigla: "",
+                          cargaSemanal: "",
+                          area: "",
+                          isCore: true,
+                          modeloId: newDisciplinaForm.modeloId,
+                        });
+                      } catch (e: any) {
+                        toast.error(e?.message || 'Erro ao criar disciplina');
+                      } finally {
+                        setQuickActionLoading(null);
+                      }
+                    }}
+                  >
+                    Criar Disciplina
+                  </Button>
+                </div>
 
-              <Button
-                variant="default"
-                disabled={!!quickActionLoading}
-                onClick={async () => {
-                  if (!escolaId) return;
-                  const nome = window.prompt('Nome da disciplina (ex.: Álgebra, Física)');
-                  if (!nome) return;
-                  setQuickActionLoading('disciplina');
-                  try {
-                    const res = await fetch(`/api/escolas/${escolaId}/disciplinas`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ nome }),
-                    });
-                    const json = await res.json().catch(() => null);
-                    if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao criar disciplina');
-                    toast.success('Disciplina criada');
-                    const r = await fetch(`/api/escolas/${escolaId}/disciplinas`, { cache: 'no-store' });
-                    const j = await r.json().catch(() => null);
-                    if (r.ok && Array.isArray(j?.data)) setDisciplinas(j.data as any);
-                  } catch (e: any) {
-                    toast.error(e?.message || 'Erro ao criar disciplina');
-                  } finally {
-                    setQuickActionLoading(null);
-                  }
-                }}
-              >
-                Nova Disciplina
-              </Button>
+                <div className="rounded-lg border border-slate-200 p-3 space-y-2">
+                  <h4 className="text-xs font-semibold text-slate-600">Novo Modelo de Avaliação</h4>
+                  <input
+                    className="w-full rounded border border-slate-200 px-2 py-1 text-xs"
+                    placeholder="Nome do modelo"
+                    value={newModeloForm.nome}
+                    onChange={(e) => setNewModeloForm((prev) => ({ ...prev, nome: e.target.value }))}
+                  />
+                  <textarea
+                    className="w-full rounded border border-slate-200 px-2 py-1 text-xs min-h-[90px]"
+                    value={newModeloForm.componentes}
+                    onChange={(e) => setNewModeloForm((prev) => ({ ...prev, componentes: e.target.value }))}
+                  />
+                  <label className="flex items-center gap-2 text-xs text-slate-600">
+                    <input
+                      type="checkbox"
+                      checked={newModeloForm.isDefault}
+                      onChange={(e) => setNewModeloForm((prev) => ({ ...prev, isDefault: e.target.checked }))}
+                    />
+                    Definir como padrão
+                  </label>
+                  <Button
+                    variant="default"
+                    disabled={!!quickActionLoading}
+                    onClick={async () => {
+                      if (!escolaId) return;
+                      if (!newModeloForm.nome.trim()) {
+                        toast.error('Informe o nome do modelo.');
+                        return;
+                      }
+                      let componentes: Record<string, any> = {};
+                      try {
+                        componentes = newModeloForm.componentes ? JSON.parse(newModeloForm.componentes) : {};
+                      } catch {
+                        toast.error('JSON inválido para componentes.');
+                        return;
+                      }
+                      setQuickActionLoading('modelo');
+                      try {
+                        const res = await fetch(`/api/escolas/${escolaId}/modelos-avaliacao`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ nome: newModeloForm.nome.trim(), componentes, is_default: newModeloForm.isDefault }),
+                        });
+                        const json = await res.json().catch(() => null);
+                        if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao criar modelo');
+                        setModelosAvaliacao((prev) => [json.data, ...prev.filter((m:any) => m.id !== json.data.id)]);
+                        if (newModeloForm.isDefault) {
+                          setModelosAvaliacao((prev) => prev.map((m:any) => ({ ...m, is_default: m.id === json.data.id })));
+                        }
+                        toast.success('Modelo criado');
+                        setNewModeloForm({ nome: "", componentes: newModeloForm.componentes, isDefault: false });
+                      } catch (e:any) {
+                        toast.error(e?.message || 'Erro ao criar modelo');
+                      } finally {
+                        setQuickActionLoading(null);
+                      }
+                    }}
+                  >
+                    Criar Modelo
+                  </Button>
+                </div>
+              </div>
 
               <Button
                 variant="outline"

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import { supabaseServerTyped } from '@/lib/supabaseServer';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
@@ -65,6 +66,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     const { cursoId, anoLetivo, turnos, classes, turmas, capacidadeMaxima } = parsed.data;
+    const idempotencyKey = req.headers.get('Idempotency-Key') ?? randomUUID();
 
     const { data: anoLetivoRow } = await supabase
       .from('anos_letivos')
@@ -95,6 +97,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       p_curso_id: cursoId,
       p_ano_letivo: anoLetivo,
       p_generation_params: JSON.parse(JSON.stringify(parsed.data)), // Pass generation params as JSONB
+      p_idempotency_key: idempotencyKey,
     });
 
     if (error) {
@@ -102,7 +105,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ ok: false, error: 'Erro ao gerar turmas.' }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true, data });
+    return NextResponse.json({ ok: true, data, idempotency_key: idempotencyKey });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

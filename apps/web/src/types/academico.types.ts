@@ -30,6 +30,11 @@ export type Class = {
   descricao?: string;
   ordem: number;
   nivel?: string; // base | secundario | medio | completo
+  curso_id?: string;
+  ano_letivo_id?: string;
+  turno?: "M" | "T" | "N";
+  carga_horaria_semanal?: number;
+  min_disciplinas_core?: number;
   // Cada classe pode ter várias disciplinas associadas
   disciplinas?: Discipline[];
 };
@@ -64,6 +69,23 @@ export type Discipline = {
   curso_id?: string;   // se pertence a um curso
   classe_id?: string;  // se pertence a uma classe diretamente
   descricao?: string;
+  sigla?: string;
+  carga_horaria_semana?: number;
+  is_core?: boolean;
+  is_avaliavel?: boolean;
+  area?: string;
+  aplica_modelo_avaliacao_id?: string;
+  herda_de_disciplina_id?: string;
+  curriculo_status?: "draft" | "published" | "archived" | string;
+};
+
+export type ModeloAvaliacao = {
+  id: string;
+  nome: string;
+  componentes: Record<string, any>;
+  is_default?: boolean;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type Teacher = {

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import { supabaseServerTyped } from '@/lib/supabaseServer';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
@@ -248,6 +249,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           headers: {
             'Content-Type': 'application/json',
             cookie: req.headers.get('cookie') ?? '',
+            'Idempotency-Key': randomUUID(),
           },
           body: JSON.stringify({
             cursoId: cursoId,

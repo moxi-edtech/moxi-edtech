@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import { supabaseServerTyped } from '@/lib/supabaseServer';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
@@ -50,6 +51,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     const { cursoId, anoLetivoId, version, rebuildTurmas } = parsed.data;
+    const idempotencyKey = req.headers.get('Idempotency-Key') ?? randomUUID();
 
     const { data, error } = await supabase.rpc('curriculo_publish', {
       p_escola_id: userEscolaId,
@@ -68,7 +70,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ ok: false, error: result?.message || 'Falha ao publicar currículo.' }, { status: 400 });
     }
 
-    return NextResponse.json({ ok: true, data: result });
+    return NextResponse.json({ ok: true, data: result, idempotency_key: idempotencyKey });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

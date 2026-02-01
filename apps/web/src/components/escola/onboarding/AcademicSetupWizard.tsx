@@ -549,9 +549,15 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
 
         if (turmasPayload.length === 0) continue;
 
+        const idempotencyKey = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
         const res = await fetch(`/api/escola/${escolaId}/admin/turmas/generate`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "Idempotency-Key": idempotencyKey,
+          },
           body: JSON.stringify({
             cursoId: cursoInfo.cursoId,
             anoLetivo,
