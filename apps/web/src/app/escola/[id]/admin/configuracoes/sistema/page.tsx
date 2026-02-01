@@ -16,6 +16,7 @@ import {
   LayoutDashboard
 } from "lucide-react";
 import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
+import { buildConfigMenuItems } from "../_shared/menuItems";
 
 // --- TYPES ---
 type SetupState = {
@@ -48,47 +49,47 @@ export default function SistemaConfiguracoesPage() {
 
   // --- MENU CONFIG ---
   const modules = useMemo(() => [
-    { 
-      key: 'calendario', 
-      label: "Calendário Acadêmico", 
-      desc: "Defina os trimestres, feriados e datas de bloqueio.", 
-      href: `${base}/calendario`, 
-      icon: CalendarDays 
+    {
+      key: "calendario",
+      label: "Calendário Acadêmico",
+      desc: "Defina os trimestres, feriados e datas de bloqueio.",
+      href: `${base}/calendario`,
+      icon: CalendarDays,
     },
-    { 
-      key: 'avaliacao', 
-      label: "Avaliação & Notas", 
-      desc: "Pesos, fórmulas de cálculo e regras de aprovação.", 
-      href: `${base}/avaliacao`, 
-      icon: GraduationCap 
+    {
+      key: "avaliacao",
+      label: "Avaliação & Notas",
+      desc: "Pesos, fórmulas de cálculo e regras de aprovação.",
+      href: `${base}/avaliacao`,
+      icon: GraduationCap,
     },
-    { 
-      key: 'turmas', 
-      label: "Turmas & Currículo", 
-      desc: "Gere as turmas a partir da grade curricular.", 
-      href: `${base}/turmas`, 
-      icon: Users 
+    {
+      key: "turmas",
+      label: "Turmas & Currículo",
+      desc: "Gere as turmas a partir da grade curricular.",
+      href: `${base}/turmas`,
+      icon: Users,
     },
-    { 
-      key: 'financeiro', 
-      label: "Financeiro", 
-      desc: "Tabela de preços, multas e datas de vencimento.", 
-      href: `${base}/financeiro`, 
-      icon: Wallet 
+    {
+      key: "financeiro",
+      label: "Financeiro",
+      desc: "Tabela de preços, multas e datas de vencimento.",
+      href: `${base}/financeiro`,
+      icon: Wallet,
     },
-    { 
-      key: 'fluxos', 
-      label: "Fluxos de Aprovação", 
-      desc: "Quem aprova as notas antes do boletim sair?", 
-      href: `${base}/fluxos`, 
-      icon: Workflow 
+    {
+      key: "fluxos",
+      label: "Fluxos de Aprovação",
+      desc: "Quem aprova as notas antes do boletim sair?",
+      href: `${base}/fluxos`,
+      icon: Workflow,
     },
-    { 
-      key: 'avancado', 
-      label: "Avançado", 
-      desc: "Logs de auditoria e configurações perigosas.", 
-      href: `${base}/avancado`, 
-      icon: Settings2 
+    {
+      key: "avancado",
+      label: "Avançado",
+      desc: "Logs de auditoria e configurações perigosas.",
+      href: `${base}/avancado`,
+      icon: Settings2,
     },
   ], [base]);
 
@@ -138,7 +139,7 @@ export default function SistemaConfiguracoesPage() {
       escolaId={escolaId ?? ""}
       title="Configurações do Sistema"
       subtitle="Painel de Controle do Ano Letivo."
-      menuItems={modules}
+      menuItems={buildConfigMenuItems(base)}
       nextHref={`${base}/calendario`}
       testHref={`${base}/sandbox`}
       statusItems={blockersList.length > 0 ? blockersList : ["Sistema Operante"]}

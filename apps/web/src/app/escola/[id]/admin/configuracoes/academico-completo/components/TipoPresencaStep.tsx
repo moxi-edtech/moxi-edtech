@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
 import AcademicStep2Config from "@/components/escola/onboarding/AcademicStep2Config";
+import { buildConfigMenuItems } from "../../_shared/menuItems";
 
 // --- TIPAGENS ---
 type Componente = { code: string; peso: number; ativo: boolean };
@@ -157,12 +158,7 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
       escolaId={escolaId}
       title="Avaliação & Frequência"
       subtitle="Defina as regras do jogo: como os alunos são aprovados."
-      menuItems={[
-        { label: "📅 Calendário", href: `${base}/calendario` },
-        { label: "📊 Avaliação", href: `${base}/avaliacao` },
-        { label: "👥 Turmas", href: `${base}/turmas` },
-        { label: "💰 Financeiro", href: `${base}/financeiro` },
-      ]}
+      menuItems={buildConfigMenuItems(base)}
       prevHref={`${base}/calendario`}
       nextHref={`${base}/turmas`}
       // Escondemos o botão de save global do Shell para controlar localmente

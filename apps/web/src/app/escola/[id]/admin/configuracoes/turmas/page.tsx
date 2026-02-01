@@ -14,6 +14,7 @@ import {
   School
 } from "lucide-react";
 import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
+import { buildConfigMenuItems } from "../_shared/menuItems";
 
 // --- TYPES ---
 type Curso = { id: string; nome: string };
@@ -36,14 +37,7 @@ export default function TurmasConfiguracoesPage() {
   const escolaId = params?.id;
   const base = escolaId ? `/escola/${escolaId}/admin/configuracoes` : "";
   
-  const menuItems = [
-    { label: "📅 Calendário", href: `${base}/calendario` },
-    { label: "📊 Avaliação", href: `${base}/avaliacao` },
-    { label: "👥 Turmas", href: `${base}/turmas` },
-    { label: "💰 Financeiro", href: `${base}/financeiro` },
-    { label: "🔄 Fluxos", href: `${base}/fluxos` },
-    { label: "⚙️ Avançado", href: `${base}/avancado` },
-  ];
+  const menuItems = buildConfigMenuItems(base);
 
   // --- STATE ---
   const [loading, setLoading] = useState(true);

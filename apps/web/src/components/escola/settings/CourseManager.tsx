@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, Plus, Users } from "lucide-react";
+import { BookOpen, Plus, Users, Pencil, Trash2 } from "lucide-react";
 import type { ActiveCourse, CourseDetails, CurriculoStatus } from "./StructureMarketplace";
 
 type ManagerTab = "turmas" | "disciplinas";
@@ -14,6 +14,9 @@ type CourseManagerProps = {
   curriculoAnoLetivo: { id: string; ano: number } | null;
   onTabChange: (tab: ManagerTab) => void;
   onGenerateTurmas: (cursoId: string) => void;
+  onCreateDisciplina: () => void;
+  onEditDisciplina: (disciplina: CourseDetails["disciplinas"][number]) => void;
+  onDeleteDisciplina: (id: string) => void;
   onBack: () => void;
 };
 
@@ -46,6 +49,9 @@ export default function CourseManager({
   curriculoAnoLetivo,
   onTabChange,
   onGenerateTurmas,
+  onCreateDisciplina,
+  onEditDisciplina,
+  onDeleteDisciplina,
   onBack,
 }: CourseManagerProps) {
   return (
@@ -208,14 +214,69 @@ export default function CourseManager({
                   </div>
                 </div>
 
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold text-slate-900">Plano curricular</h4>
+                  <button
+                    type="button"
+                    onClick={onCreateDisciplina}
+                    className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-slate-800 shadow-sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Adicionar Disciplina
+                  </button>
+                </div>
+
                 <div className="rounded-xl border border-slate-200 overflow-hidden">
                   <div className="bg-slate-50 px-4 py-3 text-xs font-semibold text-slate-600">
                     Disciplinas ({details.disciplinas.length})
                   </div>
                   <div className="divide-y divide-slate-100">
-                    {details.disciplinas.map((d) => (
-                      <div key={d.id} className="px-4 py-3">
-                        <span className="text-sm text-slate-900">{d.nome}</span>
+                    {details.disciplinas.map((disc, idx) => (
+                      <div key={disc.id} className="px-4 py-3 group">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <span className="text-slate-300 font-mono text-xs w-6">
+                              {(idx + 1).toString().padStart(2, "0")}
+                            </span>
+                            <div>
+                              <div className="font-medium text-slate-800 flex items-center gap-2">
+                                {disc.nome}
+                                {disc.is_core && (
+                                  <span className="rounded-full bg-slate-900 text-white px-2 py-0.5 text-[10px] font-semibold">
+                                    Core
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-xs text-slate-500 font-mono">
+                                {disc.codigo} · {disc.carga_horaria_semanal} aulas/sem ·{" "}
+                                {disc.is_avaliavel
+                                  ? disc.avaliacao_mode === "herdar_escola"
+                                    ? "Aval: escola"
+                                    : "Aval: custom"
+                                  : "Sem nota"}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              type="button"
+                              onClick={() => onEditDisciplina(disc)}
+                              className="text-slate-300 hover:text-slate-700 p-2 rounded-xl hover:bg-slate-100"
+                              title="Editar"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onDeleteDisciplina(disc.id)}
+                              className="text-slate-300 hover:text-red-500 p-2 rounded-xl hover:bg-red-50"
+                              title="Remover"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     ))}
                     {details.disciplinas.length === 0 && (

@@ -3,19 +3,13 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
+import { buildConfigMenuItems } from "../_shared/menuItems";
 
 export default function AvancadoConfiguracoesPage() {
   const params = useParams() as { id?: string };
   const escolaId = params?.id;
   const base = escolaId ? `/escola/${escolaId}/admin/configuracoes` : "";
-  const menuItems = [
-    { label: "📅 Calendário", href: `${base}/calendario` },
-    { label: "📊 Avaliação", href: `${base}/avaliacao` },
-    { label: "👥 Turmas", href: `${base}/turmas` },
-    { label: "💰 Financeiro", href: `${base}/financeiro` },
-    { label: "🔄 Fluxos", href: `${base}/fluxos` },
-    { label: "⚙️ Avançado", href: `${base}/avancado` },
-  ];
+  const menuItems = buildConfigMenuItems(base);
 
   const [saving, setSaving] = useState(false);
   const handleSave = async () => {
