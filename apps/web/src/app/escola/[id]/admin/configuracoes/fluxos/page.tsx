@@ -14,6 +14,7 @@ import {
   FileSignature 
 } from "lucide-react";
 import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
+import { buildConfigMenuItems } from "../_shared/menuItems";
 
 // --- TYPES ---
 type WorkflowStep = {
@@ -32,14 +33,7 @@ export default function FluxosConfiguracaoPage() {
   const escolaId = params?.id;
   const base = escolaId ? `/escola/${escolaId}/admin/configuracoes` : "";
   
-  const menuItems = [
-    { label: "📅 Calendário", href: `${base}/calendario` },
-    { label: "📊 Avaliação", href: `${base}/avaliacao` },
-    { label: "👥 Turmas", href: `${base}/turmas` },
-    { label: "💰 Financeiro", href: `${base}/financeiro` },
-    { label: "🔄 Fluxos", href: `${base}/fluxos` },
-    { label: "⚙️ Avançado", href: `${base}/avancado` },
-  ];
+  const menuItems = buildConfigMenuItems(base);
 
   const [saving, setSaving] = useState(false);
   const [auditStatus, setAuditStatus] = useState<string[]>([]);

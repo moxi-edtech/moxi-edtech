@@ -16,6 +16,7 @@ import {
 import ConfirmDialog from "./ConfirmDialog";
 import CourseCreateModal from "./CourseCreateModal";
 import CourseManager from "./CourseManager";
+import { DisciplinaModal, type DisciplinaForm } from "./_components/DisciplinaModal";
 
 /**
  * KLASSE UI rules applied:
@@ -38,7 +39,18 @@ export type ActiveCourse = {
 
 export type CourseDetails = {
   id: string;
-  disciplinas: { id: string; nome: string }[];
+  disciplinas: {
+    id: string;
+    nome: string;
+    codigo: string;
+    carga_horaria_semanal: number;
+    is_core: boolean;
+    participa_horario: boolean;
+    is_avaliavel: boolean;
+    avaliacao_mode: "herdar_escola" | "personalizada";
+    area?: string | null;
+    matrix_ids: string[];
+  }[];
   turmas: {
     id: string;
     nome: string;
@@ -123,6 +135,36 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   const [installing, setInstalling] = useState(false);
   const [quickInstallingKey, setQuickInstallingKey] = useState<string | null>(null);
 
+  const [disciplinaModalOpen, setDisciplinaModalOpen] = useState(false);
+  const [disciplinaModalMode, setDisciplinaModalMode] = useState<"create" | "edit">("create");
+  const [disciplinaEditing, setDisciplinaEditing] = useState<DisciplinaForm | null>(null);
+  const [disciplinaEditingMatrixIds, setDisciplinaEditingMatrixIds] = useState<string[]>([]);
+
+  const openCreateDisciplina = useCallback(() => {
+    setDisciplinaModalMode("create");
+    setDisciplinaEditing(null);
+    setDisciplinaModalOpen(true);
+  }, []);
+
+  const openEditDisciplina = useCallback((disciplina: CourseDetails["disciplinas"][number]) => {
+    setDisciplinaModalMode("edit");
+    setDisciplinaEditing({
+      id: disciplina.id,
+      nome: disciplina.nome,
+      codigo: disciplina.codigo,
+      carga_horaria_semanal: disciplina.carga_horaria_semanal,
+      is_core: disciplina.is_core,
+      participa_horario: disciplina.participa_horario,
+      is_avaliavel: disciplina.is_avaliavel,
+      avaliacao_mode: disciplina.avaliacao_mode,
+      area: disciplina.area ?? null,
+      duracao_aula_min: null,
+      programa_texto: null,
+    });
+    setDisciplinaEditingMatrixIds(disciplina.matrix_ids ?? []);
+    setDisciplinaModalOpen(true);
+  }, []);
+
   // Confirm dialogs (replace confirm/prompt)
   const [confirmState, setConfirmState] = useState<{
     open: boolean;
@@ -199,6 +241,92 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   }, [escolaId]);
 
   // -------- Details --------
+  const fetchCourseDetails = useCallback(
+    async (courseId: string): Promise<CourseDetails> => {
+      const [classesRes, disciplinasRes, turmasRes] = await Promise.all([
+        fetch(`/api/escolas/${escolaId}/classes?curso_id=${courseId}&limit=50`, {
+          cache: "no-store",
+        }),
+        fetch(`/api/escolas/${escolaId}/disciplinas?curso_id=${courseId}&limit=200`, {
+          cache: "no-store",
+        }),
+        fetch(`/api/escolas/${escolaId}/turmas?curso_id=${courseId}&limit=50`, {
+          cache: "no-store",
+        }),
+      ]);
+
+      const [classesJson, disciplinasJson, turmasJson] = await Promise.all([
+        classesRes.json().catch(() => null),
+        disciplinasRes.json().catch(() => null),
+        turmasRes.json().catch(() => null),
+      ]);
+
+      if (!classesRes.ok || classesJson?.ok === false) {
+        throw new Error(classesJson?.error || "Falha ao carregar classes.");
+      }
+      if (!disciplinasRes.ok || disciplinasJson?.ok === false) {
+        throw new Error(disciplinasJson?.error || "Falha ao carregar disciplinas.");
+      }
+      if (!turmasRes.ok || turmasJson?.ok === false) {
+        throw new Error(turmasJson?.error || "Falha ao carregar turmas.");
+      }
+
+      const classes = (classesJson?.data ?? []).map((item: any) => ({
+        id: item.id,
+        nome: item.nome,
+      }));
+      const classesById = new Map<string, string>(
+        classes.map((item: { id: string; nome: string }) => [item.id, item.nome])
+      );
+
+      const disciplinaMap = new Map<string, CourseDetails["disciplinas"][number]>();
+      (disciplinasJson?.data ?? []).forEach((item: any) => {
+        const key = item.disciplina_id ?? item.nome ?? item.id;
+        const existing = disciplinaMap.get(key);
+        const base = existing ?? {
+          id: key,
+          nome: item.nome,
+          codigo: item.sigla ?? item.codigo ?? item.nome?.slice(0, 6)?.toUpperCase() ?? "",
+          carga_horaria_semanal: Number(item.carga_horaria_semana ?? item.carga_horaria ?? 0),
+          is_core: Boolean(item.is_core ?? item.tipo === "core"),
+          participa_horario: true,
+          is_avaliavel: item.is_avaliavel ?? true,
+          avaliacao_mode: item.aplica_modelo_avaliacao_id ? "personalizada" : "herdar_escola",
+          area: item.area ?? null,
+          matrix_ids: [],
+        };
+
+        const matrixIds = base.matrix_ids ?? [];
+        if (item.id && !matrixIds.includes(item.id)) {
+          matrixIds.push(item.id);
+        }
+        disciplinaMap.set(key, { ...base, matrix_ids: matrixIds });
+      });
+
+      const disciplinas = Array.from(disciplinaMap.values());
+
+      const turmas = (turmasJson?.items ?? turmasJson?.data ?? []).map((item: any) => ({
+        id: item.id,
+        nome: item.nome,
+        classe:
+          item.classe_nome ||
+          classesById.get(item.classe_id) ||
+          item.classe ||
+          "Sem classe",
+        turno: item.turno ?? "-",
+        total_alunos: Number(item.ocupacao_atual ?? 0),
+      }));
+
+      return {
+        id: courseId,
+        classes,
+        disciplinas,
+        turmas,
+      };
+    },
+    [escolaId]
+  );
+
   const handleOpenManager = useCallback(
     async (courseId: string) => {
       setSelectedCourseId(courseId);
@@ -207,65 +335,8 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       setDetails(null);
 
       try {
-        const [classesRes, disciplinasRes, turmasRes] = await Promise.all([
-          fetch(`/api/escolas/${escolaId}/classes?curso_id=${courseId}&limit=50`, {
-            cache: "no-store",
-          }),
-          fetch(`/api/escolas/${escolaId}/disciplinas?curso_id=${courseId}&limit=50`, {
-            cache: "no-store",
-          }),
-          fetch(`/api/escolas/${escolaId}/turmas?curso_id=${courseId}&limit=50`, {
-            cache: "no-store",
-          }),
-        ]);
-
-        const [classesJson, disciplinasJson, turmasJson] = await Promise.all([
-          classesRes.json().catch(() => null),
-          disciplinasRes.json().catch(() => null),
-          turmasRes.json().catch(() => null),
-        ]);
-
-        if (!classesRes.ok || classesJson?.ok === false) {
-          throw new Error(classesJson?.error || "Falha ao carregar classes.");
-        }
-        if (!disciplinasRes.ok || disciplinasJson?.ok === false) {
-          throw new Error(disciplinasJson?.error || "Falha ao carregar disciplinas.");
-        }
-        if (!turmasRes.ok || turmasJson?.ok === false) {
-          throw new Error(turmasJson?.error || "Falha ao carregar turmas.");
-        }
-
-        const classes = (classesJson?.data ?? []).map((item: any) => ({
-          id: item.id,
-          nome: item.nome,
-        }));
-        const classesById = new Map<string, string>(
-          classes.map((item: { id: string; nome: string }) => [item.id, item.nome])
-        );
-
-        const disciplinas = (disciplinasJson?.data ?? []).map((item: any) => ({
-          id: item.id,
-          nome: item.nome,
-        }));
-
-        const turmas = (turmasJson?.items ?? turmasJson?.data ?? []).map((item: any) => ({
-          id: item.id,
-          nome: item.nome,
-          classe:
-            item.classe_nome ||
-            classesById.get(item.classe_id) ||
-            item.classe ||
-            "Sem classe",
-          turno: item.turno ?? "-",
-          total_alunos: Number(item.ocupacao_atual ?? 0),
-        }));
-
-        setDetails({
-          id: courseId,
-          classes,
-          disciplinas,
-          turmas,
-        });
+        const nextDetails = await fetchCourseDetails(courseId);
+        setDetails(nextDetails);
       } catch (e: any) {
         console.error(e);
         toast.error(e?.message || "Erro ao carregar detalhes do curso.");
@@ -274,7 +345,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         setLoadingDetails(false);
       }
     },
-    [escolaId]
+    [fetchCourseDetails]
   );
 
   const selectedCourse = useMemo(
@@ -589,25 +660,155 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     });
   }, [escolaId, fetchCourses]);
 
+  const handleSaveDisciplina = useCallback(
+    async (payload: DisciplinaForm) => {
+      if (!details || !selectedCourseId) return;
+      try {
+        if (disciplinaModalMode === "create") {
+          if (details.classes.length === 0) {
+            toast.error("Cadastre classes antes de adicionar disciplinas.");
+            return;
+          }
+
+          await Promise.all(
+            details.classes.map(async (classe) => {
+              const res = await fetch(`/api/escolas/${escolaId}/disciplinas`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  nome: payload.nome,
+                  curso_id: selectedCourseId,
+                  classe_id: classe.id,
+                  sigla: payload.codigo,
+                  carga_horaria_semana: payload.carga_horaria_semanal,
+                  carga_horaria: payload.carga_horaria_semanal,
+                  obrigatoria: payload.is_core,
+                  is_core: payload.is_core,
+                  is_avaliavel: payload.is_avaliavel,
+                  area: payload.area ?? null,
+                  aplica_modelo_avaliacao_id: null,
+                }),
+              });
+              const json = await res.json().catch(() => null);
+              if (!res.ok || json?.ok === false) {
+                throw new Error(json?.error || "Falha ao criar disciplina.");
+              }
+            })
+          );
+
+          toast.success("Disciplina criada.");
+          const nextDetails = await fetchCourseDetails(selectedCourseId);
+          setDetails(nextDetails);
+          return;
+        }
+
+        if (!payload.id || disciplinaEditingMatrixIds.length === 0) return;
+
+        await Promise.all(
+          disciplinaEditingMatrixIds.map(async (matrixId) => {
+            const res = await fetch(`/api/escolas/${escolaId}/disciplinas/${matrixId}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                nome: payload.nome,
+                sigla: payload.codigo,
+                carga_horaria_semana: payload.carga_horaria_semanal,
+                carga_horaria: payload.carga_horaria_semanal,
+                is_core: payload.is_core,
+                is_avaliavel: payload.is_avaliavel,
+                area: payload.area ?? null,
+                aplica_modelo_avaliacao_id: null,
+              }),
+            });
+            const json = await res.json().catch(() => null);
+            if (!res.ok || json?.ok === false) {
+              throw new Error(json?.error || "Falha ao atualizar disciplina.");
+            }
+          })
+        );
+
+        toast.success("Disciplina atualizada.");
+        const nextDetails = await fetchCourseDetails(selectedCourseId);
+        setDetails(nextDetails);
+      } catch (e: any) {
+        toast.error(e?.message || "Falha ao salvar disciplina.");
+      }
+    },
+    [
+      details,
+      disciplinaEditingMatrixIds,
+      disciplinaModalMode,
+      escolaId,
+      fetchCourseDetails,
+      selectedCourseId,
+    ]
+  );
+
+  const handleDeleteDisciplina = useCallback(
+    async (id: string) => {
+      if (!details || !selectedCourseId) return;
+      const disciplina = details.disciplinas.find((d) => d.id === id);
+      const matrixIds = disciplina?.matrix_ids ?? [];
+      if (matrixIds.length === 0) return;
+      try {
+        await Promise.all(
+          matrixIds.map(async (matrixId) => {
+            const res = await fetch(`/api/escolas/${escolaId}/disciplinas/${matrixId}`, {
+              method: "DELETE",
+            });
+            const json = await res.json().catch(() => null);
+            if (!res.ok || json?.ok === false) {
+              throw new Error(json?.error || "Falha ao remover disciplina.");
+            }
+          })
+        );
+
+        toast.success("Disciplina removida.");
+        const nextDetails = await fetchCourseDetails(selectedCourseId);
+        setDetails(nextDetails);
+      } catch (e: any) {
+        toast.error(e?.message || "Falha ao remover disciplina.");
+      }
+    },
+    [details, escolaId, fetchCourseDetails, selectedCourseId]
+  );
+
   // -------- Manager view --------
   if (selectedCourseId) {
     return (
-      <CourseManager
-        selectedCourse={selectedCourse}
-        managerTab={managerTab}
-        loadingDetails={loadingDetails}
-        details={details}
-        curriculoInfo={
-          selectedCourseId ? curriculoStatusByCurso[selectedCourseId] : undefined
-        }
-        curriculoAnoLetivo={curriculoAnoLetivo}
-        onTabChange={setManagerTab}
-        onGenerateTurmas={handleAddTurma}
-        onBack={() => {
-          setSelectedCourseId(null);
-          setDetails(null);
-        }}
-      />
+      <>
+        <CourseManager
+          selectedCourse={selectedCourse}
+          managerTab={managerTab}
+          loadingDetails={loadingDetails}
+          details={details}
+          curriculoInfo={
+            selectedCourseId ? curriculoStatusByCurso[selectedCourseId] : undefined
+          }
+          curriculoAnoLetivo={curriculoAnoLetivo}
+          onTabChange={setManagerTab}
+          onGenerateTurmas={handleAddTurma}
+          onCreateDisciplina={openCreateDisciplina}
+          onEditDisciplina={openEditDisciplina}
+          onDeleteDisciplina={handleDeleteDisciplina}
+          onBack={() => {
+            setSelectedCourseId(null);
+            setDetails(null);
+          }}
+        />
+        {details && (
+          <DisciplinaModal
+            open={disciplinaModalOpen}
+            mode={disciplinaModalMode}
+            initial={disciplinaEditing}
+            existingCodes={details.disciplinas.map((d) => d.codigo)}
+            existingNames={details.disciplinas.map((d) => d.nome)}
+            onClose={() => setDisciplinaModalOpen(false)}
+            onSave={handleSaveDisciplina}
+            onDelete={disciplinaModalMode === "edit" ? handleDeleteDisciplina : undefined}
+          />
+        )}
+      </>
     );
   }
 
@@ -795,6 +996,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
           onConfirm={() => confirmState.onConfirm?.()}
         />
       )}
+
     </div>
   );
 }

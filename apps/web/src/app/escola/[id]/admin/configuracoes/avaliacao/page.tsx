@@ -15,6 +15,7 @@ import {
   Check
 } from "lucide-react";
 import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
+import { buildConfigMenuItems } from "../_shared/menuItems";
 import AcademicStep2Config from "@/components/escola/onboarding/AcademicStep2Config";
 
 // --- TIPAGENS (Mantidas) ---
@@ -163,13 +164,7 @@ export default function AvaliacaoUnificadaClient() {
       escolaId={escolaId}
       title="Avaliação & Frequência"
       subtitle="Defina as regras do jogo: como os alunos são aprovados."
-      menuItems={[
-        { label: "📅 Calendário", href: `${base}/calendario` },
-        { label: "📊 Avaliação", href: `${base}/avaliacao` },
-        { label: "👥 Turmas", href: `${base}/turmas` },
-        { label: "💰 Financeiro", href: `${base}/financeiro` },
-        { label: "🔄 Fluxos", href: `${base}/fluxos` },
-      ]}
+      menuItems={buildConfigMenuItems(base)}
       prevHref={`${base}/calendario`}
       nextHref={`${base}/turmas`}
       saveDisabled={true} // Controle local
