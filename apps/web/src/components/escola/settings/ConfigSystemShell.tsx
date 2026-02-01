@@ -14,6 +14,17 @@ type ConfigSystemShellProps = {
   prevHref?: string;
   nextHref?: string;
   testHref?: string;
+  impact?: {
+    alunos?: number;
+    turmas?: number;
+    professores?: number;
+    cursos?: number;
+    classes?: number;
+    disciplinas?: number;
+  };
+  statusItems?: string[];
+  onSave?: () => void;
+  saveDisabled?: boolean;
 };
 
 export default function ConfigSystemShell({
@@ -24,7 +35,17 @@ export default function ConfigSystemShell({
   prevHref,
   nextHref,
   testHref,
+  impact,
+  statusItems,
+  onSave,
+  saveDisabled,
 }: ConfigSystemShellProps) {
+  const status = statusItems ?? [];
+  const impactSummary = [
+    impact?.alunos !== undefined ? `${impact.alunos} alunos impactados` : null,
+    impact?.turmas !== undefined ? `${impact.turmas} turmas afetadas` : null,
+    impact?.professores !== undefined ? `${impact.professores} professores envolvidos` : null,
+  ].filter(Boolean) as string[];
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       <header className="flex flex-col gap-2">
@@ -72,13 +93,29 @@ export default function ConfigSystemShell({
             <h3 className="text-sm font-semibold text-slate-800">Barra de status</h3>
             <p className="text-xs text-slate-500">Impacto estimado das mudanças.</p>
           </div>
-          <ul className="text-xs text-slate-600 space-y-2">
-            <li>450 alunos impactados</li>
-            <li>18 turmas afetadas</li>
-            <li>45 professores envolvidos</li>
-          </ul>
+          {status.length > 0 && (
+            <ul className="text-xs text-slate-600 space-y-2">
+              {status.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          )}
+          {impactSummary.length > 0 && (
+            <ul className="text-xs text-slate-600 space-y-2">
+              {impactSummary.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          )}
+          {impactSummary.length === 0 && status.length === 0 && (
+            <p className="text-xs text-slate-500">Sem impacto calculado.</p>
+          )}
           <div className="flex flex-col gap-2">
-            <button className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50">
+            <button
+              className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+              onClick={onSave}
+              disabled={saveDisabled || !onSave}
+            >
               Salvar
             </button>
             {testHref && (
