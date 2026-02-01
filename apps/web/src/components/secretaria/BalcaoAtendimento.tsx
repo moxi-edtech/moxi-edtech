@@ -1,19 +1,40 @@
 // apps/web/src/components/secretaria/BalcaoAtendimento.tsx
-'use client';
+"use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { 
-  Search, ShoppingCart, Printer, Trash2, 
-  CreditCard, Banknote, AlertCircle, CheckCircle,
-  FileText, Plus, Loader2
-} from 'lucide-react';
-import { createClient } from '@/lib/supabase/client'; // Importar cliente Supabase para frontend
-import { toast } from 'react-hot-toast'; // Para notificações de sucesso/erro
-import { useDebounce } from '@/hooks/useDebounce'; // Assumindo useDebounce para a busca
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Search,
+  ShoppingCart,
+  Printer,
+  Trash2,
+  CreditCard,
+  Banknote,
+  AlertCircle,
+  CheckCircle,
+  FileText,
+  Plus,
+  Loader2,
+  Smartphone,
+  Wallet,
+  X,
+  ChevronRight,
+} from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
+import { useDebounce } from "@/hooks/useDebounce";
 
-const kwanza = new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA', maximumFractionDigits: 0 });
+const kwanza = new Intl.NumberFormat("pt-AO", {
+  style: "currency",
+  currency: "AOA",
+  maximumFractionDigits: 0,
+});
 
-// --- TIPOS (baseados nos dados reais do backend) ---
+const cx = (...classes: Array<string | false | null | undefined>) =>
+  classes.filter(Boolean).join(" ");
+
+type MetodoPagamento = "dinheiro" | "tpa" | "transferencia" | "mbway";
+
+// --- TIPOS ---
 interface AlunoBusca {
   id: string;
   nome: string;
@@ -25,15 +46,15 @@ interface AlunoBusca {
 }
 
 interface AlunoDossier extends AlunoBusca {
-  status_financeiro: 'em_dia' | 'inadimplente';
+  status_financeiro: "em_dia" | "inadimplente";
   divida_total: number;
 }
 
 interface Mensalidade {
   id: string;
-  nome: string; // Ex: "Mensalidade Mar/2025"
-  preco: number;
-  tipo: 'mensalidade';
+  nome: string;
+  preco: number; // saldo a pagar
+  tipo: "mensalidade";
   atrasada: boolean;
   mes_referencia: number;
   ano_referencia: number;
@@ -43,8 +64,7 @@ interface Servico {
   id: string;
   nome: string;
   preco: number;
-  tipo: 'servico';
-  // Outros campos específicos do serviço
+  tipo: "servico";
 }
 
 type ItemCarrinho = Mensalidade | Servico;
@@ -53,457 +73,830 @@ interface BalcaoAtendimentoProps {
   escolaId: string;
 }
 
+function formatMesAno(mes?: number, ano?: number) {
+  if (!mes || mes < 1 || mes > 12 || !ano) return "Mensalidade";
+  const label = new Date(0, mes - 1).toLocaleString("pt-PT", { month: "short" });
+  return `Mensalidade ${label}/${ano}`;
+}
+
+function normalizeQuery(q: string) {
+  return q.trim();
+}
+
+function makeIdempotencyKey() {
+  // simples e bom: sessão + timestamp + random
+  return `balcao_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+function StatusPill({ status }: { status: "em_dia" | "inadimplente" }) {
+  const bad = status === "inadimplente";
+  return (
+    <span
+      className={cx(
+        "inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide",
+        bad
+          ? "border-red-200 bg-red-50 text-red-700"
+          : "border-emerald-200 bg-emerald-50 text-emerald-700"
+      )}
+    >
+      {bad ? "Inadimplente" : "Em dia"}
+    </span>
+  );
+}
+
+function SkeletonLine() {
+  return <div className="h-3 w-full animate-pulse rounded-full bg-slate-200" />;
+}
+
 export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) {
-  const supabase = createClient(); // Cliente Supabase para o frontend
-  const [searchTerm, setSearchTerm] = useState('');
-  const debouncedSearchTerm = useDebounce(searchTerm, 500);
+  const supabase = createClient();
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearchTerm = useDebounce(searchTerm, 400);
   const [alunosEncontrados, setAlunosEncontrados] = useState<AlunoBusca[]>([]);
   const [alunoSelecionado, setAlunoSelecionado] = useState<AlunoDossier | null>(null);
+
   const [mensalidadesDisponiveis, setMensalidadesDisponiveis] = useState<Mensalidade[]>([]);
   const [servicosDisponiveis, setServicosDisponiveis] = useState<Servico[]>([]);
   const [carrinho, setCarrinho] = useState<ItemCarrinho[]>([]);
-  const [pagamento, setPagamento] = useState({ metodo: 'cash', valorRecebido: 0 });
+
+  const [metodo, setMetodo] = useState<MetodoPagamento>("dinheiro");
+  const [valorRecebido, setValorRecebido] = useState<string>("");
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [alunoDossierLoading, setAlunoDossierLoading] = useState(false);
 
-  // --- Efeitos para Carregar Dados ---
+  const idempotencyRef = useRef<string>(makeIdempotencyKey());
+  const abortSearchRef = useRef<AbortController | null>(null);
 
-  // Carregar Catálogo de Serviços
+  // --- Load serviços (catálogo) ---
   useEffect(() => {
+    let mounted = true;
     async function loadServicos() {
       const { data, error } = await supabase
-        .from('servicos_catalogo')
-        .select('id, nome, preco, tipo')
-        .eq('escola_id', escolaId)
-        .eq('ativo', true);
+        .from("servicos_catalogo")
+        .select("id, nome, preco, tipo")
+        .eq("escola_id", escolaId)
+        .eq("ativo", true);
+
+      if (!mounted) return;
+
       if (error) {
-        console.error('Erro ao carregar serviços:', error);
-        toast.error('Erro ao carregar serviços.');
-      } else {
-        setServicosDisponiveis(data as Servico[]);
+        console.error(error);
+        toast.error("Erro ao carregar serviços.");
+        setServicosDisponiveis([]);
+        return;
       }
+      setServicosDisponiveis((data ?? []) as Servico[]);
     }
     loadServicos();
+    return () => {
+      mounted = false;
+    };
   }, [supabase, escolaId]);
 
-  // Carregar dados do aluno selecionado
-  const loadAlunoDossier = useCallback(async (alunoId: string) => {
-    setAlunoDossierLoading(true);
-    const { data: dossier, error } = await supabase.rpc('get_aluno_dossier', {
-      p_escola_id: escolaId, // Passa o escolaId real
-      p_aluno_id: alunoId,
-    });
+  // --- Load aluno dossier ---
+  const loadAlunoDossier = useCallback(
+    async (alunoId: string) => {
+      setAlunoDossierLoading(true);
+      try {
+        const { data: dossier, error } = await supabase.rpc("get_aluno_dossier", {
+          p_escola_id: escolaId,
+          p_aluno_id: alunoId,
+        });
 
-    if (error || !dossier) {
-      console.error('Erro ao carregar dossiê do aluno:', error);
-      toast.error('Erro ao carregar detalhes do aluno.');
-      setAlunoSelecionado(null);
-      setMensalidadesDisponiveis([]);
-    } else {
-      const financeiro = (dossier as any).financeiro || {};
-      const perfil = (dossier as any).perfil || {};
-      const historico = (dossier as any).historico || [];
+        if (error || !dossier) {
+          console.error(error);
+          toast.error("Erro ao carregar dossiê do aluno.");
+          setAlunoSelecionado(null);
+          setMensalidadesDisponiveis([]);
+          setCarrinho([]);
+          return;
+        }
 
-      const status_financeiro = (financeiro.total_em_atraso ?? 0) > 0 ? 'inadimplente' : 'em_dia';
-      const divida_total = financeiro.total_em_atraso ?? 0;
-      const turmaAtual = historico.find((h: any) => ['ativo', 'ativa'].includes(h.status_final)); // Assumindo status_final no historico
+        const raw = dossier as any;
+        const financeiro = raw.financeiro || {};
+        const perfil = raw.perfil || {};
+        const historico = Array.isArray(raw.historico) ? raw.historico : [];
 
-      setAlunoSelecionado({
-        id: alunoId,
-        nome: perfil.nome_completo || perfil.nome || 'Aluno Desconhecido',
-        numero_processo: perfil.numero_processo || 'N/A',
-        bi_numero: perfil.bi_numero || null,
-        turma: turmaAtual?.turma || 'N/A',
-        status_financeiro,
-        divida_total,
-        foto_url: perfil.foto_url,
-        matricula_id: turmaAtual?.matricula_id || null,
-      });
+        const totalAtraso = Number(financeiro.total_em_atraso ?? 0);
+        const status_financeiro: AlunoDossier["status_financeiro"] =
+          totalAtraso > 0 ? "inadimplente" : "em_dia";
 
-      // Mapear mensalidades para o formato do carrinho
-      const mensalidades: Mensalidade[] = (financeiro.mensalidades || [])
-        .filter((m: any) => m.status === 'pendente' || m.status === 'pago_parcial')
-        .map((m: any) => ({
-          id: m.id,
-          nome: `Mensalidade ${new Date(0, m.mes_referencia - 1).toLocaleString('pt-PT', { month: 'short' })}/${m.ano_referencia}`,
-          preco: (m.valor ?? 0) - (m.valor_pago_total ?? 0), // Preço líquido a pagar
-          tipo: 'mensalidade',
-          atrasada: m.data_vencimento ? new Date(m.data_vencimento) < new Date() : false,
-          mes_referencia: m.mes,
-          ano_referencia: m.ano_referencia,
-        }));
-      setMensalidadesDisponiveis(mensalidades);
-      setCarrinho([]); // Limpa o carrinho ao mudar de aluno
-      setPagamento({ metodo: 'cash', valorRecebido: 0 }); // Reseta pagamento
-    }
-    setAlunoDossierLoading(false);
-  }, [supabase, escolaId]);
+        // histórico: teu tipo usa `status` (não status_final)
+        const atual =
+          historico.find((h: any) => ["ativo", "ativa"].includes(String(h?.status ?? "").toLowerCase())) ??
+          historico[0] ??
+          null;
 
-  // Busca de Alunos (debounce)
+        const aluno: AlunoDossier = {
+          id: alunoId,
+          nome: perfil.nome_completo || perfil.nome || "Aluno",
+          numero_processo: perfil.numero_processo || "—",
+          bi_numero: perfil.bi_numero || null,
+          turma: atual?.turma || "—",
+          status_financeiro,
+          divida_total: totalAtraso,
+          foto_url: perfil.foto_url || null,
+          matricula_id: atual?.matricula_id || null,
+        };
+
+        // mensalidades: alinhar campos (m.mes, m.ano, m.valor, m.pago)
+        const mensalidades: Mensalidade[] = (financeiro.mensalidades || [])
+          .filter((m: any) => ["pendente", "pago_parcial"].includes(String(m.status)))
+          .map((m: any) => {
+            const mes = Number(m.mes ?? m.mes_referencia);
+            const ano = Number(m.ano ?? m.ano_referencia);
+            const valor = Number(m.valor ?? 0);
+            const pago = Number(m.pago ?? m.valor_pago_total ?? 0);
+            const saldo = Math.max(0, valor - pago);
+
+            const venc = m.vencimento || m.data_vencimento || null;
+            const atrasada = venc ? new Date(venc) < new Date() : false;
+
+            return {
+              id: String(m.id),
+              nome: formatMesAno(mes, ano),
+              preco: saldo,
+              tipo: "mensalidade",
+              atrasada,
+              mes_referencia: mes,
+              ano_referencia: ano,
+            };
+          })
+          .filter((m) => m.preco > 0);
+
+        setAlunoSelecionado(aluno);
+        setMensalidadesDisponiveis(mensalidades);
+        setCarrinho([]);
+        setMetodo("dinheiro");
+        setValorRecebido("");
+        idempotencyRef.current = makeIdempotencyKey();
+      } finally {
+        setAlunoDossierLoading(false);
+      }
+    },
+    [supabase, escolaId]
+  );
+
+  // --- Search alunos (debounced) ---
   useEffect(() => {
-    async function searchAlunos() {
-      if (!debouncedSearchTerm) {
-        setAlunosEncontrados([]);
-        return;
-      }
-      setIsSearching(true);
-      const response = await fetch(`/api/secretaria/balcao/alunos/search?query=${debouncedSearchTerm}`);
-      const data = await response.json();
-
-      if (response.ok && data.ok) {
-        setAlunosEncontrados(data.alunos);
-      } else {
-        console.error('Erro na busca:', data.error);
-        setAlunosEncontrados([]);
-      }
+    const q = normalizeQuery(debouncedSearchTerm);
+    if (!q) {
+      setAlunosEncontrados([]);
       setIsSearching(false);
+      abortSearchRef.current?.abort();
+      abortSearchRef.current = null;
+      return;
     }
-    searchAlunos();
+
+    setIsSearching(true);
+    abortSearchRef.current?.abort();
+    abortSearchRef.current = new AbortController();
+
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/secretaria/balcao/alunos/search?query=${encodeURIComponent(q)}`,
+          { signal: abortSearchRef.current?.signal }
+        );
+        const json = await res.json().catch(() => ({}));
+
+        if (!res.ok || !json?.ok) {
+          setAlunosEncontrados([]);
+          return;
+        }
+        setAlunosEncontrados(Array.isArray(json.alunos) ? json.alunos : []);
+      } catch (e: any) {
+        if (e?.name === "AbortError") return;
+        console.error(e);
+        setAlunosEncontrados([]);
+      } finally {
+        setIsSearching(false);
+      }
+    })();
+
+    return () => {};
   }, [debouncedSearchTerm]);
 
-
-  // --- Lógica do Carrinho ---
-
+  // --- Carrinho ---
   const adicionarAoCarrinho = (item: ItemCarrinho) => {
-    // Para mensalidades, verificar se já existe uma do mesmo mês/ano
-    if (item.tipo === 'mensalidade') {
-      if (carrinho.some(
-        c => c.tipo === 'mensalidade' &&
-        (c as Mensalidade).mes_referencia === (item as Mensalidade).mes_referencia &&
-        (c as Mensalidade).ano_referencia === (item as Mensalidade).ano_referencia
-      )) {
-        toast('Mensalidade já está no carrinho.');
-        return;
-      }
-    }
-    // Para serviços, verificar se já existe um serviço com o mesmo ID
-    if (item.tipo === 'servico') {
-      if (carrinho.some(c => c.tipo === 'servico' && c.id === item.id)) {
-        toast('Serviço já está no carrinho.');
-        return;
-      }
+    if (item.tipo === "mensalidade") {
+      const m = item as Mensalidade;
+      const exists = carrinho.some(
+        (c) =>
+          c.tipo === "mensalidade" &&
+          (c as Mensalidade).mes_referencia === m.mes_referencia &&
+          (c as Mensalidade).ano_referencia === m.ano_referencia
+      );
+      if (exists) return toast.message("Mensalidade já está no carrinho.");
     }
 
-    setCarrinho([...carrinho, item]);
+    if (item.tipo === "servico") {
+      const exists = carrinho.some((c) => c.tipo === "servico" && c.id === item.id);
+      if (exists) return toast.message("Serviço já está no carrinho.");
+    }
+
+    setCarrinho((prev) => [...prev, item]);
   };
 
-  const removerDoCarrinho = (itemId: string, itemTipo: 'mensalidade' | 'servico') => {
-    setCarrinho(prev => prev.filter(item => !(item.id === itemId && item.tipo === itemTipo)));
+  const removerDoCarrinho = (itemId: string, itemTipo: ItemCarrinho["tipo"]) => {
+    setCarrinho((prev) => prev.filter((i) => !(i.id === itemId && i.tipo === itemTipo)));
   };
 
-  const total = useMemo(() => carrinho.reduce((acc, item) => acc + item.preco, 0), [carrinho]);
-  const troco = Math.max(0, pagamento.valorRecebido - total);
-  const prontoParaFechar = total > 0 && (pagamento.metodo !== 'cash' || pagamento.valorRecebido >= total);
+  const limparCarrinho = () => {
+    setCarrinho([]);
+    setValorRecebido("");
+    idempotencyRef.current = makeIdempotencyKey();
+  };
 
-  // --- Ações de Checkout ---
+  const total = useMemo(
+    () => carrinho.reduce((acc, item) => acc + Number(item.preco || 0), 0),
+    [carrinho]
+  );
 
+  const valorRecebidoNum = useMemo(() => {
+    const n = Number(valorRecebido);
+    return Number.isFinite(n) ? n : 0;
+  }, [valorRecebido]);
+
+  const troco = useMemo(() => Math.max(0, valorRecebidoNum - total), [valorRecebidoNum, total]);
+
+  const prontoParaFechar =
+    total > 0 && (metodo !== "dinheiro" || (valorRecebidoNum > 0 && valorRecebidoNum >= total));
+
+  // --- Checkout ---
   const handleCheckout = async () => {
-    if (!alunoSelecionado?.id) {
-      toast.error('Nenhum aluno selecionado.');
-      return;
-    }
-    if (carrinho.length === 0) {
-      toast.error('Carrinho vazio.');
-      return;
+    if (!alunoSelecionado?.id) return toast.error("Nenhum aluno selecionado.");
+    if (carrinho.length === 0) return toast.error("Carrinho vazio.");
+
+    if (metodo === "dinheiro" && valorRecebidoNum < total) {
+      return toast.error("Valor recebido insuficiente.");
     }
 
     setIsSubmitting(true);
     try {
       const payload = {
         p_aluno_id: alunoSelecionado.id,
-        p_escola_id: escolaId, // Passa o escolaId real
-        p_carrinho_itens: carrinho.map(item => ({
+        p_escola_id: escolaId,
+        p_idempotency_key: idempotencyRef.current,
+        p_carrinho_itens: carrinho.map((item) => ({
           id: item.id,
           tipo: item.tipo,
           preco: item.preco,
-          ...(item.tipo === 'mensalidade' ? { mes_referencia: (item as Mensalidade).mes_referencia, ano_referencia: (item as Mensalidade).ano_referencia } : {})
+          ...(item.tipo === "mensalidade"
+            ? {
+                mes_referencia: (item as Mensalidade).mes_referencia,
+                ano_referencia: (item as Mensalidade).ano_referencia,
+              }
+            : {}),
         })),
-        p_metodo_pagamento: pagamento.metodo,
-        p_valor_recebido: pagamento.valorRecebido,
+        p_metodo_pagamento: metodo,
+        p_valor_recebido: metodo === "dinheiro" ? valorRecebidoNum : total,
       };
 
-      const { data, error } = await supabase.rpc('realizar_pagamento_balcao', payload);
+      const { data, error } = await supabase.rpc("realizar_pagamento_balcao", payload as any);
+      if (error) throw new Error(error.message);
 
-      if (error) {
-        throw new Error(error.message);
-      }
-      
       const result = data as any;
-      if (!result.ok) {
-        throw new Error(result.erro || 'Falha no pagamento do balcão.');
-      }
+      if (!result?.ok) throw new Error(result?.erro || "Falha ao finalizar pagamento.");
 
-      toast.success(`Pagamento realizado! Troco: ${kwanza.format(result.troco)}`);
-      // Resetar estado
-      setCarrinho([]);
-      setPagamento({ metodo: 'cash', valorRecebido: 0 });
-      // Recarregar dados do aluno para atualizar pendências
-      loadAlunoDossier(alunoSelecionado.id); 
-    } catch (error: any) {
-      console.error('Erro no checkout:', error);
-      toast.error(error.message || 'Erro ao finalizar pagamento.');
+      toast.success(`Pagamento registrado. Troco: ${kwanza.format(Number(result.troco ?? 0))}`);
+
+      limparCarrinho();
+      await loadAlunoDossier(alunoSelecionado.id);
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "Erro ao finalizar pagamento.");
+      // IMPORTANT: não regenere idempotency key aqui, senão pode duplicar tentativa
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // --- Render ---
+  const pendenciasAtrasadas = useMemo(
+    () => mensalidadesDisponiveis.filter((m) => m.atrasada),
+    [mensalidadesDisponiveis]
+  );
+  const pendenciasEmDia = useMemo(
+    () => mensalidadesDisponiveis.filter((m) => !m.atrasada),
+    [mensalidadesDisponiveis]
+  );
 
+  // --- UI ---
   return (
-    <div className="flex h-screen bg-slate-100 overflow-hidden font-sans">
-      {/* LADO ESQUERDO: Operação (70%) */}
-      <div className="flex-1 flex flex-col p-4 gap-4">
-        {/* 1. Barra de Busca Global (O Coração) */}
-        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex gap-4 items-center">
-          <div className="h-12 w-12 bg-slate-100 rounded-full flex items-center justify-center text-slate-400">
-            <Search className="w-6 h-6" />
-          </div>
-          <div className="flex-1">
-            <label className="text-xs font-bold text-slate-400 uppercase">Buscar Aluno (Nome, Processo ou BI)</label>
-            <input 
-              type="text" 
-              className="w-full text-xl font-bold text-slate-900 outline-none placeholder:text-slate-300"
-              placeholder="Digite para buscar..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              // Lógica para exibir resultados da busca
-            />
-          </div>
-          {isSearching && <Loader2 className="animate-spin text-slate-400" />}
-        </div>
-
-        {/* Resultados da Busca */}
-        {searchTerm && alunosEncontrados.length > 0 && (
-          <div className="absolute left-4 top-28 bg-white border border-slate-200 rounded-xl shadow-lg z-20 w-[calc(70%-32px)]">
-            {alunosEncontrados.map(aluno => (
-              <button 
-                key={aluno.id}
-                className="flex items-center gap-3 p-3 w-full text-left hover:bg-slate-50 border-b border-slate-100 last:border-b-0"
-                onClick={() => {
-                  setAlunoSelecionado(aluno as AlunoDossier); // Seleciona o aluno da busca
-                  setSearchTerm(''); // Limpa a busca
-                  loadAlunoDossier(aluno.id); // Carrega dados completos
-                }}
-              >
-                <img src={aluno.foto_url || 'https://i.pravatar.cc/150?u=0'} className="w-10 h-10 rounded-full object-cover" alt="Foto do Aluno" />
-                <div>
-                  <div className="font-bold text-slate-900">{aluno.nome}</div>
-                  <div className="text-sm text-slate-500">{aluno.turma} | Proc: {aluno.numero_processo}</div>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-        {searchTerm && alunosEncontrados.length === 0 && !isSearching && (
-          <div className="absolute left-4 top-28 bg-white border border-slate-200 rounded-xl shadow-lg z-20 w-[calc(70%-32px)] p-3 text-sm text-slate-500">
-            Nenhum aluno encontrado.
-          </div>
-        )}
-
-        {/* 2. Área do Aluno Selecionado */}
-        {alunoSelecionado && !alunoDossierLoading && (
-          <div className="flex-1 grid grid-cols-12 gap-4">
-            {/* Card do Aluno + Status */}
-            <div className="col-span-4 bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col">
-              <div className="flex items-start gap-4 mb-6">
-                <img src={alunoSelecionado.foto_url || 'https://i.pravatar.cc/150?u=0'} className="w-20 h-20 rounded-xl bg-slate-200 object-cover" alt="Foto do Aluno" />
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900 leading-tight">{alunoSelecionado.nome}</h2>
-                  <p className="text-sm text-slate-500 font-medium">{alunoSelecionado.turma}</p>
-                  <span className="inline-block mt-2 px-2 py-1 bg-slate-100 text-xs font-mono rounded text-slate-600 border border-slate-200">
-                    Proc: {alunoSelecionado.numero_processo}
-                  </span>
-                </div>
-              </div>
-
-              {/* Status Financeiro Crítico */}
-              <div className={`p-4 rounded-xl border-l-4 mb-4 ${alunoSelecionado.status_financeiro === 'inadimplente' ? 'bg-rose-50 border-rose-500' : 'bg-emerald-50 border-emerald-500'}`}>
-                <div className="flex items-center gap-2 mb-1">
-                  {alunoSelecionado.status_financeiro === 'inadimplente' ? <AlertCircle className="w-5 h-5 text-rose-600" /> : <CheckCircle className="w-5 h-5 text-emerald-600" />}
-                  <span className={`font-bold uppercase text-sm ${alunoSelecionado.status_financeiro === 'inadimplente' ? 'text-rose-700' : 'text-emerald-700'}`}>
-                    {alunoSelecionado.status_financeiro === 'inadimplente' ? 'Pendências Financeiras' : 'Situação Regular'}
-                  </span>
-                </div>
-                {alunoSelecionado.status_financeiro === 'inadimplente' && (
-                  <p className="text-2xl font-bold text-rose-800">{kwanza.format(alunoSelecionado.divida_total)}</p>
-                )}
-              </div>
-
-              {/* Histórico Rápido (ainda mock) */}
-              <div className="mt-auto">
-                <h4 className="text-xs font-bold text-slate-400 uppercase mb-2">Últimos Atendimentos</h4>
-                <div className="text-xs text-slate-500 space-y-2">
-                  <div className="flex justify-between border-b border-slate-100 pb-1">
-                    <span>Emissão Declaração</span>
-                    <span className="text-slate-400">12/Jan</span>
-                  </div>
-                  <div className="flex justify-between border-b border-slate-100 pb-1">
-                    <span>Pagamento Jan/24</span>
-                    <span className="text-slate-400">05/Jan</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Catálogo de Serviços (Grade de Ação) */}
-            <div className="col-span-8 bg-white rounded-2xl p-5 border border-slate-200 shadow-sm overflow-y-auto">
-              <h3 className="text-sm font-bold text-slate-900 uppercase mb-4 flex items-center gap-2">
-                <Plus className="w-4 h-4" /> Adicionar ao Atendimento
-              </h3>
-              
-              <div className="grid grid-cols-2 gap-3">
-                {/* Grupo: Pendências (Mensalidades Atrasadas) */}
-                {mensalidadesDisponiveis.filter(m => m.atrasada).map(item => (
-                  <button 
-                    key={item.id}
-                    onClick={() => adicionarAoCarrinho(item)}
-                    className="flex items-center justify-between p-3 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 transition-colors text-left group"
-                  >
-                    <div>
-                      <div className="text-xs font-bold text-rose-600 uppercase mb-0.5">Em Atraso</div>
-                      <div className="font-bold text-rose-900">{item.nome}</div>
-                    </div>
-                    <div className="text-rose-800 font-bold">{kwanza.format(item.preco)}</div>
-                  </button>
-                ))}
-
-                {/* Grupo: Mensalidades Futuras/Atuais */}
-                {mensalidadesDisponiveis.filter(m => !m.atrasada).map(item => (
-                  <button 
-                    key={item.id}
-                    onClick={() => adicionarAoCarrinho(item)}
-                    className="flex items-center justify-between p-3 rounded-xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 transition-colors text-left group"
-                  >
-                    <div>
-                      <div className="text-xs font-bold text-emerald-600 uppercase mb-0.5">Mensalidade</div>
-                      <div className="font-bold text-emerald-900">{item.nome}</div>
-                    </div>
-                    <div className="text-emerald-800 font-bold">{kwanza.format(item.preco)}</div>
-                  </button>
-                ))}
-
-                {/* Grupo: Serviços Comuns */}
-                {servicosDisponiveis.map(item => (
-                  <button 
-                    key={item.id}
-                    onClick={() => adicionarAoCarrinho(item)}
-                    className="flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50 transition-all text-left"
-                  >
-                    <div className="font-medium text-slate-700">{item.nome}</div>
-                    <div className="text-slate-900 font-bold">{kwanza.format(item.preco)}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-        {!alunoSelecionado && !alunoDossierLoading && !isSearching && (
-          <div className="flex-1 flex items-center justify-center text-slate-400 text-lg">
-            Pesquise por um aluno para iniciar o atendimento.
-          </div>
-        )}
-         {alunoDossierLoading && (
-          <div className="flex-1 flex items-center justify-center text-slate-400 text-lg">
-            <Loader2 className="animate-spin mr-2" /> Carregando dossiê do aluno...
-          </div>
-        )}
-      </div>
-
-      {/* LADO DIREITO: Caixa / Checkout (30%) */}
-      <div className="w-96 bg-white border-l border-slate-200 flex flex-col shadow-xl z-10">
-        {/* Header do Caixa */}
-        <div className="p-6 bg-slate-900 text-white">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <ShoppingCart className="w-5 h-5 text-emerald-400" />
-            Resumo
-          </h2>
-        </div>
-
-        {/* Lista de Itens */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {carrinho.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-50">
-              <ShoppingCart className="w-12 h-12 mb-2" />
-              <p>Carrinho vazio</p>
-            </div>
-          ) : (
-            carrinho.map((item) => (
-              <div key={`${item.id}-${item.tipo}`} className="flex justify-between items-center p-3 bg-slate-50 rounded-lg border border-slate-100">
-                <div>
-                  <div className="text-sm font-medium text-slate-800">{item.nome}</div>
-                  <div className="text-xs text-slate-500 uppercase">{item.tipo === 'mensalidade' ? 'Mensalidade' : 'Serviço'}</div>
-                </div>
+    <div className="min-h-screen bg-slate-50">
+      <div className="mx-auto max-w-7xl px-6 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* LEFT */}
+          <div className="lg:col-span-8 space-y-6">
+            {/* Search */}
+            <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+              <div className="p-4">
                 <div className="flex items-center gap-3">
-                  <span className="font-bold text-slate-900">{kwanza.format(item.preco)}</span>
-                  <button onClick={() => removerDoCarrinho(item.id, item.tipo)} className="text-rose-400 hover:text-rose-600">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="h-10 w-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center">
+                    <Search className="h-5 w-5 text-slate-500" />
+                  </div>
+
+                  <div className="flex-1">
+                    <div className="text-[11px] uppercase tracking-wider font-semibold text-slate-500">
+                      Buscar aluno (Nome / BI / Processo / Telefone)
+                    </div>
+                    <input
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="Digite para buscar…"
+                      className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-900 outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+                    />
+                  </div>
+
+                  {isSearching ? <Loader2 className="h-5 w-5 animate-spin text-slate-400" /> : null}
+                  {searchTerm ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchTerm("");
+                        setAlunosEncontrados([]);
+                      }}
+                      className="rounded-xl p-2 hover:bg-slate-100 transition focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
+                      aria-label="Limpar busca"
+                    >
+                      <X className="h-5 w-5 text-slate-500" />
+                    </button>
+                  ) : null}
                 </div>
               </div>
-            ))
-          )}
-        </div>
 
-        {/* Área de Pagamento (Fundo Fixo) */}
-        <div className="bg-slate-50 p-6 border-t border-slate-200">
-          {/* Subtotal */}
-          <div className="flex justify-between items-end mb-6">
-            <span className="text-sm font-bold text-slate-500 uppercase">Total a Pagar</span>
-            <span className="text-3xl font-bold text-slate-900">{kwanza.format(total)}</span>
-          </div>
+              {/* Results */}
+              {normalizeQuery(searchTerm) ? (
+                <div className="border-t border-slate-200">
+                  {alunosEncontrados.length === 0 && !isSearching ? (
+                    <div className="p-4 text-sm text-slate-500">Nenhum aluno encontrado.</div>
+                  ) : (
+                    <div className="max-h-72 overflow-auto">
+                      {alunosEncontrados.map((a) => (
+                        <button
+                          key={a.id}
+                          type="button"
+                          onClick={() => {
+                            setSearchTerm("");
+                            setAlunosEncontrados([]);
+                            loadAlunoDossier(a.id);
+                          }}
+                          className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-slate-50 transition border-b border-slate-100 last:border-b-0"
+                        >
+                          <div className="h-10 w-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden">
+                            {a.foto_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={a.foto_url} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              <span className="text-xs font-semibold text-slate-500">AL</span>
+                            )}
+                          </div>
 
-          {/* Método de Pagamento */}
-          <div className="grid grid-cols-2 gap-2 mb-4">
-            <button 
-              onClick={() => setPagamento({ ...pagamento, metodo: 'cash' })}
-              className={`p-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 ${pagamento.metodo === 'cash' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-white border border-slate-200 text-slate-500'}`}
-            >
-              <Banknote className="w-4 h-4" /> Numerário
-            </button>
-            <button 
-              onClick={() => setPagamento({ ...pagamento, metodo: 'tpa' })}
-              className={`p-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 ${pagamento.metodo === 'tpa' ? 'bg-blue-100 text-blue-800 border border-blue-200' : 'bg-white border border-slate-200 text-slate-500'}`}
-            >
-              <CreditCard className="w-4 h-4" /> TPA / MB
-            </button>
-          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-semibold text-slate-900 truncate">{a.nome}</div>
+                            <div className="text-xs text-slate-500 truncate">
+                              {a.turma} • Proc {a.numero_processo} • {a.bi_numero || "BI —"}
+                            </div>
+                          </div>
 
-          {/* Input de Dinheiro (Só aparece se for Cash) */}
-          {pagamento.metodo === 'cash' && (
-            <div className="mb-4 animate-in slide-in-from-bottom-2">
-              <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Valor Recebido (Kz)</label>
-              <input 
-                type="number" 
-                className="w-full p-3 rounded-xl border border-slate-300 text-right font-mono text-lg font-bold focus:ring-2 focus:ring-emerald-500 outline-none"
-                placeholder="0"
-                onChange={(e) => setPagamento({ ...pagamento, valorRecebido: Number(e.target.value) })}
-                value={pagamento.valorRecebido === 0 ? '' : pagamento.valorRecebido}
-              />
-              {troco > 0 && (
-                <div className="flex justify-between items-center mt-2 text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg">
-                  <span className="text-xs font-bold uppercase">Troco</span>
-                  <span className="font-bold font-mono">{kwanza.format(troco)}</span>
+                          <ChevronRight className="h-4 w-4 text-slate-300" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
+              ) : null}
             </div>
-          )}
 
-          {/* Botão Final */}
-          <button 
-            disabled={!prontoParaFechar || isSubmitting}
-            onClick={handleCheckout}
-            className={`w-full py-4 rounded-xl font-bold text-white flex items-center justify-center gap-2 shadow-lg transition-all
-              ${prontoParaFechar && !isSubmitting
-                ? 'bg-emerald-600 hover:bg-emerald-700 hover:scale-[1.02]' 
-                : 'bg-slate-300 cursor-not-allowed'}`}
-          >
-            {isSubmitting ? (
-              <><Loader2 className="w-5 h-5 animate-spin" /> Processando...</>
+            {/* Aluno + Catálogo */}
+            {alunoDossierLoading ? (
+              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+                  <div className="text-sm font-semibold text-slate-700">Carregando dossiê do aluno…</div>
+                </div>
+                <div className="space-y-3">
+                  <SkeletonLine />
+                  <SkeletonLine />
+                  <SkeletonLine />
+                </div>
+              </div>
+            ) : alunoSelecionado ? (
+              <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+                {/* Card aluno */}
+                <div className="xl:col-span-4 rounded-xl border border-slate-200 bg-white shadow-sm p-6">
+                  <div className="flex items-start gap-4">
+                    <div className="h-16 w-16 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
+                      {alunoSelecionado.foto_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={alunoSelecionado.foto_url} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="text-sm font-semibold text-slate-500">ALUNO</span>
+                      )}
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h2 className="text-lg font-semibold text-slate-900 truncate">
+                          {alunoSelecionado.nome}
+                        </h2>
+                        <StatusPill status={alunoSelecionado.status_financeiro} />
+                      </div>
+
+                      <div className="mt-2 text-sm text-slate-600 font-medium truncate">
+                        {alunoSelecionado.turma}
+                      </div>
+
+                      <div className="mt-3 inline-flex items-center rounded-full border border-slate-200 px-3 py-1 text-[11px] font-semibold text-slate-700">
+                        Proc {alunoSelecionado.numero_processo}
+                      </div>
+
+                      {alunoSelecionado.status_financeiro === "inadimplente" ? (
+                        <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4">
+                          <div className="flex items-center gap-2 text-red-700 font-semibold text-sm">
+                            <AlertCircle className="h-5 w-5" />
+                            Dívida total
+                          </div>
+                          <div className="mt-1 text-2xl font-black text-red-800">
+                            {kwanza.format(alunoSelecionado.divida_total)}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                          <div className="flex items-center gap-2 text-emerald-700 font-semibold text-sm">
+                            <CheckCircle className="h-5 w-5" />
+                            Situação regular
+                          </div>
+                          <div className="mt-1 text-sm text-emerald-700">
+                            Sem pendências críticas no momento.
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-6">
+                    <div className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 mb-2">
+                      Últimos atendimentos
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                      <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                        <span>Emissão declaração</span>
+                        <span className="text-slate-500">—</span>
+                      </div>
+                      <div className="flex items-center justify-between pt-2">
+                        <span>Pagamento</span>
+                        <span className="text-slate-500">—</span>
+                      </div>
+                      <div className="mt-3 text-xs text-slate-500">
+                        (Quando você ligar isso no Audit Trail, aqui vira ouro.)
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Catálogo */}
+                <div className="xl:col-span-8 rounded-xl border border-slate-200 bg-white shadow-sm p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Plus className="h-4 w-4 text-slate-500" />
+                      <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                        Adicionar ao atendimento
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-slate-500">
+                      Clique para adicionar no carrinho
+                    </div>
+                  </div>
+
+                  <div className="space-y-6">
+                    {/* Pendências em atraso */}
+                    {pendenciasAtrasadas.length > 0 ? (
+                      <div>
+                        <div className="text-[11px] uppercase tracking-wider font-semibold text-red-700 mb-2">
+                          Pendências em atraso
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {pendenciasAtrasadas.map((m) => (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => adicionarAoCarrinho(m)}
+                              className="rounded-xl border border-red-200 bg-red-50 p-4 text-left hover:bg-red-100 transition"
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="min-w-0">
+                                  <div className="text-sm font-semibold text-red-900 truncate">
+                                    {m.nome}
+                                  </div>
+                                  <div className="text-xs text-red-700">Atrasada</div>
+                                </div>
+                                <div className="text-sm font-black text-red-900">
+                                  {kwanza.format(m.preco)}
+                                </div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* Mensalidades */}
+                    {pendenciasEmDia.length > 0 ? (
+                      <div>
+                        <div className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 mb-2">
+                          Mensalidades pendentes
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {pendenciasEmDia.map((m) => (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => adicionarAoCarrinho(m)}
+                              className="rounded-xl border border-slate-200 bg-white p-4 text-left hover:bg-slate-50 transition"
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="min-w-0">
+                                  <div className="text-sm font-semibold text-slate-900 truncate">
+                                    {m.nome}
+                                  </div>
+                                  <div className="text-xs text-slate-500">Mensalidade</div>
+                                </div>
+                                <div className="text-sm font-black text-slate-900">
+                                  {kwanza.format(m.preco)}
+                                </div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {/* Serviços */}
+                    <div>
+                      <div className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 mb-2">
+                        Serviços
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {servicosDisponiveis.map((s) => (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onClick={() => adicionarAoCarrinho(s)}
+                            className="rounded-xl border border-slate-200 bg-white p-4 text-left hover:bg-slate-50 transition"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="text-sm font-semibold text-slate-900 truncate">
+                                  {s.nome}
+                                </div>
+                                <div className="text-xs text-slate-500">Serviço</div>
+                              </div>
+                              <div className="text-sm font-black text-slate-900">
+                                {kwanza.format(s.preco)}
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {pendenciasAtrasadas.length === 0 &&
+                    pendenciasEmDia.length === 0 &&
+                    servicosDisponiveis.length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
+                        Nada disponível para cobrança no momento.
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
             ) : (
-              <><Printer className="w-5 h-5" /> Confirmar e Imprimir</>
+              <div className="rounded-xl border border-slate-200 bg-white p-10 shadow-sm text-center text-slate-500">
+                Pesquise um aluno para iniciar o atendimento.
+              </div>
             )}
-          </button>
+          </div>
+
+          {/* RIGHT (Resumo / Caixa) */}
+          <div className="lg:col-span-4">
+            <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+              <div className="bg-slate-950 px-6 py-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ShoppingCart className="h-5 w-5 text-klasse-gold" />
+                    <div className="text-base font-semibold text-white">Resumo do Caixa</div>
+                  </div>
+
+                  {carrinho.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={limparCarrinho}
+                      className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-xs font-semibold text-white hover:bg-white/15 transition"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Limpar
+                    </button>
+                  ) : null}
+                </div>
+
+                <div className="mt-4">
+                  <div className="text-[11px] uppercase tracking-wider font-semibold text-white/70">
+                    Total a pagar
+                  </div>
+                  <div className="mt-1 text-3xl font-black text-white">
+                    {kwanza.format(total)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Items */}
+              <div className="p-6 space-y-3">
+                {carrinho.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
+                    Carrinho vazio.
+                  </div>
+                ) : (
+                  carrinho.map((item) => (
+                    <div
+                      key={`${item.id}-${item.tipo}`}
+                      className="rounded-xl border border-slate-200 bg-white p-4"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-slate-900 truncate">
+                            {item.nome}
+                          </div>
+                          <div className="mt-1 text-[11px] uppercase tracking-wider font-semibold text-slate-500">
+                            {item.tipo === "mensalidade" ? "Mensalidade" : "Serviço"}
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <div className="text-sm font-black text-slate-900">
+                            {kwanza.format(item.preco)}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removerDoCarrinho(item.id, item.tipo)}
+                            className="mt-2 inline-flex items-center gap-2 rounded-xl px-2 py-1 text-xs font-semibold text-slate-500 hover:text-red-600 hover:bg-red-50 transition"
+                            title="Remover"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Remover
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+
+                {/* Pagamento */}
+                <div className="pt-2">
+                  <div className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 mb-2">
+                    Método de pagamento
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setMetodo("dinheiro")}
+                      className={cx(
+                        "rounded-xl border px-3 py-3 text-left transition",
+                        metodo === "dinheiro"
+                          ? "border-klasse-gold bg-klasse-gold/10"
+                          : "border-slate-200 hover:bg-slate-50"
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Banknote className="h-4 w-4 text-slate-600" />
+                        <div className="text-sm font-semibold text-slate-900">Dinheiro</div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setMetodo("tpa")}
+                      className={cx(
+                        "rounded-xl border px-3 py-3 text-left transition",
+                        metodo === "tpa"
+                          ? "border-klasse-gold bg-klasse-gold/10"
+                          : "border-slate-200 hover:bg-slate-50"
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="h-4 w-4 text-slate-600" />
+                        <div className="text-sm font-semibold text-slate-900">TPA</div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setMetodo("transferencia")}
+                      className={cx(
+                        "rounded-xl border px-3 py-3 text-left transition",
+                        metodo === "transferencia"
+                          ? "border-klasse-gold bg-klasse-gold/10"
+                          : "border-slate-200 hover:bg-slate-50"
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Wallet className="h-4 w-4 text-slate-600" />
+                        <div className="text-sm font-semibold text-slate-900">Transferência</div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setMetodo("mbway")}
+                      className={cx(
+                        "rounded-xl border px-3 py-3 text-left transition",
+                        metodo === "mbway"
+                          ? "border-klasse-gold bg-klasse-gold/10"
+                          : "border-slate-200 hover:bg-slate-50"
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Smartphone className="h-4 w-4 text-slate-600" />
+                        <div className="text-sm font-semibold text-slate-900">MBWay</div>
+                      </div>
+                    </button>
+                  </div>
+
+                  {metodo === "dinheiro" ? (
+                    <div className="mt-4">
+                      <label className="text-[11px] uppercase tracking-wider font-semibold text-slate-500">
+                        Valor recebido (Kz)
+                      </label>
+                      <div className="mt-2 relative">
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          value={valorRecebido}
+                          onChange={(e) => setValorRecebido(e.target.value)}
+                          placeholder="0"
+                          className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-900 outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+                        />
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500">
+                          Kz
+                        </div>
+                      </div>
+
+                      {valorRecebidoNum > 0 ? (
+                        <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="text-sm font-semibold text-emerald-800">Troco</div>
+                            <div className="text-xl font-black text-emerald-800">
+                              {kwanza.format(troco)}
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  <div className="mt-5">
+                    <button
+                      type="button"
+                      disabled={!prontoParaFechar || isSubmitting}
+                      onClick={handleCheckout}
+                      className={cx(
+                        "w-full rounded-xl px-4 py-4 text-sm font-semibold inline-flex items-center justify-center gap-2 transition",
+                        prontoParaFechar && !isSubmitting
+                          ? "bg-klasse-gold text-white hover:brightness-95"
+                          : "bg-slate-200 text-slate-500 cursor-not-allowed"
+                      )}
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          Processando…
+                        </>
+                      ) : (
+                        <>
+                          <Printer className="h-5 w-5" />
+                          Confirmar e imprimir
+                        </>
+                      )}
+                    </button>
+
+                    <div className="mt-3 text-xs text-slate-500">
+                      Ação crítica. Deve gerar recibo + audit trail.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* hint */}
+            <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-500">
+              Dica: quando você ligar o **Fecho de Caixa Cego**, esse painel vira “Caixa do Dia” com saldo + diferenças.
+            </div>
+          </div>
         </div>
       </div>
     </div>
