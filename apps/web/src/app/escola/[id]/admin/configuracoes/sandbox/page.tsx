@@ -4,7 +4,7 @@ type PageProps = {
   params: Promise<{ id: string }>;
 };
 
-export default async function FluxosConfiguracaoPage({ params }: PageProps) {
+export default async function SandboxConfiguracoesPage({ params }: PageProps) {
   const { id } = await params;
   const base = `/escola/${id}/admin/configuracoes`;
   const menuItems = [
@@ -15,22 +15,23 @@ export default async function FluxosConfiguracaoPage({ params }: PageProps) {
     { label: "🔄 Fluxos", href: `${base}/fluxos` },
     { label: "⚙️ Avançado", href: `${base}/avancado` },
   ];
+
   return (
     <ConfigSystemShell
       escolaId={id}
-      title="Fluxos de Trabalho · Aprovação de Notas"
-      subtitle="Defina os passos e responsáveis para liberar boletins."
+      title="Sandbox · Testar Configurações"
+      subtitle="Simule o impacto sem tocar dados reais."
       menuItems={menuItems}
-      prevHref={`${base}/financeiro`}
-      nextHref={`${base}/avancado`}
+      prevHref={`${base}/avancado`}
+      nextHref={`${base}/sistema`}
       testHref={`${base}/sandbox`}
     >
       <div className="space-y-4">
         <div className="rounded-lg border border-slate-200 p-4 text-sm text-slate-600">
-          1. Professor lança notas → 2. Coordenador valida → 3. Conselho delibera → 4. Diretor aprova.
+          Turmas fictícias, notas simuladas e relatórios de conflitos antes de publicar.
         </div>
-        <div className="rounded-lg border border-slate-200 p-4 text-sm text-slate-600">
-          Biblioteca de etapas: notificações, assinatura digital, formulários e espera por dias.
+        <div className="rounded-lg border border-slate-200 p-4 text-xs text-slate-600">
+          Relatório: 2 conflitos de horário · Fórmula OK · 1 etapa excede prazo.
         </div>
       </div>
     </ConfigSystemShell>

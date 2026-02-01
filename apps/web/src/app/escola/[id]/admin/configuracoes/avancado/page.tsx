@@ -4,7 +4,7 @@ type PageProps = {
   params: Promise<{ id: string }>;
 };
 
-export default async function FluxosConfiguracaoPage({ params }: PageProps) {
+export default async function AvancadoConfiguracoesPage({ params }: PageProps) {
   const { id } = await params;
   const base = `/escola/${id}/admin/configuracoes`;
   const menuItems = [
@@ -15,22 +15,20 @@ export default async function FluxosConfiguracaoPage({ params }: PageProps) {
     { label: "🔄 Fluxos", href: `${base}/fluxos` },
     { label: "⚙️ Avançado", href: `${base}/avancado` },
   ];
+
   return (
     <ConfigSystemShell
       escolaId={id}
-      title="Fluxos de Trabalho · Aprovação de Notas"
-      subtitle="Defina os passos e responsáveis para liberar boletins."
+      title="Avançado · Governança e Auditoria"
+      subtitle="Ajustes críticos e políticas de segurança."
       menuItems={menuItems}
-      prevHref={`${base}/financeiro`}
-      nextHref={`${base}/avancado`}
+      prevHref={`${base}/fluxos`}
+      nextHref={`${base}/sandbox`}
       testHref={`${base}/sandbox`}
     >
       <div className="space-y-4">
         <div className="rounded-lg border border-slate-200 p-4 text-sm text-slate-600">
-          1. Professor lança notas → 2. Coordenador valida → 3. Conselho delibera → 4. Diretor aprova.
-        </div>
-        <div className="rounded-lg border border-slate-200 p-4 text-sm text-slate-600">
-          Biblioteca de etapas: notificações, assinatura digital, formulários e espera por dias.
+          Logs imutáveis, permissões e políticas RLS são configuradas aqui.
         </div>
       </div>
     </ConfigSystemShell>

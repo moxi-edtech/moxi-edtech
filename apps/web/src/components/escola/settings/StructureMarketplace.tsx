@@ -102,13 +102,16 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   const resolvedEscolaId = escolaId || escolaFromHook || null;
   const disciplinasScrollRef = useRef<HTMLDivElement | null>(null);
   const adminConfigUrl = resolvedEscolaId
-    ? `/escola/${resolvedEscolaId}/admin/configuracoes/academico-completo`
+    ? `/escola/${resolvedEscolaId}/admin/configuracoes/calendario`
     : "#";
   const avaliacaoUrl = resolvedEscolaId
-    ? `/escola/${resolvedEscolaId}/admin/configuracoes/avaliacao-frequencia`
+    ? `/escola/${resolvedEscolaId}/admin/configuracoes/avaliacao`
     : "#";
   const fluxoUrl = resolvedEscolaId
     ? `/escola/${resolvedEscolaId}/admin/configuracoes/fluxos`
+    : "#";
+  const sandboxUrl = resolvedEscolaId
+    ? `/escola/${resolvedEscolaId}/admin/configuracoes/sandbox`
     : "#";
 
   // --- ESTADOS DE CRIAÇÃO (MODAL DE NOVO CURSO) ---
@@ -807,7 +810,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
               Simule impactos antes de aplicar mudanças reais.
             </p>
             <Link
-              href={`${adminConfigUrl}?mode=preview`}
+              href={sandboxUrl}
               className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
             >
               Testar configurações
