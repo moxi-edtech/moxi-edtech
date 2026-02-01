@@ -116,22 +116,22 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
     {
       label: "Calendário",
       icon: CalendarCheck,
-      href: `/escola/${escolaId}/admin/configuracoes/academico-completo`,
+      href: `/escola/${escolaId}/admin/configuracoes/calendario`,
     },
     {
       label: "Avaliação",
       icon: BookOpen,
-      href: `/escola/${escolaId}/admin/configuracoes/avaliacao-frequencia`,
+      href: `/escola/${escolaId}/admin/configuracoes/avaliacao`,
     },
     {
       label: "Turmas",
       icon: Users,
-      href: `/escola/${escolaId}/admin/turmas`,
+      href: `/escola/${escolaId}/admin/configuracoes/turmas`,
     },
     {
       label: "Financeiro",
       icon: CreditCard,
-      href: `/escola/${escolaId}/financeiro/configuracoes/precos`,
+      href: `/escola/${escolaId}/admin/configuracoes/financeiro`,
     },
     {
       label: "Fluxos",
@@ -141,7 +141,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
     {
       label: "Avançado",
       icon: ShieldCheck,
-      href: `/escola/${escolaId}/admin/configuracoes/seguranca`,
+      href: `/escola/${escolaId}/admin/configuracoes/avancado`,
     },
   ];
 
@@ -311,14 +311,14 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
             </div>
             <div className="flex flex-wrap gap-3">
               <Link
-                href={`/escola/${escolaId}/admin/configuracoes/academico-completo`}
+                href={`/escola/${escolaId}/admin/configuracoes/sistema`}
                 className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white"
               >
                 Anterior
                 <ArrowLeft className="w-3 h-3" />
               </Link>
               <Link
-                href={`/escola/${escolaId}/admin/configuracoes/avaliacao-frequencia`}
+                href={`/escola/${escolaId}/admin/configuracoes/calendario`}
                 className="inline-flex items-center gap-2 rounded-full bg-klasse-gold px-4 py-2 text-xs font-semibold text-white"
               >
                 Próximo
@@ -346,7 +346,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
                 Salvar e revisar
               </button>
               <Link
-                href={`/escola/${escolaId}/admin/configuracoes/fluxos`}
+                href={`/escola/${escolaId}/admin/configuracoes/sandbox`}
                 className="w-full text-center rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white"
               >
                 Testar fluxo
