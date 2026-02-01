@@ -108,7 +108,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     ? `/escola/${resolvedEscolaId}/admin/configuracoes/avaliacao-frequencia`
     : "#";
   const fluxoUrl = resolvedEscolaId
-    ? `/escola/${resolvedEscolaId}/secretaria/fluxo-academico`
+    ? `/escola/${resolvedEscolaId}/admin/configuracoes/fluxos`
     : "#";
 
   // --- ESTADOS DE CRIAÇÃO (MODAL DE NOVO CURSO) ---
