@@ -57,13 +57,22 @@ export async function getDocumentoEmitido(docId: string) {
     .eq("id", doc.escola_id)
     .maybeSingle();
   const escolaRow = escola as { nome?: string | null; validation_base_url?: string | null } | null;
+  const rawSnapshot = doc.dados_snapshot;
+  const snapshot =
+    rawSnapshot && typeof rawSnapshot === "object" && !Array.isArray(rawSnapshot)
+      ? (rawSnapshot as DocumentoSnapshot)
+      : ({} as DocumentoSnapshot);
 
   return {
     doc: {
-      ...(doc as DocumentoEmitido),
+      id: doc.id,
+      public_id: doc.public_id,
+      escola_id: doc.escola_id,
+      tipo: doc.tipo,
+      created_at: doc.created_at,
       dados_snapshot: {
-        ...(doc as DocumentoEmitido).dados_snapshot,
-        numero_sequencial: (doc as any).numero_sequencial ?? (doc as any).dados_snapshot?.numero_sequencial ?? null,
+        ...snapshot,
+        numero_sequencial: doc.numero_sequencial ?? snapshot.numero_sequencial ?? null,
       },
     },
     escolaNome: escolaRow?.nome ?? "Escola",

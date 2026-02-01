@@ -32,6 +32,7 @@ ensureSupabaseEnv();
 const nextConfig = {
   // Configuração para standalone output (Docker)
   output: 'standalone',
+  typedRoutes: false,
   
   // Suas configurações existentes
   outputFileTracingRoot: path.join(__dirname, "../.."),

@@ -5,8 +5,8 @@ export interface EscolaDetalhes {
   nome: string;
   nif: string;
   endereco: string;
-  telefone: string;
-  email: string;
+  telefone?: string | null;
+  email?: string | null;
   plano_atual: 'essencial' | 'profissional';
   status: string;
   created_at: string;

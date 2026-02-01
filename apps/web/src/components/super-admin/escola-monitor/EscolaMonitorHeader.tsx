@@ -2,7 +2,7 @@
 'use client';
 
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@/components/ui/Badge';
 import type { EscolaDetalhes } from '@/app/super-admin/escolas/[id]/types';
 import { RefreshCw, Eye, Database, Download, Calendar, Phone, Mail } from 'lucide-react';
 import { useRouter } from 'next/navigation';

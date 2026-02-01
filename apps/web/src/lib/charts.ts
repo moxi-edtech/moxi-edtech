@@ -12,12 +12,17 @@ export async function getChartsData(): Promise<ChartsData> {
   const user = userRes?.user
   const escolaId = user ? await resolveEscolaIdForUser(supabase, user.id) : null
 
-  const { data: pagamentos } = escolaId
+  const { data: pagamentos, error } = escolaId
     ? await supabase
-        .from("vw_pagamentos_status" as any)
+        .from("vw_pagamentos_status")
         .select("status, total")
         .eq("escola_id", escolaId)
-    : { data: [] }
+    : { data: [], error: null };
+
+  if (error) {
+    console.error("Error fetching pagamentos chart data:", error);
+    return { pagamentos: [] };
+  }
 
   return {
     pagamentos: pagamentos ?? [],

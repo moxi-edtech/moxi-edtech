@@ -275,7 +275,7 @@ export default async function AlunoDossierPage({ params }: { params: Promise<{ i
                 </Link>
 
                 {/* Botão Finalizar Matrícula */}
-                <FinalizarMatriculaButton matriculaId={historico[0]?.matricula_id || id} alunoNome={alunoNome} escolaId={escolaId} />
+                <FinalizarMatriculaButton matriculaId={historico[0]?.numero_matricula || id} alunoNome={alunoNome} escolaId={escolaId} />
               </div>
             </div>
           </div>

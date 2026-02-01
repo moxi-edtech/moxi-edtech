@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { XCircle, BarChart3, Activity, CreditCard, FileText, Edit } from 'lucide-react';
+import { XCircle, BarChart3, Activity, CreditCard, FileText, Edit, AlertTriangle } from 'lucide-react';
 import { useEscolaMonitorData } from './hooks';
 import { EscolaMonitorHeader } from '@/components/super-admin/escola-monitor/EscolaMonitorHeader';
 import { EscolaMetricCards } from '@/components/super-admin/escola-monitor/EscolaMetricCards';

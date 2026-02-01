@@ -3594,6 +3594,45 @@ export type Database = {
         }
         Relationships: []
       }
+      frequencias_2026_03: {
+        Row: {
+          aula_id: string | null
+          curso_oferta_id: string | null
+          data: string
+          escola_id: string
+          id: string
+          matricula_id: string
+          observacao: string | null
+          periodo_letivo_id: string | null
+          routine_id: string | null
+          status: string
+        }
+        Insert: {
+          aula_id?: string | null
+          curso_oferta_id?: string | null
+          data: string
+          escola_id: string
+          id: string
+          matricula_id: string
+          observacao?: string | null
+          periodo_letivo_id?: string | null
+          routine_id?: string | null
+          status: string
+        }
+        Update: {
+          aula_id?: string | null
+          curso_oferta_id?: string | null
+          data?: string
+          escola_id?: string
+          id?: string
+          matricula_id?: string
+          observacao?: string | null
+          periodo_letivo_id?: string | null
+          routine_id?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       frequencias_default: {
         Row: {
           aula_id: string | null
@@ -4137,6 +4176,39 @@ export type Database = {
         Relationships: []
       }
       lancamentos_2026_02: {
+        Row: {
+          avaliacao_id: string
+          criado_em: string
+          escola_id: string
+          final: boolean
+          id: string
+          matricula_id: string
+          tenant_id: string | null
+          valor: number
+        }
+        Insert: {
+          avaliacao_id: string
+          criado_em: string
+          escola_id: string
+          final: boolean
+          id: string
+          matricula_id: string
+          tenant_id?: string | null
+          valor: number
+        }
+        Update: {
+          avaliacao_id?: string
+          criado_em?: string
+          escola_id?: string
+          final?: boolean
+          id?: string
+          matricula_id?: string
+          tenant_id?: string | null
+          valor?: number
+        }
+        Relationships: []
+      }
+      lancamentos_2026_03: {
         Row: {
           avaliacao_id: string
           criado_em: string

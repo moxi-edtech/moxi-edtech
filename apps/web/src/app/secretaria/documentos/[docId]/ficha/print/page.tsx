@@ -19,7 +19,7 @@ export default async function FichaInscricaoPrintPage({
   }
 
   const { doc, escolaNome, validationBaseUrl } = data;
-  if (doc.tipo !== "ficha_inscricao") {
+  if (String(doc.tipo) !== "ficha_inscricao") {
     return <div className="p-8">Documento inválido para esta página.</div>;
   }
 
