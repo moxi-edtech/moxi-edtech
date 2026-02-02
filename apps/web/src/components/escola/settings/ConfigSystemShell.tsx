@@ -25,13 +25,14 @@ type ConfigSystemShellProps = {
   statusItems?: string[];
   onSave?: () => void;
   saveDisabled?: boolean;
+  customSaveLabel?: string; // Added customSaveLabel prop
 };
 
 export default function ConfigSystemShell({
   title,
   subtitle,
-  menuItems,
   children,
+  menuItems,
   prevHref,
   nextHref,
   testHref,
@@ -39,6 +40,7 @@ export default function ConfigSystemShell({
   statusItems,
   onSave,
   saveDisabled,
+  customSaveLabel, // Added customSaveLabel to destructuring
 }: ConfigSystemShellProps) {
   const status = statusItems ?? [];
   const impactSummary = [
@@ -116,7 +118,7 @@ export default function ConfigSystemShell({
               onClick={onSave}
               disabled={saveDisabled || !onSave}
             >
-              Salvar
+              {customSaveLabel || "Salvar"}
             </button>
             {testHref && (
               <Link

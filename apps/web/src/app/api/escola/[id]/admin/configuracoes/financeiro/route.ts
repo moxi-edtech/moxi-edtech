@@ -14,7 +14,7 @@ const payloadSchema = z.object({
   moeda: z.string().min(1).optional(),
 });
 
-const resolveAnoLetivoAtivo = async (supabase: ReturnType<typeof createRouteClient>, escolaId: string) => {
+const resolveAnoLetivoAtivo = async (supabase: Awaited<ReturnType<typeof createRouteClient>>, escolaId: string) => {
   const { data: anoLetivo } = await (supabase as any)
     .from("anos_letivos")
     .select("id, ano")
