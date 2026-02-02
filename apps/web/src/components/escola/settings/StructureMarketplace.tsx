@@ -296,12 +296,12 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
           is_avaliavel: item.is_avaliavel ?? true,
           avaliacao_mode: item.aplica_modelo_avaliacao_id ? "personalizada" : "herdar_escola",
           area: item.area ?? null,
-          matrix_ids: [],
+          matrix_ids: [] as string[], // Explicitly cast to string[]
         };
 
         const matrixIds = base.matrix_ids ?? [];
-        if (item.id && !matrixIds.includes(item.id)) {
-          matrixIds.push(item.id);
+        if (item.id && !matrixIds.includes(item.id as string)) { // Cast item.id to string
+          matrixIds.push(item.id as string); // Also cast for push
         }
         disciplinaMap.set(key, { ...base, matrix_ids: matrixIds });
       });
