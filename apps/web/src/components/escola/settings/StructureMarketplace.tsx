@@ -152,13 +152,16 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       id: disciplina.id,
       nome: disciplina.nome,
       codigo: disciplina.codigo,
+      periodos_ativos: [1, 2, 3],
+      periodo_mode: "ano",
       carga_horaria_semanal: disciplina.carga_horaria_semanal,
-      is_core: disciplina.is_core,
-      participa_horario: disciplina.participa_horario,
-      is_avaliavel: disciplina.is_avaliavel,
-      avaliacao_mode: disciplina.avaliacao_mode,
+      classificacao: disciplina.is_core ? "core" : "complementar",
+      entra_no_horario: disciplina.participa_horario,
+      avaliacao: {
+        mode: disciplina.avaliacao_mode === "personalizada" ? "custom" : "inherit_school",
+        base_id: null,
+      },
       area: disciplina.area ?? null,
-      duracao_aula_min: null,
       programa_texto: null,
     });
     setDisciplinaEditingMatrixIds(disciplina.matrix_ids ?? []);
@@ -670,25 +673,29 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
             return;
           }
 
-          await Promise.all(
-            details.classes.map(async (classe) => {
-              const res = await fetch(`/api/escolas/${escolaId}/disciplinas`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  nome: payload.nome,
-                  curso_id: selectedCourseId,
-                  classe_id: classe.id,
-                  sigla: payload.codigo,
-                  carga_horaria_semana: payload.carga_horaria_semanal,
-                  carga_horaria: payload.carga_horaria_semanal,
-                  obrigatoria: payload.is_core,
-                  is_core: payload.is_core,
-                  is_avaliavel: payload.is_avaliavel,
-                  area: payload.area ?? null,
-                  aplica_modelo_avaliacao_id: null,
-                }),
-              });
+        await Promise.all(
+          details.classes.map(async (classe) => {
+            const res = await fetch(`/api/escolas/${escolaId}/disciplinas`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                nome: payload.nome,
+                curso_id: selectedCourseId,
+                classe_id: classe.id,
+                sigla: payload.codigo,
+                carga_horaria_semana: payload.carga_horaria_semanal,
+                carga_horaria: payload.carga_horaria_semanal,
+                obrigatoria: payload.classificacao === "core",
+                is_core: payload.classificacao === "core",
+                is_avaliavel: true,
+                area: payload.area ?? null,
+                aplica_modelo_avaliacao_id: null,
+                herda_de_disciplina_id:
+                  payload.avaliacao.mode === "inherit_disciplina"
+                    ? payload.avaliacao.base_id ?? null
+                    : null,
+              }),
+            });
               const json = await res.json().catch(() => null);
               if (!res.ok || json?.ok === false) {
                 throw new Error(json?.error || "Falha ao criar disciplina.");
@@ -714,10 +721,14 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                 sigla: payload.codigo,
                 carga_horaria_semana: payload.carga_horaria_semanal,
                 carga_horaria: payload.carga_horaria_semanal,
-                is_core: payload.is_core,
-                is_avaliavel: payload.is_avaliavel,
+                is_core: payload.classificacao === "core",
+                is_avaliavel: true,
                 area: payload.area ?? null,
                 aplica_modelo_avaliacao_id: null,
+                herda_de_disciplina_id:
+                  payload.avaliacao.mode === "inherit_disciplina"
+                    ? payload.avaliacao.base_id ?? null
+                    : null,
               }),
             });
             const json = await res.json().catch(() => null);
@@ -803,6 +814,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
             initial={disciplinaEditing}
             existingCodes={details.disciplinas.map((d) => d.codigo)}
             existingNames={details.disciplinas.map((d) => d.nome)}
+            existingDisciplines={details.disciplinas.map((d) => ({ id: d.id, nome: d.nome }))}
             onClose={() => setDisciplinaModalOpen(false)}
             onSave={handleSaveDisciplina}
             onDelete={disciplinaModalMode === "edit" ? handleDeleteDisciplina : undefined}
