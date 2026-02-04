@@ -61,7 +61,7 @@ export default async function FinanceiroDashboardPage({
   }
 
   const cookieHeader = (await cookies()).toString();
-  const host = headers().get("host");
+  const host = (await headers()).get("host");
   const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
   const baseUrl = host ? `${protocol}://${host}` : "";
 
