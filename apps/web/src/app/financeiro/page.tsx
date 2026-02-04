@@ -13,6 +13,7 @@ import {
   DollarSign,
 } from "lucide-react";
 import Link from "next/link";
+import { cookies, headers } from "next/headers";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { GerarMensalidadesDialog } from "./_components/GerarMensalidadesDialog";
@@ -23,7 +24,6 @@ import type { Database } from "~types/supabase";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { FinanceiroAlerts } from "@/components/financeiro/FinanceiroAlerts";
 import { MissingPricingAlert } from "@/components/financeiro/MissingPricingAlert";
-import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export const dynamic = 'force-dynamic';
 
@@ -60,73 +60,95 @@ export default async function FinanceiroDashboardPage({
     );
   }
 
-  const dashboardQuery = supabase
-    .from("vw_financeiro_dashboard")
-    .select(
-      "total_pendente, total_pago, total_inadimplente, alunos_inadimplentes, alunos_em_dia"
-    )
-    .eq("escola_id", escolaId || "")
-    .maybeSingle();
+  const cookieHeader = (await cookies()).toString();
+  const host = headers().get("host");
+  const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
+  const baseUrl = host ? `${protocol}://${host}` : "";
 
-  let pagamentosStatusQuery = supabase
-    .from("vw_pagamentos_status")
-    .select("status, total")
-    .eq("escola_id", escolaId || "");
-  pagamentosStatusQuery = applyKf2ListInvariants(pagamentosStatusQuery, {
-    defaultLimit: 50,
-    order: [{ column: "status", ascending: true }],
-  });
+  const fetchJson = async <T,>(path: string, fallback: T) => {
+    if (!baseUrl) return fallback;
+    const res = await fetch(`${baseUrl}${path}`, {
+      cache: "no-store",
+      headers: cookieHeader ? { cookie: cookieHeader } : undefined,
+    });
+    const json = (await res.json().catch(() => null)) as any;
+    if (!res.ok || !json?.ok) return fallback;
+    return json;
+  };
 
-  let radarResumoQuery = supabase
-    .from("vw_financeiro_radar_resumo")
-    .select("aluno_id, aluno_nome, turma_nome, meses_atraso, valor_total_atraso, responsavel_nome, telefone_responsavel")
-    .eq("escola_id", escolaId || "");
-  radarResumoQuery = applyKf2ListInvariants(radarResumoQuery, {
-    defaultLimit: 5,
-    order: [{ column: "valor_total_atraso", ascending: false }],
-  });
+  const today = new Date();
+  const rangeStart = new Date(today.getFullYear(), today.getMonth(), 1)
+    .toISOString()
+    .slice(0, 10);
+  const rangeEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+    .toISOString()
+    .slice(0, 10);
 
-  const [dashboardRes, pagamentosStatusRes, radarResumoRes] = escolaId
-    ? await Promise.all([dashboardQuery, pagamentosStatusQuery, radarResumoQuery])
-    : [{ data: null }, { data: [] }, { data: [] }];
+  const [resumoRes, inadimplenciaRes, recentesRes] = escolaId
+    ? await Promise.all([
+        fetchJson(
+          `/api/financeiro/dashboard/resumo?range_start=${rangeStart}&range_end=${rangeEnd}`,
+          { ok: false, data: null }
+        ),
+        fetchJson(
+          `/api/financeiro/inadimplencia/top?limit=5`,
+          { ok: false, data: [] }
+        ),
+        fetchJson(
+          `/api/financeiro/pagamentos/recentes?limit=20&day_key=${today.toISOString().slice(0, 10)}`,
+          { ok: false, data: [] }
+        ),
+      ])
+    : [{ ok: false, data: null }, { ok: false, data: [] }, { ok: false, data: [] }];
 
-  const dashboardRow = dashboardRes.data as {
-    total_pendente?: number | null;
-    total_pago?: number | null;
-    total_inadimplente?: number | null;
-    alunos_inadimplentes?: number | null;
-    alunos_em_dia?: number | null;
-  } | null;
-  const totalPago = Number(dashboardRow?.total_pago ?? 0);
-  const totalPendente = Number(dashboardRow?.total_pendente ?? 0);
-  const totalInadimplente = Number(dashboardRow?.total_inadimplente ?? 0);
-  const alunosInadimplentes = Number(dashboardRow?.alunos_inadimplentes ?? 0);
-  const alunosEmDia = Number(dashboardRow?.alunos_em_dia ?? 0);
-  const previsto = totalPago + totalPendente + totalInadimplente;
-  const realizado = totalPago;
-  const inadimplenciaTotal = totalInadimplente;
-  const percentPago = previsto ? Math.round((realizado / previsto) * 100) : 0;
+  const { data: pagamentosStatus } = escolaId
+    ? await supabase
+        .from("vw_pagamentos_status")
+        .select("status, total")
+        .eq("escola_id", escolaId)
+    : { data: [] };
+
+  const resumo = resumoRes?.data ?? {
+    previsto: 0,
+    realizado: 0,
+    inadimplencia: 0,
+    percent_realizado: 0,
+    alunos_inadimplentes: 0,
+    alunos_em_dia: 0,
+  };
+
+  const previsto = Number(resumo.previsto ?? 0);
+  const realizado = Number(resumo.realizado ?? 0);
+  const inadimplenciaTotal = Number(resumo.inadimplencia ?? 0);
+  const percentPago = Number(resumo.percent_realizado ?? 0);
   const percentInadimplencia = previsto ? Math.round((inadimplenciaTotal / previsto) * 100) : 0;
+  const alunosInadimplentes = Number(resumo.alunos_inadimplentes ?? 0);
+  const alunosEmDia = Number(resumo.alunos_em_dia ?? 0);
 
-  const pagamentosStatus = (pagamentosStatusRes.data || []) as Array<{ status?: string | null; total?: number | null }>;
-  const totalConfirmados = pagamentosStatus.reduce((acc, row) => {
-    const status = String(row.status ?? "").toLowerCase();
-    return status === "pago" || status === "concluido" ? acc + Number(row.total ?? 0) : acc;
-  }, 0);
-  const totalPendentes = pagamentosStatus.reduce((acc, row) => {
-    const status = String(row.status ?? "").toLowerCase();
-    return status === "pendente" ? acc + Number(row.total ?? 0) : acc;
-  }, 0);
-
-  const radarResumo = (radarResumoRes.data || []) as Array<{
+  const radarResumo = (inadimplenciaRes?.data || []) as Array<{
     aluno_id: string;
     aluno_nome: string | null;
-    turma_nome: string | null;
-    meses_atraso: string[] | null;
-    valor_total_atraso: number | null;
-    responsavel_nome: string | null;
-    telefone_responsavel: string | null;
+    valor_em_atraso: number | null;
+    dias_em_atraso: number | null;
   }>;
+
+  const pagamentosRecentes = (recentesRes?.data || []) as Array<{
+    id: string;
+    aluno_id: string | null;
+    valor_pago: number | null;
+    metodo: string | null;
+    status: string | null;
+    created_at: string | null;
+  }>;
+
+  const totalConfirmados = (pagamentosStatus || []).reduce((acc, row: any) => {
+    const status = String(row.status ?? "").toLowerCase();
+    return ["settled", "concluido", "pago"].includes(status) ? acc + Number(row.total ?? 0) : acc;
+  }, 0);
+  const totalPendentes = (pagamentosStatus || []).reduce((acc, row: any) => {
+    const status = String(row.status ?? "").toLowerCase();
+    return ["pending", "pendente"].includes(status) ? acc + Number(row.total ?? 0) : acc;
+  }, 0);
 
   let mensalidades: Mensalidade[] = [];
   let alunoNome = "";
@@ -227,6 +249,51 @@ export default async function FinanceiroDashboardPage({
         />
       </section>
 
+      <section className="bg-white rounded-xl border border-slate-200/70 p-5 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Pagamentos Recentes</h2>
+            <p className="text-xs text-slate-500">Feed do dia</p>
+          </div>
+          <Link href="/financeiro/pagamentos" className="text-xs font-semibold text-klasse-green-500 hover:underline">
+            Ver todos
+          </Link>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          {pagamentosRecentes.length === 0 ? (
+            <div className="text-sm text-slate-500">Nenhum pagamento hoje.</div>
+          ) : (
+            pagamentosRecentes.map((pagamento) => (
+              <div
+                key={pagamento.id}
+                className="flex flex-col gap-2 rounded-lg border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div>
+                  <div className="text-sm font-semibold text-slate-900">
+                    {pagamento.aluno_id ? `Aluno ${pagamento.aluno_id.slice(0, 8)}…` : "Aluno"}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {pagamento.metodo ?? "—"} • {pagamento.status ?? "—"}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-semibold text-slate-900">
+                    {kwanza.format(Number(pagamento.valor_pago ?? 0))}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {pagamento.created_at ? new Date(pagamento.created_at).toLocaleTimeString("pt-PT", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }) : "—"}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+
       {/* Radar + Ações rápidas */}
       <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <div className="bg-white rounded-xl border border-slate-200/70 p-5 shadow-sm">
@@ -247,10 +314,8 @@ export default async function FinanceiroDashboardPage({
             {radarResumo.map((row) => {
               const nomeAluno = row.aluno_nome || "Aluno";
               const iniciais = nomeAluno.trim().charAt(0).toUpperCase();
-              const meses = (row.meses_atraso || [])
-                .map((mes) => new Date(mes).toLocaleDateString("pt-PT", { month: "short" }).replace(".", ""))
-                .join(", ") || "—";
-              const telefone = (row.telefone_responsavel || "").replace(/\D+/g, "");
+              const dias = row.dias_em_atraso ? `${row.dias_em_atraso} dias` : "—";
+              const telefone = "";
               const mensagem = `Olá, referente à mensalidade do aluno ${nomeAluno}. Podemos ajudar?`;
               const whatsapp = telefone
                 ? `https://wa.me/${telefone}?text=${encodeURIComponent(mensagem)}`
@@ -263,12 +328,12 @@ export default async function FinanceiroDashboardPage({
                     </div>
                     <div>
                       <div className="text-sm font-semibold text-slate-900">{nomeAluno}</div>
-                      <div className="text-xs text-slate-500">{row.turma_nome || "Turma"} • {meses}</div>
+                      <div className="text-xs text-slate-500">Em atraso: {dias}</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 sm:justify-end">
                     <div className="text-right">
-                      <div className="text-sm font-semibold text-amber-700">{kwanza.format(row.valor_total_atraso ?? 0)}</div>
+                      <div className="text-sm font-semibold text-amber-700">{kwanza.format(row.valor_em_atraso ?? 0)}</div>
                       <div className="text-xs text-slate-500">Total em atraso</div>
                     </div>
                     {whatsapp ? (

@@ -383,15 +383,20 @@ const ConciliacaoBancaria: React.FC = () => {
   const conciliarTransacao = async (transacaoId: string, alunoId: string, mensalidadeId?: string) => {
     setProcessingUpload(true);
     try {
-      const response = await fetch("/api/financeiro/conciliacao/confirmar", {
+      const response = await fetch("/api/financeiro/conciliacao/settle", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transacaoId, alunoId, mensalidadeId }),
+        body: JSON.stringify({
+          transacao_id: transacaoId,
+          aluno_id: alunoId,
+          mensalidade_id: mensalidadeId ?? null,
+          settle_meta: { origem: "conciliacao_ui" },
+        }),
       });
 
       const result = await response.json();
       if (response.ok && result.ok) {
-        toast.success("Transação conciliada e pagamento registrado!");
+        toast.success("Transação conciliada e pagamento liquidado!");
         fetchTransactions();
       } else {
         toast.error(result.error || "Erro ao conciliar transação.");

@@ -4,6 +4,7 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function GET(req: Request) {
   try {
@@ -26,7 +27,7 @@ export async function GET(req: Request) {
 
     let query = s
       .from("pagamentos")
-      .select("id, status, valor_pago, metodo, referencia, created_at")
+      .select("id, status, valor_pago, metodo, reference, referencia, created_at")
       .eq("escola_id", escolaId)
       .gte("created_at", since)
       .order("created_at", { ascending: false })
@@ -48,7 +49,11 @@ export async function GET(req: Request) {
 
     const { data, error } = await query;
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
-    return NextResponse.json({ ok: true, items: data ?? [] });
+    const items = (data ?? []).map((row: any) => ({
+      ...row,
+      referencia: row.reference ?? row.referencia ?? null,
+    }));
+    return NextResponse.json({ ok: true, items });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

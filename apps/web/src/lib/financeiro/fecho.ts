@@ -1,7 +1,6 @@
 import "server-only";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
-import { applyKf2ListInvariants } from "@/lib/kf2";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -11,12 +10,14 @@ type FechoItem = {
   aluno: string;
   valor: number;
   metodo: string;
+  descricao: string;
 };
 
 type FechoTotals = {
   especie: number;
   tpa: number;
   transferencia: number;
+  mcx: number;
   total: number;
 };
 
@@ -35,27 +36,24 @@ function normalizeDate(dateParam?: string | null) {
   return new Date().toISOString().slice(0, 10);
 }
 
-function dateRange(dateStr: string) {
-  const start = new Date(`${dateStr}T00:00:00`);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
-  return { start: start.toISOString(), end: end.toISOString() };
-}
-
 function mapMetodo(metodo: string | null) {
   const normalized = (metodo || "").toLowerCase();
-  if (normalized === "numerario" || normalized === "dinheiro") return "especie";
-  if (normalized === "multicaixa" || normalized === "tpa" || normalized === "tpa_fisico") return "tpa";
-  if (normalized === "transferencia" || normalized === "deposito") return "transferencia";
+  if (normalized === "cash") return "especie";
+  if (normalized === "tpa") return "tpa";
+  if (normalized === "transfer") return "transferencia";
+  if (normalized === "mcx") return "mcx";
+  if (normalized === "kwik") return "mcx";
   return "outros";
 }
 
 export async function getFechoCaixaData({
   date,
   operadorId,
+  operadorScope = "self",
 }: {
   date?: string | null;
   operadorId?: string | null;
+  operadorScope?: "self" | "all";
 }): Promise<FechoResponse | { ok: false; error: string }> {
   const supabase = await supabaseServerTyped();
   const { data: auth } = await supabase.auth.getUser();
@@ -84,52 +82,57 @@ export async function getFechoCaixaData({
   }
 
   const dateStr = normalizeDate(date);
-  const range = dateRange(dateStr);
 
   let operadorFilter: string | null = null;
   if (papel === "secretaria") {
-    operadorFilter = user.id;
+    if (operadorScope !== "all") operadorFilter = user.id;
   } else if (operadorId) {
     operadorFilter = operadorId;
   }
 
-  let query = supabase
-    .from("financeiro_lancamentos")
-    .select(
-      "id, valor_total, valor_original, data_pagamento, metodo_pagamento, created_by, alunos(nome, nome_completo)"
-    )
+  let pagamentosQuery = supabase
+    .from("pagamentos")
+    .select("id, aluno_id, valor_pago, metodo, created_at, status, created_by")
     .eq("escola_id", escolaId)
-    .eq("status", "pago")
-    .not("data_pagamento", "is", null)
-    .gte("data_pagamento", range.start)
-    .lt("data_pagamento", range.end)
-    .order("data_pagamento", { ascending: true })
+    .eq("day_key", dateStr)
+    .eq("status", "settled")
     .order("created_at", { ascending: true });
 
   if (operadorFilter) {
-    query = query.eq("created_by", operadorFilter);
+    pagamentosQuery = pagamentosQuery.eq("created_by", operadorFilter);
   }
 
-  query = applyKf2ListInvariants(query, { defaultLimit: 500 });
-
-  const { data: rows, error } = await query;
+  const { data: rows, error } = await pagamentosQuery;
   if (error) {
     return { ok: false, error: error.message };
   }
 
-  const totals: FechoTotals = { especie: 0, tpa: 0, transferencia: 0, total: 0 };
+  const alunoIds = Array.from(new Set((rows || []).map((row: any) => row.aluno_id).filter(Boolean)));
+  const alunoMap = new Map<string, string>();
+  if (alunoIds.length > 0) {
+    const { data: alunos } = await supabase
+      .from("alunos")
+      .select("id, nome, nome_completo")
+      .eq("escola_id", escolaId)
+      .in("id", alunoIds);
+    (alunos ?? []).forEach((aluno: any) => {
+      alunoMap.set(aluno.id, aluno.nome_completo || aluno.nome || "—");
+    });
+  }
+
+  const totals: FechoTotals = { especie: 0, tpa: 0, transferencia: 0, mcx: 0, total: 0 };
   const items: FechoItem[] = (rows || []).map((row: any) => {
-    const metodo = mapMetodo(row.metodo_pagamento);
-    const valor = Number(row.valor_total ?? row.valor_original ?? 0);
+    const metodo = mapMetodo(row.metodo);
+    const valor = Number(row.valor_pago ?? 0);
     totals.total += valor;
     if (metodo === "especie") totals.especie += valor;
     if (metodo === "tpa") totals.tpa += valor;
     if (metodo === "transferencia") totals.transferencia += valor;
+    if (metodo === "mcx") totals.mcx += valor;
 
-    const alunoRaw = row.alunos || {};
-    const alunoNome = alunoRaw.nome_completo || alunoRaw.nome || "—";
-    const hora = row.data_pagamento
-      ? new Date(row.data_pagamento).toLocaleTimeString("pt-PT", {
+    const alunoNome = row.aluno_id ? alunoMap.get(row.aluno_id) ?? "—" : "—";
+    const hora = row.created_at
+      ? new Date(row.created_at).toLocaleTimeString("pt-PT", {
           hour: "2-digit",
           minute: "2-digit",
         })
@@ -141,6 +144,7 @@ export async function getFechoCaixaData({
       aluno: alunoNome,
       valor,
       metodo,
+      descricao: "Pagamento",
     };
   });
 

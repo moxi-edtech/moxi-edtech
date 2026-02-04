@@ -37,7 +37,7 @@ export async function GET(request: Request) {
       .from("alunos")
       .select(
         `
-        id, nome, nome_completo, bi_numero, numero_processo, foto_url,
+        id, nome, nome_completo, bi_numero, numero_processo,
         matriculas(
             id, status, ano_letivo,
             turmas(nome)
@@ -62,7 +62,7 @@ export async function GET(request: Request) {
         nome: aluno.nome_completo || aluno.nome,
         numero_processo: aluno.numero_processo,
         bi_numero: aluno.bi_numero,
-        foto_url: aluno.foto_url,
+        foto_url: null,
         turma: matriculaAtiva?.turmas?.nome || 'N/A',
         matricula_id: matriculaAtiva?.id || null,
       };

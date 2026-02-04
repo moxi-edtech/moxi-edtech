@@ -34,8 +34,8 @@ export function RegistrarPagamentoButton({
     try {
       const payload = {
         mensalidade_id: mensalidadeId,
-        metodo_pagamento: "numerario",
-        observacao: "Pagamento via balcão",
+        metodo: "cash",
+        meta: { origem: "portal_financeiro" },
       };
 
       if (typeof navigator !== "undefined" && !navigator.onLine) {

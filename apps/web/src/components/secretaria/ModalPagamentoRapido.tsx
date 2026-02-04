@@ -13,10 +13,13 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
+import { ReciboImprimivel } from "@/components/financeiro/ReciboImprimivel";
+import { usePlanFeature } from "@/hooks/usePlanFeature";
 
-type MetodoPagamento = "dinheiro" | "transferencia" | "mbway" | "multicaixa";
+type MetodoPagamento = "cash" | "tpa" | "transfer" | "mcx" | "kwik";
 
 interface ModalPagamentoRapidoProps {
+  escolaId?: string | null;
   aluno: {
     id: string;
     nome: string;
@@ -60,7 +63,6 @@ const moneyAOA = new Intl.NumberFormat("pt-AO", {
   minimumFractionDigits: 2,
 });
 
-const buildMbRef = () => `91${Math.floor(10000000 + Math.random() * 90000000)}`;
 
 function clampMonth(m?: number) {
   if (!m) return null;
@@ -99,10 +101,11 @@ type MetodoItem = {
 };
 
 const METODOS: MetodoItem[] = [
-  { id: "dinheiro", label: "Dinheiro", helper: "Balcão", icon: Banknote },
-  { id: "multicaixa", label: "Multicaixa", helper: "Cartão / TPA", icon: CreditCard },
-  { id: "transferencia", label: "Transferência", helper: "Comprovativo", icon: Wallet },
-  { id: "mbway", label: "MBWay", helper: "Referência", icon: Smartphone },
+  { id: "cash", label: "Cash", helper: "Balcão", icon: Banknote },
+  { id: "tpa", label: "TPA", helper: "Cartão", icon: CreditCard },
+  { id: "transfer", label: "Transfer", helper: "Comprovativo", icon: Wallet },
+  { id: "mcx", label: "MCX", helper: "Multicaixa", icon: Smartphone },
+  { id: "kwik", label: "KWIK", helper: "Instantâneo", icon: Smartphone },
 ];
 
 function SegmentedMethod({
@@ -182,17 +185,24 @@ function KpiRow({
 }
 
 export function ModalPagamentoRapido({
+  escolaId,
   aluno,
   mensalidade,
   open,
   onClose,
   onSuccess,
 }: ModalPagamentoRapidoProps) {
-  const [metodo, setMetodo] = useState<MetodoPagamento>("dinheiro");
+  const [metodo, setMetodo] = useState<MetodoPagamento>("cash");
   const [valorPago, setValorPago] = useState<string>("");
   const [processando, setProcessando] = useState(false);
   const [concluido, setConcluido] = useState(false);
-  const [referenciaMB, setReferenciaMB] = useState("");
+  const [paymentReference, setPaymentReference] = useState("");
+  const [paymentEvidenceUrl, setPaymentEvidenceUrl] = useState("");
+  const [paymentGatewayRef, setPaymentGatewayRef] = useState("");
+  const [recibo, setRecibo] = useState<{ url_validacao: string | null } | null>(null);
+  const [printRequested, setPrintRequested] = useState(false);
+  const [escolaNome, setEscolaNome] = useState<string | null>(null);
+  const { isEnabled: canEmitirRecibo } = usePlanFeature("fin_recibo_pdf");
 
   const abortRef = useRef<AbortController | null>(null);
   const confirmBtnRef = useRef<HTMLButtonElement | null>(null);
@@ -209,13 +219,10 @@ export function ModalPagamentoRapido({
 
   const troco = useMemo(() => valorPagoNum - valorDevido, [valorPagoNum, valorDevido]);
   const trocoValido = useMemo(() => Number.isFinite(troco) && troco >= 0, [troco]);
-  const mostraTroco = useMemo(
-    () => metodo === "dinheiro" && valorPagoNum > 0,
-    [metodo, valorPagoNum]
-  );
+  const mostraTroco = useMemo(() => metodo === "cash" && valorPagoNum > 0, [metodo, valorPagoNum]);
 
   const sugestoes = useMemo(() => {
-    if (metodo !== "dinheiro" || valorDevido <= 0) return [];
+    if (metodo !== "cash" || valorDevido <= 0) return [];
     const s = [
       valorDevido,
       Math.ceil(valorDevido / 100) * 100,
@@ -230,17 +237,53 @@ export function ModalPagamentoRapido({
 
     setConcluido(false);
     setProcessando(false);
-    setMetodo("dinheiro");
+    setMetodo("cash");
     setValorPago(mensalidade ? String(mensalidade.valor) : "");
     setReferenciaMB("");
+    setRecibo(null);
+    setPrintRequested(false);
 
     // foco: botão confirmar (fluxo balcão é teclado-friendly)
     window.setTimeout(() => confirmBtnRef.current?.focus(), 50);
   }, [open, mensalidade?.id]);
 
   useEffect(() => {
-    if (metodo !== "mbway") return;
-    setReferenciaMB(buildMbRef());
+    if (!open || !escolaId) return;
+    fetch(`/api/escolas/${escolaId}/nome`, { cache: "no-store" })
+      .then((res) => res.json())
+      .then((json) => {
+        if (json?.ok && json?.nome) setEscolaNome(json.nome);
+      })
+      .catch(() => {});
+  }, [escolaId, open]);
+
+  useEffect(() => {
+    if (!printRequested || !recibo) return;
+    const id = window.setTimeout(() => {
+      window.print();
+      setPrintRequested(false);
+    }, 300);
+    return () => window.clearTimeout(id);
+  }, [printRequested, recibo]);
+
+  useEffect(() => {
+    if (metodo === "cash") {
+      setPaymentReference("");
+      setPaymentEvidenceUrl("");
+      setPaymentGatewayRef("");
+      return;
+    }
+    if (metodo === "transfer") {
+      setPaymentReference("");
+      setPaymentGatewayRef("");
+      return;
+    }
+    if (metodo === "tpa") {
+      setPaymentEvidenceUrl("");
+      setPaymentGatewayRef("");
+      return;
+    }
+    setPaymentEvidenceUrl("");
   }, [metodo]);
 
   useEffect(() => {
@@ -261,6 +304,16 @@ export function ModalPagamentoRapido({
       return;
     }
 
+    if (metodo === "tpa" && !paymentReference.trim()) {
+      toast.error("Referência obrigatória para TPA.");
+      return;
+    }
+
+    if (metodo === "transfer" && !paymentEvidenceUrl.trim()) {
+      toast.error("Comprovativo obrigatório para Transferência.");
+      return;
+    }
+
     if (processando) return;
 
     setProcessando(true);
@@ -273,12 +326,17 @@ export function ModalPagamentoRapido({
         headers: { "Content-Type": "application/json" },
         signal: abortRef.current.signal,
         body: JSON.stringify({
+          aluno_id: aluno.id,
           mensalidade_id: mensalidade.id,
-          metodo_pagamento: metodo,
-          observacao: `Pagamento rápido - ${mesAno}`,
-          // (opcional) valor recebido / referência para auditoria
-          valor_recebido: valorPagoNum,
-          referencia: metodo === "mbway" ? referenciaMB : null,
+          valor: valorPagoNum || mensalidade.valor,
+          metodo,
+          reference: paymentReference || null,
+          evidence_url: paymentEvidenceUrl || null,
+          meta: {
+            observacao: `Pagamento rápido - ${mesAno}`,
+            origem: "pagamento_rapido",
+            gateway_ref: paymentGatewayRef || null,
+          },
         }),
       });
 
@@ -287,12 +345,21 @@ export function ModalPagamentoRapido({
         throw new Error(json?.error || "Falha ao registrar pagamento");
       }
 
-      // recibo não-bloqueante
-      fetch("/api/financeiro/recibos/emitir", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mensalidadeId: mensalidade.id }),
-      }).catch(() => {});
+      if (canEmitirRecibo) {
+        const reciboRes = await fetch("/api/financeiro/recibos/emitir", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mensalidadeId: mensalidade.id }),
+        }).catch(() => null);
+
+        if (reciboRes?.ok) {
+          const reciboJson = await reciboRes.json().catch(() => null);
+          if (reciboJson?.ok) {
+            setRecibo({ url_validacao: reciboJson.url_validacao ?? null });
+            setPrintRequested(true);
+          }
+        }
+      }
 
       setConcluido(true);
       toast.success("Pagamento registrado. Recibo emitido (quando disponível).");
@@ -308,15 +375,19 @@ export function ModalPagamentoRapido({
       setProcessando(false);
     }
   }, [
+    escolaId,
     mensalidade,
     trocoValido,
     processando,
     metodo,
     mesAno,
     valorPagoNum,
-    referenciaMB,
+    paymentReference,
+    paymentEvidenceUrl,
+    paymentGatewayRef,
     safeClose,
     onSuccess,
+    canEmitirRecibo,
   ]);
 
   // teclado: Enter confirma (exceto se estiver digitando no input)
@@ -355,8 +426,9 @@ export function ModalPagamentoRapido({
   const canConfirm = !!mensalidade && trocoValido && !processando;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4">
-      <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200">
+    <>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4">
+        <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200">
         {/* Header (subtle, premium) */}
         <div className="relative border-b border-slate-200 px-6 py-4">
           {/* “luz” sutil no topo (sem virar carnaval) */}
@@ -457,7 +529,7 @@ export function ModalPagamentoRapido({
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-bold text-slate-900">Método de pagamento</p>
-                  <span className="text-xs text-slate-500">Padrão: Dinheiro</span>
+                  <span className="text-xs text-slate-500">Padrão: Cash</span>
                 </div>
 
                 <SegmentedMethod
@@ -466,24 +538,46 @@ export function ModalPagamentoRapido({
                   disabled={processando}
                 />
 
-                {metodo === "mbway" ? (
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                {(metodo === "tpa" || metodo === "mcx" || metodo === "kwik") && (
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                          Referência
+                          {metodo === "tpa" ? "Referência obrigatória" : "Referência (opcional)"}
                         </div>
-                        <div className="mt-1 text-2xl font-black text-slate-900 tracking-wider">
-                          {referenciaMB || "—"}
-                        </div>
-                        <div className="mt-2 text-xs text-slate-600">
-                          O encarregado deve usar esta referência no pagamento.
-                        </div>
+                        <input
+                          value={paymentReference}
+                          onChange={(e) => setPaymentReference(e.target.value)}
+                          className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                          placeholder={metodo === "tpa" ? "TPA-2026-000882" : "Opcional"}
+                        />
+                        {(metodo === "mcx" || metodo === "kwik") ? (
+                          <input
+                            value={paymentGatewayRef}
+                            onChange={(e) => setPaymentGatewayRef(e.target.value)}
+                            className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                            placeholder={metodo === "kwik" ? "KWIK ref (opcional)" : "Gateway ref (opcional)"}
+                          />
+                        ) : null}
                       </div>
                       <div className="h-10 w-10 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center">
                         <Smartphone className="h-5 w-5 text-slate-700" />
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {metodo === "transfer" ? (
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-2">
+                    <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      Comprovativo obrigatório (URL)
+                    </div>
+                    <input
+                      value={paymentEvidenceUrl}
+                      onChange={(e) => setPaymentEvidenceUrl(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                      placeholder="https://..."
+                    />
                   </div>
                 ) : null}
               </div>
@@ -531,7 +625,7 @@ export function ModalPagamentoRapido({
                 ) : null}
               </div>
 
-              {/* Troco (só dinheiro) */}
+              {/* Troco (só cash) */}
               {mostraTroco ? (
                 <div className="rounded-2xl border border-slate-200 bg-white p-4">
                   <div className="flex items-center justify-between">
@@ -629,7 +723,17 @@ export function ModalPagamentoRapido({
             <p className="text-center text-sm text-slate-500">Fechando automaticamente…</p>
           )}
         </div>
+        </div>
       </div>
-    </div>
+      {recibo ? (
+        <ReciboImprimivel
+          escolaNome={escolaNome ?? "Escola"}
+          alunoNome={aluno.nome}
+          valor={mensalidade?.valor ?? 0}
+          data={new Date().toISOString()}
+          urlValidacao={recibo.url_validacao}
+        />
+      ) : null}
+    </>
   );
 }
