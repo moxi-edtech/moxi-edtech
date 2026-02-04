@@ -111,12 +111,10 @@ export async function GET(req: Request) {
     let items: any[] = [];
 
     try {
-      let rpcQuery = (supabase as any).rpc("get_classes_sem_preco", {
+      const rpcQuery = (supabase as any).rpc("get_classes_sem_preco", {
         p_escola_id: escolaId,
         p_ano_letivo: anoLetivo,
       });
-
-      rpcQuery = applyKf2ListInvariants(rpcQuery, { defaultLimit: 50 });
 
       const { data, error } = await rpcQuery;
 
