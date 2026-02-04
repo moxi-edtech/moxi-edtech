@@ -1,4 +1,3 @@
-// apps/web/src/components/secretaria/BalcaoAtendimento.tsx
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -12,16 +11,19 @@ import {
   AlertCircle,
   CheckCircle,
   ChevronRight,
-  FileText,
   Plus,
   Loader2,
   Smartphone,
   Wallet,
   X,
+  User
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { useDebounce } from "@/hooks/useDebounce";
+import { BalcaoServicoModal, type BalcaoDecision } from "@/components/secretaria/BalcaoServicoModal";
+import { PagamentoModal } from "@/components/secretaria/PagamentoModal";
+import { MotivoBloqueioModal } from "@/components/secretaria/MotivoBloqueioModal";
 
 const kwanza = new Intl.NumberFormat("pt-AO", {
   style: "currency",
@@ -32,7 +34,7 @@ const kwanza = new Intl.NumberFormat("pt-AO", {
 const cx = (...classes: Array<string | false | null | undefined>) =>
   classes.filter(Boolean).join(" ");
 
-type MetodoPagamento = "dinheiro" | "tpa" | "transferencia" | "mbway";
+type MetodoPagamento = "cash" | "tpa" | "transfer" | "mcx" | "kwik";
 
 // --- TIPOS ---
 interface AlunoBusca {
@@ -48,6 +50,10 @@ interface AlunoBusca {
 interface AlunoDossier extends AlunoBusca {
   status_financeiro: "em_dia" | "inadimplente";
   divida_total: number;
+  turma_codigo?: string | null;
+  classe?: string | null;
+  curso?: string | null;
+  curso_codigo?: string | null;
 }
 
 interface Mensalidade {
@@ -62,9 +68,20 @@ interface Mensalidade {
 
 interface Servico {
   id: string;
+  codigo: string;
   nome: string;
   preco: number;
   tipo: "servico";
+  descricao?: string | null;
+}
+
+interface AuditEntry {
+  created_at: string;
+  portal: string | null;
+  action: string | null;
+  entity: string | null;
+  entity_id: string | null;
+  details: Record<string, any> | null;
 }
 
 type ItemCarrinho = Mensalidade | Servico;
@@ -83,20 +100,16 @@ function normalizeQuery(q: string) {
   return q.trim();
 }
 
-function makeIdempotencyKey() {
-  // simples e bom: sessão + timestamp + random
-  return `balcao_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-}
-
+// CORREÇÃO 1: Status Pill usando Token KLASSE (Verde) e Vermelho Padrão (Erro)
 function StatusPill({ status }: { status: "em_dia" | "inadimplente" }) {
   const bad = status === "inadimplente";
   return (
     <span
       className={cx(
-        "inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide",
+        "inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide",
         bad
-          ? "border-red-200 bg-red-50 text-red-700"
-          : "border-emerald-200 bg-emerald-50 text-emerald-700"
+          ? "border-red-200 bg-red-50 text-red-700" // Vermelho Financeiro
+          : "border-[#1F6B3B]/20 bg-[#1F6B3B]/10 text-[#1F6B3B]" // Verde Brand
       )}
     >
       {bad ? "Inadimplente" : "Em dia"}
@@ -120,14 +133,32 @@ export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) 
   const [servicosDisponiveis, setServicosDisponiveis] = useState<Servico[]>([]);
   const [carrinho, setCarrinho] = useState<ItemCarrinho[]>([]);
 
-  const [metodo, setMetodo] = useState<MetodoPagamento>("dinheiro");
+  const [metodo, setMetodo] = useState<MetodoPagamento>("cash");
   const [valorRecebido, setValorRecebido] = useState<string>("");
+  const [paymentReference, setPaymentReference] = useState("");
+  const [paymentEvidenceUrl, setPaymentEvidenceUrl] = useState("");
+  const [paymentGatewayRef, setPaymentGatewayRef] = useState("");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [alunoDossierLoading, setAlunoDossierLoading] = useState(false);
+  const [servicoModalOpen, setServicoModalOpen] = useState(false);
+  const [servicoModalCodigo, setServicoModalCodigo] = useState<string | null>(null);
+  const [pagamentoIntent, setPagamentoIntent] = useState<{
+    id: string;
+    total: number;
+    pedidoId?: string | null;
+  } | null>(null);
+  const [bloqueioInfo, setBloqueioInfo] = useState<{ code: string; detail?: string } | null>(null);
+  const [paymentFeedback, setPaymentFeedback] = useState<{
+    status: "success" | "error";
+    message: string;
+  } | null>(null);
+  const [auditFeed, setAuditFeed] = useState<AuditEntry[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditScope, setAuditScope] = useState<"aluno" | "todos">("aluno");
+  const [auditOpen, setAuditOpen] = useState(false);
 
-  const idempotencyRef = useRef<string>(makeIdempotencyKey());
   const abortSearchRef = useRef<AbortController | null>(null);
 
   // --- Load serviços (catálogo) ---
@@ -135,8 +166,8 @@ export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) 
     let mounted = true;
     async function loadServicos() {
       const { data, error } = await supabase
-        .from("servicos_catalogo")
-        .select("id, nome, preco, tipo")
+        .from("servicos_escola")
+        .select("id, codigo, nome, descricao, valor_base")
         .eq("escola_id", escolaId)
         .eq("ativo", true);
 
@@ -148,7 +179,15 @@ export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) 
         setServicosDisponiveis([]);
         return;
       }
-      setServicosDisponiveis((data ?? []) as Servico[]);
+      const mapped = (data ?? []).map((row: any) => ({
+        id: row.id,
+        codigo: row.codigo,
+        nome: row.nome,
+        descricao: row.descricao,
+        preco: Number(row.valor_base ?? 0),
+        tipo: "servico" as const,
+      }));
+      setServicosDisponiveis(mapped);
     }
     loadServicos();
     return () => {
@@ -196,6 +235,10 @@ export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) 
           numero_processo: perfil.numero_processo || "—",
           bi_numero: perfil.bi_numero || null,
           turma: atual?.turma || "—",
+          turma_codigo: atual?.turma_codigo ?? atual?.turma_code ?? null,
+          classe: atual?.classe ?? null,
+          curso: atual?.curso ?? atual?.curso_nome ?? null,
+          curso_codigo: atual?.curso_codigo ?? atual?.curso_code ?? null,
           status_financeiro,
           divida_total: totalAtraso,
           foto_url: perfil.foto_url || null,
@@ -230,9 +273,11 @@ export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) 
         setAlunoSelecionado(aluno);
         setMensalidadesDisponiveis(mensalidades);
         setCarrinho([]);
-        setMetodo("dinheiro");
+        setMetodo("cash");
         setValorRecebido("");
-        idempotencyRef.current = makeIdempotencyKey();
+        setPaymentReference("");
+        setPaymentEvidenceUrl("");
+        setPaymentGatewayRef("");
       } finally {
         setAlunoDossierLoading(false);
       }
@@ -308,7 +353,9 @@ export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) 
   const limparCarrinho = () => {
     setCarrinho([]);
     setValorRecebido("");
-    idempotencyRef.current = makeIdempotencyKey();
+    setPaymentReference("");
+    setPaymentEvidenceUrl("");
+    setPaymentGatewayRef("");
   };
 
   const total = useMemo(
@@ -324,52 +371,120 @@ export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) 
   const troco = useMemo(() => Math.max(0, valorRecebidoNum - total), [valorRecebidoNum, total]);
 
   const prontoParaFechar =
-    total > 0 && (metodo !== "dinheiro" || (valorRecebidoNum > 0 && valorRecebidoNum >= total));
+    total > 0 && (metodo !== "cash" || (valorRecebidoNum > 0 && valorRecebidoNum >= total));
+
+  const fetchAuditFeed = useCallback(
+    async (alunoId?: string | null, matriculaId?: string | null) => {
+      setAuditLoading(true);
+      const params = new URLSearchParams();
+      params.set("limit", "20");
+      if (auditScope === "aluno") {
+        if (alunoId) params.set("alunoId", alunoId);
+        if (matriculaId) params.set("matriculaId", matriculaId ?? "");
+      }
+
+      const res = await fetch(`/api/secretaria/balcao/audit?${params.toString()}`, {
+        cache: "no-store",
+      });
+      const json = await res.json().catch(() => ({}));
+      setAuditLoading(false);
+
+      if (!res.ok || !json?.ok) {
+        console.error(json?.error || "Falha ao carregar audit trail.");
+        setAuditFeed([]);
+        return;
+      }
+
+      setAuditFeed(Array.isArray(json.logs) ? (json.logs as AuditEntry[]) : []);
+    },
+    [auditScope]
+  );
+
+  useEffect(() => {
+    if (metodo === "cash") {
+      setPaymentReference("");
+      setPaymentEvidenceUrl("");
+      setPaymentGatewayRef("");
+      return;
+    }
+    if (metodo === "transfer") {
+      setPaymentReference("");
+      setPaymentGatewayRef("");
+      return;
+    }
+    if (metodo === "tpa") {
+      setPaymentEvidenceUrl("");
+      setPaymentGatewayRef("");
+      return;
+    }
+    setPaymentEvidenceUrl("");
+  }, [metodo]);
 
   // --- Checkout ---
   const handleCheckout = async () => {
     if (!alunoSelecionado?.id) return toast.error("Nenhum aluno selecionado.");
     if (carrinho.length === 0) return toast.error("Carrinho vazio.");
 
-    if (metodo === "dinheiro" && valorRecebidoNum < total) {
+    const mensalidadesCarrinho = carrinho.filter(
+      (item): item is Mensalidade => item.tipo === "mensalidade"
+    );
+    if (mensalidadesCarrinho.length !== carrinho.length) {
+      return toast.error("Serviços devem ser cobrados via Novo serviço 30s.");
+    }
+
+    if (metodo === "cash" && valorRecebidoNum < total) {
       return toast.error("Valor recebido insuficiente.");
+    }
+
+    if (metodo === "tpa" && !paymentReference.trim()) {
+      return toast.error("Referência obrigatória para TPA.");
+    }
+
+    if (metodo === "transfer" && !paymentEvidenceUrl.trim()) {
+      return toast.error("Comprovativo obrigatório para Transferência.");
     }
 
     setIsSubmitting(true);
     try {
-      const payload = {
-        p_aluno_id: alunoSelecionado.id,
-        p_escola_id: escolaId,
-        p_idempotency_key: idempotencyRef.current,
-        p_carrinho_itens: carrinho.map((item) => ({
-          id: item.id,
-          tipo: item.tipo,
-          preco: item.preco,
-          ...(item.tipo === "mensalidade"
-            ? {
-                mes_referencia: (item as Mensalidade).mes_referencia,
-                ano_referencia: (item as Mensalidade).ano_referencia,
-              }
-            : {}),
-        })),
-        p_metodo_pagamento: metodo,
-        p_valor_recebido: metodo === "dinheiro" ? valorRecebidoNum : total,
-      };
+      for (const mensalidade of mensalidadesCarrinho) {
+        const response = await fetch("/api/secretaria/balcao/pagamentos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+          body: JSON.stringify({
+            aluno_id: alunoSelecionado.id,
+            mensalidade_id: mensalidade.id,
+            valor: mensalidade.preco,
+            metodo,
+            reference: paymentReference || null,
+            evidence_url: paymentEvidenceUrl || null,
+            gateway_ref: paymentGatewayRef || null,
+            meta: { observacao: "Pagamento via balcão" },
+          }),
+        });
+        const json = await response.json().catch(() => ({}));
+        if (!response.ok || !json?.ok) {
+          throw new Error(json?.error || "Falha ao registrar pagamento.");
+        }
+      }
 
-      const { data, error } = await supabase.rpc("realizar_pagamento_balcao", payload as any);
-      if (error) throw new Error(error.message);
-
-      const result = data as any;
-      if (!result?.ok) throw new Error(result?.erro || "Falha ao finalizar pagamento.");
-
-      toast.success(`Pagamento registrado. Troco: ${kwanza.format(Number(result.troco ?? 0))}`);
+      const successMessage =
+        metodo === "cash"
+          ? `Pagamento registrado. Troco: ${kwanza.format(troco)}`
+          : "Pagamento registrado.";
+      toast.success(successMessage);
+      setPaymentFeedback({ status: "success", message: successMessage });
 
       limparCarrinho();
       await loadAlunoDossier(alunoSelecionado.id);
+      await fetchAuditFeed(alunoSelecionado.id, alunoSelecionado.matricula_id);
     } catch (e: any) {
       console.error(e);
       toast.error(e?.message || "Erro ao finalizar pagamento.");
-      // IMPORTANT: não regenere idempotency key aqui, senão pode duplicar tentativa
+      setPaymentFeedback({
+        status: "error",
+        message: e?.message || "Erro ao finalizar pagamento.",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -384,58 +499,94 @@ export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) 
     [mensalidadesDisponiveis]
   );
 
+  const handleServicoDecision = useCallback((decision: BalcaoDecision) => {
+    if (decision.decision === "GRANTED") {
+      toast.success("Serviço liberado.");
+      if (alunoSelecionado?.id) {
+        void fetchAuditFeed(alunoSelecionado.id, alunoSelecionado.matricula_id);
+      }
+      return;
+    }
+
+    if (decision.decision === "BLOCKED") {
+      setBloqueioInfo({
+        code: decision.reason_code,
+        detail: decision.reason_detail ?? undefined,
+      });
+      if (alunoSelecionado?.id) {
+        void fetchAuditFeed(alunoSelecionado.id, alunoSelecionado.matricula_id);
+      }
+      return;
+    }
+
+    setPagamentoIntent({
+      id: decision.payment_intent_id,
+      total: decision.amounts.total ?? 0,
+      pedidoId: decision.pedido_id,
+    });
+  }, [alunoSelecionado, fetchAuditFeed]);
+
+  useEffect(() => {
+    if (!alunoSelecionado?.id) {
+      setAuditFeed([]);
+      return;
+    }
+    void fetchAuditFeed(alunoSelecionado.id, alunoSelecionado.matricula_id);
+  }, [alunoSelecionado?.id, alunoSelecionado?.matricula_id, fetchAuditFeed, auditScope]);
+
   // --- UI ---
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-7xl px-6 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* LEFT */}
-          <div className="lg:col-span-8 space-y-6">
-            {/* Search */}
-            <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-              <div className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center">
-                    <Search className="h-5 w-5 text-slate-500" />
-                  </div>
-
-                  <div className="flex-1">
-                    <div className="text-[11px] uppercase tracking-wider font-semibold text-slate-500">
-                      Buscar aluno (Nome / BI / Processo / Telefone)
+    <>
+      <div className="min-h-screen bg-slate-50">
+        <div className="mx-auto max-w-screen-2xl px-6 py-6">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+            
+            {/* LEFT: Busca e Catálogo */}
+            <div className="xl:col-span-8 space-y-6">
+              
+              {/* SEARCH CARD */}
+              <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                <div className="p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="h-11 w-11 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center">
+                      <Search className="h-5 w-5 text-slate-400" />
                     </div>
-                    <input
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      placeholder="Digite para buscar…"
-                      className="mt-1 w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-900 outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
-                    />
+
+                    <div className="flex-1">
+                      <div className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1">
+                        Buscar Aluno
+                      </div>
+                      <input
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder="Nome, BI, Nº Processo..."
+                        className="w-full text-base font-medium text-slate-900 placeholder:text-slate-300 outline-none bg-transparent"
+                      />
+                    </div>
+
+                    {isSearching ? <Loader2 className="h-5 w-5 animate-spin text-[#E3B23C]" /> : null}
+                    {searchTerm && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchTerm("");
+                          setAlunosEncontrados([]);
+                        }}
+                        className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                      >
+                        <X className="h-5 w-5 text-slate-400" />
+                      </button>
+                    )}
                   </div>
-
-                  {isSearching ? <Loader2 className="h-5 w-5 animate-spin text-slate-400" /> : null}
-                  {searchTerm ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSearchTerm("");
-                        setAlunosEncontrados([]);
-                      }}
-                      className="rounded-xl p-2 hover:bg-slate-100 transition focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
-                      aria-label="Limpar busca"
-                    >
-                      <X className="h-5 w-5 text-slate-500" />
-                    </button>
-                  ) : null}
                 </div>
-              </div>
 
-              {/* Results */}
-              {normalizeQuery(searchTerm) ? (
-                <div className="border-t border-slate-200">
-                  {alunosEncontrados.length === 0 && !isSearching ? (
-                    <div className="p-4 text-sm text-slate-500">Nenhum aluno encontrado.</div>
-                  ) : (
-                    <div className="max-h-72 overflow-auto">
-                      {alunosEncontrados.map((a) => (
+                {/* RESULTS DROPDOWN */}
+                {normalizeQuery(searchTerm) && (
+                  <div className="border-t border-slate-100 max-h-80 overflow-y-auto">
+                    {alunosEncontrados.length === 0 && !isSearching ? (
+                      <div className="p-6 text-center text-sm text-slate-400">Nenhum aluno encontrado.</div>
+                    ) : (
+                      alunosEncontrados.map((a) => (
                         <button
                           key={a.id}
                           type="button"
@@ -444,461 +595,498 @@ export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) 
                             setAlunosEncontrados([]);
                             loadAlunoDossier(a.id);
                           }}
-                          className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-slate-50 transition border-b border-slate-100 last:border-b-0"
+                          className="w-full px-5 py-3 flex items-center gap-4 text-left hover:bg-slate-50 transition border-b border-slate-50 last:border-b-0 group"
                         >
-                          <div className="h-10 w-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden">
+                          <div className="h-10 w-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden">
                             {a.foto_url ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img src={a.foto_url} alt="" className="h-full w-full object-cover" />
                             ) : (
-                              <span className="text-xs font-semibold text-slate-500">AL</span>
+                              <User className="h-5 w-5 text-slate-400" />
                             )}
                           </div>
-
                           <div className="min-w-0 flex-1">
-                            <div className="text-sm font-semibold text-slate-900 truncate">{a.nome}</div>
-                            <div className="text-xs text-slate-500 truncate">
-                              {a.turma} • Proc {a.numero_processo} • {a.bi_numero || "BI —"}
+                            <div className="text-sm font-bold text-slate-700 group-hover:text-slate-900">{a.nome}</div>
+                            <div className="text-xs text-slate-400 group-hover:text-slate-500">
+                              {a.turma} • Proc: {a.numero_processo}
                             </div>
                           </div>
-
-                          <ChevronRight className="h-4 w-4 text-slate-300" />
+                          <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-[#E3B23C]" />
                         </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ) : null}
-            </div>
-
-            {/* Aluno + Catálogo */}
-            {alunoDossierLoading ? (
-              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-                <div className="flex items-center gap-3 mb-4">
-                  <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-                  <div className="text-sm font-semibold text-slate-700">Carregando dossiê do aluno…</div>
-                </div>
-                <div className="space-y-3">
-                  <SkeletonLine />
-                  <SkeletonLine />
-                  <SkeletonLine />
-                </div>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
-            ) : alunoSelecionado ? (
-              <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-                {/* Card aluno */}
-                <div className="xl:col-span-4 rounded-xl border border-slate-200 bg-white shadow-sm p-6">
-                  <div className="flex items-start gap-4">
-                    <div className="h-16 w-16 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
-                      {alunoSelecionado.foto_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={alunoSelecionado.foto_url} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        <span className="text-sm font-semibold text-slate-500">ALUNO</span>
-                      )}
-                    </div>
 
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h2 className="text-lg font-semibold text-slate-900 truncate">
-                          {alunoSelecionado.nome}
-                        </h2>
-                        <StatusPill status={alunoSelecionado.status_financeiro} />
-                      </div>
-
-                      <div className="mt-2 text-sm text-slate-600 font-medium truncate">
-                        {alunoSelecionado.turma}
-                      </div>
-
-                      <div className="mt-3 inline-flex items-center rounded-full border border-slate-200 px-3 py-1 text-[11px] font-semibold text-slate-700">
-                        Proc {alunoSelecionado.numero_processo}
+              {/* ALUNO + CATÁLOGO */}
+              {alunoDossierLoading ? (
+                <div className="rounded-2xl border border-slate-200 bg-white p-8 flex flex-col items-center justify-center gap-4 min-h-[300px]">
+                  <Loader2 className="h-8 w-8 animate-spin text-[#E3B23C]" />
+                  <p className="text-sm font-medium text-slate-500">Carregando ficha do aluno...</p>
+                </div>
+              ) : alunoSelecionado ? (
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+                  
+                  {/* CARD DO ALUNO (Perfil) */}
+                  <div className="xl:col-span-6 rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                    <div className="p-6">
+                      <div className="flex items-start gap-4 mb-6">
+                        <div className="h-16 w-16 rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden">
+                          {alunoSelecionado.foto_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={alunoSelecionado.foto_url} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="h-full w-full flex items-center justify-center text-slate-400">
+                              <User className="h-8 w-8" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h2 className="text-base font-bold text-slate-900 break-words leading-tight mb-1">
+                            {alunoSelecionado.nome}
+                          </h2>
+                          <div className="flex flex-wrap items-center gap-2 mb-2">
+                            <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                              Turma {alunoSelecionado.turma_codigo || alunoSelecionado.turma}
+                            </span>
+                            <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                              Curso {alunoSelecionado.curso_codigo || alunoSelecionado.curso || "—"}
+                            </span>
+                            <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                              Classe {alunoSelecionado.classe || "—"}
+                            </span>
+                            <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                              Processo {alunoSelecionado.numero_processo}
+                            </span>
+                            <StatusPill status={alunoSelecionado.status_financeiro} />
+                          </div>
+                          <p className="text-[10px] text-slate-400">
+                            Resumo rápido do aluno e situação atual.
+                          </p>
+                        </div>
                       </div>
 
                       {alunoSelecionado.status_financeiro === "inadimplente" ? (
-                        <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-4">
-                          <div className="flex items-center gap-2 text-red-700 font-semibold text-sm">
-                            <AlertCircle className="h-5 w-5" />
-                            Dívida total
+                        // CORREÇÃO 2: Dívida em Vermelho Padrão (Sem Rose)
+                        <div className="rounded-xl border border-red-200 bg-red-50 p-4 mb-4">
+                          <div className="flex items-center gap-2 text-red-700 font-bold text-xs uppercase mb-1">
+                            <AlertCircle className="h-4 w-4" />
+                            Dívida Acumulada
                           </div>
-                          <div className="mt-1 text-2xl font-black text-red-800">
+                          <div className="text-2xl font-black text-red-800">
                             {kwanza.format(alunoSelecionado.divida_total)}
                           </div>
                         </div>
                       ) : (
-                        <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-                          <div className="flex items-center gap-2 text-emerald-700 font-semibold text-sm">
+                        // CORREÇÃO 3: Sucesso em Verde Brand
+                        <div className="rounded-xl border border-[#1F6B3B]/20 bg-[#1F6B3B]/10 p-4 mb-4 flex items-center gap-3">
+                          <div className="p-2 bg-[#1F6B3B]/10 rounded-full text-[#1F6B3B]">
                             <CheckCircle className="h-5 w-5" />
-                            Situação regular
                           </div>
-                          <div className="mt-1 text-sm text-emerald-700">
-                            Sem pendências críticas no momento.
+                          <div>
+                            <p className="text-xs font-bold uppercase text-[#1F6B3B]">Situação Regular</p>
+                            <p className="text-[10px] text-[#1F6B3B]/80">Nenhuma pendência crítica.</p>
                           </div>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  <div className="mt-6">
-                    <div className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 mb-2">
-                      Últimos atendimentos
+                  {/* CATÁLOGO DE SERVIÇOS */}
+                  <div className="xl:col-span-6 rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
+                    <div className="flex items-center justify-between mb-5">
+                      <div className="flex items-center gap-2">
+                        <Plus className="h-4 w-4 text-[#E3B23C]" />
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Adicionar Item</h3>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setServicoModalCodigo(null);
+                          setServicoModalOpen(true);
+                        }}
+                        className="text-[10px] font-bold text-[#E3B23C] hover:underline"
+                      >
+                        + Serviço Avulso
+                      </button>
                     </div>
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                      <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                        <span>Emissão declaração</span>
-                        <span className="text-slate-500">—</span>
-                      </div>
-                      <div className="flex items-center justify-between pt-2">
-                        <span>Pagamento</span>
-                        <span className="text-slate-500">—</span>
-                      </div>
-                      <div className="mt-3 text-xs text-slate-500">
-                        (Quando você ligar isso no Audit Trail, aqui vira ouro.)
-                      </div>
+
+                    <div className="space-y-6 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                      
+                      {/* CORREÇÃO 4: Dívidas em Vermelho Padrão */}
+                      {pendenciasAtrasadas.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-bold uppercase text-red-500 mb-2 pl-1">Em Atraso</p>
+                          <div className="grid gap-2">
+                            {pendenciasAtrasadas.map((m) => (
+                              <button
+                                key={m.id}
+                                onClick={() => adicionarAoCarrinho(m)}
+                                className="flex items-center justify-between p-3 rounded-xl border border-red-200 bg-red-50 hover:border-red-300 transition-all text-left group"
+                              >
+                                <div>
+                                  <p className="text-sm font-bold text-red-900 group-hover:text-red-950">{m.nome}</p>
+                                  <p className="text-[10px] text-red-600">Vencida</p>
+                                </div>
+                                <span className="text-sm font-black text-red-800">{kwanza.format(m.preco)}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Mensalidades */}
+                      {pendenciasEmDia.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-bold uppercase text-slate-400 mb-2 pl-1">Mensalidades</p>
+                          <div className="grid gap-2">
+                            {pendenciasEmDia.map((m) => (
+                              <button
+                                key={m.id}
+                                onClick={() => adicionarAoCarrinho(m)}
+                                className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white hover:border-[#E3B23C] transition-all text-left group"
+                              >
+                                <div>
+                                  <p className="text-sm font-bold text-slate-700 group-hover:text-slate-900">{m.nome}</p>
+                                  <p className="text-[10px] text-slate-400">Corrente</p>
+                                </div>
+                                <span className="text-sm font-bold text-slate-900">{kwanza.format(m.preco)}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Serviços */}
+                      {servicosDisponiveis.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-bold uppercase text-slate-400 mb-2 pl-1">Serviços Extras</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {servicosDisponiveis.map((s) => (
+                              <button
+                                key={s.id}
+                                onClick={() => {
+                                  setServicoModalCodigo(s.codigo);
+                                  setServicoModalOpen(true);
+                                }}
+                                className="p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white hover:border-[#E3B23C] transition-all text-left"
+                              >
+                                <p className="text-xs font-bold text-slate-700 truncate">{s.nome}</p>
+                                <p className="text-xs font-medium text-slate-500 mt-1">{kwanza.format(s.preco)}</p>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
-
-                {/* Catálogo */}
-                <div className="xl:col-span-8 rounded-xl border border-slate-200 bg-white shadow-sm p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <Plus className="h-4 w-4 text-slate-500" />
-                      <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                        Adicionar ao atendimento
-                      </div>
-                    </div>
-
-                    <div className="text-xs text-slate-500">
-                      Clique para adicionar no carrinho
-                    </div>
+              ) : (
+                <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-sm">
+                  <div className="mx-auto h-16 w-16 rounded-full bg-slate-50 flex items-center justify-center mb-4">
+                    <Search className="h-8 w-8 text-slate-300" />
                   </div>
-
-                  <div className="space-y-6">
-                    {/* Pendências em atraso */}
-                    {pendenciasAtrasadas.length > 0 ? (
-                      <div>
-                        <div className="text-[11px] uppercase tracking-wider font-semibold text-red-700 mb-2">
-                          Pendências em atraso
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {pendenciasAtrasadas.map((m) => (
-                            <button
-                              key={m.id}
-                              type="button"
-                              onClick={() => adicionarAoCarrinho(m)}
-                              className="rounded-xl border border-red-200 bg-red-50 p-4 text-left hover:bg-red-100 transition"
-                            >
-                              <div className="flex items-center justify-between gap-3">
-                                <div className="min-w-0">
-                                  <div className="text-sm font-semibold text-red-900 truncate">
-                                    {m.nome}
-                                  </div>
-                                  <div className="text-xs text-red-700">Atrasada</div>
-                                </div>
-                                <div className="text-sm font-black text-red-900">
-                                  {kwanza.format(m.preco)}
-                                </div>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {/* Mensalidades */}
-                    {pendenciasEmDia.length > 0 ? (
-                      <div>
-                        <div className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 mb-2">
-                          Mensalidades pendentes
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {pendenciasEmDia.map((m) => (
-                            <button
-                              key={m.id}
-                              type="button"
-                              onClick={() => adicionarAoCarrinho(m)}
-                              className="rounded-xl border border-slate-200 bg-white p-4 text-left hover:bg-slate-50 transition"
-                            >
-                              <div className="flex items-center justify-between gap-3">
-                                <div className="min-w-0">
-                                  <div className="text-sm font-semibold text-slate-900 truncate">
-                                    {m.nome}
-                                  </div>
-                                  <div className="text-xs text-slate-500">Mensalidade</div>
-                                </div>
-                                <div className="text-sm font-black text-slate-900">
-                                  {kwanza.format(m.preco)}
-                                </div>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {/* Serviços */}
-                    <div>
-                      <div className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 mb-2">
-                        Serviços
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {servicosDisponiveis.map((s) => (
-                          <button
-                            key={s.id}
-                            type="button"
-                            onClick={() => adicionarAoCarrinho(s)}
-                            className="rounded-xl border border-slate-200 bg-white p-4 text-left hover:bg-slate-50 transition"
-                          >
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="min-w-0">
-                                <div className="text-sm font-semibold text-slate-900 truncate">
-                                  {s.nome}
-                                </div>
-                                <div className="text-xs text-slate-500">Serviço</div>
-                              </div>
-                              <div className="text-sm font-black text-slate-900">
-                                {kwanza.format(s.preco)}
-                              </div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {pendenciasAtrasadas.length === 0 &&
-                    pendenciasEmDia.length === 0 &&
-                    servicosDisponiveis.length === 0 ? (
-                      <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
-                        Nada disponível para cobrança no momento.
-                      </div>
-                    ) : null}
-                  </div>
+                  <h3 className="text-lg font-bold text-slate-900">Balcão de Atendimento</h3>
+                  <p className="text-sm text-slate-500 max-w-sm mx-auto mt-2">
+                    Pesquise um aluno acima para iniciar o atendimento, vender serviços ou regularizar mensalidades.
+                  </p>
                 </div>
-              </div>
-            ) : (
-              <div className="rounded-xl border border-slate-200 bg-white p-10 shadow-sm text-center text-slate-500">
-                Pesquise um aluno para iniciar o atendimento.
-              </div>
-            )}
-          </div>
+              )}
+            </div>
 
-          {/* RIGHT (Resumo / Caixa) */}
-          <div className="lg:col-span-4">
-            <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-              <div className="bg-slate-950 px-6 py-5">
-                <div className="flex items-center justify-between">
+            {/* RIGHT: Carrinho & Checkout */}
+            <div className="xl:col-span-4 space-y-6">
+              
+              {/* STATUS DE PAGAMENTO (TOAST INLINE) */}
+              {paymentFeedback && (
+                <div className={cx(
+                  "p-4 rounded-xl border flex items-start gap-3 animate-in slide-in-from-top-2",
+                  paymentFeedback.status === "success" 
+                    ? "bg-[#1F6B3B]/10 border-[#1F6B3B]/20 text-[#1F6B3B]" // CORREÇÃO 5: Sucesso Verde Brand
+                    : "bg-red-50 border-red-200 text-red-800" // CORREÇÃO 6: Erro Vermelho Padrão
+                )}>
+                  {paymentFeedback.status === "success" ? <CheckCircle className="h-5 w-5 shrink-0" /> : <AlertCircle className="h-5 w-5 shrink-0" />}
+                  <div className="flex-1 text-sm font-medium">{paymentFeedback.message}</div>
+                  <button onClick={() => setPaymentFeedback(null)}><X className="h-4 w-4 opacity-50 hover:opacity-100" /></button>
+                </div>
+              )}
+
+              {/* CARD DO CARRINHO */}
+              <div className="rounded-2xl border border-slate-200 bg-white shadow-lg overflow-hidden flex flex-col h-[calc(100vh-140px)] sticky top-6">
+                
+                {/* Header Carrinho */}
+                <div className="bg-slate-900 px-6 py-5 text-white flex justify-between items-center shrink-0">
                   <div className="flex items-center gap-2">
-                    <ShoppingCart className="h-5 w-5 text-klasse-gold" />
-                    <div className="text-base font-semibold text-white">Resumo do Caixa</div>
+                    <ShoppingCart className="h-5 w-5 text-[#E3B23C]" />
+                    <span className="font-bold text-sm">Resumo da Venda</span>
                   </div>
-
-                  {carrinho.length > 0 ? (
+                  <div className="flex items-center gap-3">
                     <button
                       type="button"
-                      onClick={limparCarrinho}
-                      className="inline-flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-xs font-semibold text-white hover:bg-white/15 transition"
+                      onClick={() => {
+                        setAuditOpen((prev) => !prev);
+                        if (!auditOpen) {
+                          fetchAuditFeed(alunoSelecionado?.id, alunoSelecionado?.matricula_id);
+                        }
+                      }}
+                      className="text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-white transition"
                     >
-                      <Trash2 className="h-4 w-4" />
-                      Limpar
+                      {auditOpen ? "Fechar audit" : "Audit trail"}
                     </button>
-                  ) : null}
+                    {carrinho.length > 0 && (
+                      <button
+                        onClick={limparCarrinho}
+                        className="text-[10px] font-bold uppercase tracking-wider text-slate-400 hover:text-white transition"
+                      >
+                        Limpar
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                <div className="mt-4">
-                  <div className="text-[11px] uppercase tracking-wider font-semibold text-white/70">
-                    Total a pagar
-                  </div>
-                  <div className="mt-1 text-3xl font-black text-white">
-                    {kwanza.format(total)}
-                  </div>
-                </div>
-              </div>
-
-              {/* Items */}
-              <div className="p-6 space-y-3">
-                {carrinho.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-500">
-                    Carrinho vazio.
-                  </div>
-                ) : (
-                  carrinho.map((item) => (
-                    <div
-                      key={`${item.id}-${item.tipo}`}
-                      className="rounded-xl border border-slate-200 bg-white p-4"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="text-sm font-semibold text-slate-900 truncate">
-                            {item.nome}
-                          </div>
-                          <div className="mt-1 text-[11px] uppercase tracking-wider font-semibold text-slate-500">
-                            {item.tipo === "mensalidade" ? "Mensalidade" : "Serviço"}
-                          </div>
+                {auditOpen ? (
+                  <div className="border-b border-slate-200 bg-white">
+                    <div className="flex items-center justify-between px-6 py-3">
+                      <div className="text-[11px] uppercase tracking-wider text-slate-500">
+                        {auditScope === "aluno" ? "Somente aluno" : "Todos"}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setAuditScope(auditScope === "aluno" ? "todos" : "aluno")}
+                          className="text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-slate-800"
+                        >
+                          {auditScope === "aluno" ? "Ver todos" : "Ver aluno"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => fetchAuditFeed(alunoSelecionado?.id, alunoSelecionado?.matricula_id)}
+                          className="text-[10px] font-bold uppercase tracking-wider text-klasse-gold"
+                        >
+                          Atualizar
+                        </button>
+                      </div>
+                    </div>
+                    <div className="max-h-52 overflow-y-auto px-6 pb-4">
+                      {!alunoSelecionado ? (
+                        <div className="text-xs text-slate-500">Selecione um aluno para ver o histórico.</div>
+                      ) : auditLoading ? (
+                        <div className="space-y-3">
+                          <SkeletonLine />
+                          <SkeletonLine />
                         </div>
+                      ) : auditFeed.length === 0 ? (
+                        <div className="text-xs text-slate-500">Sem registros recentes.</div>
+                      ) : (
+                        <div className="space-y-3">
+                          {auditFeed.map((entry, index) => {
+                            const createdAt = entry.created_at
+                              ? new Date(entry.created_at).toLocaleString("pt-PT", {
+                                  day: "2-digit",
+                                  month: "short",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })
+                              : "—";
+                            return (
+                              <div key={`${entry.created_at}-${index}`} className="rounded-lg border border-slate-200 p-3">
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="text-xs font-semibold text-slate-900">
+                                    {entry.action || "Evento"}
+                                  </div>
+                                  <div className="text-[11px] text-slate-500">{createdAt}</div>
+                                </div>
+                                <div className="mt-1 text-xs text-slate-600">
+                                  {entry.entity ? `Entidade: ${entry.entity}` : ""}
+                                  {entry.portal ? ` • ${entry.portal}` : ""}
+                                </div>
+                                {entry.details ? (
+                                  <div className="mt-2 rounded-md bg-slate-50 px-2 py-1 text-[11px] text-slate-500">
+                                    {JSON.stringify(entry.details)}
+                                  </div>
+                                ) : null}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
 
+                {/* Lista de Itens */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50">
+                  {carrinho.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-slate-400 gap-3">
+                      <ShoppingCart className="h-10 w-10 opacity-20" />
+                      <span className="text-xs font-medium">O carrinho está vazio</span>
+                    </div>
+                  ) : (
+                    carrinho.map((item) => (
+                      <div key={`${item.id}-${item.tipo}`} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-start gap-3 group">
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-slate-800 leading-tight">{item.nome}</p>
+                          <p className="text-[10px] uppercase font-bold text-slate-400 mt-1">{item.tipo}</p>
+                        </div>
                         <div className="text-right">
-                          <div className="text-sm font-black text-slate-900">
-                            {kwanza.format(item.preco)}
-                          </div>
-                          <button
-                            type="button"
+                          <p className="text-sm font-black text-slate-900">{kwanza.format(item.preco)}</p>
+                          <button 
                             onClick={() => removerDoCarrinho(item.id, item.tipo)}
-                            className="mt-2 inline-flex items-center gap-2 rounded-xl px-2 py-1 text-xs font-semibold text-slate-500 hover:text-red-600 hover:bg-red-50 transition"
-                            title="Remover"
+                            className="text-[10px] text-red-500 opacity-0 group-hover:opacity-100 transition-opacity hover:underline mt-1"
                           >
-                            <Trash2 className="h-4 w-4" />
                             Remover
                           </button>
                         </div>
                       </div>
-                    </div>
-                  ))
-                )}
+                    ))
+                  )}
+                </div>
 
-                {/* Pagamento */}
-                <div className="pt-2">
-                  <div className="text-[11px] uppercase tracking-wider font-semibold text-slate-500 mb-2">
-                    Método de pagamento
+                {/* Footer de Pagamento */}
+                <div className="bg-white border-t border-slate-200 p-6 shrink-0 space-y-5">
+                  
+                  {/* Totalizador */}
+                  <div className="flex justify-between items-end">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Total a Pagar</span>
+                    <span className="text-3xl font-black text-slate-900 tracking-tight">{kwanza.format(total)}</span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setMetodo("dinheiro")}
-                      className={cx(
-                        "rounded-xl border px-3 py-3 text-left transition",
-                        metodo === "dinheiro"
-                          ? "border-klasse-gold bg-klasse-gold/10"
-                          : "border-slate-200 hover:bg-slate-50"
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Banknote className="h-4 w-4 text-slate-600" />
-                        <div className="text-sm font-semibold text-slate-900">Dinheiro</div>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setMetodo("tpa")}
-                      className={cx(
-                        "rounded-xl border px-3 py-3 text-left transition",
-                        metodo === "tpa"
-                          ? "border-klasse-gold bg-klasse-gold/10"
-                          : "border-slate-200 hover:bg-slate-50"
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        <CreditCard className="h-4 w-4 text-slate-600" />
-                        <div className="text-sm font-semibold text-slate-900">TPA</div>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setMetodo("transferencia")}
-                      className={cx(
-                        "rounded-xl border px-3 py-3 text-left transition",
-                        metodo === "transferencia"
-                          ? "border-klasse-gold bg-klasse-gold/10"
-                          : "border-slate-200 hover:bg-slate-50"
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Wallet className="h-4 w-4 text-slate-600" />
-                        <div className="text-sm font-semibold text-slate-900">Transferência</div>
-                      </div>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setMetodo("mbway")}
-                      className={cx(
-                        "rounded-xl border px-3 py-3 text-left transition",
-                        metodo === "mbway"
-                          ? "border-klasse-gold bg-klasse-gold/10"
-                          : "border-slate-200 hover:bg-slate-50"
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        <Smartphone className="h-4 w-4 text-slate-600" />
-                        <div className="text-sm font-semibold text-slate-900">MBWay</div>
-                      </div>
-                    </button>
+                  {/* Seletor de Método */}
+                  <div className="grid grid-cols-4 gap-2">
+                    {[
+                      { id: "cash", icon: Banknote, label: "Cash" },
+                      { id: "tpa", icon: CreditCard, label: "TPA" },
+                      { id: "transfer", icon: Wallet, label: "Transf" },
+                      { id: "mcx", icon: Smartphone, label: "MCX" },
+                      { id: "kwik", icon: Smartphone, label: "KWIK" },
+                    ].map((m) => (
+                      <button
+                        key={m.id}
+                        onClick={() => setMetodo(m.id as MetodoPagamento)}
+                        className={cx(
+                          "flex flex-col items-center justify-center py-3 rounded-xl border transition-all gap-1",
+                          metodo === m.id
+                            ? "border-[#E3B23C] bg-[#E3B23C]/5 text-slate-900"
+                            : "border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600"
+                        )}
+                      >
+                        <m.icon className={cx("h-5 w-5", metodo === m.id ? "text-[#E3B23C]" : "text-current")} />
+                        <span className="text-[10px] font-bold uppercase">{m.label}</span>
+                      </button>
+                    ))}
                   </div>
 
-                  {metodo === "dinheiro" ? (
-                    <div className="mt-4">
-                      <label className="text-[11px] uppercase tracking-wider font-semibold text-slate-500">
-                        Valor recebido (Kz)
+                  {(metodo === "tpa" || metodo === "mcx" || metodo === "kwik") && (
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                      <label className="text-[10px] font-bold uppercase text-slate-500">
+                        {metodo === "tpa" ? "Referência obrigatória" : "Referência (opcional)"}
                       </label>
-                      <div className="mt-2 relative">
+                      <input
+                        value={paymentReference}
+                        onChange={(e) => setPaymentReference(e.target.value)}
+                        placeholder={metodo === "tpa" ? "TPA-2026-000882" : "Opcional"}
+                        className="w-full bg-white border border-slate-300 rounded-lg py-2 px-3 text-sm font-semibold text-slate-900 outline-none focus:border-[#E3B23C] focus:ring-1 focus:ring-[#E3B23C]"
+                      />
+                      {(metodo === "mcx" || metodo === "kwik") && (
+                        <input
+                          value={paymentGatewayRef}
+                          onChange={(e) => setPaymentGatewayRef(e.target.value)}
+                          placeholder={metodo === "kwik" ? "KWIK ref (opcional)" : "Gateway ref (opcional)"}
+                          className="w-full bg-white border border-slate-300 rounded-lg py-2 px-3 text-sm font-semibold text-slate-900 outline-none focus:border-[#E3B23C] focus:ring-1 focus:ring-[#E3B23C]"
+                        />
+                      )}
+                    </div>
+                  )}
+
+                  {metodo === "transfer" && (
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                      <label className="text-[10px] font-bold uppercase text-slate-500">
+                        Comprovativo obrigatório (URL)
+                      </label>
+                      <input
+                        value={paymentEvidenceUrl}
+                        onChange={(e) => setPaymentEvidenceUrl(e.target.value)}
+                        placeholder="https://..."
+                        className="w-full bg-white border border-slate-300 rounded-lg py-2 px-3 text-sm font-semibold text-slate-900 outline-none focus:border-[#E3B23C] focus:ring-1 focus:ring-[#E3B23C]"
+                      />
+                    </div>
+                  )}
+
+                  {/* Input de Valor (Só para Dinheiro) */}
+                  {metodo === "cash" && (
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                      <div className="flex justify-between items-center mb-2">
+                        <label className="text-[10px] font-bold uppercase text-slate-500">Recebido</label>
+                        {valorRecebidoNum > total && (
+                          // CORREÇÃO 7: Troco em Verde Brand
+                          <span className="text-xs font-bold text-[#1F6B3B]">Troco: {kwanza.format(troco)}</span>
+                        )}
+                      </div>
+                      <div className="relative">
                         <input
                           type="number"
-                          inputMode="numeric"
                           value={valorRecebido}
                           onChange={(e) => setValorRecebido(e.target.value)}
                           placeholder="0"
-                          className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-900 outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+                          className="w-full bg-white border border-slate-300 rounded-lg py-2 px-3 text-lg font-bold text-slate-900 outline-none focus:border-[#E3B23C] focus:ring-1 focus:ring-[#E3B23C]"
                         />
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500">
-                          Kz
-                        </div>
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">KZ</span>
                       </div>
-
-                      {valorRecebidoNum > 0 ? (
-                        <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="text-sm font-semibold text-emerald-800">Troco</div>
-                            <div className="text-xl font-black text-emerald-800">
-                              {kwanza.format(troco)}
-                            </div>
-                          </div>
-                        </div>
-                      ) : null}
                     </div>
-                  ) : null}
+                  )}
 
-                  <div className="mt-5">
-                    <button
-                      type="button"
-                      disabled={!prontoParaFechar || isSubmitting}
-                      onClick={handleCheckout}
-                      className={cx(
-                        "w-full rounded-xl px-4 py-4 text-sm font-semibold inline-flex items-center justify-center gap-2 transition",
-                        prontoParaFechar && !isSubmitting
-                          ? "bg-klasse-gold text-white hover:brightness-95"
-                          : "bg-slate-200 text-slate-500 cursor-not-allowed"
-                      )}
-                    >
-                      {isSubmitting ? (
-                        <>
-                          <Loader2 className="h-5 w-5 animate-spin" />
-                          Processando…
-                        </>
-                      ) : (
-                        <>
-                          <Printer className="h-5 w-5" />
-                          Confirmar e imprimir
-                        </>
-                      )}
-                    </button>
-
-                    <div className="mt-3 text-xs text-slate-500">
-                      Ação crítica. Deve gerar recibo + audit trail.
-                    </div>
-                  </div>
+                  {/* Botão Final */}
+                  <button
+                    disabled={!prontoParaFechar || isSubmitting}
+                    onClick={handleCheckout}
+                    className={cx(
+                      "w-full py-4 rounded-xl text-sm font-bold shadow-lg transition-all flex items-center justify-center gap-2",
+                      prontoParaFechar && !isSubmitting
+                        ? "bg-[#E3B23C] text-white shadow-orange-900/10 hover:brightness-105 hover:-translate-y-0.5"
+                        : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
+                    )}
+                  >
+                    {isSubmitting ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <Printer className="h-5 w-5" />
+                    )}
+                    {isSubmitting ? "Processando..." : "Finalizar & Imprimir"}
+                  </button>
                 </div>
               </div>
             </div>
 
-            {/* hint */}
-            <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-500">
-              Dica: quando você ligar o **Fecho de Caixa Cego**, esse painel vira “Caixa do Dia” com saldo + diferenças.
-            </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* MODAIS (MANTIDOS) */}
+      <BalcaoServicoModal
+        open={servicoModalOpen}
+        onClose={() => setServicoModalOpen(false)}
+        alunoId={alunoSelecionado?.id ?? null}
+        servicos={servicosDisponiveis}
+        initialCodigo={servicoModalCodigo}
+        onDecision={(decision) => {
+          setServicoModalOpen(false);
+          handleServicoDecision(decision);
+        }}
+      />
+      <PagamentoModal
+        open={!!pagamentoIntent}
+        onClose={() => setPagamentoIntent(null)}
+        alunoId={alunoSelecionado?.id ?? null}
+        intentId={pagamentoIntent?.id ?? null}
+        totalKz={pagamentoIntent?.total ?? 0}
+        pedidoId={pagamentoIntent?.pedidoId ?? null}
+      />
+      <MotivoBloqueioModal
+        open={!!bloqueioInfo}
+        onClose={() => setBloqueioInfo(null)}
+        reasonCode={bloqueioInfo?.code ?? ""}
+        reasonDetail={bloqueioInfo?.detail ?? null}
+      />
+    </>
   );
 }

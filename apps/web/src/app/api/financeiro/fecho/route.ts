@@ -5,8 +5,31 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-// ... (existing GET handler)
+export async function GET(req: Request) {
+  try {
+    const url = new URL(req.url);
+    const date = url.searchParams.get("date");
+    const operadorId = url.searchParams.get("operador_id");
+    const operadorScope = url.searchParams.get("operador_scope");
+
+    const data = await getFechoCaixaData({
+      date,
+      operadorId,
+      operadorScope: operadorScope === "all" ? "all" : "self",
+    });
+
+    if (!data.ok) {
+      return NextResponse.json({ ok: false, error: data.error }, { status: 400 });
+    }
+
+    return NextResponse.json(data, { status: 200 });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  }
+}
 
 const BodySchema = z.object({
   valor_declarado_especie: z.number(),
