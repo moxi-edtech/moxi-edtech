@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Loader2, CalendarCheck } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 type TurmaItem = {
   id: string;
@@ -19,6 +20,14 @@ export function JustificarFaltaModal() {
   const [turmas, setTurmas] = useState<TurmaItem[]>([]);
   const [turmaId, setTurmaId] = useState("");
   const [loading, setLoading] = useState(false);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data }) => {
+      setAccessToken(data.session?.access_token ?? null);
+    });
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -26,7 +35,9 @@ export function JustificarFaltaModal() {
       setLoading(true);
       try {
         const params = new URLSearchParams({ ano: String(anoLetivo) });
-        const res = await fetch(`/api/secretaria/turmas-simples?${params.toString()}`);
+        const res = await fetch(`/api/secretaria/turmas-simples?${params.toString()}`, {
+          headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+        });
         const json = await res.json().catch(() => ({}));
         if (!active) return;
         if (res.ok && json.ok) {
@@ -42,7 +53,7 @@ export function JustificarFaltaModal() {
     return () => {
       active = false;
     };
-  }, [anoLetivo]);
+  }, [accessToken, anoLetivo]);
 
   const turmaSelecionada = useMemo(
     () => turmas.find((t) => t.id === turmaId) ?? null,

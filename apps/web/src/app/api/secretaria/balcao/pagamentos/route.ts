@@ -10,7 +10,7 @@ const payloadSchema = z.object({
   aluno_id: z.string().uuid(),
   mensalidade_id: z.string().uuid().nullable().optional(),
   valor: z.number().positive(),
-  metodo: z.enum(["cash", "tpa", "transfer", "mcx", "kwik"]),
+  metodo: z.enum(["cash", "tpa", "transfer", "mcx", "kiwk", "kwik"]),
   reference: z.string().trim().min(1).nullable().optional(),
   evidence_url: z.string().trim().min(1).nullable().optional(),
   gateway_ref: z.string().trim().min(1).nullable().optional(),
@@ -43,12 +43,13 @@ export async function POST(request: Request) {
     }
 
     const payload = parsed.data;
+    const metodo = payload.metodo === "kwik" ? "kiwk" : payload.metodo;
     const { data, error } = await supabase.rpc("financeiro_registrar_pagamento_secretaria", {
       p_escola_id: escolaId,
       p_aluno_id: payload.aluno_id,
       p_mensalidade_id: payload.mensalidade_id ?? null,
       p_valor: payload.valor,
-      p_metodo: payload.metodo,
+      p_metodo: metodo,
       p_reference: payload.reference ?? null,
       p_evidence_url: payload.evidence_url ?? null,
       p_gateway_ref: payload.gateway_ref ?? null,

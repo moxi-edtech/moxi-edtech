@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
+import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { requireRoleInSchool } from "@/lib/authz";
+import { recordAuditServer } from "@/lib/audit";
 
 import { removeAccents } from "@/lib/turma";
 import { CURRICULUM_PRESETS, CURRICULUM_PRESETS_META, type CurriculumKey } from "@/lib/academico/curriculum-presets";
@@ -63,12 +65,24 @@ export async function POST(
   const { id: escolaId } = await params;
 
   try {
-    // We still use an admin client here because the RLS on the RPC function will be enforced
-    // by the `auth.uid()` call inside the function, but we need service_role to call it.
-    const admin = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const supabase = await supabaseServerTyped<any>();
+    const { data: userRes } = await supabase.auth.getUser();
+    const user = userRes?.user;
+    if (!user) {
+      return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+    }
+
+    const resolvedEscolaId = await resolveEscolaIdForUser(supabase, user.id, escolaId);
+    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
+    }
+
+    const { error: roleError } = await requireRoleInSchool({
+      supabase,
+      escolaId: resolvedEscolaId,
+      roles: ["admin", "admin_escola", "staff_admin"],
+    });
+    if (roleError) return roleError;
 
     const json = await req.json();
     const parsed = matrixSchema.safeParse(json);
@@ -79,7 +93,7 @@ export async function POST(
 
     const { sessionId, matrix } = parsed.data;
 
-    const { data: summary, error } = await admin.rpc('onboard_academic_structure_from_matrix', {
+    const { data: summary, error } = await (supabase as any).rpc('onboard_academic_structure_from_matrix', {
       p_escola_id: escolaId,
       p_session_id: sessionId,
       p_matrix: matrix,
@@ -89,6 +103,17 @@ export async function POST(
       console.error("Error calling onboard_academic_structure_from_matrix RPC:", error);
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     }
+
+    recordAuditServer({
+      escolaId,
+      portal: "admin_escola",
+      acao: "CURRICULO_MATRIX_APLICADA",
+      entity: "curriculo",
+      details: {
+        sessionId,
+        linhas: matrix.length,
+      },
+    }).catch(() => null);
 
     return NextResponse.json({
       ok: true,

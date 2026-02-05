@@ -46,6 +46,12 @@ type DisciplinaItem = {
   is_avaliavel: boolean;
   avaliacao_mode: "herdar_escola" | "personalizada";
   area?: string | null;
+  classificacao?: "core" | "complementar" | "optativa" | null;
+  periodos_ativos?: number[] | null;
+  entra_no_horario?: boolean | null;
+  avaliacao_mode_key?: "inherit_school" | "custom" | "inherit_disciplina" | null;
+  avaliacao_disciplina_id?: string | null;
+  status_completude?: string | null;
   matrix_ids: string[];
 };
 
@@ -225,24 +231,36 @@ export default function TurmasConfiguracoesPage() {
       (json?.data ?? []).forEach((item: any) => {
         const key = item.disciplina_id ?? item.nome ?? item.id;
         const existing = map.get(key);
+        const incomingStatus = item.curriculo_status ?? null;
         const base = existing ?? {
           id: key,
           nome: item.nome,
           codigo: item.sigla ?? item.codigo ?? item.nome?.slice(0, 6)?.toUpperCase() ?? "",
-          carga_horaria_semanal: Number(item.carga_horaria_semana ?? item.carga_horaria ?? 0),
-          is_core: Boolean(item.is_core ?? item.tipo === "core"),
-          participa_horario: true,
+          carga_horaria_semanal: Number(item.carga_horaria_semanal ?? item.carga_horaria ?? 0),
+          is_core: Boolean(item.is_core ?? (item.classificacao === "core" || item.tipo === "core")),
+          participa_horario: item.entra_no_horario ?? true,
           is_avaliavel: item.is_avaliavel ?? true,
-          avaliacao_mode: item.aplica_modelo_avaliacao_id ? "personalizada" : "herdar_escola",
+          avaliacao_mode: item.avaliacao_mode === "custom" ? "personalizada" : "herdar_escola",
           area: item.area ?? null,
+          classificacao: item.classificacao ?? null,
+          periodos_ativos: item.periodos_ativos ?? null,
+          entra_no_horario: item.entra_no_horario ?? null,
+          avaliacao_mode_key: item.avaliacao_mode ?? null,
+          avaliacao_disciplina_id: item.avaliacao_disciplina_id ?? null,
+          status_completude: item.status_completude ?? null,
+          curriculo_status: incomingStatus,
           matrix_ids: [] as string[], // Explicitly cast to string[]
         };
 
-        const matrixIds = base.matrix_ids ?? [];
+        const shouldReplace =
+          existing && incomingStatus === "draft" && existing.curriculo_status !== "draft";
+        const nextBase = shouldReplace ? { ...base, matrix_ids: [] as string[] } : base;
+
+        const matrixIds = nextBase.matrix_ids ?? [];
         if (item.id && !matrixIds.includes(item.id as string)) { // Cast item.id to string
           matrixIds.push(item.id as string); // Also cast for push
         }
-        map.set(key, { ...base, matrix_ids: matrixIds });
+        map.set(key, { ...nextBase, matrix_ids: matrixIds });
       });
 
       return Array.from(map.values());
@@ -482,14 +500,14 @@ export default function TurmasConfiguracoesPage() {
       id: disciplina.id,
       nome: disciplina.nome,
       codigo: disciplina.codigo,
-      periodos_ativos: [1, 2, 3],
-      periodo_mode: "ano",
+      periodos_ativos: disciplina.periodos_ativos?.length ? disciplina.periodos_ativos : [1, 2, 3],
+      periodo_mode: disciplina.periodos_ativos?.length ? "custom" : "ano",
       carga_horaria_semanal: disciplina.carga_horaria_semanal,
-      classificacao: disciplina.is_core ? "core" : "complementar",
-      entra_no_horario: disciplina.participa_horario,
+      classificacao: disciplina.classificacao ?? (disciplina.is_core ? "core" : "complementar"),
+      entra_no_horario: disciplina.entra_no_horario ?? disciplina.participa_horario,
       avaliacao: {
-        mode: disciplina.avaliacao_mode === "personalizada" ? "custom" : "inherit_school",
-        base_id: null,
+        mode: disciplina.avaliacao_mode_key ?? (disciplina.avaliacao_mode === "personalizada" ? "custom" : "inherit_school"),
+        base_id: disciplina.avaliacao_disciplina_id ?? null,
       },
       area: disciplina.area ?? null,
       programa_texto: null,
@@ -516,14 +534,16 @@ export default function TurmasConfiguracoesPage() {
                 curso_id: selectedCursoId,
                 classe_id: classe.id,
                 sigla: payload.codigo,
-                carga_horaria_semana: payload.carga_horaria_semanal,
+                carga_horaria_semanal: payload.carga_horaria_semanal,
                 carga_horaria: payload.carga_horaria_semanal,
-                obrigatoria: payload.classificacao === "core",
-                is_core: payload.classificacao === "core",
+                classificacao: payload.classificacao,
                 is_avaliavel: true,
                 area: payload.area ?? null,
-                aplica_modelo_avaliacao_id: null,
-                herda_de_disciplina_id:
+                periodos_ativos: payload.periodos_ativos,
+                entra_no_horario: payload.entra_no_horario,
+                avaliacao_mode: payload.avaliacao.mode,
+                avaliacao_modelo_id: null,
+                avaliacao_disciplina_id:
                   payload.avaliacao.mode === "inherit_disciplina"
                     ? payload.avaliacao.base_id ?? null
                     : null,
@@ -544,13 +564,16 @@ export default function TurmasConfiguracoesPage() {
               body: JSON.stringify({
                 nome: payload.nome,
                 sigla: payload.codigo,
-                carga_horaria_semana: payload.carga_horaria_semanal,
+                carga_horaria_semanal: payload.carga_horaria_semanal,
                 carga_horaria: payload.carga_horaria_semanal,
-                is_core: payload.classificacao === "core",
+                classificacao: payload.classificacao,
                 is_avaliavel: true,
                 area: payload.area ?? null,
-                aplica_modelo_avaliacao_id: null,
-                herda_de_disciplina_id:
+                periodos_ativos: payload.periodos_ativos,
+                entra_no_horario: payload.entra_no_horario,
+                avaliacao_mode: payload.avaliacao.mode,
+                avaliacao_modelo_id: null,
+                avaliacao_disciplina_id:
                   payload.avaliacao.mode === "inherit_disciplina"
                     ? payload.avaliacao.base_id ?? null
                     : null,
@@ -620,6 +643,8 @@ export default function TurmasConfiguracoesPage() {
       title="Gestão de Turmas & Currículo"
       subtitle="Controle central: publique currículos, ajuste classes e gere turmas com segurança."
       menuItems={menuItems}
+      embedded
+      backHref={`${base}?tab=turmas`}
       prevHref={`${base}/avaliacao`}
       nextHref={`${base}/financeiro`}
       testHref={`${base}/sandbox`}

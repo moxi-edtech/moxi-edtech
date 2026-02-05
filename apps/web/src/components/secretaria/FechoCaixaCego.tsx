@@ -216,7 +216,7 @@ export default function FechoCaixaCego({ onConfirm, onClose }: FechoCaixaCegoPro
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-700 uppercase">Soma MCX/KWIK</label>
+                    <label className="text-xs font-bold text-slate-700 uppercase">Soma MCX/KIWK</label>
                     <div className="relative group">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#E3B23C]">
                         <Wallet className="h-5 w-5" />
@@ -232,7 +232,7 @@ export default function FechoCaixaCego({ onConfirm, onClose }: FechoCaixaCegoPro
                         KZ
                       </div>
                     </div>
-                    <p className="text-[10px] text-slate-400">Some o valor dos pagamentos MCX/KWIK.</p>
+                    <p className="text-[10px] text-slate-400">Some o valor dos pagamentos MCX/KIWK.</p>
                   </div>
                 </div>
               </section>

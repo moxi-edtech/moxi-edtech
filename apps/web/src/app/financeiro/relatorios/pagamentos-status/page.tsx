@@ -20,7 +20,7 @@ export default function Page() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch('/api/financeiro/relatorios/pagamentos-status');
+        const res = await fetch('/api/financeiro/relatorios/pagamentos-status', { cache: 'no-store' });
         if (!res.ok) {
           const j = await res.json().catch(() => ({}));
           throw new Error(j?.error || `Erro ${res.status}`);
@@ -93,4 +93,3 @@ export default function Page() {
     </div>
   );
 }
-

@@ -5,6 +5,14 @@ import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
 
 export const dynamic = 'force-dynamic';
 
+const normalizeStatus = (raw?: string | null) => {
+  const value = (raw ?? 'pendente').toLowerCase();
+  if (value === 'pago' || value === 'paga') return 'paga';
+  if (value === 'atrasado' || value === 'atrasada') return 'atrasada';
+  if (value === 'cancelado' || value === 'cancelada') return 'cancelada';
+  return 'pendente';
+};
+
 export async function GET(request: Request) {
   try {
     const supabase = await createClient();
@@ -56,10 +64,24 @@ export async function GET(request: Request) {
       throw error;
     }
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     const formattedData = mensalidades.map(m => {
-        const dataVencimento = new Date(m.data_vencimento);
-        const diasAtraso = m.status === 'atrasada'
-            ? Math.floor((new Date().getTime() - dataVencimento.getTime()) / (1000 * 3600 * 24))
+        const dataVencimento = m.data_vencimento ? new Date(m.data_vencimento) : null;
+        if (dataVencimento) dataVencimento.setHours(0, 0, 0, 0);
+        let status = normalizeStatus(m.status);
+
+        if (dataVencimento && status !== 'paga' && status !== 'cancelada') {
+            if (dataVencimento.getTime() > today.getTime()) {
+                status = 'pendente';
+            } else if (dataVencimento.getTime() < today.getTime()) {
+                status = 'atrasada';
+            }
+        }
+
+        const diasAtraso = status === 'atrasada' && dataVencimento
+            ? Math.max(0, Math.floor((today.getTime() - dataVencimento.getTime()) / (1000 * 3600 * 24)))
             : 0;
 
         return {
@@ -69,8 +91,8 @@ export async function GET(request: Request) {
             mesReferencia: m.mes_referencia,
             anoReferencia: m.ano_referencia,
             valor: m.valor,
-            dataVencimento: dataVencimento,
-            status: m.status,
+            dataVencimento,
+            status,
             diasAtraso: diasAtraso > 0 ? diasAtraso : undefined,
             dataPagamento: m.data_pagamento_efetiva ? new Date(m.data_pagamento_efetiva) : undefined,
             metodoPagamento: m.metodo_pagamento,

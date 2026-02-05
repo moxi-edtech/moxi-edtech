@@ -32,6 +32,8 @@ export default function AvancadoConfiguracoesPage() {
       title="Avançado · Governança e Auditoria"
       subtitle="Ajustes críticos e políticas de segurança."
       menuItems={menuItems}
+      embedded
+      backHref={`${base}?tab=avancado`}
       prevHref={`${base}/fluxos`}
       nextHref={`${base}/sandbox`}
       testHref={`${base}/sandbox`}

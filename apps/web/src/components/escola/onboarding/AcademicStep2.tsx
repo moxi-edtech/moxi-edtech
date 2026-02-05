@@ -14,7 +14,9 @@ import {
   Moon,
   ScrollText,
   GraduationCap,
+  Briefcase
 } from "lucide-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 import {
   CURRICULUM_PRESETS,
@@ -23,8 +25,6 @@ import {
 } from "@/lib/onboarding";
 import {
   PRESET_TO_TYPE,
-  TYPE_ICONS,
-  TYPE_COLORS,
   type CourseType,
   getTypeLabel,
 } from "@/lib/courseTypes";
@@ -37,9 +37,8 @@ import {
   type CurriculumCategory,
   type TurnosState,
 } from "./academicSetupTypes";
-import { useVirtualizer } from "@tanstack/react-virtual";
 
-// Mapeamento de presets → categorias de UI do Step2
+// --- CONFIGURAÇÃO ---
 const PRESET_CATEGORY_MAP: Record<CurriculumKey, CurriculumCategory> = {
   primario_base: "geral",
   primario_avancado: "geral",
@@ -61,8 +60,6 @@ const PRESET_CATEGORY_MAP: Record<CurriculumKey, CurriculumCategory> = {
   magisterio_primario: "tecnico_serv",
 };
 
-
-// Tipo local para opções de preset já enriquecidas
 interface PresetOption {
   key: CurriculumKey;
   label: string;
@@ -71,13 +68,13 @@ interface PresetOption {
   tipo: CourseType;
 }
 
-// Curso adicionado à estrutura
 interface AddedCourse {
   id: CurriculumKey;
   label: string;
   tipo: CourseType;
 }
 
+// --- SUB-COMPONENTE: TABELA VIRTUALIZADA (UI REFINADA) ---
 function CourseMatrixTable({
   rows,
   turnos,
@@ -89,40 +86,34 @@ function CourseMatrixTable({
 }) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const hasRows = rows.length > 0;
+  
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => 56,
-    overscan: 6,
+    estimateSize: () => 64, // Altura estimada da linha (aumentada para conforto)
+    overscan: 5,
   });
 
+  // Styles helpers
+  const inputClass = "w-14 h-9 text-center font-bold text-slate-700 bg-white border border-slate-200 rounded-lg outline-none transition-all focus:border-[#E3B23C] focus:ring-2 focus:ring-[#E3B23C]/20 placeholder:text-slate-200";
+  const headerClass = "px-6 py-3 font-semibold text-center w-36 uppercase text-[10px] tracking-wider border-l border-slate-100";
+
   return (
-    <div className="overflow-x-auto">
-      <div ref={scrollRef} className="max-h-[420px] overflow-y-auto">
+    <div className="overflow-hidden rounded-b-xl border-t border-slate-100 bg-white">
+      <div ref={scrollRef} className="max-h-[450px] overflow-y-auto custom-scrollbar">
         <table className="w-full table-fixed text-sm text-left">
           <thead
-            className="text-xs text-slate-400 uppercase bg-white sticky top-0 z-10"
+            className="bg-slate-50 sticky top-0 z-20 shadow-sm"
             style={{ display: "table", width: "100%", tableLayout: "fixed" }}
           >
             <tr>
-              <th className="px-6 py-3 font-semibold text-slate-500">Classe</th>
-              {turnos["Manhã"] && (
-                <th className="px-6 py-3 font-semibold text-center w-32 bg-orange-50/50 text-orange-600 border-l border-slate-100">
-                  Manhã
-                </th>
-              )}
-              {turnos["Tarde"] && (
-                <th className="px-6 py-3 font-semibold text-center w-32 bg-amber-50/50 text-amber-600 border-l border-slate-100">
-                  Tarde
-                </th>
-              )}
-              {turnos["Noite"] && (
-                <th className="px-6 py-3 font-semibold text-center w-32 bg-indigo-50/50 text-indigo-600 border-l border-slate-100">
-                  Noite
-                </th>
-              )}
+              <th className="px-6 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wider">Classe / Curso</th>
+              {turnos["Manhã"] && <th className={`${headerClass} bg-orange-50/40 text-orange-700`}>Manhã</th>}
+              {turnos["Tarde"] && <th className={`${headerClass} bg-amber-50/40 text-amber-700`}>Tarde</th>}
+              {turnos["Noite"] && <th className={`${headerClass} bg-indigo-50/40 text-indigo-700`}>Noite</th>}
             </tr>
           </thead>
+          
           <tbody
             className="divide-y divide-slate-100"
             style={
@@ -137,8 +128,12 @@ function CourseMatrixTable({
           >
             {!hasRows ? (
               <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
-                <td colSpan={4} className="px-6 py-6 text-center text-sm text-slate-400">
-                  Nenhuma classe configurada.
+                <td colSpan={4} className="px-6 py-12 text-center flex flex-col items-center justify-center gap-3">
+                  <div className="p-3 bg-slate-50 rounded-full text-slate-300">
+                    <ArrowUpCircle className="w-6 h-6" />
+                  </div>
+                  <span className="text-sm font-medium text-slate-500">Nenhuma classe configurada</span>
+                  <span className="text-xs text-slate-400">Adicione um curso acima para começar.</span>
                 </td>
               </tr>
             ) : (
@@ -147,7 +142,7 @@ function CourseMatrixTable({
                 return (
                   <tr
                     key={row.id}
-                    className="hover:bg-slate-50 transition group"
+                    className="hover:bg-slate-50/80 transition-colors group"
                     style={{
                       position: "absolute",
                       top: 0,
@@ -156,44 +151,44 @@ function CourseMatrixTable({
                       width: "100%",
                       display: "table",
                       tableLayout: "fixed",
+                      height: `${virtualRow.size}px` // Força altura correta
                     }}
                   >
-                    <td className="px-6 py-4 font-bold text-slate-700">{row.nome}</td>
+                    <td className="px-6 py-3 align-middle">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-slate-700 text-sm">{row.nome}</span>
+                        <span className="text-[10px] text-slate-400">{row.cursoNome}</span>
+                      </div>
+                    </td>
 
                     {turnos["Manhã"] && (
-                      <td className="px-6 py-2 text-center bg-orange-50/10 border-l border-slate-100">
+                      <td className="px-6 py-2 text-center align-middle border-l border-slate-50 bg-orange-50/5">
                         <input
-                          type="number"
-                          min={0}
-                          className="w-12 h-9 text-center font-bold text-slate-700 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition-shadow"
+                          type="number" min={0} placeholder="0"
+                          className={inputClass}
                           value={row.manha ?? ""}
-                          placeholder="0"
                           onChange={(e) => onMatrixUpdate(row.id, "manha", e.target.value)}
                         />
                       </td>
                     )}
 
                     {turnos["Tarde"] && (
-                      <td className="px-6 py-2 text-center bg-amber-50/10 border-l border-slate-100">
+                      <td className="px-6 py-2 text-center align-middle border-l border-slate-50 bg-amber-50/5">
                         <input
-                          type="number"
-                          min={0}
-                          className="w-12 h-9 text-center font-bold text-slate-700 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition-shadow"
+                          type="number" min={0} placeholder="0"
+                          className={inputClass}
                           value={row.tarde ?? ""}
-                          placeholder="0"
                           onChange={(e) => onMatrixUpdate(row.id, "tarde", e.target.value)}
                         />
                       </td>
                     )}
 
                     {turnos["Noite"] && (
-                      <td className="px-6 py-2 text-center bg-indigo-50/10 border-l border-slate-100">
+                      <td className="px-6 py-2 text-center align-middle border-l border-slate-50 bg-indigo-50/5">
                         <input
-                          type="number"
-                          min={0}
-                          className="w-12 h-9 text-center font-bold text-slate-700 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-teal-500 outline-none transition-shadow"
+                          type="number" min={0} placeholder="0"
+                          className={inputClass}
                           value={row.noite ?? ""}
-                          placeholder="0"
                           onChange={(e) => onMatrixUpdate(row.id, "noite", e.target.value)}
                         />
                       </td>
@@ -209,6 +204,7 @@ function CourseMatrixTable({
   );
 }
 
+// --- COMPONENTE PRINCIPAL ---
 export default function AcademicStep2({
   presetCategory,
   onPresetCategoryChange,
@@ -225,118 +221,78 @@ export default function AcademicStep2({
   const [selectedPresetKey, setSelectedPresetKey] = useState<CurriculumKey | "">("");
   const [addedCourses, setAddedCourses] = useState<AddedCourse[]>([]);
 
-  // Presets filtrados por categoria de UI
+  // Filtros
   const filteredPresets: PresetOption[] = useMemo(() => {
-    return (Object.entries(CURRICULUM_PRESETS_META) as [
-      CurriculumKey,
-      (typeof CURRICULUM_PRESETS_META)[CurriculumKey]
-    ][])
+    return (Object.entries(CURRICULUM_PRESETS_META) as [CurriculumKey, typeof CURRICULUM_PRESETS_META[CurriculumKey]][])
       .filter(([key]) => PRESET_CATEGORY_MAP[key] === presetCategory)
-      .map(([key, meta]) => {
-        const tipo: CourseType = PRESET_TO_TYPE[key] ?? "geral";
-        return {
-          key,
-          label: meta.label,
-          badge: meta.badge,
-          description: meta.description,
-          tipo,
-        } as PresetOption;
-      });
+      .map(([key, meta]) => ({
+        key,
+        label: meta.label,
+        badge: meta.badge,
+        description: meta.description,
+        tipo: PRESET_TO_TYPE[key] ?? "geral",
+      }));
   }, [presetCategory]);
 
-  const totalTurmas = useMemo(
-    () => calculateTotalTurmas(matrix, turnos),
-    [matrix, turnos]
-  );
+  const totalTurmas = useMemo(() => calculateTotalTurmas(matrix, turnos), [matrix, turnos]);
 
-  // Ícone + cores de um tipo de curso
+  // Visual
   const getCourseVisual = (tipo: CourseType) => {
-    const Icon = TYPE_ICONS[tipo] || BookOpen;
-    const colors = TYPE_COLORS[tipo] || TYPE_COLORS.geral;
-    return { Icon, colors };
+    switch (tipo) {
+      case "tecnico": return { Icon: Briefcase, bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-100" };
+      case "saude": return { Icon: GraduationCap, bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-100" };
+      default: return { Icon: BookOpen, bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200" };
+    }
   };
 
-  // --- 1. ADICIONAR CURSO ---
+  // Actions
   const handleAddCourse = () => {
     if (!selectedPresetKey) return;
-
     if (addedCourses.find((c) => c.id === selectedPresetKey)) {
-      alert("Este curso já foi adicionado à estrutura.");
+      // Idealmente usar toast aqui, mas alert serve por hora se não tiver contexto
+      alert("Curso já adicionado."); 
       return;
     }
 
     const blueprint = CURRICULUM_PRESETS[selectedPresetKey];
     const meta = CURRICULUM_PRESETS_META[selectedPresetKey];
-
     if (!blueprint || !meta) return;
 
-    const tipo: CourseType = PRESET_TO_TYPE[selectedPresetKey] ?? "geral";
-
-    const newRows: MatrixRow[] = createMatrixFromBlueprint(blueprint).map(
-      (row, index) => ({
-        ...row,
-        id: `${selectedPresetKey}-${index}-${Date.now()}-${Math.random()
-          .toString(36)
-          .substr(2, 5)}`,
-        nome: row.nome,
-        cursoKey: selectedPresetKey,
-        cursoTipo: tipo,
-        cursoNome: meta.label,
-      })
-    );
+    const tipo = PRESET_TO_TYPE[selectedPresetKey] ?? "geral";
+    const newRows: MatrixRow[] = createMatrixFromBlueprint(blueprint).map((row, index) => ({
+      ...row,
+      id: `${selectedPresetKey}-${index}-${Date.now()}`,
+      nome: row.nome,
+      cursoKey: selectedPresetKey,
+      cursoTipo: tipo,
+      cursoNome: meta.label,
+    }));
 
     onMatrixChange([...matrix, ...newRows]);
-    setAddedCourses((prev) => [
-      ...prev,
-      {
-        id: selectedPresetKey,
-        label: meta.label,
-        tipo,
-      },
-    ]);
+    setAddedCourses((prev) => [...prev, { id: selectedPresetKey, label: meta.label, tipo }]);
     setSelectedPresetKey("");
   };
 
-  // --- 2. REMOVER CURSO ---
   const handleRemoveCourse = (courseKey: CurriculumKey) => {
-    const newMatrix = matrix.filter((row) => row.cursoKey !== courseKey);
-    onMatrixChange(newMatrix);
+    onMatrixChange(matrix.filter((row) => row.cursoKey !== courseKey));
     setAddedCourses((prev) => prev.filter((c) => c.id !== courseKey));
   };
 
-  // --- 3. BULK ACTION (VARINHA MÁGICA) ---
   const handleBulkApply = (field: "manha" | "tarde" | "noite", value: number) => {
-    const newMatrix = matrix.map((row) => ({
-      ...row,
-      [field]: value,
-    }));
-    onMatrixChange(newMatrix);
+    onMatrixChange(matrix.map((row) => ({ ...row, [field]: value })));
   };
 
-  // Agrupar matriz por curso para exibição
-  const groupedByCourse = useMemo(() => {
-    const groups: Record<string, MatrixRow[]> = {};
-
-    matrix.forEach((row) => {
-      if (!groups[row.cursoKey]) {
-        groups[row.cursoKey] = [];
-      }
-      groups[row.cursoKey].push(row);
-    });
-
-    return groups;
-  }, [matrix]);
-
+  // Sample Name Logic
   const sampleNomeTurma = useMemo(() => {
-    if (!matrix[0]) return "";
+    if (!matrix[0]) return "Ex: Informática 10ª Turma A";
     const primeiraClasse = matrix[0];
     const cursoNome = primeiraClasse?.cursoNome || "Curso";
-    const classeNome = primeiraClasse?.nome || "7ª Classe";
+    const classeNome = primeiraClasse?.nome || "10ª Classe";
     const turnoAtivo = turnos["Manhã"] ? "manha" : turnos["Tarde"] ? "tarde" : "noite";
-
+    
+    // Simplificado para exemplo visual
     const meta = CURRICULUM_PRESETS_META[primeiraClasse.cursoKey];
     const sigla = meta?.course_code || cursoNome.substring(0,3).toUpperCase();
-
     const ano = anoLetivo ? `(${anoLetivo})` : "";
     const turnoCode = turnoAtivo.toUpperCase().charAt(0);
     const turnoLabel = turnoCode === "M" ? "Manhã" : turnoCode === "T" ? "Tarde" : "Noite";
@@ -344,129 +300,93 @@ export default function AcademicStep2({
     const letra = "A";
 
     switch (padraoNomenclatura) {
-      case "descritivo_completo":
-        return `${cursoNome} ${classeLimpa} Turma ${letra} ${ano}`.trim();
-      case "descritivo_simples":
-        return `${sigla} - ${classeLimpa} Turma ${letra} - ${turnoLabel}`;
-      case "abreviado":
-        return `${sigla}-${classeLimpa.replace("ª", "")}-${turnoCode}-${letra}`;
-      default:
-        return `${cursoNome} ${classeLimpa}`;
+      case "descritivo_completo": return `${cursoNome} ${classeLimpa} Turma ${letra} ${ano}`.trim();
+      case "descritivo_simples": return `${sigla} - ${classeLimpa} Turma ${letra} - ${turnoLabel}`;
+      case "abreviado": return `${sigla}-${classeLimpa.replace("ª", "")}-${turnoCode}-${letra}`;
+      default: return `${cursoNome} ${classeLimpa}`;
     }
   }, [matrix, turnos, padraoNomenclatura, anoLetivo]);
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* CARD DE SELEÇÃO */}
-      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+      
+      {/* 1. SELEÇÃO DE CURSOS */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 bg-teal-50 text-teal-600 rounded-lg border border-teal-100">
-            <Layers className="w-5 h-5" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1F6B3B]/10 text-[#1F6B3B]">
+            <Layers className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="font-bold text-slate-800 text-sm">
-              Composição da Escola
-            </h3>
-            <p className="text-xs text-slate-500">
-              Adicione todos os níveis e cursos que a escola oferece.
-              <span className="block text-teal-600 text-[10px] font-bold mt-1">
-                Cada curso herdará seu ícone e cor no sistema.
-              </span>
-            </p>
+            <h3 className="text-sm font-bold text-slate-800">Oferta Formativa</h3>
+            <p className="text-xs text-slate-500">Selecione os cursos para compor a grade.</p>
           </div>
         </div>
 
-        {/* Filtros de categoria (sem aba "Saúde") */}
+        {/* Abas de Categoria */}
         <div className="flex flex-wrap gap-2 mb-4">
           {[
             { id: "geral" as CurriculumCategory, label: "Ensino Geral", icon: BookOpen },
-            {
-              id: "tecnico_ind" as CurriculumCategory,
-              label: "Indústria & Tec",
-              icon: ScrollText,
-            },
-            {
-              id: "tecnico_serv" as CurriculumCategory,
-              label: "Gestão & Serviços / Saúde",
-              icon: GraduationCap,
-            },
+            { id: "tecnico_ind" as CurriculumCategory, label: "Indústria & Tec", icon: ScrollText },
+            { id: "tecnico_serv" as CurriculumCategory, label: "Serviços & Saúde", icon: GraduationCap },
           ].map((cat) => (
             <button
               key={cat.id}
               type="button"
               onClick={() => onPresetCategoryChange(cat.id as any)}
-              className={`px-3 py-2 rounded-lg text-[11px] font-bold transition border flex items-center gap-1 ${
+              className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-[11px] font-bold transition-all ${
                 presetCategory === cat.id
-                  ? "bg-slate-800 text-white border-slate-800 shadow-sm"
-                  : "bg-white hover:bg-slate-50 border-slate-200 text-slate-600"
+                  ? "border-slate-800 bg-slate-800 text-white shadow-md"
+                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:border-slate-300"
               }`}
             >
-              <cat.icon className="w-3 h-3" />
+              <cat.icon className="h-3.5 w-3.5" />
               {cat.label}
             </button>
           ))}
         </div>
 
-        {/* Select + Botão Adicionar */}
-        <div className="flex gap-3 items-center">
+        {/* Dropdown + Botão */}
+        <div className="flex gap-3">
           <div className="relative flex-1">
             <select
-              className="block w-full pl-4 pr-10 py-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none bg-white font-medium text-slate-700 cursor-pointer transition-shadow hover:border-teal-400"
+              className="block w-full cursor-pointer rounded-xl border border-slate-300 bg-white py-3 pl-4 pr-10 text-sm font-medium text-slate-700 outline-none transition-all hover:border-[#E3B23C] focus:border-[#E3B23C] focus:ring-1 focus:ring-[#E3B23C]"
               value={selectedPresetKey}
-              onChange={(e) =>
-                setSelectedPresetKey(e.target.value as CurriculumKey | "")
-              }
+              onChange={(e) => setSelectedPresetKey(e.target.value as CurriculumKey | "")}
             >
-              <option value="">Selecione para adicionar...</option>
+              <option value="">Selecione um curso para adicionar...</option>
               {filteredPresets.map((meta) => (
                 <option key={meta.key} value={meta.key}>
-                  {meta.label}
-                  {meta.badge && ` (${meta.badge})`} · {getTypeLabel(meta.tipo)}
+                  {meta.label} {meta.badge ? `(${meta.badge})` : ""}
                 </option>
               ))}
             </select>
-            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
-              <ChevronDown className="h-4 w-4" />
-            </div>
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           </div>
 
           <button
             type="button"
             onClick={handleAddCourse}
             disabled={!selectedPresetKey}
-            className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+            // TOKEN: Botão Dourado CTA
+            className="flex items-center gap-2 rounded-xl bg-[#E3B23C] px-6 py-3 text-sm font-bold text-white shadow-sm transition-all hover:brightness-95 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50 disabled:grayscale active:scale-95"
           >
-            <Plus className="w-4 h-4" /> Adicionar
+            <Plus className="h-4 w-4" /> Adicionar
           </button>
         </div>
 
-        {/* Lista de Cursos Adicionados */}
+        {/* Chips dos cursos adicionados */}
         {addedCourses.length > 0 && (
-          <div className="mt-6 pt-4 border-t border-slate-100">
-            <p className="text-[10px] font-bold text-slate-400 uppercase mb-3">
-              Estrutura Atual:
-            </p>
+          <div className="mt-6 border-t border-slate-100 pt-4">
+            <p className="mb-3 text-[10px] font-bold uppercase tracking-wide text-slate-400">Cursos Selecionados</p>
             <div className="flex flex-wrap gap-2">
               {addedCourses.map((course) => {
-                const { Icon, colors } = getCourseVisual(course.tipo);
+                const { Icon, bg, text, border } = getCourseVisual(course.tipo);
                 return (
-                  <div
-                    key={course.id}
-                    className={`inline-flex items-center gap-2 border px-3 py-1.5 rounded-lg text-xs font-semibold animate-in fade-in zoom-in
-                               ${colors.bgLight} ${colors.border} ${colors.text}`}
-                  >
-                    <div
-                      className={`w-4 h-4 rounded ${colors.bgLight} flex items-center justify-center`}
-                    >
-                      <Icon className={`w-3 h-3 ${colors.text}`} />
-                    </div>
+                  <div key={course.id} className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold animate-in fade-in zoom-in ${bg} ${border} ${text}`}>
+                    <Icon className="h-3 w-3" />
                     <span>{course.label}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveCourse(course.id)}
-                      className="text-slate-400 hover:text-red-500 transition-colors p-0.5 rounded-full hover:bg-red-50"
-                    >
-                      <Trash2 className="w-3 h-3" />
+                    <button onClick={() => handleRemoveCourse(course.id)} className="ml-1 rounded-full p-0.5 hover:bg-black/10 transition-colors">
+                      <Trash2 className="h-3 w-3" />
                     </button>
                   </div>
                 );
@@ -477,108 +397,77 @@ export default function AcademicStep2({
       </div>
 
       {/* 2. MATRIZ DE TURMAS */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        
+        {/* Header da Matriz */}
+        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-6 py-4">
           <div className="flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-slate-500" />
-            <span className="font-bold text-sm text-slate-700">
-              Definição de Turmas
-            </span>
+            <BookOpen className="h-4 w-4 text-slate-500" />
+            <span className="text-sm font-bold text-slate-700">Matriz de Turmas</span>
           </div>
-          <span className="text-xs font-bold text-teal-700 bg-teal-50 px-3 py-1 rounded-full border border-teal-100">
+          {/* TOKEN: Badge Verde Brand */}
+          <span className="rounded-full border border-[#1F6B3B]/20 bg-[#1F6B3B]/5 px-3 py-1 text-xs font-bold text-[#1F6B3B]">
             {totalTurmas} turmas a criar
           </span>
         </div>
 
-        {/* SELETOR DE NOMENCLATURA */}
-        <div className="bg-white px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wide whitespace-nowrap">Padrão de Nomes</label>
-            <div className="flex gap-2">
-              {(
-                [
-                  { id: 'descritivo_completo', label: 'Completo' },
-                  { id: 'descritivo_simples', label: 'Simples' },
-                  { id: 'abreviado', label: 'Abreviado' },
-                ] as const
-              ).map((opt) => (
+        {/* Configurações de Nomenclatura */}
+        <div className="flex flex-col gap-4 border-b border-slate-100 bg-white px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Padrão de Nomes</label>
+            <div className="flex rounded-lg border border-slate-200 p-1">
+              {[
+                { id: 'descritivo_completo', label: 'Completo' },
+                { id: 'descritivo_simples', label: 'Simples' },
+                { id: 'abreviado', label: 'Curto' },
+              ].map((opt) => (
                 <button
                   key={opt.id}
-                  type="button"
-                  onClick={() => onPadraoNomenclaturaChange(opt.id)}
-                  className={`flex-1 py-1.5 px-3 text-[11px] font-bold rounded-lg border transition-all ${
-                    padraoNomenclatura === opt.id
-                      ? "bg-slate-900 text-white border-slate-900 shadow-md"
-                      : "bg-white text-slate-400 border-slate-200 hover:border-slate-300 hover:text-slate-600"
+                  onClick={() => onPadraoNomenclaturaChange(opt.id as any)}
+                  className={`rounded px-3 py-1 text-[10px] font-bold transition-all ${
+                    padraoNomenclatura === opt.id ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 hover:text-slate-900"
                   }`}
                 >
                   {opt.label}
                 </button>
               ))}
             </div>
-            <div className="text-[11px] text-slate-500 font-semibold">
-              Exemplo: <span className="text-slate-700">{sampleNomeTurma}</span>
-            </div>
+          </div>
+          <div className="text-xs text-slate-500">
+            Preview: <strong className="text-slate-800">{sampleNomeTurma}</strong>
+          </div>
         </div>
 
-        {/* Barra mágica */}
+        {/* Bulk Actions (Magic Wand) */}
         {matrix.length > 0 && (
-          <div className="bg-white border-b border-slate-100 px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-4 overflow-x-auto">
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-500 whitespace-nowrap">
-              <Wand2 className="w-4 h-4 text-purple-500" />
-              <span>Preenchimento Rápido:</span>
+          <div className="flex items-center gap-4 overflow-x-auto border-b border-slate-100 bg-white px-6 py-3">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
+              <Wand2 className="h-3.5 w-3.5 text-[#E3B23C]" />
+              <span>Preencher:</span>
             </div>
-
-            <div className="flex gap-4">
+            
+            <div className="flex gap-3">
               {turnos["Manhã"] && (
-                <div className="flex items-center gap-2 bg-orange-50 px-2 py-1 rounded-lg border border-orange-100">
-                  <Sun size={12} className="text-orange-500" />
-                  <span className="text-[10px] font-bold text-orange-700">
-                    Manhã:
-                  </span>
-                  {[1, 2, 3, 4].map((n) => (
-                    <button
-                      key={n}
-                      onClick={() => handleBulkApply("manha", n)}
-                      className="w-5 h-5 flex items-center justify-center bg-white text-orange-700 border border-orange-200 rounded text-[10px] hover:bg-orange-100 transition"
-                    >
-                      {n}
-                    </button>
+                <div className="flex items-center gap-1 rounded-md border border-orange-100 bg-orange-50 px-2 py-1">
+                  <Sun size={10} className="text-orange-500 mr-1" />
+                  {[1, 2, 3].map((n) => (
+                    <button key={n} onClick={() => handleBulkApply("manha", n)} className="flex h-5 w-5 items-center justify-center rounded bg-white text-[10px] font-bold text-orange-700 shadow-sm border border-orange-200 hover:bg-orange-100">{n}</button>
                   ))}
                 </div>
               )}
-
               {turnos["Tarde"] && (
-                <div className="flex items-center gap-2 bg-amber-50 px-2 py-1 rounded-lg border border-amber-100">
-                  <Sunset size={12} className="text-amber-500" />
-                  <span className="text-[10px] font-bold text-amber-700">
-                    Tarde:
-                  </span>
-                  {[1, 2, 3, 4].map((n) => (
-                    <button
-                      key={n}
-                      onClick={() => handleBulkApply("tarde", n)}
-                      className="w-5 h-5 flex items-center justify-center bg-white text-amber-700 border border-amber-200 rounded text-[10px] hover:bg-amber-100 transition"
-                    >
-                      {n}
-                    </button>
+                <div className="flex items-center gap-1 rounded-md border border-amber-100 bg-amber-50 px-2 py-1">
+                  <Sunset size={10} className="text-amber-500 mr-1" />
+                  {[1, 2, 3].map((n) => (
+                    <button key={n} onClick={() => handleBulkApply("tarde", n)} className="flex h-5 w-5 items-center justify-center rounded bg-white text-[10px] font-bold text-amber-700 shadow-sm border border-amber-200 hover:bg-amber-100">{n}</button>
                   ))}
                 </div>
               )}
-
               {turnos["Noite"] && (
-                <div className="flex items-center gap-2 bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100">
-                  <Moon size={12} className="text-indigo-500" />
-                  <span className="text-[10px] font-bold text-indigo-700">
-                    Noite:
-                  </span>
-                  {[1, 2, 3, 4].map((n) => (
-                    <button
-                      key={n}
-                      onClick={() => handleBulkApply("noite", n)}
-                      className="w-5 h-5 flex items-center justify-center bg-white text-indigo-700 border border-indigo-200 rounded text-[10px] hover:bg-indigo-100 transition"
-                    >
-                      {n}
-                    </button>
+                <div className="flex items-center gap-1 rounded-md border border-indigo-100 bg-indigo-50 px-2 py-1">
+                  <Moon size={10} className="text-indigo-500 mr-1" />
+                  {[1, 2, 3].map((n) => (
+                    <button key={n} onClick={() => handleBulkApply("noite", n)} className="flex h-5 w-5 items-center justify-center rounded bg-white text-[10px] font-bold text-indigo-700 shadow-sm border border-indigo-200 hover:bg-indigo-100">{n}</button>
                   ))}
                 </div>
               )}
@@ -586,72 +475,35 @@ export default function AcademicStep2({
           </div>
         )}
 
-        {/* Matriz agrupada por curso */}
-        {Object.entries(groupedByCourse).map(([cursoKey, rows]) => {
-          const key = cursoKey as CurriculumKey;
-          const meta = CURRICULUM_PRESETS_META[key];
-          const tipo: CourseType = PRESET_TO_TYPE[key] ?? "geral";
-          const { Icon, colors } = getCourseVisual(tipo);
+        {/* Tabela Virtualizada */}
+        <CourseMatrixTable 
+          rows={matrix} 
+          turnos={turnos} 
+          onMatrixUpdate={onMatrixUpdate} 
+        />
 
-          return (
-            <div key={cursoKey} className="border-b border-slate-100 last:border-b-0">
-              {/* Cabeçalho por curso */}
-              <div className="px-6 py-3 bg-slate-50/50 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`w-8 h-8 rounded-lg ${colors.bgLight} border ${colors.border} flex items-center justify-center`}
-                  >
-                    <Icon className={`w-4 h-4 ${colors.text}`} />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-sm text-slate-800">
-                      {meta?.label ?? "Curso"}
-                    </h4>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span
-                        className={`text-[10px] px-2 py-0.5 rounded-full ${colors.bgLight} ${colors.text} border ${colors.border}`}
-                      >
-                        {tipo.toUpperCase()}
-                      </span>
-                      <span className="text-[10px] text-slate-500">
-                        {rows.length} classe{rows.length !== 1 ? "s" : ""}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <CourseMatrixTable rows={rows} turnos={turnos} onMatrixUpdate={onMatrixUpdate} />
+        {/* Botão Final (Apply) */}
+        <div className="flex justify-end bg-slate-50 px-6 py-4 border-t border-slate-100">
+          {totalTurmas === 0 && matrix.length > 0 && (
+            <div className="mr-auto text-xs text-slate-500">
+              Você pode concluir agora e ajustar cargas/períodos depois no currículo.
             </div>
-          );
-        })}
+          )}
+          <button
+            type="button"
+            onClick={onApplyCurriculumPreset}
+            disabled={applyingPreset || matrix.length === 0}
+            // TOKEN: Botão Dourado Action (#E3B23C)
+            className="flex items-center gap-2 rounded-xl bg-[#E3B23C] px-6 py-2.5 text-sm font-bold text-white shadow-md shadow-orange-900/5 transition-all hover:brightness-95 hover:shadow-lg hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50 disabled:grayscale"
+          >
+            {applyingPreset ? (
+              <>Applying...</>
+            ) : (
+              <>Concluir Configuração</>
+            )}
+          </button>
+        </div>
 
-        {/* Empty state */}
-        {matrix.length === 0 && (
-          <div className="py-12 flex flex-col items-center text-center">
-            <div className="p-3 bg-slate-50 rounded-full mb-3 text-slate-300">
-              <ArrowUpCircle className="w-8 h-8" />
-            </div>
-            <p className="text-slate-500 text-sm font-medium">
-              A matriz está vazia
-            </p>
-            <p className="text-xs text-slate-400 mt-1">
-              Selecione um curso acima e adicione-o.
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Botão aplicar modelo */}
-      <div className="mt-6 flex justify-end">
-        <button
-          type="button"
-          onClick={onApplyCurriculumPreset}
-          disabled={applyingPreset || totalTurmas === 0}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold bg-slate-900 text-white shadow-md hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {applyingPreset ? "Aplicando..." : "Concluir Configuração"}
-        </button>
       </div>
     </div>
   );

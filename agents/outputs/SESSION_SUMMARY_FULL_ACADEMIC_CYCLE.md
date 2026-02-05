@@ -15,11 +15,13 @@
 - Skeletons RPC: `get_setup_state`, `get_config_impact`, `preview_apply_changes`, `config_commit`.
 - Validações P0: overlap de períodos, pesos = 100, trava de notas válida.
 - Idempotência de geração de turmas via `Idempotency-Key` + audit log.
+- **Políticas RLS e Índices de Performance para `cursos`**: Adicionadas políticas `INSERT`, `UPDATE` e `DELETE` para a tabela `public.cursos`, garantindo que apenas a staff autenticada possa modificar dados de cursos. Índices de performance (`idx_escola_users_escola_user` e `idx_cursos_escola`) foram criados/verificados para otimizar as verificações de RLS e reduzir latência.
 
 Arquivos:
 - `supabase/migrations/20260305000000_rpc_academic_setup_contracts.sql`
 - `supabase/migrations/20260305000011_rpc_gerar_turmas_from_curriculo_idempotent.sql`
 - `supabase/migrations/20260305000010_add_academic_setup_columns.sql`
+- `supabase/migrations/20260202140000_add_cursos_rls.sql`
 
 ### 3) Schema Acadêmico — Campos críticos
 - `classes`: `ano_letivo_id`, `turno`, `carga_horaria_semanal`, `min_disciplinas_core`.

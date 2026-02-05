@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
-import type { Database } from '~types/supabase'
 import { recordAuditServer } from '@/lib/audit'
 
 export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -17,13 +15,8 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
     const role = (rows?.[0] as any)?.role as string | undefined
     if (role !== 'super_admin') return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: 'Configuração do Supabase ausente' }, { status: 500 })
-    }
-    const admin = createAdminClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!) as any
-
     // Tenta exclusão definitiva
-    const delRes = await admin.from('escolas').delete().eq('id', escolaId)
+    const delRes = await (s as any).from('escolas').delete().eq('id', escolaId)
     if (!delRes.error) {
       recordAuditServer({ escolaId, portal: 'super_admin', acao: 'ESCOLA_DELETADA', entity: 'escola', entityId: escolaId }).catch(() => null)
       return NextResponse.json({ ok: true, mode: 'hard' })
@@ -31,7 +24,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
 
     // Se falhou (provável FK), marca como excluída (soft delete)
     console.warn('[super-admin] Hard delete falhou, aplicando soft delete:', delRes.error.message)
-    const upRes = await admin.from('escolas').update({ status: 'excluida' as any }).eq('id', escolaId)
+    const upRes = await (s as any).from('escolas').update({ status: 'excluida' as any }).eq('id', escolaId)
     if (!upRes.error) {
       recordAuditServer({ escolaId, portal: 'super_admin', acao: 'ESCOLA_MARCADA_EXCLUSAO', entity: 'escola', entityId: escolaId, details: { reason: delRes.error.message } }).catch(() => null)
       return NextResponse.json({ ok: true, mode: 'soft' })
@@ -43,4 +36,3 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
 }
-

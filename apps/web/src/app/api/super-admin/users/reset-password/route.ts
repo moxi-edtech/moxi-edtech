@@ -1,38 +1,12 @@
 import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
-import type { Database } from '~types/supabase'
-
-const isStrongPassword = (pwd: string) => {
-  return (
-    typeof pwd === 'string' &&
-    pwd.length >= 8 &&
-    /[A-Z]/.test(pwd) &&
-    /[a-z]/.test(pwd) &&
-    /\d/.test(pwd) &&
-    /[^A-Za-z0-9]/.test(pwd)
-  )
-}
+import { recordAuditServer } from '@/lib/audit'
 
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}))
     const userId = String(body?.userId || '')
-    const password = String(body?.password || '')
-    const mustChange = body?.mustChange !== false
-
     if (!userId) return NextResponse.json({ ok: false, error: 'userId ausente' }, { status: 400 })
-    if (!password) return NextResponse.json({ ok: false, error: 'Senha ausente' }, { status: 400 })
-    if (!isStrongPassword(password)) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error:
-            'Senha inválida: mínimo 8 caracteres, com maiúscula, minúscula, número e caractere especial.',
-        },
-        { status: 400 }
-      )
-    }
 
     const s = await supabaseServer()
     const { data: sess } = await s.auth.getUser()
@@ -50,23 +24,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
     }
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: 'Configuração do Supabase ausente' }, { status: 500 })
+    const { data: target } = await s
+      .from('profiles')
+      .select('email')
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    const email = (target as any)?.email as string | undefined
+    if (!email) {
+      return NextResponse.json({ ok: false, error: 'Email do usuário não encontrado' }, { status: 404 })
     }
 
-    const admin = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    ) as any
-
-    const { error } = await admin.auth.admin.updateUserById(userId, {
-      password,
-      user_metadata: mustChange ? { must_change_password: true } : undefined,
+    const origin = new URL(request.url).origin
+    const { error } = await s.auth.resetPasswordForEmail(email, {
+      redirectTo: `${origin}/reset-password`,
     })
 
     if (error) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
     }
+
+    recordAuditServer({
+      escolaId: null,
+      portal: 'super_admin',
+      acao: 'RESET_PASSWORD_SOLICITADO',
+      entity: 'usuario',
+      entityId: userId,
+      details: { email },
+    }).catch(() => null)
 
     return NextResponse.json({ ok: true })
   } catch (error) {

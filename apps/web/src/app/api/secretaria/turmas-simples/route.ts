@@ -13,7 +13,15 @@ export async function GET(req: Request) {
     
     // 1. Autenticação
     const { data: userRes } = await supabase.auth.getUser();
-    const user = userRes?.user;
+    let user = userRes?.user;
+    if (!user) {
+      const authHeader = req.headers.get('authorization');
+      const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+      if (token) {
+        const { data: tokenUser } = await supabase.auth.getUser(token);
+        user = tokenUser?.user ?? null;
+      }
+    }
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
 
     const url = new URL(req.url);

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
 import type { Database } from '~types/supabase'
+import { recordAuditServer } from '@/lib/audit'
 
 export async function POST(request: Request) {
   try {
@@ -28,11 +28,6 @@ export async function POST(request: Request) {
     const role = (rows?.[0] as any)?.role as string | undefined
     if (role !== 'super_admin') return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: 'Configuração do Supabase ausente' }, { status: 500 })
-    }
-    const admin = createAdminClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!) as any
-
     // Campos do profile que podemos atualizar diretamente
     const profilePatch: Record<string, any> = {}
     if (updates.nome !== undefined) profilePatch.nome = updates.nome
@@ -43,7 +38,7 @@ export async function POST(request: Request) {
     if (updates.escola_id !== undefined) profilePatch.escola_id = updates.escola_id
 
     if (Object.keys(profilePatch).length > 0) {
-      const { error: upErr } = await admin
+      const { error: upErr } = await (s as any)
         .from('profiles' as any)
         .update(profilePatch)
         .eq('user_id', userId)
@@ -72,7 +67,7 @@ export async function POST(request: Request) {
       }
 
       // Busca vínculos existentes
-      const { data: vincs, error: vErr } = await admin
+      const { data: vincs, error: vErr } = await (s as any)
         .from('escola_users' as any)
         .select('escola_id')
         .eq('user_id', userId)
@@ -81,10 +76,10 @@ export async function POST(request: Request) {
       if (!escolaId) {
         // Remover todos os vínculos e limpar escola do profile
         if ((vincs || []).length > 0) {
-          const { error: delV } = await admin.from('escola_users' as any).delete().eq('user_id', userId)
+          const { error: delV } = await (s as any).from('escola_users' as any).delete().eq('user_id', userId)
           if (delV) return NextResponse.json({ ok: false, error: delV.message }, { status: 400 })
         }
-        await admin.from('profiles' as any).update({ escola_id: null as any }).eq('user_id', userId)
+        await (s as any).from('profiles' as any).update({ escola_id: null as any }).eq('user_id', userId)
       } else {
         const hasSame = (vincs || []).some((v: any) => String(v.escola_id) === String(escolaId))
         // Remove vínculos de outras escolas, mantendo/ajustando apenas a atual
@@ -92,17 +87,17 @@ export async function POST(request: Request) {
           const others = (vincs || []).filter((v: any) => String(v.escola_id) !== String(escolaId))
           if (others.length > 0) {
             const ids = others.map((v: any) => v.escola_id)
-            await admin.from('escola_users' as any).delete().eq('user_id', userId).in('escola_id', ids as any)
+            await (s as any).from('escola_users' as any).delete().eq('user_id', userId).in('escola_id', ids as any)
           }
         }
         if (!hasSame) {
-          const { error: insV } = await admin
+          const { error: insV } = await (s as any)
             .from('escola_users' as any)
             .insert([{ escola_id: escolaId, user_id: userId, papel: papel || 'secretaria' }])
           if (insV) return NextResponse.json({ ok: false, error: insV.message }, { status: 400 })
         } else if (papel !== null) {
           // Atualiza papel se fornecido
-          const { error: upV } = await admin
+          const { error: upV } = await (s as any)
             .from('escola_users' as any)
             .update({ papel })
             .eq('user_id', userId)
@@ -111,11 +106,11 @@ export async function POST(request: Request) {
         }
 
         // Garante escola_id no profile
-        await admin.from('profiles' as any).update({ escola_id: escolaId } as any).eq('user_id', userId)
+        await (s as any).from('profiles' as any).update({ escola_id: escolaId } as any).eq('user_id', userId)
       }
     } else if (updates.papel_escola !== undefined) {
       // Se apenas papel mudar, tenta aplicar no vínculo atual (se existir)
-      const { data: vinc, error: vErr } = await admin
+      const { data: vinc, error: vErr } = await (s as any)
         .from('escola_users' as any)
         .select('escola_id')
         .eq('user_id', userId)
@@ -127,7 +122,7 @@ export async function POST(request: Request) {
         if (papel && !allowedPapeis.has(papel)) {
           return NextResponse.json({ ok: false, error: `Papel inválido: ${papel}` }, { status: 400 })
         }
-        const { error: upV } = await admin
+        const { error: upV } = await (s as any)
           .from('escola_users' as any)
           .update({ papel })
           .eq('user_id', userId)
@@ -135,6 +130,15 @@ export async function POST(request: Request) {
         if (upV) return NextResponse.json({ ok: false, error: upV.message }, { status: 400 })
       }
     }
+
+    recordAuditServer({
+      escolaId: updates.escola_id ?? null,
+      portal: 'super_admin',
+      acao: 'USUARIO_ATUALIZADO',
+      entity: 'usuario',
+      entityId: userId,
+      details: { updates },
+    }).catch(() => null)
 
     return NextResponse.json({ ok: true })
   } catch (error) {

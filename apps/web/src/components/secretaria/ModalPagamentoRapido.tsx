@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/Button";
 import { ReciboImprimivel } from "@/components/financeiro/ReciboImprimivel";
 import { usePlanFeature } from "@/hooks/usePlanFeature";
 
-type MetodoPagamento = "cash" | "tpa" | "transfer" | "mcx" | "kwik";
+type MetodoPagamento = "cash" | "tpa" | "transfer" | "mcx" | "kiwk";
 
 interface ModalPagamentoRapidoProps {
   escolaId?: string | null;
@@ -105,7 +105,7 @@ const METODOS: MetodoItem[] = [
   { id: "tpa", label: "TPA", helper: "Cartão", icon: CreditCard },
   { id: "transfer", label: "Transfer", helper: "Comprovativo", icon: Wallet },
   { id: "mcx", label: "MCX", helper: "Multicaixa", icon: Smartphone },
-  { id: "kwik", label: "KWIK", helper: "Instantâneo", icon: Smartphone },
+  { id: "kiwk", label: "KIWK", helper: "Instantâneo", icon: Smartphone },
 ];
 
 function SegmentedMethod({
@@ -538,7 +538,7 @@ export function ModalPagamentoRapido({
                   disabled={processando}
                 />
 
-                {(metodo === "tpa" || metodo === "mcx" || metodo === "kwik") && (
+              {(metodo === "tpa" || metodo === "mcx" || metodo === "kiwk") && (
                   <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -551,12 +551,12 @@ export function ModalPagamentoRapido({
                           className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
                           placeholder={metodo === "tpa" ? "TPA-2026-000882" : "Opcional"}
                         />
-                        {(metodo === "mcx" || metodo === "kwik") ? (
+                        {(metodo === "mcx" || metodo === "kiwk") ? (
                           <input
                             value={paymentGatewayRef}
                             onChange={(e) => setPaymentGatewayRef(e.target.value)}
                             className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
-                            placeholder={metodo === "kwik" ? "KWIK ref (opcional)" : "Gateway ref (opcional)"}
+                            placeholder={metodo === "kiwk" ? "KIWK ref (opcional)" : "Gateway ref (opcional)"}
                           />
                         ) : null}
                       </div>

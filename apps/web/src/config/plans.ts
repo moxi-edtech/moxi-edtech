@@ -25,7 +25,7 @@ export const PLAN_NAMES: Record<PlanTier, string> = {
 
 export const PLAN_FEATURES: Record<PlanTier, Record<FeatureKey, boolean>> = {
   essencial: {
-    fin_recibo_pdf: false,
+    fin_recibo_pdf: true,
     sec_upload_docs: false,
     sec_matricula_online: false,
     doc_qr_code: false,
@@ -49,5 +49,4 @@ export const PLAN_FEATURES: Record<PlanTier, Record<FeatureKey, boolean>> = {
     suporte_prioritario: true,
   },
 };
-
 

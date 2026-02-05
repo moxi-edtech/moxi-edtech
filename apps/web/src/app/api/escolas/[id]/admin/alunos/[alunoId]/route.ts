@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
 import { recordAuditServer } from "@/lib/audit";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 // Hard delete permitido apenas para registros já arquivados (deleted_at != null)
 export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string; alunoId: string }> }) {
@@ -12,6 +11,11 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string;
     const { data: userRes } = await s.auth.getUser();
     const user = userRes?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+
+    const resolvedEscolaId = await resolveEscolaIdForUser(s, user.id, escolaId);
+    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
+    }
 
     // autorização: super/global admin ou admin da escola
     const { data: prof } = await s.from('profiles').select('role').eq('user_id', user.id).maybeSingle();
@@ -32,12 +36,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string;
     if (String((aluno as any).escola_id) !== String(escolaId)) return NextResponse.json({ ok: false, error: "Aluno não pertence à escola" }, { status: 403 });
     if (!(aluno as any).deleted_at) return NextResponse.json({ ok: false, error: "Somente alunos arquivados podem ser removidos definitivamente" }, { status: 400 });
 
-    const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    if (!adminUrl || !serviceRole) return NextResponse.json({ ok: false, error: "Falta SUPABASE_SERVICE_ROLE_KEY" }, { status: 500 });
-    const admin = createAdminClient<Database>(adminUrl, serviceRole);
-
-    const { error: delErr } = await admin.from("alunos").delete().eq("id", alunoId);
+    const { error: delErr } = await s.from("alunos").delete().eq("id", alunoId);
     if (delErr) return NextResponse.json({ ok: false, error: delErr.message }, { status: 400 });
 
     recordAuditServer({ escolaId, portal: "admin_escola", acao: "ALUNO_HARD_DELETE", entity: "aluno", entityId: String(alunoId), details: { performed_by: user.id } }).catch(() => null);
@@ -64,6 +63,11 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string; a
     const user = userRes?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
+    const resolvedEscolaId = await resolveEscolaIdForUser(s, user.id, escolaId);
+    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
+    }
+
     const { data: prof } = await s.from('profiles').select('role').eq('user_id', user.id).maybeSingle();
     const globalRole = (prof as any)?.role as string | undefined;
     if (!['super_admin','global_admin'].includes(globalRole || '')) {
@@ -81,12 +85,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string; a
     if (!aluno) return NextResponse.json({ ok: false, error: "Aluno não encontrado" }, { status: 404 });
     if (String((aluno as any).escola_id) !== String(escolaId)) return NextResponse.json({ ok: false, error: "Aluno não pertence à escola" }, { status: 403 });
 
-    const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    if (!adminUrl || !serviceRole) return NextResponse.json({ ok: false, error: "Falta SUPABASE_SERVICE_ROLE_KEY" }, { status: 500 });
-    const admin = createAdminClient<Database>(adminUrl, serviceRole);
-
-    const { error: updErr } = await admin
+    const { error: updErr } = await s
       .from("alunos")
       .update(patch as any)
       .eq("id", alunoId);

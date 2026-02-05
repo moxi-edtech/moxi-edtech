@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { supabaseServer } from "@/lib/supabaseServer"
 import { hasPermission } from "@/lib/permissions"
-import { createClient as createAdminClient } from "@supabase/supabase-js"
-import type { Database } from "~types/supabase"
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
+import { recordAuditServer } from "@/lib/audit"
 
 // POST /api/escolas/[id]/onboarding/session/rotate
 // Archives current active session (if any) and creates a new active session.
@@ -65,6 +65,11 @@ export async function POST(
     const user = auth?.user
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
+    const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId)
+    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
+    }
+
     // Authorization: allow ONLY escola admins or users with configurar_escola vínculo (super_admin visualiza, mas não altera)
     let allowed = false
     try {
@@ -102,16 +107,8 @@ export async function POST(
     }
     if (!allowed) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: 'Configuração Supabase ausente.' }, { status: 500 })
-    }
-    const admin = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    )
-
     // 1) Desativar anos letivos atuais
-    await (admin as any)
+    await (s as any)
       .from('anos_letivos')
       .update({ ativo: false } as any)
       .eq('escola_id', escolaId)
@@ -119,7 +116,7 @@ export async function POST(
     const anoLetivoNumero = Number(String(data_inicio).slice(0, 4))
 
     // 2) Upsert do novo ano letivo ativo
-    const { data: anoLetivoRow, error: anoErr } = await (admin as any)
+    const { data: anoLetivoRow, error: anoErr } = await (s as any)
       .from('anos_letivos')
       .upsert({
         escola_id: escolaId,
@@ -135,7 +132,7 @@ export async function POST(
     const anoLetivoId = (anoLetivoRow as any)?.id as string | null
 
     // 3) Gerar periodos_letivos conforme preferências
-    const { data: cfg } = await (admin as any)
+    const { data: cfg } = await (s as any)
       .from('configuracoes_escola')
       .select('periodo_tipo')
       .eq('escola_id', escolaId)
@@ -168,7 +165,7 @@ export async function POST(
 
     if (anoLetivoId) {
       try {
-        await (admin as any).from('periodos_letivos').delete().eq('ano_letivo_id', anoLetivoId)
+        await (s as any).from('periodos_letivos').delete().eq('ano_letivo_id', anoLetivoId)
         const ranges = splitRanges(data_inicio, data_fim, parts)
         const rows = ranges.map((r, idx) => ({
           escola_id: escolaId,
@@ -178,13 +175,13 @@ export async function POST(
           data_inicio: r.start,
           data_fim: r.end,
         }))
-        await (admin as any).from('periodos_letivos').insert(rows)
+        await (s as any).from('periodos_letivos').insert(rows)
       } catch (_) {}
     }
 
     // Reset onboarding drafts; NÃO desmarca conclusão do onboarding.
     try {
-      await (admin as any)
+      await (s as any)
         .from('onboarding_drafts')
         .delete()
         .eq('escola_id', escolaId)
@@ -192,7 +189,7 @@ export async function POST(
 
     // Sinaliza que ajustes acadêmicos são necessários após rotacionar sessão
     try {
-      const { error: flagErr } = await (admin as any)
+      const { error: flagErr } = await (s as any)
         .from('escolas')
         .update({ needs_academic_setup: true } as any)
         .eq('id', escolaId)
@@ -208,7 +205,7 @@ export async function POST(
     let active: any = null
     let all: any[] = []
     try {
-      const { data: sessList } = await (admin as any)
+      const { data: sessList } = await (s as any)
         .from('anos_letivos')
         .select('id, ano, data_inicio, data_fim, ativo')
         .eq('escola_id', escolaId)
@@ -223,6 +220,15 @@ export async function POST(
       }))
       active = (all || []).find((s: any) => s.status === 'ativa') || null
     } catch {}
+
+    recordAuditServer({
+      escolaId,
+      portal: 'admin_escola',
+      acao: 'ANO_LETIVO_ROTACIONADO',
+      entity: 'anos_letivos',
+      entityId: anoLetivoId ?? null,
+      details: { nome, data_inicio, data_fim, tipo: tipoUpper },
+    }).catch(() => null)
 
     return NextResponse.json({ ok: true, data: { novaSessao: active, todasSessoes: all } })
   } catch (e) {

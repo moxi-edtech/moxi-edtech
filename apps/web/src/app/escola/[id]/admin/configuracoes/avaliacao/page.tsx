@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
 import { 
@@ -159,12 +159,83 @@ export default function AvaliacaoUnificadaClient() {
     </div>
   );
 
+  const PreviewPauta = () => (
+    <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="flex items-center justify-between">
+        <div>
+          <h4 className="text-sm font-semibold text-slate-900">Preview de pauta</h4>
+          <p className="text-xs text-slate-500">Simulação baseada no modelo atual.</p>
+        </div>
+        <span className="text-[10px] font-bold text-slate-400 uppercase">Exemplo</span>
+      </div>
+
+      {previewComponentes.length === 0 ? (
+        <div className="mt-4 text-xs text-slate-500">Nenhum componente ativo para simular.</div>
+      ) : (
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="text-left text-slate-500">
+                <th className="py-2 pr-3">Aluno</th>
+                {previewComponentes.map((comp) => (
+                  <th key={comp.code} className="py-2 pr-3">
+                    {comp.code} ({comp.peso}%)
+                  </th>
+                ))}
+                <th className="py-2">Média</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {previewRows.map((row) => (
+                <tr key={row.id} className="text-slate-700">
+                  <td className="py-2 pr-3 font-medium">{row.nome}</td>
+                  {row.notas.map((nota, index) => (
+                    <td key={`${row.id}-${index}`} className="py-2 pr-3">
+                      {nota}
+                    </td>
+                  ))}
+                  <td className="py-2 font-semibold text-slate-900">{row.media}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+
+  const previewComponentes = useMemo(
+    () => avaliacaoConfig.componentes.filter((c) => c.ativo),
+    [avaliacaoConfig.componentes]
+  );
+
+  const previewRows = useMemo(() => {
+    if (previewComponentes.length === 0) return [];
+    const alunos = [
+      { id: "A01", nome: "Ana Paulo" },
+      { id: "A02", nome: "Bruno Silva" },
+      { id: "A03", nome: "Carla Nzinga" },
+    ];
+    return alunos.map((aluno, idx) => {
+      const notas = previewComponentes.map((comp, compIndex) => {
+        const base = 10 + idx * 2 + compIndex;
+        return Math.min(20, Math.max(8, base));
+      });
+      const media = Math.round(
+        notas.reduce((acc, nota, index) => acc + nota * (previewComponentes[index].peso / 100), 0) * 10
+      ) / 10;
+      return { ...aluno, notas, media };
+    });
+  }, [previewComponentes]);
+
   return (
     <ConfigSystemShell
       escolaId={escolaId}
       title="Avaliação & Frequência"
       subtitle="Defina as regras do jogo: como os alunos são aprovados."
       menuItems={buildConfigMenuItems(base)}
+      embedded
+      backHref={`${base}?tab=avaliacoes`}
       prevHref={`${base}/calendario`}
       nextHref={`${base}/turmas`}
       saveDisabled={true} // Controle local
@@ -231,6 +302,8 @@ export default function AvaliacaoUnificadaClient() {
                 <FormulaVisual />
               </div>
 
+              <PreviewPauta />
+
               {/* Grid Secundário */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Card Frequência */}
@@ -281,6 +354,10 @@ export default function AvaliacaoUnificadaClient() {
                   onModeloAvaliacaoChange={handleModeloChange}
                   avaliacaoConfig={avaliacaoConfig}
                 />
+
+                <div className="mt-6">
+                  <PreviewPauta />
+                </div>
                 
                 <div className="mt-8 flex items-start gap-3 rounded-xl bg-amber-50 p-4 border border-amber-100 text-amber-800">
                   <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />

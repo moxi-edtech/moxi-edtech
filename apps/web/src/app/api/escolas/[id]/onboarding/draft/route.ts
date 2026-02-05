@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient as createAdminClient } from "@supabase/supabase-js"
 import { supabaseServer } from "@/lib/supabaseServer"
-import type { Database } from "~types/supabase"
 import { hasPermission } from "@/lib/permissions"
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
+import { recordAuditServer } from "@/lib/audit"
 
 // Server-side draft persistence for onboarding (per user + escola)
 // Expects a table `onboarding_drafts` with columns:
@@ -24,6 +24,11 @@ export async function GET(
     const { data: userRes } = await sserver.auth.getUser()
     const user = userRes?.user
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 })
+
+    const resolvedEscolaId = await resolveEscolaIdForUser(sserver as any, user.id, escolaId)
+    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 })
+    }
 
     // Authorization: user must be linked with configurar_escola permission
     let authorized = false
@@ -54,16 +59,7 @@ export async function GET(
 
     if (!authorized) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 })
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: "Configuração Supabase ausente" }, { status: 500 })
-    }
-
-    const admin: any = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    )
-
-    const { data, error } = await admin
+    const { data, error } = await (sserver as any)
       .from("onboarding_drafts")
       .select("data, step, updated_at")
       .eq("escola_id", escolaId)
@@ -97,6 +93,11 @@ export async function PUT(
     const user = userRes?.user
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 })
 
+    const resolvedEscolaId = await resolveEscolaIdForUser(sserver as any, user.id, escolaId)
+    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 })
+    }
+
     // Lightweight auth: ensure user is linked to escola with configurar_escola (same as GET)
     let authorized = false
     try {
@@ -125,15 +126,6 @@ export async function PUT(
 
     if (!authorized) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 })
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: "Configuração Supabase ausente" }, { status: 500 })
-    }
-
-    const admin: any = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    )
-
     const baseRow: any = {
       escola_id: escolaId,
       user_id: user.id,
@@ -143,11 +135,19 @@ export async function PUT(
     const row = Number.isFinite(step) ? { ...baseRow, step } : baseRow
 
     // Upsert on composite key (escola_id, user_id)
-    const { error } = await admin
+    const { error } = await (sserver as any)
       .from("onboarding_drafts")
       .upsert(row, { onConflict: "escola_id,user_id" })
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
+
+    recordAuditServer({
+      escolaId,
+      portal: "admin_escola",
+      acao: "ONBOARDING_DRAFT_SAVED",
+      entity: "onboarding_drafts",
+      details: { step: row.step ?? null },
+    }).catch(() => null)
 
     return NextResponse.json({ ok: true })
   } catch (err) {
@@ -167,22 +167,25 @@ export async function DELETE(
     const user = userRes?.user
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 })
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: "Configuração Supabase ausente" }, { status: 500 })
+    const resolvedEscolaId = await resolveEscolaIdForUser(sserver as any, user.id, escolaId)
+    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 })
     }
 
-    const admin: any = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    )
-
-    const { error } = await admin
+    const { error } = await (sserver as any)
       .from("onboarding_drafts")
       .delete()
       .eq("escola_id", escolaId)
       .eq("user_id", user.id)
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
+
+    recordAuditServer({
+      escolaId,
+      portal: "admin_escola",
+      acao: "ONBOARDING_DRAFT_DELETED",
+      entity: "onboarding_drafts",
+    }).catch(() => null)
 
     return NextResponse.json({ ok: true })
   } catch (err) {

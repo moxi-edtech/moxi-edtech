@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,17 @@ export async function GET(req: Request) {
         { ok: false, error: "Não autenticado" },
         { status: 401 }
       );
+    }
+
+    const metaEscolaId = (userRes?.user?.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? null;
+    const escolaId = await resolveEscolaIdForUser(
+      supabase,
+      userRes.user.id,
+      null,
+      metaEscolaId ? String(metaEscolaId) : null
+    );
+    if (!escolaId) {
+      return NextResponse.json({ ok: false, error: "Perfil sem escola vinculada" }, { status: 400 });
     }
 
     const { searchParams } = new URL(req.url);
@@ -39,10 +51,15 @@ export async function GET(req: Request) {
       `
       )
       .eq("ano_letivo", anoLetivo)
-      .order("ano", { ascending: true })
-      .order("mes", { ascending: true });
+      .eq("escola_id", escolaId);
 
-    mensalQuery = applyKf2ListInvariants(mensalQuery, { defaultLimit: 50 });
+    mensalQuery = applyKf2ListInvariants(mensalQuery, {
+      defaultLimit: 50,
+      order: [
+        { column: "ano", ascending: true },
+        { column: "mes", ascending: true },
+      ],
+    });
 
     const { data: mensal, error: mensalError } = await mensalQuery;
 
@@ -77,11 +94,17 @@ export async function GET(req: Request) {
         inadimplencia_pct
       `
       )
-      .eq("ano_letivo", anoLetivo)
-      .order("inadimplencia_pct", { ascending: false })
-      .order("total_em_atraso", { ascending: false });
+      .eq("escola_id", escolaId)
+      .eq("ano_letivo", anoLetivo);
 
-    turmaQuery = applyKf2ListInvariants(turmaQuery, { defaultLimit: 50 });
+    turmaQuery = applyKf2ListInvariants(turmaQuery, {
+      defaultLimit: 50,
+      order: [
+        { column: "inadimplencia_pct", ascending: false },
+        { column: "total_em_atraso", ascending: false },
+        { column: "turma_id", ascending: true },
+      ],
+    });
 
     const { data: porTurma, error: turmaError } = await turmaQuery;
 

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FileText, LayoutDashboard, Loader2 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 type TurmaItem = {
   id: string;
@@ -15,6 +16,21 @@ type TurmaItem = {
 type DisciplinaItem = {
   id: string;
   disciplina?: { id?: string | null; nome?: string | null } | null;
+  meta?: {
+    carga_horaria_semanal?: number | null;
+    classificacao?: string | null;
+    periodos_ativos?: number[] | null;
+    entra_no_horario?: boolean | null;
+    avaliacao_mode?: string | null;
+  } | null;
+  curriculo_status?: string | null;
+};
+
+type PeriodoItem = {
+  id: string;
+  numero: number;
+  dt_inicio?: string | null;
+  dt_fim?: string | null;
 };
 
 const cx = (...classes: Array<string | false | null | undefined>) =>
@@ -25,10 +41,20 @@ export function PautaRapidaModal() {
   const [anoLetivo, setAnoLetivo] = useState<number>(new Date().getFullYear());
   const [turmas, setTurmas] = useState<TurmaItem[]>([]);
   const [disciplinas, setDisciplinas] = useState<DisciplinaItem[]>([]);
+  const [periodos, setPeriodos] = useState<PeriodoItem[]>([]);
+  const [periodoNumero, setPeriodoNumero] = useState<number>(1);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [turmaId, setTurmaId] = useState("");
   const [disciplinaId, setDisciplinaId] = useState("");
   const [loadingTurmas, setLoadingTurmas] = useState(false);
   const [loadingDisciplinas, setLoadingDisciplinas] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data }) => {
+      setAccessToken(data.session?.access_token ?? null);
+    });
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -36,7 +62,9 @@ export function PautaRapidaModal() {
       setLoadingTurmas(true);
       try {
         const params = new URLSearchParams({ ano: String(anoLetivo) });
-        const res = await fetch(`/api/secretaria/turmas-simples?${params.toString()}`);
+        const res = await fetch(`/api/secretaria/turmas-simples?${params.toString()}`, {
+          headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+        });
         const json = await res.json().catch(() => ({}));
         if (!active) return;
         if (res.ok && json.ok) {
@@ -52,7 +80,7 @@ export function PautaRapidaModal() {
     return () => {
       active = false;
     };
-  }, [anoLetivo]);
+  }, [accessToken, anoLetivo]);
 
   useEffect(() => {
     if (!turmaId) {
@@ -67,13 +95,20 @@ export function PautaRapidaModal() {
       try {
         const res = await fetch(`/api/secretaria/turmas/${turmaId}/disciplinas`, {
           cache: "no-store",
+          headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
         });
         const json = await res.json().catch(() => ({}));
         if (!active) return;
         if (res.ok && json.ok) {
           setDisciplinas(json.items || []);
+          setPeriodos(json.periodos || []);
+          const firstNumero = json.periodos?.[0]?.numero;
+          if (typeof firstNumero === "number") {
+            setPeriodoNumero(firstNumero);
+          }
         } else {
           setDisciplinas([]);
+          setPeriodos([]);
         }
       } finally {
         if (active) setLoadingDisciplinas(false);
@@ -83,7 +118,7 @@ export function PautaRapidaModal() {
     return () => {
       active = false;
     };
-  }, [turmaId]);
+  }, [accessToken, turmaId]);
 
   const turmaSelecionada = useMemo(
     () => turmas.find((t) => t.id === turmaId) ?? null,
@@ -91,13 +126,27 @@ export function PautaRapidaModal() {
   );
 
   const disciplinaSelecionada = useMemo(
-    () => disciplinas.find((d) => d.disciplina?.id === disciplinaId) ?? null,
-    [disciplinas, disciplinaId]
+    () => disciplinasFiltradas.find((d) => d.disciplina?.id === disciplinaId) ?? null,
+    [disciplinasFiltradas, disciplinaId]
   );
+
+  useEffect(() => {
+    if (!disciplinaId) return;
+    const stillValid = disciplinasFiltradas.some((disc) => disc.disciplina?.id === disciplinaId);
+    if (!stillValid) setDisciplinaId("");
+  }, [disciplinaId, disciplinasFiltradas]);
 
   const turmaLabel = turmaSelecionada
     ? turmaSelecionada.turma_nome || turmaSelecionada.nome || "Turma"
     : "Turma";
+
+  const disciplinasFiltradas = useMemo(() => {
+    return disciplinas.filter((disciplina) => {
+      const periodosAtivos = disciplina.meta?.periodos_ativos;
+      if (!periodosAtivos || periodosAtivos.length === 0) return true;
+      return periodosAtivos.includes(periodoNumero);
+    });
+  }, [disciplinas, periodoNumero]);
 
   const handleOpen = (path: string) => {
     if (!turmaId) return;
@@ -150,9 +199,31 @@ export function PautaRapidaModal() {
             disabled={!turmaId}
           >
             <option value="">Selecione a disciplina</option>
-            {disciplinas.map((disciplina) => (
+            {disciplinasFiltradas.map((disciplina) => (
               <option key={disciplina.id} value={disciplina.disciplina?.id ?? ""}>
                 {disciplina.disciplina?.nome ?? "Disciplina"}
+              </option>
+            ))}
+          </select>
+          {loadingDisciplinas ? <Loader2 className="h-4 w-4 animate-spin text-slate-400" /> : null}
+        </div>
+      </div>
+
+      <div>
+        <label className="text-xs font-semibold uppercase text-slate-500">Período</label>
+        <div className="mt-1 flex items-center gap-2">
+          <select
+            value={periodoNumero}
+            onChange={(event) => setPeriodoNumero(Number(event.target.value))}
+            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+            disabled={!turmaId || periodos.length === 0}
+          >
+            {periodos.length === 0 && (
+              <option value={periodoNumero}>Sem períodos</option>
+            )}
+            {periodos.map((periodo) => (
+              <option key={periodo.id} value={periodo.numero}>
+                {`Período ${periodo.numero}`}
               </option>
             ))}
           </select>

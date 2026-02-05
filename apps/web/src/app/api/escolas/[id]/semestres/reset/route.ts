@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { hasPermission } from "@/lib/permissions";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 const dateToISO = (d: Date) => {
   const y = d.getFullYear();
@@ -71,6 +70,11 @@ export async function POST(
       return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
     }
 
+    const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId)
+    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
+    }
+
     // Autorização
     let allowed = false
     // Allow super_admin globally
@@ -129,16 +133,8 @@ export async function POST(
       return NextResponse.json({ ok: false, error: 'Perfil não vinculado à escola' }, { status: 403 })
     }
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: 'Configuração Supabase ausente.' }, { status: 500 })
-    }
-    const admin = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    )
-
     // Confere se a sessão pertence à escola e obtem datas
-    const { data: sess, error: sErr } = await (admin as any)
+    const { data: sess, error: sErr } = await (s as any)
       .from('school_sessions')
       .select('id, escola_id, data_inicio, data_fim')
       .eq('id', sessao_id)
@@ -161,7 +157,7 @@ export async function POST(
       periodo_tipo = parse.data.periodo_tipo
     } else {
       try {
-        const { data: cfg } = await (admin as any)
+        const { data: cfg } = await (s as any)
           .from('configuracoes_escola')
           .select('periodo_tipo')
           .eq('escola_id', escolaId)
@@ -172,7 +168,7 @@ export async function POST(
     }
 
     // Coleta ids de semestres atuais
-    const { data: sems } = await (admin as any)
+    const { data: sems } = await (s as any)
       .from('semestres')
       .select('id')
       .eq('session_id', sessao_id)
@@ -182,7 +178,7 @@ export async function POST(
 
     // Apaga semestres atuais
     if (semIds.length > 0) {
-      const { error: delErr } = await (admin as any)
+      const { error: delErr } = await (s as any)
         .from('semestres')
         .delete()
         .eq('session_id', sessao_id)
@@ -239,7 +235,7 @@ export async function POST(
     // Tenta inserir incluindo 'tipo'; se a coluna não existir, tenta novamente sem ela
     let insErr: any = null
     {
-      const { error } = await (admin as any)
+      const { error } = await (s as any)
         .from('semestres')
         .insert(toInsert as any)
       insErr = error
@@ -249,7 +245,7 @@ export async function POST(
         const { tipo, ...rest } = r as any
         return rest
       })
-      const { error: retryErr } = await (admin as any)
+      const { error: retryErr } = await (s as any)
         .from('semestres')
         .insert(sanitized as any)
       insErr = retryErr

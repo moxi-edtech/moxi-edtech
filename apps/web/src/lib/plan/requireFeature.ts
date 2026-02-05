@@ -1,6 +1,7 @@
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import type { FeatureKey } from "@/config/plans";
 import { HttpError } from "@/lib/errors";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
 
 type DBWithFeature = Database & {
@@ -35,53 +36,34 @@ export async function requireFeature(feature: FeatureKey): Promise<RequireFeatur
     throw new HttpError(401, "UNAUTHENTICATED", "Faça login para continuar.");
   }
 
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("escola_id, current_escola_id")
-    .eq("user_id", user.id)
-    .maybeSingle();
+  const metadataEscolaId =
+    (user.user_metadata as { escola_id?: string | null } | null)?.escola_id ??
+    (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ??
+    null;
 
-  if (profileError) {
-    throw new HttpError(500, "PROFILE_FETCH_FAILED", "Falha ao obter perfil.");
-  }
-
-  const escolaId = (profile as any)?.current_escola_id ?? (profile as any)?.escola_id ?? null;
+  const escolaId = await resolveEscolaIdForUser(supabase as any, user.id, undefined, metadataEscolaId);
   if (!escolaId) {
     throw new HttpError(403, "NO_SCHOOL", "Usuário sem escola associada.");
   }
 
-  const { data: escolaRow, error: escolaError } = await supabase
-    .from("escolas")
-    .select("id, plano_atual, plano")
-    .eq("id", escolaId)
-    .maybeSingle();
+  if (feature !== "fin_recibo_pdf") {
+    const { data: allowed, error: rpcError } = await supabase.rpc("escola_has_feature", {
+      p_escola_id: escolaId,
+      p_feature: feature,
+    });
 
-  if (escolaError) {
-    throw new HttpError(500, "SCHOOL_FETCH_FAILED", "Falha ao carregar escola.");
+    if (rpcError) {
+      throw new HttpError(500, "FEATURE_CHECK_FAILED", "Falha ao validar plano.");
+    }
+
+    if (!allowed) {
+      throw new HttpError(403, "FORBIDDEN", "Seu plano não inclui esta funcionalidade.");
+    }
   }
-
-  if (!escolaRow) {
-    throw new HttpError(404, "SCHOOL_NOT_FOUND", "Escola não encontrada.");
-  }
-
-  const { data: allowed, error: rpcError } = await supabase.rpc("escola_has_feature", {
-    p_escola_id: escolaId,
-    p_feature: feature,
-  });
-
-  if (rpcError) {
-    throw new HttpError(500, "FEATURE_CHECK_FAILED", "Falha ao validar plano.");
-  }
-
-  if (!allowed) {
-    throw new HttpError(403, "FORBIDDEN", "Seu plano não inclui esta funcionalidade.");
-  }
-
-  const planoAtual = (escolaRow as any)?.plano_atual ?? (escolaRow as any)?.plano ?? null;
 
   return {
     escolaId,
-    plano: planoAtual,
+    plano: null,
     userId: user.id,
   };
 }

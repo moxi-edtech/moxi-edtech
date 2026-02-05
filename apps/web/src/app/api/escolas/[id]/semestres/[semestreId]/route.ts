@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { hasPermission } from "@/lib/permissions";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { recordAuditServer } from "@/lib/audit";
 
 function hasOverlap(start1: Date, end1: Date, start2: Date, end2: Date): boolean {
   return start1 <= end2 && start2 <= end1;
@@ -21,6 +21,11 @@ async function ensureAuth(escolaId: string) {
   const { data: auth } = await s.auth.getUser();
   const user = auth?.user;
   if (!user) return { ok: false as const, status: 401 as const, error: 'Não autenticado' };
+
+  const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId);
+  if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+    return { ok: false as const, status: 403 as const, error: 'Sem permissão' };
+  }
 
   let allowed = false;
   try {
@@ -52,14 +57,6 @@ async function ensureAuth(escolaId: string) {
   return { ok: true as const };
 }
 
-function getAdminClient() {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return { ok: false as const, error: 'Configuração Supabase ausente.' };
-  }
-  const admin = createAdminClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-  return { ok: true as const, admin };
-}
-
 // PUT /api/escolas/[id]/semestres/[semestreId]
 export async function PUT(
   req: NextRequest,
@@ -69,12 +66,10 @@ export async function PUT(
   try {
     const auth = await ensureAuth(escolaId);
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
-
-    const { ok, admin, error } = getAdminClient() as any;
-    if (!ok) return NextResponse.json({ ok: false, error }, { status: 500 });
+    const s = await supabaseServer();
 
     // Fetch existente
-    const { data: current, error: selErr } = await (admin as any)
+    const { data: current, error: selErr } = await (s as any)
       .from('semestres')
       .select('id, escola_id, session_id, nome, data_inicio, data_fim, tipo')
       .eq('id', semestreId)
@@ -106,7 +101,7 @@ export async function PUT(
     if (newEnd < newStart) return NextResponse.json({ ok: false, error: 'data_fim deve ser após data_inicio' }, { status: 400 });
 
     // Verifica sessão e limites
-    const { data: sess, error: sErr } = await (admin as any)
+    const { data: sess, error: sErr } = await (s as any)
       .from('school_sessions')
       .select('id, escola_id, data_inicio, data_fim')
       .eq('id', (current as any).session_id)
@@ -122,7 +117,7 @@ export async function PUT(
     if (effectiveTipo && !maxByTipo[effectiveTipo]) return NextResponse.json({ ok: false, error: 'Tipo inválido' }, { status: 400 });
 
     // Periodos existentes (exceto o atual) para sobreposição e limite
-    const { data: rows, error: listErr } = await (admin as any)
+    const { data: rows, error: listErr } = await (s as any)
       .from('semestres')
       .select('id, nome, data_inicio, data_fim, tipo')
       .eq('session_id', (current as any).session_id)
@@ -166,16 +161,25 @@ export async function PUT(
 
     let updErr: any = null;
     {
-      const { error } = await (admin as any).from('semestres').update(updateData).eq('id', semestreId);
+      const { error } = await (s as any).from('semestres').update(updateData).eq('id', semestreId);
       updErr = error;
     }
     if (updErr && updateData.tipo) {
       // Retenta sem 'tipo' caso coluna inexistente
       const { tipo: _t, ...withoutTipo } = updateData;
-      const { error: retryErr } = await (admin as any).from('semestres').update(withoutTipo).eq('id', semestreId);
+      const { error: retryErr } = await (s as any).from('semestres').update(withoutTipo).eq('id', semestreId);
       updErr = retryErr;
     }
     if (updErr) return NextResponse.json({ ok: false, error: updErr.message }, { status: 400 });
+
+    recordAuditServer({
+      escolaId,
+      portal: 'admin_escola',
+      acao: 'SEMESTRE_ATUALIZADO',
+      entity: 'semestres',
+      entityId: semestreId,
+      details: updateData,
+    }).catch(() => null);
 
     return NextResponse.json({ ok: true, updated: 1 });
   } catch (e) {
@@ -193,12 +197,10 @@ export async function DELETE(
   try {
     const auth = await ensureAuth(escolaId);
     if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
-
-    const { ok, admin, error } = getAdminClient() as any;
-    if (!ok) return NextResponse.json({ ok: false, error }, { status: 500 });
+    const s = await supabaseServer();
 
     // Verifica existência e pertencimento
-    const { data: current, error: selErr } = await (admin as any)
+    const { data: current, error: selErr } = await (s as any)
       .from('semestres')
       .select('id, escola_id')
       .eq('id', semestreId)
@@ -206,8 +208,16 @@ export async function DELETE(
     if (selErr) return NextResponse.json({ ok: false, error: selErr.message }, { status: 400 });
     if (!current || (current as any).escola_id !== escolaId) return NextResponse.json({ ok: false, error: 'Período não encontrado' }, { status: 404 });
 
-    const { error: delErr } = await (admin as any).from('semestres').delete().eq('id', semestreId).eq('escola_id', escolaId);
+    const { error: delErr } = await (s as any).from('semestres').delete().eq('id', semestreId).eq('escola_id', escolaId);
     if (delErr) return NextResponse.json({ ok: false, error: delErr.message }, { status: 400 });
+
+    recordAuditServer({
+      escolaId,
+      portal: 'admin_escola',
+      acao: 'SEMESTRE_REMOVIDO',
+      entity: 'semestres',
+      entityId: semestreId,
+    }).catch(() => null);
 
     return NextResponse.json({ ok: true, deleted: 1 });
   } catch (e) {
@@ -215,4 +225,3 @@ export async function DELETE(
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
 }
-

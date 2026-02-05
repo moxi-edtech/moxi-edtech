@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
-import type { Database } from '~types/supabase'
 import { parsePlanTier, type PlanTier } from '@/config/plans'
 import { applyKf2ListInvariants } from '@/lib/kf2'
 
@@ -37,12 +35,6 @@ export async function GET() {
       console.log(`[super-admin/escolas/list] User role not allowed: ${role}`);
       return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
     }
-
-    // Decide se podemos usar client admin (service-role)
-    const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim()
-    const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim()
-    const hasServiceKey = !!serviceKey && (serviceKey.startsWith("ey") || serviceKey.startsWith("sb_secret_")) && !/YOUR-service-role-key/i.test(serviceKey)
-    console.log(`[super-admin/escolas/list] hasServiceKey: ${hasServiceKey}`);
 
     // Função auxiliar para montar resposta a partir de uma consulta
     const orderByNome = [
@@ -124,33 +116,6 @@ export async function GET() {
       return { ok: true as const, items }
     }
 
-    // Caminho 1: usar admin quando possível
-    if (!url) {
-      console.error('[super-admin/escolas/list] Missing NEXT_PUBLIC_SUPABASE_URL');
-      return NextResponse.json({ ok: false, error: 'Configuração do Supabase ausente' }, { status: 500 })
-    }
-
-    if (hasServiceKey) {
-      console.log('[super-admin/escolas/list] Attempting to use admin client');
-      const admin = createAdminClient<Database>(url, serviceKey!) as any
-      const r1 = await queryWith(admin)
-      // Se a key for inválida em runtime, faz fallback para client autenticado
-      const errMsg = (r1 as any)?.error?.message as string | undefined
-      const errCode = (r1 as any)?.error?.code as string | undefined
-      const invalidKey = errCode === '401' || (errMsg && /invalid api key/i.test(errMsg))
-      if (r1.ok) {
-        console.log('[super-admin/escolas/list] Admin client succeeded');
-        return NextResponse.json({ ok: true, items: r1.items })
-      }
-      if (!invalidKey) {
-        console.error(`[super-admin/escolas/list] Admin client failed with non-key error: ${errMsg}`);
-        return NextResponse.json({ ok: false, error: (r1 as any).error?.message || 'Erro ao listar escolas' }, { status: 400 })
-      }
-      console.log('[super-admin/escolas/list] Invalid service key, falling back to authenticated client');
-      // Continua para fallback com cliente autenticado
-    }
-
-    // Caminho 2: fallback ao client autenticado (sem service role)
     console.log('[super-admin/escolas/list] Using authenticated client');
     const r2 = await queryWith(s as any)
     if (r2.ok) {

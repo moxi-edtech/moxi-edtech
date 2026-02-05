@@ -431,6 +431,7 @@ export type Database = {
           data_inicio: string
           escola_id: string
           id: string
+          updated_at: string | null
         }
         Insert: {
           ano: number
@@ -440,6 +441,7 @@ export type Database = {
           data_inicio: string
           escola_id: string
           id?: string
+          updated_at?: string | null
         }
         Update: {
           ano?: number
@@ -449,6 +451,7 @@ export type Database = {
           data_inicio?: string
           escola_id?: string
           id?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -1352,44 +1355,82 @@ export type Database = {
       curso_matriz: {
         Row: {
           ativo: boolean
+          avaliacao_disciplina_id: string | null
+          avaliacao_mode: string | null
+          avaliacao_modelo_id: string | null
           carga_horaria: number | null
+          carga_horaria_semanal: number | null
           classe_id: string
+          classificacao: string | null
           created_at: string
           curso_curriculo_id: string | null
           curso_id: string
           disciplina_id: string
+          entra_no_horario: boolean | null
           escola_id: string
           id: string
           obrigatoria: boolean
           ordem: number | null
+          periodos_ativos: number[] | null
+          status_completude: string | null
         }
         Insert: {
           ativo?: boolean
+          avaliacao_disciplina_id?: string | null
+          avaliacao_mode?: string | null
+          avaliacao_modelo_id?: string | null
           carga_horaria?: number | null
+          carga_horaria_semanal?: number | null
           classe_id: string
+          classificacao?: string | null
           created_at?: string
           curso_curriculo_id?: string | null
           curso_id: string
           disciplina_id: string
+          entra_no_horario?: boolean | null
           escola_id: string
           id?: string
           obrigatoria?: boolean
           ordem?: number | null
+          periodos_ativos?: number[] | null
+          status_completude?: string | null
         }
         Update: {
           ativo?: boolean
+          avaliacao_disciplina_id?: string | null
+          avaliacao_mode?: string | null
+          avaliacao_modelo_id?: string | null
           carga_horaria?: number | null
+          carga_horaria_semanal?: number | null
           classe_id?: string
+          classificacao?: string | null
           created_at?: string
           curso_curriculo_id?: string | null
           curso_id?: string
           disciplina_id?: string
+          entra_no_horario?: boolean | null
           escola_id?: string
           id?: string
           obrigatoria?: boolean
           ordem?: number | null
+          periodos_ativos?: number[] | null
+          status_completude?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "curso_matriz_avaliacao_disciplina_fk"
+            columns: ["avaliacao_disciplina_id"]
+            isOneToOne: false
+            referencedRelation: "disciplinas_catalogo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curso_matriz_avaliacao_modelo_fk"
+            columns: ["avaliacao_modelo_id"]
+            isOneToOne: false
+            referencedRelation: "modelos_avaliacao"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "curso_matriz_classe_id_fkey"
             columns: ["classe_id"]
@@ -5394,6 +5435,7 @@ export type Database = {
           peso: number | null
           tipo: Database["public"]["Enums"]["periodo_tipo"]
           trava_notas_em: string | null
+          updated_at: string | null
         }
         Insert: {
           ano_letivo_id: string
@@ -5406,6 +5448,7 @@ export type Database = {
           peso?: number | null
           tipo: Database["public"]["Enums"]["periodo_tipo"]
           trava_notas_em?: string | null
+          updated_at?: string | null
         }
         Update: {
           ano_letivo_id?: string
@@ -5418,6 +5461,7 @@ export type Database = {
           peso?: number | null
           tipo?: Database["public"]["Enums"]["periodo_tipo"]
           trava_notas_em?: string | null
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -6300,33 +6344,58 @@ export type Database = {
       }
       turma_disciplinas: {
         Row: {
+          avaliacao_disciplina_id: string | null
+          avaliacao_mode: string | null
+          carga_horaria_semanal: number | null
+          classificacao: string | null
           created_at: string
           curso_matriz_id: string
+          entra_no_horario: boolean | null
           escola_id: string
           id: string
           modelo_avaliacao_id: string | null
+          periodos_ativos: number[] | null
           professor_id: string | null
           turma_id: string
         }
         Insert: {
+          avaliacao_disciplina_id?: string | null
+          avaliacao_mode?: string | null
+          carga_horaria_semanal?: number | null
+          classificacao?: string | null
           created_at?: string
           curso_matriz_id: string
+          entra_no_horario?: boolean | null
           escola_id: string
           id?: string
           modelo_avaliacao_id?: string | null
+          periodos_ativos?: number[] | null
           professor_id?: string | null
           turma_id: string
         }
         Update: {
+          avaliacao_disciplina_id?: string | null
+          avaliacao_mode?: string | null
+          carga_horaria_semanal?: number | null
+          classificacao?: string | null
           created_at?: string
           curso_matriz_id?: string
+          entra_no_horario?: boolean | null
           escola_id?: string
           id?: string
           modelo_avaliacao_id?: string | null
+          periodos_ativos?: number[] | null
           professor_id?: string | null
           turma_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "turma_disciplinas_avaliacao_disciplina_fk"
+            columns: ["avaliacao_disciplina_id"]
+            isOneToOne: false
+            referencedRelation: "disciplinas_catalogo"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "turma_disciplinas_curso_matriz_id_fkey"
             columns: ["curso_matriz_id"]
@@ -8740,6 +8809,8 @@ export type Database = {
         Returns: {
           message: string
           ok: boolean
+          pendencias: Json
+          pendencias_count: number
           previous_published_curriculo_id: string
           published_curriculo_id: string
         }[]

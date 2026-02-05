@@ -1,27 +1,32 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { supabaseServer } from "@/lib/supabaseServer";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
-function getAdminClient() {
-  const url = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? "").trim();
-  const key = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? "").trim();
-  if (!url || !key) return null;
-  return createClient(url, key);
-}
-
 export async function GET() {
   try {
-    const admin = getAdminClient();
-    if (!admin) {
-      return NextResponse.json({ ok: false, error: "Server misconfigured" }, { status: 500 });
+    const s = await supabaseServer();
+    const { data: sess } = await s.auth.getUser();
+    const user = sess?.user;
+    if (!user) {
+      return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+    }
+    const { data: rows } = await s
+      .from('profiles')
+      .select('role')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    const role = (rows?.[0] as any)?.role as string | undefined;
+    if (role !== 'super_admin') {
+      return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 });
     }
 
     const [outboxSummary, cronRuns] = await Promise.all([
-      admin.rpc("get_outbox_status_summary"),
-      admin.rpc("get_recent_cron_runs", { p_limit: 30 }),
+      (s as any).rpc("get_outbox_status_summary"),
+      (s as any).rpc("get_recent_cron_runs", { p_limit: 30 }),
     ]);
 
     if (outboxSummary.error) {

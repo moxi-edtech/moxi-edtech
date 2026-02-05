@@ -34,7 +34,7 @@ const kwanza = new Intl.NumberFormat("pt-AO", {
 const cx = (...classes: Array<string | false | null | undefined>) =>
   classes.filter(Boolean).join(" ");
 
-type MetodoPagamento = "cash" | "tpa" | "transfer" | "mcx" | "kwik";
+type MetodoPagamento = "cash" | "tpa" | "transfer" | "mcx" | "kiwk";
 
 // --- TIPOS ---
 interface AlunoBusca {
@@ -958,7 +958,7 @@ export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) 
                       { id: "tpa", icon: CreditCard, label: "TPA" },
                       { id: "transfer", icon: Wallet, label: "Transf" },
                       { id: "mcx", icon: Smartphone, label: "MCX" },
-                      { id: "kwik", icon: Smartphone, label: "KWIK" },
+                      { id: "kiwk", icon: Smartphone, label: "KIWK" },
                     ].map((m) => (
                       <button
                         key={m.id}
@@ -976,7 +976,7 @@ export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) 
                     ))}
                   </div>
 
-                  {(metodo === "tpa" || metodo === "mcx" || metodo === "kwik") && (
+                  {(metodo === "tpa" || metodo === "mcx" || metodo === "kiwk") && (
                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
                       <label className="text-[10px] font-bold uppercase text-slate-500">
                         {metodo === "tpa" ? "Referência obrigatória" : "Referência (opcional)"}
@@ -987,11 +987,11 @@ export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) 
                         placeholder={metodo === "tpa" ? "TPA-2026-000882" : "Opcional"}
                         className="w-full bg-white border border-slate-300 rounded-lg py-2 px-3 text-sm font-semibold text-slate-900 outline-none focus:border-[#E3B23C] focus:ring-1 focus:ring-[#E3B23C]"
                       />
-                      {(metodo === "mcx" || metodo === "kwik") && (
+                      {(metodo === "mcx" || metodo === "kiwk") && (
                         <input
                           value={paymentGatewayRef}
                           onChange={(e) => setPaymentGatewayRef(e.target.value)}
-                          placeholder={metodo === "kwik" ? "KWIK ref (opcional)" : "Gateway ref (opcional)"}
+                          placeholder={metodo === "kiwk" ? "KIWK ref (opcional)" : "Gateway ref (opcional)"}
                           className="w-full bg-white border border-slate-300 rounded-lg py-2 px-3 text-sm font-semibold text-slate-900 outline-none focus:border-[#E3B23C] focus:ring-1 focus:ring-[#E3B23C]"
                         />
                       )}

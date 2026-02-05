@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
+import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { requireRoleInSchool } from "@/lib/authz";
+import { recordAuditServer } from "@/lib/audit";
 
 export async function POST(request: NextRequest) {
-  const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!adminUrl || !serviceKey) {
-    return NextResponse.json({ error: "SUPABASE configuration missing" }, { status: 500 });
+  const supabase = await supabaseServerTyped<any>();
+  const { data: userRes } = await supabase.auth.getUser();
+  const user = userRes?.user;
+  if (!user) {
+    return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
   }
+
   let body: { import_id?: string; escola_id?: string; turma_id?: string; turma_code?: string; ano_letivo?: number };
   try {
     body = await request.json();
@@ -18,7 +22,18 @@ export async function POST(request: NextRequest) {
   if (!import_id || !escola_id) {
     return NextResponse.json({ error: "import_id e escola_id são obrigatórios" }, { status: 400 });
   }
-  const supabase = createAdminClient<Database>(adminUrl, serviceKey);
+
+  const resolvedEscolaId = await resolveEscolaIdForUser(supabase, user.id, escola_id);
+  if (!resolvedEscolaId || resolvedEscolaId !== escola_id) {
+    return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
+  }
+
+  const { error: roleError } = await requireRoleInSchool({
+    supabase,
+    escolaId: resolvedEscolaId,
+    roles: ["admin", "admin_escola", "secretaria", "staff_admin"],
+  });
+  if (roleError) return roleError;
   let finalTurmaId = turma_id;
 
   if (!finalTurmaId) {
@@ -61,6 +76,19 @@ export async function POST(request: NextRequest) {
       if (cErr) confirm_errors.push({ id: m.id as string, error: cErr.message });
     }
   }
+
+  recordAuditServer({
+    escolaId: escola_id,
+    portal: "admin_escola",
+    acao: "MATRICULA_MASSA_TURMA",
+    entity: "matriculas",
+    details: {
+      import_id,
+      turma_id: finalTurmaId,
+      success_count: row?.success_count ?? 0,
+      error_count: row?.error_count ?? 0,
+    },
+  }).catch(() => null);
 
   return NextResponse.json({
     ok: true,

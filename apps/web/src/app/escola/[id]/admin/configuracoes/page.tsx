@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 // Importa os componentes (ajusta os caminhos se necessário)
 import AcademicSetupWizard from "@/components/escola/onboarding/AcademicSetupWizard";
 import SettingsHub from "@/components/escola/settings/SettingsHub";
+import SettingsHubSkeleton from "@/components/escola/settings/SettingsHubSkeleton";
 
 // Definição de Props para Next.js 15
 type Props = {
@@ -20,7 +21,7 @@ export default function ConfiguracoesPage({ params }: Props) {
   const [loading, setLoading] = useState(true);
   const [forceWizard, setForceWizard] = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
-  const [setupStatus, setSetupStatus] = useState<{
+  const [pageSetupStatus, setPageSetupStatus] = useState<{ // Renamed to avoid conflict
     has_ano_letivo_ativo: boolean;
     has_3_trimestres: boolean;
     has_curriculo_published: boolean;
@@ -28,51 +29,121 @@ export default function ConfiguracoesPage({ params }: Props) {
     percentage: number;
   } | null>(null);
 
+  // States for SettingsHub data
+  const [avaliacaoPending, setAvaliacaoPending] = useState<boolean | null>(null);
+  const [progress, setProgress] = useState<number | null>(null);
+  const [fullSetupStatus, setFullSetupStatus] = useState<{
+    ano_letivo_ok?: boolean;
+    periodos_ok?: boolean;
+    avaliacao_ok?: boolean;
+    curriculo_draft_ok?: boolean;
+    curriculo_published_ok?: boolean;
+    turmas_ok?: boolean;
+  } | null>(null);
+  const [estruturaCounts, setEstruturaCounts] = useState<{
+    cursos_total?: number;
+    classes_total?: number;
+    disciplinas_total?: number;
+  } | null>(null);
+
   // 2. Verificar Estado da Escola no Cliente
   useEffect(() => {
-    async function checkStatus() {
+    let cancelled = false;
+    async function fetchData() {
+      if (!escolaId) {
+        setLoading(false);
+        return;
+      }
       try {
-        const res = await fetch(`/api/escola/${escolaId}/admin/setup/status`, {
+        // --- Existing checkStatus logic for pageSetupStatus ---
+        const pageRes = await fetch(`/api/escola/${escolaId}/admin/setup/status`, {
+          cache: "no-store",
+        });
+        const pageJson = await pageRes.json().catch(() => null);
+        if (cancelled) return;
+        
+        if (pageRes.ok && pageJson?.data) {
+          setPageSetupStatus(pageJson.data);
+        } else {
+          setPageSetupStatus(null);
+        }
+
+        // --- SettingsHub data fetching logic ---
+        const res = await fetch(`/api/escola/${escolaId}/admin/setup/state`, {
           cache: "no-store",
         });
         const json = await res.json().catch(() => null);
-        if (res.ok && json?.data) {
-          setSetupStatus(json.data);
-        } else {
-          setSetupStatus(null);
+        if (!res.ok) throw new Error(json?.error || "Erro ao carregar configurações.");
+        if (cancelled) return;
+
+        const data = json?.data ?? {};
+        setFullSetupStatus({
+          ano_letivo_ok: data?.badges?.ano_letivo_ok,
+          periodos_ok: data?.badges?.periodos_ok,
+          avaliacao_ok: data?.badges?.avaliacao_ok,
+          curriculo_draft_ok: data?.badges?.curriculo_draft_ok,
+          curriculo_published_ok: data?.badges?.curriculo_published_ok,
+          turmas_ok: data?.badges?.turmas?.ok,
+        });
+        if (typeof data?.badges?.avaliacao_ok === "boolean") {
+          setAvaliacaoPending(!data.badges.avaliacao_ok);
         }
-      } catch (error) {
-        console.error("Erro ao verificar status:", error);
-        setSetupStatus(null);
+        
+        if (typeof data?.completion_percent === 'number') {
+          setProgress(data.completion_percent);
+        }
+
+        const impactRes = await fetch(`/api/escola/${escolaId}/admin/setup/impact`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        const impactJson = await impactRes.json().catch(() => null);
+        if (cancelled) return;
+        
+        if (impactRes.ok && impactJson?.ok) {
+          const counts = impactJson?.data?.counts;
+          setEstruturaCounts({
+            cursos_total: counts?.cursos_afetados ?? 0,
+            classes_total: counts?.classes_afetadas ?? 0,
+            disciplinas_total: counts?.disciplinas_afetadas ?? 0,
+          });
+        }
+
+      } catch (error: any) {
+        console.error("Erro ao carregar dados:", error);
+        if (!cancelled) {
+          setPageSetupStatus(null); // Reset page status on error
+          setFullSetupStatus(null); // Reset SettingsHub status on error
+          setAvaliacaoPending(null); 
+          setProgress(null);
+          setEstruturaCounts(null);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
-    if (escolaId) {
-      checkStatus();
-    }
+    setLoading(true);
+    fetchData();
+
+    return () => {
+      cancelled = true;
+    };
   }, [escolaId]);
 
   // 3. Estado de Carregamento
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
-          <p className="text-sm text-slate-500 font-medium">A carregar configurações...</p>
-        </div>
-      </div>
-    );
+    return <SettingsHubSkeleton />;
   }
 
-  const setupComplete = Boolean(setupStatus && setupStatus.percentage === 100);
+  const setupComplete = Boolean(pageSetupStatus && pageSetupStatus.percentage === 100);
 
   const checklistItems = [
-    { label: "Ano letivo ativo", ok: setupStatus?.has_ano_letivo_ativo },
-    { label: "3 trimestres configurados", ok: setupStatus?.has_3_trimestres },
-    { label: "Currículo publicado", ok: setupStatus?.has_curriculo_published },
-    { label: "Turmas geradas no ano", ok: setupStatus?.has_turmas_no_ano },
+    { label: "Ano letivo ativo", ok: pageSetupStatus?.has_ano_letivo_ativo },
+    { label: "3 trimestres configurados", ok: pageSetupStatus?.has_3_trimestres },
+    { label: "Currículo publicado", ok: pageSetupStatus?.has_curriculo_published },
+    { label: "Turmas geradas no ano", ok: pageSetupStatus?.has_turmas_no_ano },
   ];
 
   // 4. MODO WIZARD (apenas quando forçado)
@@ -113,9 +184,9 @@ export default function ConfiguracoesPage({ params }: Props) {
                 <div className="text-sm mt-0.5">
                   Complete o setup acadêmico para liberar o portal.
                 </div>
-                {setupStatus && (
+                {pageSetupStatus && (
                   <div className="text-xs text-amber-800 mt-1">
-                    Progresso atual: {setupStatus.percentage}%
+                    Progresso atual: {pageSetupStatus.percentage}%
                   </div>
                 )}
               </div>
@@ -152,6 +223,10 @@ export default function ConfiguracoesPage({ params }: Props) {
       <SettingsHub 
         escolaId={escolaId} 
         onOpenWizard={() => setForceWizard(true)} 
+        avaliacaoPending={avaliacaoPending}
+        progress={progress}
+        setupStatus={fullSetupStatus}
+        estruturaCounts={estruturaCounts}
       />
     </div>
   );

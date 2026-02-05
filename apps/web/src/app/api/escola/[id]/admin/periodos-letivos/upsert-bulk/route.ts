@@ -27,7 +27,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
     }
 
-    const requestedEscolaId = params.id;
+    const { id: requestedEscolaId } = await (params as any);
     const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId);
 
     if (!userEscolaId || userEscolaId !== requestedEscolaId) {

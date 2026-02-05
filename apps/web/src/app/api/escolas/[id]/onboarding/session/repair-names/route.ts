@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { hasPermission } from "@/lib/permissions";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { recordAuditServer } from "@/lib/audit";
 
 // POST /api/escolas/[id]/onboarding/session/repair-names
 // Admin-only: Ajusta anos_letivos para o formato canônico (datas coerentes)
@@ -21,6 +21,11 @@ export async function POST(
         { ok: false, error: "Não autenticado" },
         { status: 401 }
       );
+
+    const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId);
+    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
+    }
 
     // Authorization: escola admin or vínculo com permissão configurar_escola
     let allowed = false;
@@ -64,23 +69,8 @@ export async function POST(
         { status: 403 }
       );
 
-    if (
-      !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-      !process.env.SUPABASE_SERVICE_ROLE_KEY
-    ) {
-      return NextResponse.json(
-        { ok: false, error: "Configuração Supabase ausente." },
-        { status: 500 }
-      );
-    }
-
-    const admin = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-
     // Load academic years
-    const { data: sessions, error } = await (admin as any)
+    const { data: sessions, error } = await (s as any)
       .from("anos_letivos")
       .select("id, ano, data_inicio, data_fim, ativo")
       .eq("escola_id", escolaId);
@@ -103,12 +93,20 @@ export async function POST(
 
     let updated = 0;
     for (const patch of toUpdate) {
-      const { error: updErr } = await (admin as any)
+      const { error: updErr } = await (s as any)
         .from("anos_letivos")
         .update({ data_inicio: patch.data_inicio, data_fim: patch.data_fim, ano: patch.ano } as any)
         .eq("id", patch.id);
       if (!updErr) updated++;
     }
+
+    recordAuditServer({
+      escolaId,
+      portal: 'admin_escola',
+      acao: 'ANO_LETIVO_REPAIR_NAMES',
+      entity: 'anos_letivos',
+      details: { updated, total: (sessions || []).length },
+    }).catch(() => null)
 
     return NextResponse.json({
       ok: true,

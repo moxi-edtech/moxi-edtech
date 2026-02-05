@@ -45,6 +45,8 @@ type Props = {
   existingCodes: string[];
   existingNames: string[];
   existingDisciplines?: DisciplineOption[];
+  pendingDisciplines?: DisciplineOption[];
+  onSelectPending?: (id: string) => void;
   onClose: () => void;
   onSave: (payload: DisciplinaForm) => Promise<void> | void;
   onDelete?: (id: string) => Promise<void> | void;
@@ -86,6 +88,8 @@ export function DisciplinaModal({
   existingCodes,
   existingNames,
   existingDisciplines = [],
+  pendingDisciplines = [],
+  onSelectPending,
   onClose,
   onSave,
   onDelete,
@@ -271,6 +275,23 @@ export function DisciplinaModal({
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {pendingDisciplines.length > 0 && (
+            <section className="bg-white p-5 rounded-xl border border-amber-200 shadow-sm">
+              <h3 className="text-xs font-bold uppercase text-amber-700 mb-3">Resolver pendências</h3>
+              <select
+                value={pendingDisciplines.some((d) => d.id === initial?.id) ? initial?.id ?? "" : ""}
+                onChange={(event) => onSelectPending?.(event.target.value)}
+                className="w-full rounded-xl border border-amber-200 px-3 py-2 text-sm bg-amber-50"
+              >
+                <option value="">Selecione uma disciplina pendente</option>
+                {pendingDisciplines.map((disc) => (
+                  <option key={disc.id} value={disc.id}>
+                    {disc.nome}
+                  </option>
+                ))}
+              </select>
+            </section>
+          )}
           <section className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
             <h3 className="text-sm font-bold text-slate-900 uppercase flex items-center gap-2 mb-4">
               <CalendarDays className="w-4 h-4 text-[#1F6B3B]" /> Quando acontece?

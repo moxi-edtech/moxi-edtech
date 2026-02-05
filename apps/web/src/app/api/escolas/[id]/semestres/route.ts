@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { hasPermission } from "@/lib/permissions";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { recordAuditServer } from "@/lib/audit";
 
 // Helper para validar sobreposição de intervalos [start, end]
 function hasOverlap(start1: Date, end1: Date, start2: Date, end2: Date): boolean {
@@ -28,6 +28,11 @@ export async function GET(
     const { data: auth } = await s.auth.getUser();
     const user = auth?.user;
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
+
+    const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId);
+    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
+    }
 
     // Autorização (mesmo critério do POST)
     let allowed = false;
@@ -57,13 +62,8 @@ export async function GET(
     }
     if (!allowed) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: 'Configuração Supabase ausente.' }, { status: 500 });
-    }
-    const admin = createAdminClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-
     // Verifica sessão pertence à escola
-    const { data: sess, error: sErr } = await (admin as any)
+    const { data: sess, error: sErr } = await (s as any)
       .from('school_sessions')
       .select('id, escola_id')
       .eq('id', sessao_id)
@@ -71,7 +71,7 @@ export async function GET(
     if (sErr) return NextResponse.json({ ok: false, error: sErr.message }, { status: 400 });
     if (!sess || (sess as any).escola_id !== escolaId) return NextResponse.json({ ok: false, error: 'Sessão inválida para esta escola' }, { status: 404 });
 
-    let q = (admin as any).from('semestres').select('id, session_id, escola_id, nome, data_inicio, data_fim, attendance_type, permitir_submissao_final, tipo').eq('session_id', sessao_id).eq('escola_id', escolaId);
+    let q = (s as any).from('semestres').select('id, session_id, escola_id, nome, data_inicio, data_fim, attendance_type, permitir_submissao_final, tipo').eq('session_id', sessao_id).eq('escola_id', escolaId);
     q = applyKf2ListInvariants(q);
 
     if (tipo && ['TRIMESTRE', 'BIMESTRE', 'SEMESTRE', 'ANUAL'].includes(tipo)) q = q.eq('tipo', tipo);
@@ -123,6 +123,11 @@ export async function POST(
     const user = auth?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
+    const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId);
+    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
+    }
+
     // Autorização: configurar_escola ou admin/super_admin vinculado
     let allowed = false;
     try {
@@ -172,15 +177,7 @@ export async function POST(
     if (!allowed) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
 
     // Confirma sessão pertence à escola e pega datas
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: "Configuração Supabase ausente." }, { status: 500 });
-    }
-    const admin = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-
-    const { data: sess, error: sErr } = await (admin as any)
+    const { data: sess, error: sErr } = await (s as any)
       .from("school_sessions")
       .select("id, escola_id, data_inicio, data_fim")
       .eq("id", sessao_id)
@@ -211,7 +208,7 @@ export async function POST(
     if (!maxByTipo[effectiveTipo]) {
       // Fallback para configuração da escola
       try {
-        const { data: cfg } = await (admin as any)
+        const { data: cfg } = await (s as any)
           .from("configuracoes_escola")
           .select("periodo_tipo")
           .eq("escola_id", escolaId)
@@ -224,7 +221,7 @@ export async function POST(
     }
 
     // Busca períodos existentes da sessão
-    const { data: rows, error: listErr } = await (admin as any)
+    const { data: rows, error: listErr } = await (s as any)
       .from("semestres")
       .select("id, nome, data_inicio, data_fim, tipo")
       .eq("session_id", sessao_id)
@@ -277,7 +274,7 @@ export async function POST(
     let insertErr: any = null;
     let inserted: any[] | null = null;
     {
-      const { data: insData, error } = await (admin as any)
+      const { data: insData, error } = await (s as any)
         .from("semestres")
         .insert(baseInsert as any)
         .select("id");
@@ -286,7 +283,7 @@ export async function POST(
     }
     if (insertErr && String(insertErr.message || "").toLowerCase().includes("column") && String(insertErr.message || "").includes("tipo")) {
       const { tipo: _t, ...withoutTipo } = baseInsert;
-      const { data: insData2, error: retryErr } = await (admin as any)
+      const { data: insData2, error: retryErr } = await (s as any)
         .from("semestres")
         .insert(withoutTipo as any)
         .select("id");
@@ -297,7 +294,23 @@ export async function POST(
       return NextResponse.json({ ok: false, error: insertErr.message }, { status: 400 });
     }
 
-    return NextResponse.json({ ok: true, id: inserted?.[0]?.id || null });
+    const createdId = inserted?.[0]?.id || null;
+
+    recordAuditServer({
+      escolaId,
+      portal: "admin_escola",
+      acao: "SEMESTRE_CRIADO",
+      entity: "semestres",
+      entityId: createdId ? String(createdId) : null,
+      details: {
+        sessao_id,
+        tipo: effectiveTipo,
+        data_inicio,
+        data_fim,
+      },
+    }).catch(() => null);
+
+    return NextResponse.json({ ok: true, id: createdId });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Erro inesperado";
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });

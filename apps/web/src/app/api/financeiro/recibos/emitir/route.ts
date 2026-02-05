@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { requireFeature } from "@/lib/plan/requireFeature";
 import { HttpError } from "@/lib/errors";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 const PayloadSchema = z.object({
   mensalidadeId: z.string().uuid(),
@@ -26,19 +26,26 @@ export async function POST(req: NextRequest) {
 
     const { mensalidadeId } = payload.data;
 
-    const { escolaId } = await requireFeature("fin_recibo_pdf");
     const supabase = await supabaseServerTyped();
-
-    const { data: escola, error: escolaError } = await supabase
-      .from("escolas")
-      .select("validation_base_url")
-      .eq("id", escolaId)
-      .maybeSingle();
-
-    if (escolaError) {
+    const { data: userRes } = await supabase.auth.getUser();
+    const user = userRes?.user;
+    if (!user) {
       return NextResponse.json(
-        { ok: false, error: "Falha ao carregar escola." },
-        { status: 500 }
+        { ok: false, error: "Não autenticado" },
+        { status: 401 }
+      );
+    }
+
+    const metadataEscolaId =
+      (user.user_metadata as { escola_id?: string | null } | null)?.escola_id ??
+      (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ??
+      null;
+
+    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id, undefined, metadataEscolaId);
+    if (!escolaId) {
+      return NextResponse.json(
+        { ok: false, error: "Usuário sem escola associada", code: "NO_SCHOOL" },
+        { status: 403 }
       );
     }
 
@@ -65,10 +72,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const baseUrl =
-      process.env.NEXT_PUBLIC_VALIDATION_BASE_URL ??
-      (escola as any)?.validation_base_url ??
-      null;
+    const baseUrlEnv = process.env.NEXT_PUBLIC_VALIDATION_BASE_URL ?? null;
+    let baseUrl = baseUrlEnv;
+    if (!baseUrlEnv) {
+      const { data: escola } = await supabase
+        .from("escolas")
+        .select("validation_base_url")
+        .eq("id", escolaId)
+        .maybeSingle();
+      baseUrl = (escola as any)?.validation_base_url ?? null;
+    }
 
     const urlValidacao = baseUrl
       ? `${String(baseUrl).replace(/\/$/, "")}/documentos/${publicId}`

@@ -6,12 +6,20 @@ import { applyKf2ListInvariants } from '@/lib/kf2'
 
 // GET /api/secretaria/turmas/:id/disciplinas
 // Returns assigned disciplinas for a turma with professor info and simple linkage checks
-export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     const supabase = await supabaseServerTyped<any>()
     const headers = new Headers()
     const { data: userRes } = await supabase.auth.getUser()
-    const user = userRes?.user
+    let user = userRes?.user
+    if (!user) {
+      const authHeader = req.headers.get('authorization')
+      const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+      if (token) {
+        const { data: tokenUser } = await supabase.auth.getUser(token)
+        user = tokenUser?.user ?? null
+      }
+    }
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
     const { id: turmaId } = await ctx.params
@@ -28,7 +36,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     // Load assignments
     let query = supabase
       .from('turma_disciplinas')
-      .select('id, turma_id, curso_matriz_id, professor_id, horarios, planejamento')
+      .select('id, turma_id, curso_matriz_id, professor_id, carga_horaria_semanal, classificacao, periodos_ativos, entra_no_horario, avaliacao_mode, avaliacao_disciplina_id, modelo_avaliacao_id')
       .eq('escola_id', escolaId)
       .eq('turma_id', turmaId)
 
@@ -42,36 +50,63 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     const professorIds = Array.from(new Set((rows || []).map((r: any) => r.professor_id).filter(Boolean)))
 
     // Fetch disciplina names
-    const [discRes, profRes] = await Promise.all([
+    const [discRes, profRes, turmaRes] = await Promise.all([
       disciplinaIds.length
         ? supabase
-            .from('curso_matriz')
-            .select('id, disciplina_id, disciplina:disciplinas_catalogo(id, nome)')
-            .in('id', disciplinaIds)
-            .eq('escola_id', escolaId)
+          .from('curso_matriz')
+          .select('id, disciplina_id, disciplina:disciplinas_catalogo!curso_matriz_disciplina_id_fkey(id, nome), curriculo:curso_curriculos(id, status)')
+          .in('id', disciplinaIds)
+          .eq('escola_id', escolaId)
         : Promise.resolve({ data: [] as any[] }),
       professorIds.length
         ? supabase
-            .from('professores')
-            .select('id, profiles!professores_profile_id_fkey ( user_id, nome, email )')
-            .in('id', professorIds)
-            .eq('escola_id', escolaId)
+          .from('professores')
+          .select('id, profiles!professores_profile_id_fkey ( user_id, nome, email )')
+          .in('id', professorIds)
+          .eq('escola_id', escolaId)
         : Promise.resolve({ data: [] as any[] }),
+      supabase
+        .from('turmas')
+        .select('id, ano_letivo_id')
+        .eq('escola_id', escolaId)
+        .eq('id', turmaId)
+        .maybeSingle(),
     ])
 
-    const discMap = new Map<string, string>()
+    const { data: periodosRows } = turmaRes.data?.ano_letivo_id
+      ? await supabase
+          .from('periodos_letivos')
+          .select('id, numero, dt_inicio, dt_fim')
+          .eq('escola_id', escolaId)
+          .eq('ano_letivo_id', turmaRes.data.ano_letivo_id)
+          .order('numero', { ascending: true })
+      : { data: [] as any[] };
+
+    const discMap = new Map<string, { id: string | null; nome: string | null; curriculo_status?: string | null }>()
     for (const d of (discRes as any).data || []) {
       const nome = (d as any)?.disciplina?.nome as string | undefined
-      if (nome) discMap.set((d as any).id, nome)
+      const curriculoStatus = (d as any)?.curriculo?.status ?? null
+      const disciplinaId = (d as any)?.disciplina_id ?? null
+      if (nome || disciplinaId) {
+        discMap.set((d as any).id, { id: disciplinaId, nome: nome ?? null, curriculo_status: curriculoStatus })
+      }
     }
 
     const profRowById = new Map<string, any>()
     for (const r of ((profRes as any).data || [])) profRowById.set(r.id, r)
 
     // Simple linkage checks per assignment (prefer FK columns when available)
+    const periodos = (periodosRows ?? []).map((periodo: any) => ({
+      id: periodo.id,
+      numero: periodo.numero,
+      dt_inicio: periodo.dt_inicio,
+      dt_fim: periodo.dt_fim,
+    }))
+
     const items = [] as any[]
     for (const row of rows || []) {
-      const disciplinaNome = discMap.get(row.curso_matriz_id) || null
+      const discInfo = discMap.get(row.curso_matriz_id)
+      const disciplinaNome = discInfo?.nome ?? null
       const profRow = profRowById.get(row.professor_id)
       const profile = Array.isArray(profRow?.profiles) ? profRow?.profiles?.[0] : profRow?.profiles
 
@@ -128,7 +163,21 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       items.push({
         id: row.id,
         turma_id: row.turma_id,
-        disciplina: { id: row.curso_matriz_id, nome: disciplinaNome },
+        disciplina: { id: discInfo?.id ?? row.curso_matriz_id, nome: disciplinaNome },
+        curriculo_status: discInfo?.curriculo_status ?? null,
+        meta: {
+          carga_horaria_semanal: row.carga_horaria_semanal ?? null,
+          classificacao: row.classificacao ?? null,
+          periodos_ativos: row.periodos_ativos ?? null,
+          entra_no_horario: row.entra_no_horario ?? null,
+          avaliacao_mode: row.avaliacao_mode ?? null,
+          avaliacao_disciplina_id: row.avaliacao_disciplina_id ?? null,
+          modelo_avaliacao_id: row.modelo_avaliacao_id ?? null,
+        },
+        turma: {
+          id: turmaRes.data?.id ?? turmaId,
+          ano_letivo_id: turmaRes.data?.ano_letivo_id ?? null,
+        },
         professor: { id: row.professor_id, nome: profile?.nome ?? null, email: profile?.email ?? null },
         horarios: row.horarios ?? null,
         planejamento: row.planejamento ?? null,
@@ -142,7 +191,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       })
     }
 
-    return NextResponse.json({ ok: true, items, total: items.length }, { headers })
+    return NextResponse.json({ ok: true, items, total: items.length, periodos }, { headers })
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })

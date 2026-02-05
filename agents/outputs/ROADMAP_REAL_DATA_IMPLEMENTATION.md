@@ -31,7 +31,7 @@ Evoluir os wireframes da "Dona Maria" para operações reais (SSOT), conectando 
 **Meta:** usar `modelos_avaliacao` real.
 - [x] Listar modelos reais e fórmula padrão na página de avaliação.
 - [x] CRUD completo dos modelos com UI visual (sem JSON).
-- [ ] Preview de pauta (simulado) com dados reais do modelo.
+- [x] Preview de pauta (simulado) com dados reais do modelo.
 - [x] Vincular disciplina ao `modelo_avaliacao_id`.
 
 ### Fase 4 — Currículo e Turmas
@@ -123,3 +123,95 @@ Evoluir os wireframes da "Dona Maria" para operações reais (SSOT), conectando 
 - Contagens atuais:
   - `disciplinas_catalogo`: 78 registros.
   - `curso_matriz`: 201 registros.
+
+---
+
+## Sessão Atual — Currículo Completo (Drafts, Pendências e Publish Seguro)
+
+### Objetivo
+Implementar o contrato “currículo publicado = metadados completos”, permitir onboarding com currículo incompleto (lazy), e exibir pendências no admin dashboard/portal com atalho direto para o modal.
+
+### Mudanças de Schema / RPC (Aplicadas no remoto)
+- **Migração:** `supabase/migrations/20260307000000_curriculo_profile_fields.sql`
+  - Novos campos em `curso_matriz`: `carga_horaria_semanal`, `classificacao`, `periodos_ativos`, `entra_no_horario`, `avaliacao_mode`, `avaliacao_modelo_id`, `avaliacao_disciplina_id`, `status_completude`.
+  - Novos campos em `turma_disciplinas` para copiar metadados do currículo publicado.
+  - `curriculo_publish` reforçado: valida pendências e retorna lista estruturada (`pendencias`, `pendencias_count`).
+  - `curriculo_rebuild_turma_disciplinas` e `gerar_turmas_from_curriculo` agora copiam metadados.
+- **Policies:** `supabase/migrations/20260307000001_curriculo_delete_policies.sql`
+  - DELETE em `curso_matriz` e `turma_disciplinas` **apenas** para `admin_escola` e `admin`.
+
+### API / Backend
+- `POST /api/escola/:id/admin/curriculo/install-preset` agora cria currículo **sem auto publish**.
+- `POST /api/escola/:id/admin/curriculo/publish` retorna pendências quando incompleto.
+- `GET /api/escolas/:id/disciplinas` suporta filtro `status_completude` e embed explícito `disciplinas_catalogo!curso_matriz_disciplina_id_fkey`.
+- `PUT /api/escolas/:id/disciplinas/:disciplinaId` cria **draft v2** automaticamente se a disciplina estiver em currículo published e edita o rascunho.
+
+### UI / UX
+- **Onboarding (AcademicStep2):** permite concluir mesmo sem turmas (lazy), aviso para ajustar depois.
+- **StructureMarketplace:**
+  - Lista com badges de pendência.
+  - Botão “Resolver pendências” abre modal com filtro direto.
+  - Suporte a `?resolvePendencias=1` para abrir modal automaticamente.
+- **Admin Dashboard:** badge de pendências no currículo com link direto para abrir modal.
+
+### Fixes Operacionais
+- Corrigido embed ambíguo de `disciplinas_catalogo` na API (PGRST201).
+- Ajustada lógica de delete de curso para remover `curso_matriz` antes de apagar `curso_curriculos`.
+
+### Arquivos-chave
+- `apps/web/src/lib/academico/curriculum-apply.ts`
+- `apps/web/src/app/api/escolas/[id]/disciplinas/route.ts`
+- `apps/web/src/app/api/escolas/[id]/disciplinas/[disciplinaId]/route.ts`
+- `apps/web/src/app/api/escola/[id]/admin/curriculo/publish/route.ts`
+- `apps/web/src/components/escola/settings/StructureMarketplace.tsx`
+- `apps/web/src/components/escola/settings/_components/DisciplinaModal.tsx`
+- `apps/web/src/components/escola/settings/CourseManager.tsx`
+- `apps/web/src/components/layout/escola-admin/EscolaAdminDashboardContent.tsx`
+
+### Observações
+- Publicação agora exige `status_completude = completo` para todos os itens do currículo.
+- Disciplinas publicadas não são alteradas; editar cria automaticamente um draft.
+- Pendências são visíveis no dashboard e no currículo, com atalho direto ao modal.
+
+---
+
+## Sessão Atual — Secretaria (Pautas com Períodos Ativos)
+
+### Objetivo
+Integrar metadados do currículo às telas da secretaria, garantindo que pautas e gestão de notas respeitem `periodos_ativos`.
+
+### Implementação
+- **API Secretaria:** `GET /api/secretaria/turmas/:id/disciplinas`
+  - Retorna `meta` do `turma_disciplinas` (carga horária, periodos, classificacao, avaliacao_mode).
+  - Retorna `periodos_letivos` do ano da turma para seleção rápida.
+- **Pauta rápida:** `PautaRapidaModal`
+  - Adicionado seletor de período.
+  - Lista de disciplinas filtrada por `periodos_ativos`.
+  - Seleção inválida é resetada automaticamente.
+- **Detalhe da turma:** `TurmaDetailClient`
+  - Disciplina listadas filtradas por período selecionado.
+  - Merge de `periodos_ativos` para dados vindos da view `turma_disciplinas_professores`.
+
+### Arquivos-chave
+- `apps/web/src/app/api/secretaria/turmas/[id]/disciplinas/route.ts`
+- `apps/web/src/app/api/secretaria/turmas/[id]/detalhes/route.ts`
+- `apps/web/src/components/secretaria/PautaRapidaModal.tsx`
+- `apps/web/src/components/secretaria/TurmaDetailClient.tsx`
+
+---
+
+## Sessão Atual — POS/Balcão (Pagamento rápido)
+
+### Objetivo
+Ativar o fluxo de pagamento imediato no balcão da secretaria.
+
+### Implementação
+- **Endpoint novo:** `POST /api/financeiro/pagamentos/registrar`
+  - Valida autenticação + role (`secretaria`, `financeiro`, `admin`, `admin_escola`, `staff_admin`).
+  - Resolve tenant via `mensalidades.escola_id`.
+  - Chama RPC `registrar_pagamento`.
+  - Registra em `pagamentos` caso não exista pagamento concluído.
+  - Normaliza métodos (`numerario` → `dinheiro`, `multicaixa` → `tpa_fisico`, `mbway` → `referencia`).
+
+### Arquivo-chave
+- `apps/web/src/app/api/financeiro/pagamentos/registrar/route.ts`

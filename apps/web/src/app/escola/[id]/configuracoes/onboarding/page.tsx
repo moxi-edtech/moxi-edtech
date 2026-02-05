@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 // Importa os teus componentes (ajusta os caminhos se necessário)
 import AcademicSetupWizard from "@/components/escola/onboarding/AcademicSetupWizard";
 import SettingsHub from "@/components/escola/settings/SettingsHub";
+import SettingsHubSkeleton from "@/components/escola/settings/SettingsHubSkeleton";
 
 // Definição de Props para Next.js 15
 type Props = {
@@ -23,10 +24,32 @@ export default function ConfiguracoesPage({ params }: Props) {
   const [forceWizard, setForceWizard] = useState(false); // Para edição manual
   const [schoolDisplayName, setSchoolDisplayName] = useState("");
 
+  const [avaliacaoPending, setAvaliacaoPending] = useState<boolean | null>(null);
+  const [progress, setProgress] = useState<number | null>(null);
+  const [setupStatus, setSetupStatus] = useState<{
+    ano_letivo_ok?: boolean;
+    periodos_ok?: boolean;
+    avaliacao_ok?: boolean;
+    curriculo_draft_ok?: boolean;
+    curriculo_published_ok?: boolean;
+    turmas_ok?: boolean;
+  } | null>(null);
+  const [estruturaCounts, setEstruturaCounts] = useState<{
+    cursos_total?: number;
+    classes_total?: number;
+    disciplinas_total?: number;
+  } | null>(null);
+
   // 1. Verificar Estado da Escola
   useEffect(() => {
-    async function checkStatus() {
+    let cancelled = false;
+    async function fetchData() {
+      if (!escolaId) {
+        setLoading(false); // If no escolaId, we can't fetch. Stop loading.
+        return;
+      }
       try {
+        // --- Existing checkStatus logic ---
         const supabase = createClient();
         const [turmasResult, escolaNomeResult] = await Promise.all([
           supabase
@@ -40,6 +63,8 @@ export default function ConfiguracoesPage({ params }: Props) {
             .maybeSingle(),
         ]);
 
+        if (cancelled) return;
+
         if (!turmasResult.error && turmasResult.count && turmasResult.count > 0) {
           setSetupComplete(true);
         } else {
@@ -48,30 +73,86 @@ export default function ConfiguracoesPage({ params }: Props) {
 
         const nome = (escolaNomeResult.data as any)?.nome as string | undefined;
         if (nome) setSchoolDisplayName(nome);
-      } catch (error) {
-        console.error("Erro ao verificar status:", error);
-        // Em caso de erro, assumimos incompleto para não bloquear
-        setSetupComplete(false);
+        // --- End existing checkStatus logic ---
+
+        // --- New SettingsHub data fetching logic ---
+        const res = await fetch(`/api/escola/${escolaId}/admin/setup/state`, {
+          cache: "no-store",
+        });
+        const json = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(json?.error || "Erro ao carregar configurações.");
+        if (cancelled) return;
+
+        const data = json?.data ?? {};
+        setSetupStatus({
+          ano_letivo_ok: data?.badges?.ano_letivo_ok,
+          periodos_ok: data?.badges?.periodos_ok,
+          avaliacao_ok: data?.badges?.avaliacao_ok,
+          curriculo_draft_ok: data?.badges?.curriculo_draft_ok,
+          curriculo_published_ok: data?.badges?.curriculo_published_ok,
+          turmas_ok: data?.badges?.turmas_ok,
+        });
+        if (typeof data?.badges?.avaliacao_ok === "boolean") {
+          setAvaliacaoPending(!data.badges.avaliacao_ok);
+        }
+        
+        if (typeof data?.completion_percent === 'number') {
+          setProgress(data.completion_percent);
+        }
+
+        const impactRes = await fetch(`/api/escola/${escolaId}/admin/setup/impact`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        const impactJson = await impactRes.json().catch(() => null);
+        if (cancelled) return;
+        
+        if (impactRes.ok && impactJson?.ok) {
+          const counts = impactJson?.data?.counts;
+          setEstruturaCounts({
+            cursos_total: counts?.cursos_afetados ?? 0,
+            classes_total: counts?.classes_afetadas ?? 0,
+            disciplinas_total: counts?.disciplinas_afetadas ?? 0,
+          });
+        }
+        // --- End new SettingsHub data fetching logic ---
+
+      } catch (error: any) {
+        console.error("Erro ao carregar dados:", error);
+        if (!cancelled) {
+          // You might want to set an error state here as well for the UI
+          setAvaliacaoPending(null); // Assuming this relates to an error state for some part of the settings
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
-    if (escolaId) {
-      checkStatus();
-    }
+    setLoading(true); // Start loading when effect runs
+    fetchData();
+
+    return () => {
+      cancelled = true;
+    };
   }, [escolaId]);
+
+
 
   // 2. Loading State
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
-          <p className="text-sm text-slate-500 font-medium">A carregar configurações...</p>
+    if (setupComplete) { // If setup was complete in the last render, we are loading new data for SettingsHub
+      return <SettingsHubSkeleton />;
+    } else { // If setup was not complete, or its initial load, show generic loader for the wizard flow
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
+            <p className="text-sm text-slate-500 font-medium">A carregar configurações...</p>
+          </div>
         </div>
-      </div>
-    );
+      );
+    }
   }
 
   // 3. MODO WIZARD (Se não tem turmas OU o utilizador pediu para reconfigurar)
@@ -116,6 +197,10 @@ export default function ConfiguracoesPage({ params }: Props) {
       <SettingsHub 
         escolaId={escolaId} 
         onOpenWizard={() => setForceWizard(true)} 
+        avaliacaoPending={avaliacaoPending}
+        progress={progress}
+        setupStatus={setupStatus}
+        estruturaCounts={estruturaCounts}
       />
     </div>
   );

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { hasPermission } from "@/lib/permissions";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { recordAuditServer } from "@/lib/audit";
 
 // DELETE /api/escolas/[id]/onboarding/session/[sessionId]
 // Deletes an archived school session for the given escola.
@@ -17,6 +17,11 @@ export async function DELETE(
     const { data: auth } = await s.auth.getUser();
     const user = auth?.user;
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
+
+    const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId);
+    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
+    }
 
     // Authorization: allow escola admins or users with configurar_escola vínculo; also allow profiles-based admin link
     let allowed = false;
@@ -54,16 +59,8 @@ export async function DELETE(
     }
     if (!allowed) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: 'Configuração Supabase ausente.' }, { status: 500 });
-    }
-    const admin = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-
     // Ensure the academic year exists, belongs to this escola, and is not active
-    const { data: sess, error: selErr } = await (admin as any)
+    const { data: sess, error: selErr } = await (s as any)
       .from('anos_letivos')
       .select('id, escola_id, ativo, ano')
       .eq('id', sessionId)
@@ -84,17 +81,17 @@ export async function DELETE(
     const anoLetivoNome = found.ano ? String(found.ano) : null;
     try {
       const [periodosRes, turmasRes, matriculasRes] = await Promise.all([
-        (admin as any)
+        (s as any)
           .from('periodos_letivos')
           .select('id', { count: 'exact', head: true })
           .eq('ano_letivo_id', sessionId),
         anoLetivoNome
-          ? (admin as any)
+          ? (s as any)
               .from('turmas')
               .select('id', { count: 'exact', head: true })
               .eq('ano_letivo', anoLetivoNome)
           : Promise.resolve({ count: 0 }),
-        (admin as any)
+        (s as any)
           .from('matriculas')
           .select('id', { count: 'exact', head: true })
           .eq('ano_letivo_id', sessionId),
@@ -113,14 +110,14 @@ export async function DELETE(
         return NextResponse.json({ ok: false, error: `Não é possível deletar este ano letivo pois existem registros vinculados: ${detalhes}. Exclua/mova-os ou use ?force=1 para forçar a exclusão (cascata).` }, { status: 400 });
       }
 
-      if (force) {
-        // Delete dependents: matriculas -> turmas -> periodos
-        const depErrors: string[] = [];
-        try { await (admin as any).from('matriculas').delete().eq('ano_letivo_id', sessionId) } catch (e) { depErrors.push(e instanceof Error ? e.message : String(e)) }
+        if (force) {
+          // Delete dependents: matriculas -> turmas -> periodos
+          const depErrors: string[] = [];
+        try { await (s as any).from('matriculas').delete().eq('ano_letivo_id', sessionId) } catch (e) { depErrors.push(e instanceof Error ? e.message : String(e)) }
         if (anoLetivoNome) {
-          try { await (admin as any).from('turmas').delete().eq('ano_letivo', anoLetivoNome) } catch (e) { depErrors.push(e instanceof Error ? e.message : String(e)) }
+          try { await (s as any).from('turmas').delete().eq('ano_letivo', anoLetivoNome) } catch (e) { depErrors.push(e instanceof Error ? e.message : String(e)) }
         }
-        try { await (admin as any).from('periodos_letivos').delete().eq('ano_letivo_id', sessionId) } catch (e) { depErrors.push(e instanceof Error ? e.message : String(e)) }
+        try { await (s as any).from('periodos_letivos').delete().eq('ano_letivo_id', sessionId) } catch (e) { depErrors.push(e instanceof Error ? e.message : String(e)) }
         if (depErrors.length) {
           return NextResponse.json({ ok: false, error: `Falha ao excluir dependências: ${depErrors.join(' | ')}` }, { status: 400 });
         }
@@ -131,12 +128,21 @@ export async function DELETE(
     }
 
     // Attempt deletion (safe after dependency checks)
-    const { error: delErr } = await (admin as any)
+    const { error: delErr } = await (s as any)
       .from('anos_letivos')
       .delete()
       .eq('id', sessionId)
       .eq('escola_id', escolaId);
     if (delErr) return NextResponse.json({ ok: false, error: delErr.message }, { status: 400 });
+
+    recordAuditServer({
+      escolaId,
+      portal: 'admin_escola',
+      acao: 'ANO_LETIVO_REMOVIDO',
+      entity: 'anos_letivos',
+      entityId: sessionId,
+      details: { force },
+    }).catch(() => null)
 
     return NextResponse.json({ ok: true });
   } catch (e) {

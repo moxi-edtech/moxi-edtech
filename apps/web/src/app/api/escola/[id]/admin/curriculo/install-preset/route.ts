@@ -31,11 +31,11 @@ const bodySchema = z.object({
     .optional(),
   options: z
     .object({
-      autoPublish: z.boolean().default(true),
+      autoPublish: z.boolean().default(false),
       generateTurmas: z.boolean().default(true),
     })
     .optional()
-    .default({ autoPublish: true, generateTurmas: true }),
+    .default({ autoPublish: false, generateTurmas: true }),
 });
 
 const buildDefaultConfig = (presetKey: string) => {

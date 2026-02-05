@@ -3,7 +3,7 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
 
-import { createClient } from "@supabase/supabase-js";
+import { supabaseServer } from "@/lib/supabaseServer";
 import type { Database } from "~types/supabase";
 
 type UserRole = Database["public"]["Enums"]["user_role"];
@@ -24,22 +24,22 @@ const derivePrefix = (escolaId: string) => {
 };
 
 export async function GET(req: Request) {
-  const supabaseUrl =
-    process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error:
-          "Configuração ausente: defina SUPABASE_URL (ou NEXT_PUBLIC_SUPABASE_URL) e SUPABASE_SERVICE_ROLE_KEY.",
-      },
-      { status: 500 }
-    );
+  const s = await supabaseServer();
+  const { data: sess } = await s.auth.getUser();
+  const user = sess?.user;
+  if (!user) {
+    return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
   }
-
-  const admin = createClient<Database>(supabaseUrl, serviceRoleKey);
+  const { data: rows } = await s
+    .from('profiles')
+    .select('role')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(1);
+  const role = (rows?.[0] as any)?.role as string | undefined;
+  if (role !== 'super_admin') {
+    return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 });
+  }
 
   const { searchParams } = new URL(req.url);
   const escolaId = searchParams.get("escolaId")?.trim() ?? "";
@@ -64,7 +64,7 @@ export async function GET(req: Request) {
   const prefix = derivePrefix(escolaId);
   const start = ROLE_START[userRole];
 
-  const { data, error } = await admin.rpc("generate_unique_numero_login", {
+  const { data, error } = await (s as any).rpc("generate_unique_numero_login", {
     p_escola_id: escolaId,
     p_role: userRole,
     p_prefix: prefix,
