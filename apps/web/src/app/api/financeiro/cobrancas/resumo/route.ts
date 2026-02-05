@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
@@ -11,16 +14,31 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     }
 
+    const metaEscolaId = (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? null;
+    const escolaId = await resolveEscolaIdForUser(
+      supabase,
+      user.id,
+      null,
+      metaEscolaId ? String(metaEscolaId) : null
+    );
+    if (!escolaId) {
+      return NextResponse.json({ ok: false, error: "Perfil sem escola vinculada" }, { status: 400 });
+    }
+
     const since = new Date();
     since.setDate(since.getDate() - 30);
 
     let query = supabase
       .from("vw_financeiro_cobrancas_diario")
       .select("dia, enviadas, respondidas, pagos, valor_recuperado")
+      .eq("escola_id", escolaId)
       .gte("dia", since.toISOString().slice(0, 10))
       .order("dia", { ascending: true });
 
-    query = applyKf2ListInvariants(query, { defaultLimit: 50 });
+    query = applyKf2ListInvariants(query, {
+      defaultLimit: 50,
+      order: [{ column: "dia", ascending: true }],
+    });
 
     const { data, error } = await query;
 

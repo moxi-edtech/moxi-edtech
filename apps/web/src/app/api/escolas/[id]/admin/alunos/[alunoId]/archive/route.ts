@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
 import { recordAuditServer } from "@/lib/audit";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export async function POST(req: Request, context: { params: Promise<{ id: string; alunoId: string }> }) {
   const { id: escolaId, alunoId } = await context.params;
@@ -14,6 +13,11 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     const { data: userRes } = await s.auth.getUser();
     const user = userRes?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+
+    const resolvedEscolaId = await resolveEscolaIdForUser(s, user.id, escolaId);
+    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
+    }
 
     // autorização: super/global admin ou admin da escola
     const { data: prof } = await s.from("profiles").select("role").eq("user_id", user.id).maybeSingle();
@@ -36,12 +40,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
       return NextResponse.json({ ok: false, error: "Aluno não pertence à escola" }, { status: 403 });
     }
 
-    const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    if (!adminUrl || !serviceRole) return NextResponse.json({ ok: false, error: "Falta SUPABASE_SERVICE_ROLE_KEY" }, { status: 500 });
-    const admin = createAdminClient<Database>(adminUrl, serviceRole);
-
-    const { error: rpcError } = await admin.rpc('soft_delete_aluno', {
+    const { error: rpcError } = await s.rpc('soft_delete_aluno', {
       p_id: alunoId,
       p_deleted_by: user.id,
       p_reason: reason,

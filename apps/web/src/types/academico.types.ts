@@ -71,6 +71,14 @@ export type Discipline = {
   descricao?: string;
   sigla?: string;
   carga_horaria_semana?: number;
+  carga_horaria_semanal?: number;
+  classificacao?: "core" | "complementar" | "optativa" | string;
+  periodos_ativos?: number[];
+  entra_no_horario?: boolean;
+  avaliacao_mode?: "inherit_school" | "custom" | "inherit_disciplina" | string;
+  avaliacao_modelo_id?: string;
+  avaliacao_disciplina_id?: string;
+  status_completude?: "completo" | "incompleto" | string;
   is_core?: boolean;
   is_avaliavel?: boolean;
   area?: string;

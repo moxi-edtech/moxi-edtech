@@ -25,6 +25,7 @@ type Props = {
   charts?: { meses: string[]; alunosPorMes: number[]; pagamentos: PagamentosResumo };
   stats: KpiStats;
   pendingTurmasCount?: number | null;
+  curriculoPendenciasCount?: number | null;
   setupStatus: SetupStatus;
   missingPricingCount?: number;
   financeiroHref?: string;
@@ -41,6 +42,7 @@ export default function EscolaAdminDashboardContent({
   charts,
   stats,
   pendingTurmasCount,
+  curriculoPendenciasCount,
   setupStatus,
   missingPricingCount = 0,
   financeiroHref,
@@ -98,6 +100,27 @@ export default function EscolaAdminDashboardContent({
       </div>
 
       <div className="space-y-8 animate-in fade-in duration-500">
+        {typeof curriculoPendenciasCount === "number" && curriculoPendenciasCount > 0 && (
+          <div className="animate-in fade-in duration-500">
+            <Link
+              href={`/escola/${escolaId}/admin/configuracoes/estrutura?resolvePendencias=1`}
+              className="group flex items-center justify-between gap-4 p-5 rounded-3xl bg-amber-50 border border-amber-200 shadow-sm transition-all hover:border-amber-300 hover:shadow-md"
+            >
+              <div>
+                <p className="text-sm font-bold text-amber-800">
+                  Faltam detalhes em {curriculoPendenciasCount} disciplina{curriculoPendenciasCount > 1 ? "s" : ""}
+                </p>
+                <p className="text-xs text-amber-600 mt-1">
+                  Ajuste cargas, períodos e avaliação para liberar a publicação do currículo.
+                </p>
+              </div>
+
+              <div className="flex-none w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center group-hover:bg-amber-200 transition">
+                <ArrowRight className="h-5 w-5" />
+              </div>
+            </Link>
+          </div>
+        )}
         {/* Charts */}
         <ChartsSection meses={charts?.meses} alunosPorMes={charts?.alunosPorMes} pagamentos={charts?.pagamentos} />
 

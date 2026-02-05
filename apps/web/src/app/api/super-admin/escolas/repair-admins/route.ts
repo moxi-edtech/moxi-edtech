@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
 import type { Database, TablesInsert } from '~types/supabase'
 import { supabaseServer } from '@/lib/supabaseServer'
+import { recordAuditServer } from '@/lib/audit'
 // ❌ REMOVIDO: import { generateNumeroLogin } from '@/lib/generateNumeroLogin'
 
 type RepairResult = {
@@ -28,15 +28,6 @@ export async function POST(req: NextRequest) {
     const role = (rows?.[0] as any)?.role as string | undefined
     if (role !== 'super_admin') return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: 'Configuração Supabase ausente' }, { status: 500 })
-    }
-
-    const admin = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    ) as any
-
     let targetEscolaId: string | null = null
     let dryRun = false
     try {
@@ -46,7 +37,7 @@ export async function POST(req: NextRequest) {
     } catch {}
 
     // 1) Carrega escolas alvo
-    const { data: escolas, error: eErr } = await admin
+    const { data: escolas, error: eErr } = await (s as any)
       .from('escolas' as any)
       .select('id, nome, status')
       .order('created_at', { ascending: true })
@@ -68,7 +59,7 @@ export async function POST(req: NextRequest) {
       }
 
       // 2) Verifica se já há admin vinculado
-      const { data: vinc, error: vErr } = await admin
+      const { data: vinc, error: vErr } = await (s as any)
         .from('escola_users' as any)
         .select('user_id, papel')
         .eq('escola_id', escolaId)
@@ -89,10 +80,10 @@ export async function POST(req: NextRequest) {
 
       // 3.1) Tentativa via tabela antiga escola_administradores (se existir)
       try {
-        const { data: old } = await admin
-          .from('escola_administradores' as any)
-          .select('user_id, email')
-          .eq('escola_id', escolaId)
+          const { data: old } = await (s as any)
+            .from('escola_administradores' as any)
+            .select('user_id, email')
+            .eq('escola_id', escolaId)
           .limit(1)
         if (old && old.length > 0) {
           userId = (old[0] as any).user_id as string | undefined
@@ -104,7 +95,7 @@ export async function POST(req: NextRequest) {
       // 3.2) Tentativa via profiles com role admin+escola_id
       if (!userId) {
         try {
-          const { data: prof } = await admin
+          const { data: prof } = await (s as any)
             .from('profiles' as any)
             .select('user_id, email')
             .eq('escola_id', escolaId)
@@ -124,27 +115,6 @@ export async function POST(req: NextRequest) {
         continue
       }
 
-      // 4) Se só temos email, criar usuário
-      if (!userId && email) {
-        try {
-          if (!dryRun) {
-            const { data: created, error: cErr } = await admin.auth.admin.createUser({
-              email: email,
-              email_confirm: false,
-              user_metadata: { role: 'admin', must_change_password: true },
-            })
-            if (cErr) throw cErr
-            userId = created?.user?.id as string | undefined
-            actions.push('usuario criado via service role')
-          } else {
-            actions.push('DRY-RUN: criaria usuario via service role')
-          }
-        } catch (e: any) {
-          results.push({ escolaId, escolaNome, status: 'failed', reason: `falha ao criar usuário: ${e?.message || 'erro'}` })
-          continue
-        }
-      }
-
       if (!userId) {
         results.push({ escolaId, escolaNome, status: 'failed', reason: 'userId não resolvido' })
         continue
@@ -153,7 +123,7 @@ export async function POST(req: NextRequest) {
       // 5) Upsert profile e vínculo
       try {
         if (!dryRun) {
-          await admin.from('profiles' as any).upsert([
+          await (s as any).from('profiles' as any).upsert([
             {
               user_id: userId,
               email: email ?? null,
@@ -173,7 +143,7 @@ export async function POST(req: NextRequest) {
 
       try {
         if (!dryRun) {
-          await admin.from('escola_users' as any).upsert([
+          await (s as any).from('escola_users' as any).upsert([
             { escola_id: escolaId, user_id: userId, papel: 'admin' } as any,
           ], { onConflict: 'escola_id,user_id' })
           actions.push('escola_users upsert (papel=admin)')
@@ -196,6 +166,20 @@ export async function POST(req: NextRequest) {
 
       results.push({ escolaId, escolaNome, status: 'ok', actions })
     }
+
+    recordAuditServer({
+      escolaId: null,
+      portal: 'super_admin',
+      acao: 'REPARAR_ADMINS',
+      entity: 'escolas',
+      details: {
+        targetEscolaId,
+        dryRun,
+        total: results.length,
+        ok: results.filter((r) => r.status === 'ok').length,
+        failed: results.filter((r) => r.status === 'failed').length,
+      },
+    }).catch(() => null)
 
     return NextResponse.json({ ok: true, count: results.length, results })
   } catch (err) {

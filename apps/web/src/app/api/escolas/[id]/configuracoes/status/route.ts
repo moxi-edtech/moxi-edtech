@@ -1,30 +1,12 @@
 import { NextResponse, NextRequest } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import { type Database } from "~types/supabase";
-
-const getSupabaseAdmin = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error("Supabase env não configurado.");
-  }
-
-  return createClient<Database>(supabaseUrl, supabaseKey);
-};
+import { supabaseServer } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { requireRoleInSchool } from "@/lib/authz";
 
 export async function GET(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  let supabaseAdmin;
-
-  try {
-    supabaseAdmin = getSupabaseAdmin();
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
   const params = await context.params;
   const escolaId = params.id;
 
@@ -33,8 +15,27 @@ export async function GET(
   }
 
   try {
+    const s = await supabaseServer();
+    const { data: auth } = await s.auth.getUser();
+    const user = auth?.user;
+    if (!user) {
+      return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+    }
+
+    const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId);
+    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+      return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
+    }
+
+    const { error: roleError } = await requireRoleInSchool({
+      supabase: s as any,
+      escolaId: resolvedEscolaId,
+      roles: ["admin", "admin_escola", "staff_admin"],
+    });
+    if (roleError) return roleError;
+
     // 1. Check Identidade (nome e nif na tabela escolas)
-    const { data: escolaData, error: escolaError } = await supabaseAdmin
+    const { data: escolaData, error: escolaError } = await (s as any)
       .from("escolas")
       .select("nome, nif")
       .eq("id", escolaId)
@@ -46,7 +47,7 @@ export async function GET(
     const identidadeCompleta = !!(escolaData?.nome && escolaData?.nif);
 
     // 2. Check Academico (pelo menos 1 curso)
-    const { data: cursoRow, error: cursoError } = await supabaseAdmin
+    const { data: cursoRow, error: cursoError } = await (s as any)
       .from("cursos")
       .select("id")
       .eq("escola_id", escolaId)
@@ -57,7 +58,7 @@ export async function GET(
     const academicoCompleto = Boolean(cursoRow);
 
     // 3. Check Financeiro (pelo menos 1 tabela de preço)
-    const { data: financeiroRow, error: financeiroError } = await supabaseAdmin
+    const { data: financeiroRow, error: financeiroError } = await (s as any)
       .from("financeiro_tabelas")
       .select("id")
       .eq("escola_id", escolaId)

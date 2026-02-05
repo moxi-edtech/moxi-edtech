@@ -8,6 +8,7 @@ type FechoItem = {
   id: string;
   hora: string;
   aluno: string;
+  operador: string;
   valor: number;
   metodo: string;
   descricao: string;
@@ -42,8 +43,14 @@ function mapMetodo(metodo: string | null) {
   if (normalized === "tpa") return "tpa";
   if (normalized === "transfer") return "transferencia";
   if (normalized === "mcx") return "mcx";
-  if (normalized === "kwik") return "mcx";
+  if (normalized === "kwik" || normalized === "kiwk") return "mcx";
   return "outros";
+}
+
+function formatMesAno(mes?: number | null, ano?: number | null) {
+  if (!mes || !ano) return "Mensalidade";
+  const label = new Date(0, mes - 1).toLocaleString("pt-PT", { month: "short" });
+  return `Mensalidade ${label}/${ano}`;
 }
 
 export async function getFechoCaixaData({
@@ -92,7 +99,7 @@ export async function getFechoCaixaData({
 
   let pagamentosQuery = supabase
     .from("pagamentos")
-    .select("id, aluno_id, valor_pago, metodo, created_at, status, created_by")
+    .select("id, aluno_id, mensalidade_id, valor_pago, metodo, created_at, status, created_by, meta")
     .eq("escola_id", escolaId)
     .eq("day_key", dateStr)
     .eq("status", "settled")
@@ -108,7 +115,23 @@ export async function getFechoCaixaData({
   }
 
   const alunoIds = Array.from(new Set((rows || []).map((row: any) => row.aluno_id).filter(Boolean)));
+  const operadorIds = Array.from(
+    new Set((rows || []).map((row: any) => row.created_by).filter(Boolean))
+  );
+  const mensalidadeIds = Array.from(
+    new Set((rows || []).map((row: any) => row.mensalidade_id).filter(Boolean))
+  );
+  const pedidoIds = Array.from(
+    new Set(
+      (rows || [])
+        .map((row: any) => (row.meta as any)?.pedido_id)
+        .filter(Boolean)
+    )
+  );
   const alunoMap = new Map<string, string>();
+  const operadorMap = new Map<string, string>();
+  const mensalidadeMap = new Map<string, string>();
+  const servicoMap = new Map<string, string>();
   if (alunoIds.length > 0) {
     const { data: alunos } = await supabase
       .from("alunos")
@@ -117,6 +140,35 @@ export async function getFechoCaixaData({
       .in("id", alunoIds);
     (alunos ?? []).forEach((aluno: any) => {
       alunoMap.set(aluno.id, aluno.nome_completo || aluno.nome || "—");
+    });
+  }
+  if (operadorIds.length > 0) {
+    const { data: operadores } = await supabase
+      .from("profiles")
+      .select("user_id, nome")
+      .in("user_id", operadorIds);
+    (operadores ?? []).forEach((op: any) => {
+      operadorMap.set(op.user_id, op.nome || "—");
+    });
+  }
+  if (mensalidadeIds.length > 0) {
+    const { data: mensalidades } = await supabase
+      .from("mensalidades")
+      .select("id, mes_referencia, ano_referencia")
+      .eq("escola_id", escolaId)
+      .in("id", mensalidadeIds);
+    (mensalidades ?? []).forEach((m: any) => {
+      mensalidadeMap.set(m.id, formatMesAno(m.mes_referencia, m.ano_referencia));
+    });
+  }
+  if (pedidoIds.length > 0) {
+    const { data: pedidos } = await supabase
+      .from("servico_pedidos")
+      .select("id, servico_nome")
+      .eq("escola_id", escolaId)
+      .in("id", pedidoIds);
+    (pedidos ?? []).forEach((p: any) => {
+      servicoMap.set(p.id, p.servico_nome || "Serviço");
     });
   }
 
@@ -131,6 +183,13 @@ export async function getFechoCaixaData({
     if (metodo === "mcx") totals.mcx += valor;
 
     const alunoNome = row.aluno_id ? alunoMap.get(row.aluno_id) ?? "—" : "—";
+    const operadorNome = row.created_by ? operadorMap.get(row.created_by) ?? "—" : "—";
+    const meta = (row.meta ?? {}) as { pedido_id?: string };
+    const descricao = row.mensalidade_id
+      ? mensalidadeMap.get(row.mensalidade_id) ?? "Mensalidade"
+      : meta.pedido_id
+        ? servicoMap.get(meta.pedido_id) ?? "Serviço"
+        : "Pagamento";
     const hora = row.created_at
       ? new Date(row.created_at).toLocaleTimeString("pt-PT", {
           hour: "2-digit",
@@ -142,9 +201,10 @@ export async function getFechoCaixaData({
       id: row.id,
       hora,
       aluno: alunoNome,
+      operador: operadorNome,
       valor,
       metodo,
-      descricao: "Pagamento",
+      descricao,
     };
   });
 

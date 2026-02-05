@@ -5,7 +5,7 @@ import { Banknote, CreditCard, Loader2, ReceiptText, Upload, X } from "lucide-re
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
-type Method = "cash" | "tpa" | "transfer" | "mcx" | "kwik";
+type Method = "cash" | "tpa" | "transfer" | "mcx" | "kiwk";
 
 type Props = {
   open: boolean;
@@ -41,7 +41,7 @@ export function PagamentoModal({
 
   const needsRef = useMemo(() => method === "tpa", [method]);
   const needsEvidence = useMemo(() => method === "transfer", [method]);
-  const needsGatewayRef = useMemo(() => method === "mcx" || method === "kwik", [method]);
+  const needsGatewayRef = useMemo(() => method === "mcx" || method === "kiwk", [method]);
 
   useEffect(() => {
     if (!open) return;
@@ -210,14 +210,14 @@ export function PagamentoModal({
             </button>
             <button
               type="button"
-              onClick={() => setMethod("kwik")}
+              onClick={() => setMethod("kiwk")}
               className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
-                method === "kwik"
+                method === "kiwk"
                   ? "border-klasse-gold ring-4 ring-klasse-gold/20"
                   : "border-slate-200"
               }`}
             >
-              <ReceiptText className="h-4 w-4 text-slate-500" /> KWIK
+              <ReceiptText className="h-4 w-4 text-slate-500" /> KIWK
             </button>
           </div>
 
@@ -245,7 +245,7 @@ export function PagamentoModal({
               {needsGatewayRef ? (
                 <>
                   <label className="text-xs font-bold uppercase text-slate-500">
-                    {method === "kwik" ? "KWIK ref (opcional)" : "Gateway ref (opcional)"}
+                    {method === "kiwk" ? "KIWK ref (opcional)" : "Gateway ref (opcional)"}
                   </label>
                   <input
                     value={gatewayRef}
@@ -274,7 +274,7 @@ export function PagamentoModal({
           ) : null}
 
           <div className="text-xs text-slate-500">
-            * TPA/Transfer/MCX entram como pendente até conciliação.
+            * TPA/Transfer/MCX/KIWK entram como pendente até conciliação.
           </div>
         </div>
 

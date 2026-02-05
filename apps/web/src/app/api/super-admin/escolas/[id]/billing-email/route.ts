@@ -1,6 +1,4 @@
 import { NextResponse } from 'next/server'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
-import type { Database } from '~types/supabase'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { buildBillingEmail, sendMail } from '@/lib/mailer'
 import { recordAuditServer } from '@/lib/audit'
@@ -18,20 +16,15 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const role = (rows?.[0] as any)?.role as string | undefined
     if (role !== 'super_admin') return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: 'Configuração do Supabase ausente' }, { status: 500 })
-    }
-    const admin = createAdminClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!) as any
-
     // Dados da escola
-    const { data: esc } = await admin.from('escolas').select('nome,status').eq('id', escolaId).limit(1)
+    const { data: esc } = await (s as any).from('escolas').select('nome,status').eq('id', escolaId).limit(1)
     const escolaNome = (esc?.[0] as any)?.nome || 'sua escola'
     const status = (esc?.[0] as any)?.status as string | undefined
     if (status === 'excluida') return NextResponse.json({ ok: false, error: 'Escola excluída não permite cobrança.' }, { status: 400 })
     if (status === 'suspensa') return NextResponse.json({ ok: false, error: 'Escola suspensa por pagamento. Regularize para enviar cobranças.' }, { status: 400 })
 
     // Destinatários: papel financeiro; fallback para admin/staff_admin
-    const { data: finUsers } = await admin
+    const { data: finUsers } = await (s as any)
       .from('escola_users')
       .select('user_id,papel')
       .eq('escola_id', escolaId)
@@ -39,7 +32,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     let userIds: string[] = (finUsers || []).map((u: any) => String(u.user_id))
     if (!userIds.length) {
-      const { data: admins } = await admin
+      const { data: admins } = await (s as any)
         .from('escola_users')
         .select('user_id,papel')
         .eq('escola_id', escolaId)
@@ -49,7 +42,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     }
     if (!userIds.length) return NextResponse.json({ ok: false, error: 'Nenhum destinatário encontrado (financeiro/admin).' }, { status: 400 })
 
-    const { data: profiles, error: profilesError } = await admin
+    const { data: profiles, error: profilesError } = await (s as any)
       .rpc('admin_profiles_by_ids', { p_user_ids: userIds })
 
     if (profilesError) {

@@ -3,6 +3,7 @@ import { ExtratoActions } from "@/components/financeiro/ExtratoActions";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 type SearchParams = { q?: string }
 

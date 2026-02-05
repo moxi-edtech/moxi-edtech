@@ -255,6 +255,7 @@ export function BuscaBalcaoRapido({ escolaId }: { escolaId: string | null }) {
       {/* Modal de Pagamento Rápido (novo) */}
       {modalPagamentoAberto && alunoParaPagamento && (
         <ModalPagamentoRapido
+          escolaId={escolaId}
           aluno={alunoParaPagamento}
           mensalidade={mensalidadeParaPagamento}
           open={modalPagamentoAberto}

@@ -168,6 +168,20 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       disciplinasData = disciplinasData ?? [];
     }
 
+    const { data: periodosRows } = await disciplinaClient
+      .from('turma_disciplinas')
+      .select('curso_matriz_id, periodos_ativos, curso_matriz(disciplina_id)')
+      .eq('escola_id', escolaId)
+      .eq('turma_id', turmaId);
+
+    const periodosByDisciplinaId = new Map<string, number[] | null>();
+    for (const row of periodosRows || []) {
+      const disciplinaId = (row as any)?.curso_matriz?.disciplina_id as string | undefined;
+      if (disciplinaId) {
+        periodosByDisciplinaId.set(disciplinaId, (row as any).periodos_ativos ?? null);
+      }
+    }
+
     if (!disciplinasData || disciplinasData.length === 0) {
       let fallbackQuery = disciplinaClient
         .from('turma_disciplinas')
@@ -175,6 +189,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           id,
           turma_id,
           curso_matriz_id,
+          periodos_ativos,
           curso_matriz (
             id,
             disciplina_id,
@@ -197,13 +212,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         turma_id: turmaId,
         disciplina: row.curso_matriz?.disciplinas_catalogo || null,
         professores: null,
+        periodos_ativos: row.periodos_ativos ?? null,
       }));
     }
 
     if (!disciplinasData || disciplinasData.length === 0) {
       let matrizQuery = disciplinaClient
         .from('curso_matriz')
-        .select('id, disciplina_id, disciplinas_catalogo ( id, nome )')
+        .select('id, disciplina_id, periodos_ativos, disciplinas_catalogo ( id, nome )')
         .eq('escola_id', escolaId)
         .eq('classe_id', turmaResult.classes?.id || '')
         .order('ordem', { ascending: true });
@@ -224,6 +240,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         turma_id: turmaId,
         disciplina: row.disciplinas_catalogo || null,
         professores: null,
+        periodos_ativos: row.periodos_ativos ?? null,
       }));
     }
 
@@ -261,6 +278,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       nome: td.syllabi?.nome || td.disciplina?.nome || 'Disciplina Desconhecida',
       sigla: '',
       professor: td.professores?.profiles?.nome || td.professores?.apelido || 'Sem Professor',
+      periodos_ativos: td.periodos_ativos ?? periodosByDisciplinaId.get(td.disciplina?.id || td.disciplina_id) ?? null,
     }));
 
     const responseData = {

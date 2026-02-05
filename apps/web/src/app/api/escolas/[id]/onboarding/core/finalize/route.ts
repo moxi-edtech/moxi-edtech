@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient as createAdminClient } from "@supabase/supabase-js"
 import { supabaseServer } from "@/lib/supabaseServer"
 import type { Database, TablesInsert } from "~types/supabase"
 import { mapPapelToGlobalRole } from "@/lib/permissions"
@@ -8,6 +7,7 @@ import { recordAuditServer } from "@/lib/audit"
 import { buildCredentialsEmail, buildOnboardingEmail, sendMail } from "@/lib/mailer"
 import { z } from 'zod'
 import { hasPermission } from "@/lib/permissions"
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 
 // POST /api/escolas/[id]/onboarding
 // Authorizes current user against the target escola, then performs updates/inserts
@@ -19,65 +19,17 @@ export async function POST(
   const { id: escolaId } = await context.params;
 
   try {
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json(
-        { ok: false, error: "Configuração Supabase ausente (URL/Service role)." },
-        { status: 500 }
-      )
-    }
-
-    const EmailOpt = z.preprocess(
-      (val) => {
-        if (typeof val !== 'string') return undefined
-        const t = val.trim().toLowerCase()
-        return t.length === 0 ? undefined : t
-      },
-      z.string().email().optional(),
-    )
-
-    const PayloadSchema = z.object({
-      // Novo: modo “finalizar onboarding acadêmico”
-      tipo: z.enum(["academico"]).optional(),
-      sessionId: z.string().uuid().optional(),
-
-      // 🔹 Campos antigos (modo “onboarding geral”)
-      schoolName: z.string().trim().min(1).optional(),
-      primaryColor: z
-        .string()
-        .regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/)
-        .optional(),
-      logoUrl: z.string().url().nullable().optional(),
-      className: z.string().trim().optional(),
-      subjects: z.string().trim().optional(),
-      teacherEmail: EmailOpt,
-      staffEmail: EmailOpt,
-    })
-
-    const parse = PayloadSchema.safeParse(await req.json())
-    if (!parse.success) {
-      const msg = parse.error.issues?.[0]?.message || 'Dados inválidos'
-      return NextResponse.json({ ok: false, error: msg }, { status: 400 })
-    }
-    const payload = parse.data;
-
-    const {
-      tipo,
-      sessionId,
-      schoolName,
-      primaryColor,
-      logoUrl,
-      className,
-      subjects,
-      teacherEmail,
-      staffEmail,
-    } = payload;
-
     // 1) Get current user via RLS-safe server client
     const sserver = await supabaseServer()
     const { data: userRes } = await sserver.auth.getUser()
     const user = userRes?.user
     if (!user) {
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 })
+    }
+
+    const resolvedEscolaId = await resolveEscolaIdForUser(sserver as any, user.id, escolaId)
+    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 })
     }
 
     // 2) Authorization: must have configurar_escola permission linked to this escola
@@ -154,17 +106,59 @@ export async function POST(
       return NextResponse.json({ ok: false, error: "Sem permissão para esta escola" }, { status: 403 })
     }
 
-    // 3) Bloqueia onboarding para escolas suspensas/excluídas
-    const admin: any = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
+    const EmailOpt = z.preprocess(
+      (val) => {
+        if (typeof val !== 'string') return undefined
+        const t = val.trim().toLowerCase()
+        return t.length === 0 ? undefined : t
+      },
+      z.string().email().optional(),
     )
-    const { data: esc } = await admin.from('escolas').select('status').eq('id', escolaId).limit(1)
+
+    const PayloadSchema = z.object({
+      // Novo: modo “finalizar onboarding acadêmico”
+      tipo: z.enum(["academico"]).optional(),
+      sessionId: z.string().uuid().optional(),
+
+      // 🔹 Campos antigos (modo “onboarding geral”)
+      schoolName: z.string().trim().min(1).optional(),
+      primaryColor: z
+        .string()
+        .regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/)
+        .optional(),
+      logoUrl: z.string().url().nullable().optional(),
+      className: z.string().trim().optional(),
+      subjects: z.string().trim().optional(),
+      teacherEmail: EmailOpt,
+      staffEmail: EmailOpt,
+    })
+
+    const parse = PayloadSchema.safeParse(await req.json())
+    if (!parse.success) {
+      const msg = parse.error.issues?.[0]?.message || 'Dados inválidos'
+      return NextResponse.json({ ok: false, error: msg }, { status: 400 })
+    }
+    const payload = parse.data;
+
+    const {
+      tipo,
+      sessionId,
+      schoolName,
+      primaryColor,
+      logoUrl,
+      className,
+      subjects,
+      teacherEmail,
+      staffEmail,
+    } = payload;
+
+    // 3) Bloqueia onboarding para escolas suspensas/excluídas
+    const { data: esc } = await sserver.from('escolas').select('status').eq('id', escolaId).limit(1)
     const status = (esc?.[0] as any)?.status as string | undefined
     if (status === 'excluida') return NextResponse.json({ ok: false, error: 'Escola excluída não permite finalizar onboarding.' }, { status: 400 })
     if (status === 'suspensa') return NextResponse.json({ ok: false, error: 'Escola suspensa por pagamento. Regularize para finalizar onboarding.' }, { status: 400 })
 
-    // 4) Use service role to perform writes bypassing RLS
+    // 4) Atualizações via RLS (sem service role)
 
     // 3.1) Update escola basics
     const escolaUpdateBase: any = {
@@ -175,7 +169,7 @@ export async function POST(
     }
 
     const updateEscolaWithFallback = async (patch: any) => {
-      const { data, error } = await admin.from('escolas').update(patch).eq('id', escolaId)
+      const { data, error } = await sserver.from('escolas').update(patch).eq('id', escolaId)
       if (error && Object.prototype.hasOwnProperty.call(patch, 'needs_academic_setup')) {
         const msg = error.message || ''
         if (
@@ -185,7 +179,7 @@ export async function POST(
         ) {
           const clone: any = { ...patch }
           delete clone.needs_academic_setup
-          const { error: err2 } = await admin.from('escolas').update(clone).eq('id', escolaId)
+          const { error: err2 } = await sserver.from('escolas').update(clone).eq('id', escolaId)
           return { error: err2 }
         }
       }
@@ -230,7 +224,7 @@ export async function POST(
       ))
 
       if (list.length) {
-        const { data: existing } = await (admin as any)
+        const { data: existing } = await (sserver as any)
           .from('cursos')
           .select('nome')
           .eq('escola_id', escolaId)
@@ -241,7 +235,7 @@ export async function POST(
 
         if (toCreate.length) {
           const cursoRows = toCreate.map((nome) => ({ nome, escola_id: escolaId })) as any[]
-          const { error: subjectsError } = await (admin as any).from('cursos').insert(cursoRows)
+          const { error: subjectsError } = await (sserver as any).from('cursos').insert(cursoRows)
           if (subjectsError) {
             return NextResponse.json({ ok: true, warning: subjectsError.message })
           }
@@ -260,17 +254,14 @@ export async function POST(
       try {
         const roleEnum = mapPapelToGlobalRole(inv.papel)
         // Check if exists
-        const { data: prof } = await admin.from('profiles').select('user_id, numero_login').eq('email', inv.email).limit(1)
+        const { data: prof } = await sserver.from('profiles').select('user_id, numero_login').eq('email', inv.email).limit(1)
         let userId = (prof?.[0] as any)?.user_id as string | undefined
         let numeroLogin: string | null = (prof?.[0] as any)?.numero_login ?? null
         let invited = false
 
         if (!userId) {
-          const { data: inviteRes } = await (admin as any).auth.admin.inviteUserByEmail(inv.email, {
-            data: { nome: inv.nome ?? inv.papel, role: roleEnum, must_change_password: true },
-          })
-          userId = inviteRes?.user?.id as string | undefined
-          if (userId) invited = true
+          inviteResult.failed.push(inv.email)
+          continue
         }
 
         if (!userId) continue
@@ -278,23 +269,7 @@ export async function POST(
         // Generate temp password for newly invited users
         let tempPassword: string | null = null
         if (invited) {
-          try {
-            const generateStrongPassword = (len = 12) => {
-              const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-              const lower = 'abcdefghijklmnopqrstuvwxyz'
-              const nums = '0123456789'
-              const special = '!@#$%^&*()-_=+[]{};:,.?'
-              const all = upper + lower + nums + special
-              const pick = (set: string) => set[Math.floor(Math.random() * set.length)]
-              let pwd = pick(upper) + pick(lower) + pick(nums) + pick(special)
-              for (let i = pwd.length; i < len; i++) pwd += pick(all)
-              return pwd.split('').sort(() => Math.random() - 0.5).join('')
-            }
-            tempPassword = generateStrongPassword(12)
-            await (admin as any).auth.admin.updateUserById(userId, { password: tempPassword, user_metadata: { must_change_password: true } })
-          } catch (_) {
-            tempPassword = null
-          }
+          tempPassword = null
         }
 
         // ❗ numero_login:
@@ -315,23 +290,15 @@ export async function POST(
         }
 
         try {
-          await admin.from('profiles').upsert(profilePayload)
+          await sserver.from('profiles').upsert(profilePayload)
         } catch {}
 
         // Ensure app_metadata
-        try {
-          await (admin as any).auth.admin.updateUserById(userId, {
-            app_metadata: {
-              role: roleEnum,
-              escola_id: escolaId,
-              numero_usuario: numeroLogin || undefined,
-            },
-          })
-        } catch {}
+        // Atualização de auth metadata requer service role; mantemos apenas dados locais
 
         // Link papel
         try {
-          await admin.from('escola_users').upsert(
+          await sserver.from('escola_users').upsert(
             { escola_id: escolaId, user_id: userId, papel: inv.papel } as any,
             { onConflict: 'escola_id,user_id' }
           )
@@ -357,7 +324,7 @@ export async function POST(
 
         // Envia email de credenciais (inclui numero_login só se já existir)
         try {
-          const { data: esc2 } = await admin.from('escolas' as any).select('nome').eq('id', escolaId).maybeSingle()
+          const { data: esc2 } = await sserver.from('escolas' as any).select('nome').eq('id', escolaId).maybeSingle()
           const escolaNome = (esc2 as any)?.nome ?? null
           const loginUrl = process.env.NEXT_PUBLIC_BASE_URL ? `${process.env.NEXT_PUBLIC_BASE_URL}/login` : null
           const mail = buildCredentialsEmail({
@@ -377,6 +344,19 @@ export async function POST(
         inviteResult.failed.push(inv.email)
       }
     }
+
+    recordAuditServer({
+      escolaId,
+      portal: 'admin_escola',
+      acao: 'ONBOARDING_FINALIZADO',
+      entity: 'escolas',
+      entityId: escolaId,
+      details: {
+        tipo: tipo ?? 'geral',
+        sessionId: sessionId ?? null,
+        convites: inviteResult,
+      },
+    }).catch(() => null)
 
     return NextResponse.json({
       ok: true,

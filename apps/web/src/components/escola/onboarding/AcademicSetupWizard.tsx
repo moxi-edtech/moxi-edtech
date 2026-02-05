@@ -1,17 +1,25 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { StepHeader } from "@/components/onboarding/StepHeader";
-import { StepFooter } from "@/components/onboarding/StepFooter";
 import { toast } from "sonner";
-import { CURRICULUM_PRESETS } from "@/lib/onboarding/curriculum-presets";
+import { 
+  Check, 
+  ChevronRight, 
+  ArrowLeft, 
+  Loader2, 
+  School, 
+  GraduationCap, 
+  Layers, 
+  Wand2,
+  CalendarCheck
+} from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
+import { CURRICULUM_PRESETS } from "@/lib/onboarding/curriculum-presets";
 
+// Componentes Filhos (já refatorados anteriormente)
 import AcademicStep1 from "./AcademicStep1";
 import AcademicStep2 from "./AcademicStep2";
 import AcademicStep2Config from "./AcademicStep2Config";
-
-import { type CurriculumCategory } from "./academicSetupTypes";
 
 import {
   type TurnosState,
@@ -19,6 +27,7 @@ import {
   type Periodo,
   type MatrixRow,
   type PadraoNomenclatura,
+  type CurriculumCategory,
 } from "./academicSetupTypes";
 
 type Props = {
@@ -27,63 +36,90 @@ type Props = {
   initialSchoolName?: string;
 };
 
+// --- HELPERS ---
 async function fetchAllPaginated<T>(endpoint: string, limit = 50): Promise<T[]> {
   const items: T[] = [];
   let cursor: string | null = null;
-
   do {
     const url = new URL(endpoint, window.location.origin);
     url.searchParams.set("limit", String(limit));
     if (cursor) url.searchParams.set("cursor", cursor);
     const res = await fetch(url.toString(), { cache: "no-store" });
     const json = await res.json().catch(() => null);
-    if (!res.ok || json?.ok === false) {
-      throw new Error(json?.error || "Falha ao carregar dados paginados");
-    }
-    const pageItems = (json?.data ?? json?.items ?? []) as T[];
-    items.push(...pageItems);
+    if (!res.ok || json?.ok === false) throw new Error(json?.error || "Falha ao carregar dados");
+    items.push(...(json?.data ?? json?.items ?? []));
     cursor = json?.next_cursor ?? null;
   } while (cursor);
-
   return items;
 }
 
 const DEFAULT_AVALIACAO_CONFIG = {
-  SIMPLIFICADO: {
-    componentes: [
-      { code: 'MAC', peso: 50, ativo: true },
-      { code: 'PT', peso: 50, ativo: true },
-    ],
-  },
-  ANGOLANO_TRADICIONAL: {
-    componentes: [
-      { code: 'MAC', peso: 30, ativo: true },
-      { code: 'NPP', peso: 30, ativo: true },
-      { code: 'PT', peso: 40, ativo: true },
-    ],
-  },
-  COMPETENCIAS: {
-    componentes: [
-      { code: 'COMP', peso: 100, ativo: true },
-    ],
-  },
-  DEPOIS: {
-    componentes: [],
-  },
+  SIMPLIFICADO: { componentes: [{ code: 'MAC', peso: 50, ativo: true }, { code: 'PT', peso: 50, ativo: true }] },
+  ANGOLANO_TRADICIONAL: { componentes: [{ code: 'MAC', peso: 30, ativo: true }, { code: 'NPP', peso: 30, ativo: true }, { code: 'PT', peso: 40, ativo: true }] },
+  COMPETENCIAS: { componentes: [{ code: 'COMP', peso: 100, ativo: true }] },
+  DEPOIS: { componentes: [] },
 } as const;
-
-const hasComponentes = (config?: { componentes?: { code: string }[] }) => (
-  Array.isArray(config?.componentes) && config.componentes.length > 0
-);
 
 const cloneConfig = (config?: { componentes?: ReadonlyArray<{ code: string; peso: number; ativo: boolean }> }) => ({
   componentes: config?.componentes ? config.componentes.map((item) => ({ ...item })) : undefined,
 });
 
+// --- COMPONENTE VISUAL: STEPPER ---
+function WizardStepper({ currentStep }: { currentStep: number }) {
+  const steps = [
+    { num: 1, label: "Sessão", icon: CalendarCheck },
+    { num: 2, label: "Regras", icon: GraduationCap },
+    { num: 3, label: "Matriz", icon: Layers },
+    { num: 4, label: "Gerar", icon: Wand2 },
+  ];
+
+  return (
+    <div className="mx-auto mb-10 w-full max-w-3xl">
+      <div className="relative flex justify-between">
+        {/* Linha de Conexão de Fundo */}
+        <div className="absolute left-0 top-1/2 -z-10 h-0.5 w-full -translate-y-1/2 bg-slate-200" />
+        
+        {/* Linha de Progresso Ativa */}
+        <div 
+          className="absolute left-0 top-1/2 -z-10 h-0.5 -translate-y-1/2 bg-[#1F6B3B] transition-all duration-500"
+          style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
+        />
+
+        {steps.map((s) => {
+          const isCompleted = currentStep > s.num;
+          const isActive = currentStep === s.num;
+          
+          return (
+            <div key={s.num} className="flex flex-col items-center gap-2 bg-slate-50 px-2">
+              <div 
+                className={`
+                  flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all duration-300
+                  ${isCompleted 
+                    ? "border-[#1F6B3B] bg-[#1F6B3B] text-white" 
+                    : isActive 
+                      ? "border-[#1F6B3B] bg-white text-[#1F6B3B] ring-4 ring-[#1F6B3B]/10" 
+                      : "border-slate-300 bg-white text-slate-400"
+                  }
+                `}
+              >
+                {isCompleted ? <Check className="h-5 w-5" /> : <s.icon className="h-5 w-5" />}
+              </div>
+              <span className={`text-xs font-bold uppercase tracking-wider ${isActive || isCompleted ? "text-slate-900" : "text-slate-400"}`}>
+                {s.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// --- MAIN COMPONENT ---
 export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoolName }: Props) {
   const [step, setStep] = useState(1);
 
-  // STEP 1
+  // --- STATES (STEP 1) ---
   const [schoolDisplayName, setSchoolDisplayName] = useState<string>(initialSchoolName || "");
   const [anoLetivo, setAnoLetivo] = useState<number>(new Date().getFullYear());
   const [anoLetivoId, setAnoLetivoId] = useState<string | null>(null);
@@ -94,48 +130,36 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
     { numero: 2, data_inicio: `${new Date().getFullYear()}-05-01`, data_fim: `${new Date().getFullYear()}-08-31`, trava_notas_em: "" },
     { numero: 3, data_inicio: `${new Date().getFullYear()}-09-01`, data_fim: `${new Date().getFullYear()}-12-31`, trava_notas_em: "" },
   ]);
-  const [turnos, setTurnos] = useState<TurnosState>({
-    "Manhã": true,
-    "Tarde": true,
-    "Noite": false,
-  });
-
+  const [turnos, setTurnos] = useState<TurnosState>({ "Manhã": true, "Tarde": true, "Noite": false });
   const [sessaoAtiva, setSessaoAtiva] = useState<AcademicSession | null>(null);
   const [periodos, setPeriodos] = useState<Periodo[]>([]);
   const [creatingSession, setCreatingSession] = useState(false);
 
-  // STEP 2
+  // --- STATES (STEP 2) ---
   const [frequenciaModelo, setFrequenciaModelo] = useState<'POR_AULA' | 'POR_PERIODO'>('POR_AULA');
   const [frequenciaMinPercent, setFrequenciaMinPercent] = useState<number>(75);
   const [modeloAvaliacao, setModeloAvaliacao] = useState<'SIMPLIFICADO' | 'ANGOLANO_TRADICIONAL' | 'COMPETENCIAS' | 'DEPOIS'>('SIMPLIFICADO');
-  const [avaliacaoConfig, setAvaliacaoConfig] = useState<{ componentes?: { code: string; peso: number; ativo: boolean }[] }>({
-    componentes: [
-      { code: 'MAC', peso: 50, ativo: true },
-      { code: 'PT', peso: 50, ativo: true },
-    ],
-  });
+  const [avaliacaoConfig, setAvaliacaoConfig] = useState<any>({ componentes: DEFAULT_AVALIACAO_CONFIG.SIMPLIFICADO.componentes });
   const [loadingConfig, setLoadingConfig] = useState(false);
 
+  // --- STATES (STEP 3 & 4) ---
   const [presetCategory, setPresetCategory] = useState<CurriculumCategory>("geral");
   const [matrix, setMatrix] = useState<MatrixRow[]>([]);
   const [applyingPreset, setApplyingPreset] = useState(false);
   const [padraoNomenclatura, setPadraoNomenclatura] = useState<PadraoNomenclatura>('descritivo_completo');
   const [appliedCursos, setAppliedCursos] = useState<Record<string, { cursoId: string; classes: string[] }>>({});
-  const [estruturaCounts, setEstruturaCounts] = useState<{
-    cursos_total?: number;
-    classes_total?: number;
-    disciplinas_total?: number;
-  } | null>(null);
-
-  useEffect(() => {
-    if (initialSchoolName) {
-      setSchoolDisplayName((prev) => prev || initialSchoolName);
-    }
-  }, [initialSchoolName]);
+  const [estruturaCounts, setEstruturaCounts] = useState<{ cursos_total?: number; classes_total?: number; disciplinas_total?: number; } | null>(null);
 
   const supabase = useMemo(() => createClient(), []);
 
+  // --- EFFECTS (Logic) ---
+  
+  // Init School Name
+  useEffect(() => {
+    if (initialSchoolName) setSchoolDisplayName(prev => prev || initialSchoolName);
+  }, [initialSchoolName]);
 
+  // Init Dates based on Year
   const buildDefaultPeriodos = (ano: number) => ([
     { numero: 1, data_inicio: `${ano}-01-01`, data_fim: `${ano}-04-30`, trava_notas_em: "" },
     { numero: 2, data_inicio: `${ano}-05-01`, data_fim: `${ano}-08-31`, trava_notas_em: "" },
@@ -148,586 +172,385 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
     setPeriodosConfig(buildDefaultPeriodos(anoLetivo));
   }, [anoLetivo]);
 
-  // Carrega ano letivo ativo + períodos existentes
+  // Fetch Session
   useEffect(() => {
     let cancelled = false;
     async function fetchSession() {
       try {
-        const { data: ano } = await supabase
-          .from('anos_letivos')
-          .select('id, ano, data_inicio, data_fim, ativo')
-          .eq('escola_id', escolaId)
-          .eq('ativo', true)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
+        const { data: ano } = await supabase.from('anos_letivos').select('*').eq('escola_id', escolaId).eq('ativo', true).order('created_at', { ascending: false }).limit(1).maybeSingle();
         if (!cancelled && ano) {
           setAnoLetivo(ano.ano);
           setAnoLetivoId(ano.id);
           setDataInicio(ano.data_inicio);
           setDataFim(ano.data_fim);
-          setSessaoAtiva({
-            id: ano.id,
-            nome: `Ano ${ano.ano}`,
-            ano_letivo: String(ano.ano),
-            data_inicio: ano.data_inicio,
-            data_fim: ano.data_fim,
-            status: ano.ativo ? 'ativa' : 'arquivada',
-          });
-
-          const { data: periodosDb } = await supabase
-            .from('periodos_letivos')
-            .select('id, numero, data_inicio, data_fim, tipo, trava_notas_em')
-            .eq('escola_id', escolaId)
-            .eq('ano_letivo_id', ano.id)
-            .order('numero', { ascending: true });
-
-          if (!cancelled && Array.isArray(periodosDb) && periodosDb.length > 0) {
-            setPeriodos(periodosDb.map((p: any) => ({
-              id: p.id,
-              nome: `Trimestre ${p.numero}`,
-              numero: p.numero,
-              data_inicio: p.data_inicio,
-              data_fim: p.data_fim,
-              sessao_id: ano.id,
-              tipo: p.tipo,
-            })));
-            setPeriodosConfig(periodosDb.map((p: any) => ({
-              numero: p.numero,
-              data_inicio: p.data_inicio,
-              data_fim: p.data_fim,
-              trava_notas_em: p.trava_notas_em ? String(p.trava_notas_em).slice(0, 16) : "",
-            })));
+          setSessaoAtiva({ id: ano.id, nome: `Ano ${ano.ano}`, ano_letivo: String(ano.ano), data_inicio: ano.data_inicio, data_fim: ano.data_fim, status: ano.ativo ? 'ativa' : 'arquivada' });
+          
+          const { data: pDb } = await supabase.from('periodos_letivos').select('*').eq('escola_id', escolaId).eq('ano_letivo_id', ano.id).order('numero');
+          if (pDb) {
+            setPeriodos(pDb.map((p: any) => ({ ...p, nome: `Trimestre ${p.numero}`, sessao_id: ano.id })));
+            setPeriodosConfig(pDb.map((p: any) => ({ numero: p.numero, data_inicio: p.data_inicio, data_fim: p.data_fim, trava_notas_em: p.trava_notas_em ? String(p.trava_notas_em).slice(0, 16) : "" })));
           }
         }
-      } catch (error) {
-        console.error(error);
-      }
+      } catch (e) { console.error(e); }
     }
     if (escolaId) fetchSession();
-    return () => {
-      cancelled = true;
-    };
-  }, [escolaId]);
+    return () => { cancelled = true; };
+  }, [escolaId, supabase]);
 
-  // Load School Name
+  // Fetch School Name (API)
   useEffect(() => {
-    async function fetchSchoolName() {
+    async function fn() {
       try {
         const res = await fetch(`/api/escolas/${escolaId}/nome`, { cache: "no-store" });
-        const json = await res.json();
-        const nome = (json?.nome as string | undefined) ?? (json?.data?.nome as string | undefined);
-        if (nome) {
-          setSchoolDisplayName((prev) => (prev === nome ? prev : nome));
-        }
-      } catch (error) { console.error(error); }
+        const j = await res.json();
+        const n = j?.nome ?? j?.data?.nome;
+        if (n) setSchoolDisplayName(prev => prev === n ? prev : n);
+      } catch (e) { console.error(e); }
     }
-    if (escolaId) fetchSchoolName();
+    if (escolaId) fn();
   }, [escolaId]);
 
+  // Fetch Config (Step 2)
   useEffect(() => {
-    let cancelled = false;
-    async function fetchConfig() {
+    let active = true;
+    async function fn() {
       if (!escolaId) return;
       setLoadingConfig(true);
       try {
-        const res = await fetch(`/api/escola/${escolaId}/admin/configuracoes/avaliacao-frequencia`, {
-          cache: "no-store",
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error || "Erro ao carregar configurações.");
-        if (cancelled) return;
-
-        const data = json?.data ?? {};
-        const modelo = data?.modelo_avaliacao || 'SIMPLIFICADO';
-        setFrequenciaModelo(data?.frequencia_modelo || 'POR_AULA');
-        setFrequenciaMinPercent(Number.isFinite(data?.frequencia_min_percent) ? data.frequencia_min_percent : 75);
-        setModeloAvaliacao(modelo);
-        setAvaliacaoConfig(
-          cloneConfig(
-            hasComponentes(data?.avaliacao_config)
-              ? data.avaliacao_config
-              : DEFAULT_AVALIACAO_CONFIG[modelo as keyof typeof DEFAULT_AVALIACAO_CONFIG]
-          )
-        );
-      } catch (error) {
-        console.error(error);
-      } finally {
-        if (!cancelled) setLoadingConfig(false);
-      }
+        const r = await fetch(`/api/escola/${escolaId}/admin/configuracoes/avaliacao-frequencia`, { cache: "no-store" });
+        const j = await r.json();
+        if (!active) return;
+        const d = j?.data || {};
+        const mod = d.modelo_avaliacao || 'SIMPLIFICADO';
+        setFrequenciaModelo(d.frequencia_modelo || 'POR_AULA');
+        setFrequenciaMinPercent(Number.isFinite(d.frequencia_min_percent) ? d.frequencia_min_percent : 75);
+        setModeloAvaliacao(mod);
+        setAvaliacaoConfig(cloneConfig(d.avaliacao_config?.componentes?.length ? d.avaliacao_config : DEFAULT_AVALIACAO_CONFIG[mod as keyof typeof DEFAULT_AVALIACAO_CONFIG]));
+      } catch (e) { console.error(e); } 
+      finally { if(active) setLoadingConfig(false); }
     }
-    fetchConfig();
-    return () => {
-      cancelled = true;
-    };
+    fn();
+    return () => { active = false; };
   }, [escolaId]);
 
+  // Fetch Counts
   useEffect(() => {
-    let cancelled = false;
-    async function fetchEstruturaCounts() {
+    let active = true;
+    async function fn() {
       if (!escolaId) return;
       try {
-        const res = await fetch(`/api/escola/${escolaId}/admin/setup/status`, {
-          cache: "no-store",
-        });
-        const json = await res.json().catch(() => null);
-        if (!res.ok || json?.ok === false) return;
-        if (cancelled) return;
-        const counts = json?.data?.estrutura_counts;
-        if (counts) {
-          setEstruturaCounts({
-            cursos_total: counts.cursos_total ?? 0,
-            classes_total: counts.classes_total ?? 0,
-            disciplinas_total: counts.disciplinas_total ?? 0,
-          });
-        }
-      } catch (error) {
-        console.error(error);
-      }
+        const r = await fetch(`/api/escola/${escolaId}/admin/setup/status`, { cache: "no-store" });
+        const j = await r.json();
+        if (active && j?.data?.estrutura_counts) setEstruturaCounts(j.data.estrutura_counts);
+      } catch (e) { console.error(e); }
     }
-    fetchEstruturaCounts();
-    return () => {
-      cancelled = true;
-    };
+    fn();
+    return () => { active = false; };
   }, [escolaId]);
 
-  // Actions
-  const handleTurnoToggle = (t: keyof TurnosState) => {
-    setTurnos(prev => ({ ...prev, [t]: !prev[t] }));
-  };
+  // --- HANDLERS ---
+  const handleTurnoToggle = (t: keyof TurnosState) => setTurnos(p => ({ ...p, [t]: !p[t] }));
 
   const handleCreateSession = async () => {
     setCreatingSession(true);
-    const toastId = toast.loading("Salvando ano letivo...");
+    const tid = toast.loading("Salvando sessão...");
     try {
-      const res = await fetch(`/api/escola/${escolaId}/admin/ano-letivo/upsert`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ano: anoLetivo,
-          data_inicio: dataInicio,
-          data_fim: dataFim,
-          ativo: true,
-        }),
+      const r1 = await fetch(`/api/escola/${escolaId}/admin/ano-letivo/upsert`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ano: anoLetivo, data_inicio: dataInicio, data_fim: dataFim, ativo: true })
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Erro ao criar sessão.");
-      const anoId = json?.data?.id as string | undefined;
-      if (!anoId) throw new Error("Ano letivo inválido.");
+      const j1 = await r1.json();
+      if (!r1.ok) throw new Error(j1.error || "Erro na sessão");
+      const aid = j1.data.id;
 
-      const periodosPayload = periodosConfig.map((p) => ({
-        ano_letivo_id: anoId,
-        tipo: 'TRIMESTRE',
-        numero: p.numero,
-        data_inicio: p.data_inicio,
-        data_fim: p.data_fim,
-        trava_notas_em: p.trava_notas_em ? new Date(p.trava_notas_em).toISOString() : null,
+      const periods = periodosConfig.map(p => ({
+        ano_letivo_id: aid, tipo: 'TRIMESTRE', numero: p.numero,
+        data_inicio: p.data_inicio, data_fim: p.data_fim,
+        trava_notas_em: p.trava_notas_em ? new Date(p.trava_notas_em).toISOString() : null
       }));
 
-      const resPeriodos = await fetch(`/api/escola/${escolaId}/admin/periodos-letivos/upsert-bulk`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(periodosPayload),
+      const r2 = await fetch(`/api/escola/${escolaId}/admin/periodos-letivos/upsert-bulk`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(periods)
       });
+      if (!r2.ok) throw new Error("Erro nos períodos");
+      const j2 = await r2.json();
 
-      const jsonPeriodos = await resPeriodos.json();
-      if (!resPeriodos.ok) throw new Error(jsonPeriodos.error || "Erro ao salvar períodos.");
-
-      setAnoLetivoId(anoId);
-      setSessaoAtiva({
-        id: anoId,
-        nome: `Ano ${anoLetivo}`,
-        ano_letivo: String(anoLetivo),
-        data_inicio: dataInicio,
-        data_fim: dataFim,
-        status: 'ativa',
-      });
-      setPeriodos(jsonPeriodos.data || []);
-      toast.success("Ano letivo salvo.", { id: toastId });
+      setAnoLetivoId(aid);
+      setSessaoAtiva({ id: aid, nome: `Ano ${anoLetivo}`, ano_letivo: String(anoLetivo), data_inicio: dataInicio, data_fim: dataFim, status: 'ativa' });
+      setPeriodos(j2.data || []);
+      toast.success("Ano letivo configurado.", { id: tid });
       return true;
     } catch (e: any) {
-      toast.error(e.message, { id: toastId });
+      toast.error(e.message, { id: tid });
       return false;
-    } finally {
-      setCreatingSession(false);
-    }
+    } finally { setCreatingSession(false); }
   };
 
   const handleSavePreferences = async () => {
-    const toastId = toast.loading("Salvando preferências...");
+    const tid = toast.loading("Salvando regras...");
     try {
-      const payload = {
-        frequencia_modelo: frequenciaModelo,
-        frequencia_min_percent: frequenciaMinPercent,
-        modelo_avaliacao: modeloAvaliacao,
-        avaliacao_config: avaliacaoConfig,
-      };
-
-      const res = await fetch(`/api/escola/${escolaId}/admin/configuracoes/avaliacao-frequencia`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      const r = await fetch(`/api/escola/${escolaId}/admin/configuracoes/avaliacao-frequencia`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ frequencia_modelo: frequenciaModelo, frequencia_min_percent: frequenciaMinPercent, modelo_avaliacao: modeloAvaliacao, avaliacao_config: avaliacaoConfig })
       });
-
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Erro ao salvar preferências.");
-      if (json?.data?.avaliacao_config) {
-        setAvaliacaoConfig(cloneConfig(json.data.avaliacao_config));
-      }
-      toast.success("Preferências salvas.", { id: toastId });
+      if (!r.ok) throw new Error("Erro ao salvar regras");
+      toast.success("Regras salvas.", { id: tid });
       return true;
     } catch (e: any) {
-      toast.error(e.message, { id: toastId });
+      toast.error(e.message, { id: tid });
       return false;
     }
   };
 
-  const handleMatrixUpdate = (id: string | number, field: "manha" | "tarde" | "noite", value: string) => {
-    const val = parseInt(value) || 0;
-    setMatrix(prev => prev.map(row => row.id === id ? { ...row, [field]: Math.max(0, val) } : row));
+  const handleMatrixUpdate = (id: string|number, f: "manha"|"tarde"|"noite", v: string) => {
+    const n = parseInt(v) || 0;
+    setMatrix(p => p.map(r => r.id === id ? { ...r, [f]: Math.max(0, n) } : r));
   };
 
   const handleApplyCurriculumPreset = async () => {
-    // --- VALIDAÇÃO CRÍTICA ---
-    if (matrix.length === 0) return toast.error("A matriz de turmas está vazia.");
-    const totalTurmas = matrix.reduce((acc, r) => acc + (r.manha || 0) + (r.tarde || 0) + (r.noite || 0), 0);
-    if (totalTurmas === 0) return toast.error("Defina pelo menos uma turma na matriz.");
-    if (!anoLetivoId) return toast.error("Defina o ano letivo primeiro.");
-
+    if (!matrix.length) return toast.error("Matriz vazia.");
+    if (!anoLetivoId) return toast.error("Sessão não definida.");
+    
     setApplyingPreset(true);
-    const toastId = toast.loading("A aplicar presets... Este processo pode demorar.");
-
+    const tid = toast.loading("Criando cursos e disciplinas...");
+    
     try {
-      // 1. Agrupar a matriz por curso
-      const groupedByCourse = matrix.reduce((acc, row) => {
-        const key = row.cursoKey;
-        if (!acc[key]) {
-          acc[key] = {
-            cursoNome: row.cursoNome || key,
-            rows: [],
-          };
-        }
-        acc[key].rows.push(row);
+      const grouped = matrix.reduce((acc, row) => {
+        if (!acc[row.cursoKey]) acc[row.cursoKey] = { cursoNome: row.cursoNome||row.cursoKey, rows: [] };
+        acc[row.cursoKey].rows.push(row);
         return acc;
-      }, {} as Record<string, { cursoNome: string; rows: MatrixRow[] }>);
+      }, {} as any);
 
-      const applied: Record<string, { cursoId: string; classes: string[] }> = {};
-
+      const applied: any = {};
       const cursosList = await fetchAllPaginated<any>(`/api/escolas/${escolaId}/cursos`);
-      const resolveCursoId = (cursoKey: string) => {
-        const match = cursosList.find((curso: any) =>
-          curso?.curriculum_key === cursoKey
-          || curso?.codigo === cursoKey
-          || curso?.course_code === cursoKey
-        );
-        return match?.id ?? null;
-      };
 
-      // 2. Iterar e chamar a API para cada curso
-      for (const cursoKey in groupedByCourse) {
-        const courseData = groupedByCourse[cursoKey];
-        const { cursoNome, rows } = courseData;
-
-        toast.info(`A processar curso: ${cursoNome}...`, { id: toastId });
+      for (const k in grouped) {
+        const { cursoNome, rows } = grouped[k];
+        toast.info(`Processando ${cursoNome}...`, { id: tid });
         
-        // NOVO: Extrair disciplinas do preset
-        const blueprint = CURRICULUM_PRESETS[cursoKey as keyof typeof CURRICULUM_PRESETS] || [];
+        const bp = CURRICULUM_PRESETS[k as keyof typeof CURRICULUM_PRESETS] || [];
+        const subjects = Array.from(new Set(bp.map((d: any) => d.nome)));
+        const classes = rows.map((r: any) => r.nome);
         
-        const allSubjectsForCourse = Array.from(new Set(blueprint.map(d => d.nome)));
-
-        const disciplinesByClass = blueprint.reduce((acc, d) => {
-          if (!acc[d.classe]) {
-            acc[d.classe] = [];
-          }
-          acc[d.classe].push(d.nome);
-          return acc;
-        }, {} as Record<string, string[]>);
-
-
-        const classes = rows.map(r => r.nome);
-        const matrixMap: Record<string, boolean> = {};
-        const turnosPayload = {
-          manha: turnos["Manhã"],
-          tarde: turnos["Tarde"],
-          noite: turnos["Noite"],
-        };
-        for (const row of rows) {
-          const turnoCounts = { M: row.manha || 0, T: row.tarde || 0, N: row.noite || 0 };
-          for (const subject of allSubjectsForCourse) {
-            if (turnosPayload.manha) matrixMap[`${subject}::${row.nome}::M`] = turnoCounts.M > 0;
-            if (turnosPayload.tarde) matrixMap[`${subject}::${row.nome}::T`] = turnoCounts.T > 0;
-            if (turnosPayload.noite) matrixMap[`${subject}::${row.nome}::N`] = turnoCounts.N > 0;
+        const matrixMap: any = {};
+        const tp = { manha: turnos["Manhã"], tarde: turnos["Tarde"], noite: turnos["Noite"] };
+        
+        for (const r of rows) {
+          for (const s of subjects) {
+            if (tp.manha) matrixMap[`${s}::${r.nome}::M`] = true;
+            if (tp.tarde) matrixMap[`${s}::${r.nome}::T`] = true;
+            if (tp.noite) matrixMap[`${s}::${r.nome}::N`] = true;
           }
         }
 
-        // 3. Construir o payload no formato "advancedConfig"
-        const payload = {
-          presetKey: cursoKey,
-          ano_letivo_id: anoLetivoId,
-          customData: { label: cursoNome, associatedPreset: cursoKey, classes, subjects: allSubjectsForCourse },
-          advancedConfig: {
-            classes,
-            subjects: allSubjectsForCourse,
-            matrix: matrixMap,
-            turnos: turnosPayload,
-          },
-          options: {
-            autoPublish: true,
-            generateTurmas: false,
-          },
-        };
-
-        const res = await fetch(`/api/escola/${escolaId}/admin/curriculo/install-preset`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+        const r = await fetch(`/api/escola/${escolaId}/admin/curriculo/install-preset`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            presetKey: k, ano_letivo_id: anoLetivoId,
+            customData: { label: cursoNome, associatedPreset: k, classes, subjects },
+            advancedConfig: { classes, subjects, matrix: matrixMap, turnos: tp },
+            options: { autoPublish: false, generateTurmas: false }
+          })
         });
-
-        const data = await res.json().catch(() => null);
-        if (!res.ok) {
-          throw new Error(`Falha ao criar o curso '${cursoNome}': ${data?.error || 'Erro desconhecido'}`);
-        }
-
-        const cursoId = data?.applied?.curso_id
-          || data?.applied?.cursoId
-          || resolveCursoId(cursoKey);
-
-        if (cursoId) {
-          applied[cursoKey] = { cursoId, classes };
-        }
+        const j = await r.json();
+        if (!r.ok) throw new Error(`Erro em ${cursoNome}`);
+        
+        const cid = j.applied?.cursoId || cursosList.find((c: any) => c.curriculum_key === k)?.id;
+        if (cid) applied[k] = { cursoId: cid, classes };
       }
-
       setAppliedCursos(applied);
-      toast.success("Presets aplicados com sucesso.", { id: toastId });
+      toast.success("Estrutura criada!", { id: tid });
       setStep(4);
-
     } catch (e: any) {
-      toast.error(e.message, { id: toastId });
-    } finally {
-      setApplyingPreset(false);
-    }
+      toast.error(e.message, { id: tid });
+    } finally { setApplyingPreset(false); }
   };
 
   const handleGenerateTurmas = async () => {
-    if (!anoLetivoId) return toast.error("Defina o ano letivo primeiro.");
-    if (Object.keys(appliedCursos).length === 0) {
-      return toast.error("Aplique o preset antes de gerar turmas.");
-    }
-    const toastId = toast.loading("Gerando turmas...");
+    if (!anoLetivoId) return toast.error("Sem ano letivo.");
+    const tid = toast.loading("Gerando turmas...");
     try {
-      const classesRows = await fetchAllPaginated<any>(`/api/escolas/${escolaId}/classes`);
-
-      const classByCurso: Record<string, Record<string, string>> = {};
-      classesRows.forEach((cls: any) => {
-        if (!cls?.curso_id || !cls?.nome || !cls?.id) return;
-        if (!classByCurso[cls.curso_id]) classByCurso[cls.curso_id] = {};
-        classByCurso[cls.curso_id][cls.nome] = cls.id;
+      const classesDb = await fetchAllPaginated<any>(`/api/escolas/${escolaId}/classes`);
+      const mapClasses: any = {}; // cursoId -> { nome: id }
+      classesDb.forEach((c: any) => {
+        if(!mapClasses[c.curso_id]) mapClasses[c.curso_id] = {};
+        mapClasses[c.curso_id][c.nome] = c.id;
       });
 
-      const groupedByCourse = matrix.reduce((acc, row) => {
-        const key = row.cursoKey;
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(row);
+      const grouped = matrix.reduce((acc, row) => {
+        if(!acc[row.cursoKey]) acc[row.cursoKey] = [];
+        acc[row.cursoKey].push(row);
         return acc;
-      }, {} as Record<string, MatrixRow[]>);
+      }, {} as any);
 
-      for (const courseKey of Object.keys(groupedByCourse)) {
-        const cursoInfo = appliedCursos[courseKey];
-        if (!cursoInfo?.cursoId) continue;
-        const rows = groupedByCourse[courseKey];
-        const classMap = classByCurso[cursoInfo.cursoId] || {};
-        const turmasPayload: { classeId: string; turno: "M" | "T" | "N"; quantidade: number }[] = [];
+      for (const k of Object.keys(grouped)) {
+        const info = appliedCursos[k];
+        if (!info?.cursoId) continue;
+        const rows = grouped[k];
+        const cm = mapClasses[info.cursoId] || {};
+        const payload: any[] = [];
 
-        rows.forEach((row) => {
-          const classeId = classMap[row.nome];
-          if (!classeId) return;
-          if (row.manha) turmasPayload.push({ classeId, turno: "M", quantidade: row.manha });
-          if (row.tarde) turmasPayload.push({ classeId, turno: "T", quantidade: row.tarde });
-          if (row.noite) turmasPayload.push({ classeId, turno: "N", quantidade: row.noite });
+        rows.forEach((r: any) => {
+          const cid = cm[r.nome];
+          if(!cid) return;
+          if(r.manha) payload.push({ classeId: cid, turno: 'M', quantidade: r.manha });
+          if(r.tarde) payload.push({ classeId: cid, turno: 'T', quantidade: r.tarde });
+          if(r.noite) payload.push({ classeId: cid, turno: 'N', quantidade: r.noite });
         });
 
-        if (turmasPayload.length === 0) continue;
-
-        const idempotencyKey = typeof crypto !== 'undefined' && 'randomUUID' in crypto
-          ? crypto.randomUUID()
-          : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        const res = await fetch(`/api/escola/${escolaId}/admin/turmas/generate`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Idempotency-Key": idempotencyKey,
-          },
-          body: JSON.stringify({
-            cursoId: cursoInfo.cursoId,
-            anoLetivo,
-            turmas: turmasPayload,
-          }),
-        });
-
-        if (!res.ok) {
-          const err = await res.json().catch(() => null);
-          throw new Error(err?.error || "Falha ao gerar turmas.");
+        if (payload.length) {
+          await fetch(`/api/escola/${escolaId}/admin/turmas/generate`, {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ cursoId: info.cursoId, anoLetivo, turmas: payload })
+          });
         }
       }
-
-      toast.success("Turmas geradas com sucesso.", { id: toastId });
+      toast.success("Configuração concluída!", { id: tid });
       if (onComplete) onComplete();
       else window.location.href = `/escola/${escolaId}/admin/dashboard`;
     } catch (e: any) {
-      toast.error(e.message, { id: toastId });
+      toast.error(e.message, { id: tid });
     }
   };
 
   const handleNext = async () => {
-    if (step === 1) {
-      const ok = await handleCreateSession();
-      if (ok) setStep(2);
-      return;
-    }
-    if (step === 2) {
-      const ok = await handleSavePreferences();
-      if (ok) setStep(3);
-      return;
-    }
-    if (step === 3) {
-      await handleApplyCurriculumPreset();
-      return;
-    }
-    if (step === 4) {
-      await handleGenerateTurmas();
-    }
+    if (step === 1) { if (await handleCreateSession()) setStep(2); return; }
+    if (step === 2) { if (await handleSavePreferences()) setStep(3); return; }
+    if (step === 3) { await handleApplyCurriculumPreset(); return; }
+    if (step === 4) { await handleGenerateTurmas(); }
   };
 
+  // --- RENDER ---
   return (
-    <div className="max-w-6xl mx-auto px-6 py-10 space-y-10 pb-32">
-      <StepHeader step={step} totalSteps={4} />
-
-      <header className="text-center space-y-2">
-        <h1 className="text-3xl font-bold text-slate-900">
-          {step === 1
-            ? "Ano Letivo & Períodos"
-            : step === 2
-            ? "Frequência & Avaliação"
-            : step === 3
-            ? "Presets Curriculares"
-            : "Gerar Turmas"}
-        </h1>
-        <p className="text-slate-500 text-sm max-w-xl mx-auto">
-          {step === 1
-            ? "Defina o ano letivo e os trimestres."
-            : step === 2
-            ? "Configure frequência e modelo de avaliação."
-            : step === 3
-            ? "Aplique presets para o currículo."
-            : "Gere turmas com base no currículo publicado."}
-        </p>
-        {estruturaCounts && (
-          <p className="text-xs text-slate-400">
-            Cursos: {estruturaCounts.cursos_total ?? 0} · Classes: {estruturaCounts.classes_total ?? 0} · Disciplinas: {estruturaCounts.disciplinas_total ?? 0}
-          </p>
-        )}
-      </header>
-
-      {step === 1 && (
-        <AcademicStep1
-          schoolDisplayName={schoolDisplayName}
-          setSchoolDisplayName={setSchoolDisplayName}
-          anoLetivo={anoLetivo}
-          setAnoLetivo={setAnoLetivo}
-          dataInicio={dataInicio}
-          setDataInicio={setDataInicio}
-          dataFim={dataFim}
-          setDataFim={setDataFim}
-          periodosConfig={periodosConfig}
-          onPeriodoChange={(numero, field, value) => {
-            setPeriodosConfig((prev) =>
-              prev.map((p) =>
-                p.numero === numero ? { ...p, [field]: value } : p
-              )
-            );
-          }}
-          turnos={turnos}
-          onTurnoToggle={handleTurnoToggle}
-          sessaoAtiva={sessaoAtiva}
-          periodos={periodos}
-          creatingSession={creatingSession}
-          onCreateSession={handleCreateSession}
-        />
-      )}
-
-      {step === 2 && (
-        <AcademicStep2Config
-          frequenciaModelo={frequenciaModelo}
-          onFrequenciaModeloChange={setFrequenciaModelo}
-          frequenciaMinPercent={frequenciaMinPercent}
-          onFrequenciaMinPercentChange={(value) => {
-            const sanitized = Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
-            setFrequenciaMinPercent(sanitized);
-          }}
-          modeloAvaliacao={modeloAvaliacao}
-          onModeloAvaliacaoChange={(value) => {
-            setModeloAvaliacao(value);
-            setAvaliacaoConfig(cloneConfig(DEFAULT_AVALIACAO_CONFIG[value]));
-          }}
-          avaliacaoConfig={avaliacaoConfig}
-        />
-      )}
-
-      {step === 3 && (
-        <AcademicStep2
-          presetCategory={presetCategory}
-          onPresetCategoryChange={setPresetCategory}
-          matrix={matrix}
-          onMatrixChange={setMatrix}
-          onMatrixUpdate={handleMatrixUpdate}
-          turnos={turnos}
-          onApplyCurriculumPreset={handleApplyCurriculumPreset}
-          applyingPreset={applyingPreset}
-          padraoNomenclatura={padraoNomenclatura}
-          onPadraoNomenclaturaChange={setPadraoNomenclatura}
-          anoLetivo={anoLetivo}
-        />
-      )}
-
-      {step === 4 && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-3">
-          <h3 className="text-sm font-bold text-slate-800">Resumo da geração</h3>
-          <p className="text-xs text-slate-500">Revise as turmas por classe e turno antes de gerar.</p>
-          <div className="text-sm text-slate-700">
-            {matrix.map((row) => (
-              <div key={row.id} className="flex items-center gap-4">
-                <span className="font-semibold">{row.nome}</span>
-                <span>Manhã: {row.manha || 0}</span>
-                <span>Tarde: {row.tarde || 0}</span>
-                <span>Noite: {row.noite || 0}</span>
-              </div>
-            ))}
-          </div>
+    <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6">
+      
+      {/* HEADER GERAL */}
+      <div className="mx-auto mb-10 max-w-5xl text-center">
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-[#1F6B3B]/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#1F6B3B]">
+          <School className="h-3 w-3" />
+          Configuração Inicial
         </div>
-      )}
+        <h1 className="text-3xl font-bold text-slate-900 sm:text-4xl">
+          Setup do {schoolDisplayName || "Sistema"}
+        </h1>
+        <p className="mt-2 text-slate-500">
+          Siga as etapas para definir o calendário, regras e estrutura de turmas.
+        </p>
+      </div>
 
-      <StepFooter
-        step={step}
-        totalSteps={4}
-        canProceed={
-          step === 1
-            ? Boolean(dataInicio && dataFim)
-            : step === 2
-            ? Boolean(
-              frequenciaModelo &&
-              modeloAvaliacao &&
-              frequenciaMinPercent >= 0 &&
-              frequenciaMinPercent <= 100
-            )
-            : step === 3
-            ? matrix.length > 0
-            : true
-        }
-        onNext={handleNext}
-        onBack={() => setStep(p => Math.max(1, p-1))}
-        loading={applyingPreset || creatingSession || loadingConfig}
-      />
+      <WizardStepper currentStep={step} />
+
+      {/* CARD PRINCIPAL */}
+      <div className="mx-auto max-w-5xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        
+        {/* Step Content */}
+        <div className="p-8">
+          {step === 1 && (
+            <AcademicStep1
+              schoolDisplayName={schoolDisplayName}
+              setSchoolDisplayName={setSchoolDisplayName}
+              anoLetivo={anoLetivo} setAnoLetivo={setAnoLetivo}
+              dataInicio={dataInicio} setDataInicio={setDataInicio}
+              dataFim={dataFim} setDataFim={setDataFim}
+              periodosConfig={periodosConfig}
+              onPeriodoChange={(n, f, v) => setPeriodosConfig(prev => prev.map(p => p.numero === n ? { ...p, [f]: v } : p))}
+              turnos={turnos} onTurnoToggle={handleTurnoToggle}
+              sessaoAtiva={sessaoAtiva} periodos={periodos}
+              creatingSession={creatingSession} onCreateSession={handleCreateSession}
+            />
+          )}
+
+          {step === 2 && (
+            <AcademicStep2Config
+              frequenciaModelo={frequenciaModelo} onFrequenciaModeloChange={setFrequenciaModelo}
+              frequenciaMinPercent={frequenciaMinPercent} onFrequenciaMinPercentChange={(v) => setFrequenciaMinPercent(Math.max(0, Math.min(100, Number(v))))}
+              modeloAvaliacao={modeloAvaliacao} onModeloAvaliacaoChange={(v) => { setModeloAvaliacao(v); setAvaliacaoConfig(cloneConfig(DEFAULT_AVALIACAO_CONFIG[v])); }}
+              avaliacaoConfig={avaliacaoConfig}
+            />
+          )}
+
+          {step === 3 && (
+            <AcademicStep2
+              presetCategory={presetCategory} onPresetCategoryChange={setPresetCategory}
+              matrix={matrix} onMatrixChange={setMatrix} onMatrixUpdate={handleMatrixUpdate}
+              turnos={turnos}
+              onApplyCurriculumPreset={handleApplyCurriculumPreset} applyingPreset={applyingPreset}
+              padraoNomenclatura={padraoNomenclatura} onPadraoNomenclaturaChange={setPadraoNomenclatura}
+              anoLetivo={anoLetivo}
+            />
+          )}
+
+          {step === 4 && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-4 rounded-xl border border-[#1F6B3B]/20 bg-[#1F6B3B]/5 p-5">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#1F6B3B] text-white">
+                  <Wand2 className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">Tudo pronto para gerar!</h3>
+                  <p className="text-sm text-slate-600">
+                    O sistema irá criar as turmas, vincular disciplinas e definir os diários com base na matriz abaixo.
+                  </p>
+                </div>
+              </div>
+
+              <div className="overflow-hidden rounded-xl border border-slate-200">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+                    <tr>
+                      <th className="px-6 py-3 font-semibold">Classe / Curso</th>
+                      <th className="px-6 py-3 font-semibold text-center">Manhã</th>
+                      <th className="px-6 py-3 font-semibold text-center">Tarde</th>
+                      <th className="px-6 py-3 font-semibold text-center">Noite</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {matrix.map((row) => (
+                      <tr key={row.id} className="bg-white">
+                        <td className="px-6 py-4 font-bold text-slate-700">{row.nome}</td>
+                        <td className="px-6 py-4 text-center text-slate-600">{row.manha || "-"}</td>
+                        <td className="px-6 py-4 text-center text-slate-600">{row.tarde || "-"}</td>
+                        <td className="px-6 py-4 text-center text-slate-600">{row.noite || "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* FOOTER ACTION BAR */}
+        <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 px-8 py-5">
+          <button
+            onClick={() => step > 1 && setStep(p => p - 1)}
+            disabled={step === 1 || applyingPreset}
+            className={`flex items-center gap-2 text-sm font-semibold transition-colors ${step === 1 ? 'cursor-not-allowed text-slate-300' : 'text-slate-600 hover:text-slate-900'}`}
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Voltar
+          </button>
+
+          <button
+            onClick={handleNext}
+            disabled={
+              applyingPreset || creatingSession || loadingConfig ||
+              (step === 1 && (!dataInicio || !dataFim)) ||
+              (step === 3 && matrix.length === 0)
+            }
+            // TOKEN: Botão Dourado com Sombra
+            className="inline-flex items-center gap-2 rounded-xl bg-[#E3B23C] px-8 py-3 text-sm font-bold text-white shadow-md shadow-orange-900/5 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70 disabled:grayscale"
+          >
+            {applyingPreset || creatingSession ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              step === 4 ? "Gerar Turmas e Finalizar" : "Continuar"
+            )}
+            {!applyingPreset && !creatingSession && <ChevronRight className="h-4 w-4" />}
+          </button>
+        </div>
+
+      </div>
     </div>
   );
 }

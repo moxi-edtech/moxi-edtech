@@ -1,26 +1,29 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
-import type { Database } from "~types/supabase"
+import { supabaseServer } from "@/lib/supabaseServer"
 import { applyKf2ListInvariants } from "@/lib/kf2"
 
 // Returns onboarding progress per school for Super Admin view
 // Shape: [{ escola_id, nome, onboarding_finalizado, last_step, last_updated_at }]
 export async function GET() {
   try {
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: "Configuração do Supabase ausente" }, { status: 500 })
-    }
-
-    const admin: any = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    )
+    const s = await supabaseServer()
+    const { data: sess } = await s.auth.getUser()
+    const user = sess?.user
+    if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
+    const { data: rows } = await s
+      .from('profiles')
+      .select('role')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+    const role = (rows?.[0] as any)?.role as string | undefined
+    if (role !== 'super_admin') return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
 
     // Fetch basic schools
     let escolas: any[] | null = null
     {
       const sel = 'id, nome, onboarding_finalizado, needs_academic_setup'
-      let escolasQuery = admin
+      let escolasQuery = (s as any)
         .from('escolas')
         .select(sel)
         .order('nome', { ascending: true })
@@ -31,7 +34,7 @@ export async function GET() {
       if (error) {
         const msg = String(error.message || '')
         if (msg.includes('needs_academic_setup') || msg.toLowerCase().includes('schema cache')) {
-          let fallbackQuery = admin
+          let fallbackQuery = (s as any)
             .from('escolas')
             .select('id, nome, onboarding_finalizado')
             .order('nome', { ascending: true })
@@ -52,7 +55,7 @@ export async function GET() {
     }
 
     // Fetch all drafts (limited) ordered by updated_at desc to pick the latest per escola
-    let draftsQuery = admin
+    let draftsQuery = (s as any)
       .from('onboarding_drafts')
       .select('escola_id, step, updated_at')
       .order('updated_at', { ascending: false })

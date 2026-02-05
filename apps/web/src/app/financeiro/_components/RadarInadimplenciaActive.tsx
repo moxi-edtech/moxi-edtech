@@ -1,5 +1,4 @@
 "use client";
-import { getAbsoluteUrl } from "@/lib/utils";
 
 import { useEffect, useState } from "react";
 import {
@@ -165,9 +164,9 @@ export default function RadarInadimplenciaActive() {
       try {
         setLoading(true);
         const [radarRes, dashRes, cobrancasRes] = await Promise.all([
-          fetch(getAbsoluteUrl("/api/financeiro/radar")),
-          fetch(getAbsoluteUrl("/api/financeiro")),
-          fetch(getAbsoluteUrl("/api/financeiro/cobrancas/resumo")),
+          fetch("/api/financeiro/radar", { cache: "no-store" }),
+          fetch("/api/financeiro", { cache: "no-store" }),
+          fetch("/api/financeiro/cobrancas/resumo", { cache: "no-store" }),
         ]);
 
         if (!radarRes.ok) {
@@ -252,7 +251,7 @@ export default function RadarInadimplenciaActive() {
   };
 
   const carregarResumoCobrancas = async () => {
-    const res = await fetch(getAbsoluteUrl("/api/financeiro/cobrancas/resumo"));
+    const res = await fetch("/api/financeiro/cobrancas/resumo", { cache: "no-store" });
     if (!res.ok) return;
     const json = await res.json();
     if (!json?.ok || !json?.resumo) return;

@@ -1,28 +1,75 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { 
-  Building2, 
-  BookOpen, 
-  Users, 
-  CreditCard, 
-  ShieldCheck, 
+import { usePathname, useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
+import {
+  Building2,
+  BookOpen,
+  Users,
+  CreditCard,
+  ShieldCheck,
   ChevronRight,
   ArrowLeft,
   Layers,
   CalendarCheck,
   Wand2,
   AlertTriangle,
+  Play,
+  Wallet
 } from "lucide-react";
-import { Progress } from "~/components/ui/Progress";
+
+// Componente Progress interno para não depender de lib externa
+const Progress = ({ value, className }: { value: number, className?: string }) => (
+  <div className={`w-full rounded-full overflow-hidden ${className}`}>
+    <div 
+      className="h-full bg-[#E3B23C] transition-all duration-500 ease-out" 
+      style={{ width: `${value}%` }} 
+    />
+  </div>
+);
 
 interface SettingsHubProps {
   escolaId: string;
   onOpenWizard: () => void;
 }
 
+function PanelLoading() {
+  return (
+    <div className="flex items-center justify-center gap-2 py-10 text-xs font-semibold text-slate-500">
+      Carregando painel...
+    </div>
+  );
+}
+
+const CalendarioPanel = dynamic(
+  () => import("@/app/escola/[id]/admin/configuracoes/calendario/page"),
+  { ssr: false, loading: () => <PanelLoading /> }
+);
+const AvaliacoesPanel = dynamic(
+  () => import("@/app/escola/[id]/admin/configuracoes/avaliacao/page"),
+  { ssr: false, loading: () => <PanelLoading /> }
+);
+const TurmasPanel = dynamic(
+  () => import("@/app/escola/[id]/admin/configuracoes/turmas/page"),
+  { ssr: false, loading: () => <PanelLoading /> }
+);
+const FinanceiroPanel = dynamic(
+  () => import("@/app/escola/[id]/admin/configuracoes/financeiro/page"),
+  { ssr: false, loading: () => <PanelLoading /> }
+);
+const FluxosPanel = dynamic(
+  () => import("@/app/escola/[id]/admin/configuracoes/fluxos/page"),
+  { ssr: false, loading: () => <PanelLoading /> }
+);
+const AvancadoPanel = dynamic(
+  () => import("@/app/escola/[id]/admin/configuracoes/avancado/page"),
+  { ssr: false, loading: () => <PanelLoading /> }
+);
+
 export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps) {
+  // --- STATE & DATA ---
   const [avaliacaoPending, setAvaliacaoPending] = useState<boolean | null>(null);
   const [progress, setProgress] = useState<number | null>(null);
   const [setupStatus, setSetupStatus] = useState<{
@@ -44,11 +91,9 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
     async function fetchStatus() {
       if (!escolaId) return;
       try {
-        const res = await fetch(`/api/escola/${escolaId}/admin/setup/state`, {
-          cache: "no-store",
-        });
+        const res = await fetch(`/api/escola/${escolaId}/admin/setup/state`, { cache: "no-store" });
         const json = await res.json().catch(() => null);
-        if (!res.ok) throw new Error(json?.error || "Erro ao carregar configurações.");
+        if (!res.ok) throw new Error(json?.error);
         if (cancelled) return;
 
         const data = json?.data ?? {};
@@ -60,11 +105,13 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
           curriculo_published_ok: data?.badges?.curriculo_published_ok,
           turmas_ok: data?.badges?.turmas_ok,
         });
+        if (typeof data?.badges?.avaliacao_ok === "boolean") {
+          setAvaliacaoPending(!data.badges.avaliacao_ok);
+        }
+        if (typeof data?.completion_percent === 'number') setProgress(data.completion_percent);
 
         const impactRes = await fetch(`/api/escola/${escolaId}/admin/setup/impact`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}),
         });
         const impactJson = await impactRes.json().catch(() => null);
         if (impactRes.ok && impactJson?.ok) {
@@ -81,19 +128,18 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
       }
     }
     fetchStatus();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [escolaId]);
 
-  const avaliacaoLabel = avaliacaoPending === null
-    ? null
-    : avaliacaoPending
-    ? "Etapa por configurar"
-    : "Configurado";
-  const avaliacaoTone = avaliacaoPending
-    ? "bg-amber-100 text-amber-800"
-    : "bg-emerald-100 text-emerald-800";
+  // --- HELPERS VISUAIS (KLASSE TOKENS) ---
+  
+  // Cores: Verde Brand (#1F6B3B), Dourado Action (#E3B23C), Slate (Neutro)
+  const okTone = "bg-[#1F6B3B]/10 text-[#1F6B3B] border-[#1F6B3B]/20";
+  const pendingTone = "bg-amber-50 text-amber-700 border-amber-200";
+  const neutralTone = "bg-slate-50 text-slate-600 border-slate-200";
+
+  const avaliacaoLabel = avaliacaoPending === null ? null : avaliacaoPending ? "Pendente" : "Configurado";
+  const avaliacaoTone = avaliacaoPending ? pendingTone : okTone;
 
   const anoLetivoOk = setupStatus?.ano_letivo_ok && setupStatus?.periodos_ok;
   const curriculoOk = setupStatus?.curriculo_published_ok;
@@ -102,371 +148,329 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
     ? `Cursos: ${estruturaCounts.cursos_total ?? 0} · Classes: ${estruturaCounts.classes_total ?? 0} · Disciplinas: ${estruturaCounts.disciplinas_total ?? 0}`
     : null;
 
-  const cardStatus = (ok?: boolean) =>
-    ok === undefined
-      ? { label: null, tone: undefined }
-      : ok
-      ? { label: "Configurado", tone: "bg-emerald-100 text-emerald-800" }
-      : { label: "Etapa por configurar", tone: "bg-amber-100 text-amber-800" };
+  const cardStatus = (ok?: boolean) => ok === undefined
+    ? { label: null, tone: undefined }
+    : ok
+    ? { label: "Configurado", tone: okTone }
+    : { label: "Pendente", tone: pendingTone };
 
   const anoLetivoAtual = new Date().getFullYear();
+  
+  // Métricas do Card Central
   const impactItems = [
     { label: "Cursos", value: estruturaCounts?.cursos_total ?? 0 },
     { label: "Classes", value: estruturaCounts?.classes_total ?? 0 },
     { label: "Disciplinas", value: estruturaCounts?.disciplinas_total ?? 0 },
   ];
 
-  const quickMenu = [
-    {
-      label: "Calendário",
-      icon: CalendarCheck,
-      href: `/escola/${escolaId}/admin/configuracoes/calendario`,
-    },
-    {
-      label: "Avaliação",
-      icon: BookOpen,
-      href: `/escola/${escolaId}/admin/configuracoes/avaliacao`,
-    },
-    {
-      label: "Turmas",
-      icon: Users,
-      href: `/escola/${escolaId}/admin/configuracoes/turmas`,
-    },
-    {
-      label: "Financeiro",
-      icon: CreditCard,
-      href: `/escola/${escolaId}/admin/configuracoes/financeiro`,
-    },
-    {
-      label: "Fluxos",
-      icon: Layers,
-      href: `/escola/${escolaId}/admin/configuracoes/fluxos`,
-    },
-    {
-      label: "Avançado",
-      icon: ShieldCheck,
-      href: `/escola/${escolaId}/admin/configuracoes/avancado`,
-    },
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const panelParams = useMemo(() => Promise.resolve({ id: escolaId }), [escolaId]);
+
+  const tabs = [
+    { id: "calendario", label: "Calendário", icon: CalendarCheck, Component: CalendarioPanel },
+    { id: "avaliacoes", label: "Avaliações", icon: BookOpen, Component: AvaliacoesPanel },
+    { id: "turmas", label: "Turmas", icon: Users, Component: TurmasPanel },
+    { id: "financeiro", label: "Financeiro", icon: Wallet, Component: FinanceiroPanel },
+    { id: "fluxos", label: "Fluxos", icon: Layers, Component: FluxosPanel },
+    { id: "avancado", label: "Avançado", icon: ShieldCheck, Component: AvancadoPanel },
   ];
+  const activeTabId = searchParams.get("tab") ?? tabs[0].id;
+  const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0];
+  const ActivePanel = activeTab.Component;
+
+  const buildTabHref = (tabId: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", tabId);
+    const query = params.toString();
+    return query ? `${pathname}?${query}` : pathname;
+  };
 
   type SettingsCard = {
     title: string;
     desc: string;
-    icon: typeof Building2;
+    icon: any;
     href?: string;
     action?: () => void;
-    color: string;
+    // Removido 'color' genérico, agora usa classes diretas
     statusLabel?: string | null;
     statusTone?: string;
     meta?: string | null;
+    highlight?: boolean;
+    danger?: boolean;
   };
 
+  // Setup Cards (Grid Inferior)
   const setupCards: SettingsCard[] = [
-    ...((progress ?? 0) < 100 ? [
-      {
-        title: "Assistente de Setup",
-        desc: "Reconfigurar turmas e ano letivo (Wizard).",
-        icon: Wand2,
-        action: onOpenWizard,
-        color: "bg-teal-50 text-teal-600",
-        statusLabel: progress !== null ? `Progresso ${progress}%` : null,
-        statusTone: progress !== null
-          ? progress === 100
-            ? "bg-emerald-100 text-emerald-800"
-            : "bg-amber-100 text-amber-800"
-          : undefined,
-      },
-    ] : []),
+    ...((progress ?? 0) < 100 ? [{
+      title: "Assistente de Setup",
+      desc: "Reconfigurar ano letivo e estrutura.",
+      icon: Wand2,
+      action: onOpenWizard,
+      statusLabel: progress !== null ? `${progress}%` : null,
+      statusTone: pendingTone,
+      highlight: true
+    }] : []),
     {
-      title: "Ano Letivo & Períodos",
-      desc: "Defina o ano letivo e os trimestres.",
+      title: "Ano Letivo",
+      desc: "Períodos e datas.",
       icon: CalendarCheck,
       href: `/escola/${escolaId}/admin/configuracoes/academico-completo`,
-      color: "bg-blue-50 text-blue-600",
       statusLabel: cardStatus(anoLetivoOk).label,
       statusTone: cardStatus(anoLetivoOk).tone,
     },
     {
-      title: "Frequência & Avaliação",
-      desc: "Defina regras globais e modelo de avaliação.",
+      title: "Avaliação",
+      desc: "Regras de nota e frequência.",
       icon: BookOpen,
       href: `/escola/${escolaId}/admin/configuracoes/avaliacao`,
-      color: "bg-amber-50 text-amber-600",
       statusLabel: avaliacaoLabel,
       statusTone: avaliacaoTone,
     },
     {
-      title: "Currículo (Presets)",
-      desc: "Aplicar presets e publicar o currículo.",
-      icon: BookOpen,
+      title: "Currículo",
+      desc: "Matriz curricular.",
+      icon: Layers,
       href: `/escola/${escolaId}/admin/configuracoes/academico-completo`,
-      color: "bg-emerald-50 text-emerald-600",
       statusLabel: cardStatus(curriculoOk).label,
       statusTone: cardStatus(curriculoOk).tone,
     },
     {
       title: "Turmas",
-      desc: "Gere turmas a partir do currículo publicado.",
+      desc: "Geração de turmas.",
       icon: Users,
       href: `/escola/${escolaId}/admin/configuracoes/academico-completo`,
-      color: "bg-slate-100 text-slate-600",
       statusLabel: cardStatus(turmasOk).label,
       statusTone: cardStatus(turmasOk).tone,
     },
   ];
 
+  // Admin Cards (Grid Inferior)
   const adminCards: SettingsCard[] = [
-    {
-      title: "Identidade da Escola",
-      desc: "Logo, nome, NIF e contactos.",
-      icon: Building2,
-      href: `/escola/${escolaId}/admin/configuracoes/identidade`,
-      color: "bg-blue-50 text-blue-600"
-    },
-    {
-      title: "Oferta Formativa",
-      desc: "Gerir catálogo de cursos e adicionar novos níveis.",
-      icon: Layers,
-      href: `/escola/${escolaId}/admin/configuracoes/estrutura`,
-      color: "bg-indigo-50 text-indigo-600",
-      meta: estruturaMeta,
-    },
-    {
-      title: "Gestão de Acessos",
-      desc: "Permissões de professores e staff.",
-      icon: Users,
-      href: `/escola/${escolaId}/admin/configuracoes/acessos`,
-      color: "bg-purple-50 text-purple-600"
-    },
-    {
-      title: "Financeiro",
-      desc: "Multas, moedas e contas bancárias.",
-      icon: CreditCard,
-      href: `/escola/${escolaId}/admin/configuracoes/financeiro`,
-      color: "bg-emerald-50 text-emerald-600"
-    },
-    {
-      title: "Segurança & Logs",
-      desc: "Auditoria e backups.",
-      icon: ShieldCheck,
-      href: `/escola/${escolaId}/admin/configuracoes/seguranca`,
-      color: "bg-slate-100 text-slate-600"
-    },
-    {
-      title: "Zona de Perigo",
-      desc: "Apagar dados acadêmicos (turmas, matrículas, etc).",
-      icon: AlertTriangle,
-      href: `/escola/${escolaId}/admin/configuracoes`,
-      color: "bg-red-50 text-red-600"
-    }
+    { title: "Identidade", desc: "Logo e dados.", icon: Building2, href: `/escola/${escolaId}/admin/configuracoes/identidade` },
+    { title: "Oferta Formativa", desc: "Cursos e níveis.", icon: Layers, href: `/escola/${escolaId}/admin/configuracoes/estrutura`, meta: estruturaMeta },
+    { title: "Acessos", desc: "Staff e permissões.", icon: Users, href: `/escola/${escolaId}/admin/configuracoes/acessos` },
+    { title: "Financeiro", desc: "Contas e multas.", icon: CreditCard, href: `/escola/${escolaId}/admin/configuracoes/financeiro` },
+    { title: "Segurança", desc: "Logs e auditoria.", icon: ShieldCheck, href: `/escola/${escolaId}/admin/configuracoes/seguranca` },
+    { title: "Zona de Perigo", desc: "Reset de dados.", icon: AlertTriangle, href: `/escola/${escolaId}/admin/configuracoes`, danger: true }
   ];
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-8">
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div className="max-w-[1400px] mx-auto p-8 space-y-10 bg-slate-50/50 min-h-screen">
+      
+      {/* HEADER PRINCIPAL */}
+      <div className="flex items-center justify-between">
+        <div>
+          <Link
+            href={`/escola/${escolaId}/admin/dashboard`}
+            className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors uppercase tracking-wider mb-2"
+          >
+            <ArrowLeft className="w-3 h-3" />
+            Voltar ao Dashboard
+          </Link>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Configurações do Sistema</h1>
+          <p className="text-slate-500 mt-1">Gestão global do ano letivo {anoLetivoAtual}.</p>
+        </div>
+      </div>
+
+      {/* --- CARD GIGANTE (ESTRUTURA RESTAURADA) --- */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        
+        {/* Header do Card */}
+        <div className="px-8 py-6 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Configurações do Sistema</h2>
-            <p className="text-sm text-slate-500">Ano Letivo {anoLetivoAtual} · Experiência simples e poderosa.</p>
+            <h2 className="text-xl font-bold text-slate-900">Visão Geral</h2>
+            <p className="text-sm text-slate-500 mt-1">Painel de controle acadêmico.</p>
           </div>
           <button
-            type="button"
             onClick={onOpenWizard}
-            className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:text-slate-900 hover:border-slate-300"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm"
           >
-            Reabrir assistente
+            Reabrir Assistente
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 lg:grid-cols-[200px_1fr_240px] gap-6">
-          <div className="space-y-2 text-sm">
-            {quickMenu.map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                className="flex items-center gap-3 rounded-lg border border-slate-100 px-3 py-2 text-slate-600 hover:text-slate-900 hover:border-slate-200"
-              >
-                <item.icon className="h-4 w-4" />
-                <span className="font-medium">{item.label}</span>
-              </Link>
-            ))}
-          </div>
-
-          <div className="rounded-xl border border-slate-100 bg-slate-50 p-5 space-y-4">
-            <div>
-              <h3 className="text-sm font-semibold text-slate-700">Configuração atual</h3>
-              <p className="text-xs text-slate-500">
-                Cada ajuste mostra o impacto em tempo real para decisões seguras.
-              </p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {impactItems.map((item) => (
-                <div key={item.label} className="rounded-lg bg-white border border-slate-200 p-3">
-                  <p className="text-xs text-slate-500">{item.label}</p>
-                  <p className="text-lg font-semibold text-slate-800">{item.value}</p>
-                </div>
-              ))}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <span className={`text-xs font-semibold px-2 py-1 rounded-full ${cardStatus(anoLetivoOk).tone ?? 'bg-slate-100 text-slate-500'}`}>Ano letivo</span>
-              <span className={`text-xs font-semibold px-2 py-1 rounded-full ${cardStatus(curriculoOk).tone ?? 'bg-slate-100 text-slate-500'}`}>Currículo</span>
-              <span className={`text-xs font-semibold px-2 py-1 rounded-full ${cardStatus(turmasOk).tone ?? 'bg-slate-100 text-slate-500'}`}>Turmas</span>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Link
-                href={`/escola/${escolaId}/admin/configuracoes/sistema`}
-                className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white"
-              >
-                Anterior
-                <ArrowLeft className="w-3 h-3" />
-              </Link>
-              <Link
-                href={`/escola/${escolaId}/admin/configuracoes/calendario`}
-                className="inline-flex items-center gap-2 rounded-full bg-klasse-gold px-4 py-2 text-xs font-semibold text-white"
-              >
-                Próximo
-                <ChevronRight className="w-3 h-3" />
-              </Link>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-4">
-            <div>
-              <h4 className="text-sm font-semibold text-slate-700">Barra de status</h4>
-              <p className="text-xs text-slate-500">Impacto imediato das mudanças.</p>
-            </div>
-            <ul className="text-xs text-slate-600 space-y-2">
-              <li>Afeta a configuração de {estruturaCounts?.classes_total ?? 0} classes.</li>
-              <li>Altera o plano de {estruturaCounts?.disciplinas_total ?? 0} disciplinas.</li>
-              <li>Reverbera em {estruturaCounts?.cursos_total ?? 0} cursos ativos.</li>
-            </ul>
-            <div className="flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={onOpenWizard}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                Salvar e revisar
-              </button>
-              <Link
-                href={`/escola/${escolaId}/admin/configuracoes/sandbox`}
-                className="w-full text-center rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white"
-              >
-                Testar fluxo
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Header com Voltar */}
-      <div className="flex flex-col gap-2">
-        <div>
-          <Link 
-            href={`/escola/${escolaId}/admin/dashboard`} 
-            className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors py-2 px-3 -ml-3 rounded-lg hover:bg-slate-100"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Voltar ao Dashboard
-          </Link>
-        </div>
-
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">Definições</h1>
-            <p className="text-slate-500 mt-1">Gerencie as preferências globais da escola.</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-6">
-        <div>
-          <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wide">Setup Acadêmico</h2>
-          {progress !== null && (
-            <div className="mt-3 bg-white border border-slate-200 rounded-xl p-4">
-              <div className="flex items-center justify-between">
+        {/* Conteúdo principal em largura total */}
+        <div className="p-8 space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
                 <div>
-                  <p className="text-sm font-semibold text-slate-800">Progresso do setup</p>
-                  <p className="text-xs text-slate-500">Complete as etapas para liberar o portal.</p>
+                  <h3 className="text-sm font-bold text-slate-900">Impacto Atual</h3>
+                  <p className="text-xs text-slate-500">Métricas em tempo real da sua estrutura.</p>
                 </div>
-                <span className={`text-sm font-bold ${progress === 100 ? 'text-emerald-600' : 'text-amber-600'}`}>
-                  {progress}%
-                </span>
+                <div className="flex flex-wrap gap-2">
+                  <span className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full border ${cardStatus(anoLetivoOk).tone}`}>Ano Letivo</span>
+                  <span className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full border ${cardStatus(curriculoOk).tone}`}>Currículo</span>
+                  <span className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full border ${cardStatus(turmasOk).tone}`}>Turmas</span>
+                </div>
               </div>
-              <div className="mt-3">
-                <Progress value={progress} className="h-2 bg-slate-100" />
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {impactItems.map((item) => (
+                  <div key={item.label} className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <p className="text-[10px] font-bold uppercase text-slate-400">{item.label}</p>
+                    <p className="text-lg font-bold text-slate-900">{item.value}</p>
+                  </div>
+                ))}
               </div>
             </div>
-          )}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900">Barra de Status</h4>
+                  <p className="text-xs text-slate-500">
+                    Afeta {estruturaCounts?.classes_total ?? 0} classes e {estruturaCounts?.cursos_total ?? 0} cursos ativos.
+                  </p>
+                </div>
+                {progress !== null && (
+                  <div className="text-xs font-bold text-slate-600">
+                    {progress === 100 ? "Completo" : `Setup ${progress}%`}
+                  </div>
+                )}
+              </div>
+
+              {progress !== null && (
+                <div className="mt-3">
+                  <Progress value={progress} className="h-2 bg-slate-100" />
+                </div>
+              )}
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={onOpenWizard}
+                  className="rounded-full border border-slate-200 px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all"
+                >
+                  Salvar e Revisar
+                </button>
+                <Link
+                  href={`/escola/${escolaId}/admin/configuracoes/sandbox`}
+                  className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 shadow-lg shadow-slate-900/10 transition-all"
+                >
+                  <Play className="w-3 h-3 fill-current" />
+                  Testar Fluxo
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl bg-slate-950 p-4 w-full">
+            <div className="rounded-lg bg-white p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <div className="flex flex-wrap items-center gap-1.5 font-sora">
+                  {tabs.map((tab) => {
+                    const isActive = tab.id === activeTab.id;
+                    return (
+                      <Link
+                        key={tab.id}
+                        href={buildTabHref(tab.id)}
+                        scroll={false}
+                        className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1.5 text-[11px] font-semibold transition-all border ${
+                          isActive
+                            ? "bg-slate-900 text-klasse-gold border-klasse-gold/40"
+                            : "border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-900/40"
+                        }`}
+                      >
+                        <tab.icon className="h-4 w-4" />
+                        {tab.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+                <Link
+                  href={`/escola/${escolaId}/admin/configuracoes/${activeTab.id === "avaliacoes" ? "avaliacao" : activeTab.id}`}
+                  className="text-[10px] font-bold text-klasse-gold hover:underline"
+                >
+                  Abrir em tela cheia
+                </Link>
+              </div>
+              <div className="w-full">
+                <ActivePanel params={panelParams} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* --- GRIDS INFERIORES (SETUP & ADMIN) --- */}
+      <div className="space-y-8">
+        
+        {/* Setup Acadêmico */}
+        <div>
+          <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4 ml-1">Setup Acadêmico</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
             {setupCards.map((card, idx) => (
-              <div 
+              <div
                 key={`setup-${idx}`}
                 onClick={() => card.action ? card.action() : window.location.href = card.href || '#'}
-                className="group bg-white p-6 rounded-2xl border border-slate-200 hover:border-slate-300 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between h-full"
+                className={`
+                  group relative p-5 rounded-2xl border cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md flex flex-col justify-between h-full
+                  ${card.highlight 
+                    ? 'bg-gradient-to-br from-[#E3B23C]/5 to-white border-[#E3B23C]/30 hover:border-[#E3B23C]' 
+                    : 'bg-white border-slate-200 hover:border-slate-300'
+                  }
+                `}
               >
                 <div>
-                  <div className="flex justify-between items-start mb-4">
-                    <div className={`p-3 rounded-xl transition-colors ${card.color}`}>
-                      <card.icon size={24} />
+                  <div className="flex justify-between items-start mb-3">
+                    <div className={`p-2.5 rounded-xl ${card.highlight ? 'bg-[#E3B23C] text-white shadow-sm' : 'bg-slate-50 text-slate-500 group-hover:text-slate-700'}`}>
+                      <card.icon size={20} strokeWidth={1.5} />
                     </div>
-                    <ChevronRight className="text-slate-300 group-hover:text-slate-600 transition-colors" />
+                    {card.statusLabel && (
+                      <span className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase border ${card.statusTone}`}>
+                        {card.statusLabel}
+                      </span>
+                    )}
                   </div>
-                  {card.statusLabel && (
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${card.statusTone || 'bg-slate-100 text-slate-600'}`}>
-                      {card.statusLabel}
-                    </span>
-                  )}
-                  <h3 className="font-bold text-slate-800 text-lg mb-2 group-hover:text-slate-900">
-                    {card.title}
-                  </h3>
-                  <p className="text-sm text-slate-500 leading-relaxed">
-                    {card.desc}
-                  </p>
+                  <h3 className="font-bold text-slate-900 text-sm mb-1">{card.title}</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed">{card.desc}</p>
                 </div>
+                {card.highlight && progress !== null && (
+                  <div className="mt-4">
+                    <Progress value={progress} className="h-1.5 bg-slate-100" />
+                  </div>
+                )}
               </div>
             ))}
           </div>
         </div>
 
+        {/* Administração */}
         <div>
-          <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wide">Administração</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+          <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4 ml-1">Administração Geral</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
             {adminCards.map((card, idx) => (
-              <div 
+              <div
                 key={`admin-${idx}`}
                 onClick={() => card.action ? card.action() : window.location.href = card.href || '#'}
-                className="group bg-white p-6 rounded-2xl border border-slate-200 hover:border-slate-300 hover:shadow-md transition-all cursor-pointer flex flex-col justify-between h-full"
+                className={`
+                  group p-5 rounded-2xl bg-white border cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md flex flex-col justify-between h-full
+                  ${card.danger ? 'border-rose-100 hover:border-rose-300' : 'border-slate-200 hover:border-slate-300'}
+                `}
               >
                 <div>
-                  <div className="flex justify-between items-start mb-4">
-                    <div className={`p-3 rounded-xl transition-colors ${card.color}`}>
-                      <card.icon size={24} />
+                  <div className="flex justify-between items-start mb-3">
+                    <div className={`p-2.5 rounded-xl ${card.danger ? 'bg-rose-50 text-rose-600' : 'bg-slate-50 text-slate-500 group-hover:text-slate-700'}`}>
+                      <card.icon size={20} strokeWidth={1.5} />
                     </div>
-                    <ChevronRight className="text-slate-300 group-hover:text-slate-600 transition-colors" />
+                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors" />
                   </div>
-                  {card.statusLabel && (
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${card.statusTone || 'bg-slate-100 text-slate-600'}`}>
-                      {card.statusLabel}
-                    </span>
-                  )}
-                  <h3 className="font-bold text-slate-800 text-lg mb-2 group-hover:text-slate-900">
-                    {card.title}
-                  </h3>
-                  <p className="text-sm text-slate-500 leading-relaxed">
-                    {card.desc}
-                  </p>
-                  {card.meta && (
-                    <p className="text-xs text-slate-400 mt-2">
-                      {card.meta}
-                    </p>
-                  )}
+                  <h3 className={`font-bold text-sm mb-1 ${card.danger ? 'text-rose-700' : 'text-slate-900'}`}>{card.title}</h3>
+                  <p className={`text-xs leading-relaxed ${card.danger ? 'text-rose-600/80' : 'text-slate-500'}`}>{card.desc}</p>
                 </div>
+                {card.meta && (
+                  <p className="text-[10px] text-slate-400 mt-3 pt-3 border-t border-slate-50 font-medium">
+                    {card.meta}
+                  </p>
+                )}
               </div>
             ))}
           </div>
         </div>
+
       </div>
     </div>
   );

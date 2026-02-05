@@ -70,9 +70,24 @@ Implementar o fluxo Balcão 30s com SSOT em `public.pagamentos`, separação ent
 - Sem cache/ISR.
 - Snapshot do sistema no momento da declaração.
 
+## Nota (KPIs Financeiro)
+- O "Realizado" estava maior que o "Previsto" porque a MV somava `public.pagamentos` (inclui serviços avulsos) enquanto o previsto vinha de `mensalidades`.
+- Ajuste aplicado para calcular "Realizado" a partir de `mensalidades.valor_pago_total`, alinhando propinas com previsto.
+
 ## Migrations Criadas / Ajustadas
 - `20260308000000_balcao_audit_enrichment.sql` (audit com aluno/matrícula)
 - `20260308000001_financeiro_harmony_contract.sql` (pagamentos/fecho/conciliacao + RPCs + RLS)
+- `20260202008000_fix_financeiro_kpis_mv_refresh.sql` (refresh MV KPI apontando schema correto + cron)
+- `20260202009100_rebuild_financeiro_kpis_mes.sql` (rebuild MV KPI com status `settled`)
+- `20260202009200_financeiro_kpis_mes_use_mensalidades.sql` (realizado baseado em mensalidades)
+- `20260202010000_fix_aggregates_financeiro_null_aluno.sql` (permite aluno_id NULL e upsert escola/mês)
+- `20260202010100_fix_aggregates_financeiro_totals_logic.sql` (totais do resumo via débitos pagos)
+- `20260202010200_fix_current_tenant_escola_id.sql` (fallback em `escola_users`)
+- `20260202010300_fix_pagamentos_status_refresh.sql` (refresh MV pagamentos status + cron)
+- `20260202011000_backfill_pagamentos_aluno_id.sql` (backfill aluno_id em pagamentos)
+- `20260202011100_fix_financeiro_pagamentos_aluno_id.sql` (garante aluno_id em novos pagamentos)
+- `20260202011200_pagamentos_fill_defaults.sql` (trigger para preencher aluno_id/created_by)
+- `20260202012000_create_financeiro_templates_cobranca.sql` (tabela de templates de cobrança + RLS)
 
 ## Próximos Passos
 - Limpar dados legados para validar constraints (TPA sem referência, transfer sem comprovativo).

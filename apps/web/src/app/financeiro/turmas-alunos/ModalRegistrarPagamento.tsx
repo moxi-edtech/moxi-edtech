@@ -15,6 +15,8 @@ interface ModalRegistrarPagamentoProps {
     anoReferencia: number;
     valor: number;
     status: string;
+    dataVencimento?: Date | null;
+    diasAtraso?: number;
   }>;
   onClose: () => void;
   onConfirm: (pagamento: any) => void;
@@ -32,10 +34,22 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
   const [valorRecebido, setValorRecebido] = useState<string>('');
   const [comprovante, setComprovante] = useState<File | null>(null);
 
-  const mensalidadesPendentes = mensalidades.filter(m => m.status !== 'paga');
+  const mensalidadesPendentes = mensalidades.filter(m => m.status === 'pendente' || m.status === 'atrasada');
   const totalSelecionado = mensalidadesPendentes
     .filter(m => mensalidadesSelecionadas.includes(m.id))
     .reduce((sum, m) => sum + m.valor, 0);
+
+  const formatVencimento = (mensalidade: (typeof mensalidades)[number]) => {
+    if (!mensalidade.dataVencimento) return 'Sem vencimento';
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const venc = new Date(mensalidade.dataVencimento);
+    venc.setHours(0, 0, 0, 0);
+    const diff = Math.round((venc.getTime() - hoje.getTime()) / (1000 * 3600 * 24));
+    if (diff === 0) return 'Vence hoje';
+    if (diff > 0) return `Vence em ${diff} dias`;
+    return `Venceu há ${Math.abs(diff)} dias`;
+  };
 
   const handleContinuar = () => {
     if (etapa < 3) {
@@ -124,7 +138,7 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
                         {mensalidade.mesReferencia}/{mensalidade.anoReferencia}
                       </div>
                       <div className="text-sm text-slate-500">
-                        Venceu há 5 dias • {mensalidade.valor.toLocaleString()} Kz
+                        {formatVencimento(mensalidade)} • {mensalidade.valor.toLocaleString()} Kz
                       </div>
                     </div>
                   </label>

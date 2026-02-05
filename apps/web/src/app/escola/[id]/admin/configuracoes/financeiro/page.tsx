@@ -119,6 +119,8 @@ export default function FinanceiroConfiguracoesPage() {
       title="Financeiro · Políticas de Cobrança"
       subtitle="Defina as regras globais de pagamentos, multas e restrições."
       menuItems={menuItems}
+      embedded
+      backHref={`${base}?tab=financeiro`}
       prevHref={`${base}/turmas`}
       nextHref={`${base}/fluxos`}
       testHref={`${base}/sandbox`}

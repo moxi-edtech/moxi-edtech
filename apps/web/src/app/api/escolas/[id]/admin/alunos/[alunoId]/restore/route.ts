@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { recordAuditServer } from "@/lib/audit";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export async function POST(_req: Request, ctx: { params: Promise<{ id: string; alunoId: string }> }) {
   const { id: escolaId, alunoId } = await ctx.params;
@@ -11,6 +10,11 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string; a
     const { data: userRes } = await s.auth.getUser();
     const user = userRes?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+
+    const resolvedEscolaId = await resolveEscolaIdForUser(s, user.id, escolaId);
+    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
+    }
 
     const { data: prof } = await s.from('profiles').select('role').eq('user_id', user.id).maybeSingle();
     const globalRole = (prof as any)?.role as string | undefined;
@@ -30,12 +34,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string; a
     if (!aluno) return NextResponse.json({ ok: false, error: "Aluno não encontrado" }, { status: 404 });
     if (String((aluno as any).escola_id) !== String(escolaId)) return NextResponse.json({ ok: false, error: "Aluno não pertence à escola" }, { status: 403 });
 
-    const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-    if (!adminUrl || !serviceRole) return NextResponse.json({ ok: false, error: "Falta SUPABASE_SERVICE_ROLE_KEY" }, { status: 500 });
-    const admin = createAdminClient<Database>(adminUrl, serviceRole);
-
-    const { error: updErr } = await admin
+    const { error: updErr } = await s
       .from("alunos")
       .update({ deleted_at: null, deleted_by: null, deletion_reason: null, status: "pendente" } as any)
       .eq("id", alunoId);

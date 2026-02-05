@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
 import type { Database } from '~types/supabase'
 
 type UsuarioItem = {
@@ -34,15 +33,6 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
     }
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: 'Configuração do Supabase ausente' }, { status: 500 })
-    }
-
-    const admin = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    ) as any
-
     // Papéis globais que podem aparecer na lista (sem alunos/professores)
     const allowedRoles = new Set(['super_admin', 'global_admin', 'admin', 'financeiro', 'secretaria'])
 
@@ -58,7 +48,7 @@ export async function GET() {
     }
 
     // 1) Carrega perfis básicos via RPC segura
-    const { data: profiles, error: profilesError } = await admin.rpc('admin_list_profiles', {
+    const { data: profiles, error: profilesError } = await (s as any).rpc('admin_list_profiles', {
       p_roles: Array.from(allowedRoles),
       p_limit: 5000,
     })
@@ -77,7 +67,7 @@ export async function GET() {
     let papelField: 'papel' | 'role' = 'papel'
     if (userIds.length > 0) {
       const fetchVinculos = (table: string, field: 'papel' | 'role', withOrder: boolean) => {
-        let query = admin
+        let query = (s as any)
           .from(table as any)
           .select(`user_id, escola_id, ${field}`)
           .in('user_id', userIds as any)
@@ -100,11 +90,11 @@ export async function GET() {
       ]
 
       for (const attempt of attempts) {
-        const { data: v, error: vErr } = await fetchVinculos(
-          attempt.table,
-          attempt.field,
-          attempt.order
-        )
+          const { data: v, error: vErr } = await fetchVinculos(
+            attempt.table,
+            attempt.field,
+            attempt.order
+          )
         if (vErr) {
           if (isMissingColumn(vErr) || isMissingTable(vErr)) {
             continue
@@ -145,7 +135,7 @@ export async function GET() {
     )
     let escolasMap = new Map<string, string | null>()
     if (escolaIds.length > 0) {
-      const { data: escolas, error: eErr } = await admin
+      const { data: escolas, error: eErr } = await (s as any)
         .from('escolas' as any)
         .select('id, nome')
         .in('id', escolaIds as any)

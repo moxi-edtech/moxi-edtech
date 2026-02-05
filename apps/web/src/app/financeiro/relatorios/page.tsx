@@ -1,5 +1,8 @@
 import Link from "next/link";
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 const RelatoriosPage = () => {
   return (
     <div className="space-y-4">
@@ -20,6 +23,10 @@ const RelatoriosPage = () => {
         <Link href="/financeiro/relatorios/extratos-alunos" className="block bg-white rounded-xl shadow border p-5 hover:shadow-md transition">
           <div className="text-lg font-semibold mb-1">Extratos de Alunos</div>
           <div className="text-sm text-gray-600">Gerar extrato (JSON/PDF) por aluno</div>
+        </Link>
+        <Link href="/financeiro/relatorios/detalhados" className="block bg-white rounded-xl shadow border p-5 hover:shadow-md transition">
+          <div className="text-lg font-semibold mb-1">Relatórios Detalhados</div>
+          <div className="text-sm text-gray-600">Auditoria por período e exportação</div>
         </Link>
       </div>
     </div>

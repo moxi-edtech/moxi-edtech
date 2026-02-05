@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { supabaseServer } from "@/lib/supabaseServer"
 import { hasPermission } from "@/lib/permissions"
-import { createClient as createAdminClient } from "@supabase/supabase-js"
-import type { Database } from "~types/supabase"
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
+import { recordAuditServer } from "@/lib/audit"
 
 // PATCH /api/escolas/[id]/onboarding/preferences
 // Saves onboarding Step 2 preferences into onboarding_drafts (per escola+user).
@@ -14,6 +14,16 @@ export async function PATCH(
   const { id: escolaId } = await context.params
 
   try {
+    const s = await supabaseServer()
+    const { data: auth } = await s.auth.getUser()
+    const user = auth?.user
+    if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 })
+
+    const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId)
+    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 })
+    }
+
     const base = z.object({
       estrutura: z.enum(["classes", "secoes", "cursos"]).optional(),
       tipo_presenca: z.enum(["secao", "curso"]).optional(),
@@ -29,11 +39,6 @@ export async function PATCH(
     if (estrutura === undefined && tipo_presenca === undefined && periodo_tipo === undefined && autogerar_periodos === undefined) {
       return NextResponse.json({ ok: false, error: 'Nenhuma preferência fornecida.' }, { status: 400 })
     }
-
-    const s = await supabaseServer()
-    const { data: auth } = await s.auth.getUser()
-    const user = auth?.user
-    if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 })
 
     // Authorization: allow ONLY escola admins or users with configurar_escola vínculo
     // Keep behavior consistent with Step 1 (/onboarding/session): also allow profiles-based admin link for this escola
@@ -73,14 +78,6 @@ export async function PATCH(
     }
     if (!allowed) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: 'Configuração Supabase ausente.' }, { status: 500 })
-    }
-    const admin = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    )
-
     // Upsert into configuracoes_escola (unique per escola)
     const update: any = {
       escola_id: escolaId,
@@ -91,7 +88,7 @@ export async function PATCH(
     if (periodo_tipo !== undefined) update.periodo_tipo = periodo_tipo
     if (autogerar_periodos !== undefined) update.autogerar_periodos = autogerar_periodos
 
-    const { error } = await (admin as any)
+    const { error } = await (s as any)
       .from('configuracoes_escola')
       .upsert(update as any, { onConflict: 'escola_id' } as any)
 
@@ -122,6 +119,19 @@ export async function PATCH(
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
     }
 
+    recordAuditServer({
+      escolaId,
+      portal: "admin_escola",
+      acao: "ONBOARDING_PREFERENCES_UPDATE",
+      entity: "configuracoes_escola",
+      details: {
+        estrutura,
+        tipo_presenca,
+        periodo_tipo,
+        autogerar_periodos,
+      },
+    }).catch(() => null)
+
     return NextResponse.json({ ok: true })
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Erro inesperado"
@@ -142,6 +152,11 @@ export async function GET(
     const { data: auth } = await s.auth.getUser()
     const user = auth?.user
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 })
+
+    const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId)
+    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 })
+    }
 
     // Authorization: allow super_admin, escola admins, or users with configurar_escola vínculo
     // Keep behavior consistent with Step 1 (/onboarding/session): also allow profiles-based admin link for this escola
@@ -193,15 +208,7 @@ export async function GET(
     }
     if (!allowed) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: 'Configuração Supabase ausente.' }, { status: 500 })
-    }
-    const admin = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    )
-
-    const { data, error } = await (admin as any)
+    const { data, error } = await (s as any)
       .from('configuracoes_escola')
       .select('estrutura, tipo_presenca, periodo_tipo, autogerar_periodos, updated_at')
       .eq('escola_id', escolaId)

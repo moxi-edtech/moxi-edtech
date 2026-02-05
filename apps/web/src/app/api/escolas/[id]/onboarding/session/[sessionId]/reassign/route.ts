@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { hasPermission } from "@/lib/permissions";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { recordAuditServer } from "@/lib/audit";
 
 // POST /api/escolas/[id]/onboarding/session/[sessionId]/reassign
 // Reassigns dependents (turmas, matriculas) from one session to another within the same escola.
@@ -17,6 +17,11 @@ export async function POST(
     const { data: auth } = await s.auth.getUser();
     const user = auth?.user;
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 });
+
+    const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId);
+    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
+    }
 
     // Authorization similar to other onboarding endpoints
     let allowed = false;
@@ -54,14 +59,6 @@ export async function POST(
     }
     if (!allowed) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 });
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: 'Configuração Supabase ausente.' }, { status: 500 });
-    }
-    const admin = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
-
     const body = await req.json().catch(() => ({}));
     const targetSessionId = String((body?.targetSessionId ?? '')).trim();
     if (!targetSessionId) {
@@ -73,8 +70,8 @@ export async function POST(
 
     // Validate current and target sessions belong to the escola
     const [fromRes, toRes] = await Promise.all([
-      (admin as any).from('anos_letivos').select('id, escola_id, ano').eq('id', sessionId).limit(1),
-      (admin as any).from('anos_letivos').select('id, escola_id, ano').eq('id', targetSessionId).limit(1),
+      (s as any).from('anos_letivos').select('id, escola_id, ano').eq('id', sessionId).limit(1),
+      (s as any).from('anos_letivos').select('id, escola_id, ano').eq('id', targetSessionId).limit(1),
     ]);
     const fromSess = Array.isArray(fromRes.data) ? fromRes.data[0] : undefined;
     const toSess = Array.isArray(toRes.data) ? toRes.data[0] : undefined;
@@ -91,9 +88,9 @@ export async function POST(
 
     const [turmasCountRes, matriculasCountRes] = await Promise.all([
       anoOrigem
-        ? (admin as any).from('turmas').select('id', { count: 'exact', head: true }).eq('ano_letivo', anoOrigem)
+        ? (s as any).from('turmas').select('id', { count: 'exact', head: true }).eq('ano_letivo', anoOrigem)
         : Promise.resolve({ count: 0 }),
-      (admin as any).from('matriculas').select('id', { count: 'exact', head: true }).eq('ano_letivo_id', sessionId),
+      (s as any).from('matriculas').select('id', { count: 'exact', head: true }).eq('ano_letivo_id', sessionId),
     ]);
     const before = {
       turmas: turmasCountRes?.count ?? 0,
@@ -103,12 +100,21 @@ export async function POST(
     // Reassign
     const updErrors: string[] = [];
     if (anoOrigem && anoDestino) {
-      try { await (admin as any).from('turmas').update({ ano_letivo: anoDestino } as any).eq('ano_letivo', anoOrigem).eq('escola_id', escolaId) } catch (e) { updErrors.push(e instanceof Error ? e.message : String(e)) }
+      try { await (s as any).from('turmas').update({ ano_letivo: anoDestino } as any).eq('ano_letivo', anoOrigem).eq('escola_id', escolaId) } catch (e) { updErrors.push(e instanceof Error ? e.message : String(e)) }
     }
-    try { await (admin as any).from('matriculas').update({ ano_letivo_id: targetSessionId } as any).eq('ano_letivo_id', sessionId).eq('escola_id', escolaId) } catch (e) { updErrors.push(e instanceof Error ? e.message : String(e)) }
+    try { await (s as any).from('matriculas').update({ ano_letivo_id: targetSessionId } as any).eq('ano_letivo_id', sessionId).eq('escola_id', escolaId) } catch (e) { updErrors.push(e instanceof Error ? e.message : String(e)) }
     if (updErrors.length) {
       return NextResponse.json({ ok: false, error: `Falha ao mover registros: ${updErrors.join(' | ')}` }, { status: 400 });
     }
+
+    recordAuditServer({
+      escolaId,
+      portal: 'admin_escola',
+      acao: 'ANO_LETIVO_REASSOCIADO',
+      entity: 'anos_letivos',
+      entityId: sessionId,
+      details: { targetSessionId, before },
+    }).catch(() => null)
 
     return NextResponse.json({ ok: true, data: { before, targetSessionId } });
   } catch (e) {

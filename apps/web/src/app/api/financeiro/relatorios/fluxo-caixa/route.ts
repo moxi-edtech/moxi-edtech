@@ -28,10 +28,14 @@ export async function GET(_req: Request) {
     let query = supabase
       .from('vw_financeiro_escola_dia')
       .select('dia, qtd_pagos, qtd_total')
-      .eq('escola_id', escolaId)
-      .order('dia', { ascending: true });
+      .eq('escola_id', escolaId);
 
-    query = applyKf2ListInvariants(query, { defaultLimit: 50 });
+    query = applyKf2ListInvariants(query, {
+      defaultLimit: 50,
+      order: [
+        { column: 'dia', ascending: true },
+      ],
+    });
 
     const { data, error } = await query;
 

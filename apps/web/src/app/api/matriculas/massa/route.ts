@@ -1,22 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-
 import { buildTurmaCode } from "@/lib/turma";
-import type { Database } from "~types/supabase";
 import type { MatriculaMassaPayload } from "~types/matricula";
+import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { requireRoleInSchool } from "@/lib/authz";
+import { recordAuditServer } from "@/lib/audit";
 
 export async function POST(request: NextRequest) {
-  const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!adminUrl || !serviceKey) {
-    return NextResponse.json(
-      { error: "SUPABASE configuration missing" },
-      { status: 500 }
-    );
+  const supabase = await supabaseServerTyped<any>();
+  const { data: userRes } = await supabase.auth.getUser();
+  const user = userRes?.user;
+  if (!user) {
+    return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
   }
-
-  const supabase = createAdminClient<Database>(adminUrl, serviceKey);
 
   let payload: MatriculaMassaPayload;
   try {
@@ -39,20 +35,24 @@ export async function POST(request: NextRequest) {
     turma_id,
   } = payload;
 
-  if (
-    !import_id ||
-    !escola_id ||
-    !curso_codigo ||
-    !classe_numero ||
-    !turno_codigo ||
-    !turma_letra ||
-    !ano_letivo
-  ) {
+  if (!import_id || !escola_id || !curso_codigo || !classe_numero || !turno_codigo || !turma_letra || !ano_letivo) {
     return NextResponse.json(
       { error: "Campos obrigatórios ausentes no payload" },
       { status: 400 }
     );
   }
+
+  const resolvedEscolaId = await resolveEscolaIdForUser(supabase, user.id, escola_id);
+  if (!resolvedEscolaId || resolvedEscolaId !== escola_id) {
+    return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
+  }
+
+  const { error: roleError } = await requireRoleInSchool({
+    supabase,
+    escolaId: resolvedEscolaId,
+    roles: ["admin", "admin_escola", "secretaria", "staff_admin"],
+  });
+  if (roleError) return roleError;
 
   let turmaCode: string;
   try {
@@ -122,6 +122,19 @@ export async function POST(request: NextRequest) {
       if (cErr) confirm_errors.push({ id: row.id as string, error: cErr.message });
     }
   }
+
+  recordAuditServer({
+    escolaId: escola_id,
+    portal: "admin_escola",
+    acao: "MATRICULA_MASSA",
+    entity: "matriculas",
+    details: {
+      import_id,
+      turma_id: resolvedTurmaId,
+      success_count: result?.success_count ?? 0,
+      error_count: result?.error_count ?? 0,
+    },
+  }).catch(() => null);
 
   return NextResponse.json({
     success_count: result?.success_count ?? 0,

@@ -22,6 +22,7 @@ type FechoItem = {
   id: string;
   hora: string;
   aluno: string;
+  operador: string;
   valor: number;
   metodo: string;
   descricao: string;
@@ -395,6 +396,7 @@ export default function FechoCaixaPage() {
               <tr>
                 <th className="px-6 py-3">Hora</th>
                 <th className="px-6 py-3">Aluno / Responsável</th>
+                <th className="px-6 py-3">Operador</th>
                 <th className="px-6 py-3">Descrição</th>
                 <th className="px-6 py-3">Método</th>
                 <th className="px-6 py-3 text-right">Valor</th>
@@ -403,7 +405,7 @@ export default function FechoCaixaPage() {
             <tbody className="divide-y divide-slate-50">
               {!loading && rows.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center flex flex-col items-center justify-center gap-2">
+                  <td colSpan={6} className="px-6 py-12 text-center flex flex-col items-center justify-center gap-2">
                     <Search className="w-8 h-8 text-slate-200" />
                     <span className="text-slate-500 font-medium">Nenhum lançamento encontrado.</span>
                     <span className="text-xs text-slate-400">Verifique a data ou o filtro de operador.</span>
@@ -414,6 +416,7 @@ export default function FechoCaixaPage() {
                 <tr key={row.id} className="hover:bg-slate-50 transition-colors group">
                   <td className="px-6 py-4 text-slate-500 font-mono text-xs">{row.hora}</td>
                   <td className="px-6 py-4 font-bold text-slate-700">{row.aluno}</td>
+                  <td className="px-6 py-4 text-slate-600">{row.operador}</td>
                   <td className="px-6 py-4 text-slate-600">{row.descricao}</td>
                   <td className="px-6 py-4">
                     <span className={`

@@ -298,9 +298,15 @@ async function upsertCursoMatriz(args: {
         classe_id: cls.id,
         disciplina_id: disciplinaId,
         carga_horaria: null,
+        carga_horaria_semanal: null,
         obrigatoria: true,
+        classificacao: "core",
         ordem: ordem++,
         ativo: true,
+        periodos_ativos: [1, 2, 3],
+        entra_no_horario: true,
+        avaliacao_mode: "inherit_school",
+        status_completude: "incompleto",
       });
     }
   }

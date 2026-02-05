@@ -20,6 +20,7 @@ type DashboardPayload = {
   kpis: KpiStats;
   avisos: Aviso[];
   eventos: Evento[];
+  curriculoPendencias: number;
   charts?: {
     meses: string[];
     alunosPorMes: number[];
@@ -64,6 +65,7 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
   const [
     dashboardCounts,
     pendingTurmasCount,
+    draftCurriculosResult,
     setupStatusResult,
     configResult,
     missingPricingResult,
@@ -79,6 +81,11 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
       .select("pendentes_total")
       .eq("escola_id", escolaId)
       .maybeSingle(),
+
+    s.from("curso_curriculos")
+      .select("id")
+      .eq("escola_id", escolaId)
+      .eq("status", "draft"),
 
     s.from("vw_escola_setup_status")
       .select("has_ano_letivo_ativo, has_3_trimestres, has_curriculo_published, has_turmas_no_ano")
@@ -148,10 +155,30 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
         const avisos: Aviso[] = [];
         const eventos: Evento[] = [];
     
+        const draftCurriculoIds = (draftCurriculosResult.data ?? [])
+          .map((row: any) => row.id)
+          .filter(Boolean);
+        let curriculoPendencias = 0;
+        if (draftCurriculoIds.length > 0) {
+          const { data: pendenciasRows } = await s
+            .from("curso_matriz")
+            .select("disciplina_id")
+            .eq("escola_id", escolaId)
+            .eq("status_completude", "incompleto")
+            .in("curso_curriculo_id", draftCurriculoIds);
+          const unique = new Set(
+            (pendenciasRows ?? [])
+              .map((row: any) => row?.disciplina_id)
+              .filter(Boolean)
+          );
+          curriculoPendencias = unique.size;
+        }
+
         const payload: DashboardPayload = {
           kpis: stats,
           avisos,
           eventos,
+          curriculoPendencias,
           charts: undefined,
         };
 
@@ -172,6 +199,7 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
             missingPricingCount={missingPricingCount}
             financeiroHref={financeiroHref}
             pagamentosKpis={payload.charts?.pagamentos as any}
+            curriculoPendenciasCount={payload.curriculoPendencias}
           />
         );
       } catch (e: any) {

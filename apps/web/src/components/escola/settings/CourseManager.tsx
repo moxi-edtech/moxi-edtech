@@ -17,6 +17,7 @@ type CourseManagerProps = {
   onCreateDisciplina: () => void;
   onEditDisciplina: (disciplina: CourseDetails["disciplinas"][number]) => void;
   onDeleteDisciplina: (id: string) => void;
+  onResolvePendencias: () => void;
   onBack: () => void;
 };
 
@@ -52,8 +53,13 @@ export default function CourseManager({
   onCreateDisciplina,
   onEditDisciplina,
   onDeleteDisciplina,
+  onResolvePendencias,
   onBack,
 }: CourseManagerProps) {
+  const pendenciasCount = details
+    ? details.disciplinas.filter((disc) => disc.status_completude !== "completo").length
+    : 0;
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200">
       {/* Header */}
@@ -192,14 +198,21 @@ export default function CourseManager({
                         Contrato acadêmico aplicado por versão.
                       </p>
                     </div>
-                    <span
-                      className={cx(
-                        "inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold",
-                        getCurriculoBadge(curriculoInfo?.status)
+                    <div className="flex items-center gap-2">
+                      {pendenciasCount > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
+                          {pendenciasCount} pendência(s)
+                        </span>
                       )}
-                    >
-                      {curriculoInfo?.status ?? "sem currículo"}
-                    </span>
+                      <span
+                        className={cx(
+                          "inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold",
+                          getCurriculoBadge(curriculoInfo?.status)
+                        )}
+                      >
+                        {curriculoInfo?.status ?? "sem currículo"}
+                      </span>
+                    </div>
                   </div>
                   <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-slate-600">
                     <div className="rounded-lg border border-slate-200 px-3 py-2">
@@ -216,14 +229,25 @@ export default function CourseManager({
 
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-semibold text-slate-900">Plano curricular</h4>
-                  <button
-                    type="button"
-                    onClick={onCreateDisciplina}
-                    className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-slate-800 shadow-sm"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Adicionar Disciplina
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {pendenciasCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={onResolvePendencias}
+                        className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-bold text-amber-700 hover:bg-amber-100"
+                      >
+                        Resolver pendências
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={onCreateDisciplina}
+                      className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-slate-800 shadow-sm"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Adicionar Disciplina
+                    </button>
+                  </div>
                 </div>
 
                 <div className="rounded-xl border border-slate-200 overflow-hidden">
@@ -244,6 +268,11 @@ export default function CourseManager({
                                 {disc.is_core && (
                                   <span className="rounded-full bg-slate-900 text-white px-2 py-0.5 text-[10px] font-semibold">
                                     Core
+                                  </span>
+                                )}
+                                {disc.status_completude !== "completo" && (
+                                  <span className="rounded-full bg-amber-100 text-amber-700 px-2 py-0.5 text-[10px] font-semibold">
+                                    Pendente
                                   </span>
                                 )}
                               </div>

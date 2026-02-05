@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { BookOpen, Trash2, Check, Settings, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -49,6 +50,12 @@ export type CourseDetails = {
     is_avaliavel: boolean;
     avaliacao_mode: "herdar_escola" | "personalizada";
     area?: string | null;
+    classificacao?: "core" | "complementar" | "optativa" | null;
+    periodos_ativos?: number[] | null;
+    entra_no_horario?: boolean | null;
+    avaliacao_mode_key?: "inherit_school" | "custom" | "inherit_disciplina" | null;
+    avaliacao_disciplina_id?: string | null;
+    status_completude?: string | null;
     matrix_ids: string[];
   }[];
   turmas: {
@@ -117,6 +124,7 @@ async function apiGet<T>(url: string, signal?: AbortSignal): Promise<T> {
 
 // ---------- Component ----------
 export default function StructureMarketplace({ escolaId }: { escolaId: string }) {
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<ActiveTab>("my_courses");
   const [courses, setCourses] = useState<ActiveCourse[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
@@ -139,27 +147,31 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   const [disciplinaModalMode, setDisciplinaModalMode] = useState<"create" | "edit">("create");
   const [disciplinaEditing, setDisciplinaEditing] = useState<DisciplinaForm | null>(null);
   const [disciplinaEditingMatrixIds, setDisciplinaEditingMatrixIds] = useState<string[]>([]);
+  const [resolvePendencias, setResolvePendencias] = useState(false);
+  const [autoResolveTriggered, setAutoResolveTriggered] = useState(false);
 
   const openCreateDisciplina = useCallback(() => {
     setDisciplinaModalMode("create");
     setDisciplinaEditing(null);
+    setResolvePendencias(false);
     setDisciplinaModalOpen(true);
   }, []);
 
-  const openEditDisciplina = useCallback((disciplina: CourseDetails["disciplinas"][number]) => {
+  const openEditDisciplina = useCallback((disciplina: CourseDetails["disciplinas"][number], resolveMode = false) => {
     setDisciplinaModalMode("edit");
+    setResolvePendencias(resolveMode);
     setDisciplinaEditing({
       id: disciplina.id,
       nome: disciplina.nome,
       codigo: disciplina.codigo,
-      periodos_ativos: [1, 2, 3],
-      periodo_mode: "ano",
+      periodos_ativos: disciplina.periodos_ativos?.length ? disciplina.periodos_ativos : [1, 2, 3],
+      periodo_mode: disciplina.periodos_ativos?.length ? "custom" : "ano",
       carga_horaria_semanal: disciplina.carga_horaria_semanal,
-      classificacao: disciplina.is_core ? "core" : "complementar",
-      entra_no_horario: disciplina.participa_horario,
+      classificacao: disciplina.classificacao ?? (disciplina.is_core ? "core" : "complementar"),
+      entra_no_horario: disciplina.entra_no_horario ?? disciplina.participa_horario,
       avaliacao: {
-        mode: disciplina.avaliacao_mode === "personalizada" ? "custom" : "inherit_school",
-        base_id: null,
+        mode: disciplina.avaliacao_mode_key ?? (disciplina.avaliacao_mode === "personalizada" ? "custom" : "inherit_school"),
+        base_id: disciplina.avaliacao_disciplina_id ?? null,
       },
       area: disciplina.area ?? null,
       programa_texto: null,
@@ -286,24 +298,36 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       (disciplinasJson?.data ?? []).forEach((item: any) => {
         const key = item.disciplina_id ?? item.nome ?? item.id;
         const existing = disciplinaMap.get(key);
+        const incomingStatus = item.curriculo_status ?? null;
         const base = existing ?? {
           id: key,
           nome: item.nome,
           codigo: item.sigla ?? item.codigo ?? item.nome?.slice(0, 6)?.toUpperCase() ?? "",
-          carga_horaria_semanal: Number(item.carga_horaria_semana ?? item.carga_horaria ?? 0),
-          is_core: Boolean(item.is_core ?? item.tipo === "core"),
-          participa_horario: true,
+          carga_horaria_semanal: Number(item.carga_horaria_semanal ?? item.carga_horaria ?? 0),
+          is_core: Boolean(item.is_core ?? (item.classificacao === "core" || item.tipo === "core")),
+          participa_horario: item.entra_no_horario ?? true,
           is_avaliavel: item.is_avaliavel ?? true,
-          avaliacao_mode: item.aplica_modelo_avaliacao_id ? "personalizada" : "herdar_escola",
+          avaliacao_mode: item.avaliacao_mode === "custom" ? "personalizada" : "herdar_escola",
           area: item.area ?? null,
+          classificacao: item.classificacao ?? null,
+          periodos_ativos: item.periodos_ativos ?? null,
+          entra_no_horario: item.entra_no_horario ?? null,
+          avaliacao_mode_key: item.avaliacao_mode ?? null,
+          avaliacao_disciplina_id: item.avaliacao_disciplina_id ?? null,
+          status_completude: item.status_completude ?? null,
+          curriculo_status: incomingStatus,
           matrix_ids: [] as string[], // Explicitly cast to string[]
         };
 
-        const matrixIds = base.matrix_ids ?? [];
+        const shouldReplace =
+          existing && incomingStatus === "draft" && existing.curriculo_status !== "draft";
+        const nextBase = shouldReplace ? { ...base, matrix_ids: [] as string[] } : base;
+
+        const matrixIds = nextBase.matrix_ids ?? [];
         if (item.id && !matrixIds.includes(item.id as string)) { // Cast item.id to string
           matrixIds.push(item.id as string); // Also cast for push
         }
-        disciplinaMap.set(key, { ...base, matrix_ids: matrixIds });
+        disciplinaMap.set(key, { ...nextBase, matrix_ids: matrixIds });
       });
 
       const disciplinas = Array.from(disciplinaMap.values());
@@ -331,9 +355,9 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   );
 
   const handleOpenManager = useCallback(
-    async (courseId: string) => {
+    async (courseId: string, tab: ManagerTab = "turmas") => {
       setSelectedCourseId(courseId);
-      setManagerTab("turmas");
+      setManagerTab(tab);
       setLoadingDetails(true);
       setDetails(null);
 
@@ -350,6 +374,33 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     },
     [fetchCourseDetails]
   );
+
+  useEffect(() => {
+    if (autoResolveTriggered) return;
+    if (searchParams.get("resolvePendencias") !== "1") return;
+    if (loadingCourses) return;
+
+    const run = async () => {
+      try {
+        const res = await fetch(`/api/escolas/${escolaId}/disciplinas?status_completude=incompleto&limit=1`, {
+          cache: "no-store",
+        });
+        const json = await res.json().catch(() => null);
+        const first = json?.data?.[0];
+        const targetCourseId = first?.curso_id ?? courses[0]?.id;
+        if (targetCourseId) {
+          await handleOpenManager(targetCourseId, "disciplinas");
+          setActiveTab("my_courses");
+        }
+      } catch (e) {
+        console.warn(e);
+      } finally {
+        setAutoResolveTriggered(true);
+      }
+    };
+
+    run();
+  }, [autoResolveTriggered, courses, escolaId, handleOpenManager, loadingCourses, searchParams]);
 
   const selectedCourse = useMemo(
     () => courses.find((c) => c.id === selectedCourseId) || null,
@@ -605,11 +656,15 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                 curso_id: cursoId,
                 classe_id: cls.id,
                 carga_horaria: disciplina.carga_horaria,
-                obrigatoria: disciplina.is_core,
-                is_core: disciplina.is_core,
+                carga_horaria_semanal: disciplina.carga_horaria,
+                classificacao: disciplina.is_core ? "core" : "complementar",
                 is_avaliavel: disciplina.is_avaliavel,
                 area: disciplina.area || null,
-                aplica_modelo_avaliacao_id: disciplina.modelo_avaliacao_id || null,
+                periodos_ativos: [1, 2, 3],
+                entra_no_horario: true,
+                avaliacao_mode: "inherit_school",
+                avaliacao_modelo_id: null,
+                avaliacao_disciplina_id: null,
               }),
             });
             const discJson = await discRes.json().catch(() => null);
@@ -683,14 +738,16 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                 curso_id: selectedCourseId,
                 classe_id: classe.id,
                 sigla: payload.codigo,
-                carga_horaria_semana: payload.carga_horaria_semanal,
+                carga_horaria_semanal: payload.carga_horaria_semanal,
                 carga_horaria: payload.carga_horaria_semanal,
-                obrigatoria: payload.classificacao === "core",
-                is_core: payload.classificacao === "core",
+                classificacao: payload.classificacao,
                 is_avaliavel: true,
                 area: payload.area ?? null,
-                aplica_modelo_avaliacao_id: null,
-                herda_de_disciplina_id:
+                periodos_ativos: payload.periodos_ativos,
+                entra_no_horario: payload.entra_no_horario,
+                avaliacao_mode: payload.avaliacao.mode,
+                avaliacao_modelo_id: null,
+                avaliacao_disciplina_id:
                   payload.avaliacao.mode === "inherit_disciplina"
                     ? payload.avaliacao.base_id ?? null
                     : null,
@@ -719,13 +776,16 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
               body: JSON.stringify({
                 nome: payload.nome,
                 sigla: payload.codigo,
-                carga_horaria_semana: payload.carga_horaria_semanal,
+                carga_horaria_semanal: payload.carga_horaria_semanal,
                 carga_horaria: payload.carga_horaria_semanal,
-                is_core: payload.classificacao === "core",
+                classificacao: payload.classificacao,
                 is_avaliavel: true,
                 area: payload.area ?? null,
-                aplica_modelo_avaliacao_id: null,
-                herda_de_disciplina_id:
+                periodos_ativos: payload.periodos_ativos,
+                entra_no_horario: payload.entra_no_horario,
+                avaliacao_mode: payload.avaliacao.mode,
+                avaliacao_modelo_id: null,
+                avaliacao_disciplina_id:
                   payload.avaliacao.mode === "inherit_disciplina"
                     ? payload.avaliacao.base_id ?? null
                     : null,
@@ -754,6 +814,24 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       selectedCourseId,
     ]
   );
+
+  const pendingDisciplines = useMemo(
+    () => (details?.disciplinas ?? []).filter((disc) => disc.status_completude !== "completo"),
+    [details]
+  );
+
+  const handleResolvePendencias = useCallback(() => {
+    if (pendingDisciplines.length === 0) return;
+    openEditDisciplina(pendingDisciplines[0], true);
+  }, [openEditDisciplina, pendingDisciplines]);
+
+  useEffect(() => {
+    if (searchParams.get("resolvePendencias") !== "1") return;
+    if (!selectedCourseId || loadingDetails) return;
+    if (!resolvePendencias && pendingDisciplines.length > 0) {
+      handleResolvePendencias();
+    }
+  }, [handleResolvePendencias, loadingDetails, pendingDisciplines.length, resolvePendencias, searchParams, selectedCourseId]);
 
   const handleDeleteDisciplina = useCallback(
     async (id: string) => {
@@ -802,6 +880,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
           onCreateDisciplina={openCreateDisciplina}
           onEditDisciplina={openEditDisciplina}
           onDeleteDisciplina={handleDeleteDisciplina}
+          onResolvePendencias={handleResolvePendencias}
           onBack={() => {
             setSelectedCourseId(null);
             setDetails(null);
@@ -815,7 +894,15 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
             existingCodes={details.disciplinas.map((d) => d.codigo)}
             existingNames={details.disciplinas.map((d) => d.nome)}
             existingDisciplines={details.disciplinas.map((d) => ({ id: d.id, nome: d.nome }))}
-            onClose={() => setDisciplinaModalOpen(false)}
+            pendingDisciplines={resolvePendencias ? pendingDisciplines.map((d) => ({ id: d.id, nome: d.nome })) : []}
+            onSelectPending={(id) => {
+              const next = pendingDisciplines.find((disc) => disc.id === id);
+              if (next) openEditDisciplina(next, true);
+            }}
+            onClose={() => {
+              setResolvePendencias(false);
+              setDisciplinaModalOpen(false);
+            }}
             onSave={handleSaveDisciplina}
             onDelete={disciplinaModalMode === "edit" ? handleDeleteDisciplina : undefined}
           />

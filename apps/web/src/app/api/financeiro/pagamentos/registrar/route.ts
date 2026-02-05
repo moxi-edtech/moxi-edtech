@@ -10,7 +10,7 @@ const payloadSchema = z.object({
   aluno_id: z.string().uuid().optional(),
   mensalidade_id: z.string().uuid().optional(),
   valor: z.number().positive().optional(),
-  metodo: z.enum(["cash", "tpa", "transfer", "mcx", "kwik"]).optional(),
+  metodo: z.enum(["cash", "tpa", "transfer", "mcx", "kiwk", "kwik"]).optional(),
   reference: z.string().trim().max(64).optional().nullable(),
   evidence_url: z.string().trim().max(255).optional().nullable(),
   meta: z.record(z.any()).optional(),
@@ -20,12 +20,14 @@ const payloadSchema = z.object({
 
 const normalizeMetodo = (raw: string) => {
   const value = raw.toLowerCase().trim();
-  if (["cash", "tpa", "transfer", "mcx", "kwik"].includes(value)) return value;
+  if (["cash", "tpa", "transfer", "mcx", "kiwk", "kwik"].includes(value)) {
+    return value === "kwik" ? "kiwk" : value;
+  }
   if (value === "numerario" || value === "dinheiro") return "cash";
   if (value === "multicaixa" || value === "tpa_fisico" || value === "tpa") return "tpa";
   if (value === "transferencia") return "transfer";
   if (value === "mcx_express" || value === "mbway" || value === "referencia") return "mcx";
-  if (value === "kwik") return "kwik";
+  if (value === "kwik") return "kiwk";
   return "cash";
 };
 

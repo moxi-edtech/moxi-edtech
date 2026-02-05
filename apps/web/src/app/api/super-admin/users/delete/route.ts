@@ -1,8 +1,7 @@
 import { revalidatePath } from 'next/cache'
 import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
-import { createClient as createAdminClient, type User } from '@supabase/supabase-js'
-import type { Database } from '~types/supabase'
+import { recordAuditServer } from '@/lib/audit'
 
 export async function POST(request: Request) {
   try {
@@ -42,22 +41,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
     }
 
-    // Verificar configurações do Supabase
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      console.error('Configuração do Supabase ausente')
-      return NextResponse.json({ ok: false, error: 'Configuração do servidor incompleta' }, { status: 500 })
-    }
-
-    // Criar cliente admin
-    const admin = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    )
-
     console.log(`[Super Admin] Iniciando exclusão do usuário: ${userId}`)
 
     // 0. Opcional: obter export dos dados via RPC antes de qualquer modificação
-    const { data: exportData, error: exportError } = await admin.rpc('get_user_export_json', { p_user_id: userId }) as { data: any, error: any }
+    const { data: exportData, error: exportError } = await (s as any).rpc('get_user_export_json', { p_user_id: userId }) as { data: any, error: any }
 
     if (exportError) {
       console.error('[Super Admin] Erro ao exportar dados do usuário:', exportError.message ?? exportError)
@@ -84,7 +71,7 @@ export async function POST(request: Request) {
     }
 
     // 1. Arquivar profile no DB (move para profiles_archive + marca deleted_at)
-    const { error: archiveError } = await admin.rpc('move_profile_to_archive', { p_user_id: userId, p_performed_by: currentUser.id }) as { error: any }
+    const { error: archiveError } = await (s as any).rpc('move_profile_to_archive', { p_user_id: userId, p_performed_by: currentUser.id }) as { error: any }
 
     if (archiveError) {
       console.error('[Super Admin] Erro ao arquivar profile:', archiveError.message ?? archiveError)
@@ -96,7 +83,7 @@ export async function POST(request: Request) {
     // 2. Limpeza de dados dependentes (mantive a sequência que tinhas)
     // 2.1 atribuicoes_prof
     try {
-      const { error: atribuicoesError } = await admin
+      const { error: atribuicoesError } = await (s as any)
         .from('atribuicoes_prof')
         .delete()
         .eq('professor_user_id', userId)
@@ -111,7 +98,7 @@ export async function POST(request: Request) {
 
     // 2.2 rotinas
     try {
-      const { error: rotinasError } = await admin
+      const { error: rotinasError } = await (s as any)
         .from('rotinas')
         .delete()
         .eq('professor_user_id', userId)
@@ -126,7 +113,7 @@ export async function POST(request: Request) {
 
     // 3. Remover de escola_users (se existir)
     try {
-      const { error: escolaUsuariosError } = await admin
+      const { error: escolaUsuariosError } = await (s as any)
         .from('escola_users')
         .delete()
         .eq('user_id', userId)
@@ -165,66 +152,24 @@ export async function POST(request: Request) {
     }
     */
 
-    // 5. Remover do Auth (usuário de autenticação) OU marcar como deletado
-    let authDeletionSuccess = false
-    let authDeletionMessage = 'Usuário excluído do Auth com sucesso.'
-
-    // Verificar se usuário existe no Auth
-    let userInAuth: User | null = null
-    try {
-      const { data: userData, error: checkError } = await admin.auth.admin.getUserById(userId)
-      if (checkError && checkError.message !== 'User not found') {
-        console.error(`[Super Admin] Erro ao verificar usuário: ${checkError.message ?? checkError}`)
-        // não abortamos, logamos e seguimos
-      }
-      userInAuth = userData?.user ?? null
-    } catch (e) {
-      console.error('[Super Admin] Exceção ao verificar usuário no Auth:', e)
-    }
-
-    if (userInAuth) {
-      try {
-        const { error: authErrorDelete } = await admin.auth.admin.deleteUser(userId)
-        if (authErrorDelete) {
-          console.error(`[Super Admin] Erro ao excluir usuário do Auth: ${authErrorDelete.message ?? authErrorDelete}`)
-          // Estratégia alternativa: marcar como deletado / bloquear
-          try {
-            await admin.auth.admin.updateUserById(userId, {
-              user_metadata: {
-                deleted: true,
-                deleted_at: new Date().toISOString(),
-              },
-              email: `deleted_${userId}@deleted.com`,
-              phone: '',
-            })
-            console.log(`[Super Admin] Usuário marcado como excluído no Auth (soft delete): ${userId}`)
-            authDeletionSuccess = false
-            authDeletionMessage =
-              'Não foi possível remover o usuário do Auth, mas ele foi marcado como deletado/bloqueado.'
-          } catch (updateError) {
-            console.error(`[Super Admin] Erro ao marcar usuário como excluído no Auth:`, updateError)
-            authDeletionSuccess = false
-            authDeletionMessage =
-              'Não foi possível remover nem marcar o usuário como deletado no Auth. Pode ser necessário intervenção manual no painel.'
-          }
-        } else {
-          authDeletionSuccess = true
-          console.log(`[Super Admin] Usuário excluído do Auth: ${userId}`)
-        }
-      } catch (e) {
-        console.error('[Super Admin] Exceção ao excluir usuário do Auth:', e)
-      }
-    } else {
-      console.log(`[Super Admin] Usuário ${userId} não encontrado no Auth, considerando como já removido.`)
-      authDeletionSuccess = true
-      authDeletionMessage = 'Usuário já não existia no Auth.'
-    }
+    // 5. Operações Auth requerem service role; manter apenas limpeza em DB
+    const authDeletionSuccess = false
+    const authDeletionMessage = 'Usuário no Auth não foi removido (service_role banido).'
 
     // 6. Revalidar cache para atualizar a UI
     revalidatePath('/super-admin/usuarios')
     revalidatePath('/super-admin')
 
     console.log(`[Super Admin] Processo concluído para usuário: ${userId}`)
+
+    recordAuditServer({
+      escolaId: null,
+      portal: 'super_admin',
+      acao: 'USUARIO_ARQUIVADO',
+      entity: 'usuario',
+      entityId: userId,
+      details: { authDeleted: authDeletionSuccess },
+    }).catch(() => null)
 
     return NextResponse.json({ 
       ok: true, 

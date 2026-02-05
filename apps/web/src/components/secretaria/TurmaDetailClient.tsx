@@ -38,7 +38,7 @@ type TurmaData = {
     curso_nome?: string | null;
   };
   alunos: Aluno[];
-  disciplinas: Array<{ id: string; nome: string; professor?: string }>;
+  disciplinas: Array<{ id: string; nome: string; professor?: string; periodos_ativos?: number[] | null }>;
 };
 
 // --- HELPER COMPONENTS ---
@@ -94,6 +94,7 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [periodos, setPeriodos] = useState<Array<{ id: string; numero: number; tipo: string; data_inicio: string; data_fim: string }>>([]);
   const [periodoId, setPeriodoId] = useState('');
+  const [periodoNumero, setPeriodoNumero] = useState<number>(1);
   const [periodoClosed, setPeriodoClosed] = useState(false);
   const [closing, setClosing] = useState(false);
   const alunosScrollRef = useRef<HTMLDivElement | null>(null);
@@ -158,11 +159,18 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
         setPeriodos(items);
         if (!periodoId && items.length > 0) {
           setPeriodoId(items[0].id);
+          setPeriodoNumero(items[0].numero);
         }
       }
     }
     fetchPeriodos();
   }, [escolaId, turmaId]);
+
+  useEffect(() => {
+    if (!periodoId) return;
+    const selected = periodos.find((periodo) => periodo.id === periodoId);
+    if (selected?.numero) setPeriodoNumero(selected.numero);
+  }, [periodoId, periodos]);
 
   useEffect(() => {
     async function fetchStatus() {
@@ -193,6 +201,11 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
   if (!data) return null;
 
   const { turma, disciplinas } = data;
+  const disciplinasFiltradas = disciplinas.filter((disciplina) => {
+    const ativos = disciplina.periodos_ativos;
+    if (!ativos || ativos.length === 0) return true;
+    return ativos.includes(periodoNumero);
+  });
   const ocupacaoPct = Math.min((turma.ocupacao / Math.max(turma.capacidade, 1)) * 100, 100);
   const hasAlunos = alunos.length > 0;
   const virtualRows = alunosVirtualizer.getVirtualItems();
@@ -483,11 +496,11 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
                   </p>
                 )}
             </div>
-               {disciplinas.length === 0 ? (
+               {disciplinasFiltradas.length === 0 ? (
                   <div className="col-span-full p-12 text-center bg-white rounded-xl border border-dashed border-slate-200">
-                     <p className="text-slate-400 text-sm">Nenhuma disciplina vinculada.</p>
+                     <p className="text-slate-400 text-sm">Nenhuma disciplina ativa neste período.</p>
                   </div>
-               ) : disciplinas.map(d => (
+               ) : disciplinasFiltradas.map(d => (
                   <div key={d.id} className="bg-white p-5 rounded-xl border border-slate-200 hover:border-[#1F6B3B]/30 hover:shadow-sm transition-all group cursor-pointer">
                      <div className="flex justify-between items-start mb-2">
                         <div className="p-2 rounded-lg bg-slate-50 text-slate-400 group-hover:text-[#1F6B3B] transition-colors">

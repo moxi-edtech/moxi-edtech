@@ -67,7 +67,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     const result = Array.isArray(data) ? data[0] : data;
     if (!result?.ok) {
-      return NextResponse.json({ ok: false, error: result?.message || 'Falha ao publicar currículo.' }, { status: 400 });
+      return NextResponse.json({
+        ok: false,
+        error: result?.message || 'Falha ao publicar currículo.',
+        pendencias: result?.pendencias ?? [],
+        pendencias_count: result?.pendencias_count ?? 0,
+      }, { status: 400 });
     }
 
     return NextResponse.json({ ok: true, data: result, idempotency_key: idempotencyKey });

@@ -5,6 +5,29 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { canManageEscolaResources } from "../permissions";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 
+const resolveStatusCompletude = (payload: {
+  carga_horaria_semanal?: number | null;
+  classificacao?: string | null;
+  periodos_ativos?: number[] | null;
+  entra_no_horario?: boolean | null;
+  avaliacao_mode?: string | null;
+  avaliacao_modelo_id?: string | null;
+  avaliacao_disciplina_id?: string | null;
+}) => {
+  const hasCarga = Number(payload.carga_horaria_semanal ?? 0) > 0;
+  const hasClassificacao = Boolean(payload.classificacao);
+  const hasPeriodos = Array.isArray(payload.periodos_ativos) && payload.periodos_ativos.length > 0;
+  const hasHorario = payload.entra_no_horario !== null && payload.entra_no_horario !== undefined;
+  const hasAvaliacao =
+    payload.avaliacao_mode === "inherit_school" ||
+    (payload.avaliacao_mode === "custom" && Boolean(payload.avaliacao_modelo_id)) ||
+    (payload.avaliacao_mode === "inherit_disciplina" && Boolean(payload.avaliacao_disciplina_id));
+
+  return hasCarga && hasClassificacao && hasPeriodos && hasHorario && hasAvaliacao
+    ? "completo"
+    : "incompleto";
+};
+
 // GET /api/escolas/[id]/disciplinas
 export async function GET(
   _req: NextRequest,
@@ -15,6 +38,7 @@ export async function GET(
     const url = new URL(_req.url);
     const cursoId = url.searchParams.get('curso_id');
     const classeId = url.searchParams.get('classe_id');
+    const statusCompletude = url.searchParams.get('status_completude');
     const limitParam = url.searchParams.get('limit');
     const cursor = url.searchParams.get('cursor');
     const limit = limitParam ? Number(limitParam) : undefined;
@@ -35,8 +59,10 @@ export async function GET(
       let query = (supabase as any)
         .from("curso_matriz")
         .select(
-          `id, curso_id, classe_id, disciplina_id, carga_horaria, obrigatoria, ordem, curso_curriculo_id,
-           disciplina:disciplinas_catalogo(id, nome, sigla, carga_horaria_semana, is_core, is_avaliavel, area, aplica_modelo_avaliacao_id, herda_de_disciplina_id),
+          `id, curso_id, classe_id, disciplina_id, carga_horaria, carga_horaria_semanal, obrigatoria, ordem,
+           classificacao, periodos_ativos, entra_no_horario, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id,
+           status_completude, curso_curriculo_id,
+           disciplina:disciplinas_catalogo!curso_matriz_disciplina_id_fkey(id, nome, sigla, is_avaliavel, area),
            classe:classes(id, nome, turno, ano_letivo_id, carga_horaria_semanal, min_disciplinas_core),
            curso:cursos(id, nome),
            curriculo:curso_curriculos(status)
@@ -46,6 +72,7 @@ export async function GET(
 
       if (cursoId) query = query.eq('curso_id', cursoId);
       if (classeId) query = query.eq('classe_id', classeId);
+      if (statusCompletude) query = query.eq('status_completude', statusCompletude);
 
       if (cursor) {
         const [cursorClasse, cursorId] = cursor.split(',');
@@ -66,7 +93,10 @@ export async function GET(
       });
 
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        console.error("[disciplinas][GET] query error", error);
+        throw error;
+      }
       return data || [];
     })();
 
@@ -83,14 +113,19 @@ export async function GET(
       classe_carga_horaria_semanal: r.classe?.carga_horaria_semanal ?? undefined,
       classe_min_disciplinas_core: r.classe?.min_disciplinas_core ?? undefined,
       carga_horaria: r.carga_horaria ?? undefined,
+      carga_horaria_semanal: r.carga_horaria_semanal ?? undefined,
       ordem: r.ordem ?? undefined,
       disciplina_id: r.disciplina_id,
-      carga_horaria_semana: r.disciplina?.carga_horaria_semana ?? undefined,
-      is_core: r.disciplina?.is_core ?? undefined,
+      classificacao: r.classificacao ?? undefined,
+      periodos_ativos: r.periodos_ativos ?? undefined,
+      entra_no_horario: r.entra_no_horario ?? undefined,
+      avaliacao_mode: r.avaliacao_mode ?? undefined,
+      avaliacao_modelo_id: r.avaliacao_modelo_id ?? undefined,
+      avaliacao_disciplina_id: r.avaliacao_disciplina_id ?? undefined,
+      status_completude: r.status_completude ?? undefined,
+      is_core: r.classificacao ? r.classificacao === 'core' : undefined,
       is_avaliavel: r.disciplina?.is_avaliavel ?? undefined,
       area: r.disciplina?.area ?? undefined,
-      aplica_modelo_avaliacao_id: r.disciplina?.aplica_modelo_avaliacao_id ?? undefined,
-      herda_de_disciplina_id: r.disciplina?.herda_de_disciplina_id ?? undefined,
       curriculo_status: r.curriculo?.status ?? undefined,
     }));
 
@@ -101,7 +136,8 @@ export async function GET(
       : null;
     return NextResponse.json({ ok: true, data: payload, next_cursor: nextCursor });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Erro inesperado";
+    console.error("[disciplinas][GET] unexpected error", e);
+    const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
 }
@@ -134,14 +170,17 @@ export async function POST(
       classe_id: z.string().uuid(),
       obrigatoria: z.boolean().optional().default(true),
       carga_horaria: z.number().int().nullable().optional(),
+      carga_horaria_semanal: z.number().int().positive().nullable().optional(),
       ordem: z.number().int().nullable().optional(),
       sigla: z.string().trim().nullable().optional(),
-      carga_horaria_semana: z.number().int().positive().nullable().optional(),
-      is_core: z.boolean().optional(),
       is_avaliavel: z.boolean().optional(),
       area: z.string().trim().nullable().optional(),
-      aplica_modelo_avaliacao_id: z.string().uuid().nullable().optional(),
-      herda_de_disciplina_id: z.string().uuid().nullable().optional(),
+      classificacao: z.enum(['core', 'complementar', 'optativa']).nullable().optional(),
+      periodos_ativos: z.array(z.number().int()).nullable().optional(),
+      entra_no_horario: z.boolean().nullable().optional(),
+      avaliacao_mode: z.enum(['inherit_school', 'custom', 'inherit_disciplina']).nullable().optional(),
+      avaliacao_modelo_id: z.string().uuid().nullable().optional(),
+      avaliacao_disciplina_id: z.string().uuid().nullable().optional(),
     });
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
@@ -150,21 +189,6 @@ export async function POST(
     }
 
     const isAvaliavel = parsed.data.is_avaliavel ?? true;
-    let modeloAvaliacaoId = parsed.data.aplica_modelo_avaliacao_id ?? null;
-    if (isAvaliavel && !modeloAvaliacaoId) {
-      const { data: defaultModel } = await (supabase as any)
-        .from('modelos_avaliacao')
-        .select('id')
-        .eq('escola_id', escolaId)
-        .eq('is_default', true)
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      modeloAvaliacaoId = defaultModel?.id ?? null;
-    }
-    if (isAvaliavel && !modeloAvaliacaoId) {
-      return NextResponse.json({ ok: false, error: 'Modelo de avaliação obrigatório.' }, { status: 400 });
-    }
 
     // Resolve/insere disciplina no catálogo
     let disciplinaId: string | null = null;
@@ -179,12 +203,8 @@ export async function POST(
         disciplinaId = exist.id;
         const updatePayload: Record<string, any> = {};
         if (parsed.data.sigla !== undefined) updatePayload.sigla = parsed.data.sigla;
-        if (parsed.data.carga_horaria_semana !== undefined) updatePayload.carga_horaria_semana = parsed.data.carga_horaria_semana;
-        if (parsed.data.is_core !== undefined) updatePayload.is_core = parsed.data.is_core;
         if (parsed.data.is_avaliavel !== undefined) updatePayload.is_avaliavel = isAvaliavel;
         if (parsed.data.area !== undefined) updatePayload.area = parsed.data.area;
-        if (modeloAvaliacaoId) updatePayload.aplica_modelo_avaliacao_id = modeloAvaliacaoId;
-        if (parsed.data.herda_de_disciplina_id !== undefined) updatePayload.herda_de_disciplina_id = parsed.data.herda_de_disciplina_id;
         if (Object.keys(updatePayload).length > 0) {
           const { error: updateErr } = await (supabase as any)
             .from('disciplinas_catalogo')
@@ -201,12 +221,8 @@ export async function POST(
             escola_id: escolaId,
             nome: parsed.data.nome,
             sigla: parsed.data.sigla ?? null,
-            carga_horaria_semana: parsed.data.carga_horaria_semana ?? null,
-            is_core: parsed.data.is_core ?? parsed.data.obrigatoria ?? true,
-            is_avaliavel: isAvaliavel,
+            is_avaliavel: parsed.data.is_avaliavel ?? true,
             area: parsed.data.area ?? null,
-            aplica_modelo_avaliacao_id: modeloAvaliacaoId,
-            herda_de_disciplina_id: parsed.data.herda_de_disciplina_id ?? null,
           } as any)
           .select('id')
           .single();
@@ -215,14 +231,37 @@ export async function POST(
       }
     }
 
+    const classificacao = parsed.data.classificacao ?? (parsed.data.obrigatoria ? 'core' : 'complementar');
+    const periodosAtivos = parsed.data.periodos_ativos ?? [1, 2, 3];
+    const avaliacaoMode = parsed.data.avaliacao_mode ?? 'inherit_school';
+    const statusCompletude = resolveStatusCompletude({
+      carga_horaria_semanal: parsed.data.carga_horaria_semanal ?? null,
+      classificacao,
+      periodos_ativos: periodosAtivos,
+      entra_no_horario: parsed.data.entra_no_horario ?? true,
+      avaliacao_mode: avaliacaoMode,
+      avaliacao_modelo_id: parsed.data.avaliacao_modelo_id ?? null,
+      avaliacao_disciplina_id: parsed.data.avaliacao_disciplina_id ?? null,
+    });
+
     const payload: any = {
       escola_id: escolaId,
       curso_id: parsed.data.curso_id,
       classe_id: parsed.data.classe_id,
       disciplina_id: disciplinaId,
-      obrigatoria: parsed.data.obrigatoria,
+      obrigatoria: classificacao === 'core',
+      classificacao,
+      periodos_ativos: periodosAtivos,
+      entra_no_horario: parsed.data.entra_no_horario ?? true,
+      avaliacao_mode: avaliacaoMode,
+      avaliacao_modelo_id: parsed.data.avaliacao_modelo_id ?? null,
+      avaliacao_disciplina_id: parsed.data.avaliacao_disciplina_id ?? null,
+      status_completude: statusCompletude,
     };
     if (parsed.data.carga_horaria !== undefined) payload.carga_horaria = parsed.data.carga_horaria;
+    if (parsed.data.carga_horaria_semanal !== undefined) {
+      payload.carga_horaria_semanal = parsed.data.carga_horaria_semanal;
+    }
     if (parsed.data.ordem !== undefined) payload.ordem = parsed.data.ordem;
 
     const { data: ins, error } = await (supabase as any)

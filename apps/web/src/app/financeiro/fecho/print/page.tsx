@@ -10,12 +10,13 @@ export const dynamic = "force-dynamic";
 export default async function FechoPrintPage({
   searchParams,
 }: {
-  searchParams: Promise<{ date?: string; operador_id?: string }>;
+  searchParams: Promise<{ date?: string; operador_id?: string; operador_scope?: string }>;
 }) {
   const params = await searchParams;
   const data = await getFechoCaixaData({
     date: params.date ?? null,
     operadorId: params.operador_id ?? null,
+    operadorScope: params.operador_scope === "all" ? "all" : "self",
   });
 
   if (!data.ok) {

@@ -121,14 +121,35 @@ export async function DELETE(
     }
 
     // LIMPEZA EM CASCATA (sem turmas)
-    const { data: matrizRows, error: matrizErr } = await (supabase as any)
+    const { data: curriculosRows, error: curriculosErr } = await (supabase as any)
+      .from('curso_curriculos')
+      .select('id')
+      .eq('escola_id', escolaId)
+      .eq('curso_id', cursoId);
+    if (curriculosErr) throw curriculosErr;
+
+    const curriculoIds = (curriculosRows || []).map((row: any) => row.id).filter(Boolean);
+
+    const matrizIdsSet = new Set<string>();
+    if (curriculoIds.length > 0) {
+      const { data: matrizByCurriculo, error: matrizErr } = await (supabase as any)
+        .from('curso_matriz')
+        .select('id')
+        .eq('escola_id', escolaId)
+        .in('curso_curriculo_id', curriculoIds);
+      if (matrizErr) throw matrizErr;
+      (matrizByCurriculo || []).forEach((row: any) => row?.id && matrizIdsSet.add(row.id));
+    }
+
+    const { data: matrizByCurso, error: matrizCursoErr } = await (supabase as any)
       .from('curso_matriz')
       .select('id')
       .eq('escola_id', escolaId)
       .eq('curso_id', cursoId);
-    if (matrizErr) throw matrizErr;
+    if (matrizCursoErr) throw matrizCursoErr;
+    (matrizByCurso || []).forEach((row: any) => row?.id && matrizIdsSet.add(row.id));
 
-    const matrizIds = (matrizRows || []).map((row: any) => row.id).filter(Boolean);
+    const matrizIds = Array.from(matrizIdsSet.values());
     if (matrizIds.length > 0) {
       const { error: tdErr } = await (supabase as any)
         .from('turma_disciplinas')
@@ -137,12 +158,21 @@ export async function DELETE(
       if (tdErr) throw tdErr;
     }
 
-    const { error: matrizDeleteErr } = await (supabase as any)
+    if (curriculoIds.length > 0) {
+      const { error: matrizDeleteByCurriculoErr } = await (supabase as any)
+        .from('curso_matriz')
+        .delete()
+        .eq('escola_id', escolaId)
+        .in('curso_curriculo_id', curriculoIds);
+      if (matrizDeleteByCurriculoErr) throw matrizDeleteByCurriculoErr;
+    }
+
+    const { error: matrizDeleteByCursoErr } = await (supabase as any)
       .from('curso_matriz')
       .delete()
       .eq('escola_id', escolaId)
       .eq('curso_id', cursoId);
-    if (matrizDeleteErr) throw matrizDeleteErr;
+    if (matrizDeleteByCursoErr) throw matrizDeleteByCursoErr;
 
     const { error: curriculoErr } = await (supabase as any)
       .from('curso_curriculos')

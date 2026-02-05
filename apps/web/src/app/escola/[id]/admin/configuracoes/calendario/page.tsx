@@ -31,6 +31,7 @@ const toInputDate = (isoString?: string | null) => {
 
 export default function CalendarioConfigPage({ params }: Props) {
   const { id: escolaId } = use(params);
+  const base = escolaId ? `/escola/${escolaId}/admin/configuracoes` : "";
 
   // --- STATE ---
   const [loading, setLoading] = useState(true);
@@ -133,11 +134,11 @@ export default function CalendarioConfigPage({ params }: Props) {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <Link
-              href={`/escola/${escolaId}/admin/configuracoes`}
-              className="group inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-klasse-green transition-colors"
+              href={`${base}?tab=calendario`}
+              className="group inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-600 transition-colors"
             >
               <ArrowLeft className="h-3 w-3 transition-transform group-hover:-translate-x-1" />
-              Voltar às configurações
+              Voltar ao painel
             </Link>
             <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
               Calendário Acadêmico

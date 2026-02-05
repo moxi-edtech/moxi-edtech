@@ -77,7 +77,7 @@ export default function Page() {
   useEffect(() => {
     async function fetchSessions() {
       try {
-        const res = await fetch("/api/secretaria/school-sessions");
+        const res = await fetch("/api/secretaria/school-sessions", { cache: 'no-store' });
         const json = await res.json();
         if (json.ok) {
           const sessionItems = Array.isArray(json.data)
