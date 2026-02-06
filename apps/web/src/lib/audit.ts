@@ -28,8 +28,13 @@ export async function recordAuditServer(evt: AuditEvent) {
 
     const s = await supabaseServer();
 
+    if (!evt.escolaId) {
+      console.warn("recordAuditServer chamado sem escolaId; ignorando log.");
+      return;
+    }
+
     const payload = {
-      escola_id: evt.escolaId ?? null,
+      escola_id: evt.escolaId,
       portal: evt.portal,
       acao: evt.acao,
       tabela: evt.entity, // 👈 preenche a coluna NOT NULL
