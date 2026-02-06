@@ -84,6 +84,7 @@ export default function DocumentosEmissaoHubClient({
   const [metodo, setMetodo] = useState<"cash" | "tpa" | "transfer" | "mcx" | "kiwk">("cash");
   const [reference, setReference] = useState("");
   const [evidenceUrl, setEvidenceUrl] = useState("");
+  const [printQueue, setPrintQueue] = useState<Array<{ label: string; url: string }>>([]);
   const alunoIdParam = alunoId ?? searchParams?.get("alunoId");
   const tipoParam = (defaultTipo ?? (searchParams?.get("tipo") as DocumentoTipo | null)) ?? null;
 
@@ -303,7 +304,10 @@ export default function DocumentosEmissaoHubClient({
           ? `/secretaria/documentos/${json.docId}/cartao/print`
           : `/secretaria/documentos/${json.docId}/ficha/print`;
 
-      window.open(destino, "_blank", "noopener,noreferrer");
+      const popup = window.open(destino, "_blank", "noopener,noreferrer");
+      if (!popup) {
+        setPrintQueue((prev) => [{ label: selectedAluno.label, url: destino }, ...prev]);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erro ao emitir documento");
     } finally {
@@ -458,6 +462,24 @@ export default function DocumentosEmissaoHubClient({
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
+        </div>
+      )}
+
+      {printQueue.length > 0 && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          <div className="font-semibold mb-2">Documentos prontos para impressão</div>
+          <div className="space-y-2">
+            {printQueue.map((doc, index) => (
+              <button
+                key={`${doc.url}-${index}`}
+                type="button"
+                onClick={() => window.open(doc.url, "_blank", "noopener,noreferrer")}
+                className="w-full rounded-lg border border-emerald-200 bg-white px-3 py-2 text-left text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+              >
+                Abrir documento
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

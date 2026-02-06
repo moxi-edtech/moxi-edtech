@@ -13,6 +13,7 @@ const convertPayloadSchema = z.object({
   metodo_pagamento: z.enum(['TPA', 'CASH', 'TRANSFERENCIA']),
   comprovativo_url: z.string().url().optional(),
   amount: z.number().positive().optional(),
+  referencia: z.string().trim().optional(),
   // ... other payment details
 })
 
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: validation.error.format() }, { status: 400 })
   }
   
-  const { candidatura_id, turma_id, metodo_pagamento, comprovativo_url, amount } = validation.data
+  const { candidatura_id, turma_id, metodo_pagamento, comprovativo_url, amount, referencia } = validation.data
 
   try {
     const { data: candidatura, error: candError } = await supabase
@@ -86,6 +87,7 @@ export async function POST(request: Request) {
         metodo_pagamento,
         comprovativo_url,
         amount,
+        referencia,
         idempotency_key: idempotencyKey,
         turma_id,
       }
@@ -99,7 +101,7 @@ export async function POST(request: Request) {
       acao: 'ADMISSAO_CONVERTIDA_MATRICULA',
       entity: 'matriculas',
       entityId: data ?? null,
-      details: { candidatura_id, turma_id, metodo_pagamento },
+      details: { candidatura_id, turma_id, metodo_pagamento, referencia: referencia ?? null },
     }).catch(() => null)
 
     return NextResponse.json({ ok: true, matricula_id: data })
