@@ -695,6 +695,7 @@ function Step3Pagamento(props: {
     metodo_pagamento: "CASH",
     comprovativo_url: "",
     amount: "",
+    referencia: "",
   });
 
   const [loading, setLoading] = useState(false);
@@ -753,34 +754,52 @@ function Step3Pagamento(props: {
 
   const statusNormalized = String(candidaturaStatus ?? '').toLowerCase();
 
-  const canSendToFinance = useMemo(() => {
+  const canFinalize = useMemo(() => {
     if (!isUuid(candidaturaId) || !isUuid(turmaId)) return false;
-    if (['aprovada', 'aguardando_pagamento', 'matriculado'].includes(statusNormalized)) return false;
+    if (['matriculado', 'aguardando_pagamento'].includes(statusNormalized)) return false;
     return true;
   }, [candidaturaId, turmaId, statusNormalized]);
 
-  const handleSendToFinance = async () => {
-    if (!canSendToFinance) {
+  const handleFinalizarMatricula = async () => {
+    if (!canFinalize) {
       setResult({ ok: false, error: "Candidatura ou turma inválida." });
       return;
     }
 
     setLoading(true);
-    const payload = pickDefined({
+    const approveResp = await postJson<SimpleResult>(
+      "/api/secretaria/admissoes/approve",
+      { candidatura_id: candidaturaId }
+    );
+
+    if (!approveResp.ok) {
+      setLoading(false);
+      return setResult({ ok: false, error: approveResp.error });
+    }
+
+    const idempotencyKey =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+    const convertPayload = pickDefined({
       candidatura_id: candidaturaId,
+      turma_id: turmaId,
       metodo_pagamento: payment.metodo_pagamento,
       comprovativo_url: payment.comprovativo_url,
+      referencia: payment.referencia,
       amount: payment.amount ? Number(payment.amount) : undefined,
     });
 
-    const resp = await postJson<SimpleResult>(
-      "/api/secretaria/admissoes/approve",
-      payload
+    const convertResp = await postJson<SimpleResult>(
+      "/api/secretaria/admissoes/convert",
+      convertPayload,
+      { "Idempotency-Key": idempotencyKey }
     );
 
     setLoading(false);
-    if (!resp.ok) return setResult({ ok: false, error: resp.error });
-    setResult({ ok: true, message: "Enviado para validação do financeiro." });
+    if (!convertResp.ok) return setResult({ ok: false, error: convertResp.error });
+    setResult({ ok: true, message: "Matrícula concluída pela secretaria." });
   };
 
   const handleSaveForLater = async () => {
@@ -865,7 +884,7 @@ function Step3Pagamento(props: {
       )}
       <div>
         <h2 className="text-lg font-semibold text-klasse-green">Pagamento</h2>
-        <p className="text-sm text-slate-500">Enviar para validação do financeiro.</p>
+        <p className="text-sm text-slate-500">Confirme a matrícula diretamente pela secretaria.</p>
       </div>
 
       <div className="grid gap-3">
@@ -895,6 +914,17 @@ function Step3Pagamento(props: {
           </p>
         ) : null}
 
+        {(payment.metodo_pagamento === "TPA" || payment.metodo_pagamento === "TRANSFERENCIA") && (
+          <input
+            type="text"
+            name="referencia"
+            value={payment.referencia}
+            onChange={onChange}
+            placeholder="Referência do pagamento"
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+          />
+        )}
+
         <input
           type="text"
           name="comprovativo_url"
@@ -905,11 +935,6 @@ function Step3Pagamento(props: {
         />
       </div>
 
-      {statusNormalized === 'aguardando_pagamento' ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-          Pagamento aguardando compensação pelo financeiro. A matrícula será gerada após validação.
-        </div>
-      ) : null}
 
       <div className="flex flex-wrap items-center gap-3">
         <button
@@ -923,11 +948,11 @@ function Step3Pagamento(props: {
 
         <button
           type="button"
-          onClick={() => void handleSendToFinance()}
-          disabled={loading || !canSendToFinance}
+          onClick={() => void handleFinalizarMatricula()}
+          disabled={loading || !canFinalize}
           className="rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:opacity-60"
         >
-          {loading ? "Processando…" : "Enviar para Financeiro"}
+          {loading ? "Processando…" : "Finalizar matrícula"}
         </button>
 
         <button
@@ -978,7 +1003,7 @@ export default function AdmissaoWizardClient({ escolaId }: { escolaId: string })
           setClasseId(json.item?.classe_id ?? null);
           setTurmaId(json.item?.turma_preferencial_id ?? null);
           const status = String(json.item?.status ?? '').toLowerCase();
-          const isResumeStatus = ['aguardando_pagamento', 'aguardando_compensacao'].includes(status);
+          const isResumeStatus = status === 'matriculado';
           setBaseCanEditDraft(status === 'rascunho' || status === '');
           setResumeMode(isResumeStatus);
           setEditOverride(false);
@@ -1007,7 +1032,7 @@ export default function AdmissaoWizardClient({ escolaId }: { escolaId: string })
       <div>
         <h1 className="text-xl font-semibold text-klasse-green">Nova Admissão</h1>
         <p className="text-sm text-slate-500">
-          Fluxo rascunho → submetida → aprovada → aguardando_pagamento → matriculado.
+          Fluxo rascunho → submetida → aprovada → matriculado.
         </p>
       </div>
 
