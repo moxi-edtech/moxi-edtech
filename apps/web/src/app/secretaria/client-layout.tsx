@@ -13,10 +13,11 @@ export default function SecretariaLayout({ children }: { children: React.ReactNo
 
   useEffect(() => {
     if (isLoading || !escolaId) return;
+    if (!pathname) return;
     if (!pathname.startsWith("/secretaria")) return;
 
     const suffix = pathname.slice("/secretaria".length);
-    const query = searchParams.toString();
+    const query = searchParams?.toString() ?? "";
     const nextPath = `/escola/${escolaId}/secretaria${suffix}${query ? `?${query}` : ""}`;
     router.replace(nextPath);
   }, [escolaId, isLoading, pathname, router, searchParams]);
@@ -29,4 +30,3 @@ export default function SecretariaLayout({ children }: { children: React.ReactNo
     </RequireSecretaria>
   );
 }
-

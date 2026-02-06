@@ -65,7 +65,7 @@ function playErrorTone() {
 
 export default function ProfessorNotasPage() {
   const searchParams = useSearchParams()
-  const highlightAlunoId = searchParams.get("alunoId")
+  const highlightAlunoId = searchParams?.get("alunoId") ?? null
 
   const [atribs, setAtribs] = useState<Atrib[]>([])
   const [turmaId, setTurmaId] = useState("")

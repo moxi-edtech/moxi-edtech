@@ -13,9 +13,9 @@ import { AtividadesTab } from '@/components/super-admin/escola-monitor/Atividade
 import { ConfigTab } from '@/components/super-admin/escola-monitor/ConfigTab';
 
 export default function EscolaMonitoramentoPage() {
-  const params = useParams();
+  const params = useParams() ?? {};
   const router = useRouter();
-  const escolaId = params.id as string;
+  const escolaId = typeof params.id === "string" ? params.id : "";
   
   const { 
     loading, 

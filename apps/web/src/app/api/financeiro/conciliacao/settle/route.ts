@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { recordAuditServer } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -20,6 +21,15 @@ const payloadSchema = z
 
 export async function POST(request: Request) {
   try {
+    const idempotencyKey =
+      request.headers.get("Idempotency-Key") ?? request.headers.get("idempotency-key");
+    if (!idempotencyKey) {
+      return NextResponse.json(
+        { ok: false, error: "Idempotency-Key header é obrigatório" },
+        { status: 400 }
+      );
+    }
+
     const supabase = await supabaseServerTyped<any>();
     const {
       data: { user },
@@ -41,6 +51,35 @@ export async function POST(request: Request) {
         { ok: false, error: parsed.error.issues?.[0]?.message || "Payload inválido" },
         { status: 400 }
       );
+    }
+
+    const { data: existingPagamento } = await supabase
+      .from("pagamentos")
+      .select("id, status, meta")
+      .eq("escola_id", escolaId)
+      .contains("meta", { idempotency_key: idempotencyKey })
+      .maybeSingle();
+    if (existingPagamento) {
+      return NextResponse.json({ ok: true, data: existingPagamento, idempotent: true });
+    }
+
+    if (parsed.data.pagamento_id) {
+      const { data: pagamentoAtual } = await supabase
+        .from("pagamentos")
+        .select("id, status, meta")
+        .eq("escola_id", escolaId)
+        .eq("id", parsed.data.pagamento_id)
+        .maybeSingle();
+      const settleMetaKey = (pagamentoAtual as any)?.meta?.settle_meta?.idempotency_key;
+      if ((pagamentoAtual as any)?.status === "settled" && settleMetaKey === idempotencyKey) {
+        return NextResponse.json({ ok: true, data: pagamentoAtual, idempotent: true });
+      }
+      if ((pagamentoAtual as any)?.status === "settled") {
+        return NextResponse.json(
+          { ok: false, error: "Pagamento já conciliado" },
+          { status: 409 }
+        );
+      }
     }
 
     let pagamentoId = parsed.data.pagamento_id ?? null;
@@ -84,6 +123,7 @@ export async function POST(request: Request) {
           p_gateway_ref: null,
           p_meta: {
             origem: "conciliacao",
+            idempotency_key: idempotencyKey,
             transacao_id: transacao.id,
             banco: transacao.banco,
             conta: transacao.conta,
@@ -101,7 +141,10 @@ export async function POST(request: Request) {
     const { data, error } = await supabase.rpc("financeiro_settle_pagamento", {
       p_escola_id: escolaId,
       p_pagamento_id: pagamentoId,
-      p_settle_meta: parsed.data.settle_meta ?? {},
+      p_settle_meta: {
+        ...(parsed.data.settle_meta ?? {}),
+        idempotency_key: idempotencyKey,
+      },
     });
 
     if (!error && parsed.data.transacao_id) {
@@ -115,6 +158,18 @@ export async function POST(request: Request) {
     if (error) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     }
+
+    recordAuditServer({
+      escolaId,
+      portal: "financeiro",
+      acao: "PAGAMENTO_CONCILIADO",
+      entity: "pagamento",
+      entityId: pagamentoId,
+      details: {
+        transacao_id: parsed.data.transacao_id ?? null,
+        settle_meta: parsed.data.settle_meta ?? {},
+      },
+    }).catch(() => null);
 
     return NextResponse.json({ ok: true, data });
   } catch (e) {

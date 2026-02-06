@@ -16,7 +16,7 @@ export type Database = {
     Tables: {
       aggregates_financeiro: {
         Row: {
-          aluno_id: string
+          aluno_id: string | null
           alunos_em_dia: number
           alunos_inadimplentes: number
           created_at: string
@@ -30,7 +30,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          aluno_id: string
+          aluno_id?: string | null
           alunos_em_dia?: number
           alunos_inadimplentes?: number
           created_at?: string
@@ -44,7 +44,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          aluno_id?: string
+          aluno_id?: string | null
           alunos_em_dia?: number
           alunos_inadimplentes?: number
           created_at?: string
@@ -1116,8 +1116,12 @@ export type Database = {
           file_path: string
           file_size_kb: number | null
           id: string
+          meta: Json
           processed_at: string | null
+          range_end: string | null
+          range_start: string | null
           status: string
+          storage_path: string | null
           uploaded_at: string
           uploaded_by: string | null
         }
@@ -1130,8 +1134,12 @@ export type Database = {
           file_path: string
           file_size_kb?: number | null
           id?: string
+          meta?: Json
           processed_at?: string | null
+          range_end?: string | null
+          range_start?: string | null
           status?: string
+          storage_path?: string | null
           uploaded_at?: string
           uploaded_by?: string | null
         }
@@ -1144,8 +1152,12 @@ export type Database = {
           file_path?: string
           file_size_kb?: number | null
           id?: string
+          meta?: Json
           processed_at?: string | null
+          range_end?: string | null
+          range_start?: string | null
           status?: string
+          storage_path?: string | null
           uploaded_at?: string
           uploaded_by?: string | null
         }
@@ -2110,10 +2122,20 @@ export type Database = {
       }
       fecho_caixa: {
         Row: {
+          approval_note: string | null
+          approved_at: string | null
+          approved_by: string | null
           aprovado_em: string | null
           aprovado_por: string | null
           created_at: string
           data_fecho: string
+          day_key: string
+          declared_at: string | null
+          declared_by: string | null
+          declared_cash: number
+          declared_mcx: number
+          declared_tpa: number
+          declared_transfer: number
           diferenca_especie: number | null
           diferenca_tpa: number | null
           diferenca_transferencia: number | null
@@ -2122,6 +2144,11 @@ export type Database = {
           observacao_aprovador: string | null
           operador_id: string
           status: string
+          system_calculated_at: string | null
+          system_cash: number
+          system_mcx: number
+          system_tpa: number
+          system_transfer: number
           updated_at: string
           valor_declarado_especie: number
           valor_declarado_tpa: number
@@ -2131,10 +2158,20 @@ export type Database = {
           valor_sistema_transferencia: number | null
         }
         Insert: {
+          approval_note?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           aprovado_em?: string | null
           aprovado_por?: string | null
           created_at?: string
           data_fecho: string
+          day_key: string
+          declared_at?: string | null
+          declared_by?: string | null
+          declared_cash?: number
+          declared_mcx?: number
+          declared_tpa?: number
+          declared_transfer?: number
           diferenca_especie?: number | null
           diferenca_tpa?: number | null
           diferenca_transferencia?: number | null
@@ -2143,6 +2180,11 @@ export type Database = {
           observacao_aprovador?: string | null
           operador_id: string
           status?: string
+          system_calculated_at?: string | null
+          system_cash?: number
+          system_mcx?: number
+          system_tpa?: number
+          system_transfer?: number
           updated_at?: string
           valor_declarado_especie: number
           valor_declarado_tpa: number
@@ -2152,10 +2194,20 @@ export type Database = {
           valor_sistema_transferencia?: number | null
         }
         Update: {
+          approval_note?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           aprovado_em?: string | null
           aprovado_por?: string | null
           created_at?: string
           data_fecho?: string
+          day_key?: string
+          declared_at?: string | null
+          declared_by?: string | null
+          declared_cash?: number
+          declared_mcx?: number
+          declared_tpa?: number
+          declared_transfer?: number
           diferenca_especie?: number | null
           diferenca_tpa?: number | null
           diferenca_transferencia?: number | null
@@ -2164,6 +2216,11 @@ export type Database = {
           observacao_aprovador?: string | null
           operador_id?: string
           status?: string
+          system_calculated_at?: string | null
+          system_cash?: number
+          system_mcx?: number
+          system_tpa?: number
+          system_transfer?: number
           updated_at?: string
           valor_declarado_especie?: number
           valor_declarado_tpa?: number
@@ -2981,6 +3038,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      financeiro_templates_cobranca: {
+        Row: {
+          canal: string
+          corpo: string
+          created_at: string
+          criado_por: string | null
+          escola_id: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          canal: string
+          corpo: string
+          created_at?: string
+          criado_por?: string | null
+          escola_id: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          canal?: string
+          corpo?: string
+          created_at?: string
+          criado_por?: string | null
+          escola_id?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: []
       }
       financeiro_templates_mensagem: {
         Row: {
@@ -5360,50 +5447,142 @@ export type Database = {
           },
         ]
       }
+      pagamento_intents: {
+        Row: {
+          aluno_id: string
+          amount: number
+          created_at: string
+          created_by: string
+          currency: string
+          escola_id: string
+          evidence_url: string | null
+          id: string
+          meta: Json
+          method: string
+          reference: string | null
+          servico_pedido_id: string | null
+          settled_at: string | null
+          status: string
+          terminal_id: string | null
+        }
+        Insert: {
+          aluno_id: string
+          amount: number
+          created_at?: string
+          created_by?: string
+          currency?: string
+          escola_id: string
+          evidence_url?: string | null
+          id?: string
+          meta?: Json
+          method: string
+          reference?: string | null
+          servico_pedido_id?: string | null
+          settled_at?: string | null
+          status: string
+          terminal_id?: string | null
+        }
+        Update: {
+          aluno_id?: string
+          amount?: number
+          created_at?: string
+          created_by?: string
+          currency?: string
+          escola_id?: string
+          evidence_url?: string | null
+          id?: string
+          meta?: Json
+          method?: string
+          reference?: string | null
+          servico_pedido_id?: string | null
+          settled_at?: string | null
+          status?: string
+          terminal_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pagamento_intents_servico_pedido_id_fkey"
+            columns: ["servico_pedido_id"]
+            isOneToOne: false
+            referencedRelation: "servico_pedidos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pagamentos: {
         Row: {
+          aluno_id: string | null
           conciliado: boolean | null
           created_at: string
+          created_by: string | null
           data_pagamento: string | null
+          day_key: string
           escola_id: string
+          evidence_url: string | null
+          gateway_ref: string | null
           id: string
           mensalidade_id: string | null
-          metodo: string | null
+          meta: Json
+          metodo: string
           metodo_pagamento: string | null
+          reference: string | null
           referencia: string | null
-          status: string | null
+          settled_at: string | null
+          settled_by: string | null
+          status: string
           telemovel_origem: string | null
           transacao_id_externo: string | null
+          updated_at: string | null
           valor_pago: number
         }
         Insert: {
+          aluno_id?: string | null
           conciliado?: boolean | null
           created_at?: string
+          created_by?: string | null
           data_pagamento?: string | null
+          day_key?: string
           escola_id: string
+          evidence_url?: string | null
+          gateway_ref?: string | null
           id?: string
           mensalidade_id?: string | null
-          metodo?: string | null
+          meta?: Json
+          metodo?: string
           metodo_pagamento?: string | null
+          reference?: string | null
           referencia?: string | null
-          status?: string | null
+          settled_at?: string | null
+          settled_by?: string | null
+          status?: string
           telemovel_origem?: string | null
           transacao_id_externo?: string | null
+          updated_at?: string | null
           valor_pago: number
         }
         Update: {
+          aluno_id?: string | null
           conciliado?: boolean | null
           created_at?: string
+          created_by?: string | null
           data_pagamento?: string | null
+          day_key?: string
           escola_id?: string
+          evidence_url?: string | null
+          gateway_ref?: string | null
           id?: string
           mensalidade_id?: string | null
-          metodo?: string | null
+          meta?: Json
+          metodo?: string
           metodo_pagamento?: string | null
+          reference?: string | null
           referencia?: string | null
-          status?: string | null
+          settled_at?: string | null
+          settled_by?: string | null
+          status?: string
           telemovel_origem?: string | null
           transacao_id_externo?: string | null
+          updated_at?: string | null
           valor_pago?: number
         }
         Relationships: [
@@ -6012,6 +6191,65 @@ export type Database = {
           },
         ]
       }
+      servico_pedidos: {
+        Row: {
+          aluno_id: string
+          contexto: Json
+          created_at: string
+          created_by: string
+          escola_id: string
+          id: string
+          matricula_id: string | null
+          reason_code: string | null
+          reason_detail: string | null
+          servico_codigo: string
+          servico_escola_id: string
+          servico_nome: string
+          status: string
+          valor_cobrado: number
+        }
+        Insert: {
+          aluno_id: string
+          contexto?: Json
+          created_at?: string
+          created_by?: string
+          escola_id: string
+          id?: string
+          matricula_id?: string | null
+          reason_code?: string | null
+          reason_detail?: string | null
+          servico_codigo: string
+          servico_escola_id: string
+          servico_nome: string
+          status: string
+          valor_cobrado?: number
+        }
+        Update: {
+          aluno_id?: string
+          contexto?: Json
+          created_at?: string
+          created_by?: string
+          escola_id?: string
+          id?: string
+          matricula_id?: string | null
+          reason_code?: string | null
+          reason_detail?: string | null
+          servico_codigo?: string
+          servico_escola_id?: string
+          servico_nome?: string
+          status?: string
+          valor_cobrado?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "servico_pedidos_servico_escola_id_fkey"
+            columns: ["servico_escola_id"]
+            isOneToOne: false
+            referencedRelation: "servicos_escola"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       servicos_catalogo: {
         Row: {
           ativo: boolean
@@ -6062,6 +6300,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      servicos_escola: {
+        Row: {
+          aceita_pagamento_pendente: boolean
+          ativo: boolean
+          codigo: string
+          created_at: string
+          descricao: string | null
+          documentos_necessarios: Json
+          escola_id: string
+          exige_aprovacao: boolean
+          exige_pagamento_antes_de_liberar: boolean
+          id: string
+          nome: string
+          pode_bloquear_por_debito: boolean
+          updated_at: string
+          valor_base: number
+        }
+        Insert: {
+          aceita_pagamento_pendente?: boolean
+          ativo?: boolean
+          codigo: string
+          created_at?: string
+          descricao?: string | null
+          documentos_necessarios?: Json
+          escola_id: string
+          exige_aprovacao?: boolean
+          exige_pagamento_antes_de_liberar?: boolean
+          id?: string
+          nome: string
+          pode_bloquear_por_debito?: boolean
+          updated_at?: string
+          valor_base?: number
+        }
+        Update: {
+          aceita_pagamento_pendente?: boolean
+          ativo?: boolean
+          codigo?: string
+          created_at?: string
+          descricao?: string | null
+          documentos_necessarios?: Json
+          escola_id?: string
+          exige_aprovacao?: boolean
+          exige_pagamento_antes_de_liberar?: boolean
+          id?: string
+          nome?: string
+          pode_bloquear_por_debito?: boolean
+          updated_at?: string
+          valor_base?: number
+        }
+        Relationships: []
       }
       sistemas_notas: {
         Row: {
@@ -8647,6 +8936,29 @@ export type Database = {
         Returns: Json
       }
       audit_request_context: { Args: never; Returns: Json }
+      balcao_cancelar_pedido: {
+        Args: { p_pedido_id: string; p_reason?: string }
+        Returns: Json
+      }
+      balcao_confirmar_pagamento_intent: {
+        Args: {
+          p_evidence_url?: string
+          p_intent_id: string
+          p_meta?: Json
+          p_method: string
+          p_reference?: string
+          p_terminal_id?: string
+        }
+        Returns: Json
+      }
+      balcao_criar_pedido_e_decidir: {
+        Args: {
+          p_aluno_id: string
+          p_contexto?: Json
+          p_servico_codigo: string
+        }
+        Returns: Json
+      }
       can_access: { Args: { eid: string }; Returns: boolean }
       can_manage_school: { Args: { p_escola_id: string }; Returns: boolean }
       can_professor_school: { Args: { p_escola_id: string }; Returns: boolean }
@@ -8909,6 +9221,191 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "finance_payment_intents"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      financeiro_fecho_aprovar: {
+        Args: {
+          p_aprovacao: string
+          p_aprovacao_meta?: Json
+          p_escola_id: string
+          p_fecho_id: string
+          p_justificativa?: string
+        }
+        Returns: {
+          approval_note: string | null
+          approved_at: string | null
+          approved_by: string | null
+          aprovado_em: string | null
+          aprovado_por: string | null
+          created_at: string
+          data_fecho: string
+          day_key: string
+          declared_at: string | null
+          declared_by: string | null
+          declared_cash: number
+          declared_mcx: number
+          declared_tpa: number
+          declared_transfer: number
+          diferenca_especie: number | null
+          diferenca_tpa: number | null
+          diferenca_transferencia: number | null
+          escola_id: string
+          id: string
+          observacao_aprovador: string | null
+          operador_id: string
+          status: string
+          system_calculated_at: string | null
+          system_cash: number
+          system_mcx: number
+          system_tpa: number
+          system_transfer: number
+          updated_at: string
+          valor_declarado_especie: number
+          valor_declarado_tpa: number
+          valor_declarado_transferencia: number
+          valor_sistema_especie: number | null
+          valor_sistema_tpa: number | null
+          valor_sistema_transferencia: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "fecho_caixa"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      financeiro_fecho_declarar_e_snapshot: {
+        Args: {
+          p_cash: number
+          p_day_key: string
+          p_escola_id: string
+          p_mcx: number
+          p_tpa: number
+          p_transfer: number
+        }
+        Returns: {
+          approval_note: string | null
+          approved_at: string | null
+          approved_by: string | null
+          aprovado_em: string | null
+          aprovado_por: string | null
+          created_at: string
+          data_fecho: string
+          day_key: string
+          declared_at: string | null
+          declared_by: string | null
+          declared_cash: number
+          declared_mcx: number
+          declared_tpa: number
+          declared_transfer: number
+          diferenca_especie: number | null
+          diferenca_tpa: number | null
+          diferenca_transferencia: number | null
+          escola_id: string
+          id: string
+          observacao_aprovador: string | null
+          operador_id: string
+          status: string
+          system_calculated_at: string | null
+          system_cash: number
+          system_mcx: number
+          system_tpa: number
+          system_transfer: number
+          updated_at: string
+          valor_declarado_especie: number
+          valor_declarado_tpa: number
+          valor_declarado_transferencia: number
+          valor_sistema_especie: number | null
+          valor_sistema_tpa: number | null
+          valor_sistema_transferencia: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "fecho_caixa"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      financeiro_registrar_pagamento_secretaria: {
+        Args: {
+          p_aluno_id: string
+          p_escola_id: string
+          p_evidence_url?: string
+          p_gateway_ref?: string
+          p_mensalidade_id: string
+          p_meta?: Json
+          p_metodo: Database["public"]["Enums"]["pagamento_metodo"]
+          p_reference?: string
+          p_valor: number
+        }
+        Returns: {
+          aluno_id: string | null
+          conciliado: boolean | null
+          created_at: string
+          created_by: string | null
+          data_pagamento: string | null
+          day_key: string
+          escola_id: string
+          evidence_url: string | null
+          gateway_ref: string | null
+          id: string
+          mensalidade_id: string | null
+          meta: Json
+          metodo: string
+          metodo_pagamento: string | null
+          reference: string | null
+          referencia: string | null
+          settled_at: string | null
+          settled_by: string | null
+          status: string
+          telemovel_origem: string | null
+          transacao_id_externo: string | null
+          updated_at: string | null
+          valor_pago: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "pagamentos"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      financeiro_settle_pagamento: {
+        Args: {
+          p_escola_id: string
+          p_pagamento_id: string
+          p_settle_meta?: Json
+        }
+        Returns: {
+          aluno_id: string | null
+          conciliado: boolean | null
+          created_at: string
+          created_by: string | null
+          data_pagamento: string | null
+          day_key: string
+          escola_id: string
+          evidence_url: string | null
+          gateway_ref: string | null
+          id: string
+          mensalidade_id: string | null
+          meta: Json
+          metodo: string
+          metodo_pagamento: string | null
+          reference: string | null
+          referencia: string | null
+          settled_at: string | null
+          settled_by: string | null
+          status: string
+          telemovel_origem: string | null
+          transacao_id_externo: string | null
+          updated_at: string | null
+          valor_pago: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "pagamentos"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -9631,6 +10128,7 @@ export type Database = {
       app_plan_tier: "essencial" | "profissional" | "premium"
       cobranca_status: "enviada" | "entregue" | "respondida" | "paga" | "falha"
       curriculo_status: "draft" | "published" | "archived"
+      fecho_status: "draft" | "declared" | "approved" | "rejected"
       financeiro_categoria_item:
         | "uniforme"
         | "documento"
@@ -9663,6 +10161,8 @@ export type Database = {
         | "transferencia"
         | "deposito"
       outbox_status: "pending" | "processing" | "sent" | "failed" | "dead"
+      pagamento_metodo: "cash" | "tpa" | "transfer" | "mcx" | "kwik"
+      pagamento_status: "pending" | "settled" | "rejected" | "voided"
       periodo_tipo: "SEMESTRE" | "TRIMESTRE" | "BIMESTRE"
       tipo_documento:
         | "recibo"
@@ -9822,6 +10322,7 @@ export const Constants = {
       app_plan_tier: ["essencial", "profissional", "premium"],
       cobranca_status: ["enviada", "entregue", "respondida", "paga", "falha"],
       curriculo_status: ["draft", "published", "archived"],
+      fecho_status: ["draft", "declared", "approved", "rejected"],
       financeiro_categoria_item: [
         "uniforme",
         "documento",
@@ -9859,6 +10360,8 @@ export const Constants = {
         "deposito",
       ],
       outbox_status: ["pending", "processing", "sent", "failed", "dead"],
+      pagamento_metodo: ["cash", "tpa", "transfer", "mcx", "kwik"],
+      pagamento_status: ["pending", "settled", "rejected", "voided"],
       periodo_tipo: ["SEMESTRE", "TRIMESTRE", "BIMESTRE"],
       tipo_documento: [
         "recibo",

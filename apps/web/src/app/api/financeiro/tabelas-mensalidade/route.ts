@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
-import { createClient as createAdminClient, type SupabaseClient } from '@supabase/supabase-js'
+import { type SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '~types/supabase'
 import { applyKf2ListInvariants } from '@/lib/kf2'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
@@ -23,15 +23,6 @@ async function possuiVinculo(client: SupabaseClient<Database>, userId: string, e
   } catch {}
 
   return false
-}
-
-function getTenantClient(fallback: SupabaseClient<Database>) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (url && serviceRole) {
-    return createAdminClient<Database>(url, serviceRole)
-  }
-  return fallback
 }
 
 const parseValor = (raw: unknown) => {
@@ -71,9 +62,7 @@ export async function GET(req: Request) {
     const vinculado = await possuiVinculo(s, user.id, escolaId)
     if (!vinculado) return NextResponse.json({ ok: false, error: 'Sem vínculo com a escola' }, { status: 403 })
 
-    const db = getTenantClient(s)
-
-    let query = db
+    let query = s
       .from('financeiro_tabelas')
       .select('id, curso_id, classe_id, valor_mensalidade, dia_vencimento, ano_letivo, created_at, updated_at')
       .eq('escola_id', escolaId)
@@ -125,8 +114,6 @@ export async function POST(req: Request) {
     const vinculado = await possuiVinculo(s, user.id, escolaId)
     if (!vinculado) return NextResponse.json({ ok: false, error: 'Sem vínculo com a escola' }, { status: 403 })
 
-    const db = getTenantClient(s)
-
     // Upsert por (escola, ano, curso, classe) na tabela oficial
     const cursoId = curso_id || null
     const classeId = classe_id || null
@@ -144,7 +131,7 @@ export async function POST(req: Request) {
     }
 
     if (body?.id) {
-      const { data: existing, error: findErr } = await db
+      const { data: existing, error: findErr } = await s
         .from('financeiro_tabelas')
         .select('id, escola_id, valor_matricula')
         .eq('id', body.id)
@@ -155,7 +142,7 @@ export async function POST(req: Request) {
 
       payload.valor_matricula = existing?.valor_matricula ?? 0
 
-      const { data, error } = await db
+      const { data, error } = await s
         .from('financeiro_tabelas')
         .update(payload)
         .eq('id', body.id)
@@ -167,7 +154,7 @@ export async function POST(req: Request) {
     }
 
     try {
-      const { data: existing } = await db
+      const { data: existing } = await s
         .from('financeiro_tabelas')
         .select('valor_matricula')
         .eq('escola_id', escolaId)
@@ -180,7 +167,7 @@ export async function POST(req: Request) {
       }
     } catch {}
 
-    const { data, error } = await db
+    const { data, error } = await s
       .from('financeiro_tabelas')
       .upsert(payload, { onConflict: 'escola_id, ano_letivo, curso_id, classe_id' })
       .select()
@@ -211,9 +198,7 @@ export async function DELETE(req: Request) {
     const vinculado = await possuiVinculo(s, user.id, escolaId)
     if (!vinculado) return NextResponse.json({ ok: false, error: 'Sem vínculo com a escola' }, { status: 403 })
 
-    const db = getTenantClient(s)
-
-    const { data: reg, error: findErr } = await db
+    const { data: reg, error: findErr } = await s
       .from('financeiro_tabelas')
       .select('id, escola_id')
       .eq('id', id)
@@ -222,7 +207,7 @@ export async function DELETE(req: Request) {
     if (findErr) return NextResponse.json({ ok: false, error: findErr.message }, { status: 400 })
     if (!reg) return NextResponse.json({ ok: false, error: 'Registro não encontrado' }, { status: 404 })
 
-    const { error } = await db.from('financeiro_tabelas').delete().eq('id', id)
+    const { error } = await s.from('financeiro_tabelas').delete().eq('id', id)
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
     return NextResponse.json({ ok: true })
   } catch (e) {

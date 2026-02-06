@@ -5,6 +5,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
 import type { Database } from "~types/supabase";
+import { recordAuditServer } from "@/lib/audit";
 
 const payloadSchema = z.object({
   alunoId: z.string().uuid(),
@@ -69,6 +70,14 @@ export async function POST(request: Request) {
     if (rpcError) {
       return NextResponse.json({ ok: false, error: rpcError.message }, { status: 400 });
     }
+    recordAuditServer({
+      escolaId,
+      portal: "secretaria",
+      acao: "DOCUMENTO_FINAL_EMITIDO",
+      entity: "documentos_emitidos",
+      entityId: (result as any)?.id ?? null,
+      details: { alunoId, tipoDocumento, ano_letivo },
+    }).catch(() => null);
     return NextResponse.json(result);
   }
 
@@ -142,6 +151,15 @@ export async function POST(request: Request) {
   if (docError || !doc) {
     return NextResponse.json({ ok: false, error: docError?.message || "Falha ao emitir" }, { status: 400 });
   }
+
+  recordAuditServer({
+    escolaId,
+    portal: "secretaria",
+    acao: "DOCUMENTO_EMITIDO",
+    entity: "documentos_emitidos",
+    entityId: doc.id,
+    details: { alunoId, tipoDocumento },
+  }).catch(() => null);
 
       return NextResponse.json({
         ok: true,

@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { hasPermission } from "@/lib/permissions";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { recordAuditServer } from "@/lib/audit";
 
 const ScopeEnum = z.enum(["session", "config", "all"]);
 const IncludeEnum = z.enum([
@@ -56,6 +56,11 @@ export async function POST(
         { ok: false, error: "Não autenticado" },
         { status: 401 }
       );
+
+    const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId);
+    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
+    }
 
     // Autorização: mesmo padrão das rotas de configuração
     let allowed = false;
@@ -131,24 +136,10 @@ export async function POST(
         { status: 403 }
       );
 
-    // 🔹 Ajuste 2: usar SUPABASE_URL se existir (server-side), senão NEXT_PUBLIC como fallback
-    const supabaseUrl =
-      process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      return NextResponse.json(
-        { ok: false, error: "Configuração Supabase ausente." },
-        { status: 500 }
-      );
-    }
-
-    const admin = createAdminClient<Database>(supabaseUrl, serviceRoleKey);
-
     // Buscar nome da escola para confirmação e utilidades
     let escolaNome: string | null = null;
     try {
-      const { data } = await (admin as any)
+      const { data } = await (s as any)
         .from("escolas")
         .select("nome")
         .eq("id", escolaId)
@@ -162,7 +153,7 @@ export async function POST(
     if (needsSession && !sessionId) {
       try {
         // aqui você está usando school_sessions, que bate com o resto das tuas rotas
-        const { data } = await (admin as any)
+        const { data } = await (s as any)
           .from("school_sessions")
           .select("id")
           .eq("escola_id", escolaId)
@@ -215,7 +206,7 @@ export async function POST(
       filters: Array<[string, string | number]>
     ): Promise<number> => {
       try {
-        let q: any = (admin as any)
+        let q: any = (s as any)
           .from(table)
           .select("id", { count: "estimated", head: true });
         for (const [col, val] of filters) q = q.eq(col, val as any);
@@ -232,7 +223,7 @@ export async function POST(
     ): Promise<{ ok: boolean; error?: string; deleted?: number }> => {
       try {
         const toDelete = await safeCount(table, filters);
-        let q: any = (admin as any).from(table).delete();
+        let q: any = (s as any).from(table).delete();
         for (const [col, val] of filters) q = q.eq(col, val as any);
         const { error } = await q;
         if (error) return { ok: false, error: error.message };
@@ -268,6 +259,14 @@ export async function POST(
     }
 
     if (dryRun) {
+      recordAuditServer({
+        escolaId,
+        portal: "admin_escola",
+        acao: "ACADEMICO_WIPE_PREVIEW",
+        entity: "academico",
+        details: { scope, include: normalizedIncludes, counts, sessionId },
+      }).catch(() => null);
+
       return NextResponse.json({ ok: true, counts, escolaNome, sessionId });
     }
 
@@ -329,6 +328,14 @@ export async function POST(
         else deleted.cursos = res.deleted || 0;
       }
     }
+
+    recordAuditServer({
+      escolaId,
+      portal: "admin_escola",
+      acao: "ACADEMICO_WIPE_EXECUTED",
+      entity: "academico",
+      details: { scope, include: normalizedIncludes, deleted, warnings, sessionId },
+    }).catch(() => null);
 
     return NextResponse.json({
       ok: true,

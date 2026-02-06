@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseServer } from '@/lib/supabaseServer'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
-import type { Database } from '~types/supabase'
 import { recordAuditServer } from '@/lib/audit'
 import { hasPermission } from '@/lib/permissions'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 
 const BodySchema = z.object({
   valor: z.number().positive(),
@@ -16,6 +15,12 @@ const BodySchema = z.object({
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id: escolaId } = await context.params
   try {
+    const idempotencyKey =
+      req.headers.get('Idempotency-Key') ?? req.headers.get('idempotency-key')
+    if (!idempotencyKey) {
+      return NextResponse.json({ ok: false, error: 'Idempotency-Key header é obrigatório' }, { status: 400 })
+    }
+
     const json = await req.json().catch(() => null)
     const parse = BodySchema.safeParse(json)
     if (!parse.success) {
@@ -30,6 +35,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const user = sess?.user
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
+    const resolvedEscolaId = await resolveEscolaIdForUser(s, user.id, escolaId)
+    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
+    }
+
     // AuthZ via papel -> permission mapping
     const { data: vinc } = await s
       .from('escola_users')
@@ -37,44 +47,50 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       .eq('escola_id', escolaId)
       .eq('user_id', user.id)
       .limit(1)
-    const papel = (vinc?.[0] as any)?.papel as any
+    const papel = (vinc?.[0] as { papel?: string | null })?.papel ?? null
     if (!hasPermission(papel, 'registrar_pagamento')) {
       return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     }
 
     // Hard check: user profile must belong to this escola
-    const { data: profCheck } = await s.from('profiles' as any).select('escola_id').eq('user_id', user.id).maybeSingle()
-    if (!profCheck || (profCheck as any).escola_id !== escolaId) {
+    const { data: profCheck } = await s.from('profiles').select('escola_id').eq('user_id', user.id).maybeSingle()
+    if (!profCheck || profCheck.escola_id !== escolaId) {
       return NextResponse.json({ ok: false, error: 'Perfil não vinculado à escola' }, { status: 403 })
     }
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: 'Configuração do Supabase ausente' }, { status: 500 })
-    }
-    const admin = createAdminClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!) as any
-
     // Status gate: bloqueia suspensa/excluida
-    const { data: esc } = await admin.from('escolas').select('status').eq('id', escolaId).limit(1)
-    const status = (esc?.[0] as any)?.status as string | undefined
+    const { data: esc } = await s.from('escolas').select('status').eq('id', escolaId).limit(1)
+    const status = (esc?.[0] as { status?: string | null })?.status ?? undefined
     if (status === 'excluida') return NextResponse.json({ ok: false, error: 'Escola excluída não permite lançamentos financeiros.' }, { status: 400 })
     if (status === 'suspensa') return NextResponse.json({ ok: false, error: 'Escola suspensa por pagamento. Regularize para registrar pagamentos.' }, { status: 400 })
 
+    const { data: existingPagamento } = await s
+      .from('pagamentos')
+      .select('id, escola_id, valor_pago, metodo, referencia, status, created_at, meta')
+      .eq('escola_id', escolaId)
+      .contains('meta', { idempotency_key: idempotencyKey })
+      .maybeSingle()
+    if (existingPagamento) {
+      return NextResponse.json({ ok: true, pagamento: existingPagamento, idempotent: true })
+    }
+
     // Insert pagamento
-    const { data: row, error } = await admin
+    const { data: row, error } = await s
       .from('pagamentos')
       .insert({
         escola_id: escolaId,
-        valor: body.valor as any,
+        valor_pago: body.valor,
         metodo: body.metodo,
         referencia: body.referencia ?? null,
         status: body.status,
+        meta: { idempotency_key: idempotencyKey },
       })
-      .select('id, escola_id, valor, metodo, referencia, status, created_at')
+      .select('id, escola_id, valor_pago, metodo, referencia, status, created_at')
       .single()
 
     if (error || !row) return NextResponse.json({ ok: false, error: error?.message || 'Falha ao registrar pagamento' }, { status: 400 })
 
-    recordAuditServer({ escolaId, portal: 'financeiro', acao: 'PAGAMENTO_REGISTRADO', entity: 'pagamento', entityId: String(row.id), details: { valor: row.valor, metodo: row.metodo, status: row.status } }).catch(() => null)
+    recordAuditServer({ escolaId, portal: 'financeiro', acao: 'PAGAMENTO_REGISTRADO', entity: 'pagamento', entityId: String(row.id), details: { valor: row.valor_pago, metodo: row.metodo, status: row.status } }).catch(() => null)
 
     return NextResponse.json({ ok: true, pagamento: row })
   } catch (err) {

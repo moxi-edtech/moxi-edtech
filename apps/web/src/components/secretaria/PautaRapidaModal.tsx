@@ -120,6 +120,14 @@ export function PautaRapidaModal() {
     };
   }, [accessToken, turmaId]);
 
+  const disciplinasFiltradas = useMemo(() => {
+    return disciplinas.filter((disciplina) => {
+      const periodosAtivos = disciplina.meta?.periodos_ativos;
+      if (!periodosAtivos || periodosAtivos.length === 0) return true;
+      return periodosAtivos.includes(periodoNumero);
+    });
+  }, [disciplinas, periodoNumero]);
+
   const turmaSelecionada = useMemo(
     () => turmas.find((t) => t.id === turmaId) ?? null,
     [turmas, turmaId]
@@ -139,14 +147,6 @@ export function PautaRapidaModal() {
   const turmaLabel = turmaSelecionada
     ? turmaSelecionada.turma_nome || turmaSelecionada.nome || "Turma"
     : "Turma";
-
-  const disciplinasFiltradas = useMemo(() => {
-    return disciplinas.filter((disciplina) => {
-      const periodosAtivos = disciplina.meta?.periodos_ativos;
-      if (!periodosAtivos || periodosAtivos.length === 0) return true;
-      return periodosAtivos.includes(periodoNumero);
-    });
-  }, [disciplinas, periodoNumero]);
 
   const handleOpen = (path: string) => {
     if (!turmaId) return;

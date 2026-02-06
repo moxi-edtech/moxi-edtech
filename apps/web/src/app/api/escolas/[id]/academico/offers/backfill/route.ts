@@ -1,14 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
 import { hasPermission } from "@/lib/permissions";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { recordAuditServer } from "@/lib/audit";
 
 async function authorize(escolaId: string) {
   const s = await supabaseServer();
   const { data: auth } = await s.auth.getUser();
   const user = auth?.user;
   if (!user) return { ok: false as const, status: 401, error: "Não autenticado" };
+
+  const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId);
+  if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+    return { ok: false as const, status: 403, error: "Sem permissão" };
+  }
 
   let allowed = false;
   try {
@@ -67,20 +72,13 @@ export async function POST(
 ) {
   const { id: escolaId } = await params;
   try {
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: "Configuração Supabase ausente." }, { status: 500 });
-    }
-
     const authz = await authorize(escolaId);
     if (!authz.ok) return NextResponse.json({ ok: false, error: authz.error }, { status: authz.status });
 
-    const admin = createAdminClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY
-    );
+    const s = await supabaseServer();
 
     // 1) Sessions ativas da escola
-    const { data: sessions, error: sessErr } = await (admin as any)
+    const { data: sessions, error: sessErr } = await (s as any)
       .from("school_sessions")
       .select("id")
       .eq("escola_id", escolaId)
@@ -90,7 +88,7 @@ export async function POST(
     if (sessionIds.length === 0) return NextResponse.json({ ok: true, updated: 0, details: [] });
 
     // 2) Semestres por sessão
-    const { data: semestresRows } = await (admin as any)
+    const { data: semestresRows } = await (s as any)
       .from("semestres")
       .select("id, session_id")
       .in("session_id", sessionIds);
@@ -101,7 +99,7 @@ export async function POST(
     }
 
     // 3) Turmas por sessão
-    const { data: turmasRows } = await (admin as any)
+    const { data: turmasRows } = await (s as any)
       .from("turmas")
       .select("id, classe_id, session_id")
       .eq("escola_id", escolaId)
@@ -113,7 +111,7 @@ export async function POST(
     }
 
     // 4) Pares (classe_id, curso_id) inferidos de disciplinas existentes
-    const { data: discRows } = await (admin as any)
+    const { data: discRows } = await (s as any)
       .from("disciplinas")
       .select("classe_id, curso_id")
       .eq("escola_id", escolaId)
@@ -129,7 +127,7 @@ export async function POST(
     if (pairs.length === 0) return NextResponse.json({ ok: true, updated: 0, details: [] });
 
     // 5) Ofertas existentes (para evitar duplicar)
-    const { data: ofertasRows } = await (admin as any)
+    const { data: ofertasRows } = await (s as any)
       .from("cursos_oferta")
       .select("curso_id, turma_id, semestre_id")
       .eq("escola_id", escolaId);
@@ -164,7 +162,7 @@ export async function POST(
 
     let created = 0;
     if (toInsert.length > 0) {
-      const { data: ins, error: err } = await (admin as any)
+      const { data: ins, error: err } = await (s as any)
         .from("cursos_oferta")
         .upsert(toInsert as any, { onConflict: "curso_id,turma_id,semestre_id" } as any)
         .select("id");
@@ -176,6 +174,14 @@ export async function POST(
         for (let i = 0; i < details.length; i++) details[i].created = i === details.length - 1 ? created - per * (details.length - 1) : per;
       }
     }
+
+    recordAuditServer({
+      escolaId,
+      portal: "admin_escola",
+      acao: "CURSOS_OFERTA_BACKFILL",
+      entity: "cursos_oferta",
+      details: { updated: created, sessions: sessionIds.length },
+    }).catch(() => null);
 
     return NextResponse.json({ ok: true, updated: created, details });
   } catch (e) {

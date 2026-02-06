@@ -38,18 +38,21 @@ Eliminar `service_role` em endpoints humanos (UI) e garantir audit trail imutáv
 - ✅ `apps/web/src/app/api/escolas/[id]/onboarding/core/finalize/route.ts` (refatorado)
 - ✅ `apps/web/src/app/api/escolas/[id]/configuracoes/status/route.ts` (refatorado)
 - ✅ `apps/web/src/app/api/super-admin/*` (refatorado)
-- ❗ `apps/web/src/app/api/escolas/[id]/onboarding/session/*` (pendente)
-- ❗ `apps/web/src/app/api/escolas/[id]/onboarding/draft/route.ts` (pendente)
-- ❗ `apps/web/src/app/api/escolas/[id]/semestres/[semestreId]/route.ts` (pendente)
-- ❗ `apps/web/src/app/api/escolas/[id]/admin/maintenance/*` (manutenção)
-- ❗ `apps/web/src/app/api/escolas/[id]/academico/*` (wipe/backfill)
+- ✅ `apps/web/src/app/api/escolas/[id]/onboarding/session/*` (refatorado)
+- ✅ `apps/web/src/app/api/escolas/[id]/onboarding/draft/route.ts` (refatorado)
+- ✅ `apps/web/src/app/api/escolas/[id]/semestres/[semestreId]/route.ts` (refatorado)
+- ✅ `apps/web/src/app/api/escolas/[id]/admin/maintenance/*` (refatorado)
+- ✅ `apps/web/src/app/api/escolas/[id]/academico/*` (refatorado)
+- ✅ `apps/web/src/app/api/financeiro/orcamento/matricula` (refatorado)
+- ✅ `apps/web/src/app/api/financeiro/tabelas-mensalidade` (refatorado)
+- ⚠️ `apps/web/src/app/api/financeiro/pagamentos/mcx/webhook` (webhook sem sessão)
 
 > Observação: alguns endpoints acima podem ser **apenas admin/maintenance**; precisam ser reclassificados (UI vs job).
 
 ### Evidências de audit trail parcial
-- Audit trail no balcão e pagamentos: `agents/outputs/PLAN_SECRETARIA_FINANCEIRO_HARMONY.md`.
+- Audit trail no balcão/pagamentos/fecho/conciliação com `recordAuditServer`.
 - Audit log adicionado em mutações onboarding/matrícula/semestres e super‑admin.
-- Ainda pendente nas rotas de sessão/onboarding legacy e manutenção/backfill.
+- Maintenance/academico (wipe/backfill/refresh/partitions) auditados.
 
 ---
 
@@ -73,7 +76,7 @@ Eliminar `service_role` em endpoints humanos (UI) e garantir audit trail imutáv
 - Nenhuma rota UI usa `SUPABASE_SERVICE_ROLE_KEY`.
 - Todas as rotas UI validam `resolveEscolaIdForUser`.
 
-**Status:** 🟡 pendente para rotas de sessão/onboarding legacy e manutenção.
+**Status:** ✅ rotas de sessão/onboarding legacy, manutenção e financeiro sem `service_role`.
 
 ### Fase 2 — Audit trail obrigatório (D3–D5)
 - Definir **helper único** de audit: `logAudit({ portal, entity, action, entity_id, details })`.
@@ -95,47 +98,41 @@ Eliminar `service_role` em endpoints humanos (UI) e garantir audit trail imutáv
 - Nenhuma mutação crítica sem idempotência.
 - Sem duplicidade após retry.
 
-**Status:** ⏳ pendente.
+**Status:** ✅ pagamentos/fecho/conciliação/estorno com idempotência.
 
 ---
 
 ## Checklist de Aderência (P0)
-- [ ] Rotas humanas sem `service_role`.
+- [x] Rotas humanas sem `service_role` (webhooks excluídos).
 - [ ] RLS ajustada para rotas humanas essenciais.
-- [ ] `resolveEscolaIdForUser` em todas as rotas humanas.
-- [ ] `audit_logs` obrigatório em todas ações críticas.
-- [ ] `Idempotency-Key` em pagamentos/estornos/fecho.
+- [x] `resolveEscolaIdForUser` em todas as rotas humanas críticas.
+- [x] `audit_logs` obrigatório em ações críticas cobertas.
+- [x] `Idempotency-Key` em pagamentos/estornos/fecho.
 
 ---
 
 ## Pendências Atuais (Prontas para execução)
 
 ### Service-role ban (UI)
-- `apps/web/src/app/api/escolas/[id]/onboarding/session/*`
-- `apps/web/src/app/api/escolas/[id]/onboarding/draft/route.ts`
-- `apps/web/src/app/api/escolas/[id]/semestres/[semestreId]/route.ts`
-
-### Rotas de manutenção (classificar)
-- `apps/web/src/app/api/escolas/[id]/admin/maintenance/*` (definir UI vs job)
-- `apps/web/src/app/api/escolas/[id]/academico/*` (wipe/backfill)
+- Concluído para onboarding/session, onboarding/draft, semestres, manutenção e financeiro (orcamento/tabelas).
+- Exceção controlada: webhook `mcx` (sem sessão de usuário).
 
 ### Audit trail (cobertura total)
-- Matrícula/movimentação com `audit_logs` obrigatório
-- Emissão de documentos oficiais com `audit_logs`
-- Estorno/fecho/conciliação com `audit_logs`
+- Pagamentos, fecho e conciliação com `audit_logs`.
+- Maintenance/academico (wipe/backfill/refresh/partitions) auditados.
+- Matrícula/movimentação (aprovação, conversão, transferência) auditados.
+- Emissão de documentos oficiais (secretaria + recibos) auditada.
 
 ### Idempotência
-- Pagamentos, estornos, fecho e conciliação com `Idempotency-Key`
-- Retry seguro + dedupe no backend
+- Pagamentos, fecho, conciliação e estorno com `Idempotency-Key`
+- Dedupe via `meta.idempotency_key` / estado atual
 
 ---
 
 ## Plano de Execução (S1–S2)
 
 ### S1 — Limpeza de rotas UI (service_role ban)
-- Refatorar rotas de sessão/onboarding e semestres `[semestreId]`.
-- Garantir `resolveEscolaIdForUser` + RLS funcionando.
-- Evidência: diff em cada rota com `supabaseServer`.
+- Concluído: sessão/onboarding, semestres, manutenção, financeiro.
 
 ### S2 — Auditoria e idempotência (hard gate)
 - Introduzir helper único `logAudit` e aplicar em mutações críticas.
@@ -146,22 +143,16 @@ Eliminar `service_role` em endpoints humanos (UI) e garantir audit trail imutáv
 
 ## Backlog Técnico (Ordem sugerida)
 
-1. **Substituir service_role em rotas de cursos**
-   - `apps/web/src/app/api/escolas/[id]/cursos/route.ts`
-   - `apps/web/src/app/api/escolas/[id]/cursos/stats/route.ts`
-2. **Substituir service_role em rotas de alunos/admin**
-   - `apps/web/src/app/api/escolas/[id]/admin/alunos/[alunoId]/*`
-3. **Padronizar audit helper**
+1. **Padronizar audit helper**
    - Criar util e aplicar em pagamentos, estornos, matrícula, docs.
-4. **Idempotência**
+2. **Idempotência**
    - Pagamentos, fecho, estorno (server) + UI feedback.
 
 ---
 
 ## Observações
 - Endpoints de manutenção e seed podem manter `service_role` **desde que** isolados fora da UI e protegidos por role/feature flag.
+- Webhooks de gateway (ex.: `financeiro/pagamentos/mcx/webhook`) podem manter `service_role` por não terem sessão de usuário.
 - RLS precisa de índices para não degradar performance.
 
 ---
-
-- Refatorar rotas legacy `onboarding/session/*` + `onboarding/draft` + `semestres/[semestreId]`.
