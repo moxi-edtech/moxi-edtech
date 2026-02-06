@@ -200,6 +200,13 @@ Integrar metadados do currículo às telas da secretaria, garantindo que pautas 
 
 ---
 
+## Referências relacionadas
+- `agents/contracts/README.md`
+- `agents/contracts/KLASSE_ANALISE_COMPETITIVA_ANGOSCHOOL_2026-02-05.md`
+- `agents/contracts/KLASSE_PAUTAS_MINISTERIAIS_ROADMAP_2026-02-05.md`
+
+---
+
 ## Sessão Atual — POS/Balcão (Pagamento rápido)
 
 ### Objetivo

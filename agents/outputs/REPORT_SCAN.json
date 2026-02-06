@@ -1,11 +1,11 @@
 {
-  "timestamp": "2026-01-30T01:07:19.263Z",
+  "timestamp": "2026-02-06T23:23:45.061Z",
   "repoRoot": "/Users/gundja/moxi-edtech",
   "summary": {
     "critical": 0,
-    "high": 4,
+    "high": 5,
     "medium": 0,
-    "low": 3,
+    "low": 2,
     "total": 7
   },
   "findings": [
@@ -16,7 +16,15 @@
       "status": "PARTIAL",
       "evidence": [
         {
+          "file": "apps/web/src/hooks/useMatriculaLogic.ts",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
           "file": "apps/web/src/lib/auth-admin-job.ts",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/app/financeiro/page.tsx",
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
         },
         {
@@ -44,6 +52,14 @@
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
         },
         {
+          "file": "apps/web/src/components/system/ConfigHealthBanner.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/components/secretaria/BalcaoAtendimento.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
           "file": "apps/web/src/components/secretaria/BuscaBalcaoRapido.tsx",
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
         },
@@ -52,11 +68,27 @@
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
         },
         {
+          "file": "apps/web/src/components/secretaria/FilaAtendimentoModal.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
           "file": "apps/web/src/components/secretaria/ImportacoesListClient.tsx",
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
         },
         {
           "file": "apps/web/src/components/secretaria/MatriculasListClient.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/components/secretaria/ModalPagamentoRapido.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/components/secretaria/PagamentoModal.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/components/secretaria/PautaRapidaModal.tsx",
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
         },
         {
@@ -72,47 +104,15 @@
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
         },
         {
-          "file": "apps/web/src/components/system/ConfigHealthBanner.tsx",
-          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
-        },
-        {
           "file": "apps/web/src/app/documentos/[publicId]/page.tsx",
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
         },
         {
+          "file": "apps/web/src/app/financeiro/_components/RadarInadimplenciaActive.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
           "file": "apps/web/src/app/financeiro/fecho/page.tsx",
-          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
-        },
-        {
-          "file": "apps/web/src/app/professor/frequencias/page.tsx",
-          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
-        },
-        {
-          "file": "apps/web/src/app/professor/notas/page.tsx",
-          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
-        },
-        {
-          "file": "apps/web/src/app/secretaria/(portal-secretaria)/page.tsx",
-          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
-        },
-        {
-          "file": "apps/web/src/components/aluno/disciplinas/DisciplinasList.tsx",
-          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
-        },
-        {
-          "file": "apps/web/src/components/aluno/avisos/AvisosList.tsx",
-          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
-        },
-        {
-          "file": "apps/web/src/components/aluno/dashboard/DashboardLoader.tsx",
-          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
-        },
-        {
-          "file": "apps/web/src/components/aluno/financeiro/FinanceiroResumo.tsx",
-          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
-        },
-        {
-          "file": "apps/web/src/components/aluno/financeiro/MensalidadesTable.tsx",
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
         }
       ],
@@ -162,6 +162,10 @@
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
+          "file": "temp_supabase_output.ts",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
           "file": "types/database.ts",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
@@ -182,75 +186,71 @@
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
-          "file": "supabase/functions/outbox-worker/index.ts",
+          "file": "supabase/migrations/20260202000000_klasse_p0_compliance_fixes.sql",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
-          "file": "supabase/.branches/remote/schema.sql",
+          "file": "supabase/migrations/20260202002000_sync_lancamentos_registrar_pagamento.sql",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
-          "file": "supabase/migrations_archive/migrations/20250915000000_remote_schema.sql",
+          "file": "supabase/migrations/20260202003000_set_created_by_on_paid_lancamentos.sql",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
-          "file": "supabase/migrations_archive/migrations/20250917060400_audit_redaction.sql",
+          "file": "supabase/migrations/20260203000000_rpc_setup_active_ano_letivo.sql",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
-          "file": "supabase/migrations_archive/migrations/20250917060500_audit_triggers.sql",
+          "file": "supabase/migrations/20260203000002_rpc_upsert_bulk_periodos_letivos.sql",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
-          "file": "supabase/migrations_archive/migrations/20250917060600_audit_user_default.sql",
+          "file": "supabase/migrations/20260203000003_add_audit_to_curriculo_publish.sql",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
-          "file": "supabase/migrations_archive/migrations/20250917060700_create_audit_logs.sql",
+          "file": "supabase/migrations/20260203000004_rpc_gerar_turmas_from_curriculo.sql",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
-          "file": "supabase/migrations_archive/migrations/20251108141000_fix_rls_initplan_policies.sql",
+          "file": "supabase/migrations/20260203000005_rpc_onboard_academic_structure.sql",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
-          "file": "supabase/migrations_archive/migrations/20251116195500_normalize_auth_uid_in_policies.sql",
+          "file": "supabase/migrations/20260203000006_refactor_frequencia_ssot.sql",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
-          "file": "supabase/migrations_archive/migrations/20251116211500_fix_audit_trigger_columns.sql",
+          "file": "supabase/migrations/20260203000007_rpc_lancar_notas_batch.sql",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
-          "file": "supabase/migrations_archive/migrations/20251116212500_secretaria_audit_view.sql",
+          "file": "supabase/migrations/20260203000009_rpc_fechar_periodo_unificado.sql",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
-          "file": "supabase/migrations_archive/migrations/20251214120000_add_rls_policies.sql",
+          "file": "supabase/migrations/20260203000010_rpc_transferir_matricula.sql",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
-          "file": "supabase/migrations_archive/migrations/20251217232511_optimize_rls_policies_v2.sql",
+          "file": "supabase/migrations/20260203000011_rpc_finalizar_matricula.sql",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
-          "file": "supabase/migrations_archive/migrations/20251218000104_refactor_finance_and_admin_rls.sql",
+          "file": "supabase/migrations/20260203000012_rpc_gerar_historico_anual.sql",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
-          "file": "supabase/migrations_archive/migrations/20251218004218_comprehensive_rls_unification_v2.sql",
+          "file": "supabase/migrations/20260203000013_update_finalizar_matricula_rpc.sql",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
-          "file": "supabase/migrations_archive/migrations/20251218004525_final_rls_policy_cleanup.sql",
+          "file": "supabase/migrations/20260203000015_refactor_gerar_mensalidades_trigger.sql",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
-          "file": "supabase/migrations_archive/migrations_backup/20250917060400_audit_redaction.sql",
-          "note": "match: /audit_logs|auditLog|create_audit/i"
-        },
-        {
-          "file": "supabase/migrations_archive/migrations_backup/20250917060500_audit_triggers.sql",
+          "file": "supabase/migrations/20260203000016_add_audit_to_finance_rpcs.sql",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         }
       ],
@@ -300,11 +300,15 @@
           "note": "match: /refresh_mv_pagamentos_status\\s*\\(/i"
         },
         {
-          "file": "supabase/migrations_archive/migrations/20250916000100_create_views.sql",
-          "note": "match: /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\.pagamentos_status/i"
+          "file": "supabase/migrations/20260202010300_fix_pagamentos_status_refresh.sql",
+          "note": "match: /refresh_mv_pagamentos_status\\s*\\(/i"
         },
         {
           "file": "supabase/migrations_archive/migrations_backup/20250916000100_create_views.sql",
+          "note": "match: /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\.pagamentos_status/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations/20250916000100_create_views.sql",
           "note": "match: /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\.pagamentos_status/i"
         },
         {
@@ -366,12 +370,12 @@
     {
       "id": "PLAN_GUARD",
       "title": "P0.3 — Controle de planos (backend + UI)",
-      "severity": "LOW",
-      "status": "VALIDATED",
+      "severity": "HIGH",
+      "status": "PARTIAL",
       "evidence": [
         {
           "file": "apps/web/src/app/api/financeiro/recibos/emitir/route.ts",
-          "note": "backend guard (fin_recibo_pdf): sim"
+          "note": "backend guard (fin_recibo_pdf): não"
         },
         {
           "file": "apps/web/src/app/api/financeiro/extrato/aluno/[alunoId]/pdf/route.ts",

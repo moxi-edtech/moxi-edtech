@@ -1,11 +1,12 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from "@tanstack/react-table"
 import { enqueueOfflineAction } from "@/lib/offline/queue"
 import { createIdempotencyKey } from "@/lib/idempotency"
 import { useOfflineStatus } from "@/hooks/useOfflineStatus"
+import { useOfficialDocs, type MiniPautaPayload } from "@/hooks/useOfficialDocs"
+import { GradeEntryGrid, type StudentGradeRow } from "@/components/professor/GradeEntryGrid"
 
 type Atrib = {
   id: string
@@ -15,74 +16,33 @@ type Atrib = {
   disciplina: { id: string | null; nome: string | null }
 }
 
-type PautaAluno = {
+type PautaDetalhadaRow = {
   aluno_id: string
   nome: string
   foto?: string | null
-  notas?: { t1?: number | null; t2?: number | null; t3?: number | null }
-}
-
-type NotaKey = "t1" | "t2" | "t3"
-
-const TRIMESTRES: Array<{ key: NotaKey; label: string; trimestre: number }> = [
-  { key: "t1", label: "T1", trimestre: 1 },
-  { key: "t2", label: "T2", trimestre: 2 },
-  { key: "t3", label: "T3", trimestre: 3 },
-]
-
-const NOTA_MIN = 0
-const NOTA_MAX = 20
-
-function parseNota(value: string) {
-  if (!value.trim()) return null
-  const normalized = value.replace(",", ".")
-  const num = Number(normalized)
-  if (!Number.isFinite(num)) return null
-  return num
-}
-
-function buildCellKey(alunoId: string, key: NotaKey) {
-  return `${alunoId}-${key}`
-}
-
-function playErrorTone() {
-  if (typeof window === "undefined") return
-  try {
-    const AudioContext = window.AudioContext || (window as any).webkitAudioContext
-    const ctx = new AudioContext()
-    const oscillator = ctx.createOscillator()
-    const gain = ctx.createGain()
-    oscillator.type = "square"
-    oscillator.frequency.value = 220
-    gain.gain.value = 0.12
-    oscillator.connect(gain)
-    gain.connect(ctx.destination)
-    oscillator.start()
-    oscillator.stop(ctx.currentTime + 0.15)
-    oscillator.onended = () => ctx.close()
-  } catch {}
+  numero_chamada?: number | null
+  mac?: number | null
+  npp?: number | null
+  npt?: number | null
+  mt?: number | null
 }
 
 export default function ProfessorNotasPage() {
   const searchParams = useSearchParams()
   const highlightAlunoId = searchParams?.get("alunoId") ?? null
-
   const [atribs, setAtribs] = useState<Atrib[]>([])
   const [turmaId, setTurmaId] = useState("")
   const [disciplinaId, setDisciplinaId] = useState("")
   const [turmaDisciplinaId, setTurmaDisciplinaId] = useState<string | null>(null)
   const [disciplinaNome, setDisciplinaNome] = useState<string | null>(null)
-  const [pauta, setPauta] = useState<PautaAluno[]>([])
+  const [pauta, setPauta] = useState<StudentGradeRow[]>([])
   const [loading, setLoading] = useState(false)
-  const [drafts, setDrafts] = useState<Record<string, string>>({})
-  const [savingCells, setSavingCells] = useState<Record<string, boolean>>({})
-  const [savedCells, setSavedCells] = useState<Record<string, boolean>>({})
-  const [invalidCells, setInvalidCells] = useState<Record<string, boolean>>({})
-  const [pendingCells, setPendingCells] = useState<Record<string, boolean>>({})
-  const [failedCells, setFailedCells] = useState<Record<string, boolean>>({})
+  const [periodosAtivos, setPeriodosAtivos] = useState<Array<1 | 2 | 3>>([])
+  const [exporting, setExporting] = useState(false)
+  const [trimestreSelecionado, setTrimestreSelecionado] = useState<1 | 2 | 3>(1)
 
-  const inputRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const { online } = useOfflineStatus()
+  const { gerarMiniPauta } = useOfficialDocs()
 
   useEffect(() => {
     let active = true
@@ -117,23 +77,29 @@ export default function ProfessorNotasPage() {
     const load = async () => {
       setLoading(true)
       try {
-        const params = new URLSearchParams({ turmaId, disciplinaId })
+        const params = new URLSearchParams({
+          turmaId,
+          disciplinaId,
+          detalhado: "1",
+          trimestre: String(trimestreSelecionado),
+        })
         const res = await fetch(`/api/professor/pauta?${params.toString()}`, { cache: "no-store" })
         const json = await res.json().catch(() => null)
         if (!active) return
         if (res.ok && Array.isArray(json)) {
-          setPauta(json)
-          const nextDrafts: Record<string, string> = {}
-          json.forEach((row: PautaAluno) => {
-            TRIMESTRES.forEach(({ key }) => {
-              const value = row.notas?.[key]
-              if (value !== null && value !== undefined) {
-                nextDrafts[buildCellKey(row.aluno_id, key)] = String(value)
-              }
-            })
-          })
-          setDrafts(nextDrafts)
-          setInvalidCells({})
+          setPauta(
+            (json as PautaDetalhadaRow[]).map((row, index) => ({
+              id: row.aluno_id,
+              numero: row.numero_chamada ?? index + 1,
+              nome: row.nome,
+              foto: row.foto ?? null,
+              mac1: row.mac ?? null,
+              npp1: row.npp ?? null,
+              npt1: row.npt ?? null,
+              mt1: row.mt ?? null,
+              _status: "synced",
+            }))
+          )
         } else {
           setPauta([])
         }
@@ -146,35 +112,66 @@ export default function ProfessorNotasPage() {
     return () => {
       active = false
     }
-  }, [turmaId, disciplinaId])
+  }, [turmaId, disciplinaId, trimestreSelecionado])
 
-  const handleSave = async (alunoId: string, key: NotaKey, trimestre: number) => {
-    const cellKey = buildCellKey(alunoId, key)
-    const raw = drafts[cellKey] ?? ""
-    if (!raw.trim()) return
-
-    const valor = parseNota(raw)
-    if (valor === null || valor < NOTA_MIN || valor > NOTA_MAX) {
-      setInvalidCells((prev) => ({ ...prev, [cellKey]: true }))
-      playErrorTone()
+  useEffect(() => {
+    if (!turmaId) {
+      setPeriodosAtivos([])
       return
     }
 
-    if (!turmaId || !disciplinaId) return
+    let active = true
+    const load = async () => {
+      const res = await fetch(`/api/professor/periodos?turma_id=${turmaId}`, { cache: "no-store" })
+      const json = await res.json().catch(() => null)
+      if (!active) return
+      if (res.ok && json?.ok && Array.isArray(json.items)) {
+        const numeros = json.items
+          .map((item: { numero?: number }) => item?.numero)
+          .filter((n: number | undefined) => n === 1 || n === 2 || n === 3)
+        setPeriodosAtivos(numeros)
+        if (numeros.length > 0 && !numeros.includes(trimestreSelecionado)) {
+          setTrimestreSelecionado(numeros[0])
+        }
+      } else {
+        setPeriodosAtivos([])
+      }
+    }
 
-    setSavingCells((prev) => ({ ...prev, [cellKey]: true }))
-    try {
+    load()
+    return () => {
+      active = false
+    }
+  }, [turmaId])
+
+  const handleSaveBatch = async (rows: StudentGradeRow[]) => {
+    if (!turmaId || !disciplinaId) return
+    const trimestre = trimestreSelecionado
+    const payloads = [
+      { tipo: "MAC", campo: "mac1" as const },
+      { tipo: "NPP", campo: "npp1" as const },
+      { tipo: "NPT", campo: "npt1" as const },
+    ]
+
+    for (const { tipo, campo } of payloads) {
+      const notas = rows
+        .map((row) => ({ aluno_id: row.id, valor: row[campo] }))
+        .filter((entry) => typeof entry.valor === "number")
+      if (notas.length === 0) continue
+
       const idempotencyKey = createIdempotencyKey(
-        `nota-${turmaId}-${disciplinaId}-${trimestre}-${alunoId}`
+        `nota-${turmaId}-${disciplinaId}-${trimestre}-${tipo}-${Date.now()}`
       )
-      const payload = {
+      const body = {
         turma_id: turmaId,
         disciplina_id: disciplinaId,
         turma_disciplina_id: turmaDisciplinaId || undefined,
         trimestre,
+        tipo_avaliacao: tipo,
         disciplina_nome: disciplinaNome || undefined,
-        notas: [{ aluno_id: alunoId, valor }],
+        notas,
       }
+
       const request = {
         url: "/api/professor/notas",
         method: "POST",
@@ -182,200 +179,102 @@ export default function ProfessorNotasPage() {
           "Content-Type": "application/json",
           "idempotency-key": idempotencyKey,
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(body),
         type: "professor_notas",
       }
 
       if (!online) {
         await enqueueOfflineAction(request)
-        setPendingCells((prev) => ({ ...prev, [cellKey]: true }))
-        setFailedCells((prev) => {
-          const next = { ...prev }
-          delete next[cellKey]
-          return next
-        })
-        return
+        continue
       }
 
-      const res = await fetch("/api/professor/notas", {
-        method: "POST",
+      const res = await fetch(request.url, {
+        method: request.method,
         headers: request.headers,
         body: request.body,
       })
       const json = await res.json().catch(() => null)
       if (!res.ok || !json?.ok) {
-        setFailedCells((prev) => ({ ...prev, [cellKey]: true }))
-        setPendingCells((prev) => {
-          const next = { ...prev }
-          delete next[cellKey]
-          return next
-        })
-        throw new Error(json?.error || "Falha ao salvar nota")
+        throw new Error(json?.error || "Falha ao salvar notas")
       }
+    }
 
-      setPauta((prev) =>
-        prev.map((row) =>
-          row.aluno_id === alunoId
-            ? {
-                ...row,
-                notas: { ...row.notas, [key]: valor },
-              }
-            : row
-        )
-      )
-      setSavedCells((prev) => ({ ...prev, [cellKey]: true }))
-      setPendingCells((prev) => {
-        const next = { ...prev }
-        delete next[cellKey]
-        return next
+    setPauta((prev) =>
+      prev.map((row) => {
+        const updated = rows.find((candidate) => candidate.id === row.id)
+        return updated ? { ...row, ...updated, _status: "synced" } : row
       })
-      setFailedCells((prev) => {
-        const next = { ...prev }
-        delete next[cellKey]
-        return next
-      })
-      setTimeout(() => {
-        setSavedCells((prev) => {
-          const next = { ...prev }
-          delete next[cellKey]
-          return next
-        })
-      }, 1500)
-    } catch (err) {
-      if (!online) {
-        setPendingCells((prev) => ({ ...prev, [cellKey]: true }))
+    )
+  }
+
+  const handleExportMiniPauta = async () => {
+    if (!turmaId || !disciplinaId || pauta.length === 0) return
+    const turmaNome = atribs.find((a) => a.turma.id === turmaId)?.turma.nome || turmaId
+    const disciplinaNomeResolved =
+      disciplinaNome || atribs.find((a) => a.disciplina.id === disciplinaId)?.disciplina.nome || disciplinaId
+    const hash = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}`
+    const emissao = new Date().toLocaleString("pt-PT")
+
+    const alunos: MiniPautaPayload["alunos"] = pauta.map((row, index) => {
+      const t = row.mt1 ?? null
+      const mfd = t !== null ? Number(t) : null
+      const trim1 = {
+        mac: trimestreSelecionado === 1 ? row.mac1 ?? null : null,
+        npp: trimestreSelecionado === 1 ? row.npp1 ?? null : null,
+        npt: trimestreSelecionado === 1 ? row.npt1 ?? null : null,
+        mt: trimestreSelecionado === 1 ? t : null,
       }
-      playErrorTone()
+      const trim2 = {
+        mac: trimestreSelecionado === 2 ? row.mac1 ?? null : null,
+        npp: trimestreSelecionado === 2 ? row.npp1 ?? null : null,
+        npt: trimestreSelecionado === 2 ? row.npt1 ?? null : null,
+        mt: trimestreSelecionado === 2 ? t : null,
+      }
+      const trim3 = {
+        mac: trimestreSelecionado === 3 ? row.mac1 ?? null : null,
+        npp: trimestreSelecionado === 3 ? row.npp1 ?? null : null,
+        npt: trimestreSelecionado === 3 ? row.npt1 ?? null : null,
+        mt: trimestreSelecionado === 3 ? t : null,
+      }
+      return {
+        id: row.id,
+        numero: index + 1,
+        nome: row.nome,
+        genero: "M",
+        trim1,
+        trim2,
+        trim3,
+        mfd: mfd === null ? null : Number(mfd.toFixed(1)),
+        obs: "",
+      }
+    })
+
+    const payload: MiniPautaPayload = {
+      metadata: {
+        provincia: "—",
+        escola: "Escola",
+        anoLectivo: "",
+        turma: turmaNome,
+        disciplina: disciplinaNomeResolved,
+        professor: "",
+        diretor: "",
+        emissao,
+        hash,
+        trimestresAtivos: [trimestreSelecionado],
+        mostrarTrimestresInativos: false,
+      },
+      alunos,
+    }
+
+    setExporting(true)
+    try {
+      await gerarMiniPauta(payload, `MiniPauta_${disciplinaNomeResolved}_${Date.now()}.pdf`)
     } finally {
-      setSavingCells((prev) => {
-        const next = { ...prev }
-        delete next[cellKey]
-        return next
-      })
+      setExporting(false)
     }
   }
 
   const data = useMemo(() => pauta, [pauta])
-
-  const columns = useMemo<ColumnDef<PautaAluno>[]>(() => {
-    return [
-      {
-        header: "Aluno",
-        accessorKey: "nome",
-        cell: ({ row }) => {
-          const original = row.original
-          return (
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-slate-100 text-xs font-semibold text-slate-600 flex items-center justify-center">
-                {original.nome?.slice(0, 2).toUpperCase()}
-              </div>
-              <div>
-                <div className="font-semibold text-slate-900">{original.nome}</div>
-                <div className="text-xs text-slate-500">{original.aluno_id}</div>
-              </div>
-            </div>
-          )
-        },
-      },
-      ...TRIMESTRES.map((t, index) => ({
-        header: t.label,
-        id: t.key,
-        cell: ({ row }) => {
-          const alunoId = row.original.aluno_id
-          const cellKey = buildCellKey(alunoId, t.key)
-          const stored = drafts[cellKey]
-          const value = stored ?? (row.original.notas?.[t.key] ?? "")
-          const invalid = Boolean(invalidCells[cellKey])
-          const saving = Boolean(savingCells[cellKey])
-          const saved = Boolean(savedCells[cellKey])
-          const pending = Boolean(pendingCells[cellKey])
-          const failed = Boolean(failedCells[cellKey])
-          const rowIndex = row.index
-          const colIndex = index
-
-          return (
-            <div className="relative">
-              <input
-                ref={(el) => {
-                  inputRefs.current[`${rowIndex}-${colIndex}`] = el
-                }}
-                type="text"
-                inputMode="decimal"
-                value={value}
-                onChange={(event) => {
-                  const nextValue = event.target.value
-                  setDrafts((prev) => ({ ...prev, [cellKey]: nextValue }))
-                  setInvalidCells((prev) => {
-                    const num = parseNota(nextValue)
-                    const isInvalid =
-                      nextValue.trim() !== "" && (num === null || num < NOTA_MIN || num > NOTA_MAX)
-                    if (isInvalid && !prev[cellKey]) playErrorTone()
-                    if (!isInvalid && prev[cellKey]) {
-                      const next = { ...prev }
-                      delete next[cellKey]
-                      return next
-                    }
-                    return isInvalid ? { ...prev, [cellKey]: true } : prev
-                  })
-                }}
-                onBlur={() => handleSave(alunoId, t.key, t.trimestre)}
-                onKeyDown={(event) => {
-                  if (["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Enter"].includes(event.key)) {
-                    event.preventDefault()
-                  }
-                  const move = (rowDelta: number, colDelta: number) => {
-                    const nextRow = rowIndex + rowDelta
-                    const nextCol = colIndex + colDelta
-                    const next = inputRefs.current[`${nextRow}-${nextCol}`]
-                    if (next) {
-                      next.focus()
-                      next.select()
-                    }
-                  }
-                  if (event.key === "ArrowDown" || event.key === "Enter") move(1, 0)
-                  if (event.key === "ArrowUp") move(-1, 0)
-                  if (event.key === "ArrowLeft") move(0, -1)
-                  if (event.key === "ArrowRight") move(0, 1)
-                }}
-                className={`w-20 rounded border px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-klasse-green/30 ${
-                  invalid
-                    ? "border-red-400 bg-red-50 text-red-700"
-                    : "border-slate-200 bg-white text-slate-900"
-                }`}
-              />
-              {saving && <span className="absolute -right-5 top-2 text-[10px] text-slate-400">…</span>}
-              {!saving && pending && (
-                <span className="absolute -right-5 top-1.5 text-xs text-amber-500">🟡</span>
-              )}
-              {!saving && failed && (
-                <span className="absolute -right-5 top-1.5 text-xs text-red-500">🔴</span>
-              )}
-              {!saving && !pending && !failed && saved && (
-                <span className="absolute -right-5 top-1.5 text-xs text-green-600">✅</span>
-              )}
-            </div>
-          )
-        },
-      })),
-    ]
-  }, [
-    drafts,
-    invalidCells,
-    savingCells,
-    savedCells,
-    pendingCells,
-    failedCells,
-    disciplinaId,
-    turmaId,
-    turmaDisciplinaId,
-    disciplinaNome,
-  ])
-
-  const table = useReactTable({
-    data,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-  })
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
@@ -386,7 +285,7 @@ export default function ProfessorNotasPage() {
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-3">
+      <div className="grid md:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-center">
         <select
           value={turmaId}
           onChange={(event) => {
@@ -428,53 +327,43 @@ export default function ProfessorNotasPage() {
               </option>
             ))}
         </select>
+        <select
+          value={trimestreSelecionado}
+          onChange={(event) => setTrimestreSelecionado(Number(event.target.value) as 1 | 2 | 3)}
+          className="border rounded p-2"
+          disabled={!turmaId || periodosAtivos.length === 0}
+        >
+          {periodosAtivos.length === 0 && <option value={trimestreSelecionado}>Sem períodos</option>}
+          {periodosAtivos.map((periodo) => (
+            <option key={periodo} value={periodo}>
+              {`Trimestre ${periodo}`}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={handleExportMiniPauta}
+          disabled={!turmaId || !disciplinaId || pauta.length === 0 || exporting}
+          className="rounded border border-klasse-green bg-klasse-green px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-500"
+        >
+          {exporting ? "Gerando PDF..." : "Exportar Mini-Pauta"}
+        </button>
       </div>
 
-      <div className="rounded border bg-white overflow-hidden">
-        <table className="min-w-full text-sm">
-          <thead className="bg-slate-50 text-left">
-            {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <th key={header.id} className="p-2 font-semibold text-slate-600">
-                    {flexRender(header.column.columnDef.header, header.getContext())}
-                  </th>
-                ))}
-              </tr>
-            ))}
-          </thead>
-          <tbody>
-            {loading && (
-              <tr>
-                <td colSpan={4} className="p-4 text-slate-500">
-                  Carregando pauta...
-                </td>
-              </tr>
-            )}
-            {!loading && data.length === 0 && (
-              <tr>
-                <td colSpan={4} className="p-4 text-slate-500">
-                  Selecione a turma e disciplina para carregar os alunos.
-                </td>
-              </tr>
-            )}
-            {table.getRowModel().rows.map((row) => (
-              <tr
-                key={row.id}
-                className={`border-t ${
-                  row.original.aluno_id === highlightAlunoId ? "bg-emerald-50" : "hover:bg-slate-50"
-                }`}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="p-2 align-middle">
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {loading ? (
+        <div className="rounded border bg-white p-4 text-sm text-slate-500">Carregando pauta...</div>
+      ) : data.length === 0 ? (
+        <div className="rounded border bg-white p-4 text-sm text-slate-500">
+          Selecione a turma e disciplina para carregar os alunos.
+        </div>
+      ) : (
+        <GradeEntryGrid
+          initialData={data}
+          subtitle={`${disciplinaNome ?? "Disciplina"} • Trimestre ${trimestreSelecionado}`}
+          onSave={handleSaveBatch}
+          highlightId={highlightAlunoId}
+        />
+      )}
     </div>
   )
 }

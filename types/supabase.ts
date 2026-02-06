@@ -7827,6 +7827,16 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_financeiro_inadimplencia_top: {
+        Row: {
+          aluno_id: string | null
+          aluno_nome: string | null
+          dias_em_atraso: number | null
+          escola_id: string | null
+          valor_em_atraso: number | null
+        }
+        Relationships: []
+      }
       vw_financeiro_kpis_geral: {
         Row: {
           escola_id: string | null
@@ -8684,6 +8694,15 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      vw_secretaria_alunos_resumo: {
+        Row: {
+          aluno_id: string | null
+          escola_id: string | null
+          total_em_atraso: number | null
+          turma_nome: string | null
+        }
+        Relationships: []
       }
       vw_secretaria_dashboard_counts: {
         Row: {
@@ -9843,6 +9862,10 @@ export type Database = {
       }
       refresh_mv_financeiro_dashboard: { Args: never; Returns: undefined }
       refresh_mv_financeiro_escola_dia: { Args: never; Returns: undefined }
+      refresh_mv_financeiro_inadimplencia_top: {
+        Args: never
+        Returns: undefined
+      }
       refresh_mv_financeiro_kpis_geral: { Args: never; Returns: undefined }
       refresh_mv_financeiro_kpis_mes: { Args: never; Returns: undefined }
       refresh_mv_financeiro_missing_pricing_count: {
@@ -9865,6 +9888,7 @@ export type Database = {
       refresh_mv_ocupacao_turmas: { Args: never; Returns: undefined }
       refresh_mv_pagamentos_status: { Args: never; Returns: undefined }
       refresh_mv_radar_inadimplencia: { Args: never; Returns: undefined }
+      refresh_mv_secretaria_alunos_resumo: { Args: never; Returns: undefined }
       refresh_mv_secretaria_dashboard_counts: {
         Args: never
         Returns: undefined

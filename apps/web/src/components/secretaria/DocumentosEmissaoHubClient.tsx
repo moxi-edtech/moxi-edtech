@@ -88,6 +88,13 @@ export default function DocumentosEmissaoHubClient({
   const alunoIdParam = alunoId ?? searchParams?.get("alunoId");
   const tipoParam = (defaultTipo ?? (searchParams?.get("tipo") as DocumentoTipo | null)) ?? null;
 
+  type BalcaoDecision = {
+    decision: "GRANTED" | "BLOCKED" | "PENDING";
+    reason_detail?: string | null;
+    pedido_id?: string | null;
+    payment_intent_id?: string | null;
+  };
+
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedQuery(query.trim());
@@ -244,12 +251,13 @@ export default function DocumentosEmissaoHubClient({
           throw new Error(intentError?.message || "Erro ao criar pedido.");
         }
 
-        if (data.decision === "BLOCKED") {
-          throw new Error(data.reason_detail || "Serviço bloqueado.");
+        const decision = data as BalcaoDecision;
+        if (decision.decision === "BLOCKED") {
+          throw new Error(decision.reason_detail || "Serviço bloqueado.");
         }
 
-        pedidoId = data.pedido_id;
-        intentId = data.payment_intent_id ?? null;
+        pedidoId = decision.pedido_id ?? null;
+        intentId = decision.payment_intent_id ?? null;
       }
 
       if (isPago && intentId) {
