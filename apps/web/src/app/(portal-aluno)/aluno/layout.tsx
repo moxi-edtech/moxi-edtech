@@ -8,7 +8,7 @@ import { parsePlanTier, type PlanTier } from "@/config/plans";
 import { Tables } from "~types/supabase";
 
 type Vínculo = Tables<"escola_users"> | null;
-type Perfil = Pick<Tables<"profiles">, "id" | "nome"> | null;
+type Perfil = { id: string; nome: string | null } | null;
 
 export default function AlunoLayout({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
@@ -28,8 +28,8 @@ export default function AlunoLayout({ children }: { children: React.ReactNode })
       // Perfil básico
       const { data: prof } = await s
         .from("profiles")
-        .select("id, nome")
-        .eq("id", user.id)
+        .select("user_id, nome")
+        .eq("user_id", user.id)
         .maybeSingle();
 
       // Vínculo do aluno
@@ -65,8 +65,10 @@ export default function AlunoLayout({ children }: { children: React.ReactNode })
       if (!active) return;
       const papel = vincAluno?.papel ?? vincAluno?.role ?? null;
 
-      setPerfil(prof as Perfil);
-      setVinculo(vincAluno as Vínculo);
+      const perfilData = prof ? { id: prof.user_id, nome: prof.nome } : null;
+
+      setPerfil(perfilData);
+      setVinculo(vincAluno ?? null);
       if (!ok && pathname !== '/aluno/desabilitado') {
         router.replace('/aluno/desabilitado');
         return;

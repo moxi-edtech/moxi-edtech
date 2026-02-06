@@ -16,6 +16,12 @@ type DatabaseWithAvisos = Database & {
           user_id: string;
           lido_em?: string | null;
         };
+        Update: {
+          aviso_id?: string;
+          user_id?: string;
+          lido_em?: string | null;
+        };
+        Relationships: [];
       };
     };
   };
