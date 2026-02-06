@@ -19,6 +19,15 @@ type DocumentoResponse = {
   error?: string;
 };
 
+type ServicoItem = {
+  id: string;
+  codigo: string;
+  nome: string;
+  descricao: string | null;
+  valor_base: number;
+  ativo: boolean;
+};
+
 const TIPOS: Array<{
   id: DocumentoTipo;
   title: string;
@@ -51,7 +60,15 @@ const TIPOS: Array<{
   },
 ];
 
-export default function DocumentosEmissaoHubClient({ escolaId }: { escolaId: string }) {
+export default function DocumentosEmissaoHubClient({
+  escolaId,
+  alunoId,
+  defaultTipo,
+}: {
+  escolaId: string;
+  alunoId?: string | null;
+  defaultTipo?: DocumentoTipo | null;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
@@ -62,8 +79,13 @@ export default function DocumentosEmissaoHubClient({ escolaId }: { escolaId: str
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [debouncedQuery, setDebouncedQuery] = useState("");
-  const alunoIdParam = searchParams?.get("alunoId");
-  const tipoParam = searchParams?.get("tipo") as DocumentoTipo | null;
+  const [servicos, setServicos] = useState<ServicoItem[]>([]);
+  const [loadingServicos, setLoadingServicos] = useState(false);
+  const [metodo, setMetodo] = useState<"cash" | "tpa" | "transfer" | "mcx" | "kiwk">("cash");
+  const [reference, setReference] = useState("");
+  const [evidenceUrl, setEvidenceUrl] = useState("");
+  const alunoIdParam = alunoId ?? searchParams?.get("alunoId");
+  const tipoParam = (defaultTipo ?? (searchParams?.get("tipo") as DocumentoTipo | null)) ?? null;
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -140,7 +162,47 @@ export default function DocumentosEmissaoHubClient({ escolaId }: { escolaId: str
     };
   }, [debouncedQuery]);
 
+  useEffect(() => {
+    let active = true;
+    const loadServicos = async () => {
+      if (!escolaId) return;
+      setLoadingServicos(true);
+      try {
+        const res = await fetch(`/api/escola/${escolaId}/admin/servicos`, { cache: "no-store" });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao carregar serviços");
+        if (active) {
+          setServicos(Array.isArray(json.items) ? json.items : []);
+        }
+      } catch (err) {
+        if (active) setServicos([]);
+      } finally {
+        if (active) setLoadingServicos(false);
+      }
+    };
+
+    loadServicos();
+    return () => {
+      active = false;
+    };
+  }, [escolaId]);
+
   const normalizedResults = useMemo(() => results.slice(0, 6), [results]);
+
+  const selectedServico = useMemo(() => {
+    if (!tipo) return null;
+    const normalized = tipo.replace("declaracao_", "decl");
+    const tokens = [tipo, normalized].flatMap((value) => value.split("_"));
+    return (
+      servicos.find((servico) => {
+        const haystack = `${servico.codigo} ${servico.nome} ${servico.descricao ?? ""}`.toLowerCase();
+        return tokens.some((token) => token && haystack.includes(token));
+      }) ?? null
+    );
+  }, [servicos, tipo]);
+
+  const isPago = Boolean(selectedServico && Number(selectedServico.valor_base ?? 0) > 0);
+  const valorBase = Number(selectedServico?.valor_base ?? 0);
 
   const canSubmit = Boolean(selectedAluno?.id && tipo && !submitting);
 
@@ -154,6 +216,74 @@ export default function DocumentosEmissaoHubClient({ escolaId }: { escolaId: str
     setSubmitting(true);
     setError(null);
     try {
+      if (isPago && !selectedServico) {
+        throw new Error("Serviço não encontrado no catálogo.");
+      }
+
+      if (isPago && metodo === "tpa" && !reference.trim()) {
+        throw new Error("Referência obrigatória para TPA.");
+      }
+
+      if (isPago && metodo === "transfer" && !evidenceUrl.trim()) {
+        throw new Error("Comprovativo obrigatório para Transferência.");
+      }
+
+      let pedidoId: string | null = null;
+      let intentId: string | null = null;
+
+      if (isPago && selectedServico) {
+        const supabase = (await import("@/lib/supabase/client")).createClient();
+        const { data, error: intentError } = await supabase.rpc("balcao_criar_pedido_e_decidir", {
+          p_servico_codigo: selectedServico.codigo,
+          p_aluno_id: selectedAluno.id,
+          p_contexto: {},
+        });
+
+        if (intentError || !data) {
+          throw new Error(intentError?.message || "Erro ao criar pedido.");
+        }
+
+        if (data.decision === "BLOCKED") {
+          throw new Error(data.reason_detail || "Serviço bloqueado.");
+        }
+
+        pedidoId = data.pedido_id;
+        intentId = data.payment_intent_id ?? null;
+      }
+
+      if (isPago && intentId) {
+        const idempotencyKey =
+          typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        const pagamentoRes = await fetch("/api/secretaria/balcao/pagamentos", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Idempotency-Key": idempotencyKey,
+          },
+          body: JSON.stringify({
+            aluno_id: selectedAluno.id,
+            mensalidade_id: null,
+            valor: valorBase,
+            metodo,
+            reference: reference || null,
+            evidence_url: evidenceUrl || null,
+            gateway_ref: null,
+            meta: {
+              origem: "documentos_emissao",
+              pedido_id: pedidoId,
+              pagamento_intent_id: intentId,
+              servico_codigo: selectedServico?.codigo ?? null,
+            },
+          }),
+        });
+        const pagamentoJson = await pagamentoRes.json().catch(() => ({}));
+        if (!pagamentoRes.ok || !pagamentoJson?.ok) {
+          throw new Error(pagamentoJson?.error || "Falha ao registrar pagamento.");
+        }
+      }
+
       const res = await fetch("/api/secretaria/documentos/emitir", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -173,7 +303,7 @@ export default function DocumentosEmissaoHubClient({ escolaId }: { escolaId: str
           ? `/secretaria/documentos/${json.docId}/cartao/print`
           : `/secretaria/documentos/${json.docId}/ficha/print`;
 
-      router.push(destino);
+      window.open(destino, "_blank", "noopener,noreferrer");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erro ao emitir documento");
     } finally {
@@ -242,6 +372,8 @@ export default function DocumentosEmissaoHubClient({ escolaId }: { escolaId: str
         {TIPOS.map((doc) => {
           const isActive = tipo === doc.id;
           const Icon = doc.icon;
+          const serviceMatch = selectedServico && tipo === doc.id ? selectedServico : null;
+          const priceLabel = serviceMatch ? Number(serviceMatch.valor_base ?? 0) : null;
           return (
             <button
               key={doc.id}
@@ -260,12 +392,68 @@ export default function DocumentosEmissaoHubClient({ escolaId }: { escolaId: str
                 <div>
                   <h2 className="text-base font-semibold text-slate-900">{doc.title}</h2>
                   <p className="mt-1 text-sm text-slate-500">{doc.description}</p>
+                  {priceLabel !== null && (
+                    <p className={`mt-2 text-xs font-semibold ${priceLabel > 0 ? "text-amber-700" : "text-emerald-700"}`}>
+                      {priceLabel > 0 ? `Documento pago · ${priceLabel} Kz` : "Documento grátis"}
+                    </p>
+                  )}
                 </div>
               </div>
             </button>
           );
         })}
       </section>
+
+      {isPago && selectedServico && (
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900">Checkout rápido</h3>
+            <p className="text-xs text-slate-500">Documento pago · {valorBase} Kz</p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+            {[
+              { id: "cash", label: "Cash" },
+              { id: "tpa", label: "TPA" },
+              { id: "transfer", label: "Transfer" },
+              { id: "mcx", label: "MCX" },
+              { id: "kiwk", label: "KIWK" },
+            ].map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setMetodo(item.id as typeof metodo)}
+                className={`rounded-lg border px-3 py-2 text-xs font-semibold ${
+                  metodo === item.id
+                    ? "border-klasse-gold bg-amber-50 text-klasse-gold"
+                    : "border-slate-200 text-slate-600"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          {metodo === "tpa" && (
+            <div>
+              <label className="text-xs font-semibold text-slate-600">Referência</label>
+              <input
+                value={reference}
+                onChange={(event) => setReference(event.target.value)}
+                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+              />
+            </div>
+          )}
+          {metodo === "transfer" && (
+            <div>
+              <label className="text-xs font-semibold text-slate-600">Comprovativo (URL)</label>
+              <input
+                value={evidenceUrl}
+                onChange={(event) => setEvidenceUrl(event.target.value)}
+                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+              />
+            </div>
+          )}
+        </section>
+      )}
 
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -281,7 +469,7 @@ export default function DocumentosEmissaoHubClient({ escolaId }: { escolaId: str
           className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          Emitir e Imprimir
+          {isPago ? "Pagar e Emitir" : "Emitir e Imprimir"}
         </button>
       </div>
     </main>

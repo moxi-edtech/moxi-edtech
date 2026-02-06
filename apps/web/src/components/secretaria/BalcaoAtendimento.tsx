@@ -22,7 +22,6 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { useDebounce } from "@/hooks/useDebounce";
 import { BalcaoServicoModal, type BalcaoDecision } from "@/components/secretaria/BalcaoServicoModal";
-import { PagamentoModal } from "@/components/secretaria/PagamentoModal";
 import { MotivoBloqueioModal } from "@/components/secretaria/MotivoBloqueioModal";
 
 const kwanza = new Intl.NumberFormat("pt-AO", {
@@ -73,7 +72,16 @@ interface Servico {
   preco: number;
   tipo: "servico";
   descricao?: string | null;
+  documento_tipo?: DocumentoTipo | null;
+  pedido_id?: string | null;
+  pagamento_intent_id?: string | null;
 }
+
+type DocumentoTipo =
+  | "declaracao_frequencia"
+  | "declaracao_notas"
+  | "cartao_estudante"
+  | "ficha_inscricao";
 
 interface AuditEntry {
   created_at: string;
@@ -88,6 +96,9 @@ type ItemCarrinho = Mensalidade | Servico;
 
 interface BalcaoAtendimentoProps {
   escolaId: string;
+  selectedAlunoId?: string | null;
+  showSearch?: boolean;
+  embedded?: boolean;
 }
 
 function formatMesAno(mes?: number, ano?: number) {
@@ -98,6 +109,43 @@ function formatMesAno(mes?: number, ano?: number) {
 
 function normalizeQuery(q: string) {
   return q.trim();
+}
+
+function isDocumentoServico(servico: Servico) {
+  const codigo = (servico.codigo ?? "").toLowerCase();
+  const nome = (servico.nome ?? "").toLowerCase();
+  const descricao = (servico.descricao ?? "").toLowerCase();
+  const haystack = `${codigo} ${nome} ${descricao}`;
+  return [
+    "doc",
+    "declaracao",
+    "declaração",
+    "documento",
+    "certificado",
+    "cartao",
+    "cartão",
+    "ficha",
+  ].some((token) => haystack.includes(token));
+}
+
+function getDocumentoTipo(servico: Servico): DocumentoTipo | null {
+  const codigo = (servico.codigo ?? "").toLowerCase();
+  const nome = (servico.nome ?? "").toLowerCase();
+  const descricao = (servico.descricao ?? "").toLowerCase();
+  const haystack = `${codigo} ${nome} ${descricao}`;
+
+  if (haystack.includes("nota")) return "declaracao_notas";
+  if (haystack.includes("frequencia") || haystack.includes("freq")) return "declaracao_frequencia";
+  if (haystack.includes("cartao") || haystack.includes("cartão")) return "cartao_estudante";
+  if (haystack.includes("ficha") || haystack.includes("inscricao")) return "ficha_inscricao";
+  return null;
+}
+
+function getDocumentoDestino(docId: string, tipo: DocumentoTipo) {
+  if (tipo === "declaracao_frequencia") return `/secretaria/documentos/${docId}/frequencia/print`;
+  if (tipo === "declaracao_notas") return `/secretaria/documentos/${docId}/notas/print`;
+  if (tipo === "cartao_estudante") return `/secretaria/documentos/${docId}/cartao/print`;
+  return `/secretaria/documentos/${docId}/ficha/print`;
 }
 
 // CORREÇÃO 1: Status Pill usando Token KLASSE (Verde) e Vermelho Padrão (Erro)
@@ -121,7 +169,12 @@ function SkeletonLine() {
   return <div className="h-3 w-full animate-pulse rounded-full bg-slate-200" />;
 }
 
-export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) {
+export default function BalcaoAtendimento({
+  escolaId,
+  selectedAlunoId = null,
+  showSearch = true,
+  embedded = false,
+}: BalcaoAtendimentoProps) {
   const supabase = createClient();
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -144,11 +197,9 @@ export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) 
   const [alunoDossierLoading, setAlunoDossierLoading] = useState(false);
   const [servicoModalOpen, setServicoModalOpen] = useState(false);
   const [servicoModalCodigo, setServicoModalCodigo] = useState<string | null>(null);
-  const [pagamentoIntent, setPagamentoIntent] = useState<{
-    id: string;
-    total: number;
-    pedidoId?: string | null;
-  } | null>(null);
+  const [emittingDocId, setEmittingDocId] = useState<string | null>(null);
+  const [addingServicoId, setAddingServicoId] = useState<string | null>(null);
+  const [printQueue, setPrintQueue] = useState<Array<{ label: string; url: string }>>([]);
   const [bloqueioInfo, setBloqueioInfo] = useState<{ code: string; detail?: string } | null>(null);
   const [paymentFeedback, setPaymentFeedback] = useState<{
     status: "success" | "error";
@@ -160,6 +211,7 @@ export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) 
   const [auditOpen, setAuditOpen] = useState(false);
 
   const abortSearchRef = useRef<AbortController | null>(null);
+
 
   // --- Load serviços (catálogo) ---
   useEffect(() => {
@@ -285,6 +337,18 @@ export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) 
     [supabase, escolaId]
   );
 
+  useEffect(() => {
+    if (!selectedAlunoId) {
+      setAlunoSelecionado(null);
+      setMensalidadesDisponiveis([]);
+      setCarrinho([]);
+      return;
+    }
+    setSearchTerm("");
+    setAlunosEncontrados([]);
+    void loadAlunoDossier(selectedAlunoId);
+  }, [selectedAlunoId, loadAlunoDossier]);
+
   // --- Search alunos (debounced) ---
   useEffect(() => {
     const q = normalizeQuery(debouncedSearchTerm);
@@ -371,7 +435,8 @@ export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) 
   const troco = useMemo(() => Math.max(0, valorRecebidoNum - total), [valorRecebidoNum, total]);
 
   const prontoParaFechar =
-    total > 0 && (metodo !== "cash" || (valorRecebidoNum > 0 && valorRecebidoNum >= total));
+    carrinho.length > 0 &&
+    (total === 0 || (metodo !== "cash" || (valorRecebidoNum > 0 && valorRecebidoNum >= total)));
 
   const fetchAuditFeed = useCallback(
     async (alunoId?: string | null, matriculaId?: string | null) => {
@@ -428,28 +493,88 @@ export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) 
     const mensalidadesCarrinho = carrinho.filter(
       (item): item is Mensalidade => item.tipo === "mensalidade"
     );
-    if (mensalidadesCarrinho.length !== carrinho.length) {
-      return toast.error("Serviços devem ser cobrados via Novo serviço 30s.");
+    const servicosCarrinho = carrinho.filter(
+      (item): item is Servico => item.tipo === "servico"
+    );
+
+    if (total === 0) {
+      const documentosGratis = servicosCarrinho.filter((servico) => servico.documento_tipo);
+      if (documentosGratis.length === 0) {
+        return toast.error("Nada para emitir.");
+      }
+      setIsSubmitting(true);
+      try {
+        for (const servico of documentosGratis) {
+          await handleEmitDocumento(servico, { openInNewTab: true });
+        }
+        toast.success("Documento emitido.");
+        limparCarrinho();
+        await loadAlunoDossier(alunoSelecionado.id);
+        await fetchAuditFeed(alunoSelecionado.id, alunoSelecionado.matricula_id);
+      } catch (e: any) {
+        toast.error(e?.message || "Erro ao emitir documento.");
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
     }
 
-    if (metodo === "cash" && valorRecebidoNum < total) {
-      return toast.error("Valor recebido insuficiente.");
+    if (total === 0) {
+      const documentosGratis = servicosCarrinho.filter((servico) => servico.documento_tipo);
+      if (documentosGratis.length === 0) {
+        return toast.error("Nada para emitir.");
+      }
+      setIsSubmitting(true);
+      try {
+        const novosLinks: Array<{ label: string; url: string }> = [];
+        for (const servico of documentosGratis) {
+          const url = await handleEmitDocumento(servico, { openInNewTab: true });
+          if (url) {
+            novosLinks.push({ label: servico.nome, url });
+          }
+        }
+        toast.success("Documento emitido.");
+        if (novosLinks.length > 0) {
+          setPrintQueue((prev) => [...novosLinks, ...prev]);
+        }
+        limparCarrinho();
+        await loadAlunoDossier(alunoSelecionado.id);
+        await fetchAuditFeed(alunoSelecionado.id, alunoSelecionado.matricula_id);
+      } catch (e: any) {
+        toast.error(e?.message || "Erro ao emitir documento.");
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
     }
 
-    if (metodo === "tpa" && !paymentReference.trim()) {
-      return toast.error("Referência obrigatória para TPA.");
-    }
+    if (total > 0) {
+      if (metodo === "cash" && valorRecebidoNum < total) {
+        return toast.error("Valor recebido insuficiente.");
+      }
 
-    if (metodo === "transfer" && !paymentEvidenceUrl.trim()) {
-      return toast.error("Comprovativo obrigatório para Transferência.");
+      if (metodo === "tpa" && !paymentReference.trim()) {
+        return toast.error("Referência obrigatória para TPA.");
+      }
+
+      if (metodo === "transfer" && !paymentEvidenceUrl.trim()) {
+        return toast.error("Comprovativo obrigatório para Transferência.");
+      }
     }
 
     setIsSubmitting(true);
     try {
       for (const mensalidade of mensalidadesCarrinho) {
+        const idempotencyKey =
+          typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
         const response = await fetch("/api/secretaria/balcao/pagamentos", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "Idempotency-Key": idempotencyKey,
+          },
           cache: "no-store",
           body: JSON.stringify({
             aluno_id: alunoSelecionado.id,
@@ -468,8 +593,62 @@ export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) 
         }
       }
 
+      for (const servico of servicosCarrinho) {
+        if ((servico.preco ?? 0) <= 0) continue;
+        const idempotencyKey =
+          typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        const response = await fetch("/api/secretaria/balcao/pagamentos", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Idempotency-Key": idempotencyKey,
+          },
+          cache: "no-store",
+          body: JSON.stringify({
+            aluno_id: alunoSelecionado.id,
+            mensalidade_id: null,
+            valor: servico.preco,
+            metodo,
+            reference: paymentReference || null,
+            evidence_url: paymentEvidenceUrl || null,
+            gateway_ref: paymentGatewayRef || null,
+            meta: {
+              observacao: "Pagamento via balcão",
+              pedido_id: servico.pedido_id ?? null,
+              pagamento_intent_id: servico.pagamento_intent_id ?? null,
+              servico_codigo: servico.codigo,
+              documento_tipo: servico.documento_tipo ?? null,
+            },
+          }),
+        });
+        const json = await response.json().catch(() => ({}));
+        if (!response.ok || !json?.ok) {
+          throw new Error(json?.error || "Falha ao registrar pagamento.");
+        }
+      }
+
+      const documentosParaEmitir = servicosCarrinho.filter(
+        (servico) => servico.documento_tipo && (servico.preco ?? 0) > 0
+      );
+      if (documentosParaEmitir.length > 0) {
+        const novosLinks: Array<{ label: string; url: string }> = [];
+        for (const servico of documentosParaEmitir) {
+          const url = await handleEmitDocumento(servico, { openInNewTab: true });
+          if (url) {
+            novosLinks.push({ label: servico.nome, url });
+          }
+        }
+        if (novosLinks.length > 0) {
+          setPrintQueue((prev) => [...novosLinks, ...prev]);
+        }
+      }
+
       const successMessage =
-        metodo === "cash"
+        total === 0
+          ? "Documento emitido."
+          : metodo === "cash"
           ? `Pagamento registrado. Troco: ${kwanza.format(troco)}`
           : "Pagamento registrado.";
       toast.success(successMessage);
@@ -498,10 +677,146 @@ export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) 
     () => mensalidadesDisponiveis.filter((m) => !m.atrasada),
     [mensalidadesDisponiveis]
   );
+  const servicosDocumentos = useMemo(
+    () => servicosDisponiveis.filter(isDocumentoServico),
+    [servicosDisponiveis]
+  );
+  const servicosGerais = useMemo(
+    () => servicosDisponiveis.filter((s) => !isDocumentoServico(s)),
+    [servicosDisponiveis]
+  );
+
+  const handleEmitDocumento = async (
+    servico: Servico,
+    options?: { openInNewTab?: boolean }
+  ): Promise<string | null> => {
+    if (!alunoSelecionado?.id) {
+      toast.error("Aluno não selecionado.");
+      return null;
+    }
+    const tipo = getDocumentoTipo(servico);
+    if (!tipo) {
+      toast.error("Tipo de documento não identificado.");
+      return null;
+    }
+
+    const shouldOpenNewTab = Boolean(options?.openInNewTab);
+    const popup = shouldOpenNewTab ? window.open("", "_blank", "noopener,noreferrer") : null;
+    setEmittingDocId(servico.id);
+    try {
+      const response = await fetch("/api/secretaria/documentos/emitir", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          alunoId: alunoSelecionado.id,
+          tipoDocumento: tipo,
+          escolaId,
+        }),
+      });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok || !json?.ok || !json?.docId) {
+        throw new Error(json?.error || "Falha ao emitir documento");
+      }
+      const destino = getDocumentoDestino(json.docId, tipo);
+      if (shouldOpenNewTab) {
+        if (popup) {
+          popup.location.href = destino;
+        } else {
+          window.location.href = destino;
+        }
+      } else {
+        window.location.href = destino;
+      }
+      return destino;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erro ao emitir documento";
+      if (popup) {
+        popup.close();
+      }
+      toast.error(message);
+      return null;
+    } finally {
+      setEmittingDocId(null);
+    }
+  };
+
+  const handleAdicionarServico = async (servico: Servico) => {
+    if (!alunoSelecionado?.id) {
+      toast.error("Aluno não selecionado.");
+      return;
+    }
+
+    setAddingServicoId(servico.id);
+    try {
+      const { data, error } = await supabase.rpc("balcao_criar_pedido_e_decidir", {
+        p_servico_codigo: servico.codigo,
+        p_aluno_id: alunoSelecionado.id,
+        p_contexto: {},
+      });
+
+      if (error || !data) {
+        throw new Error(error?.message || "Erro ao criar pedido.");
+      }
+
+      const decision = { ...data, servico_codigo: servico.codigo } as BalcaoDecision;
+      if (decision.decision === "BLOCKED") {
+        setBloqueioInfo({
+          code: decision.reason_code,
+          detail: decision.reason_detail ?? undefined,
+        });
+        return;
+      }
+
+      const documentoTipo = getDocumentoTipo(servico);
+      if (decision.decision === "GRANTED") {
+        if (documentoTipo) {
+          adicionarAoCarrinho({
+            ...servico,
+            preco: 0,
+            documento_tipo: documentoTipo,
+            pedido_id: decision.pedido_id,
+          });
+          toast.success("Documento liberado. Pode imprimir.");
+        } else {
+          toast.success("Serviço liberado.");
+        }
+        if (alunoSelecionado?.id) {
+          void fetchAuditFeed(alunoSelecionado.id, alunoSelecionado.matricula_id);
+        }
+        return;
+      }
+
+      adicionarAoCarrinho({
+        ...servico,
+        preco: decision.amounts?.total ?? servico.preco,
+        documento_tipo: documentoTipo,
+        pedido_id: decision.pedido_id,
+        pagamento_intent_id: decision.payment_intent_id,
+      });
+      toast.success("Item adicionado ao carrinho.");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erro ao adicionar serviço";
+      toast.error(message);
+    } finally {
+      setAddingServicoId(null);
+    }
+  };
 
   const handleServicoDecision = useCallback((decision: BalcaoDecision) => {
     if (decision.decision === "GRANTED") {
-      toast.success("Serviço liberado.");
+      const servico = servicosDisponiveis.find((item) => item.codigo === decision.servico_codigo);
+      const documentoTipo = servico ? getDocumentoTipo(servico) : null;
+      if (servico && documentoTipo) {
+        adicionarAoCarrinho({
+          ...servico,
+          preco: 0,
+          documento_tipo: documentoTipo,
+          pedido_id: decision.pedido_id,
+        });
+        toast.success("Documento liberado. Pode imprimir.");
+      } else {
+        toast.success("Serviço liberado.");
+      }
       if (alunoSelecionado?.id) {
         void fetchAuditFeed(alunoSelecionado.id, alunoSelecionado.matricula_id);
       }
@@ -519,12 +834,20 @@ export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) 
       return;
     }
 
-    setPagamentoIntent({
-      id: decision.payment_intent_id,
-      total: decision.amounts.total ?? 0,
-      pedidoId: decision.pedido_id,
+    const servico = servicosDisponiveis.find((item) => item.codigo === decision.servico_codigo);
+    if (!servico) {
+      toast.error("Serviço não encontrado.");
+      return;
+    }
+    adicionarAoCarrinho({
+      ...servico,
+      preco: decision.amounts.total ?? servico.preco,
+      documento_tipo: getDocumentoTipo(servico),
+      pedido_id: decision.pedido_id,
+      pagamento_intent_id: decision.payment_intent_id,
     });
-  }, [alunoSelecionado, fetchAuditFeed]);
+    toast.success("Item adicionado ao carrinho.");
+  }, [alunoSelecionado, fetchAuditFeed, servicosDisponiveis]);
 
   useEffect(() => {
     if (!alunoSelecionado?.id) {
@@ -537,87 +860,89 @@ export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) 
   // --- UI ---
   return (
     <>
-      <div className="min-h-screen bg-slate-50">
-        <div className="mx-auto max-w-screen-2xl px-6 py-6">
+      <div className={embedded ? "bg-transparent" : "min-h-screen bg-slate-50"}>
+        <div className={embedded ? "px-0 py-0" : "mx-auto max-w-screen-2xl px-6 py-6"}>
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
             
             {/* LEFT: Busca e Catálogo */}
             <div className="xl:col-span-8 space-y-6">
               
               {/* SEARCH CARD */}
-              <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-                <div className="p-5">
-                  <div className="flex items-center gap-3">
-                    <div className="h-11 w-11 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center">
-                      <Search className="h-5 w-5 text-slate-400" />
-                    </div>
-
-                    <div className="flex-1">
-                      <div className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1">
-                        Buscar Aluno
+              {showSearch ? (
+                <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                  <div className="p-5">
+                    <div className="flex items-center gap-3">
+                      <div className="h-11 w-11 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center">
+                        <Search className="h-5 w-5 text-slate-400" />
                       </div>
-                      <input
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="Nome, BI, Nº Processo..."
-                        className="w-full text-base font-medium text-slate-900 placeholder:text-slate-300 outline-none bg-transparent"
-                      />
-                    </div>
 
-                    {isSearching ? <Loader2 className="h-5 w-5 animate-spin text-[#E3B23C]" /> : null}
-                    {searchTerm && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSearchTerm("");
-                          setAlunosEncontrados([]);
-                        }}
-                        className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                      >
-                        <X className="h-5 w-5 text-slate-400" />
-                      </button>
-                    )}
-                  </div>
-                </div>
+                      <div className="flex-1">
+                        <div className="text-[10px] uppercase tracking-widest font-bold text-slate-400 mb-1">
+                          Buscar Aluno
+                        </div>
+                        <input
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          placeholder="Nome, BI, Nº Processo..."
+                          className="w-full text-base font-medium text-slate-900 placeholder:text-slate-300 outline-none bg-transparent"
+                        />
+                      </div>
 
-                {/* RESULTS DROPDOWN */}
-                {normalizeQuery(searchTerm) && (
-                  <div className="border-t border-slate-100 max-h-80 overflow-y-auto">
-                    {alunosEncontrados.length === 0 && !isSearching ? (
-                      <div className="p-6 text-center text-sm text-slate-400">Nenhum aluno encontrado.</div>
-                    ) : (
-                      alunosEncontrados.map((a) => (
+                      {isSearching ? <Loader2 className="h-5 w-5 animate-spin text-[#E3B23C]" /> : null}
+                      {searchTerm && (
                         <button
-                          key={a.id}
                           type="button"
                           onClick={() => {
                             setSearchTerm("");
                             setAlunosEncontrados([]);
-                            loadAlunoDossier(a.id);
                           }}
-                          className="w-full px-5 py-3 flex items-center gap-4 text-left hover:bg-slate-50 transition border-b border-slate-50 last:border-b-0 group"
+                          className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
                         >
-                          <div className="h-10 w-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden">
-                            {a.foto_url ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={a.foto_url} alt="" className="h-full w-full object-cover" />
-                            ) : (
-                              <User className="h-5 w-5 text-slate-400" />
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="text-sm font-bold text-slate-700 group-hover:text-slate-900">{a.nome}</div>
-                            <div className="text-xs text-slate-400 group-hover:text-slate-500">
-                              {a.turma} • Proc: {a.numero_processo}
-                            </div>
-                          </div>
-                          <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-[#E3B23C]" />
+                          <X className="h-5 w-5 text-slate-400" />
                         </button>
-                      ))
-                    )}
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
+
+                  {/* RESULTS DROPDOWN */}
+                  {normalizeQuery(searchTerm) && (
+                    <div className="border-t border-slate-100 max-h-80 overflow-y-auto">
+                      {alunosEncontrados.length === 0 && !isSearching ? (
+                        <div className="p-6 text-center text-sm text-slate-400">Nenhum aluno encontrado.</div>
+                      ) : (
+                        alunosEncontrados.map((a) => (
+                          <button
+                            key={a.id}
+                            type="button"
+                            onClick={() => {
+                              setSearchTerm("");
+                              setAlunosEncontrados([]);
+                              loadAlunoDossier(a.id);
+                            }}
+                            className="w-full px-5 py-3 flex items-center gap-4 text-left hover:bg-slate-50 transition border-b border-slate-50 last:border-b-0 group"
+                          >
+                            <div className="h-10 w-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden">
+                              {a.foto_url ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={a.foto_url} alt="" className="h-full w-full object-cover" />
+                              ) : (
+                                <User className="h-5 w-5 text-slate-400" />
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm font-bold text-slate-700 group-hover:text-slate-900">{a.nome}</div>
+                              <div className="text-xs text-slate-400 group-hover:text-slate-500">
+                                {a.turma} • Proc: {a.numero_processo}
+                              </div>
+                            </div>
+                            <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-[#E3B23C]" />
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : null}
 
               {/* ALUNO + CATÁLOGO */}
               {alunoDossierLoading ? (
@@ -629,7 +954,7 @@ export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) 
                 <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
                   
                   {/* CARD DO ALUNO (Perfil) */}
-                  <div className="xl:col-span-6 rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                  <div className="xl:col-span-5 rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
                     <div className="p-6">
                       <div className="flex items-start gap-4 mb-6">
                         <div className="h-16 w-16 rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden">
@@ -694,12 +1019,15 @@ export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) 
                   </div>
 
                   {/* CATÁLOGO DE SERVIÇOS */}
-                  <div className="xl:col-span-6 rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
+                  <div className="xl:col-span-7 rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
                     <div className="flex items-center justify-between mb-5">
                       <div className="flex items-center gap-2">
                         <Plus className="h-4 w-4 text-[#E3B23C]" />
                         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Adicionar Item</h3>
                       </div>
+                      <span className="text-[10px] font-semibold text-slate-400">
+                        Mensalidades e serviços (inclui documentos pagos)
+                      </span>
                       <button
                         onClick={() => {
                           setServicoModalCodigo(null);
@@ -757,27 +1085,79 @@ export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) 
                         </div>
                       )}
 
-                      {/* Serviços */}
-                      {servicosDisponiveis.length > 0 && (
+                      {/* Documentos */}
+                      {servicosDocumentos.length > 0 && (
                         <div>
-                          <p className="text-[10px] font-bold uppercase text-slate-400 mb-2 pl-1">Serviços Extras</p>
+                          <p className="text-[10px] font-bold uppercase text-slate-400 mb-2 pl-1">Documentos</p>
                           <div className="grid grid-cols-2 gap-2">
-                            {servicosDisponiveis.map((s) => (
+                            {servicosDocumentos.map((s) => (
                               <button
                                 key={s.id}
-                                onClick={() => {
-                                  setServicoModalCodigo(s.codigo);
-                                  setServicoModalOpen(true);
-                                }}
-                                className="p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white hover:border-[#E3B23C] transition-all text-left"
+                                onClick={() => void handleAdicionarServico(s)}
+                                disabled={addingServicoId === s.id}
+                                className={cx(
+                                  "p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white hover:border-[#E3B23C] transition-all text-left",
+                                  (addingServicoId === s.id || emittingDocId === s.id) &&
+                                    "opacity-60 cursor-not-allowed"
+                                )}
                               >
                                 <p className="text-xs font-bold text-slate-700 truncate">{s.nome}</p>
-                                <p className="text-xs font-medium text-slate-500 mt-1">{kwanza.format(s.preco)}</p>
+                                <div className="mt-1 flex items-center justify-between text-xs">
+                                  <span className="font-medium text-slate-500">{kwanza.format(s.preco)}</span>
+                                  <span
+                                    className={
+                                      s.preco > 0
+                                        ? "text-[10px] font-semibold text-amber-700"
+                                        : "text-[10px] font-semibold text-emerald-700"
+                                    }
+                                  >
+                                    {addingServicoId === s.id
+                                      ? "Adicionando..."
+                                      : s.preco > 0
+                                      ? "Cobrar"
+                                      : "Adicionar"}
+                                  </span>
+                                </div>
                               </button>
                             ))}
                           </div>
                         </div>
                       )}
+
+                      {/* Serviços */}
+                      {servicosGerais.length > 0 && (
+                        <div>
+                          <p className="text-[10px] font-bold uppercase text-slate-400 mb-2 pl-1">Serviços Extras</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {servicosGerais.map((s) => (
+                              <button
+                                key={s.id}
+                                onClick={() => void handleAdicionarServico(s)}
+                                disabled={addingServicoId === s.id}
+                                className={cx(
+                                  "p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white hover:border-[#E3B23C] transition-all text-left",
+                                  addingServicoId === s.id && "opacity-60 cursor-not-allowed"
+                                )}
+                              >
+                                <p className="text-xs font-bold text-slate-700 truncate">{s.nome}</p>
+                                <div className="mt-1 flex items-center justify-between text-xs">
+                                  <span className="font-medium text-slate-500">{kwanza.format(s.preco)}</span>
+                                  <span
+                                    className={
+                                      s.preco > 0
+                                        ? "text-[10px] font-semibold text-amber-700"
+                                        : "text-[10px] font-semibold text-emerald-700"
+                                    }
+                                  >
+                                    {s.preco > 0 ? "Pago" : "Grátis"}
+                                  </span>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                     </div>
                   </div>
                 </div>
@@ -808,6 +1188,26 @@ export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) 
                   {paymentFeedback.status === "success" ? <CheckCircle className="h-5 w-5 shrink-0" /> : <AlertCircle className="h-5 w-5 shrink-0" />}
                   <div className="flex-1 text-sm font-medium">{paymentFeedback.message}</div>
                   <button onClick={() => setPaymentFeedback(null)}><X className="h-4 w-4 opacity-50 hover:opacity-100" /></button>
+                </div>
+              )}
+
+              {printQueue.length > 0 && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                  <div className="text-xs font-semibold text-emerald-800 mb-2">
+                    Documentos prontos para impressão
+                  </div>
+                  <div className="space-y-2">
+                    {printQueue.map((doc, index) => (
+                      <button
+                        key={`${doc.url}-${index}`}
+                        type="button"
+                        onClick={() => window.open(doc.url, "_blank", "noopener,noreferrer")}
+                        className="w-full rounded-lg border border-emerald-200 bg-white px-3 py-2 text-left text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+                      >
+                        Abrir {doc.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -922,23 +1322,43 @@ export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) 
                       <span className="text-xs font-medium">O carrinho está vazio</span>
                     </div>
                   ) : (
-                    carrinho.map((item) => (
-                      <div key={`${item.id}-${item.tipo}`} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-start gap-3 group">
-                        <div className="min-w-0">
-                          <p className="text-sm font-bold text-slate-800 leading-tight">{item.nome}</p>
-                          <p className="text-[10px] uppercase font-bold text-slate-400 mt-1">{item.tipo}</p>
+                    carrinho.map((item) => {
+                      const isDocumento = item.tipo === "servico" && "documento_tipo" in item;
+                      const podeImprimir =
+                        isDocumento && Number(item.preco ?? 0) <= 0 && (item as Servico).documento_tipo;
+
+                      return (
+                        <div key={`${item.id}-${item.tipo}`} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex justify-between items-start gap-3 group">
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-slate-800 leading-tight">{item.nome}</p>
+                            <p className="text-[10px] uppercase font-bold text-slate-400 mt-1">{item.tipo}</p>
+                            {podeImprimir ? (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  const url = await handleEmitDocumento(item as Servico, { openInNewTab: true });
+                                  if (url) {
+                                    setPrintQueue((prev) => [{ label: item.nome, url }, ...prev]);
+                                  }
+                                }}
+                                className="mt-2 text-[10px] font-semibold text-emerald-700 hover:underline"
+                              >
+                                Imprimir agora
+                              </button>
+                            ) : null}
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-black text-slate-900">{kwanza.format(item.preco)}</p>
+                            <button 
+                              onClick={() => removerDoCarrinho(item.id, item.tipo)}
+                              className="text-[10px] text-red-500 opacity-0 group-hover:opacity-100 transition-opacity hover:underline mt-1"
+                            >
+                              Remover
+                            </button>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-sm font-black text-slate-900">{kwanza.format(item.preco)}</p>
-                          <button 
-                            onClick={() => removerDoCarrinho(item.id, item.tipo)}
-                            className="text-[10px] text-red-500 opacity-0 group-hover:opacity-100 transition-opacity hover:underline mt-1"
-                          >
-                            Remover
-                          </button>
-                        </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
 
@@ -1051,7 +1471,11 @@ export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) 
                     ) : (
                       <Printer className="h-5 w-5" />
                     )}
-                    {isSubmitting ? "Processando..." : "Finalizar & Imprimir"}
+                    {isSubmitting
+                      ? "Processando..."
+                      : total === 0
+                      ? "Emitir documentos"
+                      : "Finalizar & Imprimir"}
                   </button>
                 </div>
               </div>
@@ -1072,14 +1496,6 @@ export default function BalcaoAtendimento({ escolaId }: BalcaoAtendimentoProps) 
           setServicoModalOpen(false);
           handleServicoDecision(decision);
         }}
-      />
-      <PagamentoModal
-        open={!!pagamentoIntent}
-        onClose={() => setPagamentoIntent(null)}
-        alunoId={alunoSelecionado?.id ?? null}
-        intentId={pagamentoIntent?.id ?? null}
-        totalKz={pagamentoIntent?.total ?? 0}
-        pedidoId={pagamentoIntent?.pedidoId ?? null}
       />
       <MotivoBloqueioModal
         open={!!bloqueioInfo}

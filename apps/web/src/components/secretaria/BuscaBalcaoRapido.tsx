@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Search, Loader2, User, CreditCard } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { RefObject } from "react";
+import {
+  CheckCircle,
+  Search,
+  X,
+} from "lucide-react";
 import { useDebounce } from "@/hooks/useDebounce";
-import { ModalPagamentoRapido } from "@/components/secretaria/ModalPagamentoRapido";
-import { toast } from "sonner";
+import BalcaoAtendimento from "@/components/secretaria/BalcaoAtendimento";
 
 type AlunoResult = {
   id: string;
@@ -18,46 +21,170 @@ type AlunoResult = {
   total_em_atraso?: number | null;
 };
 
-type MensalidadeResumo = {
-  id: string;
-  mes: number;
-  ano: number;
-  valor: number;
-  status: string;
-  vencimento?: string | null;
-};
+const cx = (...classes: Array<string | false | null | undefined>) =>
+  classes.filter(Boolean).join(" ");
+
+function statusBadge(totalEmAtraso?: number | null) {
+  if (Number(totalEmAtraso ?? 0) > 0) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700">
+        <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+        Inadimplente
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+      <CheckCircle className="h-3 w-3" />
+      Regular
+    </span>
+  );
+}
+
+function OmniSearchInput({
+  query,
+  setQuery,
+  results,
+  loading,
+  onSelect,
+  open,
+  setOpen,
+  activeIndex,
+  setActiveIndex,
+  placeholder,
+  size = "lg",
+  autoFocus,
+  inputRef,
+}: {
+  query: string;
+  setQuery: (value: string) => void;
+  results: AlunoResult[];
+  loading: boolean;
+  onSelect: (aluno: AlunoResult) => void;
+  open: boolean;
+  setOpen: (value: boolean) => void;
+  activeIndex: number;
+  setActiveIndex: (value: number) => void;
+  placeholder: string;
+  size?: "lg" | "md";
+  autoFocus?: boolean;
+  inputRef?: RefObject<HTMLInputElement | null>;
+}) {
+  const sizeStyles =
+    size === "lg"
+      ? "text-base md:text-lg py-4"
+      : "text-sm py-2.5";
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!open || results.length === 0) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveIndex(activeIndex + 1 >= results.length ? 0 : activeIndex + 1);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveIndex(activeIndex <= 0 ? results.length - 1 : activeIndex - 1);
+    } else if (event.key === "Enter") {
+      if (activeIndex >= 0 && results[activeIndex]) {
+        event.preventDefault();
+        onSelect(results[activeIndex]);
+      }
+    } else if (event.key === "Escape") {
+      setOpen(false);
+    }
+  };
+
+  return (
+    <div className="relative">
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+        <input
+          ref={inputRef}
+          autoFocus={autoFocus}
+          placeholder={placeholder}
+          className={cx(
+            "w-full rounded-xl border border-slate-200 bg-white pl-12 pr-10 font-medium text-slate-900",
+            "focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20",
+            sizeStyles
+          )}
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setOpen(true);
+            setActiveIndex(-1);
+          }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={handleKeyDown}
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => {
+              setQuery("");
+              setOpen(false);
+              setActiveIndex(-1);
+            }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 hover:bg-slate-100"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      {open && results.length > 0 && (
+        <div className="absolute z-40 mt-2 w-full rounded-xl border border-slate-200 bg-white shadow-sm">
+          {results.map((aluno, index) => {
+            const isActive = index === activeIndex;
+            return (
+              <button
+                key={aluno.aluno_id ?? aluno.id}
+                type="button"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => onSelect(aluno)}
+                className={cx(
+                  "flex w-full items-center justify-between gap-3 px-4 py-3 text-left",
+                  "border-b border-slate-100 last:border-b-0",
+                  isActive ? "bg-klasse-gold/10" : "hover:bg-slate-50"
+                )}
+              >
+                <div className="min-w-0">
+                  <div className="font-semibold text-slate-900">
+                    {aluno.nome || "Aluno"}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {aluno.numero_processo ? `Proc: ${aluno.numero_processo}` : "Sem processo"}
+                    {aluno.bi_numero ? ` • BI ${aluno.bi_numero}` : ""}
+                    {aluno.turma_atual ? ` • ${aluno.turma_atual}` : ""}
+                  </div>
+                </div>
+                <div className="shrink-0">{statusBadge(aluno.total_em_atraso)}</div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {open && query && results.length === 0 && !loading && (
+        <div className="absolute z-40 mt-2 w-full rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500 shadow-sm">
+          Nenhum estudante encontrado.
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function BuscaBalcaoRapido({ escolaId }: { escolaId: string | null }) {
-  const router = useRouter();
   const [query, setQuery] = useState("");
   const [resultados, setResultados] = useState<AlunoResult[]>([]);
   const [carregando, setCarregando] = useState(false);
   const [mostrarResultados, setMostrarResultados] = useState(false);
-  const [modalAberto, setModalAberto] = useState(false); // Old state, still used for other modal.
-  const [alunoSelecionado, setAlunoSelecionado] = useState<AlunoResult | null>(null); // Old state, still used for other modal.
-  const [mensalidadeAtual, setMensalidadeAtual] = useState<MensalidadeResumo | null>(null); // Old state, still used for other modal.
-  const [mensalidades, setMensalidades] = useState<MensalidadeResumo[]>([]);
-  const [totalEmAtraso, setTotalEmAtraso] = useState<number>(0);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const [alunoSelecionado, setAlunoSelecionado] = useState<AlunoResult | null>(null);
+  const [workspaceVisible, setWorkspaceVisible] = useState(false);
+  const [workspaceActive, setWorkspaceActive] = useState(false);
   const debouncedQuery = useDebounce(query.trim(), 300);
 
-  // Novos estados para o modal de pagamento rápido
-  const [modalPagamentoAberto, setModalPagamentoAberto] = useState(false);
-  const [alunoParaPagamento, setAlunoParaPagamento] = useState<{
-    id: string;
-    nome: string;
-    bi?: string;
-    turma?: string;
-  } | null>(null);
-  const [mensalidadeParaPagamento, setMensalidadeParaPagamento] = useState<{
-    id: string;
-    mes: number;
-    ano: number;
-    valor: number;
-    vencimento?: string;
-    status: string;
-  } | null>(null);
-  const [carregandoPagamento, setCarregandoPagamento] = useState(false);
-
+  const idleInputRef = useRef<HTMLInputElement | null>(null);
+  const headerInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -75,7 +202,7 @@ export function BuscaBalcaoRapido({ escolaId }: { escolaId: string | null }) {
       try {
         const params = new URLSearchParams({
           search: debouncedQuery,
-          limit: "5",
+          limit: "8",
           status: "ativo",
           includeResumo: "1",
         });
@@ -99,177 +226,126 @@ export function BuscaBalcaoRapido({ escolaId }: { escolaId: string | null }) {
     };
   }, [debouncedQuery]);
 
-  const results = useMemo(() => resultados.slice(0, 5), [resultados]);
+  const results = useMemo(() => resultados.slice(0, 8), [resultados]);
 
-  const selecionarAluno = (alunoId: string) => {
-    if (!escolaId) {
-      toast.error("Não foi possível identificar a escola para navegar.");
-      return;
-    }
-    router.push(`/escola/${escolaId}/secretaria/alunos/${alunoId}`);
-    setMostrarResultados(false);
+  const handleSelect = (aluno: AlunoResult) => {
+    setAlunoSelecionado(aluno);
+    setWorkspaceVisible(true);
+    requestAnimationFrame(() => setWorkspaceActive(true));
     setQuery("");
+    setResultados([]);
+    setMostrarResultados(false);
+    setActiveIndex(-1);
+    window.setTimeout(() => {
+      headerInputRef.current?.focus();
+    }, 0);
   };
 
-  const handlePagarClick = async (alunoId: string) => {
-    console.log('🎯 Iniciando pagamento rápido para aluno:', alunoId);
-    setCarregandoPagamento(true);
-    
-    try {
-      // 1. Buscar dados específicos para pagamento rápido
-      const response = await fetch(`/api/alunos/${alunoId}/pagamento-rapido`);
-      const data = await response.json();
-      
-      if (!data.ok) {
-        throw new Error(data.error || 'Erro ao buscar dados do aluno');
-      }
-      
-      if (!data.mensalidade) {
-        toast.info('Este aluno não possui mensalidades pendentes.');
-        return;
-      }
-      
-      console.log('📦 Dados recebidos:', data);
-      
-      // 2. Preparar dados para o modal
-      setAlunoParaPagamento({
-        id: data.aluno.id,
-        nome: data.aluno.nome,
-        bi: data.aluno.bi,
-        turma: data.aluno.turma
-      });
-      
-      // 3. Mapear os nomes das colunas (ano_referencia → ano, mes_referencia → mes)
-      setMensalidadeParaPagamento({
-        id: data.mensalidade.id,
-        mes: data.mensalidade.mes, // Já vem mapeado da API
-        ano: data.mensalidade.ano, // Já vem mapeado da API
-        valor: data.mensalidade.valor,
-        vencimento: data.mensalidade.vencimento,
-        status: data.mensalidade.status
-      });
-      
-      // 4. Abrir o modal
-      setModalPagamentoAberto(true);
-      toast.success('Pronto para registrar pagamento');
-      
-    } catch (error) {
-      console.error('❌ Erro ao preparar pagamento:', error);
-      toast.error(
-        error instanceof Error ? error.message : 'Erro ao processar pagamento'
-      );
-    } finally {
-      setCarregandoPagamento(false);
-    }
+  const handleCloseWorkspace = () => {
+    setWorkspaceActive(false);
+    window.setTimeout(() => {
+      setWorkspaceVisible(false);
+      setAlunoSelecionado(null);
+    }, 200);
+    setQuery("");
+    setResultados([]);
+    setActiveIndex(-1);
+    window.setTimeout(() => {
+      idleInputRef.current?.focus();
+    }, 0);
   };
 
+  const alunoSelecionadoId = alunoSelecionado?.aluno_id ?? alunoSelecionado?.id ?? null;
 
   return (
     <div className="relative">
-      <div className="relative">
-        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-        <input
-          placeholder="Digite BI, nome ou telefone para buscar aluno..."
-          className="w-full rounded-xl border border-slate-200 bg-white px-10 py-3 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/10"
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setMostrarResultados(true);
-          }}
-          onFocus={() => setMostrarResultados(true)}
+      <div className="mx-auto w-full max-w-2xl">
+        <OmniSearchInput
+          query={query}
+          setQuery={setQuery}
+          results={results}
+          loading={carregando}
+          onSelect={handleSelect}
+          open={mostrarResultados}
+          setOpen={setMostrarResultados}
+          activeIndex={activeIndex}
+          setActiveIndex={setActiveIndex}
+          placeholder="Digite o nome, nº de processo ou BI do estudante..."
+          size="lg"
+          autoFocus
+          inputRef={idleInputRef}
         />
-        {carregando && (
-          <Loader2 className="absolute right-3 top-3 h-4 w-4 text-gray-400 animate-spin" />
-        )}
       </div>
-
-      {mostrarResultados && results.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-          {results.map((aluno) => (
-            <div
-              key={aluno.id}
-              className="w-full p-3 text-left border-b last:border-b-0 flex items-center gap-3"
-            >
-              <div
-                role="button"
-                tabIndex={0}
-                className="flex-1 flex items-center gap-3 cursor-pointer"
-                onClick={() => selecionarAluno(aluno.aluno_id ?? aluno.id)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") selecionarAluno(aluno.aluno_id ?? aluno.id);
-                }}
-              >
-                <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
-                  <User className="h-4 w-4 text-gray-500" />
-                </div>
-                <div className="flex-1">
-                  <div className="font-medium text-sm text-gray-900">{aluno.nome || "Aluno"}</div>
-                  <div className="text-xs text-gray-600">
-                    BI: {aluno.bi_numero || "N/A"} • Tel: {aluno.telefone_responsavel || "N/A"}
-                    {aluno.turma_atual ? ` • Turma: ${aluno.turma_atual}` : ""}
-                  </div>
-                  <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-gray-400">
-                    {aluno.numero_processo ? <span>Processo: {aluno.numero_processo}</span> : null}
-                    {Number(aluno.total_em_atraso ?? 0) > 0 ? (
-                      <span className="text-red-600 font-medium">
-                        Dívida: {Number(aluno.total_em_atraso ?? 0).toLocaleString("pt-AO")} AOA
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  handlePagarClick(aluno.aluno_id ?? aluno.id);
-                }}
-                disabled={carregandoPagamento}
-                className="inline-flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs font-semibold text-green-700 hover:bg-green-100"
-              >
-                {carregandoPagamento ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Carregando...
-                  </>
-                ) : (
-                  <>
-                    <CreditCard className="h-4 w-4" />
-                    Pagar
-                  </>
-                )}
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
 
       {mostrarResultados && (
         <div
-          className="fixed inset-0 z-40"
+          className="fixed inset-0 z-30"
           onClick={() => setMostrarResultados(false)}
         />
       )}
 
-      {/* Modal de Pagamento Rápido (novo) */}
-      {modalPagamentoAberto && alunoParaPagamento && (
-        <ModalPagamentoRapido
-          escolaId={escolaId}
-          aluno={alunoParaPagamento}
-          mensalidade={mensalidadeParaPagamento}
-          open={modalPagamentoAberto}
-          onClose={() => {
-            setModalPagamentoAberto(false);
-            setAlunoParaPagamento(null);
-            setMensalidadeParaPagamento(null);
-            router.refresh(); // Refresh after payment
-          }}
-          onSuccess={() => {
-            toast.success('Pagamento registrado com sucesso!');
-            router.refresh(); // Refresh after payment
-          }}
-        />
+      {workspaceVisible && alunoSelecionado && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+          <div
+            className={cx(
+              "pointer-events-none absolute inset-0 transition-opacity duration-200",
+              workspaceActive ? "opacity-100" : "opacity-0"
+            )}
+            onClick={handleCloseWorkspace}
+          />
+          <div
+            className={cx(
+              "relative flex w-full max-w-6xl max-h-[90vh] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-xl",
+              "transition-all duration-200 ease-out",
+              workspaceActive ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-4 scale-[0.98]"
+            )}
+          >
+            <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 px-6 py-4 backdrop-blur">
+              <div className="mx-auto flex w-full max-w-6xl items-center gap-4">
+                <div className="flex-1">
+                  <OmniSearchInput
+                    query={query}
+                    setQuery={setQuery}
+                    results={results}
+                    loading={carregando}
+                    onSelect={handleSelect}
+                    open={mostrarResultados}
+                    setOpen={setMostrarResultados}
+                    activeIndex={activeIndex}
+                    setActiveIndex={setActiveIndex}
+                    placeholder="Trocar estudante..."
+                    size="md"
+                    inputRef={headerInputRef}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCloseWorkspace}
+                  className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Fechar
+                </button>
+              </div>
+            </header>
+
+            <div className="flex-1 overflow-y-auto px-6 py-8">
+              <div className="mx-auto w-full max-w-6xl space-y-6">
+                {escolaId && alunoSelecionadoId ? (
+                  <BalcaoAtendimento
+                    escolaId={escolaId}
+                    selectedAlunoId={alunoSelecionadoId}
+                    showSearch={false}
+                    embedded
+                  />
+                ) : (
+                  <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
+                    Escola não identificada.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

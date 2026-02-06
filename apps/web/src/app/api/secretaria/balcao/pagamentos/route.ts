@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { recordAuditServer } from "@/lib/audit";
+import { getSupabaseServerClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -89,9 +90,82 @@ export async function POST(request: Request) {
       details: { valor: payload.valor, metodo, status: (data as any)?.status ?? null },
     }).catch(() => null);
 
+    const intentId = (payload.meta as any)?.pagamento_intent_id ?? null;
+    if (intentId) {
+      await confirmPagamentoIntent({
+        intentId: String(intentId),
+        escolaId,
+        metodo,
+        reference: payload.reference ?? null,
+        terminalId: payload.gateway_ref ?? null,
+        evidenceUrl: payload.evidence_url ?? null,
+        meta: payload.meta ?? {},
+      });
+    }
+
     return NextResponse.json({ ok: true, data });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  }
+}
+
+async function confirmPagamentoIntent({
+  intentId,
+  escolaId,
+  metodo,
+  reference,
+  terminalId,
+  evidenceUrl,
+  meta,
+}: {
+  intentId: string;
+  escolaId: string;
+  metodo: string;
+  reference: string | null;
+  terminalId: string | null;
+  evidenceUrl: string | null;
+  meta: Record<string, any>;
+}) {
+  const admin = getSupabaseServerClient();
+  if (!admin) return;
+
+  const { data: intent, error } = await admin
+    .from("pagamento_intents")
+    .select("id, escola_id, status, servico_pedido_id")
+    .eq("id", intentId)
+    .maybeSingle();
+
+  if (error || !intent || intent.escola_id !== escolaId) {
+    return;
+  }
+
+  if (intent.status === "settled" || intent.status === "canceled") {
+    return;
+  }
+
+  const normalizedMetodo = metodo === "kwik" ? "kiwk" : metodo;
+  const newStatus = normalizedMetodo === "cash" ? "settled" : "pending";
+
+  await admin
+    .from("pagamento_intents")
+    .update({
+      method: normalizedMetodo,
+      status: newStatus,
+      reference: reference ?? undefined,
+      terminal_id: terminalId ?? undefined,
+      evidence_url: evidenceUrl ?? undefined,
+      meta: { ...(meta ?? {}), confirmed_via: "balcao_pagamentos" },
+      settled_at: newStatus === "settled" ? new Date().toISOString() : null,
+    })
+    .eq("id", intentId);
+
+  if (newStatus === "settled" && intent.servico_pedido_id) {
+    await admin
+      .from("servico_pedidos")
+      .update({ status: "granted" })
+      .eq("id", intent.servico_pedido_id)
+      .eq("escola_id", escolaId)
+      .eq("status", "pending_payment");
   }
 }

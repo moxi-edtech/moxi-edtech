@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { Banknote, CreditCard, Loader2, ReceiptText, Upload, X } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
 type Method = "cash" | "tpa" | "transfer" | "mcx" | "kiwk";
@@ -30,7 +29,6 @@ export function PagamentoModal({
   totalKz,
   pedidoId,
 }: Props) {
-  const supabase = createClient();
   const [method, setMethod] = useState<Method>("cash");
   const [reference, setReference] = useState("");
   const [terminalId, setTerminalId] = useState("");
@@ -69,9 +67,17 @@ export function PagamentoModal({
     setLoading(true);
     setFeedback(null);
 
+    const idempotencyKey =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
     const response = await fetch("/api/secretaria/balcao/pagamentos", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": idempotencyKey,
+      },
       cache: "no-store",
       body: JSON.stringify({
         aluno_id: alunoId,
@@ -97,26 +103,6 @@ export function PagamentoModal({
         message: json?.error || "Falha ao registrar pagamento.",
       });
       return;
-    }
-
-    if (intentId) {
-      const { error: intentError } = await supabase.rpc("balcao_confirmar_pagamento_intent", {
-        p_intent_id: intentId,
-        p_method: method,
-        p_reference: reference || undefined,
-        p_terminal_id: terminalId || undefined,
-        p_evidence_url: evidenceUrl || undefined,
-        p_meta: {},
-      });
-      if (intentError) {
-        setLoading(false);
-        toast.error(intentError.message || "Falha ao confirmar serviço.");
-        setFeedback({
-          status: "error",
-          message: intentError.message || "Falha ao confirmar serviço.",
-        });
-        return;
-      }
     }
 
     const status = json?.data?.status ?? (method === "cash" ? "settled" : "pending");

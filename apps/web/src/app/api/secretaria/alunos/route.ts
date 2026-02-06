@@ -65,42 +65,22 @@ export async function GET(req: Request) {
     if (includeResumo && q && items.length > 0 && items.length <= 10) {
       const alunoIds = items.map((row: any) => row.aluno_id ?? row.id).filter(Boolean);
 
-      const [{ data: matriculasRows }, { data: mensalidadesRows }] = await Promise.all([
-        supabase
-          .from("matriculas")
-          .select("aluno_id, status, created_at, turma:turmas(nome)")
-          .in("aluno_id", alunoIds)
-          .in("status", ["ativa", "ativo", "active"])
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("mensalidades")
-          .select("aluno_id, status, valor_previsto, valor_pago_total")
-          .in("aluno_id", alunoIds)
-          .in("status", ["pendente", "pago_parcial"]),
-      ]);
+      const { data: resumoRows } = await supabase
+        .from("vw_secretaria_alunos_resumo")
+        .select("aluno_id, turma_nome, total_em_atraso")
+        .in("aluno_id", alunoIds);
 
-      const turmaByAluno = new Map<string, string | null>();
-      (matriculasRows || []).forEach((row: any) => {
-        if (!row?.aluno_id || turmaByAluno.has(row.aluno_id)) return;
-        const turma = Array.isArray(row.turma) ? row.turma[0] : row.turma;
-        turmaByAluno.set(row.aluno_id, turma?.nome ?? null);
-      });
-
-      const atrasoByAluno = new Map<string, number>();
-      (mensalidadesRows || []).forEach((row: any) => {
-        if (!row?.aluno_id) return;
-        const valorPrevisto = Number(row.valor_previsto ?? 0);
-        const valorPago = Number(row.valor_pago_total ?? 0);
-        const emAtraso = Math.max(0, valorPrevisto - valorPago);
-        atrasoByAluno.set(row.aluno_id, (atrasoByAluno.get(row.aluno_id) || 0) + emAtraso);
-      });
+      const resumoByAluno = new Map(
+        (resumoRows ?? []).map((row: any) => [row.aluno_id, row])
+      );
 
       items = items.map((row: any) => {
         const alunoId = row.aluno_id ?? row.id;
+        const resumo = resumoByAluno.get(alunoId);
         return {
           ...row,
-          turma_atual: turmaByAluno.get(alunoId) ?? null,
-          total_em_atraso: atrasoByAluno.get(alunoId) ?? 0,
+          turma_atual: resumo?.turma_nome ?? null,
+          total_em_atraso: Number(resumo?.total_em_atraso ?? 0),
         };
       });
     }

@@ -93,6 +93,8 @@ Implementar o fluxo Balcão 30s com SSOT em `public.pagamentos`, separação ent
 - Limpar dados legados para validar constraints (TPA sem referência, transfer sem comprovativo).
 - Ajustar conciliação para chamar `financeiro_settle_pagamento`.
 - Popular `servicos_escola` por escola.
+- Expor CRUD de `servicos_escola` em Configurações → Financeiro (admin escola).
+- Ajustar balcão de documentos para checkout leve usando `servicos_escola`.
 
 ## Backlog Técnico
 - Criar backfill de `reference`/`evidence_url` em pagamentos antigos para permitir validar constraints.
@@ -100,6 +102,7 @@ Implementar o fluxo Balcão 30s com SSOT em `public.pagamentos`, separação ent
 - Adicionar UI de conciliação com status `pending→settled/rejected/voided`.
 - Normalizar legacy `metodo_pagamento` para `metodo` (enum-like) em relatórios antigos.
 - Conectar listagem do fecho ao snapshot `public.fecho_caixa` (sem cálculo ao vivo).
+- Tornar mapeamento documento → serviço determinístico (código `DOC_*`), inclusive validações no admin.
 
 ## Gaps Restantes (Portal)
 - Admin dashboards ainda usam `vw_pagamentos_status`/views legadas.
