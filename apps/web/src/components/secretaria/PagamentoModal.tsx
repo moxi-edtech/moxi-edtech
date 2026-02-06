@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Banknote, CreditCard, Loader2, ReceiptText, Upload, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -42,16 +42,15 @@ export function PagamentoModal({
   const needsRef = useMemo(() => method === "tpa", [method]);
   const needsEvidence = useMemo(() => method === "transfer", [method]);
   const needsGatewayRef = useMemo(() => method === "mcx" || method === "kiwk", [method]);
-
-  useEffect(() => {
-    if (!open) return;
+  const handleClose = () => {
     setMethod("cash");
     setReference("");
     setTerminalId("");
     setEvidenceUrl("");
     setGatewayRef("");
     setFeedback(null);
-  }, [open]);
+    onClose();
+  };
 
   async function handleConfirmar() {
     if (!alunoId) {
@@ -135,7 +134,7 @@ export function PagamentoModal({
     });
     setLoading(false);
     window.setTimeout(() => {
-      onClose();
+      handleClose();
     }, 1200);
   }
 
@@ -146,7 +145,7 @@ export function PagamentoModal({
       <div className="w-full max-w-xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <div className="font-bold text-slate-900">Pagamento · {kwanza.format(totalKz)} </div>
-          <button onClick={onClose} className="rounded-xl p-2 hover:bg-slate-50">
+          <button onClick={handleClose} className="rounded-xl p-2 hover:bg-slate-50">
             <X className="h-4 w-4 text-slate-400" />
           </button>
         </div>
@@ -280,7 +279,7 @@ export function PagamentoModal({
 
         <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="rounded-xl px-4 py-2 text-sm font-bold text-slate-600 hover:text-slate-900"
           >
             Voltar

@@ -56,7 +56,7 @@ export async function POST(req: Request) {
       const row = Array.isArray(data) ? data[0] : data;
       // audit
       recordAuditServer({ escolaId, portal: 'secretaria', acao: 'REMATRICULA_RPC', entity: 'matriculas', details: { origin_turma_id, destination_turma_id, inserted: row?.inserted ?? 0, skipped: row?.skipped ?? 0 } }).catch(()=>null)
-      let insertedCount = row?.inserted ?? 0;
+      const insertedCount = row?.inserted ?? 0;
       // Pós-processo: gerar mensalidades para os realmente inseridos
       if (gerar_mensalidades && insertedCount > 0) {
         const { data: nowActive } = await (supabase as any)

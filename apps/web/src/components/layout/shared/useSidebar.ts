@@ -17,16 +17,20 @@ export function useSidebar({
   expandedWidth = "256px",
   initialCollapsed = false,
 }: Opts) {
-  const [collapsed, setCollapsed] = useState(initialCollapsed);
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === "undefined") return initialCollapsed;
+    const saved = localStorage.getItem(storageKey);
+    return saved ? saved === "1" : initialCollapsed;
+  });
 
   useEffect(() => {
-    const saved = typeof window !== 'undefined' ? localStorage.getItem(storageKey) : null;
-    const col = saved ? saved === "1" : initialCollapsed;
-    setCollapsed(col);
-    if (typeof document !== 'undefined') {
-      document.documentElement.style.setProperty(cssVar, col ? collapsedWidth : expandedWidth);
+    if (typeof document !== "undefined") {
+      document.documentElement.style.setProperty(
+        cssVar,
+        collapsed ? collapsedWidth : expandedWidth
+      );
     }
-  }, [storageKey, cssVar, collapsedWidth, expandedWidth, initialCollapsed]);
+  }, [collapsed, cssVar, collapsedWidth, expandedWidth]);
 
   const toggle = useCallback(() => {
     setCollapsed(prev => {
@@ -43,4 +47,3 @@ export function useSidebar({
 
   return { collapsed, toggle };
 }
-

@@ -10,7 +10,8 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export function Input({ label, id, error, className = '', inputRef, ...props }: InputProps) {
-  const inputId = id || useId();
+  const reactId = useId();
+  const inputId = id ?? reactId;
   return (
     <div className="w-full">
       <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 mb-1.5">

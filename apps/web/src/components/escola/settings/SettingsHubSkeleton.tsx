@@ -1,7 +1,7 @@
 "use client";
 
-export default function SettingsHubSkeleton() {
-  const SkeletonCard = ({ highlight = false }: { highlight?: boolean }) => (
+function SkeletonCard({ highlight = false }: { highlight?: boolean }) {
+  return (
     <div
       className={`
         group relative p-5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between h-full
@@ -27,7 +27,9 @@ export default function SettingsHubSkeleton() {
       )}
     </div>
   );
+}
 
+export default function SettingsHubSkeleton() {
   return (
     <div className="max-w-[1400px] mx-auto p-8 space-y-10 bg-slate-50/50 min-h-screen">
       <div className="flex items-center justify-between">

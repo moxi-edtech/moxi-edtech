@@ -13,7 +13,7 @@ const Body = z.object({
 
 export async function POST(req: Request) {
   let supabase: any = null
-  let outboxEventId: string | null = null
+  const outboxEventId: string | null = null
   try {
     supabase = await supabaseServerTyped<any>()
     const { data: userRes } = await supabase.auth.getUser()

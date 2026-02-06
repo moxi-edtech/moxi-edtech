@@ -216,7 +216,13 @@ export function buildTurmaCode(params: {
 // Helpers de Busca DB (Refatorado para course_code)
 // ---------------------------------------------------------
 
-export const findCursoIdByFuzzy = (info: ParsedTurmaInfo, listaCursosDB: any[]) => {
+type CursoRow = {
+  id: string;
+  course_code?: string | null;
+  curriculum_key?: string | null;
+};
+
+export const findCursoIdByFuzzy = (info: ParsedTurmaInfo, listaCursosDB: CursoRow[]) => {
   if (!listaCursosDB || !info.siglaCurso) return null;
 
   // O que estamos procurando? A sigla resolvida (ex: TI)
@@ -226,13 +232,13 @@ export const findCursoIdByFuzzy = (info: ParsedTurmaInfo, listaCursosDB: any[]) 
     listaCursosDB.find((c) => {
       // 1. Comparação Direta: course_code do banco vs Sigla Resolvida
       // O banco deve ter 'TI'. Wanted é 'TI'.
-      const dbCourseCode = normalizeCode((c as any).course_code || "");
+      const dbCourseCode = normalizeCode(c.course_code || "");
       if (dbCourseCode && dbCourseCode === normalizeCode(wanted)) return true;
 
       // 2. Comparação de Segurança: curriculum_key
       // Se o parser identificou que é 'tecnico_informatica', e o banco tem essa key, é match.
       // Isso protege caso o course_code no banco esteja errado mas a key certa.
-      const dbKey = ((c as any).curriculum_key || "").toLowerCase();
+      const dbKey = (c.curriculum_key || "").toLowerCase();
       if (info.curriculumKey && dbKey === info.curriculumKey) return true;
 
       return false;

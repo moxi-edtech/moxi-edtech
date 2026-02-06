@@ -964,6 +964,7 @@ export default function AdmissaoWizardClient({ escolaId }: { escolaId: string })
   const searchParams = useSearchParams();
 
   useEffect(() => {
+    if (!searchParams) return;
     const candId = searchParams.get("candidaturaId");
     if (candId && isUuid(candId)) {
       setCandidaturaId(candId);

@@ -255,9 +255,9 @@ export async function POST(
         const roleEnum = mapPapelToGlobalRole(inv.papel)
         // Check if exists
         const { data: prof } = await sserver.from('profiles').select('user_id, numero_login').eq('email', inv.email).limit(1)
-        let userId = (prof?.[0] as any)?.user_id as string | undefined
-        let numeroLogin: string | null = (prof?.[0] as any)?.numero_login ?? null
-        let invited = false
+        const userId = (prof?.[0] as any)?.user_id as string | undefined
+        const numeroLogin: string | null = (prof?.[0] as any)?.numero_login ?? null
+        const invited = false
 
         if (!userId) {
           inviteResult.failed.push(inv.email)

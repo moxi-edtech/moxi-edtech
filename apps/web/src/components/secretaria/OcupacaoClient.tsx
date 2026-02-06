@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { Loader2, Filter, SlidersHorizontal } from "lucide-react";
 
 // Simplified types from the API response
@@ -33,7 +33,7 @@ export default function OcupacaoClient() {
   const [turnoFilter, setTurnoFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -53,11 +53,11 @@ export default function OcupacaoClient() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [classeFilter, turnoFilter, statusFilter]);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const distinctClasses = useMemo(() => {
     if (!data) return [];

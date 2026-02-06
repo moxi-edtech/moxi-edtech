@@ -28,6 +28,13 @@ type EscolaHealth = {
   tem_precos_definidos: boolean;
 };
 
+const StatusItem = ({ label, ok }: { label: string; ok: boolean }) => (
+  <div className="flex items-center gap-2 text-sm">
+    {ok ? <CheckCircleIcon className="w-5 h-5 text-emerald-500" /> : <XCircleIcon className="w-5 h-5 text-red-400" />}
+    <span className={ok ? "text-gray-700" : "text-red-600 font-medium"}>{label}</span>
+  </div>
+);
+
 export default async function Page(props: { params: Promise<{ id: string }> }) {
   const { id: routeId } = await props.params;
   const escolaId = String(routeId);
@@ -118,13 +125,6 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     { title: "Notas Lançadas", value: `${stats.percentual_notas ?? 0}%`, icon: AcademicCapIcon, color: "text-amber-600" },
     { title: "Adimplência", value: `${stats.adimplencia ?? 0}%`, icon: BanknotesIcon, color: "text-emerald-600" },
   ];
-
-  const StatusItem = ({ label, ok }: { label: string; ok: boolean }) => (
-    <div className="flex items-center gap-2 text-sm">
-      {ok ? <CheckCircleIcon className="w-5 h-5 text-emerald-500" /> : <XCircleIcon className="w-5 h-5 text-red-400" />}
-      <span className={ok ? "text-gray-700" : "text-red-600 font-medium"}>{label}</span>
-    </div>
-  );
 
   const health = (healthRes.data as EscolaHealth | null) ?? null;
 
@@ -251,4 +251,3 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     </div>
   );
 }
-

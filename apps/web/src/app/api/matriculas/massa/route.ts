@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     .eq('import_id', import_id)
     .eq('turma_id', resolvedTurmaId);
 
-  let confirm_errors: Array<{ id: string; error: string }> = [];
+  const confirm_errors: Array<{ id: string; error: string }> = [];
   if (matriculasCriadas && matriculasCriadas.length > 0) {
     for (const row of matriculasCriadas) {
       const { error: cErr } = await (supabase as any).rpc('confirmar_matricula', {

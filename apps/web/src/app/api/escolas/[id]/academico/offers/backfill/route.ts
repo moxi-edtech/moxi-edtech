@@ -137,7 +137,7 @@ export async function POST(
     }
 
     // 6) Monta inserts faltantes por sessão
-    let toInsert: Array<any> = [];
+    const toInsert: Array<any> = [];
     const details: Array<{ session_id: string; planned: number; created: number }> = [];
     for (const sessionId of sessionIds) {
       const semIds = semestresBySession.get(sessionId) || [];

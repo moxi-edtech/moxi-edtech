@@ -161,6 +161,17 @@ const getSubjectsFromPreset = (key: CurriculumKey | null): string[] => {
   return ordered;
 };
 
+function CourseTypeIcon({
+  type,
+  className,
+}: {
+  type: CourseType | null;
+  className?: string;
+}) {
+  const Icon = (type && TYPE_ICONS[type]) || BookOpen;
+  return <Icon className={className} />;
+}
+
 // ------------------------------------------------------
 // COMPONENTE PRINCIPAL
 // ------------------------------------------------------
@@ -1230,22 +1241,6 @@ function CustomCourseModal({
 
   const [newSub, setNewSub] = useState("");
 
-  useEffect(() => {
-    if (!data.associatedPreset) return;
-
-    const defaultClasses =
-      (CURRICULUM_PRESETS_META[data.associatedPreset]?.classes || []).map(
-        normalizeClassLabel
-      );
-    const defaultSubjects = getSubjectsFromPreset(data.associatedPreset);
-
-    setData((prev) => ({
-      ...prev,
-      classes: prev.classes.length ? prev.classes : defaultClasses,
-      subjects: prev.subjects.length ? prev.subjects : defaultSubjects,
-    }));
-  }, [data.associatedPreset]);
-
   const handleAddSub = () => {
     const trimmed = newSub.trim();
     if (!trimmed) return;
@@ -1274,8 +1269,6 @@ function CustomCourseModal({
 
   const selectedColors =
     (selectedTipo && TYPE_COLORS[selectedTipo]) || TYPE_COLORS.geral;
-  const SelectedIcon =
-    (selectedTipo && TYPE_ICONS[selectedTipo]) || BookOpen;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
@@ -1325,12 +1318,29 @@ function CustomCourseModal({
             </p>
             <select
               value={data.associatedPreset}
-              onChange={(e) =>
-                setData((prev) => ({
-                  ...prev,
-                  associatedPreset: e.target.value as CurriculumKey,
-                }))
-              }
+              onChange={(e) => {
+                const nextPreset = e.target.value as CurriculumKey;
+                setData((prev) => {
+                  if (!nextPreset) {
+                    return { ...prev, associatedPreset: "" };
+                  }
+
+                  const defaultClasses =
+                    (CURRICULUM_PRESETS_META[nextPreset]?.classes || []).map(
+                      normalizeClassLabel
+                    );
+                  const defaultSubjects = getSubjectsFromPreset(nextPreset);
+
+                  return {
+                    ...prev,
+                    associatedPreset: nextPreset,
+                    classes: prev.classes.length ? prev.classes : defaultClasses,
+                    subjects: prev.subjects.length
+                      ? prev.subjects
+                      : defaultSubjects,
+                  };
+                });
+              }}
               className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
               required
             >
@@ -1351,7 +1361,8 @@ function CustomCourseModal({
                 <div
                   className={`w-10 h-10 rounded ${selectedColors.bgLight} border ${selectedColors.border} flex items-center justify-center`}
                 >
-                  <SelectedIcon
+                  <CourseTypeIcon
+                    type={selectedTipo}
                     className={`w-5 h-5 ${selectedColors.text}`}
                   />
                 </div>

@@ -191,7 +191,7 @@ function getSmtpConfig(): SmtpConfig | null {
 async function sendViaSmtp({ to, subject, html, text }: SendArgs, cfg: SmtpConfig): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
     // Dynamic require to avoid bundling issues when nodemailer isn't installed
-    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+     
     const req: any = (Function('return require') as any)()
     const nodemailer = req('nodemailer')
     const transporter = nodemailer.createTransport({

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabaseClient";
+import { Tables } from "~types/supabase";
 
 export default function RequireSecretaria({
   children,
@@ -32,8 +33,8 @@ export default function RequireSecretaria({
       }
 
       const { data: vinculos, error } = await vinculoQuery.limit(10);
-      const hasSecretaria = (vinculos || []).some((v: any) => {
-        const papel = (v as any)?.papel ?? (v as any)?.role ?? null;
+      const hasSecretaria = (vinculos || []).some((v: Tables<'escola_users'>) => {
+        const papel = v.papel ?? v.role ?? null;
         return papel === "secretaria" || papel === "admin";
       });
       if (error || !hasSecretaria) { router.replace("/"); return; }
@@ -41,7 +42,7 @@ export default function RequireSecretaria({
       if (active) setReady(true);
     })();
     return () => { active = false };
-  }, [router, supabase]);
+  }, [router, supabase, escolaId]);
 
   if (!ready) return <div className="p-6">🔒 Verificando permissões da secretaria...</div>;
   return <>{children}</>;

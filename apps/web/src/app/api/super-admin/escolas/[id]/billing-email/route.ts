@@ -71,7 +71,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     }
 
     let sentCount = 0
-    let failures: Array<{ to: string; error: string }> = []
+    const failures: Array<{ to: string; error: string }> = []
     for (const r of recipients) {
       const { subject, html, text } = buildBillingEmail({
         escolaNome,

@@ -28,7 +28,7 @@ const splitRanges = (startISO: string, endISO: string, parts: number): Array<{ s
   const chunk = Math.floor(totalDays / parts);
   const remainder = totalDays % parts;
   const ranges: Array<{ start: string; end: string }> = [];
-  let cursor = new Date(start);
+  const cursor = new Date(start);
 
   for (let i = 0; i < parts; i++) {
     const len = chunk + (i < remainder ? 1 : 0);

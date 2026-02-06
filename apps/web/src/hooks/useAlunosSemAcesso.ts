@@ -18,22 +18,26 @@ export function useAlunosSemAcesso(escolaId: string | null) {
   useEffect(() => {
     if (!escolaId) return;
     let cancelled = false;
-    setLoading(true);
-    setError(null);
 
-    fetch(`/api/secretaria/alunos/sem-acesso?escolaId=${encodeURIComponent(escolaId)}`)
-      .then((res) => res.json())
-      .then((json) => {
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(
+          `/api/secretaria/alunos/sem-acesso?escolaId=${encodeURIComponent(escolaId)}`
+        );
+        const json = await res.json();
         if (cancelled) return;
         if (!json?.ok) throw new Error(json?.error || "Falha ao carregar");
         setAlunos(json.items || []);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err.message);
-      })
-      .finally(() => {
+      } catch (err) {
+        if (!cancelled) setError((err as Error).message);
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    };
+
+    load();
 
     return () => {
       cancelled = true;

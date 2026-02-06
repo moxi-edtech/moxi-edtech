@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabaseClient";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
@@ -38,7 +39,7 @@ export default function RedirectPage() {
           await next(user);
         }
 
-        async function next(user: any) {
+        async function next(user: User) {
           // se tiver timeout/unsub → cancela
           if (timeout) clearTimeout(timeout);
           if (unsub) unsub();
@@ -69,7 +70,7 @@ export default function RedirectPage() {
               .select("onboarding_finalizado")
               .eq("id", escola_id)
               .limit(1);
-            const e0 = (esc?.[0] as any) || {}
+            const e0 = (esc && esc.length > 0) ? esc[0] : { onboarding_finalizado: false };
             const done = Boolean(e0.onboarding_finalizado);
             router.replace(done ? `/escola/${escola_id}/admin` : `/escola/${escola_id}/onboarding`);
             return;
@@ -86,7 +87,7 @@ export default function RedirectPage() {
                   .select("onboarding_finalizado")
                   .eq("id", escola_id)
                   .limit(1);
-                const e0 = (esc?.[0] as any) || {}
+                const e0 = (esc && esc.length > 0) ? esc[0] : { onboarding_finalizado: false };
                 const done = Boolean(e0.onboarding_finalizado);
                 router.replace(done ? `/escola/${escola_id}/admin` : `/escola/${escola_id}/onboarding`);
               } else {
@@ -103,14 +104,14 @@ export default function RedirectPage() {
                 .eq("user_id", user.id)
                 .order("created_at", { ascending: false })
                 .limit(1);
-              const escolaId = (prof2?.[0] as any)?.escola_id ?? null;
+              const escolaId = (prof2 && prof2.length > 0) ? prof2[0]?.escola_id : null;
               if (escolaId) {
                 const { data: esc } = await supabase
                   .from("escolas")
                   .select("aluno_portal_enabled")
                   .eq("id", escolaId)
                   .limit(1);
-                const enabled = Boolean((esc?.[0] as any)?.aluno_portal_enabled);
+                const enabled = Boolean(esc && esc.length > 0 && esc[0]?.aluno_portal_enabled);
                 router.replace(enabled ? "/aluno" : "/aluno/desabilitado");
               } else {
                 router.replace("/aluno");

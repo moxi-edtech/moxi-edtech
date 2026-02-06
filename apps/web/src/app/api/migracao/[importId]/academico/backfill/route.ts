@@ -255,7 +255,7 @@ async function runBackfill(apply: boolean, req: NextRequest, importId: string) {
       // se quiser 100% preciso, a gente compara com uma query prévia.
       turmasCreated += 1;
 
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+       
       const _id = data?.id;
     }
 

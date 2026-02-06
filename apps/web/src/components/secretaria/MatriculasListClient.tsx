@@ -153,9 +153,9 @@ export default function MatriculasListClient() {
   const pathname = usePathname();
 
   // Filtros URL
-  const turmaIdFromQuery = searchParams.get("turma_id");
-  const statusFromQuery = searchParams.get("status");
-  const statusInFromQuery = searchParams.get("status_in");
+  const turmaIdFromQuery = searchParams?.get("turma_id");
+  const statusFromQuery = searchParams?.get("status");
+  const statusInFromQuery = searchParams?.get("status_in");
   const statusFilters = useMemo(() => {
     if (statusInFromQuery) return statusInFromQuery.split(",").map((s) => s.trim()).filter(Boolean);
     if (statusFromQuery) return [statusFromQuery];
@@ -293,10 +293,12 @@ export default function MatriculasListClient() {
   }, [selectedClasse, anoLetivoAtivo]);
 
   const replaceParams = (fn: (p: URLSearchParams) => void) => {
-    const p = new URLSearchParams(Array.from(searchParams.entries()));
+    const p = new URLSearchParams(searchParams?.toString() ?? '');
     fn(p);
     const qs = p.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname);
+    if (pathname) {
+      router.replace(qs ? `${pathname}?${qs}` : pathname);
+    }
   };
 
   const handleRemoveStatus = (s: string) => {

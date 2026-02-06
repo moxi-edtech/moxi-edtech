@@ -7,6 +7,11 @@ import {
 } from "@/lib/academico/curriculum-presets";
 import { PRESET_TO_TYPE, type CourseType } from "@/lib/courseTypes";
 
+type TableRow<Name extends keyof Database["public"]["Tables"]> =
+  Database["public"]["Tables"][Name]["Row"];
+type TableInsert<Name extends keyof Database["public"]["Tables"]> =
+  Database["public"]["Tables"][Name]["Insert"];
+
 export type BuilderTurnos = {
   manha: boolean;
   tarde: boolean;
@@ -102,9 +107,9 @@ async function findOrCreateCursoEscolaSSOT(args: {
     .maybeSingle();
 
   if (selErr) throw new Error("Erro ao consultar curso (SSOT).");
-  if (existing) return existing as any;
+  if (existing) return existing as TableRow<"cursos">;
 
-  const payload = {
+  const payload: TableInsert<"cursos"> = {
     escola_id: escolaId,
     nome: presetMeta.label,
     tipo,
@@ -115,7 +120,7 @@ async function findOrCreateCursoEscolaSSOT(args: {
     is_custom: isCustom,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
-  } as any;
+  };
 
   const { data: created, error: insErr } = await supabase
     .from("cursos")
@@ -123,7 +128,7 @@ async function findOrCreateCursoEscolaSSOT(args: {
     .select("*")
     .single();
 
-  if (!insErr && created) return created as any;
+  if (!insErr && created) return created as TableRow<"cursos">;
 
   if (insErr?.code === "23505") {
     const { data: retry, error: retryErr } = await supabase
@@ -135,7 +140,7 @@ async function findOrCreateCursoEscolaSSOT(args: {
 
     if (retryErr) throw new Error("Erro fatal de concorrência ao criar curso.");
     if (!retry) throw new Error("Falha ao recuperar curso após race condition.");
-    return retry as any;
+    return retry as TableRow<"cursos">;
   }
 
   throw new Error(insErr?.message || "Erro ao criar curso.");
@@ -153,14 +158,16 @@ async function findOrCreateClassesForCurso(
     const nome = (raw ?? "").trim();
     if (!nome) continue;
 
+    const insertPayload: TableInsert<"classes"> = { escola_id: escolaId, curso_id: cursoId, nome };
+
     const { data: created, error } = await supabase
       .from("classes")
-      .insert({ escola_id: escolaId, curso_id: cursoId, nome } as any)
+      .insert(insertPayload)
       .select("id, nome")
       .maybeSingle();
 
     if (created) {
-      classesCriadas.push(created as any);
+      classesCriadas.push(created as TableRow<"classes">);
       continue;
     }
 
@@ -174,7 +181,7 @@ async function findOrCreateClassesForCurso(
         .single();
 
       if (selErr) throw new Error(`Falha ao buscar classe existente: ${nome}`);
-      if (existing) classesCriadas.push(existing as any);
+      if (existing) classesCriadas.push(existing as TableRow<"classes">);
       continue;
     }
 
@@ -217,14 +224,16 @@ async function upsertDisciplinasCatalogo(
 
   if (byNorm.size === 0) return new Map<string, string>();
 
-  const rows = Array.from(byNorm.entries()).map(([_, nome]) => ({
-    escola_id: escolaId,
-    nome,
-  }));
+  const rows: TableInsert<"disciplinas_catalogo">[] = Array.from(byNorm.entries()).map(
+    ([_, nome]) => ({
+      escola_id: escolaId,
+      nome,
+    })
+  );
 
   const { error: upErr } = await supabase
     .from("disciplinas_catalogo")
-    .upsert(rows as any, {
+    .upsert(rows, {
       onConflict: "escola_id,nome_norm",
       ignoreDuplicates: false,
     });
@@ -270,7 +279,7 @@ async function upsertCursoMatriz(args: {
     cursoCurriculoId,
   } = args;
 
-  const rows: any[] = [];
+  const rows: TableInsert<"curso_matriz">[] = [];
   let ordem = 1;
 
   for (const subjectRaw of subjects ?? []) {
@@ -319,7 +328,7 @@ async function upsertCursoMatriz(args: {
 
   const { error } = await supabase
     .from("curso_matriz")
-    .upsert(rows as any, {
+    .upsert(rows, {
       onConflict,
       ignoreDuplicates: false,
     });
@@ -341,7 +350,7 @@ async function createTurmasPadrao(args: {
   const shifts = turnosAtivos(turnos);
   if (shifts.length === 0) return [];
 
-  const inserts: any[] = [];
+  const inserts: TableInsert<"turmas">[] = [];
   for (const cls of classes ?? []) {
     if (!cls?.id) continue;
     for (const turno of shifts) {
@@ -362,7 +371,7 @@ async function createTurmasPadrao(args: {
 
   const { data, error } = await supabase
     .from("turmas")
-    .upsert(inserts as any, {
+    .upsert(inserts, {
       onConflict: "escola_id,curso_id,classe_id,ano_letivo,nome,turno",
       ignoreDuplicates: false,
     })
@@ -395,14 +404,14 @@ async function syncTurmaDisciplinasFromMatriz(args: {
   if (error) throw new Error(error.message ?? "Falha ao ler curso_matriz");
 
   const byClasse = new Map<string, string[]>();
-  for (const m of (matriz ?? []) as any[]) {
+  for (const m of (matriz ?? []) as Array<{ id?: string | null; classe_id?: string | null }>) {
     if (!m?.classe_id || !m?.id) continue;
     const arr = byClasse.get(m.classe_id) ?? [];
     arr.push(m.id);
     byClasse.set(m.classe_id, arr);
   }
 
-  const inserts: any[] = [];
+  const inserts: TableInsert<"turma_disciplinas">[] = [];
   for (const turma of turmas) {
     const matrizIds = byClasse.get(turma.classe_id) ?? [];
     for (const cursoMatrizId of matrizIds) {
@@ -419,7 +428,7 @@ async function syncTurmaDisciplinasFromMatriz(args: {
 
   const { error: upErr } = await supabase
     .from("turma_disciplinas")
-    .upsert(inserts as any, {
+    .upsert(inserts, {
       onConflict: "escola_id,turma_id,curso_matriz_id",
       ignoreDuplicates: true,
     });
@@ -462,7 +471,7 @@ async function createCurriculoDraft(args: {
       .select("id, version, status")
       .single();
 
-    if (!error && curriculo) return curriculo as any;
+    if (!error && curriculo) return curriculo as TableRow<"curso_curriculos">;
 
     if (error?.code === "23505") {
       const { data: retryLast } = await supabase
@@ -503,7 +512,7 @@ function resolveAdvancedConfig(payload: CurriculumApplyPayload, presetKey: Curri
   const presetSubjects = Array.from(
     new Set(
       (CURRICULUM_PRESETS[presetKey] ?? [])
-        .map((d: any) => String(d?.nome ?? "").trim())
+        .map((disciplina) => String((disciplina as { nome?: string | null })?.nome ?? "").trim())
         .filter(Boolean)
     )
   );
@@ -629,7 +638,7 @@ export async function applyCurriculumPreset(
     curso: {
       id: curso.id,
       nome: curso.nome,
-      course_code: (curso as any).course_code ?? null,
+      course_code: curso.course_code ?? null,
     },
     stats: {
       catalogo_upserted: discIdByNorm.size,

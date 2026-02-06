@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Check, CreditCard, FileText, Loader2, Shield, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -49,15 +49,20 @@ export function BalcaoServicoModal({
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
   const [decision, setDecision] = useState<BalcaoDecision | null>(null);
-  const [servicoCodigo, setServicoCodigo] = useState<string>("");
+  const [selectedCodigo, setSelectedCodigo] = useState<string | null>(null);
 
   const available = useMemo(() => servicos.filter((s) => s.codigo), [servicos]);
+  const defaultCodigo = useMemo(
+    () => initialCodigo ?? available[0]?.codigo ?? "",
+    [initialCodigo, available]
+  );
+  const servicoCodigo = selectedCodigo ?? defaultCodigo;
 
-  useEffect(() => {
-    if (!open) return;
+  const handleClose = () => {
     setDecision(null);
-    setServicoCodigo(initialCodigo ?? available[0]?.codigo ?? "");
-  }, [open, available, initialCodigo]);
+    setSelectedCodigo(null);
+    onClose();
+  };
 
   async function handleContinuar() {
     if (!alunoId) {
@@ -96,7 +101,7 @@ export function BalcaoServicoModal({
       <div className="w-full max-w-xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <div className="font-bold text-slate-900">Balcão · Novo Serviço</div>
-          <button onClick={onClose} className="rounded-xl p-2 hover:bg-slate-50">
+          <button onClick={handleClose} className="rounded-xl p-2 hover:bg-slate-50">
             <X className="h-4 w-4 text-slate-400" />
           </button>
         </div>
@@ -105,7 +110,7 @@ export function BalcaoServicoModal({
           <label className="block text-xs font-bold uppercase text-slate-500">Serviço</label>
           <select
             value={servicoCodigo}
-            onChange={(event) => setServicoCodigo(event.target.value)}
+            onChange={(event) => setSelectedCodigo(event.target.value)}
             className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
           >
             {available.length === 0 ? (
@@ -157,7 +162,7 @@ export function BalcaoServicoModal({
 
         <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="rounded-xl px-4 py-2 text-sm font-bold text-slate-600 hover:text-slate-900"
           >
             Cancelar

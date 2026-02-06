@@ -62,7 +62,7 @@ export async function GET() {
       new Set((items as any[]).map((i) => i.aluno_id).filter(Boolean))
     );
 
-    let numeroPorAluno: Record<string, string | null> = {};
+    const numeroPorAluno: Record<string, string | null> = {};
 
     if (alunoIds.length > 0) {
       const { data: mats, error: matsError } = await s

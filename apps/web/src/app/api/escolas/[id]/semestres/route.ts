@@ -115,7 +115,7 @@ export async function POST(
     }
 
     const { sessao_id, nome, data_inicio, data_fim } = parsed.data as any;
-    let { tipo } = parsed.data as any;
+    const { tipo } = parsed.data as any;
 
     // Autenticação
     const s = await supabaseServer();

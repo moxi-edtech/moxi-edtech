@@ -5,9 +5,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabaseClient";
 import AlunoShell from "@/components/aluno/AlunoShell";
 import { parsePlanTier, type PlanTier } from "@/config/plans";
+import { Tables } from "~types/supabase";
 
-type Vínculo = { papel: string | null; escola_id: string } | null;
-type Perfil = { id: string; nome: string | null } | null;
+type Vínculo = Tables<"escola_users"> | null;
+type Perfil = Pick<Tables<"profiles">, "id" | "nome"> | null;
 
 export default function AlunoLayout({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
@@ -15,7 +16,6 @@ export default function AlunoLayout({ children }: { children: React.ReactNode })
   const [vinculo, setVinculo] = useState<Vínculo>(null);
   const router = useRouter();
   const pathname = usePathname();
-  const [allowed, setAllowed] = useState<boolean>(true);
 
   useEffect(() => {
     let active = true;
@@ -39,31 +39,34 @@ export default function AlunoLayout({ children }: { children: React.ReactNode })
         .eq("user_id", user.id)
         .limit(10);
 
-      const vincAluno = (vinc || []).find((v: any) => {
-        const papel = (v as any)?.papel ?? (v as any)?.role ?? null;
+      const vincAluno = (vinc || []).find((v: Tables<'escola_users'>) => {
+        const papel = v.papel ?? v.role ?? null;
         return papel === "aluno";
-      }) as any;
+      });
 
       if (!vincAluno) { router.replace("/"); return; }
 
-      const escolaId = vincAluno?.escola_id as string | undefined;
+      const escolaId = vincAluno?.escola_id;
 
       // Gate por plano/feature
       let ok = true;
       if (escolaId) {
-        const { data: esc } = await (s as any).from('escolas').select('plano_atual, plano, aluno_portal_enabled').eq('id', escolaId).maybeSingle();
-        const planoRaw = (esc as any)?.plano_atual ?? (esc as any)?.plano as string | undefined;
+      const { data: esc } = await s
+        .from("escolas")
+        .select("plano_atual, aluno_portal_enabled")
+        .eq("id", escolaId)
+        .maybeSingle();
+      const planoRaw = esc?.plano_atual ?? null;
         const plano: PlanTier = parsePlanTier(planoRaw);
-        const enabled = Boolean((esc as any)?.aluno_portal_enabled);
+        const enabled = Boolean(esc?.aluno_portal_enabled);
         ok = Boolean(plano && (plano === 'profissional' || plano === 'premium') && enabled);
       }
 
       if (!active) return;
       const papel = vincAluno?.papel ?? vincAluno?.role ?? null;
 
-      setPerfil((prof as any) ?? null);
-      setVinculo(vincAluno ? { papel, escola_id: vincAluno.escola_id } : null);
-      setAllowed(ok);
+      setPerfil(prof as Perfil);
+      setVinculo(vincAluno as Vínculo);
       if (!ok && pathname !== '/aluno/desabilitado') {
         router.replace('/aluno/desabilitado');
         return;
@@ -73,7 +76,7 @@ export default function AlunoLayout({ children }: { children: React.ReactNode })
     return () => {
       active = false;
     };
-  }, []);
+  }, [pathname, router]);
 
   if (!ready) {
     return <div className="p-6">🔒 Verificando acesso do aluno…</div>;
