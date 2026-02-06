@@ -758,7 +758,8 @@ export default function BalcaoAtendimento({
         throw new Error(error?.message || "Erro ao criar pedido.");
       }
 
-      const decision = { ...data, servico_codigo: servico.codigo } as BalcaoDecision;
+      const rawDecision = data as unknown;
+      const decision = { ...(rawDecision as object), servico_codigo: servico.codigo } as BalcaoDecision;
       if (decision.decision === "BLOCKED") {
         setBloqueioInfo({
           code: decision.reason_code,

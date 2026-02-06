@@ -1,62 +1,134 @@
-# REPORT_SCAN.md — KLASSE Compliance Audit
+# REPORT_SCAN.md — KLASSE FOUNDATION AUDIT
 
 ## 1. SUMÁRIO EXECUTIVO
 
-- Findings CRÍTICOS: **2**
-- Findings HIGH: **0**
-- Findings MEDIUM: **2**
-- Findings LOW: **1**
-- Status final: **FAIL**
+- Findings CRÍTICOS: **0**
+- Findings ALTO: **5**
+- Total findings: **7**
 
-## 2. RELAÇÃO COM `docs/big-tech-performance.md`
+## 2. ACHADOS (ordenado por severidade)
 
-- `supabase/migrations/20260127020400_klasse_p0_aggregates_outbox_worker.sql`: implementa Pilar A (aggregates físicos) e Pilar B (outbox + worker).
-- `supabase/migrations/20260127020500_fix_p0_issues.sql`: corrige worker/outbox e adiciona view para consumo rápido.
-- `supabase/migrations/20260201000000_p0_performance_compliance.sql`: cria `mv_*` + `vw_*` + `refresh_mv_*` + cron, alinhando ao Pilar A.
-- `supabase/migrations/20260201001000_mv_financeiro_missing_pricing.sql`: MV + wrapper + cron para KPI financeiro.
-- `supabase/migrations/20260127020200_klasse_p0b_rls_cleanup.sql`: endurece RLS e índices, reduzindo custo de leitura multi-tenant.
-
-## 3. ACHADOS (ordenado por severidade)
-
-### CRITICAL — Rotas sem `resolveEscolaIdForUser`
+### NO_STORE — Anti-pattern — uso de cache: 'no-store' em páginas/relatórios
+- Severidade: **HIGH**
+- Status: **PARTIAL**
 - Evidências:
-  - `apps/web/src/app/api/financeiro/aberto-por-mes/route.ts`
-  - `apps/web/src/app/api/financeiro/cobrancas/resumo/route.ts`
-  - `apps/web/src/app/api/financeiro/graficos/mensal/route.ts`
-  - `apps/web/src/app/api/financeiro/relatorios/propinas/route.ts`
-  - `apps/web/src/app/api/financeiro/radar/route.ts`
-  - `apps/web/src/app/api/financeiro/missing-pricing/route.ts` (resolver próprio, sem `resolveEscolaIdForUser`)
-- Recomendação: padronizar resolução de escola via `resolveEscolaIdForUser` em todas as rotas públicas.
+  - `apps/web/src/hooks/useMatriculaLogic.ts` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/lib/auth-admin-job.ts` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/app/financeiro/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/financeiro/GerarMensalidadesModal.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/financeiro/MissingPricingAlert.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/layout/PortalLayout.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/layout/StudentPortalLayout.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/professor/AssignmentsBanner.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/super-admin/UsuariosListClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/system/ConfigHealthBanner.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/secretaria/BalcaoAtendimento.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/secretaria/BuscaBalcaoRapido.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/secretaria/DocumentosEmissaoHubClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/secretaria/FilaAtendimentoModal.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/secretaria/ImportacoesListClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/secretaria/MatriculasListClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/secretaria/ModalPagamentoRapido.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/secretaria/PagamentoModal.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/secretaria/PautaRapidaModal.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/secretaria/ProfessoresListClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/secretaria/TurmaDetailClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/secretaria/TurmaForm.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/app/documentos/[publicId]/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/app/financeiro/_components/RadarInadimplenciaActive.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/app/financeiro/fecho/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+- Recomendação: Remover no-store onde houver MV/camadas cacheáveis; manter só em rotas realmente sensíveis.
 
-### CRITICAL — Uso de `profiles` sem `.eq('user_id', user.id)`
+### F09_MV — F09 — Radar de Inadimplência com MATERIALIZED VIEW
+- Severidade: **HIGH**
+- Status: **PARTIAL**
 - Evidências:
-  - `apps/web/src/app/api/secretaria/turmas/[id]/detalhes/route.ts` (lookup de diretor por `user_id` externo)
-  - `apps/web/src/app/api/escolas/[id]/usuarios/toggle/route.ts` (lookup por `email`)
-  - `apps/web/src/app/api/escolas/[id]/usuarios/update/route.ts` (lookup por `email`)
-- Recomendação: centralizar acesso a perfis por RPC segura ou garantir `.eq('user_id', user.id)` para o usuário autenticado.
+  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /CREATE\s+UNIQUE\s+INDEX\s+.*ux_mv_radar_inadimplencia/i
+  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /refresh_mv_radar_inadimplencia\s*\(/i
+  - `supabase/migrations_archive/migrations/20251120100000_create_financial_module.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.vw_radar_inadimplencia/i
+  - `supabase/migrations_archive/migrations/20251123230000_replace_vw_radar_inadimplencia.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.vw_radar_inadimplencia/i
+  - `supabase/migrations_archive/migrations/20251124133000_align_financeiro_schema.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.vw_radar_inadimplencia/i
+- Recomendação: Garantir MV + UNIQUE INDEX + refresh function + cron job + view wrapper.
 
-### MEDIUM — `limit > 50`
+### F18_MV — F18 — Caixa/Propinas com MATERIALIZED VIEW
+- Severidade: **HIGH**
+- Status: **PARTIAL**
 - Evidências:
-  - `apps/web/src/app/api/escolas/[id]/cursos/stats/route.ts` (`defaultLimit: 500`)
-  - `apps/web/src/app/api/super-admin/escolas/list/route.ts` (`defaultLimit: 1000`)
-- Recomendação: paginar e manter `limit <= 50` nas rotas públicas.
+  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /CREATE\s+UNIQUE\s+INDEX\s+.*ux_mv_pagamentos_status/i
+  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /refresh_mv_pagamentos_status\s*\(/i
+  - `supabase/migrations/20260202010300_fix_pagamentos_status_refresh.sql` — match: /refresh_mv_pagamentos_status\s*\(/i
+  - `supabase/migrations_archive/migrations_backup/20250916000100_create_views.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.pagamentos_status/i
+  - `supabase/migrations_archive/migrations/20250916000100_create_views.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.pagamentos_status/i
+  - `supabase/migrations_archive/migrations_backup/migrations/20250916000100_create_views.sql` — match: /CREATE\s+OR\s+REPLACE\s+VIEW\s+public\.pagamentos_status/i
+- Recomendação: Garantir MV + UNIQUE INDEX + refresh function + cron job + view wrapper.
 
-### MEDIUM — Cache explícito ausente em fetch crítico
+### P0_3_MV_DASHBOARDS — P0.3 — Dashboards Secretaria/Admin em MATERIALIZED VIEW
+- Severidade: **HIGH**
+- Status: **PARTIAL**
 - Evidências:
-  - `apps/web/src/components/secretaria/OcupacaoClient.tsx` (fetch sem `cache: 'no-store'`)
-  - `apps/web/src/app/financeiro/_components/RadarInadimplenciaActive.tsx` (fetch sem `cache: 'no-store'`)
-- Recomendação: aplicar `cache: 'no-store'` para dados críticos de secretaria/financeiro no cliente.
+  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /mv_secretaria_dashboard_counts/i
+  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /ux_mv_secretaria_dashboard_counts/i
+  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /refresh_mv_secretaria_dashboard_counts/i
+  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /vw_secretaria_dashboard_counts/i
+  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /mv_secretaria_matriculas_status/i
+  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /ux_mv_secretaria_matriculas_status/i
+  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /refresh_mv_secretaria_matriculas_status/i
+  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /vw_secretaria_matriculas_status/i
+  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /mv_secretaria_matriculas_turma_status/i
+  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /ux_mv_secretaria_matriculas_turma_status/i
+- Recomendação: Garantir MV + UNIQUE INDEX + refresh function + cron job + view wrapper para secretária e admin (sem cálculo ao vivo).
 
-### LOW — Uso de `count: 'exact'`
+### PLAN_GUARD — P0.3 — Controle de planos (backend + UI)
+- Severidade: **HIGH**
+- Status: **PARTIAL**
 - Evidências:
-  - `apps/web/src/app/api/escolas/[id]/onboarding/session/[sessionId]/route.ts`
-  - `apps/web/src/app/api/escolas/[id]/onboarding/session/[sessionId]/reassign/route.ts`
-- Recomendação: substituir por MV de contagem quando virar KPI/uso recorrente.
+  - `apps/web/src/app/api/financeiro/recibos/emitir/route.ts` — backend guard (fin_recibo_pdf): não
+  - `apps/web/src/app/api/financeiro/extrato/aluno/[alunoId]/pdf/route.ts` — backend guard (doc_qr_code): sim
+  - `apps/web/src/app/api/secretaria/turmas/[id]/alunos/pdf/route.ts` — backend guard (doc_qr_code): sim
+  - `apps/web/src/app/api/secretaria/turmas/[id]/alunos/lista/route.ts` — backend guard (doc_qr_code): sim
+  - `apps/web/src/components/financeiro/ReciboImprimivel.tsx` — ui guard (fin_recibo_pdf): sim
+  - `apps/web/src/components/financeiro/ExtratoActions.tsx` — ui guard (doc_qr_code): sim
+  - `apps/web/src/components/secretaria/TurmaDetailClient.tsx` — ui guard (doc_qr_code): sim
+- Recomendação: Garantir requireFeature em rotas premium e usePlanFeature em entrypoints UI.
 
-## 4. MIGRATIONS APLICADAS (REMOTO)
-- `supabase db push` aplicado com sucesso.
-- Migrations pendentes aplicadas: `20260203000006_refactor_frequencia_ssot.sql`, `20260203000007_rpc_lancar_notas_batch.sql`, `20260203000008_materialize_vw_boletim.sql`.
-- Correções locais feitas para destravar o push:
-  - `20260203000001_refactor_import_alunos_rpc.sql` (drop function antes de recriar).
-  - `20260203000004_rpc_gerar_turmas_from_curriculo.sql` (loops JSON).
-  - `20260203000006_refactor_frequencia_ssot.sql` (view `presencas` e upsert).
+### KF2 — KF2 — Pesquisa Global (Command Palette) invariants
+- Severidade: **LOW**
+- Status: **VALIDATED**
+- Evidências:
+  - `apps/web/src/components/GlobalSearch.tsx` — debounce detectado (hook/client): sim
+  - `apps/web/src/hooks/useGlobalSearch.ts` — rpc min: sim
+  - `apps/web/src/hooks/useGlobalSearch.ts` — limit clamp <= 50: sim
+  - `supabase/migrations` — ORDER BY id DESC: sim
+  - `apps/web/src/hooks/useGlobalSearch.ts` — useGlobalSearch encontrado
+- Recomendação: KF2 deve ter debounce 250–400ms, limit<=50, orderBy estável e payload mínimo.
+
+### GF4 — GF4 — Audit Trail (parcial/validar cobertura before/after)
+- Severidade: **LOW**
+- Status: **VALIDATED**
+- Evidências:
+  - `E2E_CHECKLIST_ADMISSAO.md` — match: /audit_logs|auditLog|create_audit/i
+  - `MIGRATION_ADMISSAO_P0.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `temp_supabase_output.ts` — match: /audit_logs|auditLog|create_audit/i
+  - `types/database.ts` — match: /audit_logs|auditLog|create_audit/i
+  - `types/supabase.ts` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations/20260127020139_remote_schema.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations/20260127020700_admin_get_escola_health_metrics_rpc.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations/20260127140000_create_confirmar_conciliacao_transacao_rpc.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations/20260202000000_klasse_p0_compliance_fixes.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations/20260202002000_sync_lancamentos_registrar_pagamento.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations/20260202003000_set_created_by_on_paid_lancamentos.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations/20260203000000_rpc_setup_active_ano_letivo.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations/20260203000002_rpc_upsert_bulk_periodos_letivos.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations/20260203000003_add_audit_to_curriculo_publish.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations/20260203000004_rpc_gerar_turmas_from_curriculo.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations/20260203000005_rpc_onboard_academic_structure.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations/20260203000006_refactor_frequencia_ssot.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations/20260203000007_rpc_lancar_notas_batch.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations/20260203000009_rpc_fechar_periodo_unificado.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations/20260203000010_rpc_transferir_matricula.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations/20260203000011_rpc_finalizar_matricula.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations/20260203000012_rpc_gerar_historico_anual.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations/20260203000013_update_finalizar_matricula_rpc.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations/20260203000015_refactor_gerar_mensalidades_trigger.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations/20260203000016_add_audit_to_finance_rpcs.sql` — match: /audit_logs|auditLog|create_audit/i
+- Recomendação: Padronizar schema: actor, action, entity, before, after, ip, created_at; garantir coverage financeiro/matrícula.

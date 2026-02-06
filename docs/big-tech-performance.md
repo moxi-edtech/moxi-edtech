@@ -90,3 +90,10 @@ Aplicar primeiro:
 - Dashboards <200ms (MV).
 - Feedback visual <50ms em mutations.
 - Zero duplicação (idempotência).
+
+---
+
+## Referências relacionadas
+- `agents/contracts/README.md`
+- `agents/contracts/KLASSE_ANALISE_COMPETITIVA_ANGOSCHOOL_2026-02-05.md`
+- `agents/contracts/KLASSE_PAUTAS_MINISTERIAIS_ROADMAP_2026-02-05.md`

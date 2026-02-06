@@ -10,6 +10,7 @@ export const revalidate = 0
 const Query = z.object({
   turmaId: z.string().uuid(),
   disciplinaId: z.string().uuid(),
+  trimestre: z.coerce.number().int().min(1).max(3).optional(),
 })
 
 export async function GET(req: Request) {
@@ -22,10 +23,13 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)
     const turmaId = searchParams.get('turmaId') ?? searchParams.get('turma_id')
     const disciplinaId = searchParams.get('disciplinaId') ?? searchParams.get('disciplina_id')
-    const parsed = Query.safeParse({ turmaId, disciplinaId })
+    const trimestreRaw = searchParams.get('trimestre') ?? searchParams.get('periodoNumero')
+    const parsed = Query.safeParse({ turmaId, disciplinaId, trimestre: trimestreRaw ?? undefined })
     if (!parsed.success) {
       return NextResponse.json({ error: 'Parâmetros inválidos' }, { status: 400 })
     }
+    const detalhadoRaw = searchParams.get('detalhado') ?? ''
+    const detalhado = ['1', 'true', 'yes'].includes(detalhadoRaw.toLowerCase())
 
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
     if (!escolaId) return NextResponse.json({ error: 'Escola não encontrada' }, { status: 400 })
@@ -146,16 +150,24 @@ export async function GET(req: Request) {
         count: Record<number, number>
         weightedSum: Record<number, number>
         weightSum: Record<number, number>
+        tipoSum?: Record<string, number>
+        tipoCount?: Record<string, number>
       }
     >()
 
     if (matriculaIds.length > 0) {
-      const { data: notasRows, error: notasError } = await supabase
+      let notasQuery = supabase
         .from('notas')
         .select('valor, matricula_id, avaliacoes ( trimestre, turma_disciplina_id, tipo, nome, peso )')
         .eq('escola_id', escolaId)
         .eq('avaliacoes.turma_disciplina_id', turmaDisciplina.id)
         .in('matricula_id', matriculaIds)
+
+      if (detalhado && parsed.data.trimestre) {
+        notasQuery = notasQuery.eq('avaliacoes.trimestre', parsed.data.trimestre)
+      }
+
+      const { data: notasRows, error: notasError } = await notasQuery
 
       if (notasError) {
         return NextResponse.json({ error: notasError.message }, { status: 400 })
@@ -184,8 +196,71 @@ export async function GET(req: Request) {
           stats.count[trimestre] = (stats.count[trimestre] ?? 0) + 1
           stats.weightedSum[trimestre] = (stats.weightedSum[trimestre] ?? 0) + row.valor * Number(peso)
           stats.weightSum[trimestre] = (stats.weightSum[trimestre] ?? 0) + Number(peso)
+          if (detalhado) {
+            if (!stats.tipoSum) stats.tipoSum = {}
+            if (!stats.tipoCount) stats.tipoCount = {}
+            const key = tipo ?? 'OUTRO'
+            stats.tipoSum[key] = (stats.tipoSum[key] ?? 0) + row.valor
+            stats.tipoCount[key] = (stats.tipoCount[key] ?? 0) + 1
+          }
         }
       }
+    }
+
+    if (detalhado && parsed.data.trimestre) {
+      const trimestre = parsed.data.trimestre
+      const pickTipo = (stats: { tipoSum?: Record<string, number>; tipoCount?: Record<string, number> } | undefined, tipo: string) => {
+        if (!stats?.tipoSum || !stats?.tipoCount) return null
+        const sum = stats.tipoSum[tipo] ?? 0
+        const count = stats.tipoCount[tipo] ?? 0
+        if (count === 0) return null
+        return Number((sum / count).toFixed(2))
+      }
+
+      const calcularMt = (values: Array<{ tipo: string; valor: number | null }>) => {
+        if (modeloAvaliacao === 'DEPOIS') return null
+        const valid = values.filter((entry) => typeof entry.valor === 'number') as Array<{
+          tipo: string
+          valor: number
+        }>
+        if (valid.length === 0) return null
+        let weightedSum = 0
+        let weightSum = 0
+        for (const entry of valid) {
+          const peso = pesoPorTipo.get(entry.tipo) ?? 1
+          weightedSum += entry.valor * Number(peso)
+          weightSum += Number(peso)
+        }
+        if (weightSum > 0) {
+          return Number((weightedSum / weightSum).toFixed(2))
+        }
+        const avg = valid.reduce((acc, cur) => acc + cur.valor, 0) / valid.length
+        return Number(avg.toFixed(2))
+      }
+
+      const payload = matriculaRows.map((row: any) => {
+        const stats = notasPorMatricula.get(row.id)
+        const mac = pickTipo(stats, 'MAC')
+        const npp = pickTipo(stats, 'NPP')
+        const npt = pickTipo(stats, 'NPT')
+        const mt = calcularMt([
+          { tipo: 'MAC', valor: mac },
+          { tipo: 'NPP', valor: npp },
+          { tipo: 'NPT', valor: npt },
+        ])
+        return {
+          aluno_id: row.aluno_id,
+          nome: row.alunos?.nome ?? 'Sem nome',
+          foto: row.alunos?.profiles?.avatar_url ?? null,
+          numero_chamada: row.numero_chamada ?? null,
+          mac,
+          npp,
+          npt,
+          mt,
+        }
+      })
+
+      return NextResponse.json(payload)
     }
 
     const calcularNota = (stats: {
