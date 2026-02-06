@@ -10,7 +10,7 @@ const LoginSchema = z.object({
   password: z.string().min(1, "A senha não pode estar em branco."),
 });
 
-export async function loginAction(_: any, formData: FormData) {
+export async function loginAction(_: unknown, formData: FormData) {
   const parsed = LoginSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),

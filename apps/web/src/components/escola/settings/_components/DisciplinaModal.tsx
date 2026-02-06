@@ -119,7 +119,7 @@ export function DisciplinaModal({
         : emptyDisciplina.periodos_ativos,
       periodo_mode: initial?.periodo_mode ?? emptyDisciplina.periodo_mode,
     });
-  }, [open, initial?.id]);
+  }, [open, initial]);
 
   const errors = useMemo(() => {
     const nextErrors: Record<string, string> = {};

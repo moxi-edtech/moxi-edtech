@@ -85,7 +85,7 @@ export async function POST(req: Request) {
     // Atualiza em batches (ajustando dia para último dia do mês quando necessário)
     let updated = 0
     for (const m of mensalidades) {
-      let venc = m.data_vencimento as string | null
+      const venc = m.data_vencimento as string | null
       let newVenc: string | null = venc
       if (newDia && venc) {
         const d = new Date(venc)

@@ -9,7 +9,7 @@ const anonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
 
 // Log bem explícito no cliente se faltar algo (só em runtime do browser)
 if (!url || !anonKey) {
-  // eslint-disable-next-line no-console
+   
   console.error(
     "[Supabase] NEXT_PUBLIC_SUPABASE_URL ou NEXT_PUBLIC_SUPABASE_ANON_KEY não definidos. " +
       "Verifique as variáveis de ambiente na Vercel (Production)."

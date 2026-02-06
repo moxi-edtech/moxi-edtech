@@ -164,7 +164,7 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
       }
     }
     fetchPeriodos();
-  }, [escolaId, turmaId]);
+  }, [escolaId, turmaId, periodoId]);
 
   useEffect(() => {
     if (!periodoId) return;

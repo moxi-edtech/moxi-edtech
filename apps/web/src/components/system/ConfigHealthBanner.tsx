@@ -14,14 +14,13 @@ type Health = {
 
 export default function ConfigHealthBanner() {
   const [missing, setMissing] = useState<string[]>([])
-  const [hidden, setHidden] = useState<boolean>(false)
-
-  useEffect(() => {
+  const [hidden, setHidden] = useState<boolean>(() => {
     try {
-      const dismissed = typeof window !== 'undefined' && window.localStorage.getItem('hideConfigHealthBanner')
-      if (dismissed) setHidden(true)
-    } catch {}
-  }, [])
+      return typeof window !== 'undefined' && Boolean(window.localStorage.getItem('hideConfigHealthBanner'))
+    } catch {
+      return false
+    }
+  })
 
   useEffect(() => {
     let active = true

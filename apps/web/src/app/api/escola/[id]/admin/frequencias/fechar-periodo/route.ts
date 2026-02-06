@@ -111,7 +111,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   let supabase: any = null;
-  let outboxEventId: string | null = null;
+  const outboxEventId: string | null = null;
   try {
     const { id: requestedEscolaId } = await params;
     supabase = await supabaseServerTyped<Database>();

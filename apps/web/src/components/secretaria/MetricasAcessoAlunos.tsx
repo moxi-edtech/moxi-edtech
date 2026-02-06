@@ -21,15 +21,27 @@ export function MetricasAcessoAlunos({ escolaId }: Props) {
 
   useEffect(() => {
     if (!escolaId) return;
-    setLoading(true);
-    fetch(`/api/secretaria/alunos/metricas-acesso?escolaId=${encodeURIComponent(escolaId)}`)
-      .then((res) => res.json())
-      .then((json) => {
-        if (!json?.ok) throw new Error(json?.error || 'Falha ao carregar');
+    let active = true;
+    const load = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(
+          `/api/secretaria/alunos/metricas-acesso?escolaId=${encodeURIComponent(escolaId)}`
+        );
+        const json = await res.json();
+        if (!active) return;
+        if (!json?.ok) throw new Error(json?.error || "Falha ao carregar");
         setData(json.data || null);
-      })
-      .catch(() => setData(null))
-      .finally(() => setLoading(false));
+      } catch {
+        if (active) setData(null);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      active = false;
+    };
   }, [escolaId]);
 
   const cards = [

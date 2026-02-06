@@ -62,8 +62,8 @@ export default function DocumentosEmissaoHubClient({ escolaId }: { escolaId: str
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [debouncedQuery, setDebouncedQuery] = useState("");
-  const alunoIdParam = searchParams.get("alunoId");
-  const tipoParam = searchParams.get("tipo") as DocumentoTipo | null;
+  const alunoIdParam = searchParams?.get("alunoId");
+  const tipoParam = searchParams?.get("tipo") as DocumentoTipo | null;
 
   useEffect(() => {
     const handler = setTimeout(() => {

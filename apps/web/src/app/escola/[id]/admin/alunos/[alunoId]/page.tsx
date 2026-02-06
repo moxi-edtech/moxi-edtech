@@ -44,7 +44,7 @@ export default function AlunoEditPage({ params }: { params: Promise<{ id: string
     }
   }
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
+  useEffect(() => { load();   }, []);
 
   function save(e: React.FormEvent) {
     e.preventDefault();

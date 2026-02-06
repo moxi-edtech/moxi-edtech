@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabaseClient";
+import { Tables } from "~types/supabase";
 
 export default function RequireAluno({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -27,8 +28,8 @@ export default function RequireAluno({ children }: { children: React.ReactNode }
         .eq("user_id", user.id)
         .limit(10);
 
-      const hasAluno = (vinculos || []).some((v: any) => {
-        const papel = (v as any)?.papel ?? (v as any)?.role ?? null;
+      const hasAluno = (vinculos || []).some((v: Tables<'escola_users'>) => {
+        const papel = v.papel ?? v.role ?? null;
         return papel === "aluno";
       });
 

@@ -113,7 +113,7 @@ export async function POST(request: Request) {
           const valor = parseFloat(String(valorRaw).replace(',', '.') || '0');
           const tipo = valor >= 0 ? 'credito' : 'debito';
 
-          let rawDate = transactionRaw.data || transactionRaw.date || transactionRaw.dt || transactionRaw['data da transacao'];
+          const rawDate = transactionRaw.data || transactionRaw.date || transactionRaw.dt || transactionRaw['data da transacao'];
           let parsedDate;
           if (rawDate) {
             if (typeof rawDate === 'number') {

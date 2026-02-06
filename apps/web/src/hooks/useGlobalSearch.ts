@@ -115,18 +115,21 @@ export function useGlobalSearch(escolaId?: string | null, options?: GlobalSearch
   const [loading, setLoading] = useState(false);
   const [cursor, setCursor] = useState<Cursor | null>(null);
   const [hasMore, setHasMore] = useState(false);
+  const transformQuery = options?.transformQuery;
+  const portal = options?.portal;
+  const types = options?.types;
 
   const normalizedQuery = useMemo(() => query.trim().replace(/\s+/g, " "), [query]);
   const effectiveQuery = useMemo(() => {
-    const next = options?.transformQuery ? options.transformQuery(normalizedQuery) : normalizedQuery;
+    const next = transformQuery ? transformQuery(normalizedQuery) : normalizedQuery;
     return next.trim().replace(/\s+/g, " ");
-  }, [normalizedQuery, options?.transformQuery]);
+  }, [normalizedQuery, transformQuery]);
   const debouncedQuery = useDebounce(effectiveQuery, 300);
   const resolvedTypes = useMemo(() => {
-    if (options?.types && options.types.length > 0) return options.types;
-    if (options?.portal && PORTAL_TYPES[options.portal]) return PORTAL_TYPES[options.portal];
+    if (types && types.length > 0) return types;
+    if (portal && PORTAL_TYPES[portal]) return PORTAL_TYPES[portal];
     return ["aluno"];
-  }, [options?.types, options?.portal]);
+  }, [types, portal]);
 
   const supabase = useMemo(() => createClient(), []);
 

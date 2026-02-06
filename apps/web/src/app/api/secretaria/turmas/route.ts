@@ -116,7 +116,7 @@ export async function GET(req: Request) {
 
     // 5. Mapeamento e Sanitização (AQUI ESTÁ A PROTEÇÃO CONTRA NULL)
     // Transforma dados brutos em dados seguros para o Frontend
-    let items = rows?.map((t: any) => ({
+    const items = rows?.map((t: any) => ({
         id: t.id,
         nome: t.turma_nome ?? "Sem Nome",
         turma_codigo: t.turma_codigo ?? "",

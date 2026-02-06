@@ -208,12 +208,16 @@ export function ModalPagamentoRapido({
   const confirmBtnRef = useRef<HTMLButtonElement | null>(null);
 
   const valorDevido = mensalidade?.valor ?? 0;
+  const mensalidadeId = mensalidade?.id ?? null;
+  const mensalidadeMes = mensalidade?.mes ?? null;
+  const mensalidadeAno = mensalidade?.ano ?? null;
+  const mensalidadeValor = mensalidade?.valor ?? null;
 
   const mesAno = useMemo(() => {
-    const m = clampMonth(mensalidade?.mes);
-    if (!mensalidade || !m) return "Mensalidade";
-    return `${MESES[m - 1]}/${mensalidade.ano}`;
-  }, [mensalidade?.id, mensalidade?.mes, mensalidade?.ano]);
+    const m = clampMonth(mensalidadeMes ?? undefined);
+    if (!mensalidadeId || !m || !mensalidadeAno) return "Mensalidade";
+    return `${MESES[m - 1]}/${mensalidadeAno}`;
+  }, [mensalidadeId, mensalidadeMes, mensalidadeAno]);
 
   const valorPagoNum = useMemo(() => safeNumber(valorPago), [valorPago]);
 
@@ -238,14 +242,14 @@ export function ModalPagamentoRapido({
     setConcluido(false);
     setProcessando(false);
     setMetodo("cash");
-    setValorPago(mensalidade ? String(mensalidade.valor) : "");
+    setValorPago(mensalidadeValor != null ? String(mensalidadeValor) : "");
     setPaymentReference("");
     setRecibo(null);
     setPrintRequested(false);
 
     // foco: botão confirmar (fluxo balcão é teclado-friendly)
     window.setTimeout(() => confirmBtnRef.current?.focus(), 50);
-  }, [open, mensalidade?.id]);
+  }, [open, mensalidadeId, mensalidadeValor]);
 
   useEffect(() => {
     if (!open || !escolaId) return;
@@ -375,7 +379,7 @@ export function ModalPagamentoRapido({
       setProcessando(false);
     }
   }, [
-    escolaId,
+    aluno.id,
     mensalidade,
     trocoValido,
     processando,

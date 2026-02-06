@@ -59,7 +59,15 @@ export default function PortalLayout({
   const [userName, setUserName] = useState<string | null>(null)
   const [escolaNome, setEscolaNome] = useState<string | null>(null)
 
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      const saved = localStorage.getItem("sidebar:collapsed");
+      return saved === "1";
+    } catch {
+      return false;
+    }
+  });
   const [escolaIdState, setEscolaIdState] = useState<string | null>(null); // New state for escolaId
 
   // Derive sidebar items based on user role
@@ -78,13 +86,6 @@ export default function PortalLayout({
     });
     return replaced.filter((item) => !item.href.includes("["));
   }, [userRole, isLoadingRole, escolaIdState]);
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("sidebar:collapsed");
-      if (saved != null) setCollapsed(saved === "1");
-    } catch {}
-  }, []);
 
   useEffect(() => {
     try {
@@ -249,7 +250,7 @@ export default function PortalLayout({
               <ul className="space-y-1 px-2">
                 {navItems.map((item) => {
                   const Icon = Icons[item.icon as IconName] ?? Icons.HelpCircle;
-                  const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                  const isActive = !!pathname && (pathname === item.href || pathname.startsWith(item.href + "/"));
                                         const IconComponent = Icon as React.ElementType;
                                         return (
                                           <li key={item.href}>
@@ -287,7 +288,7 @@ export default function PortalLayout({
               <div className="flex items-center justify-between bg-white rounded-2xl p-4 shadow-sm m-4">
                 <div className="flex items-center gap-4">
                   <h1 className="text-xl font-semibold text-moxinexa-dark">
-                    {navItems.find(item => pathname === item.href || pathname.startsWith(item.href + "/"))?.label || "Dashboard"}
+                    {navItems.find(item => !!pathname && (pathname === item.href || pathname.startsWith(item.href + "/")))?.label || "Dashboard"}
                   </h1>
                   {plan && (
                     <span className="text-[10px] uppercase px-2 py-1 rounded-full bg-gray-100 border text-gray-600">Plano: {PLAN_NAMES[plan]}</span>

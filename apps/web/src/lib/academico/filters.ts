@@ -7,10 +7,12 @@ type CourseRef = {
   tipo?: string | null;
 };
 
-const normalize = (value?: string | number | null) =>
+const normalize = (value: unknown) =>
   value === undefined || value === null ? "" : String(value).trim().toLowerCase();
 
-const collectItemKeys = (item: any) => {
+type CourseItem = Record<string, unknown>;
+
+const collectItemKeys = (item?: CourseItem | null) => {
   if (!item) return [] as string[];
   return [
     item.curso_id,
@@ -25,14 +27,14 @@ const collectItemKeys = (item: any) => {
   ].filter(Boolean).map(normalize);
 };
 
-const collectItemTypes = (item: any) => {
+const collectItemTypes = (item?: CourseItem | null) => {
   if (!item) return [] as string[];
   return [item.courseType, item.course_type, item.curriculum_key, item.tipo]
     .filter(Boolean)
     .map(normalize);
 };
 
-export const matchesCourse = (item: any, course?: CourseRef | string | null) => {
+export const matchesCourse = (item: CourseItem, course?: CourseRef | string | null) => {
   if (!course) return true;
 
   const courseId = typeof course === "string" ? course : course.id;
@@ -54,8 +56,10 @@ export const matchesCourse = (item: any, course?: CourseRef | string | null) => 
   return targets.length === 0 && typeTargets.length === 0;
 };
 
-export const filterItemsByCourse = <T = any>(items: T[], course?: CourseRef | string | null): T[] => {
+export const filterItemsByCourse = <T extends CourseItem>(
+  items: T[],
+  course?: CourseRef | string | null
+): T[] => {
   if (!Array.isArray(items)) return [] as T[];
   return items.filter((item) => matchesCourse(item, course));
 };
-

@@ -23,7 +23,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { userRole, isLoading: isLoadingRole } = useUserRole();
   const { escolaId: escolaIdFromSession } = useEscolaId();
-  const [escolaIdState, setEscolaIdState] = useState<string | null>(null);
   const [financeBadges, setFinanceBadges] = useState<Record<string, string>>({});
   const [escolaNome, setEscolaNome] = useState<string | null>(null);
   const [planoNome, setPlanoNome] = useState<string | null>(null);
@@ -31,17 +30,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // Extract escolaId from the pathname if available
   const safePathname = pathname ?? "";
 
-  useEffect(() => {
-    if (!safePathname) {
-      setEscolaIdState(null);
-      return;
-    }
+  const escolaIdFromPath = useMemo(() => {
+    if (!safePathname) return null;
     const match = safePathname.match(/\/escola\/([^\/]+)\/(admin|secretaria)/);
-    if (match && match[1]) {
-      setEscolaIdState(match[1]);
-    } else {
-      setEscolaIdState(null);
-    }
+    return match?.[1] ?? null;
   }, [safePathname]);
   
   const inferredRole = useMemo<UserRole | null>(() => {
@@ -56,7 +48,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return null;
   }, [userRole, safePathname]);
 
-  const navEscolaId = escolaIdState || escolaIdFromSession;
+  const navEscolaId = escolaIdFromPath || escolaIdFromSession;
+  const displayedEscolaNome = navEscolaId ? escolaNome : null;
+  const displayedPlanoNome = navEscolaId ? planoNome : null;
 
   const navItems = useMemo(() => {
     if (isLoadingRole || !inferredRole) return [];
@@ -86,11 +80,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [inferredRole, isLoadingRole, navEscolaId, financeBadges]);
 
   useEffect(() => {
-    if (!navEscolaId) {
-      setEscolaNome(null);
-      setPlanoNome(null);
-      return;
-    }
+    if (!navEscolaId) return;
 
     let cancelled = false;
 
@@ -224,8 +214,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex">
         <Sidebar
           items={navItems}
-          escolaNome={escolaNome}
-          planoNome={planoNome}
+          escolaNome={displayedEscolaNome}
+          planoNome={displayedPlanoNome}
           portalTitle={topbarLabels?.title}
         />
         <div className="flex-1 min-w-0">
@@ -233,8 +223,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             portalTitle={topbarLabels?.title}
             portalSubtitle={topbarLabels?.subtitle}
             contextLabel="Dashboard"
-            escolaNome={escolaNome}
-            planoNome={planoNome}
+            escolaNome={displayedEscolaNome}
+            planoNome={displayedPlanoNome}
             escolaId={navEscolaId}
             portal={inferredRole ?? undefined}
           />

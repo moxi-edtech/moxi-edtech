@@ -158,7 +158,9 @@ export default function SchoolsTableClient({
       const sp = new URLSearchParams(searchParams?.toString());
       if (next === 1) sp.delete('page'); else sp.set('page', String(next));
       const query = sp.toString();
-      router.replace(query ? `${pathname}?${query}` : pathname);
+      if (pathname) {
+        router.replace(query ? `${pathname}?${query}` : pathname);
+      }
     } catch {}
   };
 

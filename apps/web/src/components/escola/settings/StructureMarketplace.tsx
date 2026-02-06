@@ -503,7 +503,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       baseKey: "custom_builder",
     });
     setShowModal(true);
-  }, []);
+  }, [buildDraftDisciplina]);
 
   const toggleClass = useCallback((clsRaw: string) => {
     setDraft((prev) => {

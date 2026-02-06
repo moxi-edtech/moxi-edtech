@@ -1,6 +1,24 @@
 import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import type { Database } from "~types/supabase";
+
+type DatabaseWithAvisos = Database & {
+  public: Database["public"] & {
+    Tables: Database["public"]["Tables"] & {
+      avisos: {
+        Row: {
+          id: string;
+          titulo: string | null;
+          resumo: string | null;
+          origem: string | null;
+          created_at: string | null;
+          escola_id: string | null;
+        };
+      };
+    };
+  };
+};
 
 export async function GET() {
   try {
@@ -10,7 +28,9 @@ export async function GET() {
 
     if (!escolaId) return NextResponse.json({ ok: true, avisos: [] });
 
-    let query = supabase
+    const supabaseAvisos = supabase as unknown as import("@supabase/supabase-js").SupabaseClient<DatabaseWithAvisos>;
+
+    let query = supabaseAvisos
       .from('avisos')
       .select('id, titulo, resumo, origem, created_at')
       .eq('escola_id', escolaId)

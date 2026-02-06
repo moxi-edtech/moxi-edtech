@@ -33,12 +33,12 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   // Métricas
   let mediaGeral = 0;
   let totalAvaliacoes = 0;
-  let disciplinasUnicas = new Set<string>();
-  let turmasUnicas = new Set<string>();
+  const disciplinasUnicas = new Set<string>();
+  const turmasUnicas = new Set<string>();
 
   // Contagem total
   {
-    let countQuery = s
+    const countQuery = s
       .from('notas')
       .select('id', { count: 'exact', head: true })
       .eq('escola_id', escolaId);

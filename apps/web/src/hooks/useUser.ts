@@ -1,17 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabaseClient";
 
+export type UserMetadata = {
+  escola_id?: string | null;
+  escola?: { plano_atual?: string | null } | null;
+};
+
 type UseUserResult = {
-  user: any;
+  user: User | null;
   escola: { id: string | null; plano_atual?: string | null } | null;
   loading: boolean;
   error: string | null;
 };
 
 export function useUser(): UseUserResult {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [escola, setEscola] = useState<UseUserResult["escola"]>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,12 +39,11 @@ export function useUser(): UseUserResult {
 
         setUser(user);
 
-        const escolaId =
-          ((user?.app_metadata as any)?.escola_id as string | undefined) ??
-          null;
+        const metadata = user?.app_metadata as UserMetadata | undefined;
+        const escolaId = (metadata?.escola_id as string | undefined) ?? null;
 
         if (escolaId) {
-          setEscola({ id: escolaId, plano_atual: (user as any)?.escola?.plano_atual });
+          setEscola({ id: escolaId, plano_atual: metadata?.escola?.plano_atual ?? null });
           return;
         }
 
@@ -52,7 +57,10 @@ export function useUser(): UseUserResult {
           if (!active) return;
 
           const resolvedId =
-            (profile as any)?.current_escola_id ?? (profile as any)?.escola_id ?? null;
+            (profile as { current_escola_id?: string | null; escola_id?: string | null } | null)
+              ?.current_escola_id ??
+            (profile as { escola_id?: string | null } | null)?.escola_id ??
+            null;
           setEscola(resolvedId ? { id: String(resolvedId), plano_atual: null } : null);
         } else {
           setEscola(null);

@@ -1,5 +1,23 @@
 import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
+import type { Database } from "~types/supabase";
+
+type DatabaseWithAvisos = Database & {
+  public: Database["public"] & {
+    Tables: Database["public"]["Tables"] & {
+      avisos: {
+        Row: {
+          id: string;
+          titulo: string | null;
+          resumo: string | null;
+          origem: string | null;
+          created_at: string | null;
+          escola_id: string | null;
+        };
+      };
+    };
+  };
+};
 
 export async function GET() {
   try {
@@ -44,7 +62,7 @@ export async function GET() {
     // Status financeiro (baseado em mensalidades do aluno)
     let status_financeiro: any = { emDia: true, pendentes: 0 };
     try {
-      const { data: matriculaData, error: matriculaError } = escolaId
+      const { data: matriculaData, error: matriculaError } = escolaId && matriculaId
         ? await supabase
             .from('matriculas')
             .select('aluno_id')
@@ -76,7 +94,8 @@ export async function GET() {
     let avisos_recentes: any[] = [];
     try {
       if (escolaId) {
-        const { data: avs } = await supabase
+        const supabaseAvisos = supabase as unknown as import("@supabase/supabase-js").SupabaseClient<DatabaseWithAvisos>;
+        const { data: avs } = await supabaseAvisos
           .from('avisos')
           .select('id, titulo, resumo, origem, created_at')
           .eq('escola_id', escolaId)
