@@ -7,17 +7,16 @@ import dynamic from "next/dynamic";
 import {
   Building2,
   BookOpen,
-  Users,
-  CreditCard,
-  ShieldCheck,
   ChevronRight,
   ArrowLeft,
   Layers,
   CalendarCheck,
   Wand2,
   AlertTriangle,
-  Play,
-  Wallet
+  Users,
+  ShieldCheck,
+  Wallet,
+  Play
 } from "lucide-react";
 
 // Componente Progress interno para não depender de lib externa
@@ -70,7 +69,6 @@ const AvancadoPanel = dynamic(
 
 export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps) {
   // --- STATE & DATA ---
-  const [avaliacaoPending, setAvaliacaoPending] = useState<boolean | null>(null);
   const [progress, setProgress] = useState<number | null>(null);
   const [setupStatus, setSetupStatus] = useState<{
     ano_letivo_ok?: boolean;
@@ -105,9 +103,6 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
           curriculo_published_ok: data?.badges?.curriculo_published_ok,
           turmas_ok: data?.badges?.turmas_ok,
         });
-        if (typeof data?.badges?.avaliacao_ok === "boolean") {
-          setAvaliacaoPending(!data.badges.avaliacao_ok);
-        }
         if (typeof data?.completion_percent === 'number') setProgress(data.completion_percent);
 
         const impactRes = await fetch(`/api/escola/${escolaId}/admin/setup/impact`, {
@@ -124,7 +119,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
         }
       } catch (error) {
         console.error(error);
-        if (!cancelled) setAvaliacaoPending(null);
+        if (!cancelled) setProgress(null);
       }
     }
     fetchStatus();
@@ -137,9 +132,6 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
   const okTone = "bg-[#1F6B3B]/10 text-[#1F6B3B] border-[#1F6B3B]/20";
   const pendingTone = "bg-amber-50 text-amber-700 border-amber-200";
   const neutralTone = "bg-slate-50 text-slate-600 border-slate-200";
-
-  const avaliacaoLabel = avaliacaoPending === null ? null : avaliacaoPending ? "Pendente" : "Configurado";
-  const avaliacaoTone = avaliacaoPending ? pendingTone : okTone;
 
   const anoLetivoOk = setupStatus?.ano_letivo_ok && setupStatus?.periodos_ok;
   const curriculoOk = setupStatus?.curriculo_published_ok;
@@ -201,59 +193,36 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
     danger?: boolean;
   };
 
-  // Setup Cards (Grid Inferior)
-  const setupCards: SettingsCard[] = [
-    ...((progress ?? 0) < 100 ? [{
+  const quickCards: SettingsCard[] = [
+    {
       title: "Assistente de Setup",
       desc: "Reconfigurar ano letivo e estrutura.",
       icon: Wand2,
       action: onOpenWizard,
       statusLabel: progress !== null ? `${progress}%` : null,
       statusTone: pendingTone,
-      highlight: true
-    }] : []),
-    {
-      title: "Ano Letivo",
-      desc: "Períodos e datas.",
-      icon: CalendarCheck,
-      href: `/escola/${escolaId}/admin/configuracoes/academico-completo`,
-      statusLabel: cardStatus(anoLetivoOk).label,
-      statusTone: cardStatus(anoLetivoOk).tone,
+      highlight: true,
     },
     {
-      title: "Avaliação",
-      desc: "Regras de nota e frequência.",
-      icon: BookOpen,
-      href: `/escola/${escolaId}/admin/configuracoes/avaliacao`,
-      statusLabel: avaliacaoLabel,
-      statusTone: avaliacaoTone,
-    },
-    {
-      title: "Currículo",
-      desc: "Matriz curricular.",
+      title: "Oferta Formativa",
+      desc: "Cursos e níveis.",
       icon: Layers,
-      href: `/escola/${escolaId}/admin/configuracoes/academico-completo`,
-      statusLabel: cardStatus(curriculoOk).label,
-      statusTone: cardStatus(curriculoOk).tone,
+      href: `/escola/${escolaId}/admin/configuracoes/estrutura`,
+      meta: estruturaMeta,
     },
     {
-      title: "Turmas",
-      desc: "Geração de turmas.",
-      icon: Users,
-      href: `/escola/${escolaId}/admin/configuracoes/academico-completo`,
-      statusLabel: cardStatus(turmasOk).label,
-      statusTone: cardStatus(turmasOk).tone,
+      title: "Identidade",
+      desc: "Logo e dados.",
+      icon: Building2,
+      href: `/escola/${escolaId}/admin/configuracoes/identidade`,
     },
-  ];
-
-  // Admin Cards (Grid Inferior)
-  const adminCards: SettingsCard[] = [
-    { title: "Identidade", desc: "Logo e dados.", icon: Building2, href: `/escola/${escolaId}/admin/configuracoes/identidade` },
-    { title: "Oferta Formativa", desc: "Cursos e níveis.", icon: Layers, href: `/escola/${escolaId}/admin/configuracoes/estrutura`, meta: estruturaMeta },
-    { title: "Acessos", desc: "Staff e permissões.", icon: Users, href: `/escola/${escolaId}/admin/configuracoes/acessos` },
-    { title: "Financeiro", desc: "Contas e multas.", icon: CreditCard, href: `/escola/${escolaId}/admin/configuracoes/financeiro` },
-    { title: "Segurança", desc: "Logs e auditoria.", icon: ShieldCheck, href: `/escola/${escolaId}/admin/configuracoes/seguranca` },
-    { title: "Zona de Perigo", desc: "Reset de dados.", icon: AlertTriangle, href: `/escola/${escolaId}/admin/configuracoes`, danger: true }
+    {
+      title: "Zona de Perigo",
+      desc: "Reset de dados.",
+      icon: AlertTriangle,
+      href: `/escola/${escolaId}/admin/configuracoes`,
+      danger: true,
+    },
   ];
 
   return (
@@ -396,82 +365,51 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
         </div>
       </div>
 
-      {/* --- GRIDS INFERIORES (SETUP & ADMIN) --- */}
-      <div className="space-y-8">
-        
-        {/* Setup Acadêmico */}
-        <div>
-          <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4 ml-1">Setup Acadêmico</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
-            {setupCards.map((card, idx) => (
-              <div
-                key={`setup-${idx}`}
-                onClick={() => card.action ? card.action() : window.location.href = card.href || '#'}
-                className={`
-                  group relative p-5 rounded-2xl border cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md flex flex-col justify-between h-full
-                  ${card.highlight 
-                    ? 'bg-gradient-to-br from-[#E3B23C]/5 to-white border-[#E3B23C]/30 hover:border-[#E3B23C]' 
-                    : 'bg-white border-slate-200 hover:border-slate-300'
-                  }
-                `}
-              >
-                <div>
-                  <div className="flex justify-between items-start mb-3">
-                    <div className={`p-2.5 rounded-xl ${card.highlight ? 'bg-[#E3B23C] text-white shadow-sm' : 'bg-slate-50 text-slate-500 group-hover:text-slate-700'}`}>
-                      <card.icon size={20} strokeWidth={1.5} />
-                    </div>
-                    {card.statusLabel && (
-                      <span className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase border ${card.statusTone}`}>
-                        {card.statusLabel}
-                      </span>
-                    )}
+      <div>
+        <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4 ml-1">Acesso rápido</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {quickCards.map((card, idx) => (
+            <div
+              key={`quick-${idx}`}
+              onClick={() => card.action ? card.action() : window.location.href = card.href || '#'}
+              className={`
+                group relative p-4 rounded-xl border cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-sm flex flex-col justify-between
+                ${card.highlight 
+                  ? 'bg-gradient-to-br from-[#E3B23C]/5 to-white border-[#E3B23C]/30 hover:border-[#E3B23C]' 
+                  : 'bg-white border-slate-200 hover:border-slate-300'
+                }
+                ${card.danger ? 'border-rose-100 hover:border-rose-300' : ''}
+              `}
+            >
+              <div>
+                <div className="flex justify-between items-start mb-2">
+                  <div className={`p-2 rounded-xl ${card.danger ? 'bg-rose-50 text-rose-600' : card.highlight ? 'bg-[#E3B23C] text-white' : 'bg-slate-50 text-slate-500 group-hover:text-slate-700'}`}>
+                    <card.icon size={18} strokeWidth={1.5} />
                   </div>
-                  <h3 className="font-bold text-slate-900 text-sm mb-1">{card.title}</h3>
-                  <p className="text-xs text-slate-500 leading-relaxed">{card.desc}</p>
-                </div>
-                {card.highlight && progress !== null && (
-                  <div className="mt-4">
-                    <Progress value={progress} className="h-1.5 bg-slate-100" />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Administração */}
-        <div>
-          <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4 ml-1">Administração Geral</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
-            {adminCards.map((card, idx) => (
-              <div
-                key={`admin-${idx}`}
-                onClick={() => card.action ? card.action() : window.location.href = card.href || '#'}
-                className={`
-                  group p-5 rounded-2xl bg-white border cursor-pointer transition-all hover:-translate-y-0.5 hover:shadow-md flex flex-col justify-between h-full
-                  ${card.danger ? 'border-rose-100 hover:border-rose-300' : 'border-slate-200 hover:border-slate-300'}
-                `}
-              >
-                <div>
-                  <div className="flex justify-between items-start mb-3">
-                    <div className={`p-2.5 rounded-xl ${card.danger ? 'bg-rose-50 text-rose-600' : 'bg-slate-50 text-slate-500 group-hover:text-slate-700'}`}>
-                      <card.icon size={20} strokeWidth={1.5} />
-                    </div>
+                  {card.statusLabel ? (
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase border ${card.statusTone}`}>
+                      {card.statusLabel}
+                    </span>
+                  ) : (
                     <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors" />
-                  </div>
-                  <h3 className={`font-bold text-sm mb-1 ${card.danger ? 'text-rose-700' : 'text-slate-900'}`}>{card.title}</h3>
-                  <p className={`text-xs leading-relaxed ${card.danger ? 'text-rose-600/80' : 'text-slate-500'}`}>{card.desc}</p>
+                  )}
                 </div>
-                {card.meta && (
-                  <p className="text-[10px] text-slate-400 mt-3 pt-3 border-t border-slate-50 font-medium">
-                    {card.meta}
-                  </p>
-                )}
+                <h3 className={`font-bold text-sm mb-1 ${card.danger ? 'text-rose-700' : 'text-slate-900'}`}>{card.title}</h3>
+                <p className={`text-xs leading-relaxed ${card.danger ? 'text-rose-600/80' : 'text-slate-500'}`}>{card.desc}</p>
               </div>
-            ))}
-          </div>
+              {card.meta && (
+                <p className="text-[10px] text-slate-400 mt-3 pt-3 border-t border-slate-50 font-medium">
+                  {card.meta}
+                </p>
+              )}
+              {card.highlight && progress !== null && (
+                <div className="mt-3">
+                  <Progress value={progress} className="h-1.5 bg-slate-100" />
+                </div>
+              )}
+            </div>
+          ))}
         </div>
-
       </div>
     </div>
   );

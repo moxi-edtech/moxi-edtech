@@ -1,8 +1,7 @@
 // apps/web/src/app/secretaria/balcao/page.tsx
-import BalcaoAtendimento from "@/components/secretaria/BalcaoAtendimento";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 export default async function BalcaoPage() {
   const supabase = await supabaseServer();
@@ -18,7 +17,6 @@ export default async function BalcaoPage() {
   if (!escolaId) {
     return notFound(); // Ou exibir erro de escola
   }
-  
-  // Passar o escolaId para o componente BalcaoAtendimento
-  return <BalcaoAtendimento escolaId={escolaId} />;
+
+  return redirect(`/escola/${escolaId}/secretaria`);
 }

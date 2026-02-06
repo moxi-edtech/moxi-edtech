@@ -325,9 +325,17 @@ export function ModalPagamentoRapido({
     abortRef.current = new AbortController();
 
     try {
+      const idempotencyKey =
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
       const res = await fetch("/api/financeiro/pagamentos/registrar", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey,
+        },
         signal: abortRef.current.signal,
         body: JSON.stringify({
           aluno_id: aluno.id,

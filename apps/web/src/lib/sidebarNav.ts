@@ -38,7 +38,6 @@ export const sidebarConfig: SidebarConfig = {
     { href: "/escola/[escolaId]/secretaria", label: "Dashboard", icon: "LayoutDashboard" },
     { href: "/escola/[escolaId]/secretaria/alunos", label: "Alunos", icon: "Users" },
     { href: "/escola/[escolaId]/secretaria/admissoes", label: "Admissões", icon: "GraduationCap" },
-    { href: "/escola/[escolaId]/secretaria/balcao", label: "Balcão de Atendimento", icon: "ClipboardList" },
     { href: "/escola/[escolaId]/secretaria/fecho", label: "Fecho de Caixa", icon: "Lock" },
     { href: "/escola/[escolaId]/secretaria/acesso", label: "Acesso ao Portal", icon: "KeyRound" },
     { href: "/escola/[escolaId]/secretaria/turmas", label: "Turmas", icon: "BookOpen" },

@@ -13,15 +13,19 @@ type ServicoOption = {
   descricao?: string | null;
 };
 
+type BalcaoDecisionBase = {
+  servico_codigo?: string | null;
+};
+
 export type BalcaoDecision =
-  | { decision: "GRANTED"; pedido_id: string }
-  | { decision: "BLOCKED"; pedido_id: string; reason_code: string; reason_detail?: string | null }
-  | {
+  | ({ decision: "GRANTED"; pedido_id: string } & BalcaoDecisionBase)
+  | ({ decision: "BLOCKED"; pedido_id: string; reason_code: string; reason_detail?: string | null } & BalcaoDecisionBase)
+  | ({
       decision: "REQUIRES_PAYMENT";
       pedido_id: string;
       payment_intent_id: string;
       amounts: { total: number };
-    };
+    } & BalcaoDecisionBase);
 
 type Props = {
   open: boolean;
@@ -90,8 +94,9 @@ export function BalcaoServicoModal({
     }
 
     const parsed = data as BalcaoDecision;
-    setDecision(parsed);
-    onDecision(parsed);
+    const enriched = { ...parsed, servico_codigo: servicoCodigo } as BalcaoDecision;
+    setDecision(enriched);
+    onDecision(enriched);
   }
 
   if (!open) return null;

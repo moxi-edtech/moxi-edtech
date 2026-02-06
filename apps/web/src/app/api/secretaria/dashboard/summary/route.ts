@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
 import { parsePlanTier } from "@/config/plans";
@@ -34,7 +34,7 @@ function normalizeStatus(status: string) {
 
 export async function GET() {
   try {
-    const supabase = await createClient();
+    const supabase = await createRouteClient();
     const { data: userRes } = await supabase.auth.getUser();
     const user = userRes?.user ?? null;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });

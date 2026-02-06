@@ -18,23 +18,6 @@ export default function SecretariaDashboardPage() {
     (async () => {
       try {
         setLoading(true);
-        const cacheKey = "secretaria:dashboard:summary";
-        const cacheRaw = typeof sessionStorage !== "undefined" ? sessionStorage.getItem(cacheKey) : null;
-        if (cacheRaw) {
-          const cached = JSON.parse(cacheRaw) as { ts: number; payload: any };
-          if (cached?.payload && Date.now() - cached.ts < 60_000) {
-            if (mounted) {
-              setCounts(cached.payload.counts ?? null);
-              setRecentes(cached.payload.recentes ?? null);
-              if (cached.payload.escola?.plano) {
-                setPlan(cached.payload.escola.plano as Plano);
-              }
-              setLoading(false);
-            }
-            return;
-          }
-        }
-
         const summaryRes = await fetch('/api/secretaria/dashboard/summary', { cache: 'no-store' });
         const summaryJson = await summaryRes.json();
 
@@ -47,12 +30,11 @@ export default function SecretariaDashboardPage() {
           if (summaryJson.escola?.plano) {
             setPlan(summaryJson.escola.plano as Plano);
           }
-          if (typeof sessionStorage !== "undefined") {
-            sessionStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), payload: summaryJson }));
-          }
         }
       } catch (e: any) {
-        if (mounted) setError(e.message);
+        if (mounted) {
+          setError(e.message);
+        }
       } finally {
         if (mounted) setLoading(false);
       }
