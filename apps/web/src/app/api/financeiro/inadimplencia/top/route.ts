@@ -40,44 +40,24 @@ export async function GET(request: Request) {
     const limit = Math.min(Math.max(Number(parsed.data.limit ?? 5), 1), 20);
 
     const radarQuery = supabase
-      .from("vw_radar_inadimplencia")
-      .select("aluno_id, nome_aluno, valor_em_atraso, dias_em_atraso")
+      .from("vw_financeiro_inadimplencia_top")
+      .select("aluno_id, aluno_nome, valor_em_atraso, dias_em_atraso")
       .eq("escola_id", escolaId)
       .order("valor_em_atraso", { ascending: false })
-      .limit(200);
+      .limit(limit);
 
-    const { data: radarRows, error: radarError } = await radarQuery;
+    const { data: topRows, error: radarError } = await radarQuery;
     if (radarError) {
       return NextResponse.json({ ok: false, error: radarError.message }, { status: 500 });
     }
 
-    const totals = new Map<string, { valor: number; dias: number; nome: string }>();
-    (radarRows ?? []).forEach((row: any) => {
-      if (!row.aluno_id) return;
-      const existing = totals.get(row.aluno_id);
-      if (existing) {
-        existing.valor += Number(row.valor_em_atraso ?? 0);
-        existing.dias = Math.max(existing.dias, Number(row.dias_em_atraso ?? 0));
-      } else {
-        totals.set(row.aluno_id, {
-          valor: Number(row.valor_em_atraso ?? 0),
-          dias: Number(row.dias_em_atraso ?? 0),
-          nome: row.nome_aluno || "Aluno",
-        });
-      }
-    });
-
-    const top = Array.from(totals.entries())
-      .sort((a, b) => b[1].valor - a[1].valor)
-      .slice(0, limit);
-
     return NextResponse.json({
       ok: true,
-      data: top.map(([aluno_id, entry]) => ({
-        aluno_id,
-        aluno_nome: entry.nome,
-        valor_em_atraso: entry.valor,
-        dias_em_atraso: entry.dias,
+      data: (topRows ?? []).map((row: any) => ({
+        aluno_id: row.aluno_id,
+        aluno_nome: row.aluno_nome || "Aluno",
+        valor_em_atraso: Number(row.valor_em_atraso ?? 0),
+        dias_em_atraso: Number(row.dias_em_atraso ?? 0),
       })),
     });
   } catch (e) {
