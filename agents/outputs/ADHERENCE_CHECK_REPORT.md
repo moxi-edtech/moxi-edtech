@@ -157,3 +157,12 @@ Referências utilizadas:
 - Formalizar tenant hard isolation e service-role ban em toda camada crítica.
 - Fechar pacote de recibo/estorno/pagamento parcial com auditoria.
 - Consolidar extrato do aluno e dashboards em cima do SSOT `public.pagamentos`.
+
+---
+
+## Atualização — Performance & Compliance (2026-11-07)
+- MV adicionada para inadimplência top (`internal.mv_financeiro_inadimplencia_top` + `vw_financeiro_inadimplencia_top`).
+- Refresh programado por cron (*/10) com `REFRESH CONCURRENTLY`.
+- Index para lista de pagamentos recentes (`idx_pagamentos_escola_day_created_at`).
+- Cache removido no dashboard da Secretaria (sem `sessionStorage` para dados críticos).
+- Limites padrão ajustados para `<= 50` em cursos/classes.

@@ -76,7 +76,7 @@ export async function GET(
 
       query = applyKf2ListInvariants(query, {
         limit,
-        defaultLimit: limit ? undefined : 500,
+        defaultLimit: limit ? undefined : 50,
         order: [
           { column: 'ordem', ascending: true },
           { column: 'id', ascending: true },
@@ -102,7 +102,7 @@ export async function GET(
 
         retry = applyKf2ListInvariants(retry, {
           limit,
-          defaultLimit: limit ? undefined : 500,
+          defaultLimit: limit ? undefined : 50,
           order: [
             { column: 'ordem', ascending: true },
             { column: 'id', ascending: true },
@@ -127,7 +127,7 @@ export async function GET(
       min_disciplinas_core: r.min_disciplinas_core ?? undefined,
     }));
 
-    const pageLimit = limit ?? 500;
+    const pageLimit = limit ?? 50;
     const last = rows[rows.length - 1];
     const nextCursor = rows.length === pageLimit && last ? `${last.ordem},${last.id}` : null;
     return NextResponse.json({ ok: true, data: payload, next_cursor: nextCursor });
