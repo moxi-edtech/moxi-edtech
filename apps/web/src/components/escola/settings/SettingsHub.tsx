@@ -164,6 +164,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
   ];
 
   const pathname = usePathname();
+  const safePathname = pathname ?? "/";
   const searchParams = useSearchParams();
   const panelParams = useMemo(() => Promise.resolve({ id: escolaId }), [escolaId]);
 
@@ -175,15 +176,15 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
     { id: "fluxos", label: "Fluxos", icon: Layers, Component: FluxosPanel },
     { id: "avancado", label: "Avançado", icon: ShieldCheck, Component: AvancadoPanel },
   ];
-  const activeTabId = searchParams.get("tab") ?? tabs[0].id;
+  const activeTabId = searchParams?.get("tab") ?? tabs[0].id;
   const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0];
   const ActivePanel = activeTab.Component;
 
   const buildTabHref = (tabId: string) => {
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
     params.set("tab", tabId);
     const query = params.toString();
-    return query ? `${pathname}?${query}` : pathname;
+    return query ? `${safePathname}?${query}` : safePathname;
   };
 
   type SettingsCard = {

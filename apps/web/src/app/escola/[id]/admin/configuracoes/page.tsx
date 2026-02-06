@@ -29,23 +29,6 @@ export default function ConfiguracoesPage({ params }: Props) {
     percentage: number;
   } | null>(null);
 
-  // States for SettingsHub data
-  const [avaliacaoPending, setAvaliacaoPending] = useState<boolean | null>(null);
-  const [progress, setProgress] = useState<number | null>(null);
-  const [fullSetupStatus, setFullSetupStatus] = useState<{
-    ano_letivo_ok?: boolean;
-    periodos_ok?: boolean;
-    avaliacao_ok?: boolean;
-    curriculo_draft_ok?: boolean;
-    curriculo_published_ok?: boolean;
-    turmas_ok?: boolean;
-  } | null>(null);
-  const [estruturaCounts, setEstruturaCounts] = useState<{
-    cursos_total?: number;
-    classes_total?: number;
-    disciplinas_total?: number;
-  } | null>(null);
-
   // 2. Verificar Estado da Escola no Cliente
   useEffect(() => {
     let cancelled = false;
@@ -68,56 +51,10 @@ export default function ConfiguracoesPage({ params }: Props) {
           setPageSetupStatus(null);
         }
 
-        // --- SettingsHub data fetching logic ---
-        const res = await fetch(`/api/escola/${escolaId}/admin/setup/state`, {
-          cache: "no-store",
-        });
-        const json = await res.json().catch(() => null);
-        if (!res.ok) throw new Error(json?.error || "Erro ao carregar configurações.");
-        if (cancelled) return;
-
-        const data = json?.data ?? {};
-        setFullSetupStatus({
-          ano_letivo_ok: data?.badges?.ano_letivo_ok,
-          periodos_ok: data?.badges?.periodos_ok,
-          avaliacao_ok: data?.badges?.avaliacao_ok,
-          curriculo_draft_ok: data?.badges?.curriculo_draft_ok,
-          curriculo_published_ok: data?.badges?.curriculo_published_ok,
-          turmas_ok: data?.badges?.turmas?.ok,
-        });
-        if (typeof data?.badges?.avaliacao_ok === "boolean") {
-          setAvaliacaoPending(!data.badges.avaliacao_ok);
-        }
-        
-        if (typeof data?.completion_percent === 'number') {
-          setProgress(data.completion_percent);
-        }
-
-        const impactRes = await fetch(`/api/escola/${escolaId}/admin/setup/impact`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
-        });
-        const impactJson = await impactRes.json().catch(() => null);
-        if (cancelled) return;
-        
-        if (impactRes.ok && impactJson?.ok) {
-          const counts = impactJson?.data?.counts;
-          setEstruturaCounts({
-            cursos_total: counts?.cursos_afetados ?? 0,
-            classes_total: counts?.classes_afetadas ?? 0,
-            disciplinas_total: counts?.disciplinas_afetadas ?? 0,
-          });
-        }
-
       } catch (error: any) {
         console.error("Erro ao carregar dados:", error);
         if (!cancelled) {
           setPageSetupStatus(null); // Reset page status on error
-          setFullSetupStatus(null); // Reset SettingsHub status on error
-          setAvaliacaoPending(null); 
-          setProgress(null);
-          setEstruturaCounts(null);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -223,10 +160,6 @@ export default function ConfiguracoesPage({ params }: Props) {
       <SettingsHub 
         escolaId={escolaId} 
         onOpenWizard={() => setForceWizard(true)} 
-        avaliacaoPending={avaliacaoPending}
-        progress={progress}
-        setupStatus={fullSetupStatus}
-        estruturaCounts={estruturaCounts}
       />
     </div>
   );

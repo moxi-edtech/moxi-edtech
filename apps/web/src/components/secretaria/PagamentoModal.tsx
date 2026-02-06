@@ -104,9 +104,9 @@ export function PagamentoModal({
       const { error: intentError } = await supabase.rpc("balcao_confirmar_pagamento_intent", {
         p_intent_id: intentId,
         p_method: method,
-        p_reference: reference || null,
-        p_terminal_id: terminalId || null,
-        p_evidence_url: evidenceUrl || null,
+        p_reference: reference || undefined,
+        p_terminal_id: terminalId || undefined,
+        p_evidence_url: evidenceUrl || undefined,
         p_meta: {},
       });
       if (intentError) {

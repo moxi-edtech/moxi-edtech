@@ -18,8 +18,8 @@ type ApiResponse = { ok: boolean; items: Pagamento[]; error?: string };
 
 export function PagamentosListClient() {
   const searchParams = useSearchParams();
-  const q = searchParams.get("q") || "";
-  const days = searchParams.get("days") || "30";
+  const q = searchParams?.get("q") || "";
+  const days = searchParams?.get("days") || "30";
 
   const [items, setItems] = useState<Pagamento[]>([]);
   const [loading, setLoading] = useState(true);

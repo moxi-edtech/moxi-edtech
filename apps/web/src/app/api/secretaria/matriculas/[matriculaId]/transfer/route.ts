@@ -44,6 +44,15 @@ export async function PUT(request: Request, { params }: { params: Promise<{ matr
 
     const escolaId = matriculaData.escola_id;
 
+    const resolvedEscolaId = await resolveEscolaIdForUser(
+      supabase as any,
+      user.id,
+      escolaId
+    );
+    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
+    }
+
     // 2. Authorization (check role in that school)
     const { error: authError } = await requireRoleInSchool({
       supabase,
@@ -71,6 +80,15 @@ export async function PUT(request: Request, { params }: { params: Promise<{ matr
     if (!result || typeof result !== 'object') {
       return NextResponse.json({ ok: false, error: 'Formato de resposta inesperado do RPC.' }, { status: 500 });
     }
+
+    recordAuditServer({
+      escolaId,
+      portal: "secretaria",
+      acao: "MATRICULA_TRANSFERIDA",
+      entity: "matriculas",
+      entityId: matriculaId,
+      details: { turma_origem: matriculaData.turma_id, turma_destino: parsed.data.turma_id },
+    }).catch(() => null);
 
     return NextResponse.json({ ok: true, ...(result as object) });
   } catch (e) {

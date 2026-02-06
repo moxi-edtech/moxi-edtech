@@ -56,6 +56,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const mensagem = sent.ok
       ? '✉️ E-mail reenviado com instruções.'
       : '⚠️ Falha no envio do e-mail.'
+    let errorMessage: string | null = null
+    if (!sent.ok) {
+      errorMessage = sent.error
+    }
 
     recordAuditServer({
       escolaId,
@@ -70,7 +74,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       ok: sent.ok,
       mensagem,
       actionLink,
-      emailStatus: { attempted: true, via: 'custom', ok: sent.ok, error: sent.error },
+      emailStatus: { attempted: true, via: 'custom', ok: sent.ok, error: errorMessage },
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

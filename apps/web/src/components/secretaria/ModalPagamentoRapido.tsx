@@ -239,7 +239,7 @@ export function ModalPagamentoRapido({
     setProcessando(false);
     setMetodo("cash");
     setValorPago(mensalidade ? String(mensalidade.valor) : "");
-    setReferenciaMB("");
+    setPaymentReference("");
     setRecibo(null);
     setPrintRequested(false);
 

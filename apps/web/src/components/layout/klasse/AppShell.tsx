@@ -29,26 +29,32 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [planoNome, setPlanoNome] = useState<string | null>(null);
 
   // Extract escolaId from the pathname if available
+  const safePathname = pathname ?? "";
+
   useEffect(() => {
-    const match = pathname.match(/\/escola\/([^\/]+)\/(admin|secretaria)/);
+    if (!safePathname) {
+      setEscolaIdState(null);
+      return;
+    }
+    const match = safePathname.match(/\/escola\/([^\/]+)\/(admin|secretaria)/);
     if (match && match[1]) {
       setEscolaIdState(match[1]);
     } else {
       setEscolaIdState(null);
     }
-  }, [pathname]);
+  }, [safePathname]);
   
   const inferredRole = useMemo<UserRole | null>(() => {
     if (userRole) return userRole;
 
     // fallback por rota
-    if (pathname.startsWith("/super-admin")) return "superadmin";
-    if (pathname.startsWith("/secretaria")) return "secretaria";
-    if (pathname.includes("/escola/") && pathname.includes("/admin")) return "admin";
-    if (pathname.includes("/escola/") && pathname.includes("/secretaria")) return "secretaria";
+    if (safePathname.startsWith("/super-admin")) return "superadmin";
+    if (safePathname.startsWith("/secretaria")) return "secretaria";
+    if (safePathname.includes("/escola/") && safePathname.includes("/admin")) return "admin";
+    if (safePathname.includes("/escola/") && safePathname.includes("/secretaria")) return "secretaria";
 
     return null;
-  }, [userRole, pathname]);
+  }, [userRole, safePathname]);
 
   const navEscolaId = escolaIdState || escolaIdFromSession;
 

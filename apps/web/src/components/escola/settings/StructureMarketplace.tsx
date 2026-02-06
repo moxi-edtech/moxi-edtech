@@ -56,6 +56,7 @@ export type CourseDetails = {
     avaliacao_mode_key?: "inherit_school" | "custom" | "inherit_disciplina" | null;
     avaliacao_disciplina_id?: string | null;
     status_completude?: string | null;
+    curriculo_status?: string | null;
     matrix_ids: string[];
   }[];
   turmas: {
@@ -377,7 +378,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
 
   useEffect(() => {
     if (autoResolveTriggered) return;
-    if (searchParams.get("resolvePendencias") !== "1") return;
+    if (searchParams?.get("resolvePendencias") !== "1") return;
     if (loadingCourses) return;
 
     const run = async () => {
@@ -826,7 +827,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   }, [openEditDisciplina, pendingDisciplines]);
 
   useEffect(() => {
-    if (searchParams.get("resolvePendencias") !== "1") return;
+    if (searchParams?.get("resolvePendencias") !== "1") return;
     if (!selectedCourseId || loadingDetails) return;
     if (!resolvePendencias && pendingDisciplines.length > 0) {
       handleResolvePendencias();

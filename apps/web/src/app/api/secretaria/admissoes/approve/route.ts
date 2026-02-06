@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { requireRoleInSchool } from '@/lib/authz'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import { recordAuditServer } from '@/lib/audit'
 
 const payloadSchema = z.object({
   candidatura_id: z.string().uuid(),
@@ -25,7 +27,7 @@ export async function POST(request: Request) {
   const { candidatura_id, observacao, metodo_pagamento, comprovativo_url, amount, referencia } = parsed.data
 
   try {
-    const { data: head, error: headErr } = await supabase
+  const { data: head, error: headErr } = await supabase
       .from('candidaturas')
       .select('id, escola_id, status, dados_candidato')
       .eq('id', candidatura_id)
@@ -33,6 +35,19 @@ export async function POST(request: Request) {
 
     if (headErr || !head) {
       return NextResponse.json({ error: 'Candidatura not found' }, { status: 404 })
+    }
+
+    const { data: userRes } = await supabase.auth.getUser();
+    const user = userRes?.user;
+    if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 });
+
+    const resolvedEscolaId = await resolveEscolaIdForUser(
+      supabase as any,
+      user.id,
+      head.escola_id
+    );
+    if (!resolvedEscolaId || resolvedEscolaId !== head.escola_id) {
+      return NextResponse.json({ error: 'Sem vínculo com a escola' }, { status: 403 });
     }
 
     const { error: authError } = await requireRoleInSchool({
@@ -111,6 +126,15 @@ export async function POST(request: Request) {
         })
       } catch {}
     }
+
+    recordAuditServer({
+      escolaId: head.escola_id,
+      portal: 'secretaria',
+      acao: 'ADMISSAO_APROVADA',
+      entity: 'candidaturas',
+      entityId: candidatura_id,
+      details: { observacao: observacao ?? null, status: updated?.status ?? null },
+    }).catch(() => null)
 
     return NextResponse.json({ ok: true })
   } catch (error: any) {

@@ -1,62 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { normalizeAnoLetivo, resolveTabelaPreco } from "@/lib/financeiro/tabela-preco";
-import { createClient as createAdminClient, type SupabaseClient, type User } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { type SupabaseClient, type User } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 
 function isUUID(value?: string | null) {
   if (!value) return false;
   return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(value);
-}
-
-async function resolverEscolaId(client: SupabaseClient, user: User, provided?: string | null) {
-  if (provided && isUUID(provided)) return provided;
-
-  try {
-    const { data } = await client.rpc("current_tenant_escola_id");
-    if (data && isUUID(data as string)) return data as string;
-  } catch {}
-
-  const claimEscola = (user?.app_metadata?.escola_id || user?.user_metadata?.escola_id) as
-    | string
-    | undefined;
-  if (claimEscola && isUUID(claimEscola)) return claimEscola;
-
-  try {
-    const { data: prof } = await client
-      .from("profiles")
-      .select("current_escola_id, escola_id")
-      .eq("user_id", user?.id)
-      .order("created_at", { ascending: false })
-      .limit(1);
-    const perfil = prof?.[0] as { current_escola_id?: string | null; escola_id?: string | null } | undefined;
-    if (perfil?.current_escola_id) return perfil.current_escola_id as string;
-    if (perfil?.escola_id) return perfil.escola_id as string;
-  } catch {}
-
-  try {
-    const { data: vinc } = await client
-      .from("escola_users")
-      .select("escola_id")
-      .eq("user_id", user?.id)
-      .limit(1);
-    const escola = (vinc?.[0] as { escola_id?: string | null })?.escola_id as string | undefined;
-    if (escola) return escola;
-  } catch {}
-
-  try {
-    const { data: vinc } = await client
-      .from("escola_users")
-      .select("escola_id")
-      .eq("user_id", user?.id)
-      .limit(1);
-    const escola = (vinc?.[0] as { escola_id?: string | null })?.escola_id as string | undefined;
-    if (escola) return escola;
-  } catch {}
-
-  return null;
 }
 
 async function usuarioTemAcessoEscola(client: SupabaseClient, userId: string, escolaId: string) {
@@ -97,17 +49,6 @@ async function usuarioTemAcessoEscola(client: SupabaseClient, userId: string, es
   } catch {}
 
   return false;
-}
-
-function getPrivilegedClient(fallback: SupabaseClient) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (url && serviceRole) {
-    return createAdminClient<Database>(url, serviceRole);
-  }
-
-  return fallback;
 }
 
 function parseAnoLetivoStrict(value: number | string | null | undefined): number | null {
@@ -162,9 +103,12 @@ export async function GET(req: NextRequest) {
       } catch {}
     }
 
+    const resolvedFromSession = session?.escola_id && isUUID(session.escola_id)
+      ? await resolveEscolaIdForUser(supabase as any, user.id, session.escola_id)
+      : null;
     const escolaId =
-      (session?.escola_id && isUUID(session.escola_id) ? session.escola_id : null) ||
-      (await resolverEscolaId(supabase, user, searchParams.get("escola_id")));
+      resolvedFromSession ||
+      (await resolveEscolaIdForUser(supabase as any, user.id, searchParams.get("escola_id")));
 
     if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 400 });
 
@@ -204,16 +148,7 @@ export async function GET(req: NextRequest) {
       allowMensalidadeFallback: true, // permite usar regras legadas de mensalidade se não houver tabela específica
     } as const;
 
-    let { tabela, origem } = await resolveTabelaPreco(supabase as any, pricingParams);
-
-    if (!tabela) {
-      const privileged = getPrivilegedClient(supabase as any);
-      if (privileged !== supabase) {
-        const fallback = await resolveTabelaPreco(privileged as any, pricingParams);
-        tabela = fallback.tabela;
-        origem = fallback.origem;
-      }
-    }
+    const { tabela, origem } = await resolveTabelaPreco(supabase as any, pricingParams);
 
     if (!tabela) {
       return NextResponse.json(

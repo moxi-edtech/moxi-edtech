@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
+import { recordAuditServer } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,15 @@ const normalizeMetodo = (raw: string) => {
 
 export async function POST(req: Request) {
   try {
+    const idempotencyKey =
+      req.headers.get("Idempotency-Key") ?? req.headers.get("idempotency-key");
+    if (!idempotencyKey) {
+      return NextResponse.json(
+        { ok: false, error: "Idempotency-Key header é obrigatório" },
+        { status: 400 }
+      );
+    }
+
     const supabase = await supabaseServerTyped<any>();
     const { data: auth } = await supabase.auth.getUser();
     const user = auth?.user;
@@ -52,14 +62,16 @@ export async function POST(req: Request) {
     const metodo = normalizeMetodo(parsed.data.metodo ?? parsed.data.metodo_pagamento ?? "cash");
     const observacao = parsed.data.observacao ?? null;
 
-    let mensalidade: {
+    type MensalidadeRow = {
       id: string;
       escola_id: string;
       status: string | null;
       valor: number | null;
       valor_previsto: number | null;
       aluno_id: string | null;
-    } | null = null;
+    };
+
+    let mensalidade: MensalidadeRow | null = null;
 
     if (parsed.data.mensalidade_id) {
       const { data: mensalidadeRow, error: mensalidadeErr } = await supabase
@@ -72,11 +84,11 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: false, error: "Mensalidade não encontrada." }, { status: 404 });
       }
 
-      mensalidade = mensalidadeRow as typeof mensalidade;
+      mensalidade = mensalidadeRow as MensalidadeRow;
     }
 
     const escolaId = await resolveEscolaIdForUser(
-      supabase as any,
+      supabase,
       user.id,
       mensalidade?.escola_id ?? null
     );
@@ -108,6 +120,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Valor inválido." }, { status: 400 });
     }
 
+    const { data: existingPagamento } = await supabase
+      .from("pagamentos")
+      .select("id, status, meta")
+      .eq("escola_id", escolaId)
+      .contains("meta", { idempotency_key: idempotencyKey })
+      .maybeSingle();
+    if (existingPagamento) {
+      return NextResponse.json({ ok: true, data: existingPagamento, idempotent: true });
+    }
+
     const { data: pagamento, error } = await supabase.rpc("financeiro_registrar_pagamento_secretaria", {
       p_escola_id: escolaId,
       p_aluno_id: alunoId,
@@ -121,12 +143,22 @@ export async function POST(req: Request) {
         observacao: observacao ?? undefined,
         origem: "portal_financeiro",
         ...(parsed.data.meta ?? {}),
+        idempotency_key: idempotencyKey,
       },
     });
 
     if (error) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
     }
+
+    recordAuditServer({
+      escolaId,
+      portal: "financeiro",
+      acao: "PAGAMENTO_REGISTRADO",
+      entity: "pagamento",
+      entityId: (pagamento as any)?.id ?? null,
+      details: { valor, metodo, mensalidade_id: mensalidade?.id ?? null },
+    }).catch(() => null);
 
     return NextResponse.json({ ok: true, data: pagamento });
   } catch (err) {

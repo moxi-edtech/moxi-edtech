@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { recordAuditServer } from "@/lib/audit";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -19,6 +20,15 @@ const payloadSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    const idempotencyKey =
+      request.headers.get("Idempotency-Key") ?? request.headers.get("idempotency-key");
+    if (!idempotencyKey) {
+      return NextResponse.json(
+        { ok: false, error: "Idempotency-Key header é obrigatório" },
+        { status: 400 }
+      );
+    }
+
     const supabase = await supabaseServerTyped<any>();
     const {
       data: { user },
@@ -42,6 +52,16 @@ export async function POST(request: Request) {
       );
     }
 
+    const { data: existingPagamento } = await supabase
+      .from("pagamentos")
+      .select("id, status, meta")
+      .eq("escola_id", escolaId)
+      .contains("meta", { idempotency_key: idempotencyKey })
+      .maybeSingle();
+    if (existingPagamento) {
+      return NextResponse.json({ ok: true, data: existingPagamento, idempotent: true });
+    }
+
     const payload = parsed.data;
     const metodo = payload.metodo === "kwik" ? "kiwk" : payload.metodo;
     const { data, error } = await supabase.rpc("financeiro_registrar_pagamento_secretaria", {
@@ -53,12 +73,21 @@ export async function POST(request: Request) {
       p_reference: payload.reference ?? null,
       p_evidence_url: payload.evidence_url ?? null,
       p_gateway_ref: payload.gateway_ref ?? null,
-      p_meta: payload.meta ?? {},
+      p_meta: { ...(payload.meta ?? {}), idempotency_key: idempotencyKey },
     });
 
     if (error) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     }
+
+    recordAuditServer({
+      escolaId,
+      portal: "secretaria",
+      acao: "PAGAMENTO_REGISTRADO",
+      entity: "pagamento",
+      entityId: (data as any)?.id ?? null,
+      details: { valor: payload.valor, metodo, status: (data as any)?.status ?? null },
+    }).catch(() => null);
 
     return NextResponse.json({ ok: true, data });
   } catch (e) {

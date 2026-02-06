@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 import { requireRoleInSchool } from '@/lib/authz';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
+import { recordAuditServer } from '@/lib/audit';
 // import { enqueueOutboxEvent } from '@/lib/outbox';
 
 const convertPayloadSchema = z.object({
@@ -91,6 +92,15 @@ export async function POST(request: Request) {
     })
 
     if (error) throw error
+
+    recordAuditServer({
+      escolaId: candidatura.escola_id,
+      portal: 'secretaria',
+      acao: 'ADMISSAO_CONVERTIDA_MATRICULA',
+      entity: 'matriculas',
+      entityId: data ?? null,
+      details: { candidatura_id, turma_id, metodo_pagamento },
+    }).catch(() => null)
 
     return NextResponse.json({ ok: true, matricula_id: data })
   } catch (error: unknown) {

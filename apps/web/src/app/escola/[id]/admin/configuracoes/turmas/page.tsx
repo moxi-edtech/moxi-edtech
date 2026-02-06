@@ -52,6 +52,7 @@ type DisciplinaItem = {
   avaliacao_mode_key?: "inherit_school" | "custom" | "inherit_disciplina" | null;
   avaliacao_disciplina_id?: string | null;
   status_completude?: string | null;
+  curriculo_status?: string | null;
   matrix_ids: string[];
 };
 

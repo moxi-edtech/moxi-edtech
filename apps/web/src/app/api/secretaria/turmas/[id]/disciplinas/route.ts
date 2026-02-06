@@ -158,7 +158,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       }
 
       // Planejamento: placeholder (não há tabela unificada) – considerar future link com syllabi/planos
-      const hasPlanejamento = Boolean(row.planejamento && Object.keys(row.planejamento || {}).length > 0)
+      const hasPlanejamento = false
 
       items.push({
         id: row.id,
@@ -179,8 +179,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
           ano_letivo_id: turmaRes.data?.ano_letivo_id ?? null,
         },
         professor: { id: row.professor_id, nome: profile?.nome ?? null, email: profile?.email ?? null },
-        horarios: row.horarios ?? null,
-        planejamento: row.planejamento ?? null,
+        horarios: null,
+        planejamento: null,
         vinculos: {
           horarios: rotinasCount > 0,
           notas: notasCount > 0,

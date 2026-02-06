@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { hasPermission } from '@/lib/permissions'
+import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import { recordAuditServer } from '@/lib/audit'
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id: escolaId } = await context.params
@@ -11,6 +12,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const user = userRes?.user
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
+    const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId)
+    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
+    }
+
     // Must be admin of this escola
     let papel: string | null = null
     try {
@@ -19,12 +25,17 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     } catch {}
     if (!hasPermission(papel as any, 'configurar_escola')) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
 
-    // Service role client to refresh MVs
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY!
-    const admin = createAdminClient(url, key)
-    const { error } = await admin.rpc('refresh_all_materialized_views')
+    const { error } = await s.rpc('refresh_all_materialized_views')
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 })
+
+    recordAuditServer({
+      escolaId,
+      portal: 'admin_escola',
+      acao: 'MV_REFRESH_ALL',
+      entity: 'maintenance',
+      details: { rpc: 'refresh_all_materialized_views' },
+    }).catch(() => null)
+
     return NextResponse.json({ ok: true })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)

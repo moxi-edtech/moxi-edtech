@@ -15,6 +15,15 @@ const payloadSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    const idempotencyKey =
+      request.headers.get("Idempotency-Key") ?? request.headers.get("idempotency-key");
+    if (!idempotencyKey) {
+      return NextResponse.json(
+        { ok: false, error: "Idempotency-Key header é obrigatório" },
+        { status: 400 }
+      );
+    }
+
     const supabase = await supabaseServerTyped<any>();
     const {
       data: { user },
@@ -35,6 +44,23 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { ok: false, error: parsed.error.issues?.[0]?.message || "Payload inválido" },
         { status: 400 }
+      );
+    }
+
+    const desiredStatus = parsed.data.aprovacao === "approved" ? "approved" : "rejected";
+    const { data: existing } = await supabase
+      .from("fecho_caixa")
+      .select("id, status, escola_id, approved_by, approved_at")
+      .eq("escola_id", escolaId)
+      .eq("id", parsed.data.fecho_id)
+      .maybeSingle();
+    if (existing?.status === desiredStatus) {
+      return NextResponse.json({ ok: true, data: existing, idempotent: true });
+    }
+    if (existing?.status && existing.status !== "declared") {
+      return NextResponse.json(
+        { ok: false, error: "Fecho já foi processado" },
+        { status: 409 }
       );
     }
 

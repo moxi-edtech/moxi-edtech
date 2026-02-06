@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { HttpError } from "@/lib/errors";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { recordAuditServer } from "@/lib/audit";
 
 const PayloadSchema = z.object({
   mensalidadeId: z.string().uuid(),
@@ -92,6 +93,15 @@ export async function POST(req: NextRequest) {
       doc_id: String((data as any).doc_id),
       url_validacao: urlValidacao,
     };
+
+    recordAuditServer({
+      escolaId,
+      portal: "financeiro",
+      acao: "RECIBO_EMITIDO",
+      entity: "documentos_emitidos",
+      entityId: String((data as any).doc_id),
+      details: { mensalidade_id: mensalidadeId, public_id: publicId },
+    }).catch(() => null);
 
     return NextResponse.json(response, { status: 200 });
   } catch (err) {

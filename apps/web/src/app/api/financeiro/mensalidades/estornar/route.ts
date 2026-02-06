@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 const PayloadSchema = z.object({
   mensalidadeId: z.string().uuid(),
@@ -9,6 +10,15 @@ const PayloadSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    const idempotencyKey =
+      req.headers.get("Idempotency-Key") ?? req.headers.get("idempotency-key");
+    if (!idempotencyKey) {
+      return NextResponse.json(
+        { ok: false, error: "Idempotency-Key header é obrigatório" },
+        { status: 400 }
+      );
+    }
+
     const supabase = await supabaseServerTyped<any>();
     const { data: userRes } = await supabase.auth.getUser();
     const user = userRes?.user;
@@ -25,6 +35,33 @@ export async function POST(req: NextRequest) {
     }
 
     const { mensalidadeId, motivo } = parsed.data;
+
+    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
+    if (!escolaId) {
+      return NextResponse.json({ ok: false, error: "Escola não identificada" }, { status: 403 });
+    }
+
+    const { data: mensalidade } = await supabase
+      .from("mensalidades")
+      .select("id, escola_id, status")
+      .eq("id", mensalidadeId)
+      .eq("escola_id", escolaId)
+      .maybeSingle();
+    if (!mensalidade) {
+      return NextResponse.json({ ok: false, error: "Mensalidade não encontrada" }, { status: 404 });
+    }
+
+    const { data: existingEstorno } = await supabase
+      .from("financeiro_estornos")
+      .select("id, mensalidade_id, created_at")
+      .eq("escola_id", escolaId)
+      .eq("mensalidade_id", mensalidadeId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (existingEstorno && mensalidade.status !== "pago") {
+      return NextResponse.json({ ok: true, data: existingEstorno, idempotent: true });
+    }
 
     const { data, error } = await supabase.rpc("estornar_mensalidade", {
       p_mensalidade_id: mensalidadeId,

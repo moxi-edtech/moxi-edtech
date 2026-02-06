@@ -1,18 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id: escolaId } = await ctx.params;
   try {
     const s = await supabaseServerTyped<any>();
     const { data: userRes } = await s.auth.getUser();
-    if (!userRes?.user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+    const user = userRes?.user;
+    if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+
+    const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId);
+    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
+    }
 
     const url = new URL(req.url);
     const status = (url.searchParams.get("status") || "active").toLowerCase();
     const q = (url.searchParams.get("q") || "").trim();
-    const limit = Number(url.searchParams.get("limit") || 30);
+    const limitParam = Number(url.searchParams.get("limit") || 30);
+    const limit = Number.isFinite(limitParam) ? Math.min(limitParam, 50) : 30;
     const cursor = url.searchParams.get("cursor");
 
     let query = s
