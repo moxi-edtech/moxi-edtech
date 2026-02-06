@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  Search, Filter, DollarSign, AlertCircle, 
+  Search, Filter, Eye, AlertCircle, 
   CheckCircle, Clock, ChevronDown, ChevronUp, Mail, 
   Download, Users, ArrowUpRight, Ban, User, Wallet
 } from 'lucide-react';
-import ModalRegistrarPagamento from './ModalRegistrarPagamento';
+import ModalExtratoAluno from './modal-extrato-aluno';
 
 // --- Types & Interfaces ---
 interface Aluno {
@@ -89,7 +89,7 @@ const TurmasAlunosFinanceiro: React.FC = () => {
   const [filtroStatus, setFiltroStatus] = useState<'todos' | 'inadimplentes'>('todos');
   
   // Modal States
-  const [modalPagamento, setModalPagamento] = useState<{ show: boolean, aluno: Aluno | null }>({ show: false, aluno: null });
+  const [modalExtrato, setModalExtrato] = useState<{ show: boolean, aluno: Aluno | null }>({ show: false, aluno: null });
 
   // --- Data Fetching ---
   useEffect(() => {
@@ -340,11 +340,11 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                                 <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                   {/* Botão Pagar: Dourado (Ação) */}
                                   <button 
-                                    title="Registrar Pagamento"
-                                    onClick={(e) => { e.stopPropagation(); setModalPagamento({ show: true, aluno }); }}
+                                    title="Ver Extrato"
+                                    onClick={(e) => { e.stopPropagation(); setModalExtrato({ show: true, aluno }); }}
                                     className="p-1.5 text-[#E3B23C] bg-[#E3B23C]/10 hover:bg-[#E3B23C] hover:text-white rounded-lg transition-colors"
                                   >
-                                    <DollarSign className="w-4 h-4" />
+                                    <Eye className="w-4 h-4" />
                                   </button>
                                   {/* Botão Cobrar: Slate (Neutro) */}
                                   <button 
@@ -382,20 +382,16 @@ const TurmasAlunosFinanceiro: React.FC = () => {
         )}
       </div>
 
-      {/* Modal de Pagamento */}
-      {modalPagamento.show && modalPagamento.aluno && (
-        <ModalRegistrarPagamento 
+      {/* Modal de Extrato */}
+      {modalExtrato.show && modalExtrato.aluno && (
+        <ModalExtratoAluno 
           aluno={{ 
-            id: modalPagamento.aluno.id, 
-            nome: modalPagamento.aluno.nome, 
-            turma: modalPagamento.aluno.turmaNome 
+            id: modalExtrato.aluno.id, 
+            nome: modalExtrato.aluno.nome, 
+            turma: modalExtrato.aluno.turmaNome 
           }}
-          mensalidades={data.mensalidades.filter(m => m.alunoId === modalPagamento.aluno?.id)}
-          onClose={() => setModalPagamento({ show: false, aluno: null })}
-          onConfirm={(dados) => {
-            console.log("Pagamento:", dados);
-            setModalPagamento({ show: false, aluno: null });
-          }}
+          mensalidades={data.mensalidades.filter(m => m.alunoId === modalExtrato.aluno?.id)}
+          onClose={() => setModalExtrato({ show: false, aluno: null })}
         />
       )}
     </div>
