@@ -58,14 +58,35 @@ const FinanceiroPanel = dynamic(
   () => import("@/app/escola/[id]/admin/configuracoes/financeiro/page"),
   { ssr: false, loading: () => <PanelLoading /> }
 );
-const FluxosPanel = dynamic(
-  () => import("@/app/escola/[id]/admin/configuracoes/fluxos/page"),
-  { ssr: false, loading: () => <PanelLoading /> }
-);
-const AvancadoPanel = dynamic(
-  () => import("@/app/escola/[id]/admin/configuracoes/avancado/page"),
-  { ssr: false, loading: () => <PanelLoading /> }
-);
+  const FluxosPanel = dynamic(
+    () => import("@/app/escola/[id]/admin/configuracoes/fluxos/page"),
+    { ssr: false, loading: () => <PanelLoading /> }
+  );
+  const AvancadoPanel = dynamic(
+    () => import("@/app/escola/[id]/admin/configuracoes/avancado/page"),
+    { ssr: false, loading: () => <PanelLoading /> }
+  );
+  const HorariosPanel = ({ escolaId }: { escolaId: string }) => (
+    <div className="space-y-4">
+      <div className="text-sm text-slate-600">
+        Configure os tempos de aula e monte o quadro automático.
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Link
+          href={`/escola/${escolaId}/horarios/slots`}
+          className="rounded-xl border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+        >
+          Configurar Slots
+        </Link>
+        <Link
+          href={`/escola/${escolaId}/horarios/quadro`}
+          className="rounded-xl border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+        >
+          Abrir Quadro
+        </Link>
+      </div>
+    </div>
+  );
 
 export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps) {
   // --- STATE & DATA ---
@@ -164,6 +185,12 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
     { id: "calendario", label: "Calendário", icon: CalendarCheck, Component: CalendarioPanel },
     { id: "avaliacoes", label: "Avaliações", icon: BookOpen, Component: AvaliacoesPanel },
     { id: "turmas", label: "Turmas", icon: Users, Component: TurmasPanel },
+    {
+      id: "horarios",
+      label: "Horários",
+      icon: CalendarCheck,
+      Component: () => <HorariosPanel escolaId={escolaId} />,
+    },
     { id: "financeiro", label: "Financeiro", icon: Wallet, Component: FinanceiroPanel },
     { id: "fluxos", label: "Fluxos", icon: Layers, Component: FluxosPanel },
     { id: "avancado", label: "Avançado", icon: ShieldCheck, Component: AvancadoPanel },
@@ -215,6 +242,12 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
       desc: "Logo e dados.",
       icon: Building2,
       href: `/escola/${escolaId}/admin/configuracoes/identidade`,
+    },
+    {
+      title: "Horários",
+      desc: "Slots e quadro automático.",
+      icon: CalendarCheck,
+      href: `/escola/${escolaId}/horarios/slots`,
     },
     {
       title: "Zona de Perigo",
