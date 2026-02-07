@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { SlotsConfig, type HorarioSlot } from "@/components/escola/horarios/SlotsConfig";
 import { useOfflineStatus } from "@/hooks/useOfflineStatus";
 import { enqueueOfflineAction } from "@/lib/offline/queue";
+import { toast } from "sonner";
 
 type Turno = {
   id: string;
@@ -14,10 +15,12 @@ type Turno = {
 export default function HorariosSlotsPage() {
   const params = useParams();
   const escolaId = params?.id as string;
+  const router = useRouter();
   const [slots, setSlots] = useState<HorarioSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [hasMounted, setHasMounted] = useState(false);
   const { online } = useOfflineStatus();
 
   const turnos = useMemo<Turno[]>(
@@ -28,6 +31,10 @@ export default function HorariosSlotsPage() {
     ],
     []
   );
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!escolaId) return;
@@ -68,6 +75,7 @@ export default function HorariosSlotsPage() {
 
       if (!online) {
         await enqueueOfflineAction(request);
+        toast.message("Configuração enviada para sincronização.");
         return;
       }
 
@@ -79,6 +87,14 @@ export default function HorariosSlotsPage() {
       const json = await res.json().catch(() => ({}));
       if (res.ok && json.ok) {
         setSlots(json.items || []);
+        toast.success("Estrutura de horários salva!", {
+          description: "Agora você pode distribuir as aulas nas turmas.",
+          action: {
+            label: "Ir para o Quadro",
+            onClick: () => router.push(`/escola/${escolaId}/horarios/quadro`),
+          },
+          duration: 5000,
+        });
       } else {
         setSaveError(json?.error || "Falha ao salvar slots");
       }
@@ -99,7 +115,11 @@ export default function HorariosSlotsPage() {
         <SlotsConfig turnos={turnos} value={slots} onChange={setSlots} onSave={handleSave} />
       )}
       <div className="max-w-4xl mx-auto px-6 pb-6 text-xs text-slate-500">
-        {saving ? "Salvando configuração..." : online ? "" : "Offline: alterações serão sincronizadas."}
+        {saving
+          ? "Salvando configuração..."
+          : hasMounted && !online
+            ? "Offline: alterações serão sincronizadas."
+            : ""}
         {saveError ? <span className="ml-2 text-rose-600">{saveError}</span> : null}
       </div>
     </div>
