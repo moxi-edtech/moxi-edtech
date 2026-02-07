@@ -2,61 +2,53 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { SchedulerBoard, type SchedulerAula, type SchedulerSlot } from "@/components/escola/horarios/SchedulerBoard";
+import { AlertCircle, Save, WifiOff } from "lucide-react";
+import { SchedulerBoard } from "@/components/escola/horarios/SchedulerBoard";
 import { useOfflineStatus } from "@/hooks/useOfflineStatus";
 import { enqueueOfflineAction } from "@/lib/offline/queue";
-
-type SlotApi = {
-  id: string;
-  turno_id: string;
-  dia_semana: number;
-  ordem: number;
-  inicio: string;
-  fim: string;
-  is_intervalo?: boolean | null;
-};
+import { useHorarioBaseData, useHorarioTurmaData } from "@/hooks/useHorarioData";
+import { Spinner } from "@/components/ui/Spinner";
+import { Select } from "@/components/ui/Select";
+import { toast } from "sonner";
 
 const DIAS_SEMANA = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"];
-
-const mapSlots = (slots: SlotApi[]): SchedulerSlot[] => {
-  const grouped = new Map<number, SlotApi>();
-  for (const slot of slots) {
-    if (slot.dia_semana < 1 || slot.dia_semana > 5) continue;
-    if (!grouped.has(slot.ordem)) {
-      grouped.set(slot.ordem, slot);
-    }
-  }
-  return Array.from(grouped.values())
-    .sort((a, b) => a.ordem - b.ordem)
-    .map((slot) => ({
-      id: String(slot.ordem),
-      label: `${slot.inicio} - ${slot.fim}`,
-      tipo: slot.is_intervalo ? "intervalo" : "aula",
-    }));
-};
 
 export default function QuadroHorariosPage() {
   const params = useParams();
   const escolaId = params?.id as string;
-  const [slots, setSlots] = useState<SchedulerSlot[]>([]);
-  const [slotLookup, setSlotLookup] = useState<Record<string, string>>({});
-  const [aulas, setAulas] = useState<SchedulerAula[]>([]);
-  const [turmas, setTurmas] = useState<
-    Array<{ id: string; nome?: string | null; turma_nome?: string | null }>
-  >([]);
-  const [salas, setSalas] = useState<Array<{ id: string; nome: string }>>([]);
-  const [novaSala, setNovaSala] = useState("");
-  const [salasFeedback, setSalasFeedback] = useState<string | null>(null);
-  const [grid, setGrid] = useState<Record<string, string | null>>({});
-  const [loading, setLoading] = useState(true);
+  const { online } = useOfflineStatus();
+  const [isMounted, setIsMounted] = useState(false);
+
   const [versaoId, setVersaoId] = useState<string | null>(null);
   const [turmaId, setTurmaId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [conflictSlots, setConflictSlots] = useState<Record<string, boolean>>({});
-  const { online } = useOfflineStatus();
-  const [existingAssignments, setExistingAssignments] = useState<
-    Array<{ slot_id: string; professor_id: string | null; sala_id?: string | null }>
-  >([]);
+  const [novaSala, setNovaSala] = useState("");
+
+  const {
+    slots,
+    slotLookup,
+    salas,
+    turmas,
+    loading: baseLoading,
+    error: baseError,
+    setSalas,
+  } = useHorarioBaseData(escolaId);
+
+  const {
+    aulas,
+    grid,
+    existingAssignments,
+    loading: turmaLoading,
+    error: turmaError,
+    setAulas,
+    setGrid,
+  } = useHorarioTurmaData({ escolaId, turmaId, versaoId, slotLookup });
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!escolaId) return;
@@ -64,160 +56,51 @@ export default function QuadroHorariosPage() {
     const stored = typeof window !== "undefined" ? window.sessionStorage.getItem(key) : null;
     if (stored) {
       setVersaoId(stored);
-    } else {
-      const next = crypto.randomUUID();
-      if (typeof window !== "undefined") {
-        window.sessionStorage.setItem(key, next);
-      }
-      setVersaoId(next);
+      return;
     }
+    const next = crypto.randomUUID();
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(key, next);
+    }
+    setVersaoId(next);
   }, [escolaId]);
 
   useEffect(() => {
-    if (!escolaId) return;
-    let active = true;
-    const load = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/escolas/${escolaId}/horarios/slots`, { cache: "no-store" });
-        const json = await res.json().catch(() => ({}));
-        if (!active) return;
-        if (res.ok && json.ok) {
-          const items = (json.items || []) as SlotApi[];
-          setSlots(mapSlots(items));
-          const lookup: Record<string, string> = {};
-          for (const slot of items) {
-            if (slot.dia_semana < 1 || slot.dia_semana > 5) continue;
-            const dia = DIAS_SEMANA[slot.dia_semana - 1];
-            lookup[`${dia}-${slot.ordem}`] = slot.id;
-          }
-          setSlotLookup(lookup);
-        }
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-    load();
-    return () => {
-      active = false;
-    };
-  }, [escolaId]);
+    if (turmas.length === 0) {
+      setTurmaId(null);
+      return;
+    }
+    setTurmaId((prev) => {
+      if (prev && turmas.some((turma) => turma.id === prev)) return prev;
+      return turmas[0]?.id ?? null;
+    });
+  }, [turmas]);
 
-  useEffect(() => {
-    if (!escolaId) return;
-    let active = true;
-    const load = async () => {
-      const res = await fetch(`/api/escolas/${escolaId}/salas`, { cache: "no-store" });
-      const json = await res.json().catch(() => ({}));
-      if (!active) return;
-      if (res.ok && json.ok) {
-        setSalas(json.items || []);
-      }
-    };
-    load();
-    return () => {
-      active = false;
-    };
-  }, [escolaId]);
+  const turmaOptions = useMemo(() => {
+    if (turmas.length === 0) {
+      return [{ value: "", label: "Sem turmas" }];
+    }
+    return [
+      { value: "", label: "Selecione uma turma" },
+      ...turmas.map((turma) => ({
+        value: turma.id,
+        label: turma.turma_nome || turma.nome || turma.id,
+      })),
+    ];
+  }, [turmas]);
 
-  useEffect(() => {
-    if (!escolaId) return;
-    let active = true;
-    const load = async () => {
-      const res = await fetch(`/api/secretaria/turmas-simples?ano=${new Date().getFullYear()}`, {
-        cache: "no-store",
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!active) return;
-      if (res.ok && json.ok && Array.isArray(json.items)) {
-        const items = json.items as Array<{ id: string; turma_nome?: string | null; nome?: string | null }>;
-        setTurmas(items);
-        if (items.length > 0) {
-          setTurmaId((prev) => prev ?? items[0].id);
-        }
-      }
-    };
-    load();
-    return () => {
-      active = false;
-    };
-  }, [escolaId]);
+  const horariosDisponiveis = useMemo(() => (slots.length > 0 ? slots : undefined), [slots]);
+  const isLoading = baseLoading || turmaLoading;
+  const showOfflineStatus = isMounted && !online;
 
-  useEffect(() => {
-    if (!turmaId) return;
-    let active = true;
-    const load = async () => {
-      const res = await fetch(`/api/secretaria/turmas/${turmaId}/disciplinas`, { cache: "no-store" });
-      const json = await res.json().catch(() => ({}));
-      if (!active) return;
-      if (res.ok && json.ok && Array.isArray(json.items)) {
-        const next = json.items.map((item: any) => ({
-          id: item.disciplina?.id ?? item.id,
-          disciplina: item.disciplina?.nome ?? "Disciplina",
-          sigla: (item.disciplina?.nome ?? "").slice(0, 3).toUpperCase() || "DISC",
-          professor: item.professor?.nome ?? "—",
-          professorId: item.professor?.id ?? null,
-          salaId: null,
-          cor: "bg-slate-100 border-slate-300 text-slate-800",
-          temposTotal: Number(item.meta?.carga_horaria_semanal ?? 1),
-          temposAlocados: 0,
-        })) as SchedulerAula[];
-        setAulas(next);
-      }
-    };
-    load();
-    return () => {
-      active = false;
-    };
-  }, [turmaId]);
-
-  useEffect(() => {
+  const handleSalvar = async (nextGrid: Record<string, string | null>) => {
     if (!escolaId || !turmaId || !versaoId) return;
-    let active = true;
-    const load = async () => {
-      const params = new URLSearchParams({
-        versao_id: versaoId,
-        turma_id: turmaId,
-      });
-      const res = await fetch(`/api/escolas/${escolaId}/horarios/quadro?${params.toString()}`, {
-        cache: "no-store",
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!active) return;
-      if (res.ok && json.ok && Array.isArray(json.items)) {
-        const nextGrid: Record<string, string | null> = {};
-        for (const item of json.items) {
-          const slotKey = Object.entries(slotLookup).find(([, id]) => id === item.slot_id)?.[0];
-          if (slotKey) {
-            nextGrid[slotKey] = item.disciplina_id;
-          }
-        }
-        setGrid(nextGrid);
-        setExistingAssignments(
-          (json.items || []).map((item: any) => ({
-            slot_id: item.slot_id,
-            professor_id: item.professor_id ?? null,
-            sala_id: item.sala_id ?? null,
-          }))
-        );
-      } else {
-        setGrid({});
-        setExistingAssignments([]);
-      }
-    };
-    load();
-    return () => {
-      active = false;
-    };
-  }, [escolaId, turmaId, versaoId, slotLookup]);
 
-  const handleSalvar = async (grid: Record<string, string | null>) => {
-    if (!escolaId || !turmaId || !versaoId) return;
-    const items = Object.entries(grid)
-      .map(([slotKey, disciplinaId]) => ({
-        slotKey,
-        disciplinaId,
-      }))
+    setSaving(true);
+    setSaveError(null);
+
+    const items = Object.entries(nextGrid)
+      .map(([slotKey, disciplinaId]) => ({ slotKey, disciplinaId }))
       .filter(({ slotKey, disciplinaId }) => disciplinaId && slotLookup[slotKey])
       .map(({ slotKey, disciplinaId }) => {
         const aula = aulas.find((item) => item.id === disciplinaId);
@@ -229,144 +112,165 @@ export default function QuadroHorariosPage() {
         };
       });
 
-    setSaveError(null);
-
-    const request = {
-      url: `/api/escolas/${escolaId}/horarios/quadro`,
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        versao_id: versaoId,
-        turma_id: turmaId,
-        items,
-      }),
-      type: "horarios_quadro",
+    const payload = {
+      versao_id: versaoId,
+      turma_id: turmaId,
+      items,
     };
 
-    if (!online) {
-      await enqueueOfflineAction(request);
-      setGrid(grid);
-      return;
-    }
+    setGrid(() => nextGrid);
 
-    const res = await fetch(request.url, {
-      method: request.method,
-      headers: request.headers,
-      body: request.body,
-    });
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok || !json?.ok) {
-      setSaveError(json?.error || "Falha ao salvar quadro");
-      if (json?.conflicts && Array.isArray(json.conflicts)) {
-        const nextConflicts: Record<string, boolean> = {};
-        for (const conflict of json.conflicts) {
-          const slotKey = Object.entries(slotLookup).find(([, id]) => id === conflict.slot_id)?.[0];
-          if (slotKey) nextConflicts[slotKey] = true;
-        }
-        setConflictSlots(nextConflicts);
+    try {
+      if (!online) {
+        await enqueueOfflineAction({
+          url: `/api/escolas/${escolaId}/horarios/quadro`,
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          type: "horarios_quadro",
+        });
+        toast.message("Quadro salvo no dispositivo.", {
+          description: "Sincronizaremos quando a conexão voltar.",
+        });
+        return;
       }
-      return;
+
+      const res = await fetch(`/api/escolas/${escolaId}/horarios/quadro`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok || !json?.ok) {
+        setSaveError(json?.error || "Falha ao salvar quadro");
+        if (json?.conflicts && Array.isArray(json.conflicts)) {
+          const nextConflicts: Record<string, boolean> = {};
+          for (const conflict of json.conflicts) {
+            const slotKey = Object.entries(slotLookup).find(([, id]) => id === conflict.slot_id)?.[0];
+            if (slotKey) nextConflicts[slotKey] = true;
+          }
+          setConflictSlots(nextConflicts);
+        }
+        return;
+      }
+
+      setConflictSlots({});
+    } finally {
+      setSaving(false);
     }
-    setConflictSlots({});
-    setGrid(grid);
   };
 
-  const horariosDisponiveis = useMemo(() => {
-    if (slots.length === 0) {
-      return [
-        { id: "t1", label: "07:30 - 08:15", tipo: "aula" },
-        { id: "t2", label: "08:20 - 09:05", tipo: "aula" },
-        { id: "int", label: "Intervalo", tipo: "intervalo" },
-        { id: "t3", label: "09:25 - 10:10", tipo: "aula" },
-      ] as SchedulerSlot[];
+  const handleAddSala = async (nome: string) => {
+    if (!nome.trim() || !escolaId) return;
+    const res = await fetch(`/api/escolas/${escolaId}/salas`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nome: nome.trim() }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (res.ok && json.ok && json.item) {
+      setSalas((prev) => [...prev, json.item]);
+      toast.success("Sala adicionada.");
+      return;
     }
-    return slots;
-  }, [slots]);
+    toast.error(json?.error || "Falha ao adicionar sala.");
+  };
 
-  if (loading) {
-    return <div className="p-6 text-sm text-slate-500">Carregando quadro...</div>;
+  if (isLoading && !turmaId) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-500">
+        <Spinner className="text-klasse-gold" size={24} />
+        <span className="ml-3 text-sm">Carregando quadro...</span>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen">
-      <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-200 bg-white">
-        <select
-          value={turmaId ?? ""}
-          onChange={(event) => setTurmaId(event.target.value || null)}
-          className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
-        >
-          {turmas.length === 0 && <option value="">Sem turmas</option>}
-          {turmas.map((turma) => (
-            <option key={turma.id} value={turma.id}>
-              {turma.turma_nome || turma.nome || turma.id}
-            </option>
-          ))}
-        </select>
-        <span className="text-sm text-slate-500">Configurar quadro por turma</span>
-        {!online ? (
-          <span className="text-xs text-amber-600">Offline: alterações serão sincronizadas.</span>
-        ) : null}
-        {saveError ? <span className="text-xs text-rose-600">{saveError}</span> : null}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3 px-6 py-3 border-b border-slate-100 bg-white">
-        <div className="text-xs font-semibold text-slate-500 uppercase">Salas</div>
-        <div className="flex items-center gap-2">
-          <input
-            value={novaSala}
-            onChange={(event) => setNovaSala(event.target.value)}
-            placeholder="Adicionar sala"
-            className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm"
+    <div className="min-h-screen bg-slate-50 text-slate-950 font-sans">
+      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
+        <div className="flex flex-wrap items-center gap-4 px-6 py-4">
+          <Select
+            value={turmaId ?? ""}
+            options={turmaOptions}
+            onChange={(event) => setTurmaId(event.target.value || null)}
+            className="max-w-xs rounded-xl border-slate-200 focus:border-klasse-gold focus:ring-klasse-gold text-slate-900"
           />
-          <button
-            type="button"
-            onClick={async () => {
-              if (!novaSala.trim()) return;
-              setSalasFeedback(null);
-              const res = await fetch(`/api/escolas/${escolaId}/salas`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ nome: novaSala.trim() }),
-              });
-              const json = await res.json().catch(() => ({}));
-              if (res.ok && json.ok && json.item) {
-                setSalas((prev) => [...prev, json.item]);
-                setNovaSala("");
-                setSalasFeedback("Sala adicionada.");
-              } else {
-                setSalasFeedback(json?.error || "Falha ao adicionar sala.");
-              }
-            }}
-            className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white"
-          >
-            Adicionar
-          </button>
+          {isLoading ? (
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <Spinner size={14} className="text-klasse-gold" />
+              Sincronizando dados...
+            </div>
+          ) : null}
+          {showOfflineStatus ? (
+            <div className="flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+              <WifiOff className="h-3 w-3" />
+              Modo offline
+            </div>
+          ) : null}
+          {baseError ? <span className="text-xs text-rose-600">{baseError}</span> : null}
+          {turmaError ? <span className="text-xs text-rose-600">{turmaError}</span> : null}
+          {saveError ? <span className="text-xs text-rose-600">{saveError}</span> : null}
+          <div className="ml-auto flex items-center gap-2 text-xs text-slate-500">
+            <Save className={`h-4 w-4 ${saving ? "text-klasse-gold" : "text-slate-300"}`} />
+            <span>{saving ? "Salvando..." : "Alterações prontas"}</span>
+          </div>
         </div>
-        {salas.length === 0 ? (
-          <span className="text-xs text-slate-400">Sem salas cadastradas.</span>
-        ) : null}
-        {salasFeedback ? (
-          <span className={`text-xs ${salasFeedback === "Sala adicionada." ? "text-emerald-600" : "text-rose-600"}`}>
-            {salasFeedback}
-          </span>
+      </header>
+
+      <div className="px-6 py-4">
+        {!turmaId ? (
+          <div className="flex h-[60vh] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white">
+            <AlertCircle className="h-10 w-10 text-slate-300" />
+            <p className="mt-4 text-sm text-slate-500">Selecione uma turma para montar o quadro.</p>
+          </div>
+        ) : (
+          <SchedulerBoard
+            diasSemana={DIAS_SEMANA}
+            tempos={horariosDisponiveis}
+            aulas={aulas}
+            onSalvar={handleSalvar}
+            grid={grid}
+            onGridChange={(next) => setGrid(() => next)}
+            slotLookup={slotLookup}
+            existingAssignments={existingAssignments}
+            conflictSlots={conflictSlots}
+            salas={salas}
+            onSalaChange={(aulaId, salaId) => {
+              setAulas((prev) => prev.map((aula) => (aula.id === aulaId ? { ...aula, salaId } : aula)));
+            }}
+          />
+        )}
+
+        {turmaId ? (
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <input
+              type="text"
+              placeholder="Adicionar sala"
+              value={novaSala}
+              onChange={(event) => setNovaSala(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter") return;
+                if (!novaSala.trim()) return;
+                handleAddSala(novaSala);
+                setNovaSala("");
+              }}
+              className="h-10 w-52 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 focus:border-klasse-gold focus:ring-1 focus:ring-klasse-gold"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                if (!novaSala.trim()) return;
+                handleAddSala(novaSala);
+                setNovaSala("");
+              }}
+              className="h-10 rounded-xl bg-klasse-gold px-4 text-sm font-semibold text-slate-950 shadow-sm"
+            >
+              Adicionar sala
+            </button>
+          </div>
         ) : null}
       </div>
-
-      <SchedulerBoard
-        diasSemana={DIAS_SEMANA}
-        tempos={horariosDisponiveis}
-        aulas={aulas}
-        onSalvar={handleSalvar}
-        grid={grid}
-        onGridChange={setGrid}
-        slotLookup={slotLookup}
-        existingAssignments={existingAssignments}
-        conflictSlots={conflictSlots}
-        salas={salas}
-        onSalaChange={(aulaId, salaId) => {
-          setAulas((prev) => prev.map((aula) => (aula.id === aulaId ? { ...aula, salaId } : aula)));
-        }}
-      />
     </div>
   );
 }
