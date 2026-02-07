@@ -4033,6 +4033,60 @@ export type Database = {
           },
         ]
       }
+      horario_slots: {
+        Row: {
+          created_at: string | null
+          dia_semana: number
+          escola_id: string
+          fim: string
+          id: string
+          inicio: string
+          is_intervalo: boolean | null
+          ordem: number
+          turno_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          dia_semana: number
+          escola_id: string
+          fim: string
+          id?: string
+          inicio: string
+          is_intervalo?: boolean | null
+          ordem: number
+          turno_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          dia_semana?: number
+          escola_id?: string
+          fim?: string
+          id?: string
+          inicio?: string
+          is_intervalo?: boolean | null
+          ordem?: number
+          turno_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "horario_slots_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "horario_slots_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       import_errors: {
         Row: {
           column_name: string | null
@@ -5771,6 +5825,71 @@ export type Database = {
           },
         ]
       }
+      professor_disponibilidade: {
+        Row: {
+          created_at: string | null
+          dia_semana: number
+          escola_id: string
+          id: string
+          periodo_fim: string | null
+          periodo_inicio: string | null
+          professor_id: string
+          tipo: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          dia_semana: number
+          escola_id: string
+          id?: string
+          periodo_fim?: string | null
+          periodo_inicio?: string | null
+          professor_id: string
+          tipo?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          dia_semana?: number
+          escola_id?: string
+          id?: string
+          periodo_fim?: string | null
+          periodo_inicio?: string | null
+          professor_id?: string
+          tipo?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professor_disponibilidade_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professor_disponibilidade_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professor_disponibilidade_professor_id_fkey"
+            columns: ["professor_id"]
+            isOneToOne: false
+            referencedRelation: "professores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professor_disponibilidade_professor_id_fkey"
+            columns: ["professor_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_professores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professores: {
         Row: {
           apelido: string | null
@@ -5975,6 +6094,113 @@ export type Database = {
         }
         Relationships: []
       }
+      quadro_horarios: {
+        Row: {
+          created_at: string | null
+          disciplina_id: string
+          escola_id: string
+          id: string
+          professor_id: string | null
+          sala_id: string | null
+          slot_id: string
+          turma_id: string
+          versao_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          disciplina_id: string
+          escola_id: string
+          id?: string
+          professor_id?: string | null
+          sala_id?: string | null
+          slot_id: string
+          turma_id: string
+          versao_id: string
+        }
+        Update: {
+          created_at?: string | null
+          disciplina_id?: string
+          escola_id?: string
+          id?: string
+          professor_id?: string | null
+          sala_id?: string | null
+          slot_id?: string
+          turma_id?: string
+          versao_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quadro_horarios_disciplina_id_fkey"
+            columns: ["disciplina_id"]
+            isOneToOne: false
+            referencedRelation: "disciplinas_catalogo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quadro_horarios_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quadro_horarios_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quadro_horarios_professor_id_fkey"
+            columns: ["professor_id"]
+            isOneToOne: false
+            referencedRelation: "professores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quadro_horarios_professor_id_fkey"
+            columns: ["professor_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_professores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quadro_horarios_sala_id_fkey"
+            columns: ["sala_id"]
+            isOneToOne: false
+            referencedRelation: "salas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quadro_horarios_slot_id_fkey"
+            columns: ["slot_id"]
+            isOneToOne: false
+            referencedRelation: "horario_slots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quadro_horarios_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quadro_horarios_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_secretaria"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "quadro_horarios_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_turmas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       regras_escala: {
         Row: {
           end: number
@@ -6127,6 +6353,51 @@ export type Database = {
             columns: ["turma_id"]
             isOneToOne: false
             referencedRelation: "vw_search_turmas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      salas: {
+        Row: {
+          capacidade: number | null
+          created_at: string | null
+          escola_id: string
+          id: string
+          nome: string
+          tipo: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          capacidade?: number | null
+          created_at?: string | null
+          escola_id: string
+          id?: string
+          nome: string
+          tipo?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          capacidade?: number | null
+          created_at?: string | null
+          escola_id?: string
+          id?: string
+          nome?: string
+          tipo?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "salas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
         ]
