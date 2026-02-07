@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { SlotsConfig, type HorarioSlot } from "@/components/escola/horarios/SlotsConfig";
 import { useOfflineStatus } from "@/hooks/useOfflineStatus";
 import { enqueueOfflineAction } from "@/lib/offline/queue";
 import { toast } from "sonner";
+import { Spinner } from "@/components/ui/Spinner";
 
 type Turno = {
   id: string;
@@ -22,6 +23,7 @@ export default function HorariosSlotsPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [hasMounted, setHasMounted] = useState(false);
   const { online } = useOfflineStatus();
+  const requestRef = useRef(0);
 
   const turnos = useMemo<Turno[]>(
     () => [
@@ -38,26 +40,32 @@ export default function HorariosSlotsPage() {
 
   useEffect(() => {
     if (!escolaId) return;
-    let active = true;
+    const controller = new AbortController();
+    const requestId = ++requestRef.current;
+
     const load = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/escolas/${escolaId}/horarios/slots`, { cache: "no-store" });
+        const res = await fetch(`/api/escolas/${escolaId}/horarios/slots`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
         const json = await res.json().catch(() => ({}));
-        if (!active) return;
+        if (controller.signal.aborted || requestId !== requestRef.current) return;
         if (res.ok && json.ok) {
           setSlots(json.items || []);
         } else {
           setSlots([]);
         }
       } finally {
-        if (active) setLoading(false);
+        if (!controller.signal.aborted && requestId === requestRef.current) {
+          setLoading(false);
+        }
       }
     };
+
     load();
-    return () => {
-      active = false;
-    };
+    return () => controller.abort();
   }, [escolaId]);
 
   const handleSave = async () => {
@@ -104,23 +112,34 @@ export default function HorariosSlotsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {loading ? (
-        <div className="max-w-4xl mx-auto p-6 space-y-3">
-          <div className="h-6 w-48 bg-slate-200 animate-pulse rounded" />
-          <div className="h-4 w-full bg-slate-100 animate-pulse rounded" />
-          <div className="h-64 w-full bg-slate-100 animate-pulse rounded-xl" />
+    <div className="min-h-screen bg-slate-50 text-slate-950 font-sans">
+      <div className="max-w-5xl mx-auto px-6 py-6">
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold">Estrutura de Horários</h1>
+          <p className="text-sm text-slate-500">
+            Configure os tempos e intervalos que serão usados no quadro.
+          </p>
         </div>
-      ) : (
-        <SlotsConfig turnos={turnos} value={slots} onChange={setSlots} onSave={handleSave} />
-      )}
-      <div className="max-w-4xl mx-auto px-6 pb-6 text-xs text-slate-500">
-        {saving
-          ? "Salvando configuração..."
-          : hasMounted && !online
-            ? "Offline: alterações serão sincronizadas."
-            : ""}
-        {saveError ? <span className="ml-2 text-rose-600">{saveError}</span> : null}
+
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+          {loading ? (
+            <div className="flex items-center justify-center py-16 text-slate-500">
+              <Spinner className="text-klasse-gold" size={24} />
+              <span className="ml-3 text-sm">Carregando horários...</span>
+            </div>
+          ) : (
+            <SlotsConfig turnos={turnos} value={slots} onChange={setSlots} onSave={handleSave} />
+          )}
+        </div>
+
+        <div className="mt-4 text-xs text-slate-500">
+          {saving
+            ? "Salvando configuração..."
+            : hasMounted && !online
+              ? "Offline: alterações serão sincronizadas."
+              : ""}
+          {saveError ? <span className="ml-2 text-rose-600">{saveError}</span> : null}
+        </div>
       </div>
     </div>
   );

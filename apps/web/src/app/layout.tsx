@@ -1,7 +1,9 @@
 import "./globals.css";
+import "sonner/dist/styles.css";
 import { Sora } from "next/font/google";
 import { ServiceWorkerRegister } from "@/components/system/ServiceWorkerRegister";
 import { OfflineSyncRegister } from "@/components/system/OfflineSyncRegister";
+import SonnerClient from "@/components/SonnerClient";
 
 const sora = Sora({
   subsets: ["latin"],
@@ -19,6 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`h-full ${sora.className}`}>
         <ServiceWorkerRegister />
         <OfflineSyncRegister />
+        <SonnerClient />
         {children}
       </body>
     </html>
