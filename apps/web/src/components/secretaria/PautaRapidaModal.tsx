@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { FileText, LayoutDashboard, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useOfficialDocs, type MiniPautaPayload, type TrimestreNumero } from "@/hooks/useOfficialDocs";
+import { GradeEntryGrid, type StudentGradeRow } from "@/components/professor/GradeEntryGrid";
 
 type TurmaItem = {
   id: string;
@@ -51,6 +52,8 @@ export function PautaRapidaModal() {
   const [loadingDisciplinas, setLoadingDisciplinas] = useState(false);
   const [exportingMiniPauta, setExportingMiniPauta] = useState(false);
   const [exportingTrimestral, setExportingTrimestral] = useState(false);
+  const [pauta, setPauta] = useState<StudentGradeRow[]>([]);
+  const [loadingPauta, setLoadingPauta] = useState(false);
   const { gerarMiniPauta, gerarPautaTrimestral } = useOfficialDocs();
 
   useEffect(() => {
@@ -123,6 +126,54 @@ export function PautaRapidaModal() {
       active = false;
     };
   }, [accessToken, turmaId]);
+
+  useEffect(() => {
+    if (!turmaId || !disciplinaId || !periodoNumero) {
+      setPauta([]);
+      return;
+    }
+
+    let active = true;
+    const load = async () => {
+      setLoadingPauta(true);
+      try {
+        const params = new URLSearchParams({
+          disciplinaId,
+          trimestre: String(periodoNumero),
+        });
+        const res = await fetch(`/api/secretaria/turmas/${turmaId}/pauta-grid?${params.toString()}`, {
+          cache: "no-store",
+          headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!active) return;
+        if (res.ok && json.ok && Array.isArray(json.items)) {
+          setPauta(
+            json.items.map((row: any, index: number) => ({
+              id: row.aluno_id,
+              numero: row.numero_chamada ?? index + 1,
+              nome: row.nome,
+              foto: row.foto ?? null,
+              mac1: row.mac ?? null,
+              npp1: row.npp ?? null,
+              npt1: row.npt ?? null,
+              mt1: row.mt ?? null,
+              _status: "synced",
+            }))
+          );
+        } else {
+          setPauta([]);
+        }
+      } finally {
+        if (active) setLoadingPauta(false);
+      }
+    };
+
+    load();
+    return () => {
+      active = false;
+    };
+  }, [accessToken, turmaId, disciplinaId, periodoNumero]);
 
   const disciplinasFiltradas = useMemo(() => {
     return disciplinas.filter((disciplina) => {
@@ -206,6 +257,53 @@ export function PautaRapidaModal() {
     } finally {
       setExportingTrimestral(false);
     }
+  };
+
+  const handleSaveBatch = async (rows: StudentGradeRow[]) => {
+    if (!turmaId || !disciplinaId) return;
+    const payloads = [
+      { tipo: "MAC", campo: "mac1" as const },
+      { tipo: "NPP", campo: "npp1" as const },
+      { tipo: "NPT", campo: "npt1" as const },
+    ];
+
+    for (const { tipo, campo } of payloads) {
+      const notas = rows
+        .map((row) => ({ aluno_id: row.id, valor: row[campo] }))
+        .filter((entry) => typeof entry.valor === "number");
+      if (notas.length === 0) continue;
+
+      const idempotencyKey =
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+      const res = await fetch(`/api/secretaria/notas`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "idempotency-key": idempotencyKey,
+        },
+        body: JSON.stringify({
+          turma_id: turmaId,
+          disciplina_id: disciplinaId,
+          trimestre: periodoNumero,
+          tipo_avaliacao: tipo,
+          notas,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || "Falha ao salvar notas");
+      }
+    }
+
+    setPauta((prev) =>
+      prev.map((row) => {
+        const updated = rows.find((candidate) => candidate.id === row.id);
+        return updated ? { ...row, ...updated, _status: "synced" } : row;
+      })
+    );
   };
 
   return (
@@ -352,6 +450,22 @@ export function PautaRapidaModal() {
           Disciplina selecionada: {disciplinaSelecionada.disciplina?.nome ?? "—"}
         </p>
       ) : null}
+
+      {loadingPauta ? (
+        <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-500">
+          Carregando pauta...
+        </div>
+      ) : pauta.length === 0 ? (
+        <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-500">
+          Selecione turma, disciplina e período para visualizar a pauta.
+        </div>
+      ) : (
+        <GradeEntryGrid
+          initialData={pauta}
+          subtitle={`${disciplinaSelecionada?.disciplina?.nome ?? "Disciplina"} • Trimestre ${periodoNumero}`}
+          onSave={handleSaveBatch}
+        />
+      )}
     </div>
   );
 }
