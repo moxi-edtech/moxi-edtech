@@ -31,9 +31,16 @@ export type DisciplinaForm = {
     base_id?: string | null;
   };
   programa_texto?: string | null;
+  class_ids?: string[];
+  apply_scope?: "all" | "selected";
 };
 
 type DisciplineOption = {
+  id: string;
+  nome: string;
+};
+
+type ClassOption = {
   id: string;
   nome: string;
 };
@@ -47,6 +54,7 @@ type Props = {
   existingDisciplines?: DisciplineOption[];
   pendingDisciplines?: DisciplineOption[];
   onSelectPending?: (id: string) => void;
+  classOptions?: ClassOption[];
   onClose: () => void;
   onSave: (payload: DisciplinaForm) => Promise<void> | void;
   onDelete?: (id: string) => Promise<void> | void;
@@ -90,12 +98,14 @@ export function DisciplinaModal({
   existingDisciplines = [],
   pendingDisciplines = [],
   onSelectPending,
+  classOptions = [],
   onClose,
   onSave,
   onDelete,
 }: Props) {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const allClassIds = useMemo(() => classOptions.map((item) => item.id), [classOptions]);
   const [form, setForm] = useState<DisciplinaForm>(() => ({
     ...emptyDisciplina,
     ...initial,
@@ -105,6 +115,8 @@ export function DisciplinaModal({
       : emptyDisciplina.periodos_ativos,
     periodo_mode: initial?.periodo_mode ?? emptyDisciplina.periodo_mode,
   }));
+  const [applyScope, setApplyScope] = useState<"all" | "selected">("all");
+  const [classIds, setClassIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (!open) return;
@@ -119,7 +131,12 @@ export function DisciplinaModal({
         : emptyDisciplina.periodos_ativos,
       periodo_mode: initial?.periodo_mode ?? emptyDisciplina.periodo_mode,
     });
-  }, [open, initial]);
+    const nextClassIds = initial?.class_ids?.length ? initial.class_ids : allClassIds;
+    const nextScope =
+      allClassIds.length > 0 && nextClassIds.length !== allClassIds.length ? "selected" : "all";
+    setApplyScope(nextScope);
+    setClassIds(nextClassIds);
+  }, [allClassIds, initial, open]);
 
   const errors = useMemo(() => {
     const nextErrors: Record<string, string> = {};
@@ -155,12 +172,32 @@ export function DisciplinaModal({
       nextErrors.avaliacao = "Selecione a disciplina base.";
     }
 
+    if (classOptions.length > 0 && applyScope === "selected" && classIds.length === 0) {
+      nextErrors.class_ids = "Selecione ao menos uma classe.";
+    }
+
     return nextErrors;
-  }, [existingCodes, existingNames, form, initial?.codigo, initial?.nome, mode]);
+  }, [applyScope, classIds, classOptions.length, existingCodes, existingNames, form, initial?.codigo, initial?.nome, mode]);
 
   const canSave = Object.keys(errors).length === 0;
   const totalHorasAno =
     form.carga_horaria_semanal * Math.max(form.periodos_ativos.length, 1) * 12;
+
+  const updateScope = (scope: "all" | "selected") => {
+    setApplyScope(scope);
+    if (scope === "all") {
+      setClassIds(allClassIds);
+    }
+  };
+
+  const toggleClasse = (classId: string) => {
+    setClassIds((prev) => {
+      if (prev.includes(classId)) {
+        return prev.filter((item) => item !== classId);
+      }
+      return [...prev, classId];
+    });
+  };
 
   const togglePeriodo = (periodo: number) => {
     setForm((prev) => {
@@ -180,12 +217,15 @@ export function DisciplinaModal({
 
   const handleSave = async () => {
     if (!canSave) return;
+    const scopedClassIds = applyScope === "all" ? allClassIds : classIds;
     const payload: DisciplinaForm = {
       ...form,
       nome: normalizeName(form.nome),
       codigo: normalizeCode(form.codigo),
       area: form.area?.trim() ? form.area.trim() : null,
       programa_texto: form.programa_texto?.trim() ? form.programa_texto.trim() : null,
+      class_ids: classOptions.length > 0 ? scopedClassIds : undefined,
+      apply_scope: classOptions.length > 0 ? applyScope : undefined,
     };
 
     setSaving(true);
@@ -290,6 +330,65 @@ export function DisciplinaModal({
                   </option>
                 ))}
               </select>
+            </section>
+          )}
+          {classOptions.length > 0 && (
+            <section className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-900 uppercase flex items-center gap-2 mb-4">
+                <LayoutGrid className="w-4 h-4 text-[#1F6B3B]" /> Aplicar em quais classes?
+              </h3>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => updateScope("all")}
+                  className={`flex-1 py-3 px-4 rounded-lg border text-sm font-medium transition-all ${
+                    applyScope === "all"
+                      ? "bg-slate-900 text-white border-slate-900"
+                      : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  Todas as classes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateScope("selected")}
+                  className={`flex-1 py-3 px-4 rounded-lg border text-sm font-medium transition-all ${
+                    applyScope === "selected"
+                      ? "bg-slate-900 text-white border-slate-900"
+                      : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  Classes específicas
+                </button>
+              </div>
+
+              {applyScope === "selected" && (
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {classOptions.map((classe) => {
+                    const active = classIds.includes(classe.id);
+                    return (
+                      <button
+                        key={classe.id}
+                        type="button"
+                        onClick={() => toggleClasse(classe.id)}
+                        className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm transition-all ${
+                          active
+                            ? "border-[#1F6B3B] bg-[#1F6B3B]/10 text-[#1F6B3B]"
+                            : "border-slate-200 text-slate-600 hover:border-slate-300"
+                        }`}
+                      >
+                        <span className="font-semibold">{classe.nome}</span>
+                        {active && <Check className="w-4 h-4" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {errors.class_ids && (
+                <p className="mt-2 text-xs text-red-600">{errors.class_ids}</p>
+              )}
             </section>
           )}
           <section className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">

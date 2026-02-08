@@ -58,6 +58,8 @@ export type CourseDetails = {
     status_completude?: string | null;
     curriculo_status?: string | null;
     matrix_ids: string[];
+    class_ids?: string[];
+    matrix_by_class?: Record<string, string[]>;
   }[];
   turmas: {
     id: string;
@@ -126,6 +128,7 @@ async function apiGet<T>(url: string, signal?: AbortSignal): Promise<T> {
 // ---------- Component ----------
 export default function StructureMarketplace({ escolaId }: { escolaId: string }) {
   const searchParams = useSearchParams();
+  const resolvePendenciasRequested = searchParams?.get("resolvePendencias") === "1";
   const [activeTab, setActiveTab] = useState<ActiveTab>("my_courses");
   const [courses, setCourses] = useState<ActiveCourse[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
@@ -148,6 +151,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   const [disciplinaModalMode, setDisciplinaModalMode] = useState<"create" | "edit">("create");
   const [disciplinaEditing, setDisciplinaEditing] = useState<DisciplinaForm | null>(null);
   const [disciplinaEditingMatrixIds, setDisciplinaEditingMatrixIds] = useState<string[]>([]);
+  const [disciplinaEditingMatrixByClass, setDisciplinaEditingMatrixByClass] = useState<Record<string, string[]>>({});
   const [resolvePendencias, setResolvePendencias] = useState(false);
   const [autoResolveTriggered, setAutoResolveTriggered] = useState(false);
 
@@ -176,8 +180,10 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       },
       area: disciplina.area ?? null,
       programa_texto: null,
+      class_ids: disciplina.class_ids ?? [],
     });
     setDisciplinaEditingMatrixIds(disciplina.matrix_ids ?? []);
+    setDisciplinaEditingMatrixByClass(disciplina.matrix_by_class ?? {});
     setDisciplinaModalOpen(true);
   }, []);
 
@@ -318,6 +324,8 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
           status_completude: item.status_completude ?? null,
           curriculo_status: incomingStatus,
           matrix_ids: [] as string[], // Explicitly cast to string[]
+          class_ids: [] as string[],
+          matrix_by_class: {} as Record<string, string[]>,
         };
 
         const shouldReplace =
@@ -325,10 +333,28 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         const nextBase = shouldReplace ? { ...base, matrix_ids: [] as string[] } : base;
 
         const matrixIds = nextBase.matrix_ids ?? [];
-        if (item.id && !matrixIds.includes(item.id as string)) { // Cast item.id to string
-          matrixIds.push(item.id as string); // Also cast for push
+        if (item.id && !matrixIds.includes(item.id as string)) {
+          matrixIds.push(item.id as string);
         }
-        disciplinaMap.set(key, { ...nextBase, matrix_ids: matrixIds });
+
+        const classId = item.classe_id as string | undefined;
+        const classIds = nextBase.class_ids ?? [];
+        const matrixByClass = nextBase.matrix_by_class ?? {};
+        if (classId) {
+          if (!classIds.includes(classId)) classIds.push(classId);
+          const classMatrixIds = matrixByClass[classId] ?? [];
+          if (item.id && !classMatrixIds.includes(item.id as string)) {
+            classMatrixIds.push(item.id as string);
+          }
+          matrixByClass[classId] = classMatrixIds;
+        }
+
+        disciplinaMap.set(key, {
+          ...nextBase,
+          matrix_ids: matrixIds,
+          class_ids: classIds,
+          matrix_by_class: matrixByClass,
+        });
       });
 
       const disciplinas = Array.from(disciplinaMap.values());
@@ -729,31 +755,40 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
             return;
           }
 
-        await Promise.all(
-          details.classes.map(async (classe) => {
-            const res = await fetch(`/api/escolas/${escolaId}/disciplinas`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                nome: payload.nome,
-                curso_id: selectedCourseId,
-                classe_id: classe.id,
-                sigla: payload.codigo,
-                carga_horaria_semanal: payload.carga_horaria_semanal,
-                carga_horaria: payload.carga_horaria_semanal,
-                classificacao: payload.classificacao,
-                is_avaliavel: true,
-                area: payload.area ?? null,
-                periodos_ativos: payload.periodos_ativos,
-                entra_no_horario: payload.entra_no_horario,
-                avaliacao_mode: payload.avaliacao.mode,
-                avaliacao_modelo_id: null,
-                avaliacao_disciplina_id:
-                  payload.avaliacao.mode === "inherit_disciplina"
-                    ? payload.avaliacao.base_id ?? null
-                    : null,
-              }),
-            });
+          const targetClassIds = payload.class_ids?.length
+            ? payload.class_ids
+            : details.classes.map((classe) => classe.id);
+          const targetClasses = details.classes.filter((classe) => targetClassIds.includes(classe.id));
+          if (targetClasses.length === 0) {
+            toast.error("Selecione ao menos uma classe.");
+            return;
+          }
+
+          await Promise.all(
+            targetClasses.map(async (classe) => {
+              const res = await fetch(`/api/escolas/${escolaId}/disciplinas`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  nome: payload.nome,
+                  curso_id: selectedCourseId,
+                  classe_id: classe.id,
+                  sigla: payload.codigo,
+                  carga_horaria_semanal: payload.carga_horaria_semanal,
+                  carga_horaria: payload.carga_horaria_semanal,
+                  classificacao: payload.classificacao,
+                  is_avaliavel: true,
+                  area: payload.area ?? null,
+                  periodos_ativos: payload.periodos_ativos,
+                  entra_no_horario: payload.entra_no_horario,
+                  avaliacao_mode: payload.avaliacao.mode,
+                  avaliacao_modelo_id: null,
+                  avaliacao_disciplina_id:
+                    payload.avaliacao.mode === "inherit_disciplina"
+                      ? payload.avaliacao.base_id ?? null
+                      : null,
+                }),
+              });
               const json = await res.json().catch(() => null);
               if (!res.ok || json?.ok === false) {
                 throw new Error(json?.error || "Falha ao criar disciplina.");
@@ -768,9 +803,20 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         }
 
         if (!payload.id || disciplinaEditingMatrixIds.length === 0) return;
+        let matrixIds = disciplinaEditingMatrixIds;
+        if (payload.apply_scope === "selected" && payload.class_ids?.length) {
+          matrixIds = payload.class_ids.flatMap(
+            (classId) => disciplinaEditingMatrixByClass[classId] ?? []
+          );
+        }
+
+        if (matrixIds.length === 0) {
+          toast.error("Nenhuma classe selecionada para aplicar alterações.");
+          return;
+        }
 
         await Promise.all(
-          disciplinaEditingMatrixIds.map(async (matrixId) => {
+          matrixIds.map(async (matrixId) => {
             const res = await fetch(`/api/escolas/${escolaId}/disciplinas/${matrixId}`, {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
@@ -808,6 +854,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     },
     [
       details,
+      disciplinaEditingMatrixByClass,
       disciplinaEditingMatrixIds,
       disciplinaModalMode,
       escolaId,
@@ -864,6 +911,14 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   );
 
   // -------- Manager view --------
+  if (resolvePendenciasRequested && (loadingCourses || loadingDetails || !selectedCourseId || !details)) {
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500 animate-pulse">
+        Preparando pendências do currículo...
+      </div>
+    );
+  }
+
   if (selectedCourseId) {
     return (
       <>
@@ -895,6 +950,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
             existingCodes={details.disciplinas.map((d) => d.codigo)}
             existingNames={details.disciplinas.map((d) => d.nome)}
             existingDisciplines={details.disciplinas.map((d) => ({ id: d.id, nome: d.nome }))}
+            classOptions={details.classes}
             pendingDisciplines={resolvePendencias ? pendingDisciplines.map((d) => ({ id: d.id, nome: d.nome })) : []}
             onSelectPending={(id) => {
               const next = pendingDisciplines.find((disc) => disc.id === id);
