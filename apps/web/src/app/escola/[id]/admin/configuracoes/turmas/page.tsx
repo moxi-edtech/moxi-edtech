@@ -54,6 +54,8 @@ type DisciplinaItem = {
   status_completude?: string | null;
   curriculo_status?: string | null;
   matrix_ids: string[];
+  class_ids?: string[];
+  matrix_by_class?: Record<string, string[]>;
 };
 
 type CursoContext = {
@@ -147,6 +149,7 @@ export default function TurmasConfiguracoesPage() {
   const [disciplinaModalMode, setDisciplinaModalMode] = useState<"create" | "edit">("create");
   const [disciplinaEditing, setDisciplinaEditing] = useState<DisciplinaForm | null>(null);
   const [disciplinaEditingMatrixIds, setDisciplinaEditingMatrixIds] = useState<string[]>([]);
+  const [disciplinaEditingMatrixByClass, setDisciplinaEditingMatrixByClass] = useState<Record<string, string[]>>({});
 
   const fetchCurriculoStatus = useCallback(async () => {
     if (!escolaId) return;
@@ -251,6 +254,8 @@ export default function TurmasConfiguracoesPage() {
           status_completude: item.status_completude ?? null,
           curriculo_status: incomingStatus,
           matrix_ids: [] as string[], // Explicitly cast to string[]
+          class_ids: [] as string[],
+          matrix_by_class: {} as Record<string, string[]>,
         };
 
         const shouldReplace =
@@ -258,10 +263,28 @@ export default function TurmasConfiguracoesPage() {
         const nextBase = shouldReplace ? { ...base, matrix_ids: [] as string[] } : base;
 
         const matrixIds = nextBase.matrix_ids ?? [];
-        if (item.id && !matrixIds.includes(item.id as string)) { // Cast item.id to string
-          matrixIds.push(item.id as string); // Also cast for push
+        if (item.id && !matrixIds.includes(item.id as string)) {
+          matrixIds.push(item.id as string);
         }
-        map.set(key, { ...nextBase, matrix_ids: matrixIds });
+
+        const classId = item.classe_id as string | undefined;
+        const classIds = nextBase.class_ids ?? [];
+        const matrixByClass = nextBase.matrix_by_class ?? {};
+        if (classId) {
+          if (!classIds.includes(classId)) classIds.push(classId);
+          const classMatrixIds = matrixByClass[classId] ?? [];
+          if (item.id && !classMatrixIds.includes(item.id as string)) {
+            classMatrixIds.push(item.id as string);
+          }
+          matrixByClass[classId] = classMatrixIds;
+        }
+
+        map.set(key, {
+          ...nextBase,
+          matrix_ids: matrixIds,
+          class_ids: classIds,
+          matrix_by_class: matrixByClass,
+        });
       });
 
       return Array.from(map.values());
@@ -512,8 +535,10 @@ export default function TurmasConfiguracoesPage() {
       },
       area: disciplina.area ?? null,
       programa_texto: null,
+      class_ids: disciplina.class_ids ?? [],
     });
     setDisciplinaEditingMatrixIds(disciplina.matrix_ids ?? []);
+    setDisciplinaEditingMatrixByClass(disciplina.matrix_by_class ?? {});
     setDisciplinaModalOpen(true);
   };
 
@@ -525,8 +550,16 @@ export default function TurmasConfiguracoesPage() {
           toast.error("Cadastre classes base antes.");
           return;
         }
+        const targetClassIds = payload.class_ids?.length
+          ? payload.class_ids
+          : ctx.classesBase.map((classe) => classe.id);
+        const targetClasses = ctx.classesBase.filter((classe) => targetClassIds.includes(classe.id));
+        if (!targetClasses.length) {
+          toast.error("Selecione ao menos uma classe.");
+          return;
+        }
         await Promise.all(
-          ctx.classesBase.map(async (classe) => {
+          targetClasses.map(async (classe) => {
             const res = await fetch(`/api/escolas/${escolaId}/disciplinas`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -557,8 +590,20 @@ export default function TurmasConfiguracoesPage() {
           })
         );
       } else if (disciplinaEditingMatrixIds.length > 0) {
+        let matrixIds = disciplinaEditingMatrixIds;
+        if (payload.apply_scope === "selected" && payload.class_ids?.length) {
+          matrixIds = payload.class_ids.flatMap(
+            (classId) => disciplinaEditingMatrixByClass[classId] ?? []
+          );
+        }
+
+        if (!matrixIds.length) {
+          toast.error("Nenhuma classe selecionada para aplicar alterações.");
+          return;
+        }
+
         await Promise.all(
-          disciplinaEditingMatrixIds.map(async (matrixId) => {
+          matrixIds.map(async (matrixId) => {
             const res = await fetch(`/api/escolas/${escolaId}/disciplinas/${matrixId}`, {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
@@ -1087,6 +1132,7 @@ export default function TurmasConfiguracoesPage() {
         existingCodes={(ctx?.disciplinas ?? []).map((d) => d.codigo)}
         existingNames={(ctx?.disciplinas ?? []).map((d) => d.nome)}
         existingDisciplines={(ctx?.disciplinas ?? []).map((d) => ({ id: d.id, nome: d.nome }))}
+        classOptions={ctx?.classesBase ?? []}
         onClose={() => setDisciplinaModalOpen(false)}
         onSave={handleSaveDisciplina}
         onDelete={disciplinaModalMode === "edit" ? handleDeleteDisciplina : undefined}
