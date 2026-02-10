@@ -77,6 +77,7 @@ export async function GET(req: Request) {
           'escola_id',
           'session_id',
           'turma_nome',
+          'turma_codigo',
           'turno',
           'capacidade_maxima',
           'sala',

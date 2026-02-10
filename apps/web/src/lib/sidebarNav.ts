@@ -32,6 +32,7 @@ export const sidebarConfig: SidebarConfig = {
     { href: "/escola/[escolaId]/admin/professores", label: "Professores", icon: "User" },
     { href: "/escola/[escolaId]/admin/turmas", label: "Turmas", icon: "GraduationCap" },
     { href: "/escola/[escolaId]/admin/avisos", label: "Avisos", icon: "Megaphone" },
+    { href: "/escola/[escolaId]/horarios/quadro", label: "Horários", icon: "CalendarClock" },
     { href: "/escola/[escolaId]/admin/configuracoes", label: "Configurações", icon: "Settings" },
   ],
   secretaria: [
