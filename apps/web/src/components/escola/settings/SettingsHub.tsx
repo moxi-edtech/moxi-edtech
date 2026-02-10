@@ -8,7 +8,6 @@ import {
   Building2,
   BookOpen,
   ChevronRight,
-  ArrowLeft,
   Layers,
   CalendarCheck,
   Wand2,
@@ -264,13 +263,6 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
       {/* HEADER PRINCIPAL */}
       <div className="flex items-center justify-between">
         <div>
-          <Link
-            href={`/escola/${escolaId}/admin/dashboard`}
-            className="inline-flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors uppercase tracking-wider mb-2"
-          >
-            <ArrowLeft className="w-3 h-3" />
-            Voltar ao Dashboard
-          </Link>
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Configurações do Sistema</h1>
           <p className="text-slate-500 mt-1">Gestão global do ano letivo {anoLetivoAtual}.</p>
         </div>
@@ -390,7 +382,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
                   Abrir em tela cheia
                 </Link>
               </div>
-              <div className="w-full">
+              <div className="w-full max-h-[640px] min-h-[640px] overflow-y-auto pr-2">
                 <ActivePanel params={panelParams} />
               </div>
             </div>

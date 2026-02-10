@@ -13,6 +13,11 @@ import {
   X,
   Trash2,
 } from "lucide-react";
+import {
+  calculateTotalSlots,
+  shouldAppearInScheduler,
+  type SchedulerDisciplineRulesInput,
+} from "@/lib/rules/scheduler-rules";
 
 export type AvaliacaoMode = "inherit_school" | "custom" | "inherit_disciplina";
 
@@ -182,6 +187,15 @@ export function DisciplinaModal({
   const canSave = Object.keys(errors).length === 0;
   const totalHorasAno =
     form.carga_horaria_semanal * Math.max(form.periodos_ativos.length, 1) * 12;
+  const schedulerRulesInput = useMemo<SchedulerDisciplineRulesInput>(
+    () => ({
+      entra_no_horario: form.entra_no_horario,
+      carga_horaria_semanal: form.carga_horaria_semanal,
+    }),
+    [form.entra_no_horario, form.carga_horaria_semanal]
+  );
+  const appearsInScheduler = shouldAppearInScheduler(schedulerRulesInput);
+  const totalSlots = calculateTotalSlots(schedulerRulesInput);
 
   const updateScope = (scope: "all" | "selected") => {
     setApplyScope(scope);
@@ -330,6 +344,16 @@ export function DisciplinaModal({
                   </option>
                 ))}
               </select>
+            </section>
+          )}
+          {!appearsInScheduler && (
+            <section className="bg-amber-50 p-4 rounded-xl border border-amber-200 text-amber-800 text-sm">
+              Esta disciplina não aparecerá no quadro porque não entra no horário ou a carga semanal está zerada.
+            </section>
+          )}
+          {appearsInScheduler && (
+            <section className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs text-slate-600">
+              Esta disciplina irá gerar <span className="font-semibold text-slate-900">{totalSlots}</span> tempo(s) semanais no quadro.
             </section>
           )}
           {classOptions.length > 0 && (

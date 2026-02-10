@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { SlotsConfig, type HorarioSlot } from "@/components/escola/horarios/SlotsConfig";
 import { useOfflineStatus } from "@/hooks/useOfflineStatus";
@@ -113,12 +114,28 @@ export default function HorariosSlotsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950 font-sans">
-      <div className="max-w-5xl mx-auto px-6 py-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold">Estrutura de Horários</h1>
-          <p className="text-sm text-slate-500">
-            Configure os tempos e intervalos que serão usados no quadro.
-          </p>
+      <div className="w-full max-w-7xl mx-auto p-6 space-y-6">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold">Estrutura de Horários</h1>
+            <p className="text-sm text-slate-500">
+              Configure os tempos e intervalos que serão usados no quadro.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 rounded-full bg-slate-100 p-1">
+            <Link
+              href={`/escola/${escolaId}/horarios/slots`}
+              className="rounded-full bg-slate-950 px-4 py-1.5 text-xs font-semibold text-white"
+            >
+              Slots
+            </Link>
+            <Link
+              href={`/escola/${escolaId}/horarios/quadro`}
+              className="rounded-full px-4 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-950"
+            >
+              Quadro
+            </Link>
+          </div>
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -132,7 +149,7 @@ export default function HorariosSlotsPage() {
           )}
         </div>
 
-        <div className="mt-4 text-xs text-slate-500">
+        <div className="text-xs text-slate-500">
           {saving
             ? "Salvando configuração..."
             : hasMounted && !online

@@ -39,6 +39,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       .select('id, turma_id, curso_matriz_id, professor_id, carga_horaria_semanal, classificacao, periodos_ativos, entra_no_horario, avaliacao_mode, avaliacao_disciplina_id, modelo_avaliacao_id')
       .eq('escola_id', escolaId)
       .eq('turma_id', turmaId)
+      .neq('entra_no_horario', false)
+      .gt('carga_horaria_semanal', 0)
 
     query = applyKf2ListInvariants(query);
 

@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { SchedulerAula, SchedulerSlot } from "@/components/escola/horarios/SchedulerBoard";
+import {
+  calculateTotalSlots,
+  shouldAppearInScheduler,
+  type SchedulerDisciplineRulesInput,
+} from "@/lib/rules/scheduler-rules";
 
 type SlotApi = {
   id: string;
@@ -15,7 +20,13 @@ type BaseDataState = {
   slots: SchedulerSlot[];
   slotLookup: Record<string, string>;
   salas: Array<{ id: string; nome: string }>;
-  turmas: Array<{ id: string; nome?: string | null; turma_nome?: string | null }>;
+  turmas: Array<{
+    id: string;
+    nome?: string | null;
+    turma_nome?: string | null;
+    turma_codigo?: string | null;
+    turma_code?: string | null;
+  }>;
   loading: boolean;
   error: string | null;
 };
@@ -55,17 +66,20 @@ const mapSlots = (slots: SlotApi[]): { slots: SchedulerSlot[]; slotLookup: Recor
 };
 
 const mapAulas = (items: any[]): SchedulerAula[] =>
-  items.map((item) => ({
-    id: item.disciplina?.id ?? item.id,
-    disciplina: item.disciplina?.nome ?? "Disciplina",
-    sigla: (item.disciplina?.nome ?? "").slice(0, 3).toUpperCase() || "DISC",
-    professor: item.professor?.nome ?? "—",
-    professorId: item.professor?.id ?? null,
-    salaId: null,
-    cor: "bg-white border-slate-200 text-slate-700 hover:border-klasse-gold",
-    temposTotal: Number(item.meta?.carga_horaria_semanal ?? 1),
-    temposAlocados: 0,
-  }));
+  items.map((item) => {
+    const rulesInput = (item?.meta ?? item) as SchedulerDisciplineRulesInput;
+    return {
+      id: item.disciplina?.id ?? item.id,
+      disciplina: item.disciplina?.nome ?? "Disciplina",
+      sigla: (item.disciplina?.nome ?? "").slice(0, 3).toUpperCase() || "DISC",
+      professor: item.professor?.nome ?? "—",
+      professorId: item.professor?.id ?? null,
+      salaId: null,
+      cor: "bg-white border-slate-200 text-slate-700 hover:border-klasse-gold",
+      temposTotal: calculateTotalSlots(rulesInput),
+      temposAlocados: 0,
+    };
+  });
 
 const fetchJson = async (url: string, signal: AbortSignal) => {
   const res = await fetch(url, { cache: "no-store", signal });
@@ -204,8 +218,13 @@ export function useHorarioTurmaData({
           if (slotKey) nextGrid[slotKey] = item.disciplina_id;
         }
 
+        const aulasFiltradas = aulasPayload.filter((item: any) => {
+          const rulesInput = (item?.meta ?? item) as SchedulerDisciplineRulesInput;
+          return shouldAppearInScheduler(rulesInput);
+        });
+
         setState({
-          aulas: mapAulas(aulasPayload),
+          aulas: mapAulas(aulasFiltradas),
           grid: nextGrid,
           existingAssignments: quadroPayload.map((item: any) => ({
             slot_id: item.slot_id,

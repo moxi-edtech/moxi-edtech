@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { AlertCircle, Save, WifiOff } from "lucide-react";
 import { SchedulerBoard } from "@/components/escola/horarios/SchedulerBoard";
@@ -84,7 +85,12 @@ export default function QuadroHorariosPage() {
       { value: "", label: "Selecione uma turma" },
       ...turmas.map((turma) => ({
         value: turma.id,
-        label: turma.turma_nome || turma.nome || turma.id,
+        label:
+          turma.turma_codigo ||
+          turma.turma_code ||
+          turma.turma_nome ||
+          turma.nome ||
+          turma.id,
       })),
     ];
   }, [turmas]);
@@ -189,36 +195,54 @@ export default function QuadroHorariosPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950 font-sans">
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="flex flex-wrap items-center gap-4 px-6 py-4">
-          <Select
-            value={turmaId ?? ""}
-            options={turmaOptions}
-            onChange={(event) => setTurmaId(event.target.value || null)}
-            className="max-w-xs rounded-xl border-slate-200 focus:border-klasse-gold focus:ring-klasse-gold text-slate-900"
-          />
-          {isLoading ? (
+        <div className="flex flex-wrap items-center justify-between gap-4 p-6 max-w-7xl mx-auto">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2 rounded-full bg-slate-100 p-1">
+              <Link
+                href={`/escola/${escolaId}/horarios/slots`}
+                className="rounded-full px-4 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-950"
+              >
+                Slots
+              </Link>
+              <Link
+                href={`/escola/${escolaId}/horarios/quadro`}
+                className="rounded-full bg-slate-950 px-4 py-1.5 text-xs font-semibold text-white"
+              >
+                Quadro
+              </Link>
+            </div>
+            <Select
+              value={turmaId ?? ""}
+              options={turmaOptions}
+              onChange={(event) => setTurmaId(event.target.value || null)}
+              className="max-w-xs rounded-xl border-slate-200 focus:border-klasse-gold focus:ring-klasse-gold text-slate-900"
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            {isLoading ? (
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <Spinner size={14} className="text-klasse-gold" />
+                Sincronizando dados...
+              </div>
+            ) : null}
+            {showOfflineStatus ? (
+              <div className="flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+                <WifiOff className="h-3 w-3" />
+                Modo offline
+              </div>
+            ) : null}
+            {baseError ? <span className="text-xs text-rose-600">{baseError}</span> : null}
+            {turmaError ? <span className="text-xs text-rose-600">{turmaError}</span> : null}
+            {saveError ? <span className="text-xs text-rose-600">{saveError}</span> : null}
             <div className="flex items-center gap-2 text-xs text-slate-500">
-              <Spinner size={14} className="text-klasse-gold" />
-              Sincronizando dados...
+              <Save className={`h-4 w-4 ${saving ? "text-klasse-gold" : "text-slate-300"}`} />
+              <span>{saving ? "Salvando..." : "Alterações prontas"}</span>
             </div>
-          ) : null}
-          {showOfflineStatus ? (
-            <div className="flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
-              <WifiOff className="h-3 w-3" />
-              Modo offline
-            </div>
-          ) : null}
-          {baseError ? <span className="text-xs text-rose-600">{baseError}</span> : null}
-          {turmaError ? <span className="text-xs text-rose-600">{turmaError}</span> : null}
-          {saveError ? <span className="text-xs text-rose-600">{saveError}</span> : null}
-          <div className="ml-auto flex items-center gap-2 text-xs text-slate-500">
-            <Save className={`h-4 w-4 ${saving ? "text-klasse-gold" : "text-slate-300"}`} />
-            <span>{saving ? "Salvando..." : "Alterações prontas"}</span>
           </div>
         </div>
       </header>
 
-      <div className="px-6 py-4">
+      <div className="p-6 max-w-7xl mx-auto">
         {!turmaId ? (
           <div className="flex h-[60vh] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white">
             <AlertCircle className="h-10 w-10 text-slate-300" />
