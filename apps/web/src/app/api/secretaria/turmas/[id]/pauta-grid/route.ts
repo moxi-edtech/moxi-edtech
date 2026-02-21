@@ -4,6 +4,11 @@ import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { authorizeTurmasManage } from '@/lib/escola/disciplinas'
 import { applyKf2ListInvariants } from '@/lib/kf2'
+import {
+  buildComponentesAtivos,
+  buildPesoPorTipo,
+  resolveModeloAvaliacao,
+} from '@/lib/academico/avaliacao-utils'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -68,63 +73,16 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       return NextResponse.json({ ok: false, error: 'Disciplina não atribuída à turma' }, { status: 404 })
     }
 
-    const { data: configuracoes } = await supabase
-      .from('configuracoes_escola')
-      .select('modelo_avaliacao, avaliacao_config')
-      .eq('escola_id', escolaId)
-      .maybeSingle()
+    const modelo = await resolveModeloAvaliacao({
+      supabase,
+      escolaId,
+      cursoId: turma.curso_id,
+      classeId: turma.classe_id,
+      matriz,
+    })
 
-    let modeloAvaliacao = String(configuracoes?.modelo_avaliacao ?? 'SIMPLIFICADO').toUpperCase()
-    let componentes = Array.isArray((configuracoes as any)?.avaliacao_config?.componentes)
-      ? (configuracoes as any).avaliacao_config.componentes
-      : []
-
-    if (matriz?.avaliacao_mode === 'custom' && matriz?.avaliacao_modelo_id) {
-      const { data: modeloDisciplina } = await supabase
-        .from('modelos_avaliacao')
-        .select('componentes')
-        .eq('escola_id', escolaId)
-        .eq('id', matriz.avaliacao_modelo_id)
-        .maybeSingle()
-      const comps = (modeloDisciplina as any)?.componentes
-      if (Array.isArray(comps)) {
-        componentes = comps
-      }
-      modeloAvaliacao = 'CUSTOM'
-    }
-
-    if (matriz?.avaliacao_mode === 'inherit_disciplina' && matriz?.avaliacao_disciplina_id) {
-      const { data: matrizBase } = await supabase
-        .from('curso_matriz')
-        .select('avaliacao_modelo_id')
-        .eq('escola_id', escolaId)
-        .eq('curso_id', turma.curso_id)
-        .eq('classe_id', turma.classe_id)
-        .eq('disciplina_id', matriz.avaliacao_disciplina_id)
-        .eq('ativo', true)
-        .maybeSingle()
-      if (matrizBase?.avaliacao_modelo_id) {
-        const { data: modeloBase } = await supabase
-          .from('modelos_avaliacao')
-          .select('componentes')
-          .eq('escola_id', escolaId)
-          .eq('id', matrizBase.avaliacao_modelo_id)
-          .maybeSingle()
-        const comps = (modeloBase as any)?.componentes
-        if (Array.isArray(comps)) {
-          componentes = comps
-        }
-        modeloAvaliacao = 'CUSTOM'
-      }
-    }
-    const pesoPorTipo = new Map<string, number>()
-    for (const comp of componentes as Array<{ code?: string; peso?: number; ativo?: boolean }>) {
-      if (!comp?.code || comp?.ativo === false) continue
-      const peso = typeof comp.peso === 'number' ? comp.peso : Number(comp.peso)
-      if (Number.isFinite(peso)) {
-        pesoPorTipo.set(comp.code.toString().trim().toUpperCase(), peso)
-      }
-    }
+    const componentesAtivos = buildComponentesAtivos(modelo.componentes)
+    const pesoPorTipo = buildPesoPorTipo(modelo.componentes)
 
     let matriculasQuery = supabase
       .from('matriculas')
@@ -165,13 +123,18 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     >()
 
     if (matriculaIds.length > 0) {
-      const { data: notasRows, error: notasError } = await supabase
+      let notasQuery = supabase
         .from('notas')
         .select('valor, matricula_id, avaliacoes ( trimestre, turma_disciplina_id, tipo, nome, peso )')
         .eq('escola_id', escolaId)
         .eq('avaliacoes.turma_disciplina_id', turmaDisciplina.id)
-        .eq('avaliacoes.trimestre', parsed.data.trimestre)
         .in('matricula_id', matriculaIds)
+
+      if (modelo.tipo === 'trimestral') {
+        notasQuery = notasQuery.eq('avaliacoes.trimestre', parsed.data.trimestre)
+      }
+
+      const { data: notasRows, error: notasError } = await notasQuery
 
       if (notasError) {
         return NextResponse.json({ ok: false, error: notasError.message }, { status: 400 })
@@ -199,7 +162,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       }
     }
 
-    const pickTipo = (stats: { tipoSum?: Record<string, number>; tipoCount?: Record<string, number> } | undefined, tipo: string) => {
+    const pickTipo = (
+      stats: { tipoSum?: Record<string, number>; tipoCount?: Record<string, number> } | undefined,
+      tipo: string
+    ) => {
       if (!stats?.tipoSum || !stats?.tipoCount) return null
       const sum = stats.tipoSum[tipo] ?? 0
       const count = stats.tipoCount[tipo] ?? 0
@@ -207,8 +173,17 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       return Number((sum / count).toFixed(2))
     }
 
+    const resolveValor = (
+      stats: { tipoSum?: Record<string, number>; tipoCount?: Record<string, number> } | undefined,
+      tipo: string
+    ) => {
+      const raw = pickTipo(stats, tipo)
+      if (raw !== null) return raw
+      if (tipo === 'NPT') return pickTipo(stats, 'PT')
+      return null
+    }
+
     const calcularMt = (values: Array<{ tipo: string; valor: number | null }>) => {
-      if (modeloAvaliacao === 'DEPOIS') return null
       const valid = values.filter((entry) => typeof entry.valor === 'number') as Array<{
         tipo: string
         valor: number
@@ -230,14 +205,19 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
     const payload = matriculaRows.map((row: any) => {
       const stats = notasPorMatricula.get(row.id)
-      const mac = pickTipo(stats, 'MAC')
-      const npp = pickTipo(stats, 'NPP')
-      const npt = pickTipo(stats, 'NPT')
-      const mt = calcularMt([
-        { tipo: 'MAC', valor: mac },
-        { tipo: 'NPP', valor: npp },
-        { tipo: 'NPT', valor: npt },
-      ])
+      const mac = resolveValor(stats, 'MAC')
+      const npp = resolveValor(stats, 'NPP')
+      const npt = resolveValor(stats, 'NPT')
+      const componentes = componentesAtivos.reduce<Record<string, number | null>>((acc, tipo) => {
+        acc[tipo] = resolveValor(stats, tipo)
+        return acc
+      }, {})
+      const mt = calcularMt(
+        componentesAtivos.map((tipo) => ({
+          tipo,
+          valor: componentes[tipo] ?? null,
+        }))
+      )
       return {
         aluno_id: row.aluno_id,
         nome: row.alunos?.nome ?? 'Sem nome',
@@ -247,6 +227,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
         npp,
         npt,
         mt,
+        componentes,
       }
     })
 

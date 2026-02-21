@@ -9,6 +9,7 @@ export default function AcademicStep2Config({
   onFrequenciaMinPercentChange,
   modeloAvaliacao,
   onModeloAvaliacaoChange,
+  modelosAvaliacao = [],
   avaliacaoConfig,
 }: AcademicStep2ConfigProps) {
   const componentes = avaliacaoConfig?.componentes ?? [];
@@ -58,26 +59,24 @@ export default function AcademicStep2Config({
           <p className="text-xs text-slate-500">Define o formato de notas trimestrais.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {(["SIMPLIFICADO", "ANGOLANO_TRADICIONAL", "COMPETENCIAS", "DEPOIS"] as const).map((opt) => (
-            <button
-              key={opt}
-              type="button"
-              onClick={() => onModeloAvaliacaoChange(opt)}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${
-                modeloAvaliacao === opt
-                  ? "bg-teal-600 text-white border-teal-600"
-                  : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
-              }`}
-            >
-              {opt === "SIMPLIFICADO"
-                ? "Simplificado"
-                : opt === "ANGOLANO_TRADICIONAL"
-                ? "Angolano tradicional"
-                : opt === "COMPETENCIAS"
-                ? "Competências"
-                : "Definir depois"}
-            </button>
-          ))}
+          {modelosAvaliacao.length === 0 ? (
+            <p className="text-xs text-slate-500">Sem modelos cadastrados.</p>
+          ) : (
+            modelosAvaliacao.map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => onModeloAvaliacaoChange(opt.id)}
+                className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${
+                  modeloAvaliacao === opt.id
+                    ? "bg-teal-600 text-white border-teal-600"
+                    : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                }`}
+              >
+                {opt.nome}
+              </button>
+            ))
+          )}
         </div>
         <div className="rounded-xl border border-dashed border-slate-200 p-4 text-sm text-slate-700">
           <p className="text-xs font-semibold text-slate-600 mb-2">Preview de componentes</p>

@@ -68,8 +68,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       .eq('escola_id', userEscolaId)
       .maybeSingle();
 
-    const modeloAvaliacao = (config?.modelo_avaliacao ?? 'DEPOIS').toString().toUpperCase();
-    const avaliacaoOk = modeloAvaliacao !== 'DEPOIS' && hasComponentes(config?.avaliacao_config as any);
+    const modeloAvaliacao = (config?.modelo_avaliacao ?? '').toString();
+    const avaliacaoOk = hasComponentes(config?.avaliacao_config as any);
     const frequenciaOk = Boolean(config?.frequencia_modelo)
       && typeof config?.frequencia_min_percent === 'number';
     const avaliacaoFrequenciaOk = avaliacaoOk && frequenciaOk;

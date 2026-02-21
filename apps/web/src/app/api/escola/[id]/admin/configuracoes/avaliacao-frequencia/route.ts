@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabaseServerTyped } from '@/lib/supabaseServer';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
 import type { Database } from '~types/supabase';
@@ -20,40 +21,34 @@ const avaliacaoConfigSchema = z.object({
 const payloadSchema = z.object({
   frequencia_modelo: z.enum(['POR_AULA', 'POR_PERIODO']),
   frequencia_min_percent: z.number().int().min(0).max(100),
-  modelo_avaliacao: z.enum(['SIMPLIFICADO', 'ANGOLANO_TRADICIONAL', 'COMPETENCIAS', 'DEPOIS']),
+  modelo_avaliacao: z.string().min(1),
   avaliacao_config: avaliacaoConfigSchema.optional(),
 });
-
-type AvaliacaoModelo = z.infer<typeof payloadSchema>['modelo_avaliacao'];
-
-const DEFAULT_AVALIACAO_CONFIG: Record<AvaliacaoModelo, { componentes: { code: string; peso: number; ativo: boolean }[] }> = {
-  SIMPLIFICADO: {
-    componentes: [
-      { code: 'MAC', peso: 50, ativo: true },
-      { code: 'PT', peso: 50, ativo: true },
-    ],
-  },
-  ANGOLANO_TRADICIONAL: {
-    componentes: [
-      { code: 'MAC', peso: 30, ativo: true },
-      { code: 'NPP', peso: 30, ativo: true },
-      { code: 'PT', peso: 40, ativo: true },
-    ],
-  },
-  COMPETENCIAS: {
-    componentes: [
-      { code: 'COMP', peso: 100, ativo: true },
-    ],
-  },
-  DEPOIS: {
-    componentes: [],
-  },
-};
 
 const hasComponentes = (config: unknown): config is { componentes?: { code: string }[] } => {
   if (!config || typeof config !== 'object') return false;
   const componentes = (config as { componentes?: unknown }).componentes;
   return Array.isArray(componentes) && componentes.length > 0;
+};
+
+const normalizeComponentes = (config: unknown) => {
+  if (Array.isArray(config)) return { componentes: config };
+  if (config && typeof config === 'object' && Array.isArray((config as any).componentes)) return config;
+  return null;
+};
+
+const resolveDefaultConfig = async (supabase: SupabaseClient<Database>, escolaId: string) => {
+  const { data } = await supabase
+    .from('modelos_avaliacao')
+    .select('componentes')
+    .eq('escola_id', escolaId)
+    .eq('is_default', true)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!data) return null;
+  return normalizeComponentes((data as any).componentes);
 };
 
 const withNoStore = (response: NextResponse) => {
@@ -104,10 +99,11 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       return withNoStore(NextResponse.json({ ok: false, error: 'Erro ao carregar configurações.' }, { status: 500 }));
     }
 
-    const modeloAvaliacao = (config?.modelo_avaliacao as AvaliacaoModelo | null) ?? 'SIMPLIFICADO';
+    const modeloAvaliacao = (config?.modelo_avaliacao as string | null) ?? 'PADRAO_ESCOLA';
+    const defaultConfig = await resolveDefaultConfig(supabase, effectiveEscolaId);
     const avaliacaoConfig = hasComponentes(config?.avaliacao_config)
       ? config?.avaliacao_config
-      : DEFAULT_AVALIACAO_CONFIG[modeloAvaliacao];
+      : defaultConfig ?? { componentes: [] };
 
     return withNoStore(NextResponse.json({
       ok: true,
@@ -166,9 +162,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     const payload = parseResult.data;
+    const defaultConfig = await resolveDefaultConfig(supabase, effectiveEscolaId);
     const avaliacaoConfig = hasComponentes(payload.avaliacao_config)
       ? payload.avaliacao_config
-      : DEFAULT_AVALIACAO_CONFIG[payload.modelo_avaliacao];
+      : defaultConfig ?? { componentes: [] };
 
     const { data: existing, error: existingError } = await supabase
       .from('configuracoes_escola')

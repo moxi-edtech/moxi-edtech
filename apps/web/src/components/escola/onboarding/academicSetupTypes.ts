@@ -60,8 +60,9 @@ export interface AcademicStep2ConfigProps {
   onFrequenciaModeloChange: (val: 'POR_AULA' | 'POR_PERIODO') => void;
   frequenciaMinPercent: number;
   onFrequenciaMinPercentChange: (val: number) => void;
-  modeloAvaliacao: 'SIMPLIFICADO' | 'ANGOLANO_TRADICIONAL' | 'COMPETENCIAS' | 'DEPOIS';
-  onModeloAvaliacaoChange: (val: 'SIMPLIFICADO' | 'ANGOLANO_TRADICIONAL' | 'COMPETENCIAS' | 'DEPOIS') => void;
+  modeloAvaliacao: string;
+  onModeloAvaliacaoChange: (val: string) => void;
+  modelosAvaliacao?: { id: string; nome: string }[];
   avaliacaoConfig: { componentes?: { code: string; peso: number; ativo: boolean }[] };
 }
 

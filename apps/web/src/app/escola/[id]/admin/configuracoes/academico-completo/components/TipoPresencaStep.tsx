@@ -26,20 +26,25 @@ type AvaliacaoConfigData = { componentes: Componente[] };
 type ConfigData = {
   frequencia_modelo: 'POR_AULA' | 'POR_PERIODO';
   frequencia_min_percent: number;
-  modelo_avaliacao: 'SIMPLIFICADO' | 'ANGOLANO_TRADICIONAL' | 'COMPETENCIAS' | 'DEPOIS';
+  modelo_avaliacao: string;
   avaliacao_config: AvaliacaoConfigData;
 };
 
-// --- CONSTANTES ---
-const DEFAULTS = {
-  SIMPLIFICADO: { componentes: [{ code: 'MAC', peso: 50, ativo: true }, { code: 'PT', peso: 50, ativo: true }] },
-  ANGOLANO_TRADICIONAL: { componentes: [{ code: 'MAC', peso: 30, ativo: true }, { code: 'NPP', peso: 30, ativo: true }, { code: 'PT', peso: 40, ativo: true }] },
-  COMPETENCIAS: { componentes: [{ code: 'COMP', peso: 100, ativo: true }] },
-  DEPOIS: { componentes: [] },
-} as const;
+type ModeloAvaliacao = {
+  id: string;
+  nome: string;
+  componentes: Componente[] | { componentes?: Componente[] } | null;
+  is_default?: boolean;
+};
 
-const cloneConfig = (config?: { componentes?: ReadonlyArray<Componente> }): AvaliacaoConfigData => ({
-  componentes: config?.componentes ? config.componentes.map((item) => ({ ...item })) : [],
+const extractComponentes = (config?: { componentes?: ReadonlyArray<Componente> } | Componente[] | null) => {
+  if (!config) return [];
+  if (Array.isArray(config)) return config;
+  return config.componentes ?? [];
+};
+
+const cloneConfig = (config?: { componentes?: ReadonlyArray<Componente> } | Componente[] | null): AvaliacaoConfigData => ({
+  componentes: extractComponentes(config).map((item) => ({ ...item })),
 });
 
 type Props = {
@@ -58,30 +63,46 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
   // Dados do formulário
   const [frequenciaModelo, setFrequenciaModelo] = useState<'POR_AULA' | 'POR_PERIODO'>('POR_AULA');
   const [frequenciaMinPercent, setFrequenciaMinPercent] = useState(75);
-  const [modeloAvaliacao, setModeloAvaliacao] = useState<keyof typeof DEFAULTS>('SIMPLIFICADO');
-  const [avaliacaoConfig, setAvaliacaoConfig] = useState<AvaliacaoConfigData>(cloneConfig(DEFAULTS.SIMPLIFICADO));
+  const [modelos, setModelos] = useState<ModeloAvaliacao[]>([]);
+  const [modeloAvaliacao, setModeloAvaliacao] = useState<string>('');
+  const [avaliacaoConfig, setAvaliacaoConfig] = useState<AvaliacaoConfigData>(cloneConfig());
 
   // --- FETCHING ---
   useEffect(() => {
     let cancelled = false;
     async function load() {
       try {
-        const res = await fetch(`/api/escola/${escolaId}/admin/configuracoes/avaliacao-frequencia`, { cache: "no-store" });
-        const json = await res.json().catch(() => null);
+        const [configRes, modelosRes] = await Promise.all([
+          fetch(`/api/escola/${escolaId}/admin/configuracoes/avaliacao-frequencia`, { cache: "no-store" }),
+          fetch(`/api/escolas/${escolaId}/modelos-avaliacao?limit=50`, { cache: "no-store" }),
+        ]);
+        const json = await configRes.json().catch(() => null);
+        const modelosJson = await modelosRes.json().catch(() => null);
         
         if (cancelled) return;
         
-        if (res.ok && json?.data) {
+        const listaModelos = Array.isArray(modelosJson?.data) ? modelosJson.data : [];
+        if (!cancelled) setModelos(listaModelos);
+        const defaultModelo = listaModelos.find((m: ModeloAvaliacao) => m.is_default) ?? listaModelos[0];
+
+        if (configRes.ok && json?.data) {
           const data = json.data;
           setFrequenciaModelo(data.frequencia_modelo ?? 'POR_AULA');
           setFrequenciaMinPercent(data.frequencia_min_percent ?? 75);
-          setModeloAvaliacao(data.modelo_avaliacao ?? 'SIMPLIFICADO');
-          
+          const modelId = listaModelos.find((m: ModeloAvaliacao) => m.id === data.modelo_avaliacao)?.id
+            ?? listaModelos.find((m: ModeloAvaliacao) => m.nome === data.modelo_avaliacao)?.id
+            ?? defaultModelo?.id
+            ?? '';
+          setModeloAvaliacao(modelId);
+
           if (data.avaliacao_config?.componentes?.length) {
             setAvaliacaoConfig(data.avaliacao_config);
-          } else if (data.modelo_avaliacao) {
-            setAvaliacaoConfig(cloneConfig(DEFAULTS[data.modelo_avaliacao as keyof typeof DEFAULTS]));
+          } else if (defaultModelo) {
+            setAvaliacaoConfig(cloneConfig(defaultModelo.componentes));
           }
+        } else if (defaultModelo) {
+          setModeloAvaliacao(defaultModelo.id);
+          setAvaliacaoConfig(cloneConfig(defaultModelo.componentes));
         }
       } catch (error) {
         console.error(error);
@@ -94,9 +115,12 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
   }, [escolaId]);
 
   // --- HANDLERS ---
-  const handleModeloChange = (novoModelo: keyof typeof DEFAULTS) => {
+  const handleModeloChange = (novoModelo: string) => {
     setModeloAvaliacao(novoModelo);
-    setAvaliacaoConfig(cloneConfig(DEFAULTS[novoModelo]));
+    const selected = modelos.find((modelo) => modelo.id === novoModelo);
+    if (selected) {
+      setAvaliacaoConfig(cloneConfig(selected.componentes));
+    }
   };
 
   const handleSave = async () => {
@@ -151,6 +175,11 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
         <span className="text-slate-400 italic">Nenhuma fórmula definida.</span>
       )}
     </div>
+  );
+
+  const selectedModelo = useMemo(
+    () => modelos.find((modelo) => modelo.id === modeloAvaliacao),
+    [modelos, modeloAvaliacao]
   );
 
   return (
@@ -210,7 +239,7 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
                     </div>
                     <div>
                       <p className="text-sm font-bold text-slate-900">Modelo de Avaliação</p>
-                      <p className="text-xs text-slate-500">{modeloAvaliacao.replace('_', ' ')}</p>
+                      <p className="text-xs text-slate-500">{selectedModelo?.nome ?? modeloAvaliacao || 'Sem modelo'}</p>
                     </div>
                   </div>
                   <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
@@ -259,10 +288,11 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
                 onFrequenciaModeloChange={setFrequenciaModelo}
                 frequenciaMinPercent={frequenciaMinPercent}
                 onFrequenciaMinPercentChange={(val) => setFrequenciaMinPercent(Math.max(0, Math.min(100, Number(val))))}
-                modeloAvaliacao={modeloAvaliacao}
-                onModeloAvaliacaoChange={handleModeloChange}
-                avaliacaoConfig={avaliacaoConfig}
-              />
+                  modeloAvaliacao={modeloAvaliacao}
+                  onModeloAvaliacaoChange={handleModeloChange}
+                  modelosAvaliacao={modelos.map((modelo) => ({ id: modelo.id, nome: modelo.nome }))}
+                  avaliacaoConfig={avaliacaoConfig}
+                />
               
               <div className="mt-6 flex items-start gap-3 rounded-lg bg-amber-50 p-4 text-amber-800">
                 <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />

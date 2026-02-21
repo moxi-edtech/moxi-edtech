@@ -53,15 +53,21 @@ async function fetchAllPaginated<T>(endpoint: string, limit = 50): Promise<T[]> 
   return items;
 }
 
-const DEFAULT_AVALIACAO_CONFIG = {
-  SIMPLIFICADO: { componentes: [{ code: 'MAC', peso: 50, ativo: true }, { code: 'PT', peso: 50, ativo: true }] },
-  ANGOLANO_TRADICIONAL: { componentes: [{ code: 'MAC', peso: 30, ativo: true }, { code: 'NPP', peso: 30, ativo: true }, { code: 'PT', peso: 40, ativo: true }] },
-  COMPETENCIAS: { componentes: [{ code: 'COMP', peso: 100, ativo: true }] },
-  DEPOIS: { componentes: [] },
-} as const;
+type ModeloAvaliacao = {
+  id: string;
+  nome: string;
+  componentes: { componentes?: Array<{ code: string; peso: number; ativo: boolean }> } | Array<{ code: string; peso: number; ativo: boolean }> | null;
+  is_default?: boolean;
+};
 
-const cloneConfig = (config?: { componentes?: ReadonlyArray<{ code: string; peso: number; ativo: boolean }> }) => ({
-  componentes: config?.componentes ? config.componentes.map((item) => ({ ...item })) : undefined,
+const extractComponentes = (config?: { componentes?: ReadonlyArray<{ code: string; peso: number; ativo: boolean }> } | Array<{ code: string; peso: number; ativo: boolean }> | null) => {
+  if (!config) return [];
+  if (Array.isArray(config)) return config;
+  return config.componentes ?? [];
+};
+
+const cloneConfig = (config?: { componentes?: ReadonlyArray<{ code: string; peso: number; ativo: boolean }> } | Array<{ code: string; peso: number; ativo: boolean }> | null) => ({
+  componentes: extractComponentes(config).map((item) => ({ ...item })),
 });
 
 // --- COMPONENTE VISUAL: STEPPER ---
@@ -138,8 +144,9 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   // --- STATES (STEP 2) ---
   const [frequenciaModelo, setFrequenciaModelo] = useState<'POR_AULA' | 'POR_PERIODO'>('POR_AULA');
   const [frequenciaMinPercent, setFrequenciaMinPercent] = useState<number>(75);
-  const [modeloAvaliacao, setModeloAvaliacao] = useState<'SIMPLIFICADO' | 'ANGOLANO_TRADICIONAL' | 'COMPETENCIAS' | 'DEPOIS'>('SIMPLIFICADO');
-  const [avaliacaoConfig, setAvaliacaoConfig] = useState<any>({ componentes: DEFAULT_AVALIACAO_CONFIG.SIMPLIFICADO.componentes });
+  const [modelosAvaliacao, setModelosAvaliacao] = useState<ModeloAvaliacao[]>([]);
+  const [modeloAvaliacao, setModeloAvaliacao] = useState<string>('');
+  const [avaliacaoConfig, setAvaliacaoConfig] = useState<any>({ componentes: [] });
   const [loadingConfig, setLoadingConfig] = useState(false);
 
   // --- STATES (STEP 3 & 4) ---
@@ -240,15 +247,29 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
       if (!escolaId) return;
       setLoadingConfig(true);
       try {
-        const r = await fetch(`/api/escola/${escolaId}/admin/configuracoes/avaliacao-frequencia`, { cache: "no-store" });
-        const j = await r.json();
+        const [configRes, modelosRes] = await Promise.all([
+          fetch(`/api/escola/${escolaId}/admin/configuracoes/avaliacao-frequencia`, { cache: "no-store" }),
+          fetch(`/api/escolas/${escolaId}/modelos-avaliacao?limit=50`, { cache: "no-store" }),
+        ]);
+        const j = await configRes.json();
+        const modelosJson = await modelosRes.json().catch(() => null);
         if (!active) return;
+        const listaModelos = Array.isArray(modelosJson?.data) ? modelosJson.data : [];
+        setModelosAvaliacao(listaModelos);
+        const defaultModelo = listaModelos.find((m: ModeloAvaliacao) => m.is_default) ?? listaModelos[0];
         const d = j?.data || {};
-        const mod = d.modelo_avaliacao || 'SIMPLIFICADO';
         setFrequenciaModelo(d.frequencia_modelo || 'POR_AULA');
         setFrequenciaMinPercent(Number.isFinite(d.frequencia_min_percent) ? d.frequencia_min_percent : 75);
-        setModeloAvaliacao(mod);
-        setAvaliacaoConfig(cloneConfig(d.avaliacao_config?.componentes?.length ? d.avaliacao_config : DEFAULT_AVALIACAO_CONFIG[mod as keyof typeof DEFAULT_AVALIACAO_CONFIG]));
+        const modelId = listaModelos.find((m: ModeloAvaliacao) => m.id === d.modelo_avaliacao)?.id
+          ?? listaModelos.find((m: ModeloAvaliacao) => m.nome === d.modelo_avaliacao)?.id
+          ?? defaultModelo?.id
+          ?? '';
+        setModeloAvaliacao(modelId);
+        if (d.avaliacao_config?.componentes?.length) {
+          setAvaliacaoConfig(cloneConfig(d.avaliacao_config));
+        } else if (defaultModelo) {
+          setAvaliacaoConfig(cloneConfig(defaultModelo.componentes));
+        }
       } catch (e) { console.error(e); } 
       finally { if(active) setLoadingConfig(false); }
     }
@@ -531,7 +552,15 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
             <AcademicStep2Config
               frequenciaModelo={frequenciaModelo} onFrequenciaModeloChange={setFrequenciaModelo}
               frequenciaMinPercent={frequenciaMinPercent} onFrequenciaMinPercentChange={(v) => setFrequenciaMinPercent(Math.max(0, Math.min(100, Number(v))))}
-              modeloAvaliacao={modeloAvaliacao} onModeloAvaliacaoChange={(v) => { setModeloAvaliacao(v); setAvaliacaoConfig(cloneConfig(DEFAULT_AVALIACAO_CONFIG[v])); }}
+              modeloAvaliacao={modeloAvaliacao}
+              onModeloAvaliacaoChange={(v) => {
+                setModeloAvaliacao(v);
+                const selected = modelosAvaliacao.find((modelo) => modelo.id === v);
+                if (selected) {
+                  setAvaliacaoConfig(cloneConfig(selected.componentes));
+                }
+              }}
+              modelosAvaliacao={modelosAvaliacao.map((modelo) => ({ id: modelo.id, nome: modelo.nome }))}
               avaliacaoConfig={avaliacaoConfig}
             />
           )}
