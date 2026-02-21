@@ -31,6 +31,8 @@ type BaseDataState = {
     classe_id?: string | null;
     ano_letivo?: number | null;
     turno?: string | null;
+    curso?: { nome?: string | null } | null;
+    classe?: { nome?: string | null } | null;
   }>;
   loading: boolean;
   error: string | null;
