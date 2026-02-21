@@ -9,6 +9,12 @@ Este documento resume as entregas recentes nas áreas de pauta (professor), comm
 - Validação instantânea (0–20) com feedback visual e som de erro.
 - Endpoint de pauta para alimentar o grid: `GET /api/professor/pauta`.
 
+## Avaliação dinâmica (modelos no DB)
+- `modelos_avaliacao` estendido com `tipo`, `regras` e `formula` para suportar PAP/estágio/isencões sem hardcode.
+- Resolver de modelo centralizado em `apps/web/src/lib/academico/avaliacao-utils.ts` com fallback ao default.
+- APIs de pauta (`professor`, `mini-pauta`, `pauta-grid`, `pauta-trimestral`) agora calculam usando o modelo do DB.
+- Configurações e onboarding agora listam modelos reais via `/api/escolas/[id]/modelos-avaliacao`.
+
 ## Command Palette (Action-first)
 - Campo único com busca global e sugestões de ações.
 - Intentions: “Pagamento João” → ação direta para pagamentos; “Nota Maria” → abre pauta com destaque.
@@ -46,6 +52,12 @@ Este documento resume as entregas recentes nas áreas de pauta (professor), comm
 - Fecho de período: bloquear edição na grade quando período fechado.
 - Assiduidade/Comportamento: integrar colunas adicionais no grid (MAC/NPP/NPT + assiduidade).
 - QR Code real no PDF via URL de validação pública.
+
+## Backlog — Avaliação dinâmica
+- Seed inicial de modelos `pap`, `estagio` e `final_unica` com `regras` padrão.
+- Resolver isenção por regra (ex.: média anual >= X) e refletir na pauta/boletim.
+- Exibir `tipo`/`regras` do modelo nas telas de configuração.
+- Ajustar PDFs oficiais para renderizar modelo não trimestral quando aplicável.
 
 ## Fase 2 — Motor de Horários (Scheduler)
 - Migration base: `supabase/migrations/20260309000000_scheduler_engine.sql`.
