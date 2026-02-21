@@ -129,6 +129,7 @@ async function apiGet<T>(url: string, signal?: AbortSignal): Promise<T> {
 export default function StructureMarketplace({ escolaId }: { escolaId: string }) {
   const searchParams = useSearchParams();
   const resolvePendenciasRequested = searchParams?.get("resolvePendencias") === "1";
+  const courseIdFromQuery = searchParams?.get("cursoId") || searchParams?.get("curso_id");
   const [activeTab, setActiveTab] = useState<ActiveTab>("my_courses");
   const [courses, setCourses] = useState<ActiveCourse[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
@@ -301,60 +302,67 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         classes.map((item: { id: string; nome: string }) => [item.id, item.nome])
       );
 
-      const disciplinaMap = new Map<string, CourseDetails["disciplinas"][number]>();
-      (disciplinasJson?.data ?? []).forEach((item: any) => {
+      const rawDisciplinas = disciplinasJson?.data ?? [];
+      const filteredDisciplinas = curriculoAnoLetivo?.id
+        ? rawDisciplinas.filter(
+            (item: any) =>
+              !item.classe_ano_letivo_id || item.classe_ano_letivo_id === curriculoAnoLetivo.id
+          )
+        : rawDisciplinas;
+      const disciplinaRows = filteredDisciplinas.length > 0 ? filteredDisciplinas : rawDisciplinas;
+
+      const disciplinaGroups = new Map<string, any[]>();
+      disciplinaRows.forEach((item: any) => {
         const key = item.disciplina_id ?? item.nome ?? item.id;
-        const existing = disciplinaMap.get(key);
-        const incomingStatus = item.curriculo_status ?? null;
-        const base = existing ?? {
+        const bucket = disciplinaGroups.get(key);
+        if (bucket) bucket.push(item);
+        else disciplinaGroups.set(key, [item]);
+      });
+
+      const disciplinaMap = new Map<string, CourseDetails["disciplinas"][number]>();
+      disciplinaGroups.forEach((items, key) => {
+        const draftItems = items.filter((item) => item.curriculo_status === "draft");
+        const sourceItems = draftItems.length > 0 ? draftItems : items;
+
+        const primary = sourceItems[0];
+        const base: CourseDetails["disciplinas"][number] = {
           id: key,
-          nome: item.nome,
-          codigo: item.sigla ?? item.codigo ?? item.nome?.slice(0, 6)?.toUpperCase() ?? "",
-          carga_horaria_semanal: Number(item.carga_horaria_semanal ?? item.carga_horaria ?? 0),
-          is_core: Boolean(item.is_core ?? (item.classificacao === "core" || item.tipo === "core")),
-          participa_horario: item.entra_no_horario ?? true,
-          is_avaliavel: item.is_avaliavel ?? true,
-          avaliacao_mode: item.avaliacao_mode === "custom" ? "personalizada" : "herdar_escola",
-          area: item.area ?? null,
-          classificacao: item.classificacao ?? null,
-          periodos_ativos: item.periodos_ativos ?? null,
-          entra_no_horario: item.entra_no_horario ?? null,
-          avaliacao_mode_key: item.avaliacao_mode ?? null,
-          avaliacao_disciplina_id: item.avaliacao_disciplina_id ?? null,
-          status_completude: item.status_completude ?? null,
-          curriculo_status: incomingStatus,
-          matrix_ids: [] as string[], // Explicitly cast to string[]
-          class_ids: [] as string[],
-          matrix_by_class: {} as Record<string, string[]>,
+          nome: primary.nome,
+          codigo: primary.sigla ?? primary.codigo ?? primary.nome?.slice(0, 6)?.toUpperCase() ?? "",
+          carga_horaria_semanal: Number(primary.carga_horaria_semanal ?? primary.carga_horaria ?? 0),
+          is_core: Boolean(primary.is_core ?? (primary.classificacao === "core" || primary.tipo === "core")),
+          participa_horario: primary.entra_no_horario ?? true,
+          is_avaliavel: primary.is_avaliavel ?? true,
+          avaliacao_mode: primary.avaliacao_mode === "custom" ? "personalizada" : "herdar_escola",
+          area: primary.area ?? null,
+          classificacao: primary.classificacao ?? null,
+          periodos_ativos: primary.periodos_ativos ?? null,
+          entra_no_horario: primary.entra_no_horario ?? null,
+          avaliacao_mode_key: primary.avaliacao_mode ?? null,
+          avaliacao_disciplina_id: primary.avaliacao_disciplina_id ?? null,
+          status_completude: primary.status_completude ?? null,
+          curriculo_status: primary.curriculo_status ?? null,
+          matrix_ids: [],
+          class_ids: [],
+          matrix_by_class: {},
         };
 
-        const shouldReplace =
-          existing && incomingStatus === "draft" && existing.curriculo_status !== "draft";
-        const nextBase = shouldReplace ? { ...base, matrix_ids: [] as string[] } : base;
-
-        const matrixIds = nextBase.matrix_ids ?? [];
-        if (item.id && !matrixIds.includes(item.id as string)) {
-          matrixIds.push(item.id as string);
-        }
-
-        const classId = item.classe_id as string | undefined;
-        const classIds = nextBase.class_ids ?? [];
-        const matrixByClass = nextBase.matrix_by_class ?? {};
-        if (classId) {
-          if (!classIds.includes(classId)) classIds.push(classId);
-          const classMatrixIds = matrixByClass[classId] ?? [];
-          if (item.id && !classMatrixIds.includes(item.id as string)) {
-            classMatrixIds.push(item.id as string);
+        sourceItems.forEach((item) => {
+          if (item.id && !base.matrix_ids.includes(item.id as string)) {
+            base.matrix_ids.push(item.id as string);
           }
-          matrixByClass[classId] = classMatrixIds;
-        }
-
-        disciplinaMap.set(key, {
-          ...nextBase,
-          matrix_ids: matrixIds,
-          class_ids: classIds,
-          matrix_by_class: matrixByClass,
+          const classId = item.classe_id as string | undefined;
+          if (classId) {
+            if (!base.class_ids.includes(classId)) base.class_ids.push(classId);
+            const classMatrixIds = base.matrix_by_class[classId] ?? [];
+            if (item.id && !classMatrixIds.includes(item.id as string)) {
+              classMatrixIds.push(item.id as string);
+            }
+            base.matrix_by_class[classId] = classMatrixIds;
+          }
         });
+
+        disciplinaMap.set(key, base);
       });
 
       const disciplinas = Array.from(disciplinaMap.values());
@@ -378,7 +386,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         turmas,
       };
     },
-    [escolaId]
+    [curriculoAnoLetivo?.id, escolaId]
   );
 
   const handleOpenManager = useCallback(
@@ -409,12 +417,20 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
 
     const run = async () => {
       try {
-        const res = await fetch(`/api/escolas/${escolaId}/disciplinas?status_completude=incompleto&limit=1`, {
-          cache: "no-store",
-        });
-        const json = await res.json().catch(() => null);
-        const first = json?.data?.[0];
-        const targetCourseId = first?.curso_id ?? courses[0]?.id;
+        const targetCourseId = courseIdFromQuery || courses[0]?.id;
+        if (!targetCourseId) return;
+        if (!courseIdFromQuery) {
+          const res = await fetch(`/api/escolas/${escolaId}/disciplinas?status_completude=incompleto&limit=1`, {
+            cache: "no-store",
+          });
+          const json = await res.json().catch(() => null);
+          const first = json?.data?.[0];
+          if (first?.curso_id) {
+            await handleOpenManager(first.curso_id, "disciplinas");
+            setActiveTab("my_courses");
+            return;
+          }
+        }
         if (targetCourseId) {
           await handleOpenManager(targetCourseId, "disciplinas");
           setActiveTab("my_courses");
@@ -427,7 +443,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     };
 
     run();
-  }, [autoResolveTriggered, courses, escolaId, handleOpenManager, loadingCourses, searchParams]);
+  }, [autoResolveTriggered, courseIdFromQuery, courses, escolaId, handleOpenManager, loadingCourses, searchParams]);
 
   const selectedCourse = useMemo(
     () => courses.find((c) => c.id === selectedCourseId) || null,
@@ -971,6 +987,13 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   // -------- Default view (tabs) --------
   return (
     <div className="space-y-6">
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        <p className="font-semibold">Dica Angola</p>
+        <p className="text-xs text-amber-700 mt-1">
+          No ensino médio, algumas disciplinas só existem em certas classes (ex.: Filosofia apenas na 12ª).
+          Edite por classe e use trimestres para refletir a realidade.
+        </p>
+      </div>
       {/* Tabs */}
       <div className="flex items-center gap-2">
         <button

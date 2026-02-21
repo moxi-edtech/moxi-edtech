@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-02-06T23:23:45.061Z",
+  "timestamp": "2026-02-10T00:54:58.486Z",
   "repoRoot": "/Users/gundja/moxi-edtech",
   "summary": {
     "critical": 0,
@@ -15,6 +15,10 @@
       "severity": "HIGH",
       "status": "PARTIAL",
       "evidence": [
+        {
+          "file": "apps/web/src/hooks/useHorarioData.ts",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
         {
           "file": "apps/web/src/hooks/useMatriculaLogic.ts",
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
@@ -49,10 +53,6 @@
         },
         {
           "file": "apps/web/src/components/super-admin/UsuariosListClient.tsx",
-          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
-        },
-        {
-          "file": "apps/web/src/components/system/ConfigHealthBanner.tsx",
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
         },
         {
@@ -104,15 +104,15 @@
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
         },
         {
+          "file": "apps/web/src/components/system/ConfigHealthBanner.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
           "file": "apps/web/src/app/documentos/[publicId]/page.tsx",
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
         },
         {
           "file": "apps/web/src/app/financeiro/_components/RadarInadimplenciaActive.tsx",
-          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
-        },
-        {
-          "file": "apps/web/src/app/financeiro/fecho/page.tsx",
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
         }
       ],

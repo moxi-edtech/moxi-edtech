@@ -12,6 +12,7 @@
 - Severidade: **HIGH**
 - Status: **PARTIAL**
 - Evidências:
+  - `apps/web/src/hooks/useHorarioData.ts` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/hooks/useMatriculaLogic.ts` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/lib/auth-admin-job.ts` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/app/financeiro/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
@@ -21,7 +22,6 @@
   - `apps/web/src/components/layout/StudentPortalLayout.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/components/professor/AssignmentsBanner.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/components/super-admin/UsuariosListClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/web/src/components/system/ConfigHealthBanner.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/components/secretaria/BalcaoAtendimento.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/components/secretaria/BuscaBalcaoRapido.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/components/secretaria/DocumentosEmissaoHubClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
@@ -34,9 +34,9 @@
   - `apps/web/src/components/secretaria/ProfessoresListClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/components/secretaria/TurmaDetailClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/components/secretaria/TurmaForm.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/system/ConfigHealthBanner.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/app/documentos/[publicId]/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/app/financeiro/_components/RadarInadimplenciaActive.tsx` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/web/src/app/financeiro/fecho/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
 - Recomendação: Remover no-store onde houver MV/camadas cacheáveis; manter só em rotas realmente sensíveis.
 
 ### F09_MV — F09 — Radar de Inadimplência com MATERIALIZED VIEW

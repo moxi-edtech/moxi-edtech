@@ -200,6 +200,51 @@ Integrar metadados do currículo às telas da secretaria, garantindo que pautas 
 
 ---
 
+## Sessão Atual — Horários sem Fricção + Status Split (Currículo)
+
+### Objetivo
+Separar o status de currículo por domínio (horário vs avaliação), permitir horários “lazy” e adicionar motor de auto-distribuição (V1) com logs.
+
+### Mudanças de Schema / RPC (Aplicadas no remoto)
+- **Migração:** `supabase/migrations/20261120122000_curriculum_status_split.sql`
+  - Novos campos em `curso_matriz`: `status_horario`, `status_avaliacao`.
+  - Trigger `trg_curriculum_recalc_status` recalcula automaticamente.
+  - RPC `curriculum_recalc_status(escola_id, curso_matriz_id)` (security definer).
+
+### API / Backend
+- **Auto-config cargas horário:** `POST /api/escolas/:id/horarios/cargas/auto`
+  - RPC `horario_auto_configurar_cargas` (preenche `turma_disciplinas.carga_horaria_semanal`).
+- **Auto-distribuição V1:** `POST /api/escolas/:id/horarios/auto`
+  - Gera plano determinístico (hard+soft, 2 fases) e retorna `assignments`, `unmet`, `trace`.
+- **Gating de publish no quadro:** `POST /api/escolas/:id/horarios/quadro`
+  - `mode: publish` bloqueia se cargas pendentes ou distribuição incompleta.
+
+### UI / UX
+- **Quadro de horários:** `SchedulerBoard`
+  - Disciplinas aparecem mesmo sem carga (badge “Definir carga”).
+  - CTA “Auto‑Configurar cargas”.
+  - Botão “Publicar” com bloqueio por pendências.
+- **Dashboard Admin:** banners separados
+  - “Horários incompletos: X disciplinas”.
+  - “Avaliação incompleta: Y disciplinas”.
+
+### Arquivos-chave
+- `apps/web/src/components/escola/horarios/SchedulerBoard.tsx`
+- `apps/web/src/app/escola/[id]/horarios/quadro/page.tsx`
+- `apps/web/src/app/api/escolas/[id]/horarios/auto/route.ts`
+- `apps/web/src/app/api/escolas/[id]/horarios/cargas/auto/route.ts`
+- `apps/web/src/app/api/escolas/[id]/horarios/quadro/route.ts`
+- `apps/web/src/lib/rules/scheduler-rules.ts`
+- `apps/web/src/hooks/useHorarioData.ts`
+- `apps/web/src/components/layout/escola-admin/EscolaAdminDashboardData.tsx`
+- `apps/web/src/components/layout/escola-admin/EscolaAdminDashboardContent.tsx`
+
+### Observações
+- `curso_matriz` continua sendo SSOT curricular; `turma_disciplinas` recebe metadados na criação.
+- O status unificado (`status_completude`) permanece, mas o banner do admin usa os novos `status_horario` e `status_avaliacao`.
+
+---
+
 ## Referências relacionadas
 - `agents/contracts/README.md`
 - `agents/contracts/KLASSE_ANALISE_COMPETITIVA_ANGOSCHOOL_2026-02-05.md`

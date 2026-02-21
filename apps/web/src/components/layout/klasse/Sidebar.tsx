@@ -2,16 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useMemo, useState } from "react";
-import { ChevronLeft } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronDown, ChevronLeft } from "lucide-react";
 import * as Icons from "lucide-react";
-
-export type NavItem = {
-  href: string;
-  label: string;
-  icon: keyof typeof Icons; // ✅ string válida do lucide
-  badge?: string;
-};
+import type { NavItem } from "@/lib/sidebarNav";
 
 function cn(...c: Array<string | false | null | undefined>) {
   return c.filter(Boolean).join(" ");
@@ -32,11 +26,35 @@ export default function Sidebar({
   const [collapsed, setCollapsed] = useState(false);
 
   const sidebarItems = useMemo(() => {
-    return items.map((it) => ({
-      ...it,
-      active: pathname === it.href || pathname?.startsWith(it.href + "/"),
-    }));
+    return items.map((it) => {
+      const children = it.children ?? [];
+      const childActive = children.some(
+        (child) => pathname === child.href || pathname?.startsWith(child.href + "/")
+      );
+      const active = pathname === it.href || pathname?.startsWith(it.href + "/") || childActive;
+      return { ...it, active, childActive, children };
+    });
   }, [pathname, items]);
+
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    sidebarItems.forEach((it) => {
+      if (it.children.length) initial[it.href] = it.active;
+    });
+    return initial;
+  });
+
+  useEffect(() => {
+    setExpanded((prev) => {
+      const next = { ...prev };
+      sidebarItems.forEach((it) => {
+        if (it.children.length && it.active) {
+          next[it.href] = true;
+        }
+      });
+      return next;
+    });
+  }, [sidebarItems]);
 
   return (
     <aside
@@ -82,34 +100,86 @@ export default function Sidebar({
         <ul className="space-y-1">
           {sidebarItems.map((it) => {
             const Icon = (Icons as any)[it.icon] ?? Icons.HelpCircle;
+            const hasChildren = it.children.length > 0;
+            const isExpanded = expanded[it.href];
 
             return (
               <li key={it.href}>
-                <Link
-                  href={it.href}
-                  className={cn(
-                    "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm",
-                    "transition-colors",
-                    it.active
-                      ? "bg-slate-900 text-white ring-1 ring-klasse-gold/25"
-                      : "text-slate-200 hover:bg-slate-900/70 hover:text-white"
-                  )}
-                  title={collapsed ? it.label : undefined}
-                >
-                  <Icon
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={it.href}
                     className={cn(
-                      "h-5 w-5 shrink-0",
-                      it.active ? "text-klasse-gold" : "text-slate-400 group-hover:text-klasse-gold"
+                      "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm flex-1",
+                      "transition-colors",
+                      it.active
+                        ? "bg-slate-900 text-white ring-1 ring-klasse-gold/25"
+                        : "text-slate-200 hover:bg-slate-900/70 hover:text-white"
                     )}
-                  />
-                  {!collapsed && <span className="truncate">{it.label}</span>}
+                    title={collapsed ? it.label : undefined}
+                  >
+                    <Icon
+                      className={cn(
+                        "h-5 w-5 shrink-0",
+                        it.active ? "text-klasse-gold" : "text-slate-400 group-hover:text-klasse-gold"
+                      )}
+                    />
+                    {!collapsed && <span className="truncate">{it.label}</span>}
 
-                  {it.badge && !collapsed && (
-                    <span className="ml-auto rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-400">
-                      {it.badge}
-                    </span>
+                    {it.badge && !collapsed && (
+                      <span className="ml-auto rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-400">
+                        {it.badge}
+                      </span>
+                    )}
+                  </Link>
+
+                  {!collapsed && hasChildren && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpanded((prev) => ({ ...prev, [it.href]: !prev[it.href] }))
+                      }
+                      className={cn(
+                        "h-8 w-8 rounded-lg flex items-center justify-center",
+                        it.active ? "text-klasse-gold" : "text-slate-400 hover:text-klasse-gold"
+                      )}
+                      aria-label={isExpanded ? "Recolher" : "Expandir"}
+                    >
+                      <ChevronDown
+                        className={cn("h-4 w-4 transition-transform", isExpanded && "rotate-180")}
+                      />
+                    </button>
                   )}
-                </Link>
+                </div>
+
+                {!collapsed && hasChildren && isExpanded && (
+                  <ul className="mt-1 space-y-1 pl-11">
+                    {it.children.map((child) => {
+                      const childActive =
+                        pathname === child.href || pathname?.startsWith(child.href + "/");
+                      return (
+                        <li key={child.href}>
+                          <Link
+                            href={child.href}
+                            className={cn(
+                              "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs",
+                              childActive
+                                ? "bg-slate-900 text-white"
+                                : "text-slate-300 hover:bg-slate-900/60 hover:text-white"
+                            )}
+                          >
+                            <span className="h-1.5 w-1.5 rounded-full bg-klasse-gold/70" />
+                            <span className="truncate">{child.label}</span>
+                            {child.badge && (
+                              <span className="ml-auto rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-400">
+                                {child.badge}
+                              </span>
+                            )}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
               </li>
             );
           })}

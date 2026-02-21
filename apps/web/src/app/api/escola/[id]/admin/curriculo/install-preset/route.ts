@@ -27,6 +27,7 @@ const bodySchema = z.object({
       subjects: z.array(z.string()),
       matrix: z.record(z.boolean()),
       turnos: z.object({ manha: z.boolean(), tarde: z.boolean(), noite: z.boolean() }),
+      cargaByClass: z.record(z.number()).optional(),
     })
     .optional(),
   options: z
@@ -41,22 +42,32 @@ const bodySchema = z.object({
 const buildDefaultConfig = (presetKey: string) => {
   const meta = CURRICULUM_PRESETS_META[presetKey as CurriculumKey];
   const classes = (meta?.classes ?? []).filter(Boolean);
+  const presetData = CURRICULUM_PRESETS[presetKey as CurriculumKey] ?? [];
   const subjects = Array.from(
     new Set(
-      (CURRICULUM_PRESETS[presetKey as CurriculumKey] ?? [])
+      presetData
         .map((d: any) => String(d?.nome ?? '').trim())
         .filter(Boolean)
     )
   );
   const turnos = { manha: true, tarde: false, noite: false };
   const matrix: Record<string, boolean> = {};
+  const cargaByClass: Record<string, number> = {};
   for (const subject of subjects) {
     for (const cls of classes) {
       matrix[`${subject}::${cls}::M`] = true;
     }
   }
+  presetData.forEach((disciplina: any) => {
+    const nome = String(disciplina?.nome ?? '').trim();
+    const classe = String(disciplina?.classe ?? '').trim();
+    if (!nome || !classe) return;
+    if (Number.isFinite(disciplina?.horas)) {
+      cargaByClass[`${nome}::${classe}`] = Number(disciplina.horas);
+    }
+  });
 
-  return { classes, subjects, turnos, matrix };
+  return { classes, subjects, turnos, matrix, cargaByClass };
 };
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {

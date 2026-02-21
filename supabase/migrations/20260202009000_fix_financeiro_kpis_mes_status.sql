@@ -1,3 +1,4 @@
+DROP VIEW IF EXISTS vw_financeiro_kpis_mes;
 DROP MATERIALIZED VIEW IF EXISTS internal.mv_financeiro_kpis_mes;
 
 CREATE MATERIALIZED VIEW internal.mv_financeiro_kpis_mes AS

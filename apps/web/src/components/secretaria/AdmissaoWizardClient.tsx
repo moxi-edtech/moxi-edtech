@@ -59,6 +59,13 @@ type CandidaturaDraft = {
     telefone?: string | null;
     bi_numero?: string | null;
     email?: string | null;
+    data_nascimento?: string | null;
+    sexo?: string | null;
+    nif?: string | null;
+    endereco?: string | null;
+    responsavel_nome?: string | null;
+    responsavel_contato?: string | null;
+    encarregado_email?: string | null;
   } | null;
   curso_id?: string | null;
   classe_id?: string | null;
@@ -122,6 +129,13 @@ type DraftIdentificacao = {
   telefone?: string;
   bi_numero?: string;
   email?: string;
+  data_nascimento?: string;
+  sexo?: string;
+  nif?: string;
+  endereco?: string;
+  responsavel_nome?: string;
+  responsavel_contato?: string;
+  encarregado_email?: string;
 };
 
 function Step1Identificacao(props: {
@@ -140,6 +154,13 @@ function Step1Identificacao(props: {
     telefone: "",
     bi_numero: "",
     email: "",
+    data_nascimento: "",
+    sexo: "",
+    nif: "",
+    endereco: "",
+    responsavel_nome: "",
+    responsavel_contato: "",
+    encarregado_email: "",
   });
 
   const [saving, setSaving] = useState(false);
@@ -154,10 +175,53 @@ function Step1Identificacao(props: {
       telefone: initialData.dados_candidato?.telefone ?? "",
       bi_numero: initialData.dados_candidato?.bi_numero ?? "",
       email: initialData.dados_candidato?.email ?? "",
+      data_nascimento: initialData.dados_candidato?.data_nascimento ?? "",
+      sexo: initialData.dados_candidato?.sexo ?? "",
+      nif: initialData.dados_candidato?.nif ?? "",
+      endereco: initialData.dados_candidato?.endereco ?? "",
+      responsavel_nome: initialData.dados_candidato?.responsavel_nome ?? "",
+      responsavel_contato: initialData.dados_candidato?.responsavel_contato ?? "",
+      encarregado_email: initialData.dados_candidato?.encarregado_email ?? "",
     });
   }, [initialData]);
 
   const debouncedForm = useDebouncedValue(form, 650);
+
+  const [extraOpen, setExtraOpen] = useState(false);
+  const [extraTouched, setExtraTouched] = useState(false);
+
+  const extraHasData = useMemo(() => {
+    return [
+      form.data_nascimento,
+      form.sexo,
+      form.nif,
+      form.endereco,
+      form.responsavel_nome,
+      form.responsavel_contato,
+      form.encarregado_email,
+    ].some((v) => (v ?? "").trim() !== "");
+  }, [
+    form.data_nascimento,
+    form.sexo,
+    form.nif,
+    form.endereco,
+    form.responsavel_nome,
+    form.responsavel_contato,
+    form.encarregado_email,
+  ]);
+
+  const shouldAutoOpen = useMemo(() => {
+    const hasTrigger = Boolean(
+      (form.bi_numero ?? "").trim() ||
+        ((form.nome_candidato ?? "").trim() && (form.telefone ?? "").trim())
+    );
+    return hasTrigger || extraHasData;
+  }, [form.bi_numero, form.nome_candidato, form.telefone, extraHasData]);
+
+  useEffect(() => {
+    if (extraTouched) return;
+    if (shouldAutoOpen) setExtraOpen(true);
+  }, [extraTouched, shouldAutoOpen]);
 
   // dedupe autosave: avoid same payload re-sending
   const lastHashRef = useRef<string>("");
@@ -236,7 +300,7 @@ function Step1Identificacao(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedForm, hydrated]);
 
-  const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setForm((p) => ({ ...p, [name]: value }));
   };
@@ -345,6 +409,96 @@ function Step1Identificacao(props: {
           disabled={!canEditDraft}
           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
         />
+      </div>
+
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold text-slate-700">Dados para matrícula</p>
+            <p className="text-xs text-slate-500">Opcional. Ajuda a completar o processo.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setExtraOpen((prev) => !prev);
+              setExtraTouched(true);
+            }}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:border-klasse-gold/40"
+          >
+            {extraOpen ? "Ocultar" : "Completar"}
+          </button>
+        </div>
+
+        {extraOpen ? (
+          <div className="grid gap-3 md:grid-cols-2">
+            <input
+              type="date"
+              name="data_nascimento"
+              value={form.data_nascimento ?? ""}
+              onChange={onChange}
+              disabled={!canEditDraft}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+            />
+            <select
+              name="sexo"
+              value={form.sexo ?? ""}
+              onChange={onChange}
+              disabled={!canEditDraft}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+            >
+              <option value="">Gênero</option>
+              <option value="M">Masculino</option>
+              <option value="F">Feminino</option>
+              <option value="O">Outro</option>
+              <option value="N">Prefiro não informar</option>
+            </select>
+            <input
+              type="text"
+              name="responsavel_nome"
+              value={form.responsavel_nome ?? ""}
+              onChange={onChange}
+              placeholder="Nome do encarregado"
+              disabled={!canEditDraft}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+            />
+            <input
+              type="text"
+              name="responsavel_contato"
+              value={form.responsavel_contato ?? ""}
+              onChange={onChange}
+              placeholder="Contacto do encarregado"
+              disabled={!canEditDraft}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+            />
+            <input
+              type="email"
+              name="encarregado_email"
+              value={form.encarregado_email ?? ""}
+              onChange={onChange}
+              placeholder="Email do encarregado"
+              disabled={!canEditDraft}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+            />
+            <input
+              type="text"
+              name="endereco"
+              value={form.endereco ?? ""}
+              onChange={onChange}
+              placeholder="Endereço"
+              disabled={!canEditDraft}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+            />
+            <input
+              type="text"
+              name="nif"
+              value={form.nif ?? ""}
+              onChange={onChange}
+              placeholder="NIF"
+              disabled={!canEditDraft}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+            />
+          </div>
+        ) : null}
       </div>
 
       <div className="flex items-center justify-between gap-3">

@@ -60,12 +60,28 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (inferredRole === "admin" || inferredRole === "secretaria" || inferredRole === "financeiro") {
       items = items
         .map((item) => {
+          const children = item.children?.map((child) => {
+            let href = child.href;
+            if (href.includes("[escolaId]")) {
+              if (!navEscolaId) return null;
+              href = href.replace("[escolaId]", navEscolaId);
+            }
+            if (href.includes("[id]")) {
+              if (!navEscolaId) return null;
+              href = href.replace("[id]", navEscolaId);
+            }
+            return { ...child, href };
+          }).filter(Boolean);
           if (item.href.includes("[escolaId]")) {
             if (!navEscolaId) return null;
             return {
               ...item,
               href: item.href.replace("[escolaId]", navEscolaId),
+              children,
             };
+          }
+          if (children) {
+            return { ...item, children };
           }
           return item;
         })

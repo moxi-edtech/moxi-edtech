@@ -29,6 +29,7 @@ function CriarEscolaForm() {
     nome: "",
     nif: "",
     endereco: "",
+    plano: "essencial",
     adminEmail: "",
     adminTelefone: "",
     adminNome: "",
@@ -68,6 +69,7 @@ function CriarEscolaForm() {
           nome: formData.nome.trim(),
           nif: formData.nif || null,
           endereco: formData.endereco || null,
+          plano: formData.plano,
           admin: {
             email: formData.adminEmail.trim(),
             telefone: formData.adminTelefone || null,
@@ -250,6 +252,22 @@ function CriarEscolaForm() {
                     onChange={(e) => handleInputChange('endereco', e.target.value)}
                     disabled={loading}
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-moxinexa-dark">
+                    Plano
+                  </label>
+                  <select
+                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
+                    value={formData.plano}
+                    onChange={(e) => handleInputChange("plano", e.target.value)}
+                    disabled={loading}
+                  >
+                    <option value="essencial">Essencial</option>
+                    <option value="standard">Standard</option>
+                    <option value="premium">Premium</option>
+                  </select>
                 </div>
               </div>
             </div>

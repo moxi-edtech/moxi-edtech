@@ -12,7 +12,7 @@ export async function GET() {
 
     let query = supabase
       .from('turma_disciplinas')
-      .select('curso_matriz:curso_matriz_id(disciplina:disciplinas_catalogo(id, nome))')
+      .select('curso_matriz:curso_matriz_id(disciplina:disciplinas_catalogo!curso_matriz_disciplina_id_fkey(id, nome))')
       .eq('turma_id', turmaId);
 
     query = applyKf2ListInvariants(query);

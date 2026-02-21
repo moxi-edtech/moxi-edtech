@@ -18,6 +18,7 @@ const BodySchema = z.object({
       sala_id: z.string().uuid().nullable().optional(),
     })
   ),
+  mode: z.enum(["draft", "publish"]).optional(),
 })
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -127,6 +128,55 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         { ok: false, error: 'Conflito de horário detectado', conflicts },
         { status: 409 }
       )
+    }
+
+    const mode = parsed.data.mode ?? "draft"
+    if (mode === "publish") {
+      const { data: cargas, error: cargasError } = await supabase
+        .from("turma_disciplinas")
+        .select(
+          "carga_horaria_semanal, entra_no_horario, curso_matriz:curso_matriz_id(carga_horaria_semanal, entra_no_horario, disciplina_id, disciplina:disciplinas_catalogo!curso_matriz_disciplina_id_fkey(nome))"
+        )
+        .eq("escola_id", escolaIdResolved)
+        .eq("turma_id", parsed.data.turma_id)
+
+      if (cargasError) {
+        return NextResponse.json({ ok: false, error: cargasError.message }, { status: 400 })
+      }
+
+      const disciplinaCounts: Record<string, number> = {}
+      for (const item of parsed.data.items) {
+        disciplinaCounts[item.disciplina_id] = (disciplinaCounts[item.disciplina_id] || 0) + 1
+      }
+
+      const missing: Array<{ disciplina_id: string; disciplina_nome?: string | null }> = []
+      const mismatch: Array<{ disciplina_id: string; disciplina_nome?: string | null }> = []
+
+      for (const row of cargas || []) {
+        const disciplinaId = row.curso_matriz?.disciplina_id ?? null
+        if (!disciplinaId) continue
+        const entra = row.entra_no_horario ?? row.curso_matriz?.entra_no_horario ?? true
+        if (!entra) continue
+        const expected = row.carga_horaria_semanal ?? row.curso_matriz?.carga_horaria_semanal ?? 0
+        const nome = row.curso_matriz?.disciplina?.nome ?? null
+
+        if (expected <= 0) {
+          missing.push({ disciplina_id: disciplinaId, disciplina_nome: nome })
+          continue
+        }
+
+        const assigned = disciplinaCounts[disciplinaId] || 0
+        if (assigned !== expected) {
+          mismatch.push({ disciplina_id: disciplinaId, disciplina_nome: nome })
+        }
+      }
+
+      if (missing.length > 0 || mismatch.length > 0) {
+        return NextResponse.json(
+          { ok: false, error: "CARGA_HORARIA_INCOMPLETA", details: { missing, mismatch } },
+          { status: 400 }
+        )
+      }
     }
 
     const { error } = await supabase

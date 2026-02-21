@@ -147,7 +147,8 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   const [matrix, setMatrix] = useState<MatrixRow[]>([]);
   const [applyingPreset, setApplyingPreset] = useState(false);
   const [padraoNomenclatura, setPadraoNomenclatura] = useState<PadraoNomenclatura>('descritivo_completo');
-  const [appliedCursos, setAppliedCursos] = useState<Record<string, { cursoId: string; classes: string[] }>>({});
+  const [appliedCursos, setAppliedCursos] = useState<Record<string, { cursoId: string; classes: string[]; version?: number | null }>>({});
+  const [curriculumOverrides, setCurriculumOverrides] = useState<Record<string, number>>({});
   const [estruturaCounts, setEstruturaCounts] = useState<{ cursos_total?: number; classes_total?: number; disciplinas_total?: number; } | null>(null);
 
   const supabase = useMemo(() => createClient(), []);
@@ -209,6 +210,28 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
     }
     if (escolaId) fn();
   }, [escolaId]);
+
+  useEffect(() => {
+    let active = true;
+    async function loadDraft() {
+      if (!escolaId) return;
+      if (Object.keys(curriculumOverrides).length > 0) return;
+      try {
+        const res = await fetch(`/api/escolas/${escolaId}/onboarding/draft`, { cache: "no-store" });
+        const json = await res.json().catch(() => null);
+        const overrides = json?.draft?.data?.curriculumOverrides;
+        if (active && overrides && typeof overrides === "object") {
+          setCurriculumOverrides(overrides as Record<string, number>);
+        }
+      } catch (_) {
+        // ignore
+      }
+    }
+    loadDraft();
+    return () => {
+      active = false;
+    };
+  }, [escolaId, curriculumOverrides]);
 
   // Fetch Config (Step 2)
   useEffect(() => {
@@ -331,6 +354,29 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
         const bp = CURRICULUM_PRESETS[k as keyof typeof CURRICULUM_PRESETS] || [];
         const subjects = Array.from(new Set(bp.map((d: any) => d.nome)));
         const classes = rows.map((r: any) => r.nome);
+        const classSet = new Set(classes);
+
+        const cargaByClass: Record<string, number> = {};
+        bp.forEach((disciplina: any) => {
+          const nome = String(disciplina?.nome ?? '').trim();
+          const classe = String(disciplina?.classe ?? '').trim();
+          if (!nome || !classe || !classSet.has(classe)) return;
+          if (Number.isFinite(disciplina?.horas)) {
+            cargaByClass[`${nome}::${classe}`] = Number(disciplina.horas);
+          }
+        });
+
+        const overridePrefix = `${k}::`;
+        Object.entries(curriculumOverrides).forEach(([key, value]) => {
+          if (!key.startsWith(overridePrefix)) return;
+          const remainder = key.slice(overridePrefix.length);
+          const [classe, ...subjectParts] = remainder.split("::");
+          const subject = subjectParts.join("::");
+          if (!classe || !subject || !classSet.has(classe)) return;
+          if (Number.isFinite(value)) {
+            cargaByClass[`${subject}::${classe}`] = Number(value);
+          }
+        });
         
         const matrixMap: any = {};
         const tp = { manha: turnos["Manhã"], tarde: turnos["Tarde"], noite: turnos["Noite"] };
@@ -348,15 +394,21 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
           body: JSON.stringify({
             presetKey: k, ano_letivo_id: anoLetivoId,
             customData: { label: cursoNome, associatedPreset: k, classes, subjects },
-            advancedConfig: { classes, subjects, matrix: matrixMap, turnos: tp },
+            advancedConfig: { classes, subjects, matrix: matrixMap, turnos: tp, cargaByClass },
             options: { autoPublish: false, generateTurmas: false }
           })
         });
         const j = await r.json();
         if (!r.ok) throw new Error(`Erro em ${cursoNome}`);
         
-        const cid = j.applied?.cursoId || cursosList.find((c: any) => c.curriculum_key === k)?.id;
-        if (cid) applied[k] = { cursoId: cid, classes };
+        const cid = j.applied?.curso_id || cursosList.find((c: any) => c.curriculum_key === k)?.id;
+        if (cid) {
+          applied[k] = {
+            cursoId: cid,
+            classes,
+            version: j.applied?.version ?? null,
+          };
+        }
       }
       setAppliedCursos(applied);
       toast.success("Estrutura criada!", { id: tid });
@@ -389,6 +441,21 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
         const rows = grouped[k];
         const cm = mapClasses[info.cursoId] || {};
         const payload: any[] = [];
+
+        const resPublish = await fetch(`/api/escola/${escolaId}/admin/curriculo/publish`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            cursoId: info.cursoId,
+            anoLetivoId: anoLetivoId,
+            version: info.version ?? 1,
+            rebuildTurmas: false,
+          }),
+        });
+        const publishJson = await resPublish.json().catch(() => null);
+        if (!resPublish.ok || publishJson?.ok === false) {
+          throw new Error(publishJson?.error || publishJson?.message || "Falha ao publicar currículo.");
+        }
 
         rows.forEach((r: any) => {
           const cid = cm[r.nome];
@@ -471,12 +538,15 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
 
           {step === 3 && (
             <AcademicStep2
+              escolaId={escolaId}
               presetCategory={presetCategory} onPresetCategoryChange={setPresetCategory}
               matrix={matrix} onMatrixChange={setMatrix} onMatrixUpdate={handleMatrixUpdate}
               turnos={turnos}
               onApplyCurriculumPreset={handleApplyCurriculumPreset} applyingPreset={applyingPreset}
               padraoNomenclatura={padraoNomenclatura} onPadraoNomenclaturaChange={setPadraoNomenclatura}
               anoLetivo={anoLetivo}
+              curriculumOverrides={curriculumOverrides}
+              onCurriculumOverridesChange={setCurriculumOverrides}
             />
           )}
 

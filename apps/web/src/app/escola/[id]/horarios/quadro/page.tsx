@@ -23,9 +23,13 @@ export default function QuadroHorariosPage() {
   const [versaoId, setVersaoId] = useState<string | null>(null);
   const [turmaId, setTurmaId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [autoConfiguring, setAutoConfiguring] = useState(false);
+  const [autoScheduling, setAutoScheduling] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [conflictSlots, setConflictSlots] = useState<Record<string, boolean>>({});
   const [novaSala, setNovaSala] = useState("");
+  const [refreshToken, setRefreshToken] = useState(0);
 
   const {
     slots,
@@ -45,7 +49,7 @@ export default function QuadroHorariosPage() {
     error: turmaError,
     setAulas,
     setGrid,
-  } = useHorarioTurmaData({ escolaId, turmaId, versaoId, slotLookup });
+  } = useHorarioTurmaData({ escolaId, turmaId, versaoId, slotLookup, refreshToken });
 
   useEffect(() => {
     setIsMounted(true);
@@ -95,14 +99,105 @@ export default function QuadroHorariosPage() {
     ];
   }, [turmas]);
 
+  const selectedTurma = useMemo(
+    () => turmas.find((turma) => turma.id === turmaId) || null,
+    [turmaId, turmas]
+  );
+
   const horariosDisponiveis = useMemo(() => (slots.length > 0 ? slots : undefined), [slots]);
+  const missingLoad = useMemo(() => aulas.filter((aula) => aula.missingLoad), [aulas]);
+  const missingLoadCount = missingLoad.length;
+  const canPublicar = missingLoadCount === 0;
   const isLoading = baseLoading || turmaLoading;
   const showOfflineStatus = isMounted && !online;
+  const totalDias = useMemo(() => {
+    const unique = new Set(Object.keys(slotLookup).map((key) => key.split("-")[0]));
+    return unique.size || 5;
+  }, [slotLookup]);
+  const temposAulaCount = useMemo(
+    () => (horariosDisponiveis ?? []).filter((slot) => slot.tipo !== "intervalo").length,
+    [horariosDisponiveis]
+  );
+  const totalSlots = totalDias * temposAulaCount;
+  const filledSlots = useMemo(
+    () => Object.values(grid).filter((value) => Boolean(value)).length,
+    [grid]
+  );
+  const totalCarga = useMemo(
+    () => aulas.reduce((acc, aula) => acc + (aula.temposTotal || 0), 0),
+    [aulas]
+  );
+  const excessoCarga = Math.max(0, totalCarga - totalSlots);
+  const ajustesSugeridos = useMemo(() => {
+    let restante = excessoCarga;
+    if (restante <= 0) return [] as Array<{ disciplina: string; atual: number; sugerido: number }>;
+    const ordered = [...aulas]
+      .filter((aula) => aula.temposTotal > 1)
+      .sort((a, b) => b.temposTotal - a.temposTotal);
+    const suggestions: Array<{ disciplina: string; atual: number; sugerido: number }> = [];
+    for (const aula of ordered) {
+      if (restante <= 0) break;
+      suggestions.push({
+        disciplina: aula.disciplina,
+        atual: aula.temposTotal,
+        sugerido: aula.temposTotal - 1,
+      });
+      restante -= 1;
+    }
+    return suggestions;
+  }, [aulas, excessoCarga]);
+  const disciplinasCompletas = useMemo(
+    () => aulas.filter((aula) => !aula.missingLoad && aula.temposTotal > 0 && aula.temposAlocados >= aula.temposTotal).length,
+    [aulas]
+  );
+  const disciplinasPendentes = useMemo(
+    () =>
+      aulas.filter(
+        (aula) => aula.missingLoad || (aula.temposTotal > 0 && aula.temposAlocados < aula.temposTotal)
+      ),
+    [aulas]
+  );
+  const conflitosCount = Object.keys(conflictSlots).length;
+  const professorLoad = useMemo(() => {
+    const map = new Map<string, { id: string; nome: string; count: number }>();
+    for (const aula of aulas) {
+      if (!aula.professorId) continue;
+      const entry = map.get(aula.professorId) || {
+        id: aula.professorId,
+        nome: aula.professor || "Professor",
+        count: 0,
+      };
+      entry.count += aula.temposAlocados;
+      map.set(aula.professorId, entry);
+    }
+    return Array.from(map.values()).sort((a, b) => b.count - a.count);
+  }, [aulas]);
+  const salaLoad = useMemo(() => {
+    const map = new Map<string, { id: string; nome: string; count: number }>();
+    for (const aula of aulas) {
+      if (!aula.salaId) continue;
+      const sala = salas.find((item) => item.id === aula.salaId);
+      const entry = map.get(aula.salaId) || {
+        id: aula.salaId,
+        nome: sala?.nome ?? `Sala ${aula.salaId.slice(0, 4)}`,
+        count: 0,
+      };
+      entry.count += aula.temposAlocados;
+      map.set(aula.salaId, entry);
+    }
+    return Array.from(map.values()).sort((a, b) => b.count - a.count);
+  }, [aulas, salas]);
+  const overloadProfessores = professorLoad.filter((item) => item.count >= 16);
+  const overloadSalas = salaLoad.filter((item) => item.count >= 20);
 
-  const handleSalvar = async (nextGrid: Record<string, string | null>) => {
+  const submitQuadro = async (nextGrid: Record<string, string | null>, mode: "draft" | "publish") => {
     if (!escolaId || !turmaId || !versaoId) return;
 
-    setSaving(true);
+    if (mode === "draft") {
+      setSaving(true);
+    } else {
+      setPublishing(true);
+    }
     setSaveError(null);
 
     const items = Object.entries(nextGrid)
@@ -122,12 +217,13 @@ export default function QuadroHorariosPage() {
       versao_id: versaoId,
       turma_id: turmaId,
       items,
+      mode,
     };
 
     setGrid(() => nextGrid);
 
     try {
-      if (!online) {
+      if (!online && mode === "draft") {
         await enqueueOfflineAction({
           url: `/api/escolas/${escolaId}/horarios/quadro`,
           method: "POST",
@@ -138,6 +234,10 @@ export default function QuadroHorariosPage() {
         toast.message("Quadro salvo no dispositivo.", {
           description: "Sincronizaremos quando a conexão voltar.",
         });
+        return;
+      }
+      if (!online && mode === "publish") {
+        toast.error("Modo offline: conecte-se para publicar o quadro.");
         return;
       }
 
@@ -158,12 +258,110 @@ export default function QuadroHorariosPage() {
           }
           setConflictSlots(nextConflicts);
         }
+        if (json?.details?.missing?.length) {
+          const nomes = json.details.missing
+            .map((item: any) => item.disciplina || item.disciplina_nome)
+            .filter(Boolean);
+          toast.error("Cargas horárias pendentes", {
+            description: nomes.length ? nomes.join(", ") : json?.error,
+          });
+        }
+        if (json?.details?.mismatch?.length) {
+          const nomes = json.details.mismatch
+            .map((item: any) => item.disciplina || item.disciplina_nome)
+            .filter(Boolean);
+          toast.error("Distribuição incompleta", {
+            description: nomes.length ? nomes.join(", ") : json?.error,
+          });
+        }
         return;
       }
 
       setConflictSlots({});
+      toast.success(mode === "publish" ? "Quadro publicado!" : "Quadro salvo!", {
+        description:
+          mode === "publish"
+            ? "Publicação concluída sem pendências."
+            : "Você pode ajustar a distribuição a qualquer momento.",
+        duration: 5000,
+      });
     } finally {
-      setSaving(false);
+      if (mode === "draft") {
+        setSaving(false);
+      } else {
+        setPublishing(false);
+      }
+    }
+  };
+
+  const handleSalvar = (nextGrid: Record<string, string | null>) => submitQuadro(nextGrid, "draft");
+  const handlePublicar = (nextGrid: Record<string, string | null>) => submitQuadro(nextGrid, "publish");
+
+  const handleAutoConfigurar = async () => {
+    if (!escolaId || !turmaId) return;
+    setAutoConfiguring(true);
+    try {
+      const res = await fetch(`/api/escolas/${escolaId}/horarios/cargas/auto`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ turma_id: turmaId, strategy: "preset_then_default", overwrite: false }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json.ok) {
+        toast.success("Cargas preenchidas", {
+          description: `${json?.data?.updated ?? 0} disciplina(s) atualizadas.`,
+        });
+        setRefreshToken((prev) => prev + 1);
+      } else {
+        toast.error(json?.error || "Falha ao configurar cargas");
+      }
+    } finally {
+      setAutoConfiguring(false);
+    }
+  };
+
+  const handleAutoCompletar = async () => {
+    if (!escolaId || !turmaId) return;
+    setAutoScheduling(true);
+    try {
+      const res = await fetch(`/api/escolas/${escolaId}/horarios/auto`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ turma_id: turmaId, strategy: "v1", overwrite_unlocked: true, dry_run: true }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.ok) {
+        toast.error(json?.error || "Falha ao auto-completar o quadro");
+        return;
+      }
+
+      const reverseLookup: Record<string, string> = {};
+      for (const [key, id] of Object.entries(slotLookup)) {
+        reverseLookup[id] = key;
+      }
+
+      const nextGrid: Record<string, string | null> = {};
+      const countByDisc: Record<string, number> = {};
+      for (const assignment of json.assignments || []) {
+        const slotKey = reverseLookup[assignment.slot_id];
+        if (!slotKey) continue;
+        nextGrid[slotKey] = assignment.disciplina_id;
+        countByDisc[assignment.disciplina_id] = (countByDisc[assignment.disciplina_id] || 0) + 1;
+      }
+
+      setGrid(() => nextGrid);
+      setAulas((prev) =>
+        prev.map((aula) => ({
+          ...aula,
+          temposAlocados: countByDisc[aula.id] ?? 0,
+        }))
+      );
+      setConflictSlots({});
+      toast.success("Quadro gerado", {
+        description: `Preenchidos ${json?.stats?.filled ?? 0} de ${json?.stats?.total_slots ?? 0} slots.`,
+      });
+    } finally {
+      setAutoScheduling(false);
     }
   };
 
@@ -243,6 +441,122 @@ export default function QuadroHorariosPage() {
       </header>
 
       <div className="p-6 max-w-7xl mx-auto">
+        {turmaId && excessoCarga > 0 && (
+          <div className="mb-6 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+            <p className="font-semibold">Carga acima da capacidade</p>
+            <p className="text-xs text-rose-700 mt-1">
+              Carga total: {totalCarga} • Slots disponíveis: {totalSlots} • Excesso: {excessoCarga}
+            </p>
+            {ajustesSugeridos.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {ajustesSugeridos.map((item) => (
+                  <span
+                    key={item.disciplina}
+                    className="rounded-full border border-rose-200 bg-white px-3 py-1 text-xs font-semibold text-rose-700"
+                  >
+                    {item.disciplina}: {item.atual} → {item.sugerido}
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="mt-3">
+              {selectedTurma?.curso_id ? (
+                <Link
+                  href={`/escola/${escolaId}/admin/configuracoes/estrutura?resolvePendencias=1&cursoId=${selectedTurma.curso_id}`}
+                  className="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-3 py-2 text-xs font-bold text-white"
+                >
+                  Ajustar cargas no currículo
+                </Link>
+              ) : (
+                <span className="text-xs text-rose-700">Selecione a turma para ajustar cargas.</span>
+              )}
+            </div>
+          </div>
+        )}
+        {turmaId && (
+          <div className="mb-6 grid gap-4 md:grid-cols-5">
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="text-xs font-semibold text-slate-500 uppercase">Slots preenchidos</p>
+              <p className="text-2xl font-bold text-slate-900 mt-2">
+                {filledSlots}/{totalSlots || 0}
+              </p>
+              <p className="text-xs text-slate-500 mt-1">
+                {totalDias} dia(s) • {temposAulaCount} tempos/dia
+              </p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="text-xs font-semibold text-slate-500 uppercase">Disciplinas completas</p>
+              <p className="text-2xl font-bold text-slate-900 mt-2">
+                {disciplinasCompletas}/{aulas.length}
+              </p>
+              <p className="text-xs text-slate-500 mt-1">Meta semanal por disciplina</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="text-xs font-semibold text-slate-500 uppercase">Pendências de carga</p>
+              <p className="text-2xl font-bold text-amber-600 mt-2">{missingLoadCount}</p>
+              <p className="text-xs text-slate-500 mt-1">Sem carga definida</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="text-xs font-semibold text-slate-500 uppercase">Conflitos detectados</p>
+              <p className="text-2xl font-bold text-rose-600 mt-2">{conflitosCount}</p>
+              <p className="text-xs text-slate-500 mt-1">Professor/Sala</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="text-xs font-semibold text-slate-500 uppercase">Sobrecarga</p>
+              <p className="text-2xl font-bold text-slate-900 mt-2">
+                {overloadProfessores.length + overloadSalas.length}
+              </p>
+              <p className="text-xs text-slate-500 mt-1">Professores + salas</p>
+            </div>
+          </div>
+        )}
+        {turmaId && disciplinasPendentes.length > 0 && (
+          <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p className="text-sm font-semibold text-slate-800">Disciplinas pendentes</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {disciplinasPendentes.slice(0, 6).map((disc) => (
+                <span
+                  key={disc.id}
+                  className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700"
+                >
+                  {disc.disciplina} {disc.temposAlocados}/{disc.temposTotal || "?"}
+                </span>
+              ))}
+              {disciplinasPendentes.length > 6 && (
+                <span className="text-xs text-slate-500">+{disciplinasPendentes.length - 6} mais</span>
+              )}
+            </div>
+          </div>
+        )}
+        {turmaId && (overloadProfessores.length > 0 || overloadSalas.length > 0) && (
+          <div className="mb-6 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+            <p className="font-semibold">Alertas de sobrecarga</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {overloadProfessores.map((prof) => (
+                <span
+                  key={`prof-${prof.id}`}
+                  className="rounded-full border border-rose-200 bg-white px-3 py-1 text-xs font-semibold text-rose-700"
+                >
+                  {prof.nome}: {prof.count} tempos
+                </span>
+              ))}
+              {overloadSalas.map((sala) => (
+                <span
+                  key={`sala-${sala.id}`}
+                  className="rounded-full border border-rose-200 bg-white px-3 py-1 text-xs font-semibold text-rose-700"
+                >
+                  {sala.nome}: {sala.count} tempos
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        {missingLoadCount > 0 && (
+          <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            <div className="font-semibold">{missingLoadCount} disciplina(s) sem carga horária.</div>
+            <div className="mt-1">Defina as cargas para publicar o quadro.</div>
+          </div>
+        )}
         {!turmaId ? (
           <div className="flex h-[60vh] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white">
             <AlertCircle className="h-10 w-10 text-slate-300" />
@@ -263,6 +577,16 @@ export default function QuadroHorariosPage() {
             onSalaChange={(aulaId, salaId) => {
               setAulas((prev) => prev.map((aula) => (aula.id === aulaId ? { ...aula, salaId } : aula)));
             }}
+            onAutoCompletar={handleAutoCompletar}
+            autoCompleting={autoScheduling}
+            onAutoConfigurarCargas={missingLoadCount > 0 ? handleAutoConfigurar : undefined}
+            autoConfiguring={autoConfiguring}
+            onPublicar={handlePublicar}
+            canPublicar={canPublicar}
+            publishDisabledReason={
+              canPublicar ? undefined : "Defina todas as cargas horárias antes de publicar."
+            }
+            publishing={publishing}
           />
         )}
 

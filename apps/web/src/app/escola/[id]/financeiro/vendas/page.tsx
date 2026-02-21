@@ -1,15 +1,7 @@
-import PortalLayout from "@/components/layout/PortalLayout"
-import AuditPageView from "@/components/audit/AuditPageView"
-import VendaCaixaClient from "./VendaCaixaClient"
+import { redirect } from "next/navigation";
 
-type PageParams = { params: Promise<{ id: string }> }
+export const dynamic = "force-dynamic";
 
-export default async function Page({ params }: PageParams) {
-  const awaitedParams = await params
-  return (
-    <PortalLayout>
-      <AuditPageView portal="financeiro" acao="PAGE_VIEW" entity="vendas_avulsas" />
-      <VendaCaixaClient escolaId={awaitedParams.id} />
-    </PortalLayout>
-  )
+export default async function Page() {
+  redirect("/financeiro");
 }

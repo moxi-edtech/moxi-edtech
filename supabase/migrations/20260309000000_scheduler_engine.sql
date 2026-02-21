@@ -65,9 +65,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_quadro_horarios_turma_slot
   ON public.quadro_horarios (turma_id, slot_id);
 
 ALTER TABLE public.quadro_horarios
+  DROP CONSTRAINT IF EXISTS quadro_horarios_professor_slot_excl;
+
+ALTER TABLE public.quadro_horarios
   ADD CONSTRAINT quadro_horarios_professor_slot_excl
   EXCLUDE USING gist (professor_id WITH =, slot_id WITH =)
   WHERE (professor_id IS NOT NULL);
+
+ALTER TABLE public.quadro_horarios
+  DROP CONSTRAINT IF EXISTS quadro_horarios_sala_slot_excl;
 
 ALTER TABLE public.quadro_horarios
   ADD CONSTRAINT quadro_horarios_sala_slot_excl

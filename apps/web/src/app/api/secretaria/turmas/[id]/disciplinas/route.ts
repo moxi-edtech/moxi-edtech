@@ -24,7 +24,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
     const { id: turmaId } = await ctx.params
 
-    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
+    const { searchParams } = new URL(req.url)
+    const requestedEscolaId = searchParams.get('escola_id')
+    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId)
     if (!escolaId) return NextResponse.json({ ok: true, items: [], total: 0 }, { headers })
 
     const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id)
@@ -39,8 +41,6 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       .select('id, turma_id, curso_matriz_id, professor_id, carga_horaria_semanal, classificacao, periodos_ativos, entra_no_horario, avaliacao_mode, avaliacao_disciplina_id, modelo_avaliacao_id')
       .eq('escola_id', escolaId)
       .eq('turma_id', turmaId)
-      .neq('entra_no_horario', false)
-      .gt('carga_horaria_semanal', 0)
 
     query = applyKf2ListInvariants(query);
 
@@ -56,7 +56,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       disciplinaIds.length
         ? supabase
           .from('curso_matriz')
-          .select('id, disciplina_id, disciplina:disciplinas_catalogo!curso_matriz_disciplina_id_fkey(id, nome), curriculo:curso_curriculos(id, status)')
+          .select('id, disciplina_id, carga_horaria_semanal, disciplina:disciplinas_catalogo!curso_matriz_disciplina_id_fkey(id, nome), curriculo:curso_curriculos(id, status)')
           .in('id', disciplinaIds)
           .eq('escola_id', escolaId)
         : Promise.resolve({ data: [] as any[] }),
@@ -84,13 +84,22 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
           .order('numero', { ascending: true })
       : { data: [] as any[] };
 
-    const discMap = new Map<string, { id: string | null; nome: string | null; curriculo_status?: string | null }>()
+    const discMap = new Map<
+      string,
+      { id: string | null; nome: string | null; curriculo_status?: string | null; carga_horaria_semanal?: number | null }
+    >()
     for (const d of (discRes as any).data || []) {
       const nome = (d as any)?.disciplina?.nome as string | undefined
       const curriculoStatus = (d as any)?.curriculo?.status ?? null
       const disciplinaId = (d as any)?.disciplina_id ?? null
+      const cargaHorariaSemanal = (d as any)?.carga_horaria_semanal ?? null
       if (nome || disciplinaId) {
-        discMap.set((d as any).id, { id: disciplinaId, nome: nome ?? null, curriculo_status: curriculoStatus })
+        discMap.set((d as any).id, {
+          id: disciplinaId,
+          nome: nome ?? null,
+          curriculo_status: curriculoStatus,
+          carga_horaria_semanal: cargaHorariaSemanal,
+        })
       }
     }
 
@@ -168,7 +177,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
         disciplina: { id: discInfo?.id ?? row.curso_matriz_id, nome: disciplinaNome },
         curriculo_status: discInfo?.curriculo_status ?? null,
         meta: {
-          carga_horaria_semanal: row.carga_horaria_semanal ?? null,
+          carga_horaria_semanal: row.carga_horaria_semanal ?? discInfo?.carga_horaria_semanal ?? null,
           classificacao: row.classificacao ?? null,
           periodos_ativos: row.periodos_ativos ?? null,
           entra_no_horario: row.entra_no_horario ?? null,

@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import {
   BookOpen,
   Layers,
@@ -37,27 +38,46 @@ import {
   type CurriculumCategory,
   type TurnosState,
 } from "./academicSetupTypes";
+import {
+  SchoolCurriculumManager,
+  type BaseCurriculumSubject,
+} from "./SchoolCurriculumManager";
 
 // --- CONFIGURAÇÃO ---
 const PRESET_CATEGORY_MAP: Record<CurriculumKey, CurriculumCategory> = {
-  primario_base: "geral",
-  primario_avancado: "geral",
-  ciclo1: "geral",
-  puniv_fisicas: "geral",
-  puniv_economicas: "geral",
-  puniv_humanas: "geral",
-  puniv_artes: "geral",
-  tecnico_informatica: "tecnico_ind",
-  tecnico_construcao: "tecnico_ind",
-  tecnico_electricidade: "tecnico_ind",
-  tecnico_mecanica: "tecnico_ind",
-  tecnico_electronica: "tecnico_ind",
-  tecnico_petroleos: "tecnico_ind",
-  tecnico_base: "tecnico_ind",
-  tecnico_gestao: "tecnico_serv",
-  saude_enfermagem: "tecnico_serv",
-  saude_farmacia_analises: "tecnico_serv",
-  magisterio_primario: "tecnico_serv",
+  primario_generico: "geral",
+  esg_ciclo1: "geral",
+  esg_puniv_cfb: "geral",
+  esg_puniv_cej: "geral",
+  esg_puniv_cch: "geral",
+  esg_puniv_artes: "geral",
+  tec_contabilidade: "tecnico_serv",
+  tec_informatica_gestao: "tecnico_serv",
+  tec_recursos_humanos: "tecnico_serv",
+  tec_secretariado: "tecnico_serv",
+  tec_financas: "tecnico_serv",
+  tec_comercio: "tecnico_serv",
+  tec_saude_analises: "tecnico_serv",
+  tec_saude_enfermagem: "tecnico_serv",
+  tec_saude_estomatologia: "tecnico_serv",
+  tec_saude_farmacia: "tecnico_serv",
+  tec_saude_fisioterapia: "tecnico_serv",
+  tec_saude_nutricao: "tecnico_serv",
+  tec_saude_radiologia: "tecnico_serv",
+  tec_construcao_civil: "tecnico_ind",
+  tec_energia_eletrica: "tecnico_ind",
+  tec_mecanica_manut: "tecnico_ind",
+  tec_informatica_sistemas: "tecnico_ind",
+  tec_desenhador_projectista: "tecnico_ind",
+  tec_electronica_telecom: "tecnico_ind",
+  tec_electronica_automacao: "tecnico_ind",
+  tec_energias_renovaveis: "tecnico_ind",
+  tec_geologia_petroleo: "tecnico_ind",
+  tec_perfuracao_producao: "tecnico_ind",
+  tec_minas: "tecnico_ind",
+  tec_producao_metalomecanica: "tecnico_ind",
+  tec_informatica: "tecnico_ind",
+  tec_gestao_sistemas: "tecnico_serv",
 };
 
 interface PresetOption {
@@ -206,6 +226,7 @@ function CourseMatrixTable({
 
 // --- COMPONENTE PRINCIPAL ---
 export default function AcademicStep2({
+  escolaId,
   presetCategory,
   onPresetCategoryChange,
   matrix,
@@ -217,9 +238,31 @@ export default function AcademicStep2({
   padraoNomenclatura,
   onPadraoNomenclaturaChange,
   anoLetivo,
+  curriculumOverrides,
+  onCurriculumOverridesChange,
 }: AcademicStep2Props) {
   const [selectedPresetKey, setSelectedPresetKey] = useState<CurriculumKey | "">("");
   const [addedCourses, setAddedCourses] = useState<AddedCourse[]>([]);
+  const [selectedCurriculumCourse, setSelectedCurriculumCourse] = useState<CurriculumKey | "">("");
+  const [selectedCurriculumClass, setSelectedCurriculumClass] = useState<string>("");
+  const [managerSeed, setManagerSeed] = useState(0);
+
+  useEffect(() => {
+    const uniqueKeys = Array.from(
+      new Set(matrix.map((row) => row.cursoKey).filter(Boolean))
+    ) as CurriculumKey[];
+
+    setAddedCourses((prev) => {
+      const prevMap = new Map(prev.map((course) => [course.id, course]));
+      return uniqueKeys.map((key) =>
+        prevMap.get(key) ?? {
+          id: key,
+          label: CURRICULUM_PRESETS_META[key]?.label ?? key,
+          tipo: PRESET_TO_TYPE[key] ?? "geral",
+        }
+      );
+    });
+  }, [matrix]);
 
   // Filtros
   const filteredPresets: PresetOption[] = useMemo(() => {
@@ -276,6 +319,12 @@ export default function AcademicStep2({
   const handleRemoveCourse = (courseKey: CurriculumKey) => {
     onMatrixChange(matrix.filter((row) => row.cursoKey !== courseKey));
     setAddedCourses((prev) => prev.filter((c) => c.id !== courseKey));
+    onCurriculumOverridesChange((prev) => {
+      const prefix = `${courseKey}::`;
+      return Object.fromEntries(
+        Object.entries(prev).filter(([key]) => !key.startsWith(prefix))
+      );
+    });
   };
 
   const handleBulkApply = (field: "manha" | "tarde" | "noite", value: number) => {
@@ -306,6 +355,70 @@ export default function AcademicStep2({
       default: return `${cursoNome} ${classeLimpa}`;
     }
   }, [matrix, turnos, padraoNomenclatura, anoLetivo]);
+
+  const availableCurriculumCourses = useMemo(() => {
+    return addedCourses.map((course) => course.id);
+  }, [addedCourses]);
+
+  const curriculumBlueprint = useMemo(() => {
+    if (!selectedCurriculumCourse) return [];
+    return CURRICULUM_PRESETS[selectedCurriculumCourse] ?? [];
+  }, [selectedCurriculumCourse]);
+
+  const availableCurriculumClasses = useMemo(() => {
+    const classes = Array.from(new Set(curriculumBlueprint.map((d) => d.classe))).filter(Boolean);
+    return classes;
+  }, [curriculumBlueprint]);
+
+  useEffect(() => {
+    if (!selectedCurriculumCourse && availableCurriculumCourses.length > 0) {
+      setSelectedCurriculumCourse(availableCurriculumCourses[0]);
+      return;
+    }
+    if (
+      selectedCurriculumCourse &&
+      !availableCurriculumCourses.includes(selectedCurriculumCourse)
+    ) {
+      setSelectedCurriculumCourse(availableCurriculumCourses[0] ?? "");
+    }
+  }, [availableCurriculumCourses, selectedCurriculumCourse]);
+
+  useEffect(() => {
+    if (!selectedCurriculumCourse) {
+      setSelectedCurriculumClass("");
+      return;
+    }
+    if (!availableCurriculumClasses.includes(selectedCurriculumClass)) {
+      setSelectedCurriculumClass(availableCurriculumClasses[0] ?? "");
+    }
+  }, [availableCurriculumClasses, selectedCurriculumClass, selectedCurriculumCourse]);
+
+  const baseCurriculum = useMemo<BaseCurriculumSubject[]>(() => {
+    if (!selectedCurriculumCourse || !selectedCurriculumClass) return [];
+    return curriculumBlueprint
+      .filter((disciplina) => disciplina.classe === selectedCurriculumClass)
+      .map((disciplina) => ({
+        id: disciplina.nome,
+        name: disciplina.nome,
+        baseHours: Number.isFinite(disciplina.horas) ? Number(disciplina.horas) : 0,
+        component: disciplina.componente ?? "GERAL",
+      }));
+  }, [curriculumBlueprint, selectedCurriculumClass, selectedCurriculumCourse]);
+
+  const initialOverrides = useMemo(() => {
+    if (!selectedCurriculumCourse || !selectedCurriculumClass) return {};
+    const prefix = `${selectedCurriculumCourse}::${selectedCurriculumClass}::`;
+    return Object.fromEntries(
+      Object.entries(curriculumOverrides)
+        .filter(([key]) => key.startsWith(prefix))
+        .map(([key, value]) => [key.slice(prefix.length), value])
+    );
+  }, [curriculumOverrides, selectedCurriculumCourse, selectedCurriculumClass]);
+
+  const selectedCourseLabel = useMemo(() => {
+    if (!selectedCurriculumCourse) return "";
+    return CURRICULUM_PRESETS_META[selectedCurriculumCourse]?.label ?? "";
+  }, [selectedCurriculumCourse]);
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -481,6 +594,79 @@ export default function AcademicStep2({
           turnos={turnos} 
           onMatrixUpdate={onMatrixUpdate} 
         />
+
+        {addedCourses.length > 0 && (
+          <div className="mt-8 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 px-5 py-4">
+              <div>
+                <h4 className="text-sm font-bold text-slate-800">Ajuste de carga horária (visão macro)</h4>
+                <p className="text-xs text-slate-500">
+                  Ajuste os tempos por disciplina antes de gerar turmas e horários.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <select
+                  value={selectedCurriculumCourse}
+                  onChange={(event) => setSelectedCurriculumCourse(event.target.value as CurriculumKey)}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+                >
+                  {availableCurriculumCourses.map((course) => (
+                    <option key={course} value={course}>
+                      {CURRICULUM_PRESETS_META[course]?.label ?? course}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={selectedCurriculumClass}
+                  onChange={(event) => setSelectedCurriculumClass(event.target.value)}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+                >
+                  {availableCurriculumClasses.map((cls) => (
+                    <option key={cls} value={cls}>
+                      {cls}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {selectedCurriculumCourse && selectedCurriculumClass && (
+              <SchoolCurriculumManager
+                key={`${selectedCurriculumCourse}-${selectedCurriculumClass}-${managerSeed}`}
+                courseName={selectedCourseLabel}
+                gradeLevel={selectedCurriculumClass}
+                baseCurriculum={baseCurriculum}
+                initialOverrides={initialOverrides}
+                onSave={async (payload) => {
+                  const prefix = `${selectedCurriculumCourse}::${selectedCurriculumClass}::`;
+                  const tid = toast.loading("Salvando matriz...");
+                  const nextOverrides = Object.fromEntries(
+                    Object.entries(curriculumOverrides).filter(([key]) => !key.startsWith(prefix))
+                  ) as Record<string, number>;
+                  Object.entries(payload).forEach(([subjectId, value]) => {
+                    nextOverrides[`${prefix}${subjectId}`] = value;
+                  });
+                  try {
+                    onCurriculumOverridesChange(nextOverrides);
+                    const res = await fetch(`/api/escolas/${escolaId}/onboarding/draft`, {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ step: 3, data: { curriculumOverrides: nextOverrides } }),
+                    });
+                    const json = await res.json().catch(() => null);
+                    if (!res.ok || json?.ok === false) {
+                      throw new Error(json?.error || "Erro ao salvar a matriz");
+                    }
+                    toast.success("Matriz salva.", { id: tid });
+                  } catch (error) {
+                    toast.error(error instanceof Error ? error.message : "Erro ao salvar.", { id: tid });
+                  }
+                }}
+                onCancel={() => setManagerSeed((prev) => prev + 1)}
+              />
+            )}
+          </div>
+        )}
 
         {/* Botão Final (Apply) */}
         <div className="flex justify-end bg-slate-50 px-6 py-4 border-t border-slate-100">

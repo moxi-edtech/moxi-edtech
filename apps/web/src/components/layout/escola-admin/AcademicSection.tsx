@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Settings, TrendingUp, CreditCard, Users, BookOpen, Lock } from "lucide-react";
+import { ArrowRight, Settings, TrendingUp, CreditCard, Users, BookOpen, Lock, Layers } from "lucide-react";
 import type { SetupStatus } from "./setupStatus";
 
 type Item = {
@@ -75,15 +75,19 @@ export default function AcademicSection({
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
       <header className="mb-6 flex items-center justify-between gap-4">
-        <div className="min-w-0">
-          <h3 className="text-lg font-bold text-slate-900">Gestão Acadêmica</h3>
-          {/* ✅ 1 linha */}
-          <p className="text-sm text-slate-500 truncate">Configure e opere os módulos principais</p>
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="rounded-lg bg-slate-100 p-2 text-slate-700">
+            <Layers className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="text-lg font-bold text-slate-900">Gestão Acadêmica</h3>
+            <p className="text-xs text-slate-500 truncate">Configure e opere os módulos principais</p>
+          </div>
         </div>
 
         <Link
           href={`/escola/${escolaId}/admin`}
-          className="shrink-0 inline-flex items-center gap-2 text-sm font-semibold text-teal-700 hover:text-teal-800"
+          className="shrink-0 inline-flex items-center gap-2 text-xs font-bold text-klasse-green-500 hover:text-klasse-green-600"
         >
           Ver tudo <ArrowRight className="h-4 w-4" />
         </Link>

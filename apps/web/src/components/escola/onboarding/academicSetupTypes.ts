@@ -1,5 +1,6 @@
 // academicSetupTypes.ts (ou lib/onboarding/types.ts)
 
+import type { Dispatch, SetStateAction } from "react";
 import type { CurriculumKey, CurriculumDisciplineBlueprint } from "@/lib/onboarding";
 import type { CourseType } from "@/lib/courseTypes";
 import type {
@@ -95,6 +96,7 @@ export function calculateTotalTurmas(matrix: MatrixRow[], turnos: TurnosState): 
 
 // Interface para as props do componente
 export interface AcademicStep2Props {
+  escolaId: string;
   presetCategory: CurriculumCategory;
   onPresetCategoryChange: (category: CurriculumCategory) => void;
   matrix: MatrixRow[];
@@ -106,4 +108,6 @@ export interface AcademicStep2Props {
   padraoNomenclatura: PadraoNomenclatura;
   onPadraoNomenclaturaChange: (value: PadraoNomenclatura) => void;
   anoLetivo: number;
+  curriculumOverrides: Record<string, number>;
+  onCurriculumOverridesChange: Dispatch<SetStateAction<Record<string, number>>>;
 }

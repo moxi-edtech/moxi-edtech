@@ -58,7 +58,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     const { data: disciplinasRows } = await supabase
       .from('turma_disciplinas')
-      .select('curso_matriz:curso_matriz_id(disciplina:disciplinas_catalogo(id, nome, sigla))')
+      .select('curso_matriz:curso_matriz_id(disciplina:disciplinas_catalogo!curso_matriz_disciplina_id_fkey(id, nome, sigla))')
       .eq('turma_id', turmaId)
       .eq('escola_id', escolaId);
 
