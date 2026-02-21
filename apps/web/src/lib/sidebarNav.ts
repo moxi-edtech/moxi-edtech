@@ -150,10 +150,10 @@ export const sidebarConfig: SidebarConfig = {
     { href: "/aluno/financeiro", label: "Financeiro", icon: "Wallet" },
   ],
   professor: [
-    { href: "/professor/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
-    { href: "/professor/minhas-turmas", label: "Minhas Turmas", icon: "BookOpen" },
-    { href: "/professor/lancar-notas", label: "Lançar Notas", icon: "FileText" },
-    { href: "/professor/minhas-disciplinas", label: "Minhas Disciplinas", icon: "BookOpen" },
+    { href: "/professor", label: "Dashboard", icon: "LayoutDashboard" },
+    { href: "/professor/frequencias", label: "Frequências", icon: "BookOpen" },
+    { href: "/professor/notas", label: "Lançar Notas", icon: "FileText" },
+    { href: "/professor/fluxos", label: "Fluxos", icon: "BookOpen" },
   ],
   gestor: [
     { href: "/gestor/dashboard", label: "Dashboard", icon: "LayoutDashboard" },

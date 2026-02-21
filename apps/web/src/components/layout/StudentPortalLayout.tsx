@@ -87,7 +87,7 @@ export default function StudentPortalLayout({ children }: { children: React.Reac
           ))}
         </nav>
         <div className="p-4 border-t border-moxinexa-light/30 mt-4">
-          <div className="px-4 py-3 text-xs text-moxinexa-gray text-center">© 2025 MoxiNexa</div>
+        <div className="px-4 py-3 text-center text-xs text-slate-400">© 2025 KLASSE</div>
         </div>
       </SidebarContainer>
 
@@ -97,9 +97,6 @@ export default function StudentPortalLayout({ children }: { children: React.Reac
           <div className="flex items-center gap-3">
             <button className="md:hidden p-2 rounded-lg bg-moxinexa-light/30" onClick={() => setOpen(true)}><Bars3Icon className="w-5 h-5" /></button>
             <h1 className="text-xl font-semibold">{active}</h1>
-            {plan && (
-              <span className="text-[10px] uppercase px-2 py-1 rounded-full bg-gray-100 border text-gray-600">Plano: {PLAN_NAMES[plan]}</span>
-            )}
           </div>
           <div className="flex items-center gap-4">
             <button className="relative p-2 rounded-full bg-moxinexa-light/30"><BellIcon className="w-5 h-5" /></button>
@@ -112,7 +109,7 @@ export default function StudentPortalLayout({ children }: { children: React.Reac
           </div>
           {children}
         </div>
-        <footer className="mt-8 text-center text-sm text-moxinexa-gray">Bons estudos! 🎓</footer>
+        <footer className="mt-8 text-center text-sm text-slate-400">Bons estudos! 🎓</footer>
       </main>
     </div>
   )

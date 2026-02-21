@@ -12,6 +12,7 @@ function cn(...c: Array<string | false | null | undefined>) {
 type TopbarProps = {
   portalTitle?: string;
   portalSubtitle?: string;
+  userName?: string | null;
   contextLabel?: string;
   escolaNome?: string | null;
   planoNome?: string | null;
@@ -22,6 +23,7 @@ type TopbarProps = {
 export default function Topbar({
   portalTitle = "Portal",
   portalSubtitle = "MoxiNexa",
+  userName,
   contextLabel = "Dashboard",
   escolaNome,
   planoNome,
@@ -29,9 +31,7 @@ export default function Topbar({
   portal,
 }: TopbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const infoText = escolaNome || planoNome
-    ? `${planoNome ? `Plano: ${planoNome}` : "Plano: Essencial"}${escolaNome ? ` • Escola: ${escolaNome}` : ""}`
-    : portalSubtitle;
+  const infoText = portalSubtitle;
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/80 backdrop-blur">
@@ -71,7 +71,7 @@ export default function Topbar({
               </div>
               <div className="hidden sm:block text-left leading-4">
                 <div className="text-sm font-medium text-slate-900">{portalTitle}</div>
-                <div className="text-xs text-slate-500">{portalSubtitle}</div>
+                <div className="text-xs text-slate-500">{userName || portalSubtitle}</div>
               </div>
               <ChevronDown className="h-4 w-4 text-slate-500" />
             </button>

@@ -50,7 +50,14 @@
 - `apps/web/src/app/api/escola/[id]/admin/curriculo/install-preset/route.ts`
 
 ## Notes
-- Nenhuma alteração de schema ou dados reais foi executada.
+- API de edição de disciplina sincroniza `turma_disciplinas` quando carga/horário/avaliação mudam, evitando desync.
+- Backfill remoto alinhou `turma_disciplinas` das turmas CFB com o currículo publicado.
+- Publicação de currículo agora é por classe (coluna `classe_id` em `curso_curriculos` + novos índices únicos).
+- RPC `curriculo_publish` aceita `p_classe_id` e permite `bulk publish` por curso (todas as classes na mesma versão).
+- Migration aplicada no Supabase: `20261128000000_curriculo_publish_by_class.sql`.
+- Presets MED migrados para o DB: tabelas `curriculum_presets`, `curriculum_preset_subjects`, `school_subjects` + seed gerado de `CURRICULUM_PRESETS`.
+- Endpoint `GET /api/escolas/[id]/curriculo/padroes` fornece padrão MED (DB com fallback ao preset local).
+- Geração de turmas validada por classe: API e RPC exigem currículo publicado para cada classe.
 - Validação local não foi rodada.
 
 ## Avaliação (Fórmulas no DB)

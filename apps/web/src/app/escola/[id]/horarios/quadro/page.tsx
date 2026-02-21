@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { AlertCircle, Save, WifiOff, Printer, FileDown } from "lucide-react";
 import { SchedulerBoard } from "@/components/escola/horarios/SchedulerBoard";
+import { DisciplinaModal, type DisciplinaForm } from "@/components/escola/settings/_components/DisciplinaModal";
 import { useOfflineStatus } from "@/hooks/useOfflineStatus";
 import { enqueueOfflineAction } from "@/lib/offline/queue";
 import { useHorarioBaseData, useHorarioTurmaData } from "@/hooks/useHorarioData";
@@ -38,6 +39,29 @@ export default function QuadroHorariosPage() {
   const [generatingContraturno, setGeneratingContraturno] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [escolaNome, setEscolaNome] = useState<string>("");
+  const [curriculoModalOpen, setCurriculoModalOpen] = useState(false);
+  const [curriculoDisciplinas, setCurriculoDisciplinas] = useState<
+    Array<{
+      id: string;
+      nome: string;
+      codigo: string;
+      carga_horaria_semanal: number;
+      base_weekly_hours?: number | null;
+      classificacao?: "core" | "complementar" | "optativa" | null;
+      periodos_ativos?: number[] | null;
+      entra_no_horario?: boolean | null;
+      avaliacao_mode_key?: "inherit_school" | "custom" | "inherit_disciplina" | null;
+      avaliacao_disciplina_id?: string | null;
+      area?: string | null;
+      is_core?: boolean | null;
+      matrix_ids: string[];
+      class_ids?: string[];
+      matrix_by_class?: Record<string, string[]>;
+    }>
+  >([]);
+  const [curriculoClasses, setCurriculoClasses] = useState<Array<{ id: string; nome: string }>>([]);
+  const [curriculoSelectedId, setCurriculoSelectedId] = useState<string | null>(null);
+  const [professores, setProfessores] = useState<Array<{ id: string; nome: string }>>([]);
 
   const {
     slots,
@@ -47,6 +71,7 @@ export default function QuadroHorariosPage() {
     loading: baseLoading,
     error: baseError,
     setSalas,
+    setTurmas,
   } = useHorarioBaseData(escolaId, baseRefreshToken);
 
   const {
@@ -79,6 +104,26 @@ export default function QuadroHorariosPage() {
   }, [escolaId]);
 
   useEffect(() => {
+    let active = true;
+    fetch("/api/secretaria/professores?pageSize=200", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((json) => {
+        if (!active) return;
+        if (json?.ok && Array.isArray(json.items)) {
+          setProfessores(
+            json.items
+              .map((item: any) => ({ id: item.user_id ?? item.id, nome: item.nome ?? "Professor" }))
+              .filter((item: any) => Boolean(item.id))
+          );
+        }
+      })
+      .catch(() => null);
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!escolaId) return;
     const key = `horarios:versao:${escolaId}`;
     const stored = typeof window !== "undefined" ? window.sessionStorage.getItem(key) : null;
@@ -104,6 +149,106 @@ export default function QuadroHorariosPage() {
     });
   }, [turmas]);
 
+  useEffect(() => {
+    const targetCursoId = turmas.find((turma) => turma.id === turmaId)?.curso_id;
+    if (!curriculoModalOpen || !targetCursoId || !escolaId) return;
+    let active = true;
+    const normalize = (value: string) =>
+      value
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+    const parseClassNumber = (value: string) => {
+      const match = value.match(/(\d{1,2})/);
+      return match ? Number(match[1]) : null;
+    };
+
+    Promise.all([
+      fetch(`/api/escolas/${escolaId}/disciplinas?curso_id=${targetCursoId}&limit=500`, {
+        cache: "no-store",
+      }).then((res) => res.json()),
+      fetch(`/api/escolas/${escolaId}/curriculo/padroes?curso_id=${targetCursoId}`, {
+        cache: "no-store",
+      }).then((res) => res.json()),
+    ])
+      .then(([disciplinasJson, padroesJson]) => {
+        if (!active) return;
+        const rows = Array.isArray(disciplinasJson?.data) ? disciplinasJson.data : [];
+        const presetMap = new Map<string, number>();
+        const presetItems = Array.isArray(padroesJson?.items) ? padroesJson.items : [];
+        for (const item of presetItems) {
+          const classNum = parseClassNumber(item.grade_level ?? "");
+          if (!classNum) continue;
+          const key = `${classNum}:${normalize(item.name ?? "")}`;
+          presetMap.set(key, Number(item.weekly_hours) || 0);
+        }
+
+        const classMap = new Map<string, string>();
+        rows.forEach((row: any) => {
+          if (row.classe_id) {
+            classMap.set(row.classe_id, row.classe_nome ?? row.classe_id);
+          }
+        });
+        const classes = Array.from(classMap.entries()).map(([id, nome]) => ({ id, nome }));
+
+        const disciplinaGroups = new Map<string, any[]>();
+        rows.forEach((item: any) => {
+          const key = item.disciplina_id ?? item.nome ?? item.id;
+          const bucket = disciplinaGroups.get(key) ?? [];
+          bucket.push(item);
+          disciplinaGroups.set(key, bucket);
+        });
+
+        const disciplinaList: typeof curriculoDisciplinas = [];
+        disciplinaGroups.forEach((items) => {
+          const primary = items[0];
+          const matrixIds = items.map((item: any) => item.id).filter(Boolean);
+          const classIds = items.map((item: any) => item.classe_id).filter(Boolean);
+          const matrixByClass: Record<string, string[]> = {};
+          items.forEach((item: any) => {
+            if (!item.classe_id || !item.id) return;
+            matrixByClass[item.classe_id] = matrixByClass[item.classe_id] || [];
+            matrixByClass[item.classe_id].push(item.id);
+          });
+          const classNum = parseClassNumber(primary.classe_nome ?? "");
+          const baseKey = classNum ? `${classNum}:${normalize(primary.nome ?? "")}` : null;
+          const baseWeeklyHours = baseKey ? presetMap.get(baseKey) ?? null : null;
+          disciplinaList.push({
+            id: primary.disciplina_id ?? primary.id,
+            nome: primary.nome ?? "Disciplina",
+            codigo: primary.sigla ?? primary.codigo ?? "",
+            carga_horaria_semanal: primary.carga_horaria_semanal ?? 0,
+            base_weekly_hours: baseWeeklyHours,
+            classificacao: primary.classificacao ?? null,
+            periodos_ativos: primary.periodos_ativos ?? null,
+            entra_no_horario: primary.entra_no_horario ?? true,
+            avaliacao_mode_key: primary.avaliacao_mode ?? null,
+            avaliacao_disciplina_id: primary.avaliacao_disciplina_id ?? null,
+            area: primary.area ?? null,
+            is_core: primary.is_core ?? null,
+            matrix_ids: matrixIds,
+            class_ids: classIds,
+            matrix_by_class: matrixByClass,
+          });
+        });
+
+        disciplinaList.sort((a, b) => a.nome.localeCompare(b.nome));
+        setCurriculoClasses(classes);
+        setCurriculoDisciplinas(disciplinaList);
+        setCurriculoSelectedId((prev) => {
+          if (prev && disciplinaList.some((disc) => disc.id === prev)) return prev;
+          return disciplinaList[0]?.id ?? null;
+        });
+      })
+      .catch(() => null)
+      .finally(() => {
+        if (!active) return;
+      });
+    return () => {
+      active = false;
+    };
+  }, [curriculoModalOpen, escolaId, turmaId, turmas]);
+
   const turmaOptions = useMemo(() => {
     if (turmas.length === 0) {
       return [{ value: "", label: "Sem turmas" }];
@@ -127,8 +272,21 @@ export default function QuadroHorariosPage() {
     [turmaId, turmas]
   );
 
+  const aulasWithAllocations = useMemo(() => {
+    if (!aulas.length) return [];
+    const counts: Record<string, number> = {};
+    for (const value of Object.values(grid)) {
+      if (!value) continue;
+      counts[value] = (counts[value] || 0) + 1;
+    }
+    return aulas.map((aula) => ({
+      ...aula,
+      temposAlocados: counts[aula.id] ?? 0,
+    }));
+  }, [aulas, grid]);
+
   const horariosDisponiveis = useMemo(() => (slots.length > 0 ? slots : undefined), [slots]);
-  const missingLoad = useMemo(() => aulas.filter((aula) => aula.missingLoad), [aulas]);
+  const missingLoad = useMemo(() => aulasWithAllocations.filter((aula) => aula.missingLoad), [aulasWithAllocations]);
   const missingLoadCount = missingLoad.length;
   const canPublicar = missingLoadCount === 0;
   const isLoading = baseLoading || turmaLoading;
@@ -147,8 +305,8 @@ export default function QuadroHorariosPage() {
     [grid]
   );
   const totalCarga = useMemo(
-    () => aulas.reduce((acc, aula) => acc + (aula.temposTotal || 0), 0),
-    [aulas]
+    () => aulasWithAllocations.reduce((acc, aula) => acc + (aula.temposTotal || 0), 0),
+    [aulasWithAllocations]
   );
   const excessoCarga = Math.max(0, totalCarga - totalSlots);
   const turnoLabel = useMemo(() => {
@@ -159,20 +317,20 @@ export default function QuadroHorariosPage() {
     return "turno";
   }, [selectedTurma?.turno]);
   const disciplinasCompletas = useMemo(
-    () => aulas.filter((aula) => !aula.missingLoad && aula.temposTotal > 0 && aula.temposAlocados >= aula.temposTotal).length,
-    [aulas]
+    () => aulasWithAllocations.filter((aula) => !aula.missingLoad && aula.temposTotal > 0 && aula.temposAlocados >= aula.temposTotal).length,
+    [aulasWithAllocations]
   );
   const disciplinasPendentes = useMemo(
     () =>
-      aulas.filter(
+      aulasWithAllocations.filter(
         (aula) => aula.missingLoad || (aula.temposTotal > 0 && aula.temposAlocados < aula.temposTotal)
       ),
-    [aulas]
+    [aulasWithAllocations]
   );
   const conflitosCount = Object.keys(conflictSlots).length;
   const professorLoad = useMemo(() => {
     const map = new Map<string, { id: string; nome: string; count: number }>();
-    for (const aula of aulas) {
+    for (const aula of aulasWithAllocations) {
       if (!aula.professorId) continue;
       const entry = map.get(aula.professorId) || {
         id: aula.professorId,
@@ -183,10 +341,10 @@ export default function QuadroHorariosPage() {
       map.set(aula.professorId, entry);
     }
     return Array.from(map.values()).sort((a, b) => b.count - a.count);
-  }, [aulas]);
+  }, [aulasWithAllocations]);
   const salaLoad = useMemo(() => {
     const map = new Map<string, { id: string; nome: string; count: number }>();
-    for (const aula of aulas) {
+    for (const aula of aulasWithAllocations) {
       if (!aula.salaId) continue;
       const sala = salas.find((item) => item.id === aula.salaId);
       const entry = map.get(aula.salaId) || {
@@ -198,7 +356,7 @@ export default function QuadroHorariosPage() {
       map.set(aula.salaId, entry);
     }
     return Array.from(map.values()).sort((a, b) => b.count - a.count);
-  }, [aulas, salas]);
+  }, [aulasWithAllocations, salas]);
   const overloadProfessores = professorLoad.filter((item) => item.count >= 16);
   const overloadSalas = salaLoad.filter((item) => item.count >= 20);
 
@@ -391,6 +549,7 @@ export default function QuadroHorariosPage() {
         classe: selectedTurma?.classe?.nome ?? "Classe",
         turma: selectedTurma?.turma_codigo || selectedTurma?.turma_nome || selectedTurma?.nome || "Turma",
         turno: turnoLabel,
+        sala: selectedTurma?.sala ?? null,
         anoLetivo: selectedTurma?.ano_letivo ?? null,
         dias: DIAS_SEMANA,
         tempos: rows.map((row) => row.tempo),
@@ -402,7 +561,8 @@ export default function QuadroHorariosPage() {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `Horario_${payload.turma}_${Date.now()}.pdf`;
+      const salaSuffix = payload.sala ? `_Sala-${payload.sala.replace(/\s+/g, "-")}` : "";
+      link.download = `Horario_${payload.turma}${salaSuffix}_${Date.now()}.pdf`;
       link.click();
       window.URL.revokeObjectURL(url);
     } catch (e: any) {
@@ -444,7 +604,7 @@ export default function QuadroHorariosPage() {
         </head>
         <body>
           <h1>Quadro de Horários</h1>
-          <div class="meta">${escolaNome || "Escola"} • ${selectedTurma?.curso?.nome ?? "Curso"} • ${selectedTurma?.classe?.nome ?? "Classe"} • ${selectedTurma?.turma_codigo || selectedTurma?.turma_nome || selectedTurma?.nome || "Turma"} • Turno ${turnoLabel}</div>
+          <div class="meta">${escolaNome || "Escola"} • ${selectedTurma?.curso?.nome ?? "Curso"} • ${selectedTurma?.classe?.nome ?? "Classe"} • ${selectedTurma?.turma_codigo || selectedTurma?.turma_nome || selectedTurma?.nome || "Turma"} • Turno ${turnoLabel}${selectedTurma?.sala ? ` • Sala ${selectedTurma.sala}` : ""}</div>
           <table>
             <thead>
               <tr>
@@ -484,12 +644,15 @@ export default function QuadroHorariosPage() {
       .map(([slotKey, disciplinaId]) => ({ slotKey, disciplinaId }))
       .filter(({ slotKey, disciplinaId }) => disciplinaId && slotLookup[slotKey])
       .map(({ slotKey, disciplinaId }) => {
-        const aula = aulas.find((item) => item.id === disciplinaId);
+        const aula = aulasWithAllocations.find((item) => item.id === disciplinaId);
+        const salaId = selectedTurma?.sala
+          ? salas.find((sala) => sala.nome === selectedTurma.sala)?.id ?? null
+          : null;
         return {
           slot_id: slotLookup[slotKey],
           disciplina_id: disciplinaId as string,
           professor_id: aula?.professorId ?? null,
-          sala_id: aula?.salaId ?? null,
+          sala_id: salaId,
         };
       });
 
@@ -604,10 +767,17 @@ export default function QuadroHorariosPage() {
     if (!escolaId || !turmaId) return;
     setAutoScheduling(true);
     try {
+      const turnoId = selectedTurma ? mapTurnoId(selectedTurma.turno ?? "M") : undefined;
       const res = await fetch(`/api/escolas/${escolaId}/horarios/auto`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ turma_id: turmaId, strategy: "v1", overwrite_unlocked: true, dry_run: true }),
+        body: JSON.stringify({
+          turma_id: turmaId,
+          turno: turnoId,
+          strategy: "v1",
+          overwrite_unlocked: true,
+          dry_run: true,
+        }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json?.ok) {
@@ -640,8 +810,140 @@ export default function QuadroHorariosPage() {
       toast.success("Quadro gerado", {
         description: `Preenchidos ${json?.stats?.filled ?? 0} de ${json?.stats?.total_slots ?? 0} slots.`,
       });
+      if (Array.isArray(json?.unmet) && json.unmet.length > 0) {
+        const reasonLabel = (reason: string) => {
+          switch (reason) {
+            case "PROF_TURNO":
+              return "Sem professor disponível no turno"
+            case "SEM_PROF":
+              return "Sem professor"
+            case "SEM_SLOTS":
+              return "Sem slots livres"
+            case "CONFLITO_PROF":
+              return "Conflito de professor"
+            case "CONFLITO_SALA":
+              return "Conflito de sala"
+            case "REGRAS":
+              return "Regras de distribuição"
+            default:
+              return reason
+          }
+        }
+        const unmetDetails = json.unmet
+          .map((item: any) => `${item.disciplina_id}: ${reasonLabel(item.reason)}`)
+          .slice(0, 6)
+        toast.error("Pendências no auto-completar", {
+          description: unmetDetails.join(" | "),
+          duration: 7000,
+        })
+      }
     } finally {
       setAutoScheduling(false);
+    }
+  };
+
+  const handleAssignProfessor = async (aula: (typeof aulas)[number], professorUserId: string) => {
+    if (!turmaId) return;
+    if (!aula?.cursoMatrizId) {
+      toast.error("Disciplina sem vínculo de currículo.");
+      return;
+    }
+    try {
+      const res = await fetch(`/api/secretaria/turmas/${turmaId}/atribuir-professor`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          disciplina_id: aula.cursoMatrizId,
+          professor_user_id: professorUserId,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json?.ok === false) {
+        throw new Error(json?.error || "Falha ao atribuir professor.");
+      }
+      toast.success("Professor atribuído.");
+      setRefreshToken((prev) => prev + 1);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Falha ao atribuir professor.");
+    }
+  };
+
+  const handleAssignTurmaSala = async (salaId: string) => {
+    if (!escolaId || !turmaId) return;
+    const sala = salas.find((item) => item.id === salaId);
+    if (!sala) {
+      toast.error("Sala não encontrada.");
+      return;
+    }
+    try {
+      const res = await fetch(`/api/escolas/${escolaId}/turmas/${turmaId}/sala`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sala: sala.nome }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json?.ok === false) {
+        throw new Error(json?.error || "Falha ao atribuir sala.");
+      }
+      toast.success("Sala atribuída à turma.");
+      setTurmas((prev) =>
+        prev.map((turma) =>
+          turma.id === turmaId ? { ...turma, sala: sala.nome } : turma
+        )
+      );
+      setBaseRefreshToken((prev) => prev + 1);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Falha ao atribuir sala.");
+    }
+  };
+
+  const handleSaveCurriculoDisciplina = async (payload: DisciplinaForm) => {
+    if (!escolaId) return;
+    const target = curriculoDisciplinas.find((disc) => disc.id === payload.id);
+    if (!target) return;
+    let matrixIds = target.matrix_ids ?? [];
+    if (payload.apply_scope === "selected" && payload.class_ids?.length) {
+      matrixIds = payload.class_ids.flatMap(
+        (classId) => target.matrix_by_class?.[classId] ?? []
+      );
+    }
+    if (matrixIds.length === 0) return;
+    try {
+      await Promise.all(
+        matrixIds.map(async (matrixId) => {
+          const res = await fetch(`/api/escolas/${escolaId}/disciplinas/${matrixId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              nome: payload.nome,
+              sigla: payload.codigo,
+              carga_horaria_semanal: payload.carga_horaria_semanal,
+              carga_horaria: payload.carga_horaria_semanal,
+              classificacao: payload.classificacao,
+              is_avaliavel: true,
+              area: payload.area ?? null,
+              periodos_ativos: payload.periodos_ativos,
+              entra_no_horario: payload.entra_no_horario,
+              avaliacao_mode: payload.avaliacao.mode,
+              avaliacao_modelo_id: null,
+              avaliacao_disciplina_id:
+                payload.avaliacao.mode === "inherit_disciplina"
+                  ? payload.avaliacao.base_id ?? null
+                  : null,
+            }),
+          });
+          const json = await res.json().catch(() => null);
+          if (!res.ok || json?.ok === false) {
+            throw new Error(json?.error || "Falha ao atualizar disciplina.");
+          }
+        })
+      );
+
+      toast.success("Disciplina atualizada.");
+      setCurriculoModalOpen(false);
+      setRefreshToken((prev) => prev + 1);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Falha ao atualizar disciplina.");
     }
   };
 
@@ -671,7 +973,8 @@ export default function QuadroHorariosPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-950 font-sans">
+    <>
+      <div className="min-h-screen bg-slate-50 text-slate-950 font-sans">
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="flex flex-wrap items-center justify-between gap-4 p-6 max-w-7xl mx-auto">
           <div className="flex flex-wrap items-center gap-3">
@@ -695,6 +998,11 @@ export default function QuadroHorariosPage() {
               onChange={(event) => setTurmaId(event.target.value || null)}
               className="max-w-xs rounded-xl border-slate-200 focus:border-klasse-gold focus:ring-klasse-gold text-slate-900"
             />
+            {selectedTurma?.sala ? (
+              <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-600">
+                Sala {selectedTurma.sala}
+              </span>
+            ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <button
@@ -745,17 +1053,26 @@ export default function QuadroHorariosPage() {
               A carga semanal do curso é {totalCarga} e o turno da {turnoLabel} suporta {totalSlots}.
             </p>
             <p className="text-xs text-rose-700 mt-1">
-              Para corrigir: aumente os slots do turno ou distribua aulas no contraturno.
+              Opção 1 (mais provável): reduzir a gordura do currículo para o padrão real do MED.
             </p>
             <p className="text-[11px] text-rose-600 mt-2">
               Capacidade do turno = número de aulas úteis por semana. Carga vem do currículo publicado.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
+              {selectedTurma?.curso_id && (
+                <button
+                  type="button"
+                  onClick={() => setCurriculoModalOpen(true)}
+                  className="rounded-lg bg-rose-600 px-3 py-2 text-xs font-bold text-white"
+                >
+                  Corrigir carga no currículo
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleAutoAdjustSlots}
                 disabled={adjustingSlots || targetSlotsPerDay <= temposAulaCount}
-                className="rounded-lg bg-rose-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+                className="rounded-lg border border-rose-300 bg-white px-3 py-2 text-xs font-bold text-rose-700 disabled:opacity-50"
               >
                 {adjustingSlots
                   ? "Ajustando slots..."
@@ -771,14 +1088,6 @@ export default function QuadroHorariosPage() {
                   ? "Gerando contraturno..."
                   : "Adicionar aulas no turno da tarde"}
               </button>
-              {selectedTurma?.curso_id && (
-                <Link
-                  href={`/escola/${escolaId}/admin/configuracoes/estrutura?resolvePendencias=1&cursoId=${selectedTurma.curso_id}`}
-                  className="rounded-lg border border-rose-300 bg-white px-3 py-2 text-xs font-bold text-rose-700"
-                >
-                  Abrir ajuste de currículo
-                </Link>
-              )}
             </div>
           </div>
         )}
@@ -875,7 +1184,7 @@ export default function QuadroHorariosPage() {
           <SchedulerBoard
             diasSemana={DIAS_SEMANA}
             tempos={horariosDisponiveis}
-            aulas={aulas}
+            aulas={aulasWithAllocations}
             onSalvar={handleSalvar}
             grid={grid}
             onGridChange={(next) => setGrid(() => next)}
@@ -883,9 +1192,10 @@ export default function QuadroHorariosPage() {
             existingAssignments={existingAssignments}
             conflictSlots={conflictSlots}
             salas={salas}
-            onSalaChange={(aulaId, salaId) => {
-              setAulas((prev) => prev.map((aula) => (aula.id === aulaId ? { ...aula, salaId } : aula)));
-            }}
+            professores={professores}
+            onAssignProfessor={handleAssignProfessor}
+            turmaSala={selectedTurma?.sala ?? null}
+            onAssignTurmaSala={handleAssignTurmaSala}
             onAutoCompletar={handleAutoCompletar}
             autoCompleting={autoScheduling}
             onAutoConfigurarCargas={missingLoadCount > 0 ? handleAutoConfigurar : undefined}
@@ -936,6 +1246,63 @@ export default function QuadroHorariosPage() {
           </div>
         ) : null}
       </div>
-    </div>
+      </div>
+      {curriculoModalOpen && selectedTurma?.curso_id && (
+        <DisciplinaModal
+          open={curriculoModalOpen}
+          mode="edit"
+          initial={(() => {
+            const disciplina = curriculoDisciplinas.find((d) => d.id === curriculoSelectedId);
+            if (!disciplina) return null;
+            return {
+              id: disciplina.id,
+              nome: disciplina.nome,
+              codigo: disciplina.codigo,
+              periodos_ativos: disciplina.periodos_ativos?.length
+                ? disciplina.periodos_ativos
+                : [1, 2, 3],
+              periodo_mode: disciplina.periodos_ativos?.length ? "custom" : "ano",
+              carga_horaria_semanal: disciplina.carga_horaria_semanal,
+              classificacao: disciplina.classificacao ?? (disciplina.is_core ? "core" : "complementar"),
+              entra_no_horario: disciplina.entra_no_horario ?? true,
+              avaliacao: {
+                mode: disciplina.avaliacao_mode_key ?? "inherit_school",
+                base_id: disciplina.avaliacao_disciplina_id ?? null,
+              },
+              area: disciplina.area ?? null,
+              programa_texto: null,
+              class_ids: disciplina.class_ids ?? [],
+            };
+          })()}
+          existingCodes={curriculoDisciplinas.map((d) => d.codigo)}
+          existingNames={curriculoDisciplinas.map((d) => d.nome)}
+          existingDisciplines={curriculoDisciplinas.map((d) => ({ id: d.id, nome: d.nome }))}
+          classOptions={curriculoClasses}
+          disciplineSelector={{
+            label: "Disciplina do currículo",
+            value: curriculoSelectedId ?? undefined,
+            options: curriculoDisciplinas.map((d) => {
+              const base = d.base_weekly_hours;
+              const isOut = base && base !== d.carga_horaria_semanal;
+              return {
+                id: d.id,
+                nome: d.nome,
+                label: isOut ? `⚠ ${d.nome} (MED ${base})` : d.nome,
+              };
+            }),
+            onChange: (id) => setCurriculoSelectedId(id),
+          }}
+          standardInfo={(() => {
+            const disciplina = curriculoDisciplinas.find((d) => d.id === curriculoSelectedId);
+            if (!disciplina) return undefined;
+            const baseHours = disciplina.base_weekly_hours ?? null;
+            const isOut = Boolean(baseHours && baseHours !== disciplina.carga_horaria_semanal);
+            return { baseHours, isOutOfStandard: isOut };
+          })()}
+          onClose={() => setCurriculoModalOpen(false)}
+          onSave={handleSaveCurriculoDisciplina}
+        />
+      )}
+    </>
   );
 }

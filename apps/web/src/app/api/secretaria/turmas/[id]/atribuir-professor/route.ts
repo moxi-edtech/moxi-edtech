@@ -79,7 +79,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (existing?.id) {
       const { error: updErr } = await supabase
         .from('turma_disciplinas')
-        .update({ professor_id: profResolved.id, horarios: body.horarios ?? null, planejamento: body.planejamento ?? null })
+        .update({ professor_id: profResolved.id })
         .eq('id', existing.id)
       if (updErr) return NextResponse.json({ ok: false, error: updErr.message }, { status: 400, headers })
       return NextResponse.json({ ok: true, mode: 'updated' }, { headers })
@@ -92,8 +92,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         turma_id: turmaId,
         curso_matriz_id: body.disciplina_id,
         professor_id: profResolved.id,
-        horarios: body.horarios ?? null,
-        planejamento: body.planejamento ?? null,
       } as any)
     if (insErr) return NextResponse.json({ ok: false, error: insErr.message }, { status: 400, headers })
     return NextResponse.json({ ok: true, mode: 'created' }, { headers })

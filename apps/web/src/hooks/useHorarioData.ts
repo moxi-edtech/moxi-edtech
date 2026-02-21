@@ -27,6 +27,7 @@ type BaseDataState = {
     turma_nome?: string | null;
     turma_codigo?: string | null;
     turma_code?: string | null;
+    sala?: string | null;
     curso_id?: string | null;
     classe_id?: string | null;
     ano_letivo?: number | null;
@@ -76,8 +77,10 @@ const mapAulas = (items: any[]): SchedulerAula[] =>
   items.map((item) => {
     const rulesInput = (item?.meta ?? item) as SchedulerDisciplineRulesInput;
     const missingLoad = hasMissingLoad(rulesInput);
+    const cursoMatrizId = item.curso_matriz_id ?? item.cursoMatrizId ?? null;
     return {
       id: item.disciplina?.id ?? item.id,
+      cursoMatrizId,
       disciplina: item.disciplina?.nome ?? "Disciplina",
       sigla: (item.disciplina?.nome ?? "").slice(0, 3).toUpperCase() || "DISC",
       professor: item.professor?.nome ?? "—",
@@ -129,13 +132,22 @@ export function useHorarioBaseData(escolaId?: string, refreshToken?: number) {
 
         const { slots, slotLookup } = mapSlots(slotsPayload as SlotApi[]);
 
-        setState({
-          slots,
-          slotLookup,
-          salas: salasPayload,
-          turmas: turmasPayload,
-          loading: false,
-          error: null,
+        setState((prev) => {
+          const mergedTurmas = turmasPayload.map((turma: any) => {
+            const previous = prev.turmas.find((item) => item.id === turma.id);
+            return {
+              ...turma,
+              sala: turma.sala ?? previous?.sala ?? null,
+            };
+          });
+          return {
+            slots,
+            slotLookup,
+            salas: salasPayload,
+            turmas: mergedTurmas,
+            loading: false,
+            error: null,
+          };
         });
       })
       .catch((error) => {
@@ -262,8 +274,15 @@ export function useHorarioTurmaData({
     setState((prev) => ({ ...prev, aulas: updater(prev.aulas) }));
   };
 
-  const setGrid = (updater: (prev: Record<string, string | null>) => Record<string, string | null>) => {
-    setState((prev) => ({ ...prev, grid: updater(prev.grid) }));
+  const setGrid = (
+    updater:
+      | Record<string, string | null>
+      | ((prev: Record<string, string | null>) => Record<string, string | null>)
+  ) => {
+    setState((prev) => ({
+      ...prev,
+      grid: typeof updater === "function" ? updater(prev.grid) : updater,
+    }));
   };
 
   const setExistingAssignments = (

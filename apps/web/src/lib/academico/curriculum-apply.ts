@@ -267,7 +267,7 @@ async function upsertCursoMatriz(args: {
   matrix: Record<string, boolean>;
   subjects: string[];
   disciplinaIdByNorm: Map<string, string>;
-  cursoCurriculoId?: string | null;
+  cursoCurriculoIdByClasse?: Map<string, string> | null;
   cargaByClass?: Record<string, number>;
 }) {
   const {
@@ -278,7 +278,7 @@ async function upsertCursoMatriz(args: {
     matrix,
     subjects,
     disciplinaIdByNorm,
-    cursoCurriculoId,
+    cursoCurriculoIdByClasse,
     cargaByClass,
   } = args;
 
@@ -305,11 +305,12 @@ async function upsertCursoMatriz(args: {
 
       const cargaKey = `${subject}::${clsNome}`;
       const cargaSemanal = cargaByClass?.[cargaKey];
+      const curriculoId = cursoCurriculoIdByClasse?.get(cls.id) ?? null;
 
       rows.push({
         escola_id: escolaId,
         curso_id: cursoId,
-        curso_curriculo_id: cursoCurriculoId ?? null,
+        curso_curriculo_id: curriculoId,
         classe_id: cls.id,
         disciplina_id: disciplinaId,
         carga_horaria: null,
@@ -330,7 +331,7 @@ async function upsertCursoMatriz(args: {
 
   if (rows.length === 0) return { insertedOrUpdated: 0 };
 
-  const onConflict = cursoCurriculoId
+  const onConflict = cursoCurriculoIdByClasse && cursoCurriculoIdByClasse.size > 0
     ? "escola_id,curso_curriculo_id,classe_id,disciplina_id"
     : "escola_id,curso_id,classe_id,disciplina_id";
 
@@ -451,8 +452,9 @@ async function createCurriculoDraft(args: {
   escolaId: string;
   cursoId: string;
   anoLetivoId: string;
+  classeIds: string[];
 }) {
-  const { supabase, escolaId, cursoId, anoLetivoId } = args;
+  const { supabase, escolaId, cursoId, anoLetivoId, classeIds } = args;
 
   const { data: last } = await supabase
     .from("curso_curriculos")
@@ -467,52 +469,68 @@ async function createCurriculoDraft(args: {
   let nextVersion = (last?.version ?? 0) + 1;
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    const { data: curriculo, error } = await supabase
-      .from("curso_curriculos")
-      .insert({
-        escola_id: escolaId,
-        curso_id: cursoId,
-        ano_letivo_id: anoLetivoId,
-        version: nextVersion,
-        status: "draft",
-      })
-      .select("id, version, status")
-      .single();
+    const payload = classeIds.map((classeId) => ({
+      escola_id: escolaId,
+      curso_id: cursoId,
+      ano_letivo_id: anoLetivoId,
+      version: nextVersion,
+      status: "draft",
+      classe_id: classeId,
+    }));
 
-    if (!error && curriculo) {
+    const { data: curriculos, error } = await supabase
+      .from("curso_curriculos")
+      .insert(payload)
+      .select("id, version, status, classe_id");
+
+    if (!error && curriculos && curriculos.length > 0) {
       const { data: published } = await supabase
         .from("curso_curriculos")
-        .select("id")
+        .select("id, classe_id")
         .eq("escola_id", escolaId)
         .eq("curso_id", cursoId)
         .eq("ano_letivo_id", anoLetivoId)
         .eq("status", "published")
-        .order("version", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .order("version", { ascending: false });
 
-      if (published?.id) {
-        const { data: matrizRows } = await (supabase as any)
-          .from("curso_matriz")
-          .select(
-            "escola_id, curso_id, classe_id, disciplina_id, carga_horaria, obrigatoria, ordem, ativo, carga_horaria_semanal, classificacao, periodos_ativos, entra_no_horario, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id, status_completude, status_horario, status_avaliacao"
-          )
-          .eq("escola_id", escolaId)
-          .eq("curso_curriculo_id", published.id);
-
-        if (matrizRows && matrizRows.length > 0) {
-          const inserts = matrizRows.map((row: any) => ({
-            ...row,
-            curso_curriculo_id: curriculo.id,
-          }));
-
-          await (supabase as any)
+      if (published && published.length > 0) {
+        for (const publishedRow of published) {
+          const targetDraft = curriculos.find(
+            (draft) => draft.classe_id === publishedRow.classe_id
+          );
+          if (!targetDraft) continue;
+          const { data: matrizRows } = await (supabase as any)
             .from("curso_matriz")
-            .insert(inserts, { onConflict: "escola_id,curso_id,classe_id,disciplina_id,curso_curriculo_id" });
+            .select(
+              "escola_id, curso_id, classe_id, disciplina_id, carga_horaria, obrigatoria, ordem, ativo, carga_horaria_semanal, classificacao, periodos_ativos, entra_no_horario, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id, status_completude, status_horario, status_avaliacao"
+            )
+            .eq("escola_id", escolaId)
+            .eq("curso_curriculo_id", publishedRow.id)
+            .eq("classe_id", publishedRow.classe_id);
+
+          if (matrizRows && matrizRows.length > 0) {
+            const inserts = matrizRows.map((row: any) => ({
+              ...row,
+              curso_curriculo_id: targetDraft.id,
+            }));
+
+            await (supabase as any)
+              .from("curso_matriz")
+              .insert(inserts, {
+                onConflict: "escola_id,curso_id,classe_id,disciplina_id,curso_curriculo_id",
+              });
+          }
         }
       }
 
-      return curriculo as TableRow<"curso_curriculos">;
+      const byClasse = new Map<string, string>();
+      for (const row of curriculos) {
+        if (row.classe_id) byClasse.set(row.classe_id, row.id);
+      }
+      return {
+        curriculo: curriculos[0] as TableRow<"curso_curriculos">,
+        byClasse,
+      };
     }
 
     if (error?.code === "23505") {
@@ -660,23 +678,33 @@ export async function applyCurriculumPreset(
     isCustom: Boolean(customData),
   });
 
-  let curriculo: ApplyCurriculumResult["curriculo"] = null;
-  if (createCurriculo) {
-    if (!anoLetivoId) throw new Error("Ano letivo é obrigatório para currículo.");
-    curriculo = await createCurriculoDraft({
-      supabase,
-      escolaId,
-      cursoId: curso.id,
-      anoLetivoId,
-    });
-  }
-
   const classesMap = await findOrCreateClassesForCursoMap(
     supabase,
     escolaId,
     curso.id,
     advancedConfig.classes
   );
+
+  let curriculo: ApplyCurriculumResult["curriculo"] = null;
+  let curriculoByClasse: Map<string, string> | null = null;
+  if (createCurriculo) {
+    if (!anoLetivoId) throw new Error("Ano letivo é obrigatório para currículo.");
+    const classeIds = Array.from(classesMap.values())
+      .map((cls) => cls.id)
+      .filter(Boolean);
+    if (classeIds.length === 0) {
+      throw new Error("Sem classes para criar currículo.");
+    }
+    const curriculoDraft = await createCurriculoDraft({
+      supabase,
+      escolaId,
+      cursoId: curso.id,
+      anoLetivoId,
+      classeIds,
+    });
+    curriculo = curriculoDraft.curriculo;
+    curriculoByClasse = curriculoDraft.byClasse;
+  }
 
   const discIdByNorm = await upsertDisciplinasCatalogo(
     supabase,
@@ -692,7 +720,7 @@ export async function applyCurriculumPreset(
     matrix: advancedConfig.matrix ?? {},
     subjects: advancedConfig.subjects ?? [],
     disciplinaIdByNorm: discIdByNorm,
-    cursoCurriculoId: curriculo?.id ?? null,
+    cursoCurriculoIdByClasse: curriculoByClasse,
     cargaByClass: advancedConfig.cargaByClass ?? undefined,
   });
 

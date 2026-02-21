@@ -174,6 +174,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       items.push({
         id: row.id,
         turma_id: row.turma_id,
+        curso_matriz_id: row.curso_matriz_id,
         disciplina: { id: discInfo?.id ?? row.curso_matriz_id, nome: disciplinaNome },
         curriculo_status: discInfo?.curriculo_status ?? null,
         meta: {

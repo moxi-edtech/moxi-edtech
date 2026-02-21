@@ -42,7 +42,7 @@ export async function GET(req: Request) {
           obrigatoria,
           ordem,
           carga_horaria,
-          disciplina:disciplinas_catalogo(id, nome, sigla),
+          disciplina:disciplinas_catalogo!curso_matriz_disciplina_id_fkey(id, nome, sigla),
           classe:classes(id, nome),
           curso:cursos(id, nome)
         `)

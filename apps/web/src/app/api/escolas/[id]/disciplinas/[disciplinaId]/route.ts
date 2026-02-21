@@ -98,6 +98,7 @@ export async function PUT(
         .eq('escola_id', escolaId)
         .eq('curso_id', curriculo.curso_id)
         .eq('ano_letivo_id', curriculo.ano_letivo_id)
+        .eq('classe_id', cmRow.classe_id)
         .eq('status', 'draft')
         .order('version', { ascending: false })
         .limit(1)
@@ -111,6 +112,7 @@ export async function PUT(
           .eq('escola_id', escolaId)
           .eq('curso_id', curriculo.curso_id)
           .eq('ano_letivo_id', curriculo.ano_letivo_id)
+          .eq('classe_id', cmRow.classe_id)
           .order('version', { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -123,6 +125,7 @@ export async function PUT(
             ano_letivo_id: curriculo.ano_letivo_id,
             version: nextVersion,
             status: 'draft',
+            classe_id: cmRow.classe_id,
           })
           .select('id')
           .single();
@@ -137,7 +140,8 @@ export async function PUT(
           .from('curso_matriz')
           .select('disciplina_id, classe_id, curso_id, obrigatoria, ordem, ativo, carga_horaria, carga_horaria_semanal, classificacao, periodos_ativos, entra_no_horario, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id, status_completude')
           .eq('escola_id', escolaId)
-          .eq('curso_curriculo_id', curriculo.id);
+          .eq('curso_curriculo_id', curriculo.id)
+          .eq('classe_id', cmRow.classe_id);
         if (publishedErr) {
           return NextResponse.json({ ok: false, error: publishedErr.message }, { status: 400 });
         }
@@ -174,6 +178,7 @@ export async function PUT(
         .select('id, curriculo:curso_curriculos(status)')
         .eq('escola_id', escolaId)
         .eq('disciplina_id', disciplinaCatalogoId)
+        .eq('classe_id', cmRow?.classe_id)
         .limit(25);
       const hasPublished = (linkedCurriculos || []).some((row: any) => row.curriculo?.status === 'published');
       if (hasPublished) {
@@ -238,6 +243,33 @@ export async function PUT(
           .eq('escola_id', escolaId);
         if (matrizErr) return NextResponse.json({ ok: false, error: matrizErr.message }, { status: 400 });
       }
+    }
+
+    const turmaUpdates: Record<string, any> = {};
+    if (parsed.data.carga_horaria_semanal !== undefined) {
+      turmaUpdates.carga_horaria_semanal = parsed.data.carga_horaria_semanal;
+    }
+    if (parsed.data.classificacao !== undefined) turmaUpdates.classificacao = parsed.data.classificacao;
+    if (parsed.data.periodos_ativos !== undefined) turmaUpdates.periodos_ativos = parsed.data.periodos_ativos;
+    if (parsed.data.entra_no_horario !== undefined) turmaUpdates.entra_no_horario = parsed.data.entra_no_horario;
+    if (parsed.data.avaliacao_mode !== undefined) turmaUpdates.avaliacao_mode = parsed.data.avaliacao_mode;
+    if (parsed.data.avaliacao_modelo_id !== undefined) {
+      turmaUpdates.modelo_avaliacao_id = parsed.data.avaliacao_modelo_id;
+    }
+    if (parsed.data.avaliacao_disciplina_id !== undefined) {
+      turmaUpdates.avaliacao_disciplina_id = parsed.data.avaliacao_disciplina_id;
+    }
+
+    const turmaMatrizIds = Array.from(
+      new Set([cmRow?.id, targetMatrizId].filter((id): id is string => Boolean(id)))
+    );
+    if (turmaMatrizIds.length > 0 && Object.keys(turmaUpdates).length > 0) {
+      const { error: turmaErr } = await (supabase as any)
+        .from('turma_disciplinas')
+        .update(turmaUpdates)
+        .eq('escola_id', escolaId)
+        .in('curso_matriz_id', turmaMatrizIds);
+      if (turmaErr) return NextResponse.json({ ok: false, error: turmaErr.message }, { status: 400 });
     }
 
     const { data, error } = await (supabase as any)

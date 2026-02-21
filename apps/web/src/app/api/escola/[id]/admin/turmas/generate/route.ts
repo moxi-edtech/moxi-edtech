@@ -79,17 +79,44 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ ok: false, error: 'Ano letivo não encontrado.' }, { status: 400 });
     }
 
-    const { data: published } = await supabase
+    const classIds = new Set<string>();
+    (classes || []).forEach((row) => classIds.add(row.classeId));
+    (turmas || []).forEach((row) => classIds.add(row.classeId));
+
+    if (classIds.size === 0) {
+      const { data: allClasses } = await supabase
+        .from('classes')
+        .select('id')
+        .eq('escola_id', userEscolaId)
+        .eq('curso_id', cursoId);
+      (allClasses || []).forEach((row: any) => classIds.add(row.id));
+    }
+
+    const classIdsList = Array.from(classIds.values());
+    const { data: publishedRows } = await supabase
       .from('curso_curriculos')
-      .select('id')
+      .select('classe_id')
       .eq('escola_id', userEscolaId)
       .eq('curso_id', cursoId)
       .eq('ano_letivo_id', anoLetivoRow.id)
       .eq('status', 'published')
-      .limit(1);
+      .in('classe_id', classIdsList.length > 0 ? classIdsList : ['']);
 
-    if (!published || published.length === 0) {
-      return NextResponse.json({ ok: false, error: 'Currículo publicado não encontrado.' }, { status: 400 });
+    const publishedSet = new Set((publishedRows || []).map((row: any) => row.classe_id));
+    const missingClasses = classIdsList.filter((id) => !publishedSet.has(id));
+    if (missingClasses.length > 0) {
+      const { data: classRows } = await supabase
+        .from('classes')
+        .select('id, nome')
+        .eq('escola_id', userEscolaId)
+        .in('id', missingClasses);
+      const nameById = new Map((classRows || []).map((row: any) => [row.id, row.nome]));
+      return NextResponse.json({
+        ok: false,
+        error: `Currículo publicado não encontrado para: ${missingClasses
+          .map((id) => nameById.get(id) ?? id)
+          .join(', ')}.`,
+      }, { status: 400 });
     }
 
     const { data, error } = await supabase.rpc('gerar_turmas_from_curriculo', {

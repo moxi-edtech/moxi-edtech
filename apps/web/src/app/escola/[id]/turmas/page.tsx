@@ -243,8 +243,8 @@ export default function TurmasPage() {
       </div>
 
       {/* Footer */}
-      <div className="text-center text-gray-500 text-sm mt-12 border-t border-gray-200 pt-6">
-        Moxi Nexa • Criamos sistemas que escalam • © 2025
+      <div className="border-t border-slate-200 pt-6 text-center text-sm text-slate-400">
+        KLASSE • Gestão escolar em escala • © 2025
       </div>
     </div>
   )

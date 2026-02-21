@@ -198,9 +198,7 @@ export default function Sidebar({
                 {escolaNome || portalTitle || "Escola"}
               </div>
               <div className="text-xs text-slate-400 truncate">
-                {escolaNome
-                  ? `${planoNome ? `Plano ${planoNome}` : "Plano Essencial"}`
-                  : portalTitle || "Portal"}
+                {portalTitle || "Portal"}
               </div>
             </div>
           )}

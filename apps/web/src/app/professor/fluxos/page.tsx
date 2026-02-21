@@ -3,11 +3,14 @@ import { fluxoAcademico } from "@/lib/diagrams"
 
 export default function Page() {
   return (
-    <div className="p-6">
-      <h1 className="text-xl font-semibold mb-4">Fluxos do Professor</h1>
-      <p className="text-sm text-gray-600 mb-3">Visão de ponta a ponta do processo acadêmico.</p>
-      <Mermaid chart={fluxoAcademico} className="overflow-auto rounded-lg border bg-white p-4" />
+    <div className="min-h-screen bg-slate-50">
+      <div className="max-w-6xl mx-auto p-6 space-y-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-klasse-green">Fluxo acadêmico</h1>
+          <p className="text-sm text-slate-500">Visão contínua do processo acadêmico.</p>
+        </div>
+        <Mermaid chart={fluxoAcademico} className="overflow-auto rounded-xl border border-slate-200 bg-white p-4" />
+      </div>
     </div>
   )
 }
-

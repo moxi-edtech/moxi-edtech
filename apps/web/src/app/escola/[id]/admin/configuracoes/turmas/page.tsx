@@ -23,6 +23,7 @@ type Curso = { id: string; nome: string };
 type Classe = { id: string; curso_id?: string; nome: string; turno?: string | null };
 type CurriculoStatus = {
   curso_id: string;
+  classe_id?: string | null;
   status: "draft" | "published" | "archived" | "none";
   version: number;
   ano_letivo_id: string;
@@ -355,10 +356,27 @@ export default function TurmasConfiguracoesPage() {
     [cursos, selectedCursoId]
   );
 
-  const selectedCurriculo = useMemo(
-    () => curriculos.find((c) => c.curso_id === selectedCursoId) ?? null,
-    [curriculos, selectedCursoId]
-  );
+  const selectedCurriculo = useMemo(() => {
+    const rows = curriculos.filter((c) => c.curso_id === selectedCursoId);
+    if (rows.length === 0) return null;
+    return rows.reduce((latest, row) => (row.version > latest.version ? row : latest), rows[0]);
+  }, [curriculos, selectedCursoId]);
+  const selectedCurriculoAllPublished = useMemo(() => {
+    const rows = curriculos.filter((c) => c.curso_id === selectedCursoId);
+    if (rows.length === 0) return false;
+    return rows.every((row) => row.status === "published");
+  }, [curriculos, selectedCursoId]);
+  const pendingPublishedClasses = useMemo(() => {
+    if (!selectedCursoId) return [] as Classe[];
+    const courseClasses = classes.filter((c) => c.curso_id === selectedCursoId);
+    if (courseClasses.length === 0) return [];
+    const publishedSet = new Set(
+      curriculos
+        .filter((c) => c.curso_id === selectedCursoId && c.status === "published")
+        .map((c) => c.classe_id)
+    );
+    return courseClasses.filter((cls) => !publishedSet.has(cls.id));
+  }, [classes, curriculos, selectedCursoId]);
 
   const handlePublish = async () => {
     if (!escolaId || !selectedCurriculo || !selectedCursoId) return;
@@ -377,6 +395,7 @@ export default function TurmasConfiguracoesPage() {
           anoLetivoId: selectedCurriculo.ano_letivo_id,
           version: selectedCurriculo.version,
           rebuildTurmas: publishRebuild,
+          bulk: true,
         }),
       });
       const json = await res.json().catch(() => null);
@@ -465,9 +484,13 @@ export default function TurmasConfiguracoesPage() {
 
   const handleGenerateTurmas = async () => {
     if (!escolaId || !selectedCursoId || !anoLetivo) return;
-    const curriculo = curriculos.find((c) => c.curso_id === selectedCursoId);
-    if (!curriculo || curriculo.status !== "published") {
-      toast.error("Publique o currículo antes de gerar turmas.");
+    if (!selectedCurriculoAllPublished) {
+      const names = pendingPublishedClasses.map((cls) => cls.nome).join(", ");
+      toast.error(
+        names
+          ? `Publique o currículo das classes: ${names}.`
+          : "Publique o currículo antes de gerar turmas."
+      );
       return;
     }
 
@@ -711,6 +734,58 @@ export default function TurmasConfiguracoesPage() {
             </p>
           </div>
         </div>
+        {selectedCursoId && pendingPublishedClasses.length > 0 && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            <p className="font-semibold">Classes sem currículo publicado</p>
+            <p className="text-xs text-amber-700 mt-1">
+              Publique o currículo destas classes antes de gerar turmas.
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {pendingPublishedClasses.map((cls) => (
+                <span
+                  key={cls.id}
+                  className="rounded-full border border-amber-200 bg-white px-3 py-1 text-xs font-semibold text-amber-700"
+                >
+                  {cls.nome}
+                </span>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                if (!selectedCursoId || !selectedCurriculo) return;
+                setModalActionLoading(true);
+                try {
+                  const res = await fetch(`/api/escola/${escolaId}/admin/curriculo/publish`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      cursoId: selectedCursoId,
+                      anoLetivoId: selectedCurriculo.ano_letivo_id,
+                      version: selectedCurriculo.version,
+                      rebuildTurmas: false,
+                      bulk: true,
+                    }),
+                  });
+                  const json = await res.json().catch(() => null);
+                  if (!res.ok || json?.ok === false) {
+                    throw new Error(json?.error || "Falha ao publicar currículo.");
+                  }
+                  await fetchCurriculoStatus();
+                  toast.success("Currículo publicado para todas as classes.");
+                } catch (e: any) {
+                  toast.error(e?.message || "Erro ao publicar currículo.");
+                } finally {
+                  setModalActionLoading(false);
+                }
+              }}
+              disabled={modalActionLoading}
+              className="mt-3 rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-700 disabled:opacity-50"
+            >
+              {modalActionLoading ? "Publicando..." : "Publicar todas as classes"}
+            </button>
+          </div>
+        )}
 
         {loading ? (
           <div className="py-10 flex justify-center">
@@ -723,8 +798,15 @@ export default function TurmasConfiguracoesPage() {
         ) : (
           <div className="grid grid-cols-1 gap-4">
             {cursos.map((curso) => {
-              const curriculo = curriculos.find((c) => c.curso_id === curso.id);
-              const status = curriculo?.status ?? "none";
+              const courseCurriculos = curriculos.filter((c) => c.curso_id === curso.id);
+              const status =
+                courseCurriculos.length === 0
+                  ? "none"
+                  : courseCurriculos.every((row) => row.status === "published")
+                    ? "published"
+                    : courseCurriculos.some((row) => row.status === "draft")
+                      ? "draft"
+                      : courseCurriculos[0]?.status ?? "none";
               const isPublished = status === "published";
               const classesDoCurso = classes.filter((c) => c.curso_id === curso.id).length;
 

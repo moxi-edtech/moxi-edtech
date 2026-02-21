@@ -34,5 +34,13 @@ export default async function EscolaIdPage({ params }: { params: Promise<{ id: s
     return redirect(`/escola/${id}/admin/dashboard`);
   }
 
+  if (escolaUsuario.papel === 'professor') {
+    return redirect('/professor');
+  }
+
+  if (escolaUsuario.papel === 'aluno') {
+    return redirect('/aluno/dashboard');
+  }
+
   return redirect(`/escola/${id}/dashboard`);
 }

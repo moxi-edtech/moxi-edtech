@@ -21,6 +21,7 @@ export type SchedulerSlot = {
 
 export type SchedulerAula = {
   id: string;
+  cursoMatrizId?: string | null;
   disciplina: string;
   sigla: string;
   professor: string;
@@ -50,7 +51,10 @@ type SchedulerBoardProps = {
   }>;
   conflictSlots?: Record<string, boolean>;
   salas?: Array<{ id: string; nome: string }>;
-  onSalaChange?: (aulaId: string, salaId: string | null) => void;
+  professores?: Array<{ id: string; nome: string }>;
+  onAssignProfessor?: (aula: SchedulerAula, professorUserId: string) => Promise<void> | void;
+  turmaSala?: string | null;
+  onAssignTurmaSala?: (salaId: string) => Promise<void> | void;
   onAutoConfigurarCargas?: () => void;
   autoConfiguring?: boolean;
   onPublicar?: (grid: Record<string, string | null>) => void;
@@ -75,7 +79,10 @@ export function SchedulerBoard({
   existingAssignments,
   conflictSlots,
   salas,
-  onSalaChange,
+  professores,
+  onAssignProfessor,
+  turmaSala,
+  onAssignTurmaSala,
   onAutoConfigurarCargas,
   autoConfiguring,
   onPublicar,
@@ -86,6 +93,8 @@ export function SchedulerBoard({
   const [grid, setGrid] = useState<Record<string, string | null>>({});
   const [activeId, setActiveId] = useState<string | null>(null);
   const [estoque, setEstoque] = useState(aulas || []);
+  const [assigningProfessor, setAssigningProfessor] = useState<SchedulerAula | null>(null);
+  const [assigningTurmaSala, setAssigningTurmaSala] = useState(false);
   const missingLoadCount = useMemo(
     () => (estoque || []).filter((a) => a.missingLoad).length,
     [estoque]
@@ -101,44 +110,78 @@ export function SchedulerBoard({
     if(aulas) setEstoque(aulas);
   }, [aulas]);
 
+  useEffect(() => {
+    const currentGrid = controlledGrid ?? grid;
+    const counts: Record<string, number> = {};
+    for (const value of Object.values(currentGrid)) {
+      if (!value) continue;
+      counts[value] = (counts[value] || 0) + 1;
+    }
+    setEstoque((prev) => prev.map((a) => ({
+      ...a,
+      temposAlocados: counts[a.id] ?? 0,
+    })));
+  }, [controlledGrid, grid]);
+
   // --- DND HANDLERS ---
   const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
+    const baseId = event.active.data.current?.baseId as string | undefined;
+    setActiveId(baseId ?? (event.active.id as string));
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
 
-    if (!over) return;
-
-    const slotId = over.id as string;
+    const slotId = over?.id as string | undefined;
     // Hackzinho para pegar dados do draggable. O active.id no draggable source é "aulaId-unique", mas passamos dados
-    const baseId = active.data.current?.baseId; 
+    const baseId = active.data.current?.baseId;
+    const sourceSlot = active.data.current?.sourceSlot as string | undefined;
     
     if (!baseId) return;
+    if (sourceSlot && slotId && sourceSlot === slotId) return;
 
-    // Lógica de atualização (Mantive a sua, parece sólida)
+    const shouldRemove = !slotId || slotId === "trash";
     const currentGrid = controlledGrid ?? grid;
-    const previousId = currentGrid[slotId] || null;
-    const nextGrid = { ...currentGrid, [slotId]: baseId };
+    const nextGrid = { ...currentGrid };
+    const targetPrevious = slotId ? currentGrid[slotId] || null : null;
+    if (sourceSlot) {
+      nextGrid[sourceSlot] = shouldRemove ? null : targetPrevious;
+    }
+    if (!shouldRemove && slotId) {
+      nextGrid[slotId] = baseId;
+    }
     setGrid(nextGrid);
     onGridChange?.(nextGrid);
 
-    // Atualiza contagem local (Opcional, se o pai já fizer isso via props 'aulas', remova isso)
-    setEstoque((prev) =>
-      prev.map((a) =>
-        a.id === baseId
-          ? { ...a, temposAlocados: Math.min(a.temposTotal, a.temposAlocados + 1) }
-          : a.id === previousId
-            ? { ...a, temposAlocados: Math.max(0, a.temposAlocados - 1) }
-            : a
-      )
-    );
+    const counts: Record<string, number> = {};
+    for (const value of Object.values(nextGrid)) {
+      if (!value) continue;
+      counts[value] = (counts[value] || 0) + 1;
+    }
+    setEstoque((prev) => prev.map((a) => ({
+      ...a,
+      temposAlocados: counts[a.id] ?? 0,
+    })));
   };
 
   // Helper
   const getAulaById = useCallback((id: string) => estoque.find((a) => a.id === id), [estoque]);
+  const effectiveTurmaSala = useMemo(() => {
+    if (turmaSala) return turmaSala;
+    const salaId = existingAssignments?.find((item) => item.sala_id)?.sala_id ?? null;
+    if (!salaId) return null;
+    const sala = (salas || []).find((item) => item.id === salaId);
+    return sala?.nome ?? null;
+  }, [turmaSala, existingAssignments, salas]);
+  const getSalaLabel = useCallback(
+    () => {
+      if (!effectiveTurmaSala) return null;
+      const sala = (salas || []).find((item) => item.nome === effectiveTurmaSala);
+      return sala?.nome ?? effectiveTurmaSala;
+    },
+    [salas, effectiveTurmaSala]
+  );
 
   // Conflitos (Mantive sua lógica, apenas formatação)
   const detectedConflicts = useMemo(() => {
@@ -193,17 +236,30 @@ export function SchedulerBoard({
               )}
             </div>
           )}
+          {!effectiveTurmaSala && onAssignTurmaSala && (
+            <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+              <div className="font-semibold">Turma sem sala definida.</div>
+              <div className="mt-1">Defina a sala para todo o horário.</div>
+              <button
+                type="button"
+                onClick={() => setAssigningTurmaSala(true)}
+                className="mt-2 w-full rounded-lg bg-rose-600 px-3 py-2 text-xs font-bold text-white"
+              >
+                Definir sala
+              </button>
+            </div>
+          )}
 
           <div className="space-y-3 overflow-y-auto flex-1 pr-1 custom-scrollbar">
             {estoque.map((aula) => (
               <DraggableSource
                 key={aula.id}
                 aula={aula}
-                salas={salas}
-                onSalaChange={onSalaChange}
               />
             ))}
           </div>
+
+          <TrashDropzone active={Boolean(activeId)} />
 
           <div className="mt-6 pt-6 border-t border-slate-100 space-y-3">
             <button
@@ -285,29 +341,46 @@ export function SchedulerBoard({
                     return (
                       <DroppableSlot key={slotId} id={slotId} hasConflict={hasConflict} isFilled={!!aula}>
                         {aula ? (
-                          <div className={`
-                            h-full w-full rounded-lg p-2.5 border border-transparent shadow-sm 
-                            flex flex-col justify-between cursor-grab active:cursor-grabbing hover:brightness-95 transition-all
-                            ${aula.cor} /* Usa classes funcionais tipo bg-blue-50 */
-                          `}>
-                            <div className="flex justify-between items-start">
-                              <span className="font-bold text-xs uppercase tracking-tight">{aula.sigla}</span>
-                              {(hasConflict || aula.conflito) && (
-                                <AlertOctagon className="w-4 h-4 text-rose-600 animate-pulse" />
-                              )}
-                            </div>
-                            <div className="space-y-1">
-                                <div className="text-[10px] font-medium opacity-80 truncate leading-tight">
-                                    {aula.professor.split(" ")[0]}
-                                </div>
-                                {/* Exemplo de Sala se tiver */}
-                                {aula.salaId && (
-                                    <div className="inline-block px-1.5 py-0.5 bg-white/50 rounded text-[9px] font-bold">
-                                        SALA {aula.salaId}
-                                    </div>
+                          <DraggableGridItem slotId={slotId} aula={aula}>
+                            <div className={`
+                              group h-full w-full rounded-lg p-2.5 border border-transparent shadow-sm 
+                              flex flex-col justify-between cursor-grab active:cursor-grabbing hover:brightness-95 transition-all
+                              ${aula.cor} /* Usa classes funcionais tipo bg-blue-50 */
+                            `}>
+                              <div className="flex justify-between items-start">
+                                <span className="font-bold text-xs uppercase tracking-tight">{aula.sigla}</span>
+                                {(hasConflict || aula.conflito) && (
+                                  <AlertOctagon className="w-4 h-4 text-rose-600 animate-pulse" />
                                 )}
+                              </div>
+                              <div className="space-y-1">
+                                  {aula.professorId ? (
+                                    <div className="text-[10px] font-medium opacity-80 truncate leading-tight">
+                                      {aula.professor.split(" ")[0]}
+                                    </div>
+                                  ) : (
+                                    onAssignProfessor ? (
+                                      <button
+                                        type="button"
+                                        onPointerDown={(event) => event.stopPropagation()}
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          setAssigningProfessor(aula);
+                                        }}
+                                        className="text-[10px] font-semibold text-rose-700 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      >
+                                        Atribuir professor
+                                      </button>
+                                    ) : null
+                                  )}
+                                  {effectiveTurmaSala ? (
+                                    <div className="inline-block px-1.5 py-0.5 bg-white/50 rounded text-[9px] font-bold">
+                                      {getSalaLabel()}
+                                    </div>
+                                  ) : null}
+                              </div>
                             </div>
-                          </div>
+                          </DraggableGridItem>
                         ) : null}
                       </DroppableSlot>
                     );
@@ -320,13 +393,38 @@ export function SchedulerBoard({
 
         <DragOverlay>{overlayItem}</DragOverlay>
       </div>
+      {assigningProfessor && (
+        <AssignProfessorModal
+          aula={assigningProfessor}
+          professores={professores || []}
+          onClose={() => setAssigningProfessor(null)}
+          onAssign={async (professorId) => {
+            if (onAssignProfessor) {
+              await onAssignProfessor(assigningProfessor, professorId);
+            }
+            setAssigningProfessor(null);
+          }}
+        />
+      )}
+      {assigningTurmaSala && (
+        <AssignTurmaSalaModal
+          salas={salas || []}
+          onClose={() => setAssigningTurmaSala(false)}
+          onAssign={async (salaId) => {
+            if (onAssignTurmaSala) {
+              await onAssignTurmaSala(salaId);
+            }
+            setAssigningTurmaSala(false);
+          }}
+        />
+      )}
     </DndContext>
   );
 }
 
 // --- SUB-COMPONENTS (Refatorados) ---
 
-const DraggableSource = ({ aula, salas, onSalaChange }: any) => {
+const DraggableSource = ({ aula }: any) => {
   // Gera ID único para o draggable source, para não conflitar com o item solto no grid
   // Passamos o 'baseId' via data para saber quem é quem
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -384,6 +482,175 @@ const DraggableSource = ({ aula, salas, onSalaChange }: any) => {
           Definir carga
         </div>
       )}
+    </div>
+  );
+};
+
+const DraggableGridItem = ({ slotId, aula, children }: any) => {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `grid-${slotId}`,
+    data: { baseId: aula.id, sourceSlot: slotId },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className={isDragging ? "opacity-40" : undefined}
+    >
+      {children}
+    </div>
+  );
+};
+
+const TrashDropzone = ({ active }: { active: boolean }) => {
+  const { setNodeRef, isOver } = useDroppable({ id: "trash" });
+  const highlight = isOver || active;
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`mt-4 rounded-xl border px-3 py-2 text-xs font-bold uppercase tracking-wide text-center transition-all ${
+        highlight
+          ? "border-rose-400 bg-rose-50 text-rose-700"
+          : "border-slate-200 bg-white text-slate-400"
+      }`}
+    >
+      Arraste aqui para remover
+    </div>
+  );
+};
+
+const AssignProfessorModal = ({
+  aula,
+  professores,
+  onClose,
+  onAssign,
+}: {
+  aula: SchedulerAula;
+  professores: Array<{ id: string; nome: string }>;
+  onClose: () => void;
+  onAssign: (professorId: string) => void | Promise<void>;
+}) => {
+  const [selected, setSelected] = useState("");
+  const [saving, setSaving] = useState(false);
+  const canSave = Boolean(selected);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10">
+      <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-slate-900">Atribuir professor</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-500"
+          >
+            Fechar
+          </button>
+        </div>
+        <p className="mt-2 text-xs text-slate-500">{aula.disciplina}</p>
+        <select
+          value={selected}
+          onChange={(event) => setSelected(event.target.value)}
+          className="mt-4 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+        >
+          <option value="">Selecione um professor</option>
+          {professores.map((prof) => (
+            <option key={prof.id} value={prof.id}>
+              {prof.nome}
+            </option>
+          ))}
+        </select>
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            disabled={!canSave || saving}
+            onClick={async () => {
+              if (!selected) return;
+              setSaving(true);
+              await onAssign(selected);
+              setSaving(false);
+            }}
+            className="rounded-lg bg-klasse-gold px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+          >
+            {saving ? "Salvando..." : "Salvar"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const AssignTurmaSalaModal = ({
+  salas,
+  onClose,
+  onAssign,
+}: {
+  salas: Array<{ id: string; nome: string }>;
+  onClose: () => void;
+  onAssign: (salaId: string) => void | Promise<void>;
+}) => {
+  const [selected, setSelected] = useState("");
+  const [saving, setSaving] = useState(false);
+  const canSave = Boolean(selected);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10">
+      <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-bold text-slate-900">Definir sala da turma</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-500"
+          >
+            Fechar
+          </button>
+        </div>
+        <select
+          value={selected}
+          onChange={(event) => setSelected(event.target.value)}
+          className="mt-4 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+        >
+          <option value="">Selecione uma sala</option>
+          {salas.map((sala) => (
+            <option key={sala.id} value={sala.id}>
+              {sala.nome}
+            </option>
+          ))}
+        </select>
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            disabled={!canSave || saving}
+            onClick={async () => {
+              if (!selected) return;
+              setSaving(true);
+              await onAssign(selected);
+              setSaving(false);
+            }}
+            className="rounded-lg bg-klasse-gold px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+          >
+            {saving ? "Salvando..." : "Salvar"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
