@@ -30,6 +30,9 @@ export default function QuadroHorariosPage() {
   const [conflictSlots, setConflictSlots] = useState<Record<string, boolean>>({});
   const [novaSala, setNovaSala] = useState("");
   const [refreshToken, setRefreshToken] = useState(0);
+  const [baseRefreshToken, setBaseRefreshToken] = useState(0);
+  const [adjustingSlots, setAdjustingSlots] = useState(false);
+  const [generatingContraturno, setGeneratingContraturno] = useState(false);
 
   const {
     slots,
@@ -39,7 +42,7 @@ export default function QuadroHorariosPage() {
     loading: baseLoading,
     error: baseError,
     setSalas,
-  } = useHorarioBaseData(escolaId);
+  } = useHorarioBaseData(escolaId, baseRefreshToken);
 
   const {
     aulas,
@@ -178,6 +181,135 @@ export default function QuadroHorariosPage() {
   }, [aulas, salas]);
   const overloadProfessores = professorLoad.filter((item) => item.count >= 16);
   const overloadSalas = salaLoad.filter((item) => item.count >= 20);
+
+  const mapTurnoId = (turno?: string | null) => {
+    const normalized = turno?.toString().toUpperCase();
+    if (normalized === "M") return "matinal";
+    if (normalized === "T") return "tarde";
+    if (normalized === "N") return "noite";
+    return "matinal";
+  };
+
+  const targetSlotsPerDay = useMemo(() => {
+    if (totalDias <= 0) return temposAulaCount;
+    return Math.max(temposAulaCount, Math.ceil(totalCarga / totalDias));
+  }, [totalCarga, totalDias, temposAulaCount]);
+
+  const handleAutoAdjustSlots = async () => {
+    if (!escolaId || !selectedTurma) return;
+    if (targetSlotsPerDay <= temposAulaCount) return;
+    try {
+      setAdjustingSlots(true);
+      const res = await fetch(`/api/escolas/${escolaId}/horarios/slots`, { cache: "no-store" });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || json?.ok === false) {
+        throw new Error(json?.error || "Falha ao carregar slots.");
+      }
+
+      const slots = Array.isArray(json?.items) ? json.items : [];
+      const turnoId = mapTurnoId(selectedTurma.turno ?? "M");
+      const slotsDoTurno = slots.filter((slot: any) => slot.turno_id === turnoId);
+      const slotsByDay = new Map<number, any[]>();
+      slotsDoTurno.forEach((slot: any) => {
+        const dia = Number(slot.dia_semana);
+        if (!slotsByDay.has(dia)) slotsByDay.set(dia, []);
+        slotsByDay.get(dia)!.push(slot);
+      });
+
+      const newSlots: Array<{
+        turno_id: string;
+        dia_semana: number;
+        ordem: number;
+        inicio: string;
+        fim: string;
+        is_intervalo: boolean;
+      }> = [];
+
+      slotsByDay.forEach((daySlots, day) => {
+        const sorted = [...daySlots].sort((a, b) => a.ordem - b.ordem);
+        const aulasExistentes = sorted.filter((slot) => !slot.is_intervalo).length;
+        if (aulasExistentes >= targetSlotsPerDay) return;
+        const lastSlot = sorted[sorted.length - 1];
+        const [startH, startM] = String(lastSlot.inicio).split(":").map(Number);
+        const [endH, endM] = String(lastSlot.fim).split(":").map(Number);
+        const startMinutes = startH * 60 + startM;
+        const endMinutes = endH * 60 + endM;
+        const duration = Math.max(30, endMinutes - startMinutes);
+        let currentEnd = endMinutes;
+        let currentOrder = Number(lastSlot.ordem);
+        let remaining = targetSlotsPerDay - aulasExistentes;
+
+        while (remaining > 0) {
+          currentOrder += 1;
+          const nextStart = currentEnd;
+          const nextEnd = currentEnd + duration;
+          const pad = (value: number) => String(value).padStart(2, "0");
+          const inicio = `${pad(Math.floor(nextStart / 60))}:${pad(nextStart % 60)}`;
+          const fim = `${pad(Math.floor(nextEnd / 60))}:${pad(nextEnd % 60)}`;
+          newSlots.push({
+            turno_id: turnoId,
+            dia_semana: day,
+            ordem: currentOrder,
+            inicio,
+            fim,
+            is_intervalo: false,
+          });
+          currentEnd = nextEnd;
+          remaining -= 1;
+        }
+      });
+
+      if (newSlots.length === 0) {
+        toast.message("Slots já estão no limite.");
+        return;
+      }
+
+      const saveRes = await fetch(`/api/escolas/${escolaId}/horarios/slots`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slots: newSlots }),
+      });
+      const saveJson = await saveRes.json().catch(() => null);
+      if (!saveRes.ok || saveJson?.ok === false) {
+        throw new Error(saveJson?.error || "Falha ao salvar slots.");
+      }
+
+      toast.success(`Slots ajustados para ${targetSlotsPerDay} aulas/dia.`);
+      setBaseRefreshToken((prev) => prev + 1);
+    } catch (e: any) {
+      toast.error(e?.message || "Falha ao ajustar slots.");
+    } finally {
+      setAdjustingSlots(false);
+    }
+  };
+
+  const handleAddContraturno = async () => {
+    if (!escolaId || !selectedTurma?.curso_id || !selectedTurma?.classe_id) return;
+    const anoLetivo = selectedTurma.ano_letivo ?? new Date().getFullYear();
+    try {
+      setGeneratingContraturno(true);
+      const res = await fetch(`/api/escola/${escolaId}/admin/turmas/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cursoId: selectedTurma.curso_id,
+          anoLetivo,
+          turnos: ["T"],
+          classes: [{ classeId: selectedTurma.classe_id, quantidade: 1 }],
+        }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || json?.ok === false) {
+        throw new Error(json?.error || "Falha ao gerar turmas no contraturno.");
+      }
+      toast.success("Turma de contraturno gerada.");
+      setBaseRefreshToken((prev) => prev + 1);
+    } catch (e: any) {
+      toast.error(e?.message || "Falha ao gerar contraturno.");
+    } finally {
+      setGeneratingContraturno(false);
+    }
+  };
 
   const submitQuadro = async (nextGrid: Record<string, string | null>, mode: "draft" | "publish") => {
     if (!escolaId || !turmaId || !versaoId) return;
@@ -432,14 +564,46 @@ export default function QuadroHorariosPage() {
       <div className="p-6 max-w-7xl mx-auto">
         {turmaId && excessoCarga > 0 && (
           <div className="mb-6 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
-            <p className="font-semibold">Carga acima da capacidade</p>
+            <p className="font-semibold">Carga acima da capacidade do turno</p>
             <p className="text-xs text-rose-700 mt-1">
-              Carga total: {totalCarga} • Slots disponíveis: {totalSlots} • Excesso: {excessoCarga}
+              A carga semanal do curso é {totalCarga} e o turno da {turnoLabel} suporta {totalSlots}.
             </p>
-            <p className="text-xs text-rose-700 mt-2">
-              A carga horária do curso ({totalCarga}) excede a capacidade do turno da {turnoLabel} ({totalSlots}).
-              Altere o currículo ou aloque aulas no contraturno.
+            <p className="text-xs text-rose-700 mt-1">
+              Para corrigir: aumente os slots do turno ou distribua aulas no contraturno.
             </p>
+            <p className="text-[11px] text-rose-600 mt-2">
+              Capacidade do turno = número de aulas úteis por semana. Carga vem do currículo publicado.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleAutoAdjustSlots}
+                disabled={adjustingSlots || targetSlotsPerDay <= temposAulaCount}
+                className="rounded-lg bg-rose-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+              >
+                {adjustingSlots
+                  ? "Ajustando slots..."
+                  : `Aumentar slots para ${targetSlotsPerDay} aulas/dia`}
+              </button>
+              <button
+                type="button"
+                onClick={handleAddContraturno}
+                disabled={generatingContraturno}
+                className="rounded-lg border border-rose-300 bg-white px-3 py-2 text-xs font-bold text-rose-700 disabled:opacity-50"
+              >
+                {generatingContraturno
+                  ? "Gerando contraturno..."
+                  : "Adicionar aulas no turno da tarde"}
+              </button>
+              {selectedTurma?.curso_id && (
+                <Link
+                  href={`/escola/${escolaId}/admin/configuracoes/estrutura?resolvePendencias=1&cursoId=${selectedTurma.curso_id}`}
+                  className="rounded-lg border border-rose-300 bg-white px-3 py-2 text-xs font-bold text-rose-700"
+                >
+                  Abrir ajuste de currículo
+                </Link>
+              )}
+            </div>
           </div>
         )}
         {turmaId && (

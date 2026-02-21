@@ -320,7 +320,7 @@ export default function AvaliacaoUnificadaClient() {
                     <div>
                       <p className="text-sm font-bold text-slate-900">Modelo de Avaliação</p>
                       <p className="text-xs text-slate-500 font-medium">
-                        {selectedModelo?.nome ?? modeloAvaliacao || 'Sem modelo'}
+                        {selectedModelo?.nome ?? (modeloAvaliacao || 'Sem modelo')}
                       </p>
                     </div>
                   </div>

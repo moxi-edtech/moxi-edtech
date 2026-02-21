@@ -70,6 +70,12 @@ const cloneConfig = (config?: { componentes?: ReadonlyArray<{ code: string; peso
   componentes: extractComponentes(config).map((item) => ({ ...item })),
 });
 
+const mapTurnoId = (turno: keyof TurnosState) => {
+  if (turno === "Manhã") return "matinal";
+  if (turno === "Tarde") return "tarde";
+  return "noite";
+};
+
 // --- COMPONENTE VISUAL: STEPPER ---
 function WizardStepper({ currentStep }: { currentStep: number }) {
   const steps = [
@@ -443,6 +449,65 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
     if (!anoLetivoId) return toast.error("Sem ano letivo.");
     const tid = toast.loading("Gerando turmas...");
     try {
+      const slotsRes = await fetch(`/api/escolas/${escolaId}/horarios/slots`, { cache: "no-store" });
+      const slotsJson = await slotsRes.json().catch(() => null);
+      const slotsPayload = slotsRes.ok && slotsJson?.ok ? (slotsJson.items || []) : [];
+      const selectedTurnos = (Object.keys(turnos) as Array<keyof TurnosState>)
+        .filter((key) => turnos[key])
+        .map((key) => mapTurnoId(key));
+      const totalSlots = slotsPayload
+        .filter((slot: any) => selectedTurnos.includes(slot.turno_id) && !slot.is_intervalo)
+        .length;
+
+      const cargaPorClasse = new Map<string, number>();
+      const cursosAgrupados = matrix.reduce((acc, row) => {
+        if (!acc[row.cursoKey]) acc[row.cursoKey] = [] as string[];
+        acc[row.cursoKey].push(row.nome);
+        return acc;
+      }, {} as Record<string, string[]>);
+
+      Object.entries(cursosAgrupados).forEach(([cursoKey, classes]) => {
+        const bp = CURRICULUM_PRESETS[cursoKey as keyof typeof CURRICULUM_PRESETS] || [];
+        const classSet = new Set(classes);
+        const byKey = new Map<string, number>();
+        bp.forEach((disciplina: any) => {
+          const nome = String(disciplina?.nome ?? "").trim();
+          const classe = String(disciplina?.classe ?? "").trim();
+          if (!nome || !classe || !classSet.has(classe)) return;
+          if (Number.isFinite(disciplina?.horas)) {
+            byKey.set(`${classe}::${nome}`, Number(disciplina.horas));
+          }
+        });
+
+        const overridePrefix = `${cursoKey}::`;
+        Object.entries(curriculumOverrides).forEach(([key, value]) => {
+          if (!key.startsWith(overridePrefix)) return;
+          const remainder = key.slice(overridePrefix.length);
+          const [classe, ...subjectParts] = remainder.split("::");
+          const subject = subjectParts.join("::");
+          if (!classe || !subject || !classSet.has(classe)) return;
+          const baseKey = `${classe}::${subject}`;
+          if (Number.isFinite(value)) {
+            byKey.set(baseKey, Number(value));
+          }
+        });
+
+        for (const [key, hours] of byKey.entries()) {
+          const [classe] = key.split("::");
+          const current = cargaPorClasse.get(classe) ?? 0;
+          cargaPorClasse.set(classe, current + hours);
+        }
+      });
+
+      const overloads = Array.from(cargaPorClasse.entries()).filter(([, carga]) => carga > totalSlots);
+      if (overloads.length > 0 && totalSlots > 0) {
+        toast.warning(
+          `Carga semanal acima da capacidade: ${overloads
+            .map(([classe, carga]) => `${classe} (${carga}/${totalSlots})`)
+            .join(", ")}. Ajuste o currículo ou o turno.`
+        );
+      }
+
       const classesDb = await fetchAllPaginated<any>(`/api/escolas/${escolaId}/classes`);
       const mapClasses: any = {}; // cursoId -> { nome: id }
       classesDb.forEach((c: any) => {

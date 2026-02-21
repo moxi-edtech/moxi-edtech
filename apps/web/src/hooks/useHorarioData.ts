@@ -29,6 +29,8 @@ type BaseDataState = {
     turma_code?: string | null;
     curso_id?: string | null;
     classe_id?: string | null;
+    ano_letivo?: number | null;
+    turno?: string | null;
   }>;
   loading: boolean;
   error: string | null;
@@ -92,7 +94,7 @@ const fetchJson = async (url: string, signal: AbortSignal) => {
   return { res, json };
 };
 
-export function useHorarioBaseData(escolaId?: string) {
+export function useHorarioBaseData(escolaId?: string, refreshToken?: number) {
   const [state, setState] = useState<BaseDataState>({
     slots: [],
     slotLookup: {},
@@ -144,7 +146,7 @@ export function useHorarioBaseData(escolaId?: string) {
       });
 
     return () => controller.abort();
-  }, [escolaId]);
+  }, [escolaId, refreshToken]);
 
   const setSalas = (updater: (prev: Array<{ id: string; nome: string }>) => Array<{ id: string; nome: string }>) => {
     setState((prev) => ({ ...prev, salas: updater(prev.salas) }));
