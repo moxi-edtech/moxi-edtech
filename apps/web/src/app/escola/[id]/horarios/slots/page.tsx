@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { SlotsConfig, type HorarioSlot } from "@/components/escola/horarios/SlotsConfig";
 import { useOfflineStatus } from "@/hooks/useOfflineStatus";
 import { enqueueOfflineAction } from "@/lib/offline/queue";
+import { shouldAppearInScheduler } from "@/lib/rules/scheduler-rules";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/Spinner";
 
@@ -14,15 +15,29 @@ type Turno = {
   label: string;
 };
 
+type TurmaResumo = {
+  id: string;
+  nome: string;
+  turno?: string | null;
+  curso_nome?: string | null;
+  classe_nome?: string | null;
+};
+
 export default function HorariosSlotsPage() {
   const params = useParams();
   const escolaId = params?.id as string;
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [slots, setSlots] = useState<HorarioSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [hasMounted, setHasMounted] = useState(false);
+  const [turmas, setTurmas] = useState<TurmaResumo[]>([]);
+  const [loadingTurmas, setLoadingTurmas] = useState(false);
+  const [selectedTurmaId, setSelectedTurmaId] = useState<string | null>(null);
+  const [turmaCarga, setTurmaCarga] = useState(0);
+  const [disciplinasSemCarga, setDisciplinasSemCarga] = useState(0);
   const { online } = useOfflineStatus();
   const requestRef = useRef(0);
 
@@ -38,6 +53,11 @@ export default function HorariosSlotsPage() {
   useEffect(() => {
     setHasMounted(true);
   }, []);
+
+  useEffect(() => {
+    const turmaIdParam = searchParams?.get("turmaId");
+    if (turmaIdParam) setSelectedTurmaId(turmaIdParam);
+  }, [searchParams]);
 
   useEffect(() => {
     if (!escolaId) return;
@@ -58,6 +78,9 @@ export default function HorariosSlotsPage() {
         } else {
           setSlots([]);
         }
+      } catch (error) {
+        if (controller.signal.aborted || requestId !== requestRef.current) return;
+        setSlots([]);
       } finally {
         if (!controller.signal.aborted && requestId === requestRef.current) {
           setLoading(false);
@@ -68,6 +91,111 @@ export default function HorariosSlotsPage() {
     load();
     return () => controller.abort();
   }, [escolaId]);
+
+  useEffect(() => {
+    if (!escolaId) return;
+    const controller = new AbortController();
+    const requestId = ++requestRef.current;
+
+    const loadTurmas = async () => {
+      setLoadingTurmas(true);
+      try {
+        const res = await fetch(`/api/escolas/${escolaId}/turmas?limit=50`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const json = await res.json().catch(() => ({}));
+        if (controller.signal.aborted || requestId !== requestRef.current) return;
+        const items = res.ok && json.ok && Array.isArray(json.items) ? json.items : [];
+        setTurmas(
+          items.map((item: any) => ({
+            id: item.id,
+            nome: item.nome ?? item.turma_nome ?? "Turma",
+            turno: item.turno ?? null,
+            curso_nome: item.curso_nome ?? null,
+            classe_nome: item.classe_nome ?? null,
+          }))
+        );
+      } catch (error) {
+        if (controller.signal.aborted || requestId !== requestRef.current) return;
+        setTurmas([]);
+      } finally {
+        if (!controller.signal.aborted && requestId === requestRef.current) {
+          setLoadingTurmas(false);
+        }
+      }
+    };
+
+    loadTurmas();
+    return () => controller.abort();
+  }, [escolaId]);
+
+  const selectedTurma = useMemo(
+    () => turmas.find((turma) => turma.id === selectedTurmaId) || null,
+    [selectedTurmaId, turmas]
+  );
+
+  const turnoSlotId = useMemo(() => {
+    const turno = (selectedTurma?.turno || "").toUpperCase();
+    if (turno === "M") return "matinal";
+    if (turno === "T") return "tarde";
+    if (turno === "N") return "noite";
+    return null;
+  }, [selectedTurma]);
+
+  const totalSlotsDisponiveis = useMemo(() => {
+    const filtered = turnoSlotId
+      ? slots.filter((slot) => slot.turno_id === turnoSlotId)
+      : slots;
+    return filtered.filter((slot) => !slot.is_intervalo).length;
+  }, [slots, turnoSlotId]);
+
+  useEffect(() => {
+    if (!escolaId || !selectedTurmaId) {
+      setTurmaCarga(0);
+      setDisciplinasSemCarga(0);
+      return;
+    }
+    const controller = new AbortController();
+    const requestId = ++requestRef.current;
+
+    const loadCarga = async () => {
+      try {
+        const res = await fetch(
+          `/api/secretaria/turmas/${selectedTurmaId}/disciplinas?escola_id=${encodeURIComponent(
+            escolaId
+          )}`,
+          { cache: "no-store", signal: controller.signal }
+        );
+        const json = await res.json().catch(() => ({}));
+        if (controller.signal.aborted || requestId !== requestRef.current) return;
+        const items = res.ok && json.ok && Array.isArray(json.items) ? json.items : [];
+        let total = 0;
+        let missing = 0;
+        items.forEach((item: any) => {
+          const meta = item?.meta ?? {};
+          if (!shouldAppearInScheduler(meta)) return;
+          const carga = Number(meta.carga_horaria_semanal ?? 0);
+          if (carga > 0) total += carga;
+          else missing += 1;
+        });
+        setTurmaCarga(total);
+        setDisciplinasSemCarga(missing);
+      } catch (error) {
+        if (controller.signal.aborted || requestId !== requestRef.current) return;
+        setTurmaCarga(0);
+        setDisciplinasSemCarga(0);
+      }
+    };
+
+    loadCarga();
+    return () => controller.abort();
+  }, [escolaId, selectedTurmaId]);
+
+  const excessoCarga = useMemo(() => {
+    if (!selectedTurmaId) return 0;
+    return Math.max(0, turmaCarga - totalSlotsDisponiveis);
+  }, [selectedTurmaId, turmaCarga, totalSlotsDisponiveis]);
 
   const handleSave = async () => {
     if (!escolaId) return;
@@ -122,6 +250,25 @@ export default function HorariosSlotsPage() {
               Configure os tempos e intervalos que serão usados no quadro.
             </p>
           </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <select
+              value={selectedTurmaId ?? ""}
+              onChange={(event) => setSelectedTurmaId(event.target.value || null)}
+              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+            >
+              <option value="">Selecione uma turma</option>
+              {loadingTurmas ? (
+                <option value="">Carregando turmas...</option>
+              ) : (
+                turmas.map((turma) => (
+                  <option key={turma.id} value={turma.id}>
+                    {turma.nome}
+                    {turma.classe_nome ? ` • ${turma.classe_nome}` : ""}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
           <div className="flex items-center gap-2 rounded-full bg-slate-100 p-1">
             <Link
               href={`/escola/${escolaId}/horarios/slots`}
@@ -137,6 +284,37 @@ export default function HorariosSlotsPage() {
             </Link>
           </div>
         </div>
+
+        {selectedTurmaId && (
+          <div
+            className={`rounded-2xl border p-4 text-sm ${
+              excessoCarga > 0
+                ? "border-rose-200 bg-rose-50 text-rose-800"
+                : "border-emerald-200 bg-emerald-50 text-emerald-800"
+            }`}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="font-semibold">Capacidade semanal para {selectedTurma?.nome}</p>
+                <p className="text-xs mt-1">
+                  Slots disponíveis: {totalSlotsDisponiveis} • Carga total: {turmaCarga}
+                  {excessoCarga > 0 ? ` • Excesso: ${excessoCarga}` : ""}
+                </p>
+                {disciplinasSemCarga > 0 && (
+                  <p className="text-xs mt-1">
+                    {disciplinasSemCarga} disciplina(s) sem carga semanal configurada.
+                  </p>
+                )}
+              </div>
+              <Link
+                href={`/escola/${escolaId}/horarios/quadro`}
+                className="rounded-full bg-slate-900 px-4 py-1.5 text-xs font-semibold text-white"
+              >
+                Abrir Quadro
+              </Link>
+            </div>
+          </div>
+        )}
 
         <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
           {loading ? (

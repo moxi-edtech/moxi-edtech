@@ -38,6 +38,7 @@ export type DisciplinaForm = {
   programa_texto?: string | null;
   class_ids?: string[];
   apply_scope?: "all" | "selected";
+  carga_by_class?: Record<string, number | null>;
 };
 
 type DisciplineOption = {
@@ -77,6 +78,37 @@ const emptyDisciplina: DisciplinaForm = {
   avaliacao: { mode: "inherit_school", base_id: null },
   programa_texto: null,
 };
+
+function inferCargaFromName(nome: string) {
+  const value = normalizeName(nome).toLowerCase();
+  if (value.includes("portugues") || value.includes("língua") || value.includes("lingua")) return 4;
+  if (value.includes("matem")) return 4;
+  if (value.includes("fisic") || value.includes("quim") || value.includes("biolog")) return 3;
+  if (value.includes("hist") || value.includes("geograf") || value.includes("filos") || value.includes("sociol")) return 3;
+  if (value.includes("educa") && value.includes("fisic")) return 2;
+  if (value.includes("informat") || value.includes("tic") || value.includes("laborat")) return 2;
+  return 3;
+}
+
+function applyDefaults(payload: DisciplinaForm) {
+  return {
+    ...payload,
+    classificacao: payload.classificacao ?? "core",
+    entra_no_horario: payload.entra_no_horario ?? true,
+    avaliacao: payload.avaliacao?.mode
+      ? payload.avaliacao
+      : { mode: "inherit_school", base_id: null },
+    periodo_mode: payload.periodo_mode ?? "ano",
+    periodos_ativos:
+      payload.periodos_ativos && payload.periodos_ativos.length > 0
+        ? payload.periodos_ativos
+        : [1, 2, 3],
+    carga_horaria_semanal:
+      payload.carga_horaria_semanal && payload.carga_horaria_semanal > 0
+        ? payload.carga_horaria_semanal
+        : inferCargaFromName(payload.nome || ""),
+  };
+}
 
 function normalizeCode(code: string) {
   return code
@@ -127,15 +159,17 @@ export function DisciplinaModal({
     if (!open) return;
     setSaving(false);
     setDeleting(false);
-    setForm({
-      ...emptyDisciplina,
-      ...initial,
-      avaliacao: initial?.avaliacao ?? emptyDisciplina.avaliacao,
-      periodos_ativos: initial?.periodos_ativos?.length
-        ? initial.periodos_ativos
-        : emptyDisciplina.periodos_ativos,
-      periodo_mode: initial?.periodo_mode ?? emptyDisciplina.periodo_mode,
-    });
+    setForm(
+      applyDefaults({
+        ...emptyDisciplina,
+        ...initial,
+        avaliacao: initial?.avaliacao ?? emptyDisciplina.avaliacao,
+        periodos_ativos: initial?.periodos_ativos?.length
+          ? initial.periodos_ativos
+          : emptyDisciplina.periodos_ativos,
+        periodo_mode: initial?.periodo_mode ?? emptyDisciplina.periodo_mode,
+      })
+    );
     const nextClassIds = initial?.class_ids?.length ? initial.class_ids : allClassIds;
     const nextScope =
       allClassIds.length > 0 && nextClassIds.length !== allClassIds.length ? "selected" : "all";
@@ -245,6 +279,7 @@ export function DisciplinaModal({
     setSaving(true);
     try {
       await onSave(payload);
+      setForm((prev) => ({ ...prev, ...payload }));
       onClose();
     } finally {
       setSaving(false);
@@ -263,6 +298,10 @@ export function DisciplinaModal({
   };
 
   if (!open) return null;
+
+  const handleAutoFill = () => {
+    setForm((prev) => applyDefaults({ ...prev }));
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10">
@@ -346,11 +385,31 @@ export function DisciplinaModal({
               </select>
             </section>
           )}
+          <section className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-bold text-slate-900">Auto-preencher disciplina</p>
+              <p className="text-xs text-slate-500">Aplica padrões de carga, períodos e avaliação.</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleAutoFill}
+              className="rounded-lg bg-klasse-gold px-4 py-2 text-xs font-bold text-white shadow-sm hover:brightness-110"
+            >
+              Auto-preencher
+            </button>
+          </section>
           {!appearsInScheduler && (
             <section className="bg-amber-50 p-4 rounded-xl border border-amber-200 text-amber-800 text-sm">
               Esta disciplina não aparecerá no quadro porque não entra no horário ou a carga semanal está zerada.
             </section>
           )}
+          <section className="bg-white p-4 rounded-xl border border-slate-200 text-sm text-slate-600">
+            <p className="font-semibold text-slate-800">Dica Angola:</p>
+            <p className="text-xs text-slate-500 mt-1">
+              No ensino médio, algumas disciplinas só existem em certas classes (ex.: Filosofia apenas na 12ª).
+              Use o escopo por classe e os trimestres para refletir a realidade.
+            </p>
+          </section>
           {appearsInScheduler && (
             <section className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs text-slate-600">
               Esta disciplina irá gerar <span className="font-semibold text-slate-900">{totalSlots}</span> tempo(s) semanais no quadro.
@@ -419,6 +478,9 @@ export function DisciplinaModal({
             <h3 className="text-sm font-bold text-slate-900 uppercase flex items-center gap-2 mb-4">
               <CalendarDays className="w-4 h-4 text-[#1F6B3B]" /> Quando acontece?
             </h3>
+            <p className="text-xs text-slate-500 mb-3">
+              Se a disciplina só acontece em um trimestre, selecione apenas ele. Ex.: Filosofia só na 12ª classe.
+            </p>
 
             <div className="flex gap-4 mb-4">
               <button

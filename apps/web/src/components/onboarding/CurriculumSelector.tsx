@@ -8,20 +8,14 @@ import {
   CURRICULUM_PRESETS_META,
 } from "@/lib/onboarding";
 import { PRESET_TO_TYPE } from "@/lib/courseTypes";
-import {
-  BookOpen,
-  Briefcase,
-  Stethoscope,
-  Layers,
-  Check,
-} from "lucide-react";
+import { BookOpen, Briefcase, Layers, Check } from "lucide-react";
 
 interface CurriculumPresetSelectorProps {
   value: CurriculumKey | null;
   onChange: (key: CurriculumKey) => void;
 }
 
-type GroupId = "basico" | "tecnico" | "saude";
+type GroupId = "basico" | "tecnico";
 
 const ICONS_BY_GROUP: Record<
   GroupId,
@@ -29,14 +23,12 @@ const ICONS_BY_GROUP: Record<
 > = {
   basico: BookOpen,
   tecnico: Briefcase,
-  saude: Stethoscope,
 };
 
 
 const GROUP_LABELS: Record<GroupId, string> = {
   basico: "Ensino Geral",
   tecnico: "Ensino Técnico / Profissional",
-  saude: "Ensino Técnico de Saúde",
 };
 
 type PresetCard = {
@@ -47,10 +39,7 @@ type PresetCard = {
   group: GroupId;
 };
 
-const GROUP_BY_PRESET: Partial<Record<CurriculumKey, GroupId>> = {
-  saude_enfermagem: "saude",
-  saude_farmacia_analises: "saude",
-};
+const GROUP_BY_PRESET: Partial<Record<CurriculumKey, GroupId>> = {};
 
 export function CurriculumPresetSelector({
   value,
@@ -60,13 +49,12 @@ export function CurriculumPresetSelector({
     const groups: Record<GroupId, PresetCard[]> = {
       basico: [],
       tecnico: [],
-      saude: [],
     };
 
     const resolveGroup = (key: CurriculumKey): GroupId => {
       if (GROUP_BY_PRESET[key]) return GROUP_BY_PRESET[key] as GroupId;
       const type = PRESET_TO_TYPE[key];
-      return type === "tecnico" ? "tecnico" : "basico";
+      return type && type.startsWith("tecnico") ? "tecnico" : "basico";
     };
 
     (Object.entries(CURRICULUM_PRESETS_META) as [

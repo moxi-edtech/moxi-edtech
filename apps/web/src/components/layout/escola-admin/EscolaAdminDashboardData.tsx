@@ -1,6 +1,7 @@
 // apps/web/src/components/layout/escola-admin/EscolaAdminDashboardData.tsx
 import "server-only";
 
+import { cookies, headers } from "next/headers";
 import EscolaAdminDashboardContent from "./EscolaAdminDashboardContent";
 import { supabaseServer } from "@/lib/supabaseServer";
 import type { KpiStats } from "./KpiSection";
@@ -15,17 +16,34 @@ import { applyKf2ListInvariants } from "@/lib/kf2";
  */
 type Aviso = { id: string; titulo: string; dataISO: string };
 type Evento = { id: string; titulo: string; dataISO: string };
+type InadimplenciaTopRow = {
+  aluno_id: string;
+  aluno_nome: string;
+  valor_em_atraso: number;
+  dias_em_atraso: number;
+};
+type PagamentoRecenteRow = {
+  id: string;
+  aluno_id: string | null;
+  valor_pago: number | null;
+  metodo: string | null;
+  status: string | null;
+  created_at: string | null;
+};
 
 type DashboardPayload = {
   kpis: KpiStats;
   avisos: Aviso[];
   eventos: Evento[];
-  curriculoPendencias: number;
+  curriculoPendenciasHorario: number;
+  curriculoPendenciasAvaliacao: number;
   charts?: {
     meses: string[];
     alunosPorMes: number[];
     pagamentos: any; // depois tipamos direito (PagamentosResumo)
   };
+  inadimplenciaTop?: InadimplenciaTopRow[];
+  pagamentosRecentes?: PagamentoRecenteRow[];
 };
 
 type Props = {
@@ -39,6 +57,21 @@ const hasComponentes = (config?: { componentes?: { code: string }[] }) => (
 
 export default async function EscolaAdminDashboardData({ escolaId, escolaNome }: Props) {
   const s = await supabaseServer();
+  const cookieHeader = (await cookies()).toString();
+  const host = (await headers()).get("host");
+  const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
+  const baseUrl = host ? `${protocol}://${host}` : "";
+
+  const fetchJson = async <T,>(path: string, fallback: T) => {
+    if (!baseUrl) return fallback;
+    const res = await fetch(`${baseUrl}${path}`, {
+      cache: "no-store",
+      headers: cookieHeader ? { cookie: cookieHeader } : undefined,
+    });
+    const json = (await res.json().catch(() => null)) as any;
+    if (!res.ok || !json?.ok) return fallback;
+    return json as T;
+  };
 
   try {
     // ✅ 1) KPIs (ajusta nomes de tabela/coluna conforme teu schema real)
@@ -62,6 +95,8 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
           order: [{ column: "mes_ref", ascending: false }],
         });
 
+  const todayKey = new Date().toISOString().slice(0, 10);
+
   const [
     dashboardCounts,
     pendingTurmasCount,
@@ -71,6 +106,9 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
     missingPricingResult,
     financeiroKpiResult,
     escolaNomeResult,
+    dashboardChartsRes,
+    inadimplenciaTopRes,
+    pagamentosRecentesRes,
   ] = await Promise.all([
     s.from("vw_admin_dashboard_counts")
       .select("alunos_ativos, turmas_total, professores_total, avaliacoes_total")
@@ -99,6 +137,18 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
     missingPricingQuery,
     financeiroKpiQuery,
     s.from("escolas").select("nome").eq("id", escolaId).maybeSingle(),
+    fetchJson(
+      `/api/escolas/${escolaId}/admin/dashboard`,
+      { ok: false, charts: null }
+    ),
+    fetchJson(
+      `/api/escolas/${escolaId}/admin/financeiro/inadimplencia-top?limit=5`,
+      { ok: false, data: [] }
+    ),
+    fetchJson(
+      `/api/escolas/${escolaId}/admin/financeiro/pagamentos-recentes?limit=10&day_key=${todayKey}`,
+      { ok: false, data: [] }
+    ),
   ]);
 
         const setupData = setupStatusResult.data;
@@ -158,31 +208,54 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
         const draftCurriculoIds = (draftCurriculosResult.data ?? [])
           .map((row: any) => row.id)
           .filter(Boolean);
-        let curriculoPendencias = 0;
+        let curriculoPendenciasHorario = 0;
+        let curriculoPendenciasAvaliacao = 0;
         if (draftCurriculoIds.length > 0) {
-          const { data: pendenciasRows } = await s
-            .from("curso_matriz")
-            .select("disciplina_id")
-            .eq("escola_id", escolaId)
-            .eq("status_completude", "incompleto")
-            .in("curso_curriculo_id", draftCurriculoIds);
-          const unique = new Set(
-            (pendenciasRows ?? [])
+          const [pendenciasHorarioRes, pendenciasAvaliacaoRes] = await Promise.all([
+            s
+              .from("curso_matriz")
+              .select("disciplina_id")
+              .eq("escola_id", escolaId)
+              .eq("status_horario", "incompleto")
+              .in("curso_curriculo_id", draftCurriculoIds),
+            s
+              .from("curso_matriz")
+              .select("disciplina_id")
+              .eq("escola_id", escolaId)
+              .eq("status_avaliacao", "incompleto")
+              .in("curso_curriculo_id", draftCurriculoIds),
+          ]);
+
+          const uniqueHorario = new Set(
+            (pendenciasHorarioRes.data ?? [])
               .map((row: any) => row?.disciplina_id)
               .filter(Boolean)
           );
-          curriculoPendencias = unique.size;
+          const uniqueAvaliacao = new Set(
+            (pendenciasAvaliacaoRes.data ?? [])
+              .map((row: any) => row?.disciplina_id)
+              .filter(Boolean)
+          );
+
+          curriculoPendenciasHorario = uniqueHorario.size;
+          curriculoPendenciasAvaliacao = uniqueAvaliacao.size;
         }
 
+        const charts = (dashboardChartsRes as any)?.charts ?? undefined;
+        const inadimplenciaTop = (inadimplenciaTopRes as any)?.data ?? [];
+        const pagamentosRecentes = (pagamentosRecentesRes as any)?.data ?? [];
         const payload: DashboardPayload = {
           kpis: stats,
           avisos,
           eventos,
-          curriculoPendencias,
-          charts: undefined,
+          curriculoPendenciasHorario,
+          curriculoPendenciasAvaliacao,
+          charts: charts ?? undefined,
+          inadimplenciaTop,
+          pagamentosRecentes,
         };
 
-        const financeiroHref = `/escola/${escolaId}/financeiro`;
+        const financeiroHref = "/financeiro";
     
         return (
           <EscolaAdminDashboardContent
@@ -199,7 +272,10 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
             missingPricingCount={missingPricingCount}
             financeiroHref={financeiroHref}
             pagamentosKpis={payload.charts?.pagamentos as any}
-            curriculoPendenciasCount={payload.curriculoPendencias}
+            inadimplenciaTop={payload.inadimplenciaTop}
+            pagamentosRecentes={payload.pagamentosRecentes}
+            curriculoPendenciasHorarioCount={payload.curriculoPendenciasHorario}
+            curriculoPendenciasAvaliacaoCount={payload.curriculoPendenciasAvaliacao}
           />
         );
       } catch (e: any) {
@@ -229,7 +305,7 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
             charts={undefined}
             setupStatus={setupStatus}
             missingPricingCount={0}
-            financeiroHref={`/escola/${escolaId}/financeiro`}
+            financeiroHref="/financeiro"
             pagamentosKpis={undefined}
           />
         );

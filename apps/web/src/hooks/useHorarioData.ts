@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { SchedulerAula, SchedulerSlot } from "@/components/escola/horarios/SchedulerBoard";
 import {
   calculateTotalSlots,
+  hasMissingLoad,
   shouldAppearInScheduler,
   type SchedulerDisciplineRulesInput,
 } from "@/lib/rules/scheduler-rules";
@@ -26,6 +27,8 @@ type BaseDataState = {
     turma_nome?: string | null;
     turma_codigo?: string | null;
     turma_code?: string | null;
+    curso_id?: string | null;
+    classe_id?: string | null;
   }>;
   loading: boolean;
   error: string | null;
@@ -68,6 +71,7 @@ const mapSlots = (slots: SlotApi[]): { slots: SchedulerSlot[]; slotLookup: Recor
 const mapAulas = (items: any[]): SchedulerAula[] =>
   items.map((item) => {
     const rulesInput = (item?.meta ?? item) as SchedulerDisciplineRulesInput;
+    const missingLoad = hasMissingLoad(rulesInput);
     return {
       id: item.disciplina?.id ?? item.id,
       disciplina: item.disciplina?.nome ?? "Disciplina",
@@ -78,6 +82,7 @@ const mapAulas = (items: any[]): SchedulerAula[] =>
       cor: "bg-white border-slate-200 text-slate-700 hover:border-klasse-gold",
       temposTotal: calculateTotalSlots(rulesInput),
       temposAlocados: 0,
+      missingLoad,
     };
   });
 
@@ -157,11 +162,13 @@ export function useHorarioTurmaData({
   turmaId,
   versaoId,
   slotLookup,
+  refreshToken,
 }: {
   escolaId?: string;
   turmaId?: string | null;
   versaoId?: string | null;
   slotLookup: Record<string, string>;
+  refreshToken?: number;
 }) {
   const [state, setState] = useState<TurmaDataState>({
     aulas: [],
@@ -197,7 +204,7 @@ export function useHorarioTurmaData({
     setState((prev) => ({ ...prev, loading: true, error: null }));
 
     Promise.all([
-      fetchJson(`/api/secretaria/turmas/${turmaId}/disciplinas`, controller.signal),
+      fetchJson(`/api/secretaria/turmas/${turmaId}/disciplinas?escola_id=${encodeURIComponent(escolaId)}`, controller.signal),
       fetchJson(`/api/escolas/${escolaId}/horarios/quadro?${params.toString()}`, controller.signal),
     ])
       .then(([disciplinasRes, quadroRes]) => {
@@ -245,7 +252,7 @@ export function useHorarioTurmaData({
       });
 
     return () => controller.abort();
-  }, [escolaId, turmaId, versaoId, slotLookupReady, slotLookup]);
+  }, [escolaId, turmaId, versaoId, slotLookupReady, slotLookup, refreshToken]);
 
   const setAulas = (updater: (prev: SchedulerAula[]) => SchedulerAula[]) => {
     setState((prev) => ({ ...prev, aulas: updater(prev.aulas) }));

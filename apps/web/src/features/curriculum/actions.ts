@@ -27,24 +27,112 @@ const detectPresetByCourse = (
 
   const mappings: Array<{ preset: CurriculumKey; keywords: string[] }> = [
     {
-      preset: "tecnico_gestao",
-      keywords: ["gestao", "financas", "administracao", "contabilidade"],
+      preset: "tec_contabilidade",
+      keywords: ["contabilidade", "gestao", "administracao"],
     },
     {
-      preset: "tecnico_informatica",
+      preset: "tec_informatica_gestao",
       keywords: ["informatica", "computador", "sistemas", "programacao", "ti"],
     },
     {
-      preset: "tecnico_construcao",
-      keywords: ["construcao", "civil", "obras"],
+      preset: "tec_financas",
+      keywords: ["financas", "finance", "credito"],
     },
     {
-      preset: "saude_enfermagem",
+      preset: "tec_comercio",
+      keywords: ["comercio", "comercial", "logistica"],
+    },
+    {
+      preset: "tec_recursos_humanos",
+      keywords: ["recursos humanos", "rh", "pessoal"],
+    },
+    {
+      preset: "tec_secretariado",
+      keywords: ["secretariado", "secretaria"],
+    },
+    {
+      preset: "tec_saude_enfermagem",
       keywords: ["enfermagem", "enfermage"],
     },
     {
-      preset: "saude_farmacia_analises",
-      keywords: ["analises", "farmacia", "laboratorio"],
+      preset: "tec_saude_analises",
+      keywords: ["analises", "análises", "laboratorio", "laboratório"],
+    },
+    {
+      preset: "tec_saude_farmacia",
+      keywords: ["farmacia", "farmácia"],
+    },
+    {
+      preset: "tec_saude_radiologia",
+      keywords: ["radiologia"],
+    },
+    {
+      preset: "tec_saude_fisioterapia",
+      keywords: ["fisioterapia"],
+    },
+    {
+      preset: "tec_saude_nutricao",
+      keywords: ["nutricao", "nutrição"],
+    },
+    {
+      preset: "tec_saude_estomatologia",
+      keywords: ["estomatologia"],
+    },
+    {
+      preset: "tec_construcao_civil",
+      keywords: ["construcao", "construção", "civil", "obras"],
+    },
+    {
+      preset: "tec_energia_eletrica",
+      keywords: ["energia", "electrica", "elétrica", "eletricidade"],
+    },
+    {
+      preset: "tec_mecanica_manut",
+      keywords: ["mecanica", "mecânica", "manutencao", "manutenção"],
+    },
+    {
+      preset: "tec_informatica_sistemas",
+      keywords: ["informatica sistemas", "sistemas", "redes"],
+    },
+    {
+      preset: "tec_desenhador_projectista",
+      keywords: ["desenhador", "projectista", "projetista", "projeto"],
+    },
+    {
+      preset: "tec_electronica_telecom",
+      keywords: ["telecom", "telecomunicacoes", "telecomunicações"],
+    },
+    {
+      preset: "tec_electronica_automacao",
+      keywords: ["automacao", "automação", "industrial"],
+    },
+    {
+      preset: "tec_energias_renovaveis",
+      keywords: ["energias renovaveis", "energia solar", "eolica", "eólica"],
+    },
+    {
+      preset: "tec_geologia_petroleo",
+      keywords: ["geologia", "petroleo", "petróleo"],
+    },
+    {
+      preset: "tec_perfuracao_producao",
+      keywords: ["perfuracao", "perfuração", "producao", "produção"],
+    },
+    {
+      preset: "tec_minas",
+      keywords: ["minas", "mineracao", "mineração"],
+    },
+    {
+      preset: "tec_producao_metalomecanica",
+      keywords: ["metalomecanica", "metalomecânica"],
+    },
+    {
+      preset: "tec_informatica",
+      keywords: ["informatica", "hardware", "suporte"],
+    },
+    {
+      preset: "tec_gestao_sistemas",
+      keywords: ["gestao sistemas", "gestão sistemas", "sistemas informaticos"],
     },
   ];
 
@@ -109,7 +197,7 @@ export async function hydrateCourseCurriculum(
         nome: disc.nome,
         classe_nome: cls.nome,
         classe_id: cls.id ?? null,
-        nivel_ensino: disc.nivel || "geral",
+        nivel_ensino: disc.componente === "TECNICA" ? "tecnico" : "geral",
         tipo: disc.tipo || "core",
       }));
     });

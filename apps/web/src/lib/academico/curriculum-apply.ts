@@ -27,6 +27,7 @@ export interface AdvancedConfigPayload {
   turnos: BuilderTurnos;
   matrix: Record<MatrixKey, boolean>;
   subjects: string[];
+  cargaByClass?: Record<string, number>;
 }
 
 export interface CustomDataPayload {
@@ -267,6 +268,7 @@ async function upsertCursoMatriz(args: {
   subjects: string[];
   disciplinaIdByNorm: Map<string, string>;
   cursoCurriculoId?: string | null;
+  cargaByClass?: Record<string, number>;
 }) {
   const {
     supabase,
@@ -277,6 +279,7 @@ async function upsertCursoMatriz(args: {
     subjects,
     disciplinaIdByNorm,
     cursoCurriculoId,
+    cargaByClass,
   } = args;
 
   const rows: TableInsert<"curso_matriz">[] = [];
@@ -300,6 +303,9 @@ async function upsertCursoMatriz(args: {
 
       if (!ativo) continue;
 
+      const cargaKey = `${subject}::${clsNome}`;
+      const cargaSemanal = cargaByClass?.[cargaKey];
+
       rows.push({
         escola_id: escolaId,
         curso_id: cursoId,
@@ -307,7 +313,9 @@ async function upsertCursoMatriz(args: {
         classe_id: cls.id,
         disciplina_id: disciplinaId,
         carga_horaria: null,
-        carga_horaria_semanal: null,
+        carga_horaria_semanal: Number.isFinite(cargaSemanal)
+          ? Number(cargaSemanal)
+          : null,
         obrigatoria: true,
         classificacao: "core",
         ordem: ordem++,
@@ -471,7 +479,41 @@ async function createCurriculoDraft(args: {
       .select("id, version, status")
       .single();
 
-    if (!error && curriculo) return curriculo as TableRow<"curso_curriculos">;
+    if (!error && curriculo) {
+      const { data: published } = await supabase
+        .from("curso_curriculos")
+        .select("id")
+        .eq("escola_id", escolaId)
+        .eq("curso_id", cursoId)
+        .eq("ano_letivo_id", anoLetivoId)
+        .eq("status", "published")
+        .order("version", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (published?.id) {
+        const { data: matrizRows } = await (supabase as any)
+          .from("curso_matriz")
+          .select(
+            "escola_id, curso_id, classe_id, disciplina_id, carga_horaria, obrigatoria, ordem, ativo, carga_horaria_semanal, classificacao, periodos_ativos, entra_no_horario, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id, status_completude, status_horario, status_avaliacao"
+          )
+          .eq("escola_id", escolaId)
+          .eq("curso_curriculo_id", published.id);
+
+        if (matrizRows && matrizRows.length > 0) {
+          const inserts = matrizRows.map((row: any) => ({
+            ...row,
+            curso_curriculo_id: curriculo.id,
+          }));
+
+          await (supabase as any)
+            .from("curso_matriz")
+            .insert(inserts, { onConflict: "escola_id,curso_id,classe_id,disciplina_id,curso_curriculo_id" });
+        }
+      }
+
+      return curriculo as TableRow<"curso_curriculos">;
+    }
 
     if (error?.code === "23505") {
       const { data: retryLast } = await supabase
@@ -509,13 +551,23 @@ function resolveAdvancedConfig(payload: CurriculumApplyPayload, presetKey: Curri
 
   const presetMeta = CURRICULUM_PRESETS_META[presetKey];
   const presetClasses = (presetMeta?.classes ?? []).filter(Boolean);
+  const presetData = CURRICULUM_PRESETS[presetKey] ?? [];
   const presetSubjects = Array.from(
     new Set(
-      (CURRICULUM_PRESETS[presetKey] ?? [])
-        .map((disciplina) => String((disciplina as { nome?: string | null })?.nome ?? "").trim())
+      presetData
+        .map((disciplina) => String(disciplina?.nome ?? "").trim())
         .filter(Boolean)
     )
   );
+  const cargaByClass: Record<string, number> = {};
+  presetData.forEach((disciplina) => {
+    const nome = String(disciplina?.nome ?? "").trim();
+    const classe = String(disciplina?.classe ?? "").trim();
+    if (!nome || !classe) return;
+    if (Number.isFinite(disciplina?.horas)) {
+      cargaByClass[`${nome}::${classe}`] = Number(disciplina.horas);
+    }
+  });
 
   const defaultTurnos: BuilderTurnos = { manha: true, tarde: false, noite: false };
   const defaultMatrix: Record<string, boolean> = {};
@@ -531,6 +583,7 @@ function resolveAdvancedConfig(payload: CurriculumApplyPayload, presetKey: Curri
     subjects: presetSubjects,
     matrix: defaultMatrix,
     turnos: defaultTurnos,
+    cargaByClass,
   } as AdvancedConfigPayload;
 }
 
@@ -611,6 +664,7 @@ export async function applyCurriculumPreset(
     subjects: advancedConfig.subjects ?? [],
     disciplinaIdByNorm: discIdByNorm,
     cursoCurriculoId: curriculo?.id ?? null,
+    cargaByClass: advancedConfig.cargaByClass ?? undefined,
   });
 
   let turmas: Array<{ id: string; classe_id: string }> = [];

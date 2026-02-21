@@ -28,6 +28,7 @@ const bodySchema = z.object({
       subjects: z.array(z.string()),
       matrix: z.record(z.boolean()),
       turnos: z.object({ manha: z.boolean(), tarde: z.boolean(), noite: z.boolean() }),
+      cargaByClass: z.record(z.number()).optional(),
     })
     .optional(),
 });

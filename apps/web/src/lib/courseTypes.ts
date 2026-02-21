@@ -24,35 +24,39 @@ export type CourseType =
 
 // Mapeia cada preset oficial para um tipo estável
 export const PRESET_TO_TYPE: Record<CurriculumKey, CourseType> = {
-  // === GERAL ===
-  primario_base: "primario",
-  primario_avancado: "primario",
-  ciclo1: "ciclo1",
-
-  // === PUNIV ===
-  puniv_fisicas: "puniv",
-  puniv_economicas: "puniv",
-  puniv_humanas: "puniv",
-  puniv_artes: "puniv",
-
-  // === TÉCNICO GERAL ===
-  tecnico_informatica: "tecnico",
-  tecnico_gestao: "tecnico",
-  tecnico_base: "tecnico",
-
-  // === TÉCNICO INDUSTRIAL ===
-  tecnico_construcao: "tecnico_ind",
-  tecnico_electricidade: "tecnico_ind",
-  tecnico_mecanica: "tecnico_ind",
-  tecnico_electronica: "tecnico_ind",
-  tecnico_petroleos: "tecnico_ind",
-
-  // === SAÚDE ===
-  saude_enfermagem: "tecnico_saude",
-  saude_farmacia_analises: "tecnico_saude",
-
-  // === MAGISTÉRIO ===
-  magisterio_primario: "magisterio",
+  primario_generico: "primario",
+  esg_ciclo1: "ciclo1",
+  esg_puniv_cfb: "puniv",
+  esg_puniv_cej: "puniv",
+  esg_puniv_cch: "puniv",
+  esg_puniv_artes: "puniv",
+  tec_contabilidade: "tecnico",
+  tec_informatica_gestao: "tecnico",
+  tec_recursos_humanos: "tecnico",
+  tec_secretariado: "tecnico",
+  tec_financas: "tecnico",
+  tec_comercio: "tecnico",
+  tec_saude_analises: "tecnico",
+  tec_saude_enfermagem: "tecnico",
+  tec_saude_estomatologia: "tecnico",
+  tec_saude_farmacia: "tecnico",
+  tec_saude_fisioterapia: "tecnico",
+  tec_saude_nutricao: "tecnico",
+  tec_saude_radiologia: "tecnico",
+  tec_construcao_civil: "tecnico_ind",
+  tec_energia_eletrica: "tecnico_ind",
+  tec_mecanica_manut: "tecnico_ind",
+  tec_informatica_sistemas: "tecnico_ind",
+  tec_desenhador_projectista: "tecnico_ind",
+  tec_energias_renovaveis: "tecnico_ind",
+  tec_electronica_telecom: "tecnico_ind",
+  tec_electronica_automacao: "tecnico_ind",
+  tec_geologia_petroleo: "tecnico_ind",
+  tec_perfuracao_producao: "tecnico_ind",
+  tec_minas: "tecnico_ind",
+  tec_producao_metalomecanica: "tecnico_ind",
+  tec_informatica: "tecnico_ind",
+  tec_gestao_sistemas: "tecnico",
 };
 
 // Ícones baseados no tipo

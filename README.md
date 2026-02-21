@@ -19,13 +19,13 @@ Variáveis de ambiente (Web/API)
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY` (apenas para job runner / integrações)
-- (novo) Credenciais/Notificações: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_NUMBER`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, opcional `TWILIO_SMS_NUMBER` (fallback SMS) e `CRON_SECRET`/`OUTBOX_JOB_TOKEN` + `OUTBOX_JOB_URL` para o worker do outbox.
+- (novo) Credenciais/Notificações: `RESEND_API_KEY`, `RESEND_FROM_EMAIL` e `CRON_SECRET`/`OUTBOX_JOB_TOKEN` + `OUTBOX_JOB_URL` para o worker do outbox.
 
 Liberação de acesso de alunos (novo)
 - UI: `/secretaria/acesso-alunos` lista alunos sem acesso, gera códigos e envia credenciais em lote; página pública de ativação: `/ativar-acesso` (código + BI).
 - APIs: `/api/secretaria/alunos/sem-acesso`, `/metricas-acesso`, `/liberar-acesso` (RPC `request_liberar_acesso`, enfileira outbox) e `/api/alunos/ativar-acesso` (self-service).
 - Infra: migrations adicionam colunas de acesso em `alunos`, `outbox_notificacoes`, `outbox_events`, RPC `liberar_acesso_alunos_v2` + `request_liberar_acesso`; habilita realtime para monitorar o outbox.
-- Envio: worker `/api/jobs/outbox` consome `outbox_events` e atualiza `outbox_notificacoes`, enviando via Twilio (WhatsApp, fallback SMS opcional) ou Resend (email). Configure as envs acima e o webhook do Twilio para atualizar status.
+- Envio: worker `/api/jobs/outbox` consome `outbox_events` e atualiza `outbox_notificacoes`, com entrega por e-mail via Resend quando aplicável.
 - Cron: Supabase pg_cron permanece como fonte de verdade (refresh MVs + requeue de outbox). Para executar `/api/jobs/outbox`, use a Edge Function `supabase/functions/outbox-dispatch` com `OUTBOX_JOB_URL` e `CRON_SECRET`.
 - Runbook: `docs/outbox-worker-runbook.md`.
 

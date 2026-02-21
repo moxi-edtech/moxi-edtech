@@ -30,6 +30,7 @@ export type SchedulerAula = {
   temposTotal: number;
   temposAlocados: number;
   conflito?: boolean;
+  missingLoad?: boolean;
 };
 
 type SchedulerBoardProps = {
@@ -40,6 +41,7 @@ type SchedulerBoardProps = {
   onGridChange?: (grid: Record<string, string | null>) => void;
   onSalvar?: (grid: Record<string, string | null>) => void;
   onAutoCompletar?: () => void;
+  autoCompleting?: boolean;
   slotLookup?: Record<string, string>;
   existingAssignments?: Array<{
     slot_id: string;
@@ -49,6 +51,12 @@ type SchedulerBoardProps = {
   conflictSlots?: Record<string, boolean>;
   salas?: Array<{ id: string; nome: string }>;
   onSalaChange?: (aulaId: string, salaId: string | null) => void;
+  onAutoConfigurarCargas?: () => void;
+  autoConfiguring?: boolean;
+  onPublicar?: (grid: Record<string, string | null>) => void;
+  canPublicar?: boolean;
+  publishDisabledReason?: string;
+  publishing?: boolean;
 };
 
 // ... (Tipos de Props mantidos igual ao seu)
@@ -62,15 +70,26 @@ export function SchedulerBoard({
   onGridChange,
   onSalvar,
   onAutoCompletar,
+  autoCompleting,
   slotLookup,
   existingAssignments,
   conflictSlots,
   salas,
   onSalaChange,
+  onAutoConfigurarCargas,
+  autoConfiguring,
+  onPublicar,
+  canPublicar = true,
+  publishDisabledReason,
+  publishing,
 }: SchedulerBoardProps) {
   const [grid, setGrid] = useState<Record<string, string | null>>({});
   const [activeId, setActiveId] = useState<string | null>(null);
   const [estoque, setEstoque] = useState(aulas || []);
+  const missingLoadCount = useMemo(
+    () => (estoque || []).filter((a) => a.missingLoad).length,
+    [estoque]
+  );
 
   // Sincroniza grid externo
   useEffect(() => {
@@ -100,7 +119,9 @@ export function SchedulerBoard({
     if (!baseId) return;
 
     // Lógica de atualização (Mantive a sua, parece sólida)
-    const nextGrid = { ...(controlledGrid ?? grid), [slotId]: baseId };
+    const currentGrid = controlledGrid ?? grid;
+    const previousId = currentGrid[slotId] || null;
+    const nextGrid = { ...currentGrid, [slotId]: baseId };
     setGrid(nextGrid);
     onGridChange?.(nextGrid);
 
@@ -109,7 +130,9 @@ export function SchedulerBoard({
       prev.map((a) =>
         a.id === baseId
           ? { ...a, temposAlocados: Math.min(a.temposTotal, a.temposAlocados + 1) }
-          : a
+          : a.id === previousId
+            ? { ...a, temposAlocados: Math.max(0, a.temposAlocados - 1) }
+            : a
       )
     );
   };
@@ -154,6 +177,23 @@ export function SchedulerBoard({
             <p className="text-xs text-slate-400">Arraste para o quadro</p>
           </div>
 
+          {missingLoadCount > 0 && (
+            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+              <div className="font-semibold">{missingLoadCount} disciplina(s) sem carga horária.</div>
+              <div className="mt-1">Defina a carga para publicar o quadro.</div>
+              {onAutoConfigurarCargas && (
+                <button
+                  type="button"
+                  onClick={onAutoConfigurarCargas}
+                  disabled={autoConfiguring}
+                  className="mt-2 w-full rounded-lg bg-amber-500 px-3 py-2 text-xs font-bold text-white shadow-sm hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {autoConfiguring ? "Configurando..." : "Auto-Configurar cargas"}
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="space-y-3 overflow-y-auto flex-1 pr-1 custom-scrollbar">
             {estoque.map((aula) => (
               <DraggableSource
@@ -169,10 +209,11 @@ export function SchedulerBoard({
             <button
               type="button"
               onClick={onAutoCompletar}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-klasse-gold text-white text-sm font-bold shadow-sm hover:brightness-110 active:scale-[0.98] transition-all"
+              disabled={autoCompleting}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-klasse-gold text-white text-sm font-bold shadow-sm hover:brightness-110 active:scale-[0.98] transition-all disabled:cursor-not-allowed disabled:opacity-70"
             >
               <Wand2 className="w-4 h-4" />
-              Auto-Completar
+              {autoCompleting ? "Auto-Completar..." : "Auto-Completar"}
             </button>
             <button
               type="button"
@@ -182,6 +223,18 @@ export function SchedulerBoard({
               <Save className="w-4 h-4" />
               Salvar Alterações
             </button>
+            {onPublicar && (
+              <button
+                type="button"
+                onClick={() => onPublicar(grid)}
+                disabled={!canPublicar || publishing}
+                title={!canPublicar ? publishDisabledReason : undefined}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-900 text-white text-sm font-bold shadow-sm hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                <Check className="w-4 h-4" />
+                {publishing ? "Publicando..." : "Publicar"}
+              </button>
+            )}
           </div>
         </div>
 
@@ -281,8 +334,9 @@ const DraggableSource = ({ aula, salas, onSalaChange }: any) => {
     data: { baseId: aula.id },
   });
 
-  const allocation = getAllocationStatus(aula.temposTotal, aula.temposAlocados);
+  const allocation = getAllocationStatus(aula.temposTotal, aula.temposAlocados, aula.missingLoad);
   const isComplete = allocation.isComplete;
+  const totalLabel = aula.missingLoad ? "?" : aula.temposTotal;
 
   return (
     <div
@@ -315,16 +369,21 @@ const DraggableSource = ({ aula, salas, onSalaChange }: any) => {
 
       <div className="flex items-center justify-between mt-2">
          <span className="text-[10px] text-slate-400 font-mono">
-            {aula.temposAlocados}/{aula.temposTotal} aulas
+            {aula.temposAlocados}/{totalLabel} aulas
          </span>
          {/* Barra de Progresso Micro */}
          <div className="h-1.5 w-16 bg-slate-100 rounded-full overflow-hidden">
-            <div 
-                className={`h-full ${isComplete ? "bg-emerald-500" : "bg-klasse-gold"}`} 
-                style={{ width: `${allocation.progress}%` }} 
+            <div
+              className={`h-full ${isComplete ? "bg-emerald-500" : "bg-klasse-gold"}`}
+              style={{ width: `${allocation.progress}%` }}
             />
          </div>
       </div>
+      {aula.missingLoad && (
+        <div className="mt-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-bold uppercase text-amber-700">
+          Definir carga
+        </div>
+      )}
     </div>
   );
 };

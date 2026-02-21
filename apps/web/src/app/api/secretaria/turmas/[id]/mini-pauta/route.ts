@@ -46,7 +46,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
     const { data: matriz } = await supabase
       .from('curso_matriz')
-      .select('id, disciplina_id, disciplina:disciplinas_catalogo(id, nome)')
+      .select('id, disciplina_id, disciplina:disciplinas_catalogo(id, nome), avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id')
       .eq('escola_id', escolaId)
       .eq('curso_id', turma.curso_id)
       .eq('classe_id', turma.classe_id)
@@ -91,10 +91,49 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       .eq('escola_id', escolaId)
       .maybeSingle()
 
-    const modeloAvaliacao = String(configuracoes?.modelo_avaliacao ?? 'SIMPLIFICADO').toUpperCase()
-    const componentes = Array.isArray((configuracoes as any)?.avaliacao_config?.componentes)
+    let modeloAvaliacao = String(configuracoes?.modelo_avaliacao ?? 'SIMPLIFICADO').toUpperCase()
+    let componentes = Array.isArray((configuracoes as any)?.avaliacao_config?.componentes)
       ? (configuracoes as any).avaliacao_config.componentes
       : []
+
+    if (matriz?.avaliacao_mode === 'custom' && matriz?.avaliacao_modelo_id) {
+      const { data: modeloDisciplina } = await supabase
+        .from('modelos_avaliacao')
+        .select('componentes')
+        .eq('escola_id', escolaId)
+        .eq('id', matriz.avaliacao_modelo_id)
+        .maybeSingle()
+      const comps = (modeloDisciplina as any)?.componentes
+      if (Array.isArray(comps)) {
+        componentes = comps
+      }
+      modeloAvaliacao = 'CUSTOM'
+    }
+
+    if (matriz?.avaliacao_mode === 'inherit_disciplina' && matriz?.avaliacao_disciplina_id) {
+      const { data: matrizBase } = await supabase
+        .from('curso_matriz')
+        .select('avaliacao_modelo_id')
+        .eq('escola_id', escolaId)
+        .eq('curso_id', turma.curso_id)
+        .eq('classe_id', turma.classe_id)
+        .eq('disciplina_id', matriz.avaliacao_disciplina_id)
+        .eq('ativo', true)
+        .maybeSingle()
+      if (matrizBase?.avaliacao_modelo_id) {
+        const { data: modeloBase } = await supabase
+          .from('modelos_avaliacao')
+          .select('componentes')
+          .eq('escola_id', escolaId)
+          .eq('id', matrizBase.avaliacao_modelo_id)
+          .maybeSingle()
+        const comps = (modeloBase as any)?.componentes
+        if (Array.isArray(comps)) {
+          componentes = comps
+        }
+        modeloAvaliacao = 'CUSTOM'
+      }
+    }
     const pesoPorTipo = new Map<string, number>()
     for (const comp of componentes as Array<{ code?: string; peso?: number; ativo?: boolean }>) {
       if (!comp?.code || comp?.ativo === false) continue

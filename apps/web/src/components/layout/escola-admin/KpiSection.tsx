@@ -91,26 +91,25 @@ export default function KpiSection({
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 font-sora">
       {kpis.map((item) => {
         const Icon = item.icon;
-        
-        // Se estiver disabled, bloqueia clique, mas mantém visual clean (não "quebrado")
-        const Component = item.disabled ? 'div' : Link;
+        const Component = item.disabled ? "div" : Link;
 
         return (
           <Component
             key={item.title}
             href={item.href}
-            className={`
-              group relative flex flex-col justify-between overflow-hidden rounded-xl bg-white p-5 shadow-sm border border-slate-200 transition-all duration-200
-              ${!item.disabled ? 'hover:border-[#E3B23C]/50 hover:shadow-md cursor-pointer' : 'opacity-75 cursor-default bg-slate-50/50'}
-            `}
+            className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-200 ${
+              !item.disabled
+                ? "hover:border-emerald-200 hover:shadow-md cursor-pointer"
+                : "opacity-70 cursor-default bg-slate-50/70"
+            }`}
           >
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   {item.title}
                 </p>
-                
-                <div className="mt-1.5 flex items-baseline gap-2">
+
+                <div className="mt-2 flex items-baseline gap-2">
                   {loading ? (
                     <div className="h-8 w-16 bg-slate-100 animate-pulse rounded-md" />
                   ) : (
@@ -120,29 +119,28 @@ export default function KpiSection({
                   )}
                 </div>
 
-                {/* Badge Status */}
-                <span className={`
-                    mt-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border
-                    ${item.disabled 
-                        ? 'bg-slate-100 text-slate-400 border-slate-200' 
-                        : 'bg-[#1F6B3B]/5 text-[#1F6B3B] border-[#1F6B3B]/10'} 
-                `}>
+                <span
+                  className={`mt-2 inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                    item.disabled
+                      ? "bg-slate-100 text-slate-400 border-slate-200"
+                      : "bg-emerald-50 text-emerald-700 border-emerald-100"
+                  }`}
+                >
                   {item.status}
                 </span>
               </div>
 
-              {/* Icon Container */}
-              <div className={`
-                p-2.5 rounded-xl transition-colors
-                ${item.disabled 
-                    ? 'bg-slate-100 text-slate-300' 
-                    : 'bg-slate-50 text-slate-400 group-hover:text-[#E3B23C] group-hover:bg-[#E3B23C]/10'}
-              `}>
+              <div
+                className={`rounded-xl p-2.5 transition-colors ${
+                  item.disabled
+                    ? "bg-slate-100 text-slate-300"
+                    : "bg-slate-50 text-slate-400 group-hover:text-emerald-600 group-hover:bg-emerald-50"
+                }`}
+              >
                 <Icon size={20} />
               </div>
             </div>
 
-            {/* Footer Action (Só aparece se ativo e não loading) */}
             {!item.disabled && !loading && (
               <div className="mt-4 flex items-center text-[10px] font-bold text-slate-400 group-hover:text-slate-600 transition-colors">
                 Gerenciar <ArrowRight className="ml-1 h-3 w-3 transition-transform group-hover:translate-x-1" />

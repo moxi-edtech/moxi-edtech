@@ -4,11 +4,18 @@ import * as Icons from "lucide-react";
 
 export type IconName = keyof typeof Icons;
 
+export type SubNavItem = {
+  href: string;
+  label: string;
+  badge?: string;
+};
+
 export type NavItem = {
   href: string;
   label: string;
   icon: IconName;
   badge?: string;
+  children?: SubNavItem[];
 };
 
 type SidebarConfig = {
@@ -30,33 +37,111 @@ export const sidebarConfig: SidebarConfig = {
     { href: "/escola/[escolaId]/admin/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
     { href: "/escola/[escolaId]/admin/alunos", label: "Alunos", icon: "Users" },
     { href: "/escola/[escolaId]/admin/professores", label: "Professores", icon: "User" },
-    { href: "/escola/[escolaId]/admin/turmas", label: "Turmas", icon: "GraduationCap" },
+    {
+      href: "/escola/[escolaId]/admin/turmas",
+      label: "Turmas",
+      icon: "GraduationCap",
+      children: [
+        { href: "/escola/[escolaId]/admin/turmas", label: "Lista de turmas" },
+        { href: "/escola/[escolaId]/admin/turmas?status=pendente", label: "Pendentes" },
+      ],
+    },
     { href: "/escola/[escolaId]/admin/avisos", label: "Avisos", icon: "Megaphone" },
     { href: "/escola/[escolaId]/horarios/quadro", label: "Horários", icon: "CalendarClock" },
-    { href: "/escola/[escolaId]/admin/configuracoes", label: "Configurações", icon: "Settings" },
+    {
+      href: "/escola/[escolaId]/admin/configuracoes",
+      label: "Configurações",
+      icon: "Settings2",
+      children: [
+        { href: "/escola/[escolaId]/admin/configuracoes", label: "Visão geral" },
+        { href: "/escola/[escolaId]/admin/configuracoes/financeiro", label: "Financeiro" },
+        { href: "/escola/[escolaId]/admin/configuracoes/calendario", label: "Calendário" },
+        { href: "/escola/[escolaId]/admin/configuracoes/seguranca", label: "Segurança" },
+        { href: "/escola/[escolaId]/admin/configuracoes/identidade", label: "Identidade" },
+      ],
+    },
   ],
   secretaria: [
     { href: "/escola/[escolaId]/secretaria", label: "Dashboard", icon: "LayoutDashboard" },
-    { href: "/escola/[escolaId]/secretaria/alunos", label: "Alunos", icon: "Users" },
-    { href: "/escola/[escolaId]/secretaria/admissoes", label: "Admissões", icon: "GraduationCap" },
+    {
+      href: "/escola/[escolaId]/secretaria/admissoes",
+      label: "Admissões",
+      icon: "GraduationCap",
+      children: [
+        { href: "/escola/[escolaId]/secretaria/admissoes", label: "Todas" },
+        { href: "/escola/[escolaId]/secretaria/admissoes/nova", label: "Nova admissão" },
+      ],
+    },
+    {
+      href: "/escola/[escolaId]/secretaria/alunos",
+      label: "Alunos",
+      icon: "Users",
+      children: [
+        { href: "/escola/[escolaId]/secretaria/alunos", label: "Lista de alunos" },
+        { href: "/escola/[escolaId]/secretaria/matriculas", label: "Matrículas" },
+        { href: "/escola/[escolaId]/secretaria/rematricula", label: "Rematrícula" },
+      ],
+    },
     { href: "/escola/[escolaId]/secretaria/fecho", label: "Fecho de Caixa", icon: "Lock" },
     { href: "/escola/[escolaId]/secretaria/acesso", label: "Acesso ao Portal", icon: "KeyRound" },
-    { href: "/escola/[escolaId]/secretaria/turmas", label: "Turmas", icon: "BookOpen" },
+    {
+      href: "/escola/[escolaId]/secretaria/turmas",
+      label: "Turmas",
+      icon: "BookOpen",
+      children: [
+        { href: "/escola/[escolaId]/secretaria/turmas", label: "Lista de turmas" },
+        { href: "/escola/[escolaId]/secretaria/classes", label: "Classes" },
+      ],
+    },
     { href: "/escola/[escolaId]/secretaria/calendario", label: "Calendário", icon: "CalendarDays" },
-    { href: "/escola/[escolaId]/secretaria/relatorios", label: "Relatórios", icon: "BarChart" },
+    {
+      href: "/escola/[escolaId]/secretaria/relatorios",
+      label: "Relatórios",
+      icon: "BarChart",
+      children: [
+        { href: "/escola/[escolaId]/secretaria/relatorios", label: "Visão geral" },
+        { href: "/escola/[escolaId]/secretaria/exportacoes", label: "Exportações" },
+      ],
+    },
     { href: "/escola/[escolaId]/secretaria/importacoes", label: "Histórico de Importações", icon: "History" },
   ],
   financeiro: [
     { href: "/financeiro", label: "Dashboard", icon: "LayoutDashboard" },
     { href: "/financeiro/turmas-alunos", label: "Turmas & Alunos", icon: "UsersRound" },
-    { href: "/financeiro/radar", label: "Radar", icon: "Radar", badge: "Novo" },
+    {
+      href: "/financeiro/pagamentos",
+      label: "Pagamentos",
+      icon: "Wallet",
+      children: [
+        { href: "/financeiro/pagamentos", label: "Lista" },
+        { href: "/financeiro/radar", label: "Radar" },
+        { href: "/financeiro/fecho", label: "Fecho de Caixa" },
+        { href: "/financeiro/conciliacao", label: "Conciliação" },
+      ],
+    },
     { href: "/financeiro/candidaturas", label: "Candidaturas", icon: "FileText" },
-    { href: "/financeiro/configuracoes/precos", label: "Tabelas de Preço", icon: "Table" },
-    { href: "/financeiro/tabelas-mensalidade", label: "Tabelas de Mensalidade", icon: "Table" },
-    { href: "/financeiro/conciliacao", label: "Conciliação Bancária", icon: "ArrowRightLeft" },
-    { href: "/financeiro/fecho", label: "Fecho de Caixa", icon: "Wallet" },
+    {
+      href: "/financeiro/tabelas-mensalidade",
+      label: "Tabelas",
+      icon: "Layers",
+      children: [
+        { href: "/financeiro/configuracoes/precos", label: "Tabelas de Preço" },
+        { href: "/financeiro/tabelas-mensalidade", label: "Mensalidades" },
+      ],
+    },
     { href: "/financeiro/cobrancas", label: "Cobranças", icon: "BadgeDollarSign" },
-    { href: "/financeiro/relatorios", label: "Relatórios", icon: "BarChart" },
+    {
+      href: "/financeiro/relatorios",
+      label: "Relatórios",
+      icon: "BarChart",
+      children: [
+        { href: "/financeiro/relatorios", label: "Visão geral" },
+        { href: "/financeiro/relatorios/propinas", label: "Propinas" },
+        { href: "/financeiro/relatorios/fluxo-caixa", label: "Fluxo de Caixa" },
+        { href: "/financeiro/relatorios/pagamentos-status", label: "Pagamentos Status" },
+        { href: "/financeiro/relatorios/detalhados", label: "Detalhados" },
+      ],
+    },
   ],
   aluno: [
     { href: "/aluno/dashboard", label: "Dashboard", icon: "LayoutDashboard" },

@@ -117,6 +117,7 @@ interface AdvancedConfigPayload {
   turnos: BuilderTurnos;
   matrix: Record<MatrixKey, boolean>;
   subjects: string[];
+  cargaByClass?: Record<string, number>;
 }
 
 interface CustomDataPayload {
@@ -260,20 +261,41 @@ export default function CurriculumBuilder({
     const keysForCat: CurriculumKey[] =
       (catId === "geral"
         ? ([
-            "primario_base",
-            "primario_avancado",
-            "ciclo1",
-            "puniv",
-            "economicas",
+            "primario_generico",
+            "esg_ciclo1",
+            "esg_puniv_cfb",
+            "esg_puniv_cej",
+            "esg_puniv_cch",
+            "esg_puniv_artes",
           ] as CurriculumKey[])
         : ([
-            // técnico = técnico + saúde
-            "tecnico_informatica",
-            "tecnico_gestao",
-            "tecnico_construcao",
-            "tecnico_base",
-            "saude_enfermagem",
-            "saude_farmacia_analises",
+            "tec_contabilidade",
+            "tec_informatica_gestao",
+            "tec_recursos_humanos",
+            "tec_secretariado",
+            "tec_financas",
+            "tec_comercio",
+            "tec_saude_analises",
+            "tec_saude_enfermagem",
+            "tec_saude_estomatologia",
+            "tec_saude_farmacia",
+            "tec_saude_fisioterapia",
+            "tec_saude_nutricao",
+            "tec_saude_radiologia",
+            "tec_construcao_civil",
+            "tec_energia_eletrica",
+            "tec_mecanica_manut",
+            "tec_informatica_sistemas",
+            "tec_desenhador_projectista",
+            "tec_electronica_telecom",
+            "tec_electronica_automacao",
+            "tec_energias_renovaveis",
+            "tec_geologia_petroleo",
+            "tec_perfuracao_producao",
+            "tec_minas",
+            "tec_producao_metalomecanica",
+            "tec_informatica",
+            "tec_gestao_sistemas",
           ] as CurriculumKey[]));
 
     return keysForCat

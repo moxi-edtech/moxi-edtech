@@ -68,6 +68,14 @@ Este documento resume as entregas recentes nas áreas de pauta (professor), comm
 - Persistência de `professor_id` e `sala_id` no save.
 - Outbox offline em slots/quadro + Server-Timing.
 
+## Currículo por classe (Cursos técnicos/universitários)
+- Modal de disciplina agora permite aplicar por classe: todas ou específicas.
+- Criação de disciplina respeita classes selecionadas (gera `curso_matriz` só para elas).
+- Edição pode aplicar mudanças somente nas classes escolhidas.
+- UI: `apps/web/src/components/escola/settings/_components/DisciplinaModal.tsx`.
+- Fluxos: `apps/web/src/components/escola/settings/StructureMarketplace.tsx` e
+  `apps/web/src/app/escola/[id]/admin/configuracoes/turmas/page.tsx`.
+
 ## Pauta Reativa (Professor + Secretaria)
 - Grade Excel‑like com cálculo instantâneo: `apps/web/src/components/professor/GradeEntryGrid.tsx`.
 - Professor: `apps/web/src/app/professor/notas/page.tsx` (autosave batch + trimestre).

@@ -42,6 +42,41 @@ const draftPayloadSchema = z
       .max(254)
       .optional(),
 
+    data_nascimento: z.string().trim().max(32).optional(),
+
+    sexo: z.enum(["M", "F", "O", "N"]).optional(),
+
+    nif: z
+      .string()
+      .trim()
+      .max(64)
+      .optional(),
+
+    endereco: z
+      .string()
+      .trim()
+      .max(200)
+      .optional(),
+
+    responsavel_nome: z
+      .string()
+      .trim()
+      .max(160)
+      .optional(),
+
+    responsavel_contato: z
+      .string()
+      .trim()
+      .max(32)
+      .optional(),
+
+    encarregado_email: z
+      .string()
+      .trim()
+      .email()
+      .max(254)
+      .optional(),
+
     curso_id: uuid.optional(),
     classe_id: uuid.optional(),
     turma_preferencial_id: uuid.optional(),
@@ -64,8 +99,14 @@ function normalizeCandidateData(input: z.infer<typeof draftPayloadSchema>) {
   if (typeof clean.telefone === "string") {
     clean.telefone = clean.telefone.replace(/\s+/g, "");
   }
+  if (typeof clean.responsavel_contato === "string") {
+    clean.responsavel_contato = clean.responsavel_contato.replace(/\s+/g, "");
+  }
   if (typeof clean.email === "string") {
     clean.email = clean.email.toLowerCase();
+  }
+  if (typeof clean.encarregado_email === "string") {
+    clean.encarregado_email = clean.encarregado_email.toLowerCase();
   }
 
   return clean;

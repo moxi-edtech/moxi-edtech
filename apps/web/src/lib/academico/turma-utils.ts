@@ -29,7 +29,7 @@ export type TurmaCodeParts = {
 // =========================================================
 
 // Cria um mapa reverso: SIGLA (ex: "TI") -> { Key, Nome }
-// Ex: "TI" -> { key: "tecnico_informatica", nome: "Técnico de Informática" }
+// Ex: "TI" -> { key: "tec_informatica_gestao", nome: "Técnico de Informática de Gestão" }
 const OFFICIAL_BY_CODE = new Map<string, { curriculumKey: CurriculumKey; nome: string }>(
   (Object.keys(CURRICULUM_PRESETS_META) as CurriculumKey[]).map((key) => {
     const meta = CURRICULUM_PRESETS_META[key];
@@ -44,11 +44,32 @@ const OFFICIAL_BY_CODE = new Map<string, { curriculumKey: CurriculumKey; nome: s
  */
 const COURSE_CODE_ALIASES: Record<string, string> = {
   INF: "TI",
-  TEC_INFO: "TI",
+  TEC_INFO: "TIG",
   GES: "TG",
   CIV: "CC",
   SAU: "ENF",
-  FAR: "AC",
+  FAR: "FARM",
+  EST: "ESTO",
+  FIS: "FISI",
+  NUT: "NUTR",
+  AC: "ACL",
+  CIV: "CC",
+  CONST: "CC",
+  ELEC: "EL",
+  ELETR: "EL",
+  MEC: "MEC",
+  MECA: "MEC",
+  TIS: "TIS",
+  DP: "DP",
+  ET: "ET",
+  EA: "EA",
+  ER: "ER",
+  GP: "GP",
+  PP: "PP",
+  MIN: "MIN",
+  PM: "PM",
+  TIH: "TI",
+  TGS: "TGS",
   EB: "ESG",
   PUNIV: "CFB", // Convenção comum
   // Adicione outros aliases regionais se necessário
@@ -157,7 +178,7 @@ export function parseTurmaCode(input: string): ParsedTurmaInfo {
   if (result.classeNum && !result.curriculumKey) {
     const num = parseInt(result.classeNum, 10);
     if (!Number.isNaN(num)) {
-      if (num <= 6) result.curriculumKey = "primario_base"; // Assunção segura para 1-6
+      if (num <= 6) result.curriculumKey = "primario_generico"; // Assunção segura para 1-6
       // Para 7-9 não assumimos ESG direto pois pode ser música/dança, etc.
     }
   }
@@ -236,7 +257,7 @@ export const findCursoIdByFuzzy = (info: ParsedTurmaInfo, listaCursosDB: CursoRo
       if (dbCourseCode && dbCourseCode === normalizeCode(wanted)) return true;
 
       // 2. Comparação de Segurança: curriculum_key
-      // Se o parser identificou que é 'tecnico_informatica', e o banco tem essa key, é match.
+      // Se o parser identificou que é 'tec_informatica_gestao', e o banco tem essa key, é match.
       // Isso protege caso o course_code no banco esteja errado mas a key certa.
       const dbKey = (c.curriculum_key || "").toLowerCase();
       if (info.curriculumKey && dbKey === info.curriculumKey) return true;

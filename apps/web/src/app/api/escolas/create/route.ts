@@ -4,11 +4,14 @@ import { supabaseServerTyped } from '@/lib/supabaseServer'
 import type { DBWithRPC } from '@/types/supabase-augment'
 import { createClient } from '@supabase/supabase-js'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { buildOnboardingEmail, sendMail } from '@/lib/mailer'
+import { parsePlanTier } from '@/config/plans'
 
 const BodySchema = z.object({
   nome: z.string().trim().min(1, 'Nome da escola é obrigatório'),
   nif: z.string().trim().optional().nullable(),
   endereco: z.string().trim().optional().nullable(),
+  plano: z.enum(['essencial', 'standard', 'premium']).optional().nullable(),
   admin: z
     .object({
       email: z.string().email('Email do administrador inválido').optional().nullable(),
@@ -83,12 +86,24 @@ export async function POST(request: Request) {
     // Supabase tipa como Json; garantir objeto
     const payload = typeof data === 'string' ? safeParseJSON(data) : data
 
+    const origin = new URL(request.url).origin
+    const actionLink = `${origin}/login`
+    const escolaNome = (payload as any)?.escolaNome || (payload as any)?.escola_nome || body.nome
+    const escolaPlano = body.plano ? parsePlanTier(body.plano) : null
+
     // 3) Garantir criação/vínculo do admin (sem convite; retorna senha gerada)
     let adminPassword: string | null = null
     let adminUserCreated = false
     let adminError: string | null = null
 
     const escolaId = (payload as any)?.escolaId || (payload as any)?.escola_id || null
+
+    if (escolaId && body.plano) {
+      await (admin as any)
+        .from('escolas')
+        .update({ plano_atual: body.plano })
+        .eq('id', escolaId)
+    }
 
     if (adminEmail && escolaId) {
       try {
@@ -105,12 +120,27 @@ export async function POST(request: Request) {
       }
     }
 
+    let emailStatus: { attempted: boolean; ok: boolean; error?: string | null } = { attempted: false, ok: false }
+    if (adminEmail) {
+      const { subject, html, text } = buildOnboardingEmail({
+        escolaNome: escolaNome || 'sua escola',
+        onboardingUrl: actionLink,
+        adminEmail,
+        adminNome: adminNome || undefined,
+        plano: escolaPlano || undefined,
+      })
+      const sent = await sendMail({ to: adminEmail, subject, html, text })
+      emailStatus = { attempted: true, ok: sent.ok, error: sent.ok ? null : sent.error }
+    }
+
     return NextResponse.json({
       ...payload,
       adminEmail,
       adminPassword,
       adminUserCreated,
       adminError,
+      actionLink,
+      emailStatus,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
