@@ -535,6 +535,32 @@ async function createCurriculoDraft(args: {
   throw new Error("Falha ao criar currículo.");
 }
 
+function buildCargaByClassFromPreset(
+  presetKey: CurriculumKey,
+  allowedClasses?: string[],
+  allowedSubjects?: string[]
+): Record<string, number> {
+  const presetData = CURRICULUM_PRESETS[presetKey] ?? [];
+  const classSet = new Set((allowedClasses ?? []).map((cls) => String(cls).trim()));
+  const subjectSet = new Set((allowedSubjects ?? []).map((subj) => String(subj).trim()));
+  const hasClassFilter = classSet.size > 0;
+  const hasSubjectFilter = subjectSet.size > 0;
+  const cargaByClass: Record<string, number> = {};
+
+  presetData.forEach((disciplina) => {
+    const nome = String(disciplina?.nome ?? "").trim();
+    const classe = String(disciplina?.classe ?? "").trim();
+    if (!nome || !classe) return;
+    if (hasClassFilter && !classSet.has(classe)) return;
+    if (hasSubjectFilter && !subjectSet.has(nome)) return;
+    if (Number.isFinite(disciplina?.horas)) {
+      cargaByClass[`${nome}::${classe}`] = Number(disciplina.horas);
+    }
+  });
+
+  return cargaByClass;
+}
+
 function resolveAdvancedConfig(payload: CurriculumApplyPayload, presetKey: CurriculumKey) {
   const incoming = payload.advancedConfig;
 
@@ -546,7 +572,18 @@ function resolveAdvancedConfig(payload: CurriculumApplyPayload, presetKey: Curri
     incoming.subjects.length > 0 &&
     incoming.turnos
   ) {
-    return incoming as AdvancedConfigPayload;
+    const hasCargaByClass =
+      incoming.cargaByClass && Object.keys(incoming.cargaByClass).length > 0;
+    return {
+      ...(incoming as AdvancedConfigPayload),
+      cargaByClass: hasCargaByClass
+        ? incoming.cargaByClass
+        : buildCargaByClassFromPreset(
+            presetKey,
+            incoming.classes,
+            incoming.subjects
+          ),
+    };
   }
 
   const presetMeta = CURRICULUM_PRESETS_META[presetKey];
@@ -559,15 +596,7 @@ function resolveAdvancedConfig(payload: CurriculumApplyPayload, presetKey: Curri
         .filter(Boolean)
     )
   );
-  const cargaByClass: Record<string, number> = {};
-  presetData.forEach((disciplina) => {
-    const nome = String(disciplina?.nome ?? "").trim();
-    const classe = String(disciplina?.classe ?? "").trim();
-    if (!nome || !classe) return;
-    if (Number.isFinite(disciplina?.horas)) {
-      cargaByClass[`${nome}::${classe}`] = Number(disciplina.horas);
-    }
-  });
+  const cargaByClass = buildCargaByClassFromPreset(presetKey, presetClasses, presetSubjects);
 
   const defaultTurnos: BuilderTurnos = { manha: true, tarde: false, noite: false };
   const defaultMatrix: Record<string, boolean> = {};
