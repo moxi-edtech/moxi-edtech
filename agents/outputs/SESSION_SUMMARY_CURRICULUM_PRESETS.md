@@ -52,3 +52,14 @@
 ## Notes
 - Nenhuma alteração de schema ou dados reais foi executada.
 - Validação local não foi rodada.
+
+## Avaliação (Fórmulas no DB)
+- `modelos_avaliacao` estendido com `tipo`, `regras` e `formula` para suportar PAP/estágio/isencão sem hardcode.
+- Resolver de modelo centralizado em `apps/web/src/lib/academico/avaliacao-utils.ts` com fallback ao default.
+- APIs de pauta (`professor`, `mini-pauta`, `pauta-grid`, `pauta-trimestral`) agora usam modelo do DB.
+- Configurações/onboarding agora listam modelos reais via `/api/escolas/[id]/modelos-avaliacao`.
+
+## Backlog Avaliação
+- Seed inicial de modelos `pap`, `estagio` e `final_unica` com regras padrão.
+- Resolver isenção por regra (ex.: média anual >= X) e refletir na pauta/boletim.
+- Ajustar PDFs oficiais para renderizar modelo não trimestral.
