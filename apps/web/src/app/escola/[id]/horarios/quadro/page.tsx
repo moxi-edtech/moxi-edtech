@@ -26,6 +26,7 @@ export default function QuadroHorariosPage() {
   const [publishing, setPublishing] = useState(false);
   const [autoConfiguring, setAutoConfiguring] = useState(false);
   const [autoScheduling, setAutoScheduling] = useState(false);
+  const [clearingQuadro, setClearingQuadro] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [conflictSlots, setConflictSlots] = useState<Record<string, boolean>>({});
   const [novaSala, setNovaSala] = useState("");
@@ -308,6 +309,30 @@ export default function QuadroHorariosPage() {
       toast.error(e?.message || "Falha ao gerar contraturno.");
     } finally {
       setGeneratingContraturno(false);
+    }
+  };
+
+  const handleClearQuadro = async () => {
+    if (!escolaId || !turmaId || !versaoId) return;
+    if (!window.confirm("Limpar o quadro desta turma? Essa ação não pode ser desfeita.")) return;
+    try {
+      setClearingQuadro(true);
+      const res = await fetch(
+        `/api/escolas/${escolaId}/horarios/quadro?versao_id=${versaoId}&turma_id=${turmaId}`,
+        { method: "DELETE" }
+      );
+      const json = await res.json().catch(() => null);
+      if (!res.ok || json?.ok === false) {
+        throw new Error(json?.error || "Falha ao limpar o quadro.");
+      }
+      setGrid({});
+      setAulas((prev) => prev.map((aula) => ({ ...aula, temposAlocados: 0 })));
+      setRefreshToken((prev) => prev + 1);
+      toast.success("Quadro limpo com sucesso.");
+    } catch (e: any) {
+      toast.error(e?.message || "Falha ao limpar o quadro.");
+    } finally {
+      setClearingQuadro(false);
     }
   };
 
@@ -748,6 +773,14 @@ export default function QuadroHorariosPage() {
               className="h-10 rounded-xl bg-klasse-gold px-4 text-sm font-semibold text-slate-950 shadow-sm"
             >
               Adicionar sala
+            </button>
+            <button
+              type="button"
+              onClick={handleClearQuadro}
+              disabled={clearingQuadro}
+              className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            >
+              {clearingQuadro ? "Limpando..." : "Limpar quadro"}
             </button>
           </div>
         ) : null}
