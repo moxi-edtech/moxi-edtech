@@ -277,93 +277,105 @@ export default function ProfessorNotasPage() {
   const data = useMemo(() => pauta, [pauta])
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Pauta em Grade</h1>
-        <p className="text-sm text-slate-500">
-          Digite a nota, pressione Enter ou seta para continuar. Ao sair do campo, a nota é salva automaticamente.
-        </p>
-      </div>
-
-      <div className="grid md:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-center">
-        <select
-          value={turmaId}
-          onChange={(event) => {
-            setTurmaId(event.target.value)
-            setDisciplinaId("")
-            setTurmaDisciplinaId(null)
-            setDisciplinaNome(null)
-            setPauta([])
-          }}
-          className="border rounded p-2"
-          required
-        >
-          <option value="">Selecione a turma</option>
-          {Array.from(new Set(atribs.map((a) => a.turma.id))).map((tid) => (
-            <option key={tid} value={tid}>
-              {atribs.find((a) => a.turma.id === tid)?.turma.nome || tid}
-            </option>
-          ))}
-        </select>
-        <select
-          value={disciplinaId}
-          onChange={(event) => {
-            const nextId = event.target.value
-            setDisciplinaId(nextId)
-            const atrib = (atribsByTurma.get(turmaId) || []).find((a) => a.disciplina.id === nextId)
-            setTurmaDisciplinaId(atrib?.turma_disciplina_id ?? null)
-            setDisciplinaNome(atrib?.disciplina.nome ?? null)
-          }}
-          className="border rounded p-2"
-          required
-          disabled={!turmaId}
-        >
-          <option value="">Selecione a disciplina</option>
-          {(atribsByTurma.get(turmaId) || [])
-            .filter((a) => a.disciplina.id)
-            .map((a) => (
-              <option key={a.disciplina.id} value={a.disciplina.id || ""}>
-                {a.disciplina.nome || a.disciplina.id}
-              </option>
-            ))}
-        </select>
-        <select
-          value={trimestreSelecionado}
-          onChange={(event) => setTrimestreSelecionado(Number(event.target.value) as 1 | 2 | 3)}
-          className="border rounded p-2"
-          disabled={!turmaId || periodosAtivos.length === 0}
-        >
-          {periodosAtivos.length === 0 && <option value={trimestreSelecionado}>Sem períodos</option>}
-          {periodosAtivos.map((periodo) => (
-            <option key={periodo} value={periodo}>
-              {`Trimestre ${periodo}`}
-            </option>
-          ))}
-        </select>
-        <button
-          type="button"
-          onClick={handleExportMiniPauta}
-          disabled={!turmaId || !disciplinaId || pauta.length === 0 || exporting}
-          className="rounded border border-klasse-green bg-klasse-green px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-200 disabled:text-slate-500"
-        >
-          {exporting ? "Gerando PDF..." : "Exportar Mini-Pauta"}
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="rounded border bg-white p-4 text-sm text-slate-500">Carregando pauta...</div>
-      ) : data.length === 0 ? (
-        <div className="rounded border bg-white p-4 text-sm text-slate-500">
-          Selecione a turma e disciplina para carregar os alunos.
+    <div className="min-h-screen bg-slate-50">
+      <div className="max-w-6xl mx-auto p-6 space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold text-klasse-green">Lançamento de notas</h1>
+          <p className="text-sm text-slate-500">
+            Selecione turma, disciplina e trimestre. As notas são salvas automaticamente.
+          </p>
         </div>
-      ) : (
-        <GradeEntryGrid
-          initialData={data}
-          subtitle={`${disciplinaNome ?? "Disciplina"} • Trimestre ${trimestreSelecionado}`}
-          onSave={handleSaveBatch}
-          highlightId={highlightAlunoId}
-        />
-      )}
+
+        <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
+          <aside className="space-y-4">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+              <div className="text-sm font-semibold text-slate-900">Turma e disciplina</div>
+              <select
+                value={turmaId}
+                onChange={(event) => {
+                  setTurmaId(event.target.value)
+                  setDisciplinaId("")
+                  setTurmaDisciplinaId(null)
+                  setDisciplinaNome(null)
+                  setPauta([])
+                }}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                required
+              >
+                <option value="">Turma</option>
+                {Array.from(new Set(atribs.map((a) => a.turma.id))).map((tid) => (
+                  <option key={tid} value={tid}>
+                    {atribs.find((a) => a.turma.id === tid)?.turma.nome || tid}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={disciplinaId}
+                onChange={(event) => {
+                  const nextId = event.target.value
+                  setDisciplinaId(nextId)
+                  const atrib = (atribsByTurma.get(turmaId) || []).find((a) => a.disciplina.id === nextId)
+                  setTurmaDisciplinaId(atrib?.turma_disciplina_id ?? null)
+                  setDisciplinaNome(atrib?.disciplina.nome ?? null)
+                }}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                required
+                disabled={!turmaId}
+              >
+                <option value="">Disciplina</option>
+                {(atribsByTurma.get(turmaId) || [])
+                  .filter((a) => a.disciplina.id)
+                  .map((a) => (
+                    <option key={a.disciplina.id} value={a.disciplina.id || ""}>
+                      {a.disciplina.nome || a.disciplina.id}
+                    </option>
+                  ))}
+              </select>
+              <select
+                value={trimestreSelecionado}
+                onChange={(event) => setTrimestreSelecionado(Number(event.target.value) as 1 | 2 | 3)}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                disabled={!turmaId || periodosAtivos.length === 0}
+              >
+                {periodosAtivos.length === 0 && <option value={trimestreSelecionado}>Sem períodos</option>}
+                {periodosAtivos.map((periodo) => (
+                  <option key={periodo} value={periodo}>
+                    {`Trimestre ${periodo}`}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2 text-sm text-slate-600">
+              <div className="font-semibold text-slate-900">Ações</div>
+              <button
+                type="button"
+                onClick={handleExportMiniPauta}
+                disabled={!turmaId || !disciplinaId || pauta.length === 0 || exporting}
+                className="w-full rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+              >
+                {exporting ? "Gerando PDF..." : "Exportar mini‑pauta"}
+              </button>
+            </div>
+          </aside>
+
+          <section>
+            {loading ? (
+              <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">Carregando pauta...</div>
+            ) : data.length === 0 ? (
+              <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
+                Selecione a turma e disciplina para carregar os alunos.
+              </div>
+            ) : (
+              <GradeEntryGrid
+                initialData={data}
+                subtitle={`${disciplinaNome ?? "Disciplina"} • Trimestre ${trimestreSelecionado}`}
+                onSave={handleSaveBatch}
+                highlightId={highlightAlunoId}
+              />
+            )}
+          </section>
+        </div>
+      </div>
     </div>
   )
 }

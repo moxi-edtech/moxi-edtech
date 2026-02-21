@@ -33,6 +33,9 @@ type DisciplinaNeed = {
   carga_semanal: number;
   professor_id?: string | null;
   sala_id?: string | null;
+  requires_double?: boolean;
+  is_practical?: boolean;
+  is_science?: boolean;
   constraints?: {
     max_por_dia?: number;
     evitar_ultimo_tempo?: boolean;
@@ -63,7 +66,7 @@ type AutoScheduleResult = {
   unmet: Array<{
     disciplina_id: string;
     missing: number;
-    reason: "SEM_SLOTS" | "CONFLITO_PROF" | "CONFLITO_SALA" | "REGRAS" | "SEM_PROF";
+    reason: "SEM_SLOTS" | "CONFLITO_PROF" | "CONFLITO_SALA" | "REGRAS" | "SEM_PROF" | "PROF_TURNO";
   }>;
   trace: Array<{
     action: "PLACE" | "SKIP" | "FAIL";
@@ -74,6 +77,7 @@ type AutoScheduleResult = {
 };
 
 const buildSlotKey = (day: number, ordem: number) => `${day}-${ordem}`;
+const MAX_UNIQUE_DISCIPLINES_PER_DAY = 5;
 
 function buildSlotIndex(slots: Slot[]) {
   const slotById = new Map<string, Slot>();
@@ -89,6 +93,20 @@ function buildSlotIndex(slots: Slot[]) {
   }
   return { slotById, slotsByDay };
 }
+
+const mapTurnoLabel = (turno: string | null) => {
+  const normalized = (turno || "").toUpperCase();
+  switch (normalized) {
+    case "M":
+      return "Manhã";
+    case "T":
+      return "Tarde";
+    case "N":
+      return "Noite";
+    default:
+      return null;
+  }
+};
 
 function prepareConstraints(disciplina: DisciplinaNeed) {
   return {
@@ -114,6 +132,159 @@ function sortDisciplines(disciplinas: DisciplinaNeed[], missingByDisc: Map<strin
   });
 }
 
+function normalizeText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function isPracticalDiscipline(name: string) {
+  const value = normalizeText(name);
+  return (
+    value.includes("laborat") ||
+    value.includes("oficina") ||
+    value.includes("pratica") ||
+    value.includes("atelier") ||
+    value.includes("ateli")
+  );
+}
+
+function isScienceDiscipline(name: string) {
+  const value = normalizeText(name);
+  return value.includes("matem") || value.includes("fisic") || value.includes("quim");
+}
+
+function canUseDayForDiscipline({
+  dayDisciplines,
+  day,
+  disciplinaId,
+}: {
+  dayDisciplines: Map<number, Set<string>>;
+  day: number;
+  disciplinaId: string;
+}) {
+  const set = dayDisciplines.get(day) || new Set();
+  if (set.has(disciplinaId)) return true;
+  return set.size < MAX_UNIQUE_DISCIPLINES_PER_DAY;
+}
+
+function getAdjacentSlot(
+  slotsByDay: Map<number, Slot[]>,
+  slot: Slot,
+  direction: -1 | 1
+) {
+  const daySlots = slotsByDay.get(slot.day) || [];
+  const index = daySlots.findIndex((item) => item.id === slot.id);
+  if (index === -1) return null;
+  const neighbor = daySlots[index + direction] || null;
+  if (!neighbor || neighbor.is_intervalo) return null;
+  return neighbor;
+}
+
+function hasAdjacentSameDiscipline({
+  slotsByDay,
+  dayAssignments,
+  slot,
+  disciplinaId,
+}: {
+  slotsByDay: Map<number, Slot[]>;
+  dayAssignments: Map<number, Map<number, string>>;
+  slot: Slot;
+  disciplinaId: string;
+}) {
+  const daySlots = slotsByDay.get(slot.day) || [];
+  const index = daySlots.findIndex((item) => item.id === slot.id);
+  if (index === -1) return false;
+  const dayMap = dayAssignments.get(slot.day) || new Map();
+  const prev = daySlots[index - 1];
+  const next = daySlots[index + 1];
+  const prevMatch = prev && !prev.is_intervalo && dayMap.get(prev.ordem) === disciplinaId;
+  const nextMatch = next && !next.is_intervalo && dayMap.get(next.ordem) === disciplinaId;
+  return Boolean(prevMatch || nextMatch);
+}
+
+function wouldExceedScienceRun({
+  dayAssignments,
+  slotsByDay,
+  slot,
+  disciplinaId,
+}: {
+  dayAssignments: Map<number, Map<number, string>>;
+  slotsByDay: Map<number, Slot[]>;
+  slot: Slot;
+  disciplinaId: string;
+}) {
+  const daySlots = slotsByDay.get(slot.day) || [];
+  const index = daySlots.findIndex((item) => item.id === slot.id);
+  if (index === -1) return false;
+
+  const dayMap = dayAssignments.get(slot.day) || new Map();
+  const matches = (idx: number) => {
+    const neighbor = daySlots[idx];
+    if (!neighbor || neighbor.is_intervalo) return false;
+    return dayMap.get(neighbor.ordem) === disciplinaId;
+  };
+
+  let run = 1;
+  let cursor = index - 1;
+  while (matches(cursor)) {
+    run += 1;
+    cursor -= 1;
+  }
+  cursor = index + 1;
+  while (matches(cursor)) {
+    run += 1;
+    cursor += 1;
+  }
+
+  return run > 2;
+}
+
+function wouldExceedScienceRunWithExtra({
+  dayAssignments,
+  slotsByDay,
+  day,
+  disciplinaId,
+  extraOrdens,
+}: {
+  dayAssignments: Map<number, Map<number, string>>;
+  slotsByDay: Map<number, Slot[]>;
+  day: number;
+  disciplinaId: string;
+  extraOrdens: number[];
+}) {
+  const daySlots = slotsByDay.get(day) || [];
+  const extraSet = new Set(extraOrdens);
+  const dayMap = dayAssignments.get(day) || new Map();
+  let run = 0;
+  let maxRun = 0;
+
+  for (const slot of daySlots) {
+    if (slot.is_intervalo) {
+      run = 0;
+      continue;
+    }
+    const matches = dayMap.get(slot.ordem) === disciplinaId || extraSet.has(slot.ordem);
+    if (matches) {
+      run += 1;
+      maxRun = Math.max(maxRun, run);
+    } else {
+      run = 0;
+    }
+  }
+
+  return maxRun > 2;
+}
+
+function mapTurnoId(turno?: string | null) {
+  const normalized = turno?.toString().toUpperCase();
+  if (normalized === "M") return "matinal";
+  if (normalized === "T") return "tarde";
+  if (normalized === "N") return "noite";
+  return null;
+}
+
 function pickSlot({
   disciplina,
   slots,
@@ -124,6 +295,8 @@ function pickSlot({
   occupiedBySala,
   perDayCount,
   dayTotals,
+  dayDisciplines,
+  dayAssignments,
   phase,
 }: {
   disciplina: DisciplinaNeed;
@@ -135,6 +308,8 @@ function pickSlot({
   occupiedBySala: Map<string, Set<string>>;
   perDayCount: Map<number, number>;
   dayTotals: Map<number, number>;
+  dayDisciplines: Map<number, Set<string>>;
+  dayAssignments: Map<number, Map<number, string>>;
   phase: "strict" | "relax";
 }) {
   const constraints = prepareConstraints(disciplina);
@@ -144,6 +319,24 @@ function pickSlot({
     if (slot.is_intervalo) continue;
     if (occupiedByTurma.has(slot.id)) continue;
     if (constraints.dias_bloqueados.includes(slot.day)) continue;
+    if (!canUseDayForDiscipline({
+      dayDisciplines,
+      day: slot.day,
+      disciplinaId: disciplina.disciplina_id,
+    })) {
+      continue;
+    }
+
+    const dayCount = perDayCount.get(slot.day) || 0;
+    if (dayCount >= 1) {
+      const contiguous = hasAdjacentSameDiscipline({
+        slotsByDay,
+        dayAssignments,
+        slot,
+        disciplinaId: disciplina.disciplina_id,
+      });
+      if (!contiguous) continue;
+    }
 
     const prof = disciplina.professor_id;
     if (prof && occupiedByProfessor.get(slot.id)?.has(prof)) continue;
@@ -151,12 +344,20 @@ function pickSlot({
     const sala = disciplina.sala_id;
     if (sala && occupiedBySala.get(slot.id)?.has(sala)) continue;
 
-    const dayCount = perDayCount.get(slot.day) || 0;
     const daySlots = dayTotals.get(slot.day) || 0;
     const slotsForDay = slotsByDay.get(slot.day) || [];
     const dayCapacity = slotsForDay.filter((s) => !s.is_intervalo).length || 1;
     const isFirst = slotsForDay.length > 0 && slot.ordem === slotsForDay[0].ordem;
     const isLast = slotsForDay.length > 0 && slot.ordem === slotsForDay[slotsForDay.length - 1].ordem;
+
+    if (disciplina.is_science && wouldExceedScienceRun({
+      dayAssignments,
+      slotsByDay,
+      slot,
+      disciplinaId: disciplina.disciplina_id,
+    })) {
+      continue;
+    }
 
     if (phase === "strict") {
       if (dayCount >= constraints.max_por_dia) continue;
@@ -165,6 +366,14 @@ function pickSlot({
     }
 
     let score = 0;
+    const adjacentSlot = getAdjacentSlot(slotsByDay, slot, 1) ?? getAdjacentSlot(slotsByDay, slot, -1);
+    const dayMap = dayAssignments.get(slot.day) || new Map();
+    const adjacentMatch =
+      adjacentSlot && dayMap.get(adjacentSlot.ordem) === disciplina.disciplina_id;
+    if (adjacentMatch) score += 12;
+    if (disciplina.requires_double || disciplina.is_practical) {
+      if (adjacentSlot && !occupiedByTurma.has(adjacentSlot.id)) score += 8;
+    }
     if (dayCount < constraints.max_por_dia) score += 10;
     if (dayCount === 0) score += 5;
     if (daySlots === 0) score += 8;
@@ -208,6 +417,17 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     const body = parsed.data;
 
+    let turnoId = body.turno ?? null;
+    if (!turnoId) {
+      const { data: turmaRow } = await supabase
+        .from("turmas")
+        .select("turno")
+        .eq("escola_id", escolaIdResolved)
+        .eq("id", body.turma_id)
+        .maybeSingle();
+      turnoId = mapTurnoId(turmaRow?.turno ?? null);
+    }
+
     const slotsQuery = supabase
       .from("horario_slots")
       .select("id, turno_id, ordem, inicio, fim, dia_semana, is_intervalo")
@@ -215,7 +435,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       .order("dia_semana", { ascending: true })
       .order("ordem", { ascending: true });
 
-    if (body.turno) slotsQuery.eq("turno_id", body.turno);
+    if (turnoId) slotsQuery.eq("turno_id", turnoId);
 
     const { data: slotsRows, error: slotsError } = await slotsQuery;
     if (slotsError) return NextResponse.json({ ok: false, error: slotsError.message }, { status: 400 });
@@ -254,21 +474,71 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     if (discError) return NextResponse.json({ ok: false, error: discError.message }, { status: 400 });
 
+    const turnoLabel = mapTurnoLabel(turnoId);
+    const professorIds = Array.from(
+      new Set((disciplinasRows || []).map((row: any) => row.professor_id).filter(Boolean))
+    ) as string[];
+    const professorProfileMap = new Map<string, string>();
+    const professorTurnosMap = new Map<string, string[]>();
+
+    if (professorIds.length > 0) {
+      const { data: professoresRows } = await supabase
+        .from("professores")
+        .select("id, profile_id")
+        .eq("escola_id", escolaIdResolved)
+        .in("id", professorIds);
+
+      for (const row of professoresRows || []) {
+        if (row?.id && row?.profile_id) professorProfileMap.set(row.id, row.profile_id);
+      }
+
+      const profileIds = Array.from(new Set(Array.from(professorProfileMap.values())));
+      if (profileIds.length > 0) {
+        const { data: teacherRows } = await supabase
+          .from("teachers")
+          .select("profile_id, turnos_disponiveis")
+          .eq("escola_id", escolaIdResolved)
+          .in("profile_id", profileIds);
+
+        for (const row of teacherRows || []) {
+          if (!row?.profile_id) continue;
+          const turnos = Array.isArray(row.turnos_disponiveis) ? row.turnos_disponiveis : [];
+          professorTurnosMap.set(row.profile_id, turnos as string[]);
+        }
+      }
+    }
+
+    const disciplinaSemTurno = new Set<string>();
+
     const disciplinaNeeds: DisciplinaNeed[] = (disciplinasRows || [])
       .map((row: any) => {
         const disciplinaId = row.curso_matriz?.disciplina_id ?? row.curso_matriz_id;
         const nome = row.curso_matriz?.disciplina?.nome ?? "Disciplina";
         const carga = row.carga_horaria_semanal ?? row.curso_matriz?.carga_horaria_semanal ?? 0;
         const entra = row.entra_no_horario ?? row.curso_matriz?.entra_no_horario ?? true;
+        const requiresDouble = carga >= 3;
+        const practical = isPracticalDiscipline(nome);
+        let professorId = row.professor_id ?? null;
+        if (professorId && turnoLabel) {
+          const profileId = professorProfileMap.get(professorId) || null;
+          const availableTurnos = profileId ? professorTurnosMap.get(profileId) || [] : [];
+          if (!availableTurnos.includes(turnoLabel)) {
+            disciplinaSemTurno.add(disciplinaId);
+            professorId = null;
+          }
+        }
         return {
           disciplina_id: disciplinaId,
           nome,
           entra_no_horario: entra,
           carga_semanal: carga,
-          professor_id: row.professor_id ?? null,
+          professor_id: professorId,
           sala_id: null,
+          requires_double: requiresDouble,
+          is_practical: practical,
+          is_science: isScienceDiscipline(nome),
           constraints: {
-            max_por_dia: 1,
+            max_por_dia: requiresDouble || practical ? 2 : 1,
             evitar_ultimo_tempo: false,
             evitar_primeiro_tempo: false,
             dias_bloqueados: [],
@@ -321,6 +591,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     const perDiscDayCount = new Map<string, Map<number, number>>();
     const dayTotals = new Map<number, number>();
+    const dayDisciplines = new Map<number, Set<string>>();
+    const dayAssignments = new Map<number, Map<number, string>>();
 
     for (const assignment of baseAssignments) {
       const slot = slotById.get(assignment.slot_id);
@@ -330,6 +602,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       discMap.set(day, (discMap.get(day) || 0) + 1);
       perDiscDayCount.set(assignment.disciplina_id, discMap);
       dayTotals.set(day, (dayTotals.get(day) || 0) + 1);
+      const daySet = dayDisciplines.get(day) || new Set();
+      daySet.add(assignment.disciplina_id);
+      dayDisciplines.set(day, daySet);
+      const dayMap = dayAssignments.get(day) || new Map();
+      const slotOrder = slot.ordem;
+      dayMap.set(slotOrder, assignment.disciplina_id);
+      dayAssignments.set(day, dayMap);
     }
 
     const missingByDisc = new Map<string, number>();
@@ -352,7 +631,112 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     const sorted = sortDisciplines(disciplinaNeeds, missingByDisc);
 
+    const placeAssignment = (assignment: ExistingAssignment) => {
+      const slot = slotById.get(assignment.slot_id);
+      if (!slot) return;
+      occupiedByTurma.add(slot.id);
+      if (assignment.professor_id) {
+        const set = occupiedByProfessor.get(slot.id) || new Set();
+        set.add(assignment.professor_id);
+        occupiedByProfessor.set(slot.id, set);
+      }
+      if (assignment.sala_id) {
+        const set = occupiedBySala.get(slot.id) || new Set();
+        set.add(assignment.sala_id);
+        occupiedBySala.set(slot.id, set);
+      }
+      const perDay = perDiscDayCount.get(assignment.disciplina_id) || new Map();
+      perDay.set(slot.day, (perDay.get(slot.day) || 0) + 1);
+      perDiscDayCount.set(assignment.disciplina_id, perDay);
+      dayTotals.set(slot.day, (dayTotals.get(slot.day) || 0) + 1);
+      const daySet = dayDisciplines.get(slot.day) || new Set();
+      daySet.add(assignment.disciplina_id);
+      dayDisciplines.set(slot.day, daySet);
+      const dayMap = dayAssignments.get(slot.day) || new Map();
+      dayMap.set(slot.ordem, assignment.disciplina_id);
+      dayAssignments.set(slot.day, dayMap);
+    };
+
+    const doubleBlockTargets = new Map<string, number>();
+    for (const disciplina of sorted) {
+      if (disciplina.carga_semanal <= 0) continue;
+      const maxBlocks = Math.floor((missingByDisc.get(disciplina.disciplina_id) || 0) / 2);
+      if (disciplina.is_practical) {
+        doubleBlockTargets.set(disciplina.disciplina_id, maxBlocks);
+      } else if (disciplina.requires_double) {
+        doubleBlockTargets.set(disciplina.disciplina_id, Math.min(1, maxBlocks));
+      }
+    }
+
+    const placeDoubleBlocks = () => {
+      for (const disciplina of sorted) {
+        let remainingBlocks = doubleBlockTargets.get(disciplina.disciplina_id) || 0;
+        if (remainingBlocks <= 0) continue;
+        let missing = missingByDisc.get(disciplina.disciplina_id) || 0;
+        if (missing < 2) continue;
+
+        while (remainingBlocks > 0 && missing >= 2) {
+          let placed = false;
+          for (const slot of slots) {
+            if (slot.is_intervalo) continue;
+            if (occupiedByTurma.has(slot.id)) continue;
+            if (!canUseDayForDiscipline({
+              dayDisciplines,
+              day: slot.day,
+              disciplinaId: disciplina.disciplina_id,
+            })) {
+              continue;
+            }
+            const neighbor = getAdjacentSlot(slotsByDay, slot, 1);
+            if (!neighbor || occupiedByTurma.has(neighbor.id)) continue;
+            const perDay = perDiscDayCount.get(disciplina.disciplina_id) || new Map();
+            const dayCount = perDay.get(slot.day) || 0;
+            const maxPorDia = disciplina.constraints?.max_por_dia ?? 1;
+            if (dayCount + 2 > maxPorDia) continue;
+            if (disciplina.is_science) {
+              if (
+                wouldExceedScienceRunWithExtra({
+                  dayAssignments,
+                  slotsByDay,
+                  day: slot.day,
+                  disciplinaId: disciplina.disciplina_id,
+                  extraOrdens: [slot.ordem, neighbor.ordem],
+                })
+              ) {
+                continue;
+              }
+            }
+
+            const first: ExistingAssignment = {
+              slot_id: slot.id,
+              disciplina_id: disciplina.disciplina_id,
+              professor_id: disciplina.professor_id ?? null,
+              sala_id: disciplina.sala_id ?? null,
+            };
+            const second: ExistingAssignment = {
+              slot_id: neighbor.id,
+              disciplina_id: disciplina.disciplina_id,
+              professor_id: disciplina.professor_id ?? null,
+              sala_id: disciplina.sala_id ?? null,
+            };
+            newAssignments.push(first, second);
+            placeAssignment(first);
+            placeAssignment(second);
+            missing -= 2;
+            missingByDisc.set(disciplina.disciplina_id, missing);
+            remainingBlocks -= 1;
+            placed = true;
+            break;
+          }
+
+          if (!placed) break;
+        }
+      }
+    };
+
     const newAssignments: ExistingAssignment[] = [];
+
+    placeDoubleBlocks();
 
     const attemptPhase = (phase: "strict" | "relax") => {
       for (const disciplina of sorted) {
@@ -371,6 +755,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
             occupiedBySala,
             perDayCount: perDay,
             dayTotals,
+            dayDisciplines,
+            dayAssignments,
             phase,
           });
 
@@ -391,20 +777,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
           };
 
           newAssignments.push(assignment);
-          occupiedByTurma.add(slot.id);
-          if (assignment.professor_id) {
-            const set = occupiedByProfessor.get(slot.id) || new Set();
-            set.add(assignment.professor_id);
-            occupiedByProfessor.set(slot.id, set);
-          }
-          if (assignment.sala_id) {
-            const set = occupiedBySala.get(slot.id) || new Set();
-            set.add(assignment.sala_id);
-            occupiedBySala.set(slot.id, set);
-          }
-          perDay.set(slot.day, (perDay.get(slot.day) || 0) + 1);
-          perDiscDayCount.set(disciplina.disciplina_id, perDay);
-          dayTotals.set(slot.day, (dayTotals.get(slot.day) || 0) + 1);
+          placeAssignment(assignment);
           missingByDisc.set(
             disciplina.disciplina_id,
             (missingByDisc.get(disciplina.disciplina_id) || 0) - 1
@@ -427,7 +800,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         unmet.push({
           disciplina_id: disciplina.disciplina_id,
           missing,
-          reason: disciplina.professor_id ? "SEM_SLOTS" : "SEM_PROF",
+          reason: disciplinaSemTurno.has(disciplina.disciplina_id)
+            ? "PROF_TURNO"
+            : disciplina.professor_id
+              ? "SEM_SLOTS"
+              : "SEM_PROF",
         });
       }
     }

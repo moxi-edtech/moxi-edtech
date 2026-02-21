@@ -93,6 +93,7 @@ type ManagerTab = "turmas" | "disciplinas";
 
 export type CurriculoStatus = {
   curso_id: string;
+  classe_id?: string | null;
   status: "draft" | "published" | "archived" | "none";
   version: number;
   ano_letivo_id: string;
@@ -130,6 +131,8 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   const searchParams = useSearchParams();
   const resolvePendenciasRequested = searchParams?.get("resolvePendencias") === "1";
   const courseIdFromQuery = searchParams?.get("cursoId") || searchParams?.get("curso_id");
+  const focusDisciplinaRequested = searchParams?.get("focusDisciplina") === "1";
+  const focusDisciplinaId = searchParams?.get("disciplinaId") || searchParams?.get("disciplina_id");
   const [activeTab, setActiveTab] = useState<ActiveTab>("my_courses");
   const [courses, setCourses] = useState<ActiveCourse[]>([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
@@ -139,7 +142,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   const [managerTab, setManagerTab] = useState<ManagerTab>("turmas");
   const [details, setDetails] = useState<CourseDetails | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
-  const [curriculoStatusByCurso, setCurriculoStatusByCurso] = useState<Record<string, CurriculoStatus>>({});
+  const [curriculoStatusByCurso, setCurriculoStatusByCurso] = useState<Record<string, CurriculoStatus[]>>({});
   const [curriculoAnoLetivo, setCurriculoAnoLetivo] = useState<{ id: string; ano: number } | null>(null);
 
   // Modal create
@@ -155,6 +158,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   const [disciplinaEditingMatrixByClass, setDisciplinaEditingMatrixByClass] = useState<Record<string, string[]>>({});
   const [resolvePendencias, setResolvePendencias] = useState(false);
   const [autoResolveTriggered, setAutoResolveTriggered] = useState(false);
+  const [autoFocusTriggered, setAutoFocusTriggered] = useState(false);
 
   const openCreateDisciplina = useCallback(() => {
     setDisciplinaModalMode("create");
@@ -247,9 +251,11 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
           throw new Error(json?.error || "Falha ao carregar status do currículo.");
         }
         if (!active) return;
-        const map: Record<string, CurriculoStatus> = {};
+        const map: Record<string, CurriculoStatus[]> = {};
         (json.curriculos ?? []).forEach((row: CurriculoStatus) => {
-          map[row.curso_id] = row;
+          const bucket = map[row.curso_id] ?? [];
+          bucket.push(row);
+          map[row.curso_id] = bucket;
         });
         setCurriculoStatusByCurso(map);
         setCurriculoAnoLetivo(json.ano_letivo ?? null);
@@ -445,6 +451,36 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     run();
   }, [autoResolveTriggered, courseIdFromQuery, courses, escolaId, handleOpenManager, loadingCourses, searchParams]);
 
+  useEffect(() => {
+    if (autoFocusTriggered) return;
+    if (!focusDisciplinaRequested && !focusDisciplinaId) return;
+    if (!selectedCourseId || loadingDetails || !details) return;
+
+    const resolved = focusDisciplinaId
+      ? details.disciplinas.find((disc) =>
+          disc.id === focusDisciplinaId || (disc.matrix_ids ?? []).includes(focusDisciplinaId)
+        )
+      : null;
+    const target = resolved ?? details.disciplinas[0];
+    if (!target) {
+      setAutoFocusTriggered(true);
+      return;
+    }
+
+    setManagerTab("disciplinas");
+    setActiveTab("my_courses");
+    openEditDisciplina(target, false);
+    setAutoFocusTriggered(true);
+  }, [
+    autoFocusTriggered,
+    details,
+    focusDisciplinaId,
+    focusDisciplinaRequested,
+    loadingDetails,
+    openEditDisciplina,
+    selectedCourseId,
+  ]);
+
   const selectedCourse = useMemo(
     () => courses.find((c) => c.id === selectedCourseId) || null,
     [courses, selectedCourseId]
@@ -453,8 +489,9 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   // -------- CRUD (UI-safe stubs, sem prompt/confirm) --------
   const handleAddTurma = useCallback(
     async (cursoId: string) => {
-      const curriculo = curriculoStatusByCurso[cursoId];
-      if (!curriculo || curriculo.status !== "published") {
+      const curriculos = curriculoStatusByCurso[cursoId] ?? [];
+      const hasPublished = curriculos.length > 0 && curriculos.every((c) => c.status === "published");
+      if (!hasPublished) {
         toast.error("Publique o currículo antes de gerar turmas.");
         return;
       }

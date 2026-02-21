@@ -102,6 +102,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         .from('quadro_horarios')
         .select('slot_id, professor_id')
         .eq('escola_id', escolaIdResolved)
+        .neq('turma_id', parsed.data.turma_id)
         .in('slot_id', slotIds)
         .in('professor_id', professorIds as string[])
 
@@ -115,6 +116,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         .from('quadro_horarios')
         .select('slot_id, sala_id')
         .eq('escola_id', escolaIdResolved)
+        .neq('turma_id', parsed.data.turma_id)
         .in('slot_id', slotIds)
         .in('sala_id', salaIds as string[])
 

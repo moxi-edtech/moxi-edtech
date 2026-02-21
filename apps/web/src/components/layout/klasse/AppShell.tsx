@@ -8,6 +8,7 @@ import { sidebarConfig, type NavItem } from "@/lib/sidebarNav";
 import { useMemo, useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { PLAN_NAMES, type PlanTier } from "@/config/plans";
+import { createClient } from "@/lib/supabaseClient";
 
 const TOPBAR_LABELS: Record<UserRole, { title: string; subtitle: string }> = {
   superadmin: { title: "Super Admin", subtitle: "Painel central" },
@@ -26,13 +27,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [financeBadges, setFinanceBadges] = useState<Record<string, string>>({});
   const [escolaNome, setEscolaNome] = useState<string | null>(null);
   const [planoNome, setPlanoNome] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
 
   // Extract escolaId from the pathname if available
   const safePathname = pathname ?? "";
 
   const escolaIdFromPath = useMemo(() => {
     if (!safePathname) return null;
-    const match = safePathname.match(/\/escola\/([^\/]+)\/(admin|secretaria)/);
+    const match = safePathname.match(/\/escola\/([^\/]+)\/(admin|secretaria|professores)/);
     return match?.[1] ?? null;
   }, [safePathname]);
   
@@ -44,6 +46,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (safePathname.startsWith("/secretaria")) return "secretaria";
     if (safePathname.includes("/escola/") && safePathname.includes("/admin")) return "admin";
     if (safePathname.includes("/escola/") && safePathname.includes("/secretaria")) return "secretaria";
+    if (safePathname.includes("/escola/") && safePathname.includes("/professores")) return "admin";
 
     return null;
   }, [userRole, safePathname]);
@@ -185,6 +188,39 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, [navEscolaId, inferredRole]);
 
   useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        if (!cancelled) setUserName(null);
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("nome, email")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      const resolvedName =
+        profile?.nome ||
+        (user.user_metadata as { full_name?: string } | null)?.full_name ||
+        user.email ||
+        null;
+
+      if (!cancelled) setUserName(resolvedName ? String(resolvedName) : null);
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (inferredRole !== "financeiro") return;
 
     let cancelled = false;
@@ -238,6 +274,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <Topbar
             portalTitle={topbarLabels?.title}
             portalSubtitle={topbarLabels?.subtitle}
+            userName={userName}
             contextLabel="Dashboard"
             escolaNome={displayedEscolaNome}
             planoNome={displayedPlanoNome}

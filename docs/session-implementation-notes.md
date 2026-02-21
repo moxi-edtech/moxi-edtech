@@ -3,6 +3,22 @@
 ## Visão geral
 Este documento resume as entregas recentes nas áreas de pauta (professor), command palette, rematrícula em massa e global search multi‑portal.
 
+## Portal do Professor — Status atual
+- Redirecionamento do login para `/professor` quando papel é professor.
+- Página de frequências reorganizada para fluxo único (turma → disciplina → data → presenças).
+- Layout em duas colunas na tela de frequências.
+- Cadastro de professor com skills e turnos, com uso no auto‑completar.
+- Dropdown de atribuição filtra professores por skills da disciplina.
+- Portal `/professor` com Minhas turmas + Agenda semanal (read‑only).
+- UI de notas alinhada ao padrão visual KLASSE.
+- Fluxos do professor alinhados ao mesmo padrão visual.
+
+## Portal do Professor — Backlog
+- Perfil do professor (dados pessoais + skills + turnos).
+- Mural de comunicados simples.
+- Perfil do professor (dados pessoais + skills + turnos).
+- Mural de comunicados simples.
+
 ## Pauta “Excel-like” (Professor)
 - UI em grade com navegação por setas/Enter.
 - Autosave no `onBlur` com indicador ✅.
@@ -84,9 +100,25 @@ Este documento resume as entregas recentes nas áreas de pauta (professor), comm
 - Modal de disciplina agora permite aplicar por classe: todas ou específicas.
 - Criação de disciplina respeita classes selecionadas (gera `curso_matriz` só para elas).
 - Edição pode aplicar mudanças somente nas classes escolhidas.
+- API de edição (`/api/escolas/[id]/disciplinas/[disciplinaId]`) agora sincroniza `turma_disciplinas` quando carga/horário/avaliação mudam.
 - UI: `apps/web/src/components/escola/settings/_components/DisciplinaModal.tsx`.
 - Fluxos: `apps/web/src/components/escola/settings/StructureMarketplace.tsx` e
   `apps/web/src/app/escola/[id]/admin/configuracoes/turmas/page.tsx`.
+
+## Publicação por classe (Currículo)
+- `curso_curriculos` agora inclui `classe_id` e publica por classe (unique `published` por curso+classe+ano).
+- RPC `curriculo_publish` aceita `p_classe_id` e faz publish em lote quando omitido.
+- Migration aplicada: `supabase/migrations/20261128000000_curriculo_publish_by_class.sql`.
+
+## Geração de turmas (validação por classe)
+- API `POST /api/escola/[id]/admin/turmas/generate` agora exige currículo publicado para cada classe solicitada.
+- RPC `gerar_turmas_from_curriculo` validado por classe (migration `20261128010000_rpc_gerar_turmas_from_curriculo_by_class.sql`).
+- UI mostra classes pendentes e oferece botão “Publicar todas as classes” com estado de loading.
+
+## Presets MED no DB
+- Novas tabelas: `curriculum_presets`, `curriculum_preset_subjects`, `school_subjects`.
+- Seed gerado de `CURRICULUM_PRESETS`: `supabase/migrations/20261127000001_curriculum_presets_seed.sql`.
+- Endpoint `GET /api/escolas/[id]/curriculo/padroes` entrega padrão MED com fallback local.
 
 ## Pauta Reativa (Professor + Secretaria)
 - Grade Excel‑like com cálculo instantâneo: `apps/web/src/components/professor/GradeEntryGrid.tsx`.

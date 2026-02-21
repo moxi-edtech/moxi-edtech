@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+import { createClient as createAdminClient } from '@supabase/supabase-js'
+import type { Database } from '~types/supabase'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 
@@ -38,6 +40,11 @@ export async function GET(req: Request) {
       return dt.toISOString()
     })()
 
+    const adminUrl = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').trim()
+    const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim()
+    const admin = adminUrl && serviceKey ? createAdminClient<Database>(adminUrl, serviceKey) : null
+    const queryClient = (admin ?? s) as any
+
     // Mapear cargo (UI) -> papéis do portal
     const cargoToPapels: Record<string, string[]> = {
       '': ['professor', 'admin_escola', 'admin', 'staff_admin', 'secretaria'],
@@ -48,7 +55,7 @@ export async function GET(req: Request) {
     }
     const papels = cargoToPapels[cargo as keyof typeof cargoToPapels] ?? ['professor']
 
-    const { data: vinc, error: vincErr } = await s
+    const { data: vinc, error: vincErr } = await queryClient
       .from('escola_users')
       .select('id, user_id, created_at, papel')
       .eq('escola_id', escolaId)
@@ -60,7 +67,7 @@ export async function GET(req: Request) {
     const user_ids = vincList.map(v => v.user_id)
     if (user_ids.length === 0) return NextResponse.json({ ok: true, items: [], total: 0 })
 
-    const { data: rows, error: rowsErr } = await (s as any)
+    const { data: rows, error: rowsErr } = await queryClient
       .rpc('tenant_profiles_by_ids', { p_user_ids: user_ids })
 
     if (rowsErr) return NextResponse.json({ ok: false, error: rowsErr.message }, { status: 500 })
@@ -72,7 +79,47 @@ export async function GET(req: Request) {
       telefone: string | null
       numero_login: string | null
       created_at: string | null
+      last_login: string | null
     }>
+
+    const profileIds = user_ids
+    const teacherByProfile = new Map<string, string>()
+    const teacherMetaByProfile = new Map<string, any>()
+    const disciplinasByTeacher = new Map<string, { ids: string[]; nomes: string[] }>()
+
+    if (profileIds.length > 0) {
+      const { data: teachersRows } = await queryClient
+        .from('teachers')
+        .select('id, profile_id, nome_completo, genero, data_nascimento, numero_bi, carga_horaria_maxima, turnos_disponiveis, telefone_principal, habilitacoes, area_formacao, vinculo_contratual, is_diretor_turma')
+        .eq('escola_id', escolaId)
+        .in('profile_id', profileIds)
+
+      for (const row of teachersRows || []) {
+        if (row?.profile_id && row?.id) {
+          teacherByProfile.set(row.profile_id, row.id)
+          teacherMetaByProfile.set(row.profile_id, row)
+        }
+      }
+
+      const teacherIds = Array.from(new Set(Array.from(teacherByProfile.values())))
+      if (teacherIds.length > 0) {
+        const { data: skillsRows } = await queryClient
+          .from('teacher_skills')
+          .select('teacher_id, disciplina:disciplinas_catalogo(id, nome)')
+          .eq('escola_id', escolaId)
+          .in('teacher_id', teacherIds)
+
+        for (const row of (skillsRows as any)?.data || []) {
+          const teacherId = row.teacher_id as string
+          const disciplina = (row as any)?.disciplina as { id?: string; nome?: string } | undefined
+          if (!teacherId || !disciplina?.id) continue
+          const entry = disciplinasByTeacher.get(teacherId) || { ids: [], nomes: [] }
+          entry.ids.push(disciplina.id)
+          if (disciplina.nome) entry.nomes.push(disciplina.nome)
+          disciplinasByTeacher.set(teacherId, entry)
+        }
+      }
+    }
 
     const filtered = q
       ? list.filter((row) => {
@@ -108,6 +155,9 @@ export async function GET(req: Request) {
     }
     const items = paged.map((p: any) => {
       const vincData = vincMap.get(p.user_id)
+      const teacherId = teacherByProfile.get(p.user_id)
+      const disciplinasEntry = teacherId ? disciplinasByTeacher.get(teacherId) : undefined
+      const meta = teacherMetaByProfile.get(p.user_id)
       return {
         id: vincData?.id,
         user_id: p.user_id,
@@ -116,6 +166,21 @@ export async function GET(req: Request) {
         telefone: p.telefone,
         cargo: mapPapelToCargo(vincData?.papel),
         created_at: vincData?.created_at || new Date().toISOString(),
+        last_login: p.last_login ?? null,
+        disciplinas: disciplinasEntry?.nomes || [],
+        disciplinas_ids: disciplinasEntry?.ids || [],
+        teacher_id: meta?.id ?? null,
+        nome_completo: meta?.nome_completo ?? null,
+        genero: meta?.genero ?? null,
+        data_nascimento: meta?.data_nascimento ?? null,
+        numero_bi: meta?.numero_bi ?? null,
+        carga_horaria_maxima: meta?.carga_horaria_maxima ?? null,
+        turnos_disponiveis: meta?.turnos_disponiveis ?? [],
+        telefone_principal: meta?.telefone_principal ?? null,
+        habilitacoes: meta?.habilitacoes ?? null,
+        area_formacao: meta?.area_formacao ?? null,
+        vinculo_contratual: meta?.vinculo_contratual ?? null,
+        is_diretor_turma: meta?.is_diretor_turma ?? false,
         profiles: { numero_login: p.numero_login }
       }
     })

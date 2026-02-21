@@ -1127,8 +1127,8 @@ export default function AlunosPage() {
           </div>
         )}
 
-        <div className="text-center text-gray-500 text-xs mt-10 pt-4 border-t border-gray-200">
-          Moxi Nexa • Criamos sistemas que escalam • © 2025
+        <div className="mt-10 border-t border-slate-200 pt-4 text-center text-xs text-slate-400">
+          KLASSE • Gestão escolar em escala • © 2025
         </div>
       </div>
 

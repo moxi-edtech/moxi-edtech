@@ -10,7 +10,7 @@ type CourseManagerProps = {
   managerTab: ManagerTab;
   loadingDetails: boolean;
   details: CourseDetails | null;
-  curriculoInfo?: CurriculoStatus;
+  curriculoInfo?: CurriculoStatus[];
   curriculoAnoLetivo: { id: string; ano: number } | null;
   onTabChange: (tab: ManagerTab) => void;
   onGenerateTurmas: (cursoId: string) => void;
@@ -59,6 +59,19 @@ export default function CourseManager({
   const pendenciasCount = details
     ? details.disciplinas.filter((disc) => disc.status_completude !== "completo").length
     : 0;
+  const curriculoList = curriculoInfo ?? [];
+  const overallStatus = curriculoList.length === 0
+    ? "none"
+    : curriculoList.every((row) => row.status === "published")
+      ? "published"
+      : curriculoList.some((row) => row.status === "draft")
+        ? "draft"
+        : curriculoList[0]?.status ?? "none";
+  const latestVersion = curriculoList.reduce(
+    (acc, row) => Math.max(acc, row.version ?? 0),
+    0
+  );
+  const classNameById = new Map(details?.classes.map((cls) => [cls.id, cls.nome]) ?? []);
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200">
@@ -207,16 +220,16 @@ export default function CourseManager({
                       <span
                         className={cx(
                           "inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold",
-                          getCurriculoBadge(curriculoInfo?.status)
+                          getCurriculoBadge(overallStatus as CurriculoStatus["status"])
                         )}
                       >
-                        {curriculoInfo?.status ?? "sem currículo"}
+                        {overallStatus === "none" ? "sem currículo" : overallStatus}
                       </span>
                     </div>
                   </div>
                   <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-slate-600">
                     <div className="rounded-lg border border-slate-200 px-3 py-2">
-                      Versão: <span className="font-semibold">{curriculoInfo?.version ?? "-"}</span>
+                      Versão: <span className="font-semibold">{latestVersion || "-"}</span>
                     </div>
                     <div className="rounded-lg border border-slate-200 px-3 py-2">
                       Ano letivo: <span className="font-semibold">{curriculoAnoLetivo?.ano ?? "-"}</span>
@@ -225,6 +238,27 @@ export default function CourseManager({
                       Curso ID: <span className="font-mono text-[11px]">{selectedCourse?.id ?? "-"}</span>
                     </div>
                   </div>
+                  {curriculoList.length > 0 && (
+                    <div className="mt-3 rounded-lg border border-slate-200">
+                      <div className="grid grid-cols-3 gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-500">
+                        <span>Classe</span>
+                        <span>Status</span>
+                        <span>Versão</span>
+                      </div>
+                      {curriculoList.map((row) => (
+                        <div
+                          key={`${row.curso_id}-${row.classe_id ?? "none"}-${row.version}`}
+                          className="grid grid-cols-3 gap-2 px-3 py-2 text-xs text-slate-600"
+                        >
+                          <span>{classNameById.get(row.classe_id ?? "") ?? row.classe_id ?? "-"}</span>
+                          <span className={cx("font-semibold", getCurriculoBadge(row.status))}>
+                            {row.status}
+                          </span>
+                          <span>{row.version}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center justify-between">

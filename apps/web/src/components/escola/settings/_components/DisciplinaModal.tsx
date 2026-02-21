@@ -44,6 +44,7 @@ export type DisciplinaForm = {
 type DisciplineOption = {
   id: string;
   nome: string;
+  label?: string;
 };
 
 type ClassOption = {
@@ -60,6 +61,16 @@ type Props = {
   existingDisciplines?: DisciplineOption[];
   pendingDisciplines?: DisciplineOption[];
   onSelectPending?: (id: string) => void;
+  disciplineSelector?: {
+    label?: string;
+    value?: string;
+    options: DisciplineOption[];
+    onChange: (id: string) => void;
+  };
+  standardInfo?: {
+    baseHours: number | null;
+    isOutOfStandard: boolean;
+  };
   classOptions?: ClassOption[];
   onClose: () => void;
   onSave: (payload: DisciplinaForm) => Promise<void> | void;
@@ -135,6 +146,8 @@ export function DisciplinaModal({
   existingDisciplines = [],
   pendingDisciplines = [],
   onSelectPending,
+  disciplineSelector,
+  standardInfo,
   classOptions = [],
   onClose,
   onSave,
@@ -368,6 +381,44 @@ export function DisciplinaModal({
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {disciplineSelector && (
+            <section className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+              <h3 className="text-xs font-bold uppercase text-slate-500 mb-3">
+                {disciplineSelector.label ?? "Selecionar disciplina"}
+              </h3>
+              <select
+                value={disciplineSelector.value ?? ""}
+                onChange={(event) => disciplineSelector.onChange(event.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white"
+              >
+                {disciplineSelector.options.map((disc) => (
+                  <option key={disc.id} value={disc.id}>
+                    {disc.label ?? disc.nome}
+                  </option>
+                ))}
+              </select>
+              {standardInfo?.isOutOfStandard && standardInfo.baseHours ? (
+                <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  <div className="font-semibold">Fora do padrão MED</div>
+                  <div className="mt-1">
+                    Padrão: {standardInfo.baseHours} tempos/semana
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm((prev) => ({
+                        ...prev,
+                        carga_horaria_semanal: standardInfo.baseHours ?? prev.carga_horaria_semanal,
+                      }))
+                    }
+                    className="mt-2 rounded-lg bg-amber-500 px-3 py-1.5 text-[11px] font-bold text-white"
+                  >
+                    Usar padrão MED
+                  </button>
+                </div>
+              ) : null}
+            </section>
+          )}
           {pendingDisciplines.length > 0 && (
             <section className="bg-white p-5 rounded-xl border border-amber-200 shadow-sm">
               <h3 className="text-xs font-bold uppercase text-amber-700 mb-3">Resolver pendências</h3>

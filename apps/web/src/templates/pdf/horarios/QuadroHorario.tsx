@@ -6,6 +6,7 @@ type QuadroHorarioPdfProps = {
   classe: string;
   turma: string;
   turno: string;
+  sala?: string | null;
   anoLetivo?: number | null;
   dias: string[];
   tempos: string[];
@@ -78,6 +79,7 @@ export function QuadroHorarioPdf({
   classe,
   turma,
   turno,
+  sala,
   anoLetivo,
   dias,
   tempos,
@@ -96,6 +98,7 @@ export function QuadroHorarioPdf({
             <Text style={styles.metaItem}>Classe: {classe}</Text>
             <Text style={styles.metaItem}>Turma: {turma}</Text>
             <Text style={styles.metaItem}>Turno: {turno}</Text>
+            {sala ? <Text style={styles.metaItem}>Sala: {sala}</Text> : null}
             {anoLetivo ? <Text style={styles.metaItem}>Ano: {anoLetivo}</Text> : null}
           </View>
         </View>

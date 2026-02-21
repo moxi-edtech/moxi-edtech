@@ -329,8 +329,8 @@ export default function PortalLayout({
               </div>
     
               {/* Footer moderno */}
-              <footer className="mt-8 text-center text-sm text-moxinexa-gray">
-                <p>MoxiNexa - Transformando a educação através da tecnologia</p>
+              <footer className="mt-8 text-center text-sm text-slate-400">
+                <p>KLASSE • Gestão escolar em escala</p>
                 <p className="mt-1">Sistema de gestão escolar · Todos os direitos reservados</p>
               </footer>
             </main>

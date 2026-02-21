@@ -536,6 +536,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
             anoLetivoId: anoLetivoId,
             version: info.version ?? 1,
             rebuildTurmas: false,
+            bulk: true,
           }),
         });
         const publishJson = await resPublish.json().catch(() => null);

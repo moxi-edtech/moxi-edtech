@@ -44,7 +44,7 @@ export async function GET(
 
     const { data: curriculos, error } = await (supabase as any)
       .from('curso_curriculos')
-      .select('id, curso_id, status, version, ano_letivo_id')
+      .select('id, curso_id, classe_id, status, version, ano_letivo_id')
       .eq('escola_id', userEscolaId)
       .eq('ano_letivo_id', anoLetivo.id)
       .order('version', { ascending: false });
@@ -53,17 +53,18 @@ export async function GET(
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     }
 
-    const byCurso = new Map<string, any>();
+    const byCursoClasse = new Map<string, any>();
     (curriculos ?? []).forEach((row: any) => {
-      if (!byCurso.has(row.curso_id)) {
-        byCurso.set(row.curso_id, row);
+      const key = `${row.curso_id}:${row.classe_id ?? 'none'}`;
+      if (!byCursoClasse.has(key)) {
+        byCursoClasse.set(key, row);
       }
     });
 
     return NextResponse.json({
       ok: true,
       ano_letivo: anoLetivo,
-      curriculos: Array.from(byCurso.values()),
+      curriculos: Array.from(byCursoClasse.values()),
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Erro inesperado";

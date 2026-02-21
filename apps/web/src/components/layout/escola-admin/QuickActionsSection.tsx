@@ -37,7 +37,7 @@ export default function QuickActionsSection({
     {
       label: "Novo Professor",
       icon: Users,
-      href: `/escola/${escolaId}/admin/professores/novo`,
+      href: `/escola/${escolaId}/professores?tab=adicionar`,
       disabled: !canCreateProfessor,
       badge: canCreateProfessor ? undefined : "Bloqueado",
     },

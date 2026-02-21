@@ -60,6 +60,10 @@ export async function loginAction(_: unknown, formData: FormData) {
         }
       } else if (papelNormalizado === "financeiro") {
         redirect("/financeiro");
+      } else if (papelNormalizado === "professor") {
+        redirect("/professor");
+      } else if (papelNormalizado === "aluno") {
+        redirect("/aluno/dashboard");
       } else if (escola_id) {
         redirect(`/escola/${escola_id}`);
       }
