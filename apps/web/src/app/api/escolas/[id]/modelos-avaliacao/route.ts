@@ -8,6 +8,9 @@ import { applyKf2ListInvariants } from "@/lib/kf2";
 const createSchema = z.object({
   nome: z.string().trim().min(1),
   componentes: z.record(z.any()).optional().default({}),
+  tipo: z.enum(['trimestral', 'pap', 'estagio', 'isencao', 'final_unica']).optional(),
+  regras: z.record(z.any()).optional().default({}),
+  formula: z.record(z.any()).optional().default({}),
   is_default: z.boolean().optional().default(false),
 });
 
@@ -35,7 +38,7 @@ export async function GET(
 
     let query = (supabase as any)
       .from("modelos_avaliacao")
-      .select("id, nome, componentes, is_default, created_at, updated_at")
+      .select("id, nome, componentes, tipo, regras, formula, is_default, created_at, updated_at")
       .eq("escola_id", escolaId);
 
     query = applyKf2ListInvariants(query, {
@@ -88,9 +91,12 @@ export async function POST(
         escola_id: escolaId,
         nome: parsed.data.nome,
         componentes: parsed.data.componentes,
+        tipo: parsed.data.tipo ?? 'trimestral',
+        regras: parsed.data.regras,
+        formula: parsed.data.formula,
         is_default: parsed.data.is_default,
       })
-      .select("id, nome, componentes, is_default, created_at, updated_at")
+      .select("id, nome, componentes, tipo, regras, formula, is_default, created_at, updated_at")
       .single();
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
 

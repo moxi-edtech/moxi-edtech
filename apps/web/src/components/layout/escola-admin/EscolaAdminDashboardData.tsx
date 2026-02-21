@@ -153,8 +153,7 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
 
         const setupData = setupStatusResult.data;
         const config = configResult.data;
-        const modeloAvaliacao = (config?.modelo_avaliacao ?? "DEPOIS").toString().toUpperCase();
-        const avaliacaoOk = modeloAvaliacao !== "DEPOIS" && hasComponentes(config?.avaliacao_config as any);
+        const avaliacaoOk = hasComponentes(config?.avaliacao_config as any);
         const frequenciaOk = Boolean(config?.frequencia_modelo)
           && typeof config?.frequencia_min_percent === "number";
         const avaliacaoFrequenciaOk = avaliacaoOk && frequenciaOk;

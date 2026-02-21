@@ -4,6 +4,11 @@ import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { authorizeTurmasManage } from '@/lib/escola/disciplinas'
 import { applyKf2ListInvariants } from '@/lib/kf2'
+import {
+  buildComponentesAtivos,
+  buildPesoPorTipo,
+  resolveModeloAvaliacao,
+} from '@/lib/academico/avaliacao-utils'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -85,63 +90,17 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
           .order('numero', { ascending: true })
       : { data: [] as any[] }
 
-    const { data: configuracoes } = await supabase
-      .from('configuracoes_escola')
-      .select('modelo_avaliacao, avaliacao_config')
-      .eq('escola_id', escolaId)
-      .maybeSingle()
+    const modelo = await resolveModeloAvaliacao({
+      supabase,
+      escolaId,
+      cursoId: turma.curso_id,
+      classeId: turma.classe_id,
+      matriz,
+    })
 
-    let modeloAvaliacao = String(configuracoes?.modelo_avaliacao ?? 'SIMPLIFICADO').toUpperCase()
-    let componentes = Array.isArray((configuracoes as any)?.avaliacao_config?.componentes)
-      ? (configuracoes as any).avaliacao_config.componentes
-      : []
-
-    if (matriz?.avaliacao_mode === 'custom' && matriz?.avaliacao_modelo_id) {
-      const { data: modeloDisciplina } = await supabase
-        .from('modelos_avaliacao')
-        .select('componentes')
-        .eq('escola_id', escolaId)
-        .eq('id', matriz.avaliacao_modelo_id)
-        .maybeSingle()
-      const comps = (modeloDisciplina as any)?.componentes
-      if (Array.isArray(comps)) {
-        componentes = comps
-      }
-      modeloAvaliacao = 'CUSTOM'
-    }
-
-    if (matriz?.avaliacao_mode === 'inherit_disciplina' && matriz?.avaliacao_disciplina_id) {
-      const { data: matrizBase } = await supabase
-        .from('curso_matriz')
-        .select('avaliacao_modelo_id')
-        .eq('escola_id', escolaId)
-        .eq('curso_id', turma.curso_id)
-        .eq('classe_id', turma.classe_id)
-        .eq('disciplina_id', matriz.avaliacao_disciplina_id)
-        .eq('ativo', true)
-        .maybeSingle()
-      if (matrizBase?.avaliacao_modelo_id) {
-        const { data: modeloBase } = await supabase
-          .from('modelos_avaliacao')
-          .select('componentes')
-          .eq('escola_id', escolaId)
-          .eq('id', matrizBase.avaliacao_modelo_id)
-          .maybeSingle()
-        const comps = (modeloBase as any)?.componentes
-        if (Array.isArray(comps)) {
-          componentes = comps
-        }
-        modeloAvaliacao = 'CUSTOM'
-      }
-    }
-    const pesoPorTipo = new Map<string, number>()
-    for (const comp of componentes as Array<{ code?: string; peso?: number; ativo?: boolean }>) {
-      if (!comp?.code || comp?.ativo === false) continue
-      const peso = typeof comp.peso === 'number' ? comp.peso : Number(comp.peso)
-      if (Number.isFinite(peso)) {
-        pesoPorTipo.set(comp.code.toString().trim().toUpperCase(), peso)
-      }
-    }
+    const componentesAtivos = buildComponentesAtivos(modelo.componentes)
+    const pesoPorTipo = buildPesoPorTipo(modelo.componentes)
+    const usarTrimestres = modelo.tipo === 'trimestral'
 
     let matriculasQuery = supabase
       .from('matriculas')
@@ -202,8 +161,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
           | null
       }>) {
         const avaliacao = Array.isArray(row.avaliacoes) ? row.avaliacoes[0] : row.avaliacoes
-        const trimestre = avaliacao?.trimestre ?? null
-        if (!trimestre) continue
+        const trimestre = usarTrimestres ? avaliacao?.trimestre ?? null : 0
+        if (usarTrimestres && !trimestre) continue
         if (!notasPorMatricula.has(row.matricula_id)) {
           notasPorMatricula.set(row.matricula_id, { sum: {}, count: {}, weightedSum: {}, weightSum: {} })
         }
@@ -233,7 +192,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       const count = stats.count[trimestre] ?? 0
       if (count === 0) return null
       const mediaSimples = stats.sum[trimestre] / count
-      if (modeloAvaliacao === 'DEPOIS') return null
+      if (componentesAtivos.length === 0) return null
 
       const weightSum = stats.weightSum[trimestre] ?? 0
       if (weightSum > 0) {
@@ -299,20 +258,29 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       },
       alunos: matriculaRows.map((row: any, index: number) => {
         const stats = notasPorMatricula.get(row.id)
-        const t1 = calcularNota(stats, 1)
-        const t2 = calcularNota(stats, 2)
-        const t3 = calcularNota(stats, 3)
+        const t1 = usarTrimestres ? calcularNota(stats, 1) : null
+        const t2 = usarTrimestres ? calcularNota(stats, 2) : null
+        const t3 = usarTrimestres ? calcularNota(stats, 3) : null
+        const finalNota = usarTrimestres ? null : calcularNota(stats, 0)
         const generoRaw = row?.alunos?.profiles?.sexo ?? null
         const genero = generoRaw === 'F' || generoRaw === 'f' ? 'F' : 'M'
+        const selected = periodoSelecionado
+        const trimValue = (periodo: number, value: number | null) =>
+          selected ? (selected === periodo ? value : null) : value
+        const trimValueFinal = (periodo: number) =>
+          selected ? (selected === periodo ? finalNota : null) : finalNota
         return {
           id: row.aluno_id,
           numero: row.numero_chamada ?? index + 1,
           nome: row.alunos?.nome ?? 'Sem nome',
           genero,
-          trim1: { mac: null, npp: null, npt: null, mt: periodoSelecionado === 1 ? t1 : null },
-          trim2: { mac: null, npp: null, npt: null, mt: periodoSelecionado === 2 ? t2 : null },
-          trim3: { mac: null, npp: null, npt: null, mt: periodoSelecionado === 3 ? t3 : null },
-          mfd: t1 !== null && t2 !== null && t3 !== null ? Number(((t1 + t2 + t3) / 3).toFixed(1)) : null,
+          trim1: { mac: null, npp: null, npt: null, mt: usarTrimestres ? trimValue(1, t1) : trimValueFinal(1) },
+          trim2: { mac: null, npp: null, npt: null, mt: usarTrimestres ? trimValue(2, t2) : trimValueFinal(2) },
+          trim3: { mac: null, npp: null, npt: null, mt: usarTrimestres ? trimValue(3, t3) : trimValueFinal(3) },
+          mfd:
+            usarTrimestres && t1 !== null && t2 !== null && t3 !== null
+              ? Number(((t1 + t2 + t3) / 3).toFixed(1))
+              : finalNota,
           obs: '',
         }
       }),

@@ -3,6 +3,11 @@ import { z } from 'zod'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { applyKf2ListInvariants } from '@/lib/kf2'
+import {
+  buildComponentesAtivos,
+  buildPesoPorTipo,
+  resolveModeloAvaliacao,
+} from '@/lib/academico/avaliacao-utils'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -34,12 +39,6 @@ export async function GET(req: Request) {
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
     if (!escolaId) return NextResponse.json({ error: 'Escola não encontrada' }, { status: 400 })
 
-    const { data: configuracoes } = await supabase
-      .from('configuracoes_escola')
-      .select('modelo_avaliacao, avaliacao_config')
-      .eq('escola_id', escolaId)
-      .maybeSingle()
-
     const { data: professor } = await supabase
       .from('professores')
       .select('id')
@@ -70,6 +69,18 @@ export async function GET(req: Request) {
     if (!matriz) {
       return NextResponse.json({ error: 'Disciplina não vinculada à matriz da turma' }, { status: 400 })
     }
+
+    const modelo = await resolveModeloAvaliacao({
+      supabase,
+      escolaId,
+      cursoId: turma.curso_id,
+      classeId: turma.classe_id,
+      matriz,
+    })
+
+    const componentesAtivos = buildComponentesAtivos(modelo.componentes)
+    const pesoPorTipo = buildPesoPorTipo(modelo.componentes)
+    const usarTrimestres = modelo.tipo === 'trimestral'
 
     const { data: turmaDisciplina } = await supabase
       .from('turma_disciplinas')
@@ -150,7 +161,7 @@ export async function GET(req: Request) {
         .eq('avaliacoes.turma_disciplina_id', turmaDisciplina.id)
         .in('matricula_id', matriculaIds)
 
-      if (detalhado && parsed.data.trimestre) {
+      if (detalhado && parsed.data.trimestre && usarTrimestres) {
         notasQuery = notasQuery.eq('avaliacoes.trimestre', parsed.data.trimestre)
       }
 
@@ -169,8 +180,8 @@ export async function GET(req: Request) {
           | null
       }>) {
         const avaliacao = Array.isArray(row.avaliacoes) ? row.avaliacoes[0] : row.avaliacoes
-        const trimestre = avaliacao?.trimestre ?? null
-        if (!trimestre) continue
+        const trimestre = usarTrimestres ? avaliacao?.trimestre ?? null : 0
+        if (usarTrimestres && !trimestre) continue
         if (!notasPorMatricula.has(row.matricula_id)) {
           notasPorMatricula.set(row.matricula_id, { sum: {}, count: {}, weightedSum: {}, weightSum: {} })
         }
@@ -204,8 +215,17 @@ export async function GET(req: Request) {
         return Number((sum / count).toFixed(2))
       }
 
+      const resolveValor = (
+        stats: { tipoSum?: Record<string, number>; tipoCount?: Record<string, number> } | undefined,
+        tipo: string
+      ) => {
+        const raw = pickTipo(stats, tipo)
+        if (raw !== null) return raw
+        if (tipo === 'NPT') return pickTipo(stats, 'PT')
+        return null
+      }
+
       const calcularMt = (values: Array<{ tipo: string; valor: number | null }>) => {
-        if (modeloAvaliacao === 'DEPOIS') return null
         const valid = values.filter((entry) => typeof entry.valor === 'number') as Array<{
           tipo: string
           valor: number
@@ -227,13 +247,18 @@ export async function GET(req: Request) {
 
       const payload = matriculaRows.map((row: any) => {
         const stats = notasPorMatricula.get(row.id)
-        const mac = pickTipo(stats, 'MAC')
-        const npp = pickTipo(stats, 'NPP')
-        const npt = pickTipo(stats, 'NPT')
+        const mac = resolveValor(stats, 'MAC')
+        const npp = resolveValor(stats, 'NPP')
+        const npt = resolveValor(stats, 'NPT')
+        const componentes = componentesAtivos.reduce<Record<string, number | null>>((acc, tipo) => {
+          acc[tipo] = resolveValor(stats, tipo)
+          return acc
+        }, {})
         const mt = calcularMt([
-          { tipo: 'MAC', valor: mac },
-          { tipo: 'NPP', valor: npp },
-          { tipo: 'NPT', valor: npt },
+          ...componentesAtivos.map((tipo) => ({
+            tipo,
+            valor: componentes[tipo] ?? null,
+          })),
         ])
         return {
           aluno_id: row.aluno_id,
@@ -244,6 +269,7 @@ export async function GET(req: Request) {
           npp,
           npt,
           mt,
+          componentes,
         }
       })
 
@@ -260,7 +286,7 @@ export async function GET(req: Request) {
       const count = stats.count[trimestre] ?? 0
       if (count === 0) return null
       const mediaSimples = stats.sum[trimestre] / count
-      if (modeloAvaliacao === 'DEPOIS') return null
+      if (componentesAtivos.length === 0) return null
 
       const weightSum = stats.weightSum[trimestre] ?? 0
       if (weightSum > 0) {
@@ -291,55 +317,3 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }
-    let modeloAvaliacao = String(configuracoes?.modelo_avaliacao ?? 'SIMPLIFICADO').toUpperCase()
-    let componentes = Array.isArray((configuracoes as any)?.avaliacao_config?.componentes)
-      ? (configuracoes as any).avaliacao_config.componentes
-      : []
-
-    if (matriz?.avaliacao_mode === 'custom' && matriz?.avaliacao_modelo_id) {
-      const { data: modeloDisciplina } = await supabase
-        .from('modelos_avaliacao')
-        .select('componentes')
-        .eq('escola_id', escolaId)
-        .eq('id', matriz.avaliacao_modelo_id)
-        .maybeSingle()
-      const comps = (modeloDisciplina as any)?.componentes
-      if (Array.isArray(comps)) {
-        componentes = comps
-      }
-      modeloAvaliacao = 'CUSTOM'
-    }
-
-    if (matriz?.avaliacao_mode === 'inherit_disciplina' && matriz?.avaliacao_disciplina_id) {
-      const { data: matrizBase } = await supabase
-        .from('curso_matriz')
-        .select('avaliacao_modelo_id')
-        .eq('escola_id', escolaId)
-        .eq('curso_id', turma.curso_id)
-        .eq('classe_id', turma.classe_id)
-        .eq('disciplina_id', matriz.avaliacao_disciplina_id)
-        .eq('ativo', true)
-        .maybeSingle()
-      if (matrizBase?.avaliacao_modelo_id) {
-        const { data: modeloBase } = await supabase
-          .from('modelos_avaliacao')
-          .select('componentes')
-          .eq('escola_id', escolaId)
-          .eq('id', matrizBase.avaliacao_modelo_id)
-          .maybeSingle()
-        const comps = (modeloBase as any)?.componentes
-        if (Array.isArray(comps)) {
-          componentes = comps
-        }
-        modeloAvaliacao = 'CUSTOM'
-      }
-    }
-
-    const pesoPorTipo = new Map<string, number>()
-    for (const comp of componentes as Array<{ code?: string; peso?: number; ativo?: boolean }>) {
-      if (!comp?.code || comp?.ativo === false) continue
-      const peso = typeof comp.peso === 'number' ? comp.peso : Number(comp.peso)
-      if (Number.isFinite(peso)) {
-        pesoPorTipo.set(comp.code.toString().trim().toUpperCase(), peso)
-      }
-    }
