@@ -128,24 +128,13 @@ export default function QuadroHorariosPage() {
     [aulas]
   );
   const excessoCarga = Math.max(0, totalCarga - totalSlots);
-  const ajustesSugeridos = useMemo(() => {
-    let restante = excessoCarga;
-    if (restante <= 0) return [] as Array<{ disciplina: string; atual: number; sugerido: number }>;
-    const ordered = [...aulas]
-      .filter((aula) => aula.temposTotal > 1)
-      .sort((a, b) => b.temposTotal - a.temposTotal);
-    const suggestions: Array<{ disciplina: string; atual: number; sugerido: number }> = [];
-    for (const aula of ordered) {
-      if (restante <= 0) break;
-      suggestions.push({
-        disciplina: aula.disciplina,
-        atual: aula.temposTotal,
-        sugerido: aula.temposTotal - 1,
-      });
-      restante -= 1;
-    }
-    return suggestions;
-  }, [aulas, excessoCarga]);
+  const turnoLabel = useMemo(() => {
+    const turno = selectedTurma?.turno?.toString().toUpperCase() ?? "";
+    if (turno === "M") return "manhã";
+    if (turno === "T") return "tarde";
+    if (turno === "N") return "noite";
+    return "turno";
+  }, [selectedTurma?.turno]);
   const disciplinasCompletas = useMemo(
     () => aulas.filter((aula) => !aula.missingLoad && aula.temposTotal > 0 && aula.temposAlocados >= aula.temposTotal).length,
     [aulas]
@@ -447,30 +436,10 @@ export default function QuadroHorariosPage() {
             <p className="text-xs text-rose-700 mt-1">
               Carga total: {totalCarga} • Slots disponíveis: {totalSlots} • Excesso: {excessoCarga}
             </p>
-            {ajustesSugeridos.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {ajustesSugeridos.map((item) => (
-                  <span
-                    key={item.disciplina}
-                    className="rounded-full border border-rose-200 bg-white px-3 py-1 text-xs font-semibold text-rose-700"
-                  >
-                    {item.disciplina}: {item.atual} → {item.sugerido}
-                  </span>
-                ))}
-              </div>
-            )}
-            <div className="mt-3">
-              {selectedTurma?.curso_id ? (
-                <Link
-                  href={`/escola/${escolaId}/admin/configuracoes/estrutura?resolvePendencias=1&cursoId=${selectedTurma.curso_id}`}
-                  className="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-3 py-2 text-xs font-bold text-white"
-                >
-                  Ajustar cargas no currículo
-                </Link>
-              ) : (
-                <span className="text-xs text-rose-700">Selecione a turma para ajustar cargas.</span>
-              )}
-            </div>
+            <p className="text-xs text-rose-700 mt-2">
+              A carga horária do curso ({totalCarga}) excede a capacidade do turno da {turnoLabel} ({totalSlots}).
+              Altere o currículo ou aloque aulas no contraturno.
+            </p>
           </div>
         )}
         {turmaId && (
