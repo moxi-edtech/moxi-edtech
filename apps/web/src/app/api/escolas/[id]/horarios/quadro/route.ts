@@ -203,3 +203,40 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
 }
+
+export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  try {
+    const supabase = await supabaseServerTyped<any>()
+    const { data: userRes } = await supabase.auth.getUser()
+    const user = userRes?.user
+    if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
+
+    const { id: escolaId } = await ctx.params
+    const escolaIdResolved = await resolveEscolaIdForUser(supabase as any, user.id, escolaId, escolaId)
+    if (!escolaIdResolved) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 403 })
+
+    const authz = await authorizeTurmasManage(supabase as any, escolaIdResolved, user.id)
+    if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 })
+
+    const { searchParams } = new URL(req.url)
+    const versaoId = searchParams.get('versao_id')
+    const turmaId = searchParams.get('turma_id')
+    if (!versaoId || !turmaId) {
+      return NextResponse.json({ ok: false, error: 'versao_id e turma_id são obrigatórios' }, { status: 400 })
+    }
+
+    const { error } = await supabase
+      .from('quadro_horarios')
+      .delete()
+      .eq('escola_id', escolaIdResolved)
+      .eq('versao_id', versaoId)
+      .eq('turma_id', turmaId)
+
+    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
+
+    return NextResponse.json({ ok: true })
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e)
+    return NextResponse.json({ ok: false, error: message }, { status: 500 })
+  }
+}
