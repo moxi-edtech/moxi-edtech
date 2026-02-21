@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { AlertCircle, Save, WifiOff } from "lucide-react";
+import { AlertCircle, Save, WifiOff, Printer, FileDown } from "lucide-react";
 import { SchedulerBoard } from "@/components/escola/horarios/SchedulerBoard";
 import { useOfflineStatus } from "@/hooks/useOfflineStatus";
 import { enqueueOfflineAction } from "@/lib/offline/queue";
@@ -11,6 +11,8 @@ import { useHorarioBaseData, useHorarioTurmaData } from "@/hooks/useHorarioData"
 import { Spinner } from "@/components/ui/Spinner";
 import { Select } from "@/components/ui/Select";
 import { toast } from "sonner";
+import { pdf } from "@react-pdf/renderer";
+import { QuadroHorarioPdf } from "@/templates/pdf/horarios/QuadroHorario";
 
 const DIAS_SEMANA = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"];
 
@@ -34,6 +36,8 @@ export default function QuadroHorariosPage() {
   const [baseRefreshToken, setBaseRefreshToken] = useState(0);
   const [adjustingSlots, setAdjustingSlots] = useState(false);
   const [generatingContraturno, setGeneratingContraturno] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [escolaNome, setEscolaNome] = useState<string>("");
 
   const {
     slots,
@@ -58,6 +62,21 @@ export default function QuadroHorariosPage() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!escolaId) return;
+    let active = true;
+    fetch(`/api/escolas/${escolaId}/nome`, { cache: "no-store" })
+      .then((res) => res.json())
+      .then((json) => {
+        if (!active) return;
+        if (json?.ok && json?.nome) setEscolaNome(json.nome);
+      })
+      .catch(() => null);
+    return () => {
+      active = false;
+    };
+  }, [escolaId]);
 
   useEffect(() => {
     if (!escolaId) return;
@@ -336,6 +355,121 @@ export default function QuadroHorariosPage() {
     }
   };
 
+  const buildGridRows = () => {
+    const rows: Array<{ tempo: string; values: string[] }> = [];
+    const tempoLabels = (horariosDisponiveis ?? []).map((slot) => slot.label);
+    const sortedTempos = (horariosDisponiveis ?? []).map((slot) => slot.id);
+    const aulaById = new Map(aulas.map((aula) => [aula.id, aula]));
+
+    sortedTempos.forEach((tempoId, index) => {
+      const label = tempoLabels[index] ?? tempoId;
+      const values = DIAS_SEMANA.map((dia) => {
+        const key = `${dia}-${tempoId}`;
+        const disciplinaId = grid[key];
+        if (!disciplinaId) return "";
+        const aula = aulaById.get(disciplinaId);
+        return aula?.sigla || aula?.disciplina || "";
+      });
+      rows.push({ tempo: label, values });
+    });
+
+    return rows;
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!selectedTurma || !horariosDisponiveis || horariosDisponiveis.length === 0) {
+      toast.error("Selecione uma turma e configure os horários.");
+      return;
+    }
+
+    try {
+      setDownloadingPdf(true);
+      const rows = buildGridRows();
+      const payload = {
+        escola: escolaNome || "Escola",
+        curso: selectedTurma?.curso?.nome ?? "Curso",
+        classe: selectedTurma?.classe?.nome ?? "Classe",
+        turma: selectedTurma?.turma_codigo || selectedTurma?.turma_nome || selectedTurma?.nome || "Turma",
+        turno: turnoLabel,
+        anoLetivo: selectedTurma?.ano_letivo ?? null,
+        dias: DIAS_SEMANA,
+        tempos: rows.map((row) => row.tempo),
+        grid: rows.map((row) => row.values),
+        generatedAt: new Date().toLocaleString("pt-PT"),
+      };
+
+      const blob = await pdf(<QuadroHorarioPdf {...payload} />).toBlob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Horario_${payload.turma}_${Date.now()}.pdf`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch (e: any) {
+      toast.error(e?.message || "Falha ao gerar PDF.");
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
+  const handlePrint = () => {
+    if (!selectedTurma || !horariosDisponiveis || horariosDisponiveis.length === 0) {
+      toast.error("Selecione uma turma e configure os horários.");
+      return;
+    }
+
+    const rows = buildGridRows();
+    const tableRows = rows
+      .map(
+        (row) =>
+          `<tr><td>${row.tempo}</td>${row.values
+            .map((value) => `<td>${value || ""}</td>`)
+            .join("")}</tr>`
+      )
+      .join("");
+
+    const html = `<!DOCTYPE html>
+      <html>
+        <head>
+          <title>Quadro de Horários</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 24px; color: #0f172a; }
+            h1 { font-size: 18px; margin-bottom: 4px; }
+            .meta { font-size: 12px; color: #475569; margin-bottom: 12px; }
+            table { width: 100%; border-collapse: collapse; font-size: 11px; }
+            th, td { border: 1px solid #e2e8f0; padding: 6px; text-align: center; }
+            th { background: #f8fafc; }
+            td:first-child { text-align: left; min-width: 90px; }
+          </style>
+        </head>
+        <body>
+          <h1>Quadro de Horários</h1>
+          <div class="meta">${escolaNome || "Escola"} • ${selectedTurma?.curso?.nome ?? "Curso"} • ${selectedTurma?.classe?.nome ?? "Classe"} • ${selectedTurma?.turma_codigo || selectedTurma?.turma_nome || selectedTurma?.nome || "Turma"} • Turno ${turnoLabel}</div>
+          <table>
+            <thead>
+              <tr>
+                <th>Horário</th>
+                ${DIAS_SEMANA.map((dia) => `<th>${dia}</th>`).join("")}
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRows}
+            </tbody>
+          </table>
+        </body>
+      </html>`;
+
+    const printWindow = window.open("", "_blank", "noopener,noreferrer");
+    if (!printWindow) {
+      toast.error("Não foi possível abrir a janela de impressão.");
+      return;
+    }
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  };
+
   const submitQuadro = async (nextGrid: Record<string, string | null>, mode: "draft" | "publish") => {
     if (!escolaId || !turmaId || !versaoId) return;
 
@@ -563,6 +697,23 @@ export default function QuadroHorariosPage() {
             />
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
+              disabled={downloadingPdf}
+              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            >
+              <FileDown className="h-3 w-3" />
+              {downloadingPdf ? "Gerando PDF..." : "Baixar PDF"}
+            </button>
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              <Printer className="h-3 w-3" />
+              Imprimir
+            </button>
             {isLoading ? (
               <div className="flex items-center gap-2 text-xs text-slate-500">
                 <Spinner size={14} className="text-klasse-gold" />
