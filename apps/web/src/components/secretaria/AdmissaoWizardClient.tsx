@@ -68,6 +68,9 @@ type CandidaturaDraft = {
     responsavel_nome?: string | null;
     responsavel_contato?: string | null;
     encarregado_email?: string | null;
+    responsavel_financeiro_nome?: string | null;
+    responsavel_financeiro_nif?: string | null;
+    mesmo_que_encarregado?: boolean | null;
   } | null;
   curso_id?: string | null;
   classe_id?: string | null;
@@ -140,6 +143,9 @@ type DraftIdentificacao = {
   responsavel_nome?: string;
   responsavel_contato?: string;
   encarregado_email?: string;
+  responsavel_financeiro_nome?: string;
+  responsavel_financeiro_nif?: string;
+  mesmo_que_encarregado?: boolean;
 };
 
 function Step1Identificacao(props: {
@@ -167,11 +173,15 @@ function Step1Identificacao(props: {
     responsavel_nome: "",
     responsavel_contato: "",
     encarregado_email: "",
+    responsavel_financeiro_nome: "",
+    responsavel_financeiro_nif: "",
+    mesmo_que_encarregado: false,
   });
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // hydrate initial
   useEffect(() => {
@@ -195,6 +205,9 @@ function Step1Identificacao(props: {
       responsavel_nome: initialData.dados_candidato?.responsavel_nome ?? "",
       responsavel_contato: initialData.dados_candidato?.responsavel_contato ?? "",
       encarregado_email: initialData.dados_candidato?.encarregado_email ?? "",
+      responsavel_financeiro_nome: initialData.dados_candidato?.responsavel_financeiro_nome ?? "",
+      responsavel_financeiro_nif: initialData.dados_candidato?.responsavel_financeiro_nif ?? "",
+      mesmo_que_encarregado: Boolean(initialData.dados_candidato?.mesmo_que_encarregado),
     });
   }, [initialData]);
 
@@ -236,6 +249,15 @@ function Step1Identificacao(props: {
     if (extraTouched) return;
     if (shouldAutoOpen) setExtraOpen(true);
   }, [extraTouched, shouldAutoOpen]);
+
+  useEffect(() => {
+    if (!form.mesmo_que_encarregado) return;
+    setForm((prev) => ({
+      ...prev,
+      responsavel_financeiro_nome: prev.responsavel_nome || prev.responsavel_financeiro_nome,
+      responsavel_financeiro_nif: prev.nif || prev.responsavel_financeiro_nif,
+    }));
+  }, [form.mesmo_que_encarregado, form.responsavel_nome, form.nif]);
 
   // dedupe autosave: avoid same payload re-sending
   const lastHashRef = useRef<string>("");
@@ -318,8 +340,49 @@ function Step1Identificacao(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedForm, hydrated]);
 
+  const normalizePhone = (value: string) => {
+    const trimmed = value.trim();
+    const hasPlus = trimmed.startsWith("+");
+    const digits = trimmed.replace(/\D/g, "");
+    return hasPlus ? `+${digits}` : digits;
+  };
+
+  const validateForm = (draft: DraftIdentificacao) => {
+    const errors: Record<string, string> = {};
+    if (!(draft.nome_candidato ?? "").trim()) {
+      errors.nome_candidato = "Informe o nome completo.";
+    }
+    const docType = (draft.tipo_documento ?? "").trim();
+    const docNumber = (draft.numero_documento ?? "").trim();
+    if (docType || docNumber) {
+      if (!docType) errors.tipo_documento = "Selecione o tipo de documento.";
+      if (!docNumber) errors.numero_documento = "Informe o número do documento.";
+      if (docType.toUpperCase() === "BI" && docNumber && !/^[A-Za-z0-9]{14}$/.test(docNumber)) {
+        errors.numero_documento = "BI deve ter 14 caracteres alfanuméricos.";
+      }
+    }
+    const phone = (draft.telefone ?? "").replace(/\D/g, "");
+    if (phone && phone.length < 6) {
+      errors.telefone = "Telefone inválido.";
+    }
+    const respPhone = (draft.responsavel_contato ?? "").replace(/\D/g, "");
+    if (respPhone && respPhone.length < 6) {
+      errors.responsavel_contato = "Contacto inválido.";
+    }
+    return errors;
+  };
+
   const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
+    const { name, value, type } = e.target;
+    if (type === "checkbox") {
+      const checked = (e.target as HTMLInputElement).checked;
+      setForm((p) => ({ ...p, [name]: checked }));
+      return;
+    }
+    if (name === "telefone" || name === "responsavel_contato") {
+      setForm((p) => ({ ...p, [name]: normalizePhone(value) }));
+      return;
+    }
     setForm((p) => ({ ...p, [name]: value }));
   };
 
@@ -328,6 +391,10 @@ function Step1Identificacao(props: {
       onNext();
       return;
     }
+
+    const errors = validateForm(form);
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
 
     const r = await saveDraft("manual");
     if (r.ok) onNext();
@@ -400,6 +467,9 @@ function Step1Identificacao(props: {
           disabled={!canEditDraft}
           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
         />
+        {fieldErrors.nome_candidato && (
+          <p className="text-xs text-red-600">{fieldErrors.nome_candidato}</p>
+        )}
         <select
           name="tipo_documento"
           value={form.tipo_documento ?? ""}
@@ -412,6 +482,9 @@ function Step1Identificacao(props: {
           <option value="Cédula Pessoal">Cédula Pessoal</option>
           <option value="Passaporte">Passaporte</option>
         </select>
+        {fieldErrors.tipo_documento && (
+          <p className="text-xs text-red-600">{fieldErrors.tipo_documento}</p>
+        )}
         <input
           type="text"
           name="numero_documento"
@@ -421,6 +494,9 @@ function Step1Identificacao(props: {
           disabled={!canEditDraft}
           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
         />
+        {fieldErrors.numero_documento && (
+          <p className="text-xs text-red-600">{fieldErrors.numero_documento}</p>
+        )}
         <input
           type="text"
           name="telefone"
@@ -430,6 +506,9 @@ function Step1Identificacao(props: {
           disabled={!canEditDraft}
           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
         />
+        {fieldErrors.telefone && (
+          <p className="text-xs text-red-600">{fieldErrors.telefone}</p>
+        )}
         <input
           type="email"
           name="email"
@@ -500,6 +579,9 @@ function Step1Identificacao(props: {
               disabled={!canEditDraft}
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
             />
+            {fieldErrors.responsavel_contato && (
+              <p className="text-xs text-red-600">{fieldErrors.responsavel_contato}</p>
+            )}
             <input
               type="email"
               name="encarregado_email"
@@ -525,6 +607,35 @@ function Step1Identificacao(props: {
               onChange={onChange}
               placeholder="NIF"
               disabled={!canEditDraft}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+            />
+            <label className="flex items-center gap-2 text-xs text-slate-600">
+              <input
+                type="checkbox"
+                name="mesmo_que_encarregado"
+                checked={Boolean(form.mesmo_que_encarregado)}
+                onChange={onChange}
+                disabled={!canEditDraft}
+                className="rounded text-klasse-green focus:ring-klasse-green"
+              />
+              Responsável financeiro igual ao encarregado
+            </label>
+            <input
+              type="text"
+              name="responsavel_financeiro_nome"
+              value={form.responsavel_financeiro_nome ?? ""}
+              onChange={onChange}
+              placeholder="Responsável financeiro (nome)"
+              disabled={!canEditDraft || Boolean(form.mesmo_que_encarregado)}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+            />
+            <input
+              type="text"
+              name="responsavel_financeiro_nif"
+              value={form.responsavel_financeiro_nif ?? ""}
+              onChange={onChange}
+              placeholder="NIF do responsável financeiro"
+              disabled={!canEditDraft || Boolean(form.mesmo_que_encarregado)}
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
             />
           </div>
