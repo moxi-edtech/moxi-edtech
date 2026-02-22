@@ -58,6 +58,8 @@ type CandidaturaDraft = {
   dados_candidato?: {
     telefone?: string | null;
     bi_numero?: string | null;
+    tipo_documento?: string | null;
+    numero_documento?: string | null;
     email?: string | null;
     data_nascimento?: string | null;
     sexo?: string | null;
@@ -128,6 +130,8 @@ type DraftIdentificacao = {
   nome_candidato?: string;
   telefone?: string;
   bi_numero?: string;
+  tipo_documento?: string;
+  numero_documento?: string;
   email?: string;
   data_nascimento?: string;
   sexo?: string;
@@ -153,6 +157,8 @@ function Step1Identificacao(props: {
     nome_candidato: "",
     telefone: "",
     bi_numero: "",
+    tipo_documento: "",
+    numero_documento: "",
     email: "",
     data_nascimento: "",
     sexo: "",
@@ -174,6 +180,13 @@ function Step1Identificacao(props: {
       nome_candidato: initialData.nome_candidato ?? "",
       telefone: initialData.dados_candidato?.telefone ?? "",
       bi_numero: initialData.dados_candidato?.bi_numero ?? "",
+      tipo_documento:
+        initialData.dados_candidato?.tipo_documento ??
+        (initialData.dados_candidato?.bi_numero ? "BI" : ""),
+      numero_documento:
+        initialData.dados_candidato?.numero_documento ??
+        initialData.dados_candidato?.bi_numero ??
+        "",
       email: initialData.dados_candidato?.email ?? "",
       data_nascimento: initialData.dados_candidato?.data_nascimento ?? "",
       sexo: initialData.dados_candidato?.sexo ?? "",
@@ -212,11 +225,12 @@ function Step1Identificacao(props: {
 
   const shouldAutoOpen = useMemo(() => {
     const hasTrigger = Boolean(
-      (form.bi_numero ?? "").trim() ||
+      (form.numero_documento ?? "").trim() ||
+        (form.bi_numero ?? "").trim() ||
         ((form.nome_candidato ?? "").trim() && (form.telefone ?? "").trim())
     );
     return hasTrigger || extraHasData;
-  }, [form.bi_numero, form.nome_candidato, form.telefone, extraHasData]);
+  }, [form.numero_documento, form.bi_numero, form.nome_candidato, form.telefone, extraHasData]);
 
   useEffect(() => {
     if (extraTouched) return;
@@ -233,6 +247,10 @@ function Step1Identificacao(props: {
       candidaturaId: safeUuid(candidaturaId),
       source: "walkin",
       ...pickDefined(form),
+      bi_numero:
+        form.tipo_documento === "BI"
+          ? (form.numero_documento ?? "")
+          : undefined,
     });
 
     return clean;
@@ -382,12 +400,24 @@ function Step1Identificacao(props: {
           disabled={!canEditDraft}
           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
         />
+        <select
+          name="tipo_documento"
+          value={form.tipo_documento ?? ""}
+          onChange={onChange}
+          disabled={!canEditDraft}
+          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+        >
+          <option value="">Tipo de documento</option>
+          <option value="BI">BI</option>
+          <option value="Cédula Pessoal">Cédula Pessoal</option>
+          <option value="Passaporte">Passaporte</option>
+        </select>
         <input
           type="text"
-          name="bi_numero"
-          value={form.bi_numero ?? ""}
+          name="numero_documento"
+          value={form.numero_documento ?? ""}
           onChange={onChange}
-          placeholder="Nº do BI"
+          placeholder="Nº do documento"
           disabled={!canEditDraft}
           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
         />
@@ -1016,9 +1046,14 @@ function Step3Pagamento(props: {
               </p>
             </div>
             <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
-              <p className="text-[10px] uppercase text-slate-400">Nº do BI</p>
+              <p className="text-[10px] uppercase text-slate-400">Documento</p>
               <p className="font-semibold text-slate-800">
-                {initialData?.dados_candidato?.bi_numero || "—"}
+                {[
+                  initialData?.dados_candidato?.tipo_documento,
+                  initialData?.dados_candidato?.numero_documento ?? initialData?.dados_candidato?.bi_numero,
+                ]
+                  .filter(Boolean)
+                  .join(" • ") || "—"}
               </p>
             </div>
             <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
