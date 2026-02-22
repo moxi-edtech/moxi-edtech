@@ -90,6 +90,20 @@ const draftPayloadSchema = z
       .max(254)
       .optional(),
 
+    responsavel_financeiro_nome: z
+      .string()
+      .trim()
+      .max(160)
+      .optional(),
+
+    responsavel_financeiro_nif: z
+      .string()
+      .trim()
+      .max(64)
+      .optional(),
+
+    mesmo_que_encarregado: z.boolean().optional(),
+
     curso_id: uuid.optional(),
     classe_id: uuid.optional(),
     turma_preferencial_id: uuid.optional(),
@@ -125,6 +139,9 @@ function normalizeCandidateData(input: z.infer<typeof draftPayloadSchema>) {
   }
   if (typeof clean.responsavel_contato === "string") {
     clean.responsavel_contato = clean.responsavel_contato.replace(/\s+/g, "");
+  }
+  if (typeof clean.responsavel_financeiro_nif === "string") {
+    clean.responsavel_financeiro_nif = clean.responsavel_financeiro_nif.replace(/\s+/g, "").toUpperCase();
   }
   if (typeof clean.email === "string") {
     clean.email = clean.email.toLowerCase();
