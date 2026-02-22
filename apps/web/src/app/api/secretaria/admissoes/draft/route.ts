@@ -28,6 +28,19 @@ const draftPayloadSchema = z
       .max(64)
       .optional(),
 
+    tipo_documento: z
+      .string()
+      .trim()
+      .max(40)
+      .optional(),
+
+    numero_documento: z
+      .string()
+      .trim()
+      .min(3)
+      .max(64)
+      .optional(),
+
     telefone: z
       .string()
       .trim()
@@ -95,6 +108,17 @@ function normalizeCandidateData(input: z.infer<typeof draftPayloadSchema>) {
   // normalizações úteis (ajuste conforme regras Angola)
   if (typeof clean.bi_numero === "string") {
     clean.bi_numero = clean.bi_numero.replace(/\s+/g, "").toUpperCase();
+  }
+  if (typeof clean.numero_documento === "string") {
+    clean.numero_documento = clean.numero_documento.replace(/\s+/g, "").toUpperCase();
+  }
+  if (
+    typeof clean.tipo_documento === "string" &&
+    clean.tipo_documento.toUpperCase() === "BI" &&
+    !clean.bi_numero &&
+    typeof clean.numero_documento === "string"
+  ) {
+    clean.bi_numero = clean.numero_documento;
   }
   if (typeof clean.telefone === "string") {
     clean.telefone = clean.telefone.replace(/\s+/g, "");
