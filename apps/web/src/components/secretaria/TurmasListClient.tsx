@@ -583,7 +583,9 @@ export default function TurmasListClient({ adminMode = false }: { adminMode?: bo
       options?.append ? setLoadingMore(true) : setLoading(true);
       const params = new URLSearchParams();
       if (filters.turno   !== "todos") params.set("turno",  filters.turno);
-      if (filters.status  !== "todos") params.set("status", filters.status);
+      if (filters.status  !== "todos" && filters.status !== "rascunho") {
+        params.set("status", filters.status);
+      }
       if (filters.curso   !== "todos") params.set("curso_id",  filters.curso);
       if (busca.trim())                params.set("busca",  busca.trim());
       params.set("limit", "30");
@@ -647,6 +649,13 @@ export default function TurmasListClient({ adminMode = false }: { adminMode?: bo
           .toLowerCase();
         if (!haystack.includes(query)) return false;
       }
+      if (filters.status === "rascunho") {
+        const pendenciaCurriculo = t.status_curriculo === "pendente";
+        const pendenciaTurma = t.status_validacao === "rascunho";
+        if (!pendenciaCurriculo && !pendenciaTurma) return false;
+      }
+      if (filters.status === "ativos" && t.status_validacao !== "ativo") return false;
+
       if (filters.professor === "com" && !t.professor_nome) return false;
       if (filters.professor === "sem" && t.professor_nome)  return false;
 
