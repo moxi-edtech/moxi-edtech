@@ -1,16 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { toast } from "sonner";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 type Evento = {
   id: string;
   titulo: string;
-  inicio: Date;
-  fim: Date;
-  desc?: string;
-  tipo: string;
-  cor: string;
+  inicio_at: string;
+  fim_at: string | null;
+  descricao?: string | null;
+  publico_alvo: string;
 };
 
 function cid() {
@@ -26,65 +27,126 @@ function fmtDateTime(dt: Date) {
 }
 
 export default function EventosPage() {
+  const { escolaId } = useEscolaId();
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [modalAberto, setModalAberto] = useState(false);
-  const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState<Evento | null>(null);
 
   const [formData, setFormData] = useState<Partial<Evento>>({
     titulo: "",
-    inicio: new Date(),
-    fim: new Date(),
-    desc: "",
-    tipo: "Reunião",
-    cor: "#1e6bd6",
+    inicio_at: new Date().toISOString(),
+    fim_at: null,
+    descricao: "",
+    publico_alvo: "todos",
   });
+
+  useEffect(() => {
+    if (!escolaId) return;
+    (async () => {
+      const res = await fetch(`/api/escolas/${escolaId}/admin/eventos`, { cache: "no-store" });
+      const json = await res.json().catch(() => null);
+      if (res.ok && json?.ok) {
+        setEventos(json.items || []);
+      }
+    })();
+  }, [escolaId]);
 
   function abrirCriar() {
     setEditing(null);
     setFormData({
       titulo: "",
-      inicio: new Date(),
-      fim: new Date(),
-      desc: "",
-      tipo: "Reunião",
-      cor: "#1e6bd6",
+      inicio_at: new Date().toISOString(),
+      fim_at: null,
+      descricao: "",
+      publico_alvo: "todos",
     });
-    setStep(1);
     setModalAberto(true);
   }
 
   function abrirEditar(ev: Evento) {
     setEditing(ev);
     setFormData(ev);
-    setStep(1);
     setModalAberto(true);
   }
 
   async function salvarEvento() {
-    if (!formData.titulo || !formData.inicio || !formData.fim) return;
-
-    if (formData.inicio >= formData.fim) {
-      alert("O fim deve ser maior que o início");
+    if (!escolaId) {
+      toast.error("Escola não identificada.");
       return;
     }
+    if (!formData.titulo || !formData.inicio_at) return;
 
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1200)); // simula API
+    try {
+      if (formData.fim_at && formData.inicio_at >= formData.fim_at) {
+        toast.error("O fim deve ser maior que o início");
+        return;
+      }
 
-    if (editing) {
-      setEventos((prev) =>
-        prev.map((ev) => (ev.id === editing.id ? { ...ev, ...formData } as Evento : ev))
+      const payload = {
+        titulo: formData.titulo,
+        descricao: formData.descricao ?? null,
+        inicio_at: formData.inicio_at,
+        fim_at: formData.fim_at ?? null,
+        publico_alvo: formData.publico_alvo ?? "todos",
+      };
+
+      const res = await fetch(
+        editing
+          ? `/api/escolas/${escolaId}/admin/eventos/${editing.id}`
+          : `/api/escolas/${escolaId}/admin/eventos`,
+        {
+          method: editing ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
       );
-    } else {
-      setEventos((prev) => [...prev, { ...(formData as Evento), id: cid() }]);
-    }
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || "Falha ao salvar evento");
+      }
 
-    setLoading(false);
-    setModalAberto(false);
-    setEditing(null);
+      if (editing) {
+        setEventos((prev) =>
+          prev.map((ev) => (ev.id === editing.id ? { ...ev, ...payload } as Evento : ev))
+        );
+      } else {
+        setEventos((prev) => [
+          ...prev,
+          { id: json?.id ?? cid(), ...payload } as Evento,
+        ]);
+      }
+
+      toast.success("Evento salvo.");
+      setModalAberto(false);
+      setEditing(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha ao salvar evento");
+    } finally {
+      setLoading(false);
+    }
   }
+
+  const deleteEvento = async (ev: Evento) => {
+    if (!escolaId) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/escolas/${escolaId}/admin/eventos/${ev.id}`, {
+        method: "DELETE",
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error || "Falha ao remover evento");
+      }
+      setEventos((prev) => prev.filter((item) => item.id !== ev.id));
+      toast.success("Evento removido.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Falha ao remover evento");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="p-6 space-y-4">
@@ -107,13 +169,12 @@ export default function EventosPage() {
             <div>
               <div className="font-medium text-gray-900">{ev.titulo}</div>
               <div className="text-xs text-gray-600">
-                {ev.inicio.toLocaleString()} — {ev.fim.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                {new Date(ev.inicio_at).toLocaleString()} — {ev.fim_at
+                  ? new Date(ev.fim_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                  : "—"}
               </div>
-              <span
-                className="inline-block mt-1 text-xs px-2 py-0.5 rounded-full"
-                style={{ background: ev.cor, color: "white" }}
-              >
-                {ev.tipo}
+              <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                {ev.publico_alvo}
               </span>
             </div>
             <div className="flex gap-2">
@@ -124,7 +185,7 @@ export default function EventosPage() {
                 Editar
               </button>
               <button
-                onClick={() => setEventos((prev) => prev.filter((e) => e.id !== ev.id))}
+                onClick={() => deleteEvento(ev)}
                 className="px-2.5 py-1.5 text-xs rounded-md bg-red-600 text-white hover:bg-red-700"
               >
                 Remover
@@ -137,18 +198,9 @@ export default function EventosPage() {
       {modalAberto && (
         <div className="fixed inset-0 bg-black/40 z-50 grid place-items-center p-4">
           <div className="w-full max-w-lg bg-white rounded-xl shadow-xl p-6 space-y-5 animate-fadeIn">
-            {/* Barra de progresso */}
-            <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className="h-2 bg-[#1e6bd6] transition-all"
-                style={{ width: `${(step / 5) * 100}%` }}
-              />
-            </div>
-
-            {/* Steps */}
-            {step === 1 && (
-              <div>
-                <h2 className="text-lg font-semibold mb-3">Título</h2>
+            <div>
+              <h2 className="text-lg font-semibold mb-3">Novo evento</h2>
+              <div className="grid gap-3">
                 <input
                   value={formData.titulo}
                   onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
@@ -156,99 +208,54 @@ export default function EventosPage() {
                   className="w-full border px-3 py-2 rounded-md"
                   required
                 />
-              </div>
-            )}
-            {step === 2 && (
-              <div>
-                <h2 className="text-lg font-semibold mb-3">Datas</h2>
+                <select
+                  value={formData.publico_alvo}
+                  onChange={(e) => setFormData({ ...formData, publico_alvo: e.target.value })}
+                  className="border px-3 py-2 rounded-md"
+                >
+                  <option value="todos">Todos</option>
+                  <option value="professores">Professores</option>
+                  <option value="alunos">Alunos</option>
+                  <option value="responsaveis">Responsáveis</option>
+                </select>
                 <div className="grid grid-cols-2 gap-3">
                   <input
                     type="datetime-local"
-                    value={fmtDateTime(formData.inicio!)}
+                    value={fmtDateTime(new Date(formData.inicio_at || new Date().toISOString()))}
                     onChange={(e) =>
-                      setFormData({ ...formData, inicio: new Date(e.target.value) })
+                      setFormData({ ...formData, inicio_at: new Date(e.target.value).toISOString() })
                     }
                     className="border px-3 py-2 rounded-md"
                   />
                   <input
                     type="datetime-local"
-                    value={fmtDateTime(formData.fim!)}
+                    value={formData.fim_at ? fmtDateTime(new Date(formData.fim_at)) : ""}
                     onChange={(e) =>
-                      setFormData({ ...formData, fim: new Date(e.target.value) })
+                      setFormData({ ...formData, fim_at: e.target.value ? new Date(e.target.value).toISOString() : null })
                     }
                     className="border px-3 py-2 rounded-md"
                   />
                 </div>
-              </div>
-            )}
-            {step === 3 && (
-              <div>
-                <h2 className="text-lg font-semibold mb-3">Descrição</h2>
                 <textarea
-                  value={formData.desc}
-                  onChange={(e) => setFormData({ ...formData, desc: e.target.value })}
+                  value={formData.descricao ?? ""}
+                  onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
                   rows={3}
+                  placeholder="Descrição do evento"
                   className="w-full border px-3 py-2 rounded-md"
                 />
               </div>
-            )}
-            {step === 4 && (
-              <div>
-                <h2 className="text-lg font-semibold mb-3">Tipo e cor</h2>
-                <div className="grid grid-cols-2 gap-3">
-                  <select
-                    value={formData.tipo}
-                    onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
-                    className="border px-3 py-2 rounded-md"
-                  >
-                    <option>Reunião</option>
-                    <option>Prova</option>
-                    <option>Aviso</option>
-                  </select>
-                  <input
-                    type="color"
-                    value={formData.cor}
-                    onChange={(e) => setFormData({ ...formData, cor: e.target.value })}
-                    className="h-10 w-full border rounded-md"
-                  />
-                </div>
-              </div>
-            )}
-            {step === 5 && (
-              <div className="space-y-3">
-                <h2 className="text-lg font-semibold">Confirmar evento</h2>
-                <p>
-                  <strong>{formData.titulo}</strong> <br />
-                  {formData.inicio?.toLocaleString()} —{" "}
-                  {formData.fim?.toLocaleString()}
-                </p>
-                {formData.desc && <p>{formData.desc}</p>}
-                <span
-                  className="inline-block mt-1 text-xs px-2 py-0.5 rounded-full"
-                  style={{ background: formData.cor, color: "white" }}
-                >
-                  {formData.tipo}
-                </span>
-              </div>
-            )}
+            </div>
 
-            {/* Navegação */}
-            <div className="flex justify-between">
-              <Button disabled={step === 1} onClick={() => setStep((s) => s - 1)} variant="outline" tone="gray" size="sm">
-                Voltar
+            <div className="flex justify-end gap-2">
+              <Button onClick={() => setModalAberto(false)} variant="outline" tone="gray" size="sm">
+                Cancelar
               </Button>
-              {step < 5 ? (
-                <Button onClick={() => setStep((s) => s + 1)} tone="navy" size="sm">
-                  Próximo
-                </Button>
-              ) : (
-                <Button onClick={salvarEvento} disabled={loading} tone="green" size="sm" className="flex items-center gap-2">
-                  {loading && (
-                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  )}
-                  Salvar
-                </Button>
-              )}
+              <Button onClick={salvarEvento} disabled={loading} tone="green" size="sm" className="flex items-center gap-2">
+                {loading && (
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                )}
+                Salvar
+              </Button>
             </div>
           </div>
         </div>
