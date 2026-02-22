@@ -12,9 +12,9 @@ Este documento resume as entregas recentes nas áreas de pauta (professor), comm
 - Portal `/professor` com Minhas turmas + Agenda semanal (read‑only).
 - UI de notas alinhada ao padrão visual KLASSE.
 - Fluxos do professor alinhados ao mesmo padrão visual.
+- Perfil do professor em `/professor/perfil` com edição de disponibilidade e skills.
 
 ## Portal do Professor — Backlog
-- Perfil do professor (dados pessoais + skills + turnos).
 - Mural de comunicados simples.
 - Perfil do professor (dados pessoais + skills + turnos).
 - Mural de comunicados simples.

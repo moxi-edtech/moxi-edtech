@@ -71,6 +71,13 @@ type KpiCardProps = {
   onClick?: () => void;
 };
 
+type FinanceiroTurmaStat = {
+  turmaId: string;
+  qtdMensalidades: number;
+  qtdEmAtraso: number;
+  inadimplenciaPct: number;
+};
+
 function KpiCard({ title, value, icon: Icon, active, onClick }: KpiCardProps) {
   return (
     <div 
@@ -98,7 +105,7 @@ function KpiCard({ title, value, icon: Icon, active, onClick }: KpiCardProps) {
 
 // --- COMPONENT: Row ---
 function TurmaRow({ 
-    turma, isExpanded, onToggleExpand, onEdit, style, detailHrefBase
+    turma, isExpanded, onToggleExpand, onEdit, style, detailHrefBase, financeiro, showFinanceiro
 }: { 
     turma: TurmaItem,
     isExpanded: boolean,
@@ -106,6 +113,8 @@ function TurmaRow({
     onEdit: (t: TurmaItem) => void,
     style?: CSSProperties,
     detailHrefBase: string,
+    financeiro?: FinanceiroTurmaStat | null,
+    showFinanceiro?: boolean,
 }) {
     // 1. BLINDAGEM VISUAL: Garante que existam valores antes de processar
     const safeNome = turma.nome || "Sem Nome";
@@ -118,6 +127,9 @@ function TurmaRow({
     const atual = turma.ocupacao_atual || 0;
     const pct = Math.min(Math.round((atual / max) * 100), 100);
     const progressColors = getStatusColor(pct);
+
+    const inadimplenciaPct = Math.min(Math.max(Number(financeiro?.inadimplenciaPct ?? 0), 0), 100);
+    const inadimplenciaColors = getStatusColor(Math.round(inadimplenciaPct));
 
     const isDraft = turma.status_validacao === 'rascunho';
 
@@ -188,6 +200,30 @@ function TurmaRow({
                     </div>
                 </td>
 
+                {showFinanceiro && (
+                  <td className="px-6 py-4">
+                    {financeiro ? (
+                      <div className="w-36 space-y-1">
+                        <div className="flex justify-between text-[10px] font-bold">
+                          <span className="text-slate-600">Inadimplência</span>
+                          <span className={inadimplenciaColors.text}>{inadimplenciaPct.toFixed(0)}%</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${inadimplenciaColors.bg}`}
+                            style={{ width: `${inadimplenciaPct}%` }}
+                          />
+                        </div>
+                        <div className="text-[10px] text-slate-500">
+                          {financeiro.qtdEmAtraso} atraso(s)
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-[10px] text-slate-400">Sem dados</div>
+                    )}
+                  </td>
+                )}
+
                 <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
                         {isDraft ? (
@@ -228,6 +264,8 @@ export default function TurmasListClient({ adminMode = false }: { adminMode?: bo
   const [busca, setBusca] = useState("");
   const [turnoFilter, setTurnoFilter] = useState("todos");
   const [statusFilter, setStatusFilter] = useState("todos");
+  const [financeiroFilter, setFinanceiroFilter] = useState("todos");
+  const [financeiroStats, setFinanceiroStats] = useState<Record<string, FinanceiroTurmaStat>>({});
   
   const [showForm, setShowForm] = useState(false);
   const [editingTurma, setEditingTurma] = useState<TurmaItem | null>(null);
@@ -306,13 +344,43 @@ export default function TurmasListClient({ adminMode = false }: { adminMode?: bo
 
   // --- AQUI ESTAVA O ERRO ---
   // CORRIGIDO: Adicionado (|| "") antes de .toLowerCase()
-  const filteredItems = useMemo(() => items, [items]);
+  const filteredItems = useMemo(() => {
+    if (!adminMode || financeiroFilter === "todos") return items;
+    return items.filter((item) => (financeiroStats[item.id]?.qtdEmAtraso ?? 0) > 0);
+  }, [items, adminMode, financeiroFilter, financeiroStats]);
 
   const rascunhos = useMemo(() => items.filter(t => t.status_validacao === 'rascunho').length || 0, [items]);
   const pendingItems = useMemo(() => {
     if (!adminMode || statusFilter !== 'rascunho') return [];
     return filteredItems.filter((turma) => turma.status_validacao === 'rascunho');
   }, [adminMode, statusFilter, filteredItems]);
+
+  useEffect(() => {
+    if (!adminMode || !escolaId) {
+      setFinanceiroStats({});
+      return;
+    }
+    const turmaIds = items.map((item) => item.id).filter(Boolean);
+    if (turmaIds.length === 0) {
+      setFinanceiroStats({});
+      return;
+    }
+
+    const params = new URLSearchParams();
+    params.set("turma_ids", turmaIds.join(","));
+    fetch(buildEscolaUrl(escolaId, "/admin/turmas/financeiro", params))
+      .then((res) => res.json())
+      .then((json) => {
+        if (!json?.ok) return;
+        const nextMap: Record<string, FinanceiroTurmaStat> = {};
+        (json.items || []).forEach((row: FinanceiroTurmaStat) => {
+          if (!row?.turmaId) return;
+          nextMap[row.turmaId] = row;
+        });
+        setFinanceiroStats(nextMap);
+      })
+      .catch(() => null);
+  }, [adminMode, escolaId, items]);
 
   const detailHrefBase = adminMode && escolaId
     ? `/escola/${escolaId}/admin/turmas`
@@ -329,6 +397,7 @@ export default function TurmasListClient({ adminMode = false }: { adminMode?: bo
   }, [filteredItems, expandedId]);
 
   const hasRows = !loading && displayRows.length > 0;
+  const totalColumns = adminMode ? 6 : 5;
   const rowVirtualizer = useVirtualizer({
     count: displayRows.length,
     getScrollElement: () => scrollParentRef.current,
@@ -360,6 +429,22 @@ export default function TurmasListClient({ adminMode = false }: { adminMode?: bo
                 <option value="rascunho">Pendentes</option>
                 <option value="ativos">Ativos</option>
               </select>
+            )}
+            {adminMode && (
+              <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 text-xs font-semibold text-slate-600">
+                <button
+                  onClick={() => setFinanceiroFilter("todos")}
+                  className={`px-3 py-1 rounded-lg transition-colors ${financeiroFilter === "todos" ? "bg-slate-900 text-white" : "hover:text-slate-900"}`}
+                >
+                  Todas
+                </button>
+                <button
+                  onClick={() => setFinanceiroFilter("inadimplentes")}
+                  className={`px-3 py-1 rounded-lg transition-colors ${financeiroFilter === "inadimplentes" ? "bg-rose-600 text-white" : "hover:text-rose-700"}`}
+                >
+                  Com atraso
+                </button>
+              </div>
             )}
             <button 
                 onClick={() => { setEditingTurma(null); setShowForm(true); }}
@@ -441,6 +526,9 @@ export default function TurmasListClient({ adminMode = false }: { adminMode?: bo
                         <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">Acadêmico</th>
                         <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">Local</th>
                         <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">Capacidade</th>
+                        {adminMode && (
+                          <th className="px-6 py-3 text-left text-[11px] font-bold text-slate-400 uppercase tracking-wider">Financeiro</th>
+                        )}
                         <th className="px-6 py-3 text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider">Ações</th>
                     </tr>
                 </thead>
@@ -463,12 +551,13 @@ export default function TurmasListClient({ adminMode = false }: { adminMode?: bo
                                 <td className="px-6 py-4"><div className="h-4 w-32 bg-slate-100 rounded"></div></td>
                                 <td className="px-6 py-4"><div className="h-4 w-20 bg-slate-100 rounded"></div></td>
                                 <td className="px-6 py-4"><div className="h-4 w-full bg-slate-100 rounded"></div></td>
+                                {adminMode && <td className="px-6 py-4"></td>}
                                 <td className="px-6 py-4"></td>
                             </tr>
                         ))
                     ) : filteredItems.length === 0 ? (
                         <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
-                            <td colSpan={5} className="py-20 text-center">
+                            <td colSpan={totalColumns} className="py-20 text-center">
                                 <div className="flex flex-col items-center justify-center text-slate-400">
                                     <div className="bg-slate-50 p-4 rounded-full mb-3">
                                         <Search size={24} />
@@ -497,7 +586,7 @@ export default function TurmasListClient({ adminMode = false }: { adminMode?: bo
                                   tableLayout: "fixed",
                                 }}
                               >
-                                <td colSpan={5} className="px-6 py-4">
+                                <td colSpan={totalColumns} className="px-6 py-4">
                                   <div className="ml-12 p-4 bg-white border border-slate-200 rounded-xl shadow-sm text-center text-sm text-slate-500">
                                     <p>Detalhes avançados ou lista rápida de professores apareceriam aqui.</p>
                                   </div>
@@ -517,6 +606,8 @@ export default function TurmasListClient({ adminMode = false }: { adminMode?: bo
                                 setShowForm(true);
                               }}
                               detailHrefBase={detailHrefBase}
+                              financeiro={financeiroStats[row.turma.id]}
+                              showFinanceiro={adminMode}
                               style={{
                                 position: "absolute",
                                 top: 0,

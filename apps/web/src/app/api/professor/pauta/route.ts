@@ -8,6 +8,7 @@ import {
   buildPesoPorTipo,
   resolveModeloAvaliacao,
 } from '@/lib/academico/avaliacao-utils'
+import { getSupabaseServerClient } from '@/lib/supabase-server'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -15,6 +16,7 @@ export const revalidate = 0
 const Query = z.object({
   turmaId: z.string().uuid(),
   disciplinaId: z.string().uuid(),
+  turmaDisciplinaId: z.string().uuid().optional(),
   trimestre: z.coerce.number().int().min(1).max(3).optional(),
 })
 
@@ -28,8 +30,14 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)
     const turmaId = searchParams.get('turmaId') ?? searchParams.get('turma_id')
     const disciplinaId = searchParams.get('disciplinaId') ?? searchParams.get('disciplina_id')
+    const turmaDisciplinaId = searchParams.get('turmaDisciplinaId') ?? searchParams.get('turma_disciplina_id')
     const trimestreRaw = searchParams.get('trimestre') ?? searchParams.get('periodoNumero')
-    const parsed = Query.safeParse({ turmaId, disciplinaId, trimestre: trimestreRaw ?? undefined })
+    const parsed = Query.safeParse({
+      turmaId,
+      disciplinaId,
+      turmaDisciplinaId: turmaDisciplinaId ?? undefined,
+      trimestre: trimestreRaw ?? undefined,
+    })
     if (!parsed.success) {
       return NextResponse.json({ error: 'Parâmetros inválidos' }, { status: 400 })
     }
@@ -39,7 +47,12 @@ export async function GET(req: Request) {
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
     if (!escolaId) return NextResponse.json({ error: 'Escola não encontrada' }, { status: 400 })
 
-    const { data: professor } = await supabase
+    const admin = getSupabaseServerClient()
+    if (!admin) {
+      return NextResponse.json({ error: 'SUPABASE_SERVICE_ROLE_KEY ausente' }, { status: 500 })
+    }
+
+    const { data: professor } = await admin
       .from('professores')
       .select('id')
       .eq('profile_id', user.id)
@@ -48,7 +61,7 @@ export async function GET(req: Request) {
     const professorId = (professor as any)?.id as string | undefined
     if (!professorId) return NextResponse.json({ error: 'Professor não encontrado' }, { status: 403 })
 
-    const { data: turma } = await supabase
+    const { data: turma } = await admin
       .from('turmas')
       .select('id, curso_id, classe_id')
       .eq('id', turmaId)
@@ -56,39 +69,44 @@ export async function GET(req: Request) {
       .maybeSingle()
     if (!turma) return NextResponse.json({ error: 'Turma não encontrada' }, { status: 404 })
 
-    const { data: matriz } = await supabase
-      .from('curso_matriz')
-      .select('id, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id')
-      .eq('escola_id', escolaId)
-      .eq('curso_id', turma.curso_id)
-      .eq('classe_id', turma.classe_id)
-      .eq('disciplina_id', disciplinaId)
-      .eq('ativo', true)
-      .maybeSingle()
+    let matrizFallback:
+      | { id: string; disciplina_id: string | null; avaliacao_mode: string | null; avaliacao_modelo_id: string | null; avaliacao_disciplina_id: string | null }
+      | null = null
 
-    if (!matriz) {
-      return NextResponse.json({ error: 'Disciplina não vinculada à matriz da turma' }, { status: 400 })
+    let turmaDisciplina: { id: string; professor_id: string | null; curso_matriz_id: string | null } | null = null
+
+    if (parsed.data.turmaDisciplinaId) {
+      const { data } = await admin
+        .from('turma_disciplinas')
+        .select('id, professor_id, curso_matriz_id')
+        .eq('escola_id', escolaId)
+        .eq('turma_id', turmaId)
+        .eq('id', parsed.data.turmaDisciplinaId)
+        .maybeSingle()
+      turmaDisciplina = data as any
+    } else {
+      const { data: matrizData } = await admin
+        .from('curso_matriz')
+        .select('id, disciplina_id, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id')
+        .eq('escola_id', escolaId)
+        .eq('curso_id', turma.curso_id)
+        .eq('classe_id', turma.classe_id)
+        .eq('disciplina_id', disciplinaId)
+        .eq('ativo', true)
+        .maybeSingle()
+      matrizFallback = (matrizData as any) ?? null
+
+      if (matrizFallback?.id) {
+        const { data } = await admin
+          .from('turma_disciplinas')
+          .select('id, professor_id, curso_matriz_id')
+          .eq('escola_id', escolaId)
+          .eq('turma_id', turmaId)
+          .eq('curso_matriz_id', matrizFallback.id)
+          .maybeSingle()
+        turmaDisciplina = data as any
+      }
     }
-
-    const modelo = await resolveModeloAvaliacao({
-      supabase,
-      escolaId,
-      cursoId: turma.curso_id,
-      classeId: turma.classe_id,
-      matriz,
-    })
-
-    const componentesAtivos = buildComponentesAtivos(modelo.componentes)
-    const pesoPorTipo = buildPesoPorTipo(modelo.componentes)
-    const usarTrimestres = modelo.tipo === 'trimestral'
-
-    const { data: turmaDisciplina } = await supabase
-      .from('turma_disciplinas')
-      .select('id, professor_id')
-      .eq('escola_id', escolaId)
-      .eq('turma_id', turmaId)
-      .eq('curso_matriz_id', matriz.id)
-      .maybeSingle()
 
     if (!turmaDisciplina) {
       return NextResponse.json({ error: 'Disciplina não atribuída à turma' }, { status: 404 })
@@ -96,7 +114,7 @@ export async function GET(req: Request) {
 
     let isProfessorAssigned = turmaDisciplina.professor_id === professorId
     if (!isProfessorAssigned) {
-      const { data: assignment } = await supabase
+      const { data: assignment } = await admin
         .from('turma_disciplinas_professores')
         .select('id')
         .eq('escola_id', escolaId)
@@ -111,7 +129,36 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Professor não atribuído à disciplina' }, { status: 403 })
     }
 
-    let matriculasQuery = supabase
+    const { data: matrizData } = await admin
+      .from('curso_matriz')
+      .select('id, disciplina_id, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id')
+      .eq('escola_id', escolaId)
+      .eq('id', turmaDisciplina.curso_matriz_id)
+      .eq('ativo', true)
+      .maybeSingle()
+    const matriz = (matrizData as any) ?? matrizFallback
+
+    if (!matriz) {
+      return NextResponse.json({ error: 'Disciplina não vinculada à matriz da turma' }, { status: 400 })
+    }
+
+    if (matriz.disciplina_id && matriz.disciplina_id !== disciplinaId) {
+      return NextResponse.json({ error: 'Disciplina não vinculada à matriz da turma' }, { status: 400 })
+    }
+
+    const modelo = await resolveModeloAvaliacao({
+      supabase: admin,
+      escolaId,
+      cursoId: turma.curso_id,
+      classeId: turma.classe_id,
+      matriz,
+    })
+
+    const componentesAtivos = buildComponentesAtivos(modelo.componentes)
+    const pesoPorTipo = buildPesoPorTipo(modelo.componentes)
+    const usarTrimestres = modelo.tipo === 'trimestral'
+
+    let matriculasQuery = admin
       .from('matriculas')
       .select(
         `
@@ -154,7 +201,7 @@ export async function GET(req: Request) {
     >()
 
     if (matriculaIds.length > 0) {
-      let notasQuery = supabase
+      let notasQuery = admin
         .from('notas')
         .select('valor, matricula_id, avaliacoes ( trimestre, turma_disciplina_id, tipo, nome, peso )')
         .eq('escola_id', escolaId)
