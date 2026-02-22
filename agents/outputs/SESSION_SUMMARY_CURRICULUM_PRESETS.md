@@ -58,6 +58,8 @@
 - Presets MED migrados para o DB: tabelas `curriculum_presets`, `curriculum_preset_subjects`, `school_subjects` + seed gerado de `CURRICULUM_PRESETS`.
 - Endpoint `GET /api/escolas/[id]/curriculo/padroes` fornece padrão MED (DB com fallback ao preset local).
 - Geração de turmas validada por classe: API e RPC exigem currículo publicado para cada classe.
+- Portal do professor atualizado com agenda semanal, turmas atribuídas e páginas alinhadas ao padrão KLASSE.
+- Perfil do professor disponível em `/professor/perfil` com skills, turnos e carga horária.
 - Validação local não foi rodada.
 
 ## Avaliação (Fórmulas no DB)

@@ -41,7 +41,7 @@ Disponibilizar ao professor um portal focado na operação diária (turmas, pres
 - Seleção Turma → Disciplina → Período → Nota.
 
 ### 4) Perfil do professor
-- Visualizar e atualizar dados pessoais, turnos, carga máxima e skills.
+- Implementado em `/professor/perfil` com edição de turnos, carga máxima e skills.
 
 ### 5) Comunicação básica
 - Mural simples de comunicados e alertas.

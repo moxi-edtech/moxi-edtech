@@ -154,6 +154,7 @@ export const sidebarConfig: SidebarConfig = {
     { href: "/professor/frequencias", label: "Frequências", icon: "BookOpen" },
     { href: "/professor/notas", label: "Lançar Notas", icon: "FileText" },
     { href: "/professor/fluxos", label: "Fluxos", icon: "BookOpen" },
+    { href: "/professor/perfil", label: "Perfil", icon: "User" },
   ],
   gestor: [
     { href: "/gestor/dashboard", label: "Dashboard", icon: "LayoutDashboard" },

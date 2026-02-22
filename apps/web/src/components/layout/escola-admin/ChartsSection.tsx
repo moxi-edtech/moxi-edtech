@@ -13,217 +13,205 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+import { BarChart3, TrendingUp, Wallet } from "lucide-react";
 import type { PagamentosResumo } from "./definitions";
-import { BarChart3, TrendingUp, AlertTriangle } from "lucide-react";
 
-// registra no cliente
+// ─── Chart.js registration ────────────────────────────────────────────────────
+
 ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  ArcElement,
-  Tooltip,
-  Legend
+  CategoryScale, LinearScale,
+  PointElement, LineElement,
+  BarElement, ArcElement,
+  Tooltip, Legend
 );
 
-// import dinâmico p/ evitar SSR
-const Line = dynamic(() => import("react-chartjs-2").then(m => m.Line), { ssr: false });
-const Bar = dynamic(() => import("react-chartjs-2").then(m => m.Bar), { ssr: false });
+// ─── Dynamic imports (no SSR) ─────────────────────────────────────────────────
 
-interface ChartsSectionProps {
-  meses?: string[];            // labels dos meses
-  alunosPorMes?: number[];     // dados da linha
-  pagamentos?: PagamentosResumo; // dados do gráfico de barras
+const Line = dynamic(() => import("react-chartjs-2").then((m) => m.Line), { ssr: false });
+const Bar  = dynamic(() => import("react-chartjs-2").then((m) => m.Bar),  { ssr: false });
+
+// ─── Klasse design tokens ─────────────────────────────────────────────────────
+
+const KLASSE_GREEN  = "#1F6B3B";
+const KLASSE_GOLD   = "#E3B23C";
+const SLATE_GRID    = "rgba(148, 163, 184, 0.08)";
+const SLATE_TICK    = "#94a3b8";
+const TOOLTIP_BG    = "rgba(15, 23, 42, 0.92)";
+
+// ─── Shared chart defaults ────────────────────────────────────────────────────
+
+const sharedTooltip = {
+  backgroundColor: TOOLTIP_BG,
+  titleColor:      "#f1f5f9",
+  bodyColor:       "#cbd5e1",
+  borderColor:     "#334155",
+  borderWidth:     1,
+  padding:         10,
+  cornerRadius:    8,
+};
+
+const sharedAxisX = {
+  grid:  { display: false },
+  ticks: { color: SLATE_TICK, font: { size: 11 } },
+};
+
+const sharedAxisY = {
+  beginAtZero: true,
+  grid:        { color: SLATE_GRID },
+  ticks:       { color: SLATE_TICK, font: { size: 11 } },
+};
+
+// ─── Shared sub-components ────────────────────────────────────────────────────
+
+function ChartCard({
+  icon,
+  iconBg,
+  title,
+  subtitle,
+  children,
+}: {
+  icon:     React.ReactNode;
+  iconBg:   string;
+  title:    string;
+  subtitle: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100">
+        <div className={`rounded-xl p-2 ${iconBg}`}>{icon}</div>
+        <div>
+          <h3 className="text-sm font-bold text-slate-900">{title}</h3>
+          <p className="text-xs text-slate-400">{subtitle}</p>
+        </div>
+      </div>
+      <div className="p-5">{children}</div>
+    </div>
+  );
 }
 
+function EmptyState() {
+  return (
+    <div className="flex flex-col h-full items-center justify-center gap-2 text-slate-300">
+      <BarChart3 className="h-10 w-10" />
+      <p className="text-sm font-medium text-slate-400">Sem dados disponíveis</p>
+    </div>
+  );
+}
+
+// ─── Props ────────────────────────────────────────────────────────────────────
+
+interface ChartsSectionProps {
+  meses?:        string[];
+  alunosPorMes?: number[];
+  pagamentos?:   PagamentosResumo;
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export default function ChartsSection({ meses, alunosPorMes, pagamentos }: ChartsSectionProps) {
-  const labels = useMemo(() => meses ?? [], [meses]);
+  const labels     = useMemo(() => meses        ?? [], [meses]);
   const dadosAlunos = useMemo(() => alunosPorMes ?? [], [alunosPorMes]);
-  const resumo = useMemo(() => pagamentos ?? null, [pagamentos]);
+  const resumo     = pagamentos ?? null;
 
-  const lineData = useMemo(
-    () => ({
-      labels,
-      datasets: [
-        {
-          label: "Alunos matriculados",
-          data: dadosAlunos,
-          borderWidth: 3,
-          borderColor: "#0ea5e9",
-          backgroundColor: "rgba(14, 165, 233, 0.1)",
-          tension: 0.4,
-          pointRadius: 4,
-          pointBackgroundColor: "#0ea5e9",
-          pointBorderColor: "#ffffff",
-          pointBorderWidth: 2,
-          fill: true,
-        },
-      ],
-    }),
-    [labels, dadosAlunos]
-  );
+  // ── Line chart (matrículas) ────────────────────────────────────────────────
+  const lineData = useMemo(() => ({
+    labels,
+    datasets: [{
+      label:                "Alunos matriculados",
+      data:                 dadosAlunos,
+      borderWidth:          2.5,
+      borderColor:          KLASSE_GREEN,
+      backgroundColor:      `${KLASSE_GREEN}18`,
+      tension:              0.4,
+      pointRadius:          4,
+      pointBackgroundColor: KLASSE_GREEN,
+      pointBorderColor:     "#ffffff",
+      pointBorderWidth:     2,
+      fill:                 true,
+    }],
+  }), [labels, dadosAlunos]);
 
-  const lineOptions = useMemo(
-    () => ({
-      responsive: true,
-      maintainAspectRatio: false as const,
-      plugins: {
-        legend: { 
-          display: true,
-          position: 'top' as const,
-          labels: {
-            usePointStyle: true,
-            padding: 15,
-          }
-        },
-        tooltip: { 
-          mode: "index" as const, 
-          intersect: false,
-          backgroundColor: 'rgba(15, 23, 42, 0.9)',
-          titleColor: '#f1f5f9',
-          bodyColor: '#f1f5f9',
-          borderColor: '#475569',
-          borderWidth: 1,
-        },
+  const lineOptions = useMemo(() => ({
+    responsive:          true,
+    maintainAspectRatio: false as const,
+    plugins: {
+      legend: {
+        display:  true,
+        position: "top" as const,
+        labels:   { usePointStyle: true, padding: 14, color: SLATE_TICK, font: { size: 11 } },
       },
-      scales: {
-        x: { 
-          grid: { 
-            display: false,
-            color: 'rgba(148, 163, 184, 0.1)'
-          },
-          ticks: {
-            color: '#64748b'
-          }
-        },
-        y: { 
-          beginAtZero: true,
-          grid: {
-            color: 'rgba(148, 163, 184, 0.1)'
-          },
-          ticks: {
-            color: '#64748b'
-          }
-        },
-      },
-    }),
-    []
-  );
+      tooltip: { ...sharedTooltip, mode: "index" as const, intersect: false },
+    },
+    scales: { x: sharedAxisX, y: sharedAxisY },
+  }), []);
 
+  // ── Bar chart (mensalidades) ───────────────────────────────────────────────
   const barData = useMemo(() => {
     const r = resumo ?? { pago: 0, pendente: 0, inadimplente: 0 };
     return {
       labels: ["Pago", "Pendente", "Inadimplente"],
-      datasets: [
-        {
-          label: "Mensalidades",
-          data: [r.pago, r.pendente, r.inadimplente],
-          backgroundColor: [
-            'rgba(34, 197, 94, 0.8)',
-            'rgba(249, 115, 22, 0.8)',
-            'rgba(239, 68, 68, 0.8)'
-          ],
-          borderColor: [
-            '#16a34a',
-            '#ea580c',
-            '#dc2626'
-          ],
-          borderWidth: 2,
-          borderRadius: 6,
-        },
-      ],
+      datasets: [{
+        label:           "Mensalidades",
+        data:            [r.pago, r.pendente, r.inadimplente],
+        // Klasse-aligned palette: green / gold / rose
+        backgroundColor: [`${KLASSE_GREEN}cc`, `${KLASSE_GOLD}cc`, "rgba(239,68,68,0.75)"],
+        borderColor:     [KLASSE_GREEN,          KLASSE_GOLD,          "#dc2626"],
+        borderWidth:     1.5,
+        borderRadius:    6,
+      }],
     };
   }, [resumo]);
 
-  const barOptions = useMemo(
-    () => ({
-      responsive: true,
-      maintainAspectRatio: false as const,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: 'rgba(15, 23, 42, 0.9)',
-          titleColor: '#f1f5f9',
-          bodyColor: '#f1f5f9',
-          borderColor: '#475569',
-          borderWidth: 1,
+  const barOptions = useMemo(() => ({
+    responsive:          true,
+    maintainAspectRatio: false as const,
+    plugins: {
+      legend:  { display: false },
+      tooltip: sharedTooltip,
+    },
+    scales: {
+      x: sharedAxisX,
+      y: {
+        ...sharedAxisY,
+        ticks: {
+          ...sharedAxisY.ticks,
+          // Let Chart.js auto-calculate stepSize — avoids broken scale on large values
+          precision: 0,
         },
       },
-      scales: {
-        x: { 
-          grid: { 
-            display: false,
-          },
-          ticks: {
-            color: '#64748b'
-          }
-        },
-        y: { 
-          beginAtZero: true, 
-          ticks: { 
-            stepSize: 20,
-            color: '#64748b'
-          },
-          grid: {
-            color: 'rgba(148, 163, 184, 0.1)'
-          },
-        },
-      },
-    }),
-    []
-  );
+    },
+  }), []);
+
+  const hasLineData = labels.length > 0 && dadosAlunos.length > 0;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-sky-50 p-2 text-sky-600">
-              <TrendingUp className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-slate-900">Matrículas por Mês</h3>
-              <p className="text-xs text-slate-500">Evolução do número de matrículas</p>
-            </div>
-          </div>
-        </div>
-        <div className="h-64">
-          {labels.length && dadosAlunos.length ? (
-            <Line data={lineData} options={lineOptions} />
-          ) : (
-            <div className="flex flex-col h-full items-center justify-center text-slate-500">
-              <BarChart3 className="h-12 w-12 text-slate-300 mb-2" />
-              <div className="text-sm">Sem dados disponíveis</div>
-            </div>
-          )}
-        </div>
-      </div>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-amber-50 p-2 text-amber-700">
-              <AlertTriangle className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-slate-900">Status das Mensalidades</h3>
-              <p className="text-xs text-slate-500">Distribuição atual das situações</p>
-            </div>
-          </div>
+      {/* Matrículas por mês */}
+      <ChartCard
+        iconBg="bg-[#1F6B3B]/10 text-[#1F6B3B]"
+        icon={<TrendingUp className="h-4 w-4" />}
+        title="Matrículas por Mês"
+        subtitle="Evolução do ano letivo"
+      >
+        <div className="h-56">
+          {hasLineData ? <Line data={lineData} options={lineOptions} /> : <EmptyState />}
         </div>
-        <div className="h-64">
-          {resumo ? (
-            <Bar data={barData} options={barOptions} />
-          ) : (
-            <div className="flex flex-col h-full items-center justify-center text-slate-500">
-              <BarChart3 className="h-12 w-12 text-slate-300 mb-2" />
-              <div className="text-sm">Sem dados disponíveis</div>
-            </div>
-          )}
+      </ChartCard>
+
+      {/* Status das mensalidades */}
+      <ChartCard
+        iconBg="bg-[#E3B23C]/10 text-[#E3B23C]"
+        icon={<Wallet className="h-4 w-4" />}
+        title="Status das Mensalidades"
+        subtitle="Distribuição atual"
+      >
+        <div className="h-56">
+          {resumo ? <Bar data={barData} options={barOptions} /> : <EmptyState />}
         </div>
-      </div>
+      </ChartCard>
+
     </div>
   );
 }

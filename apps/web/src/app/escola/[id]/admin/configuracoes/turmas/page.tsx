@@ -799,16 +799,28 @@ export default function TurmasConfiguracoesPage() {
           <div className="grid grid-cols-1 gap-4">
             {cursos.map((curso) => {
               const courseCurriculos = curriculos.filter((c) => c.curso_id === curso.id);
+              const latestByClass = new Map<string, CurriculoStatus>();
+              for (const row of courseCurriculos) {
+                const key = row.classe_id ?? "default";
+                const current = latestByClass.get(key);
+                if (!current || row.version > current.version) {
+                  latestByClass.set(key, row);
+                }
+              }
+              const latestList = Array.from(latestByClass.values());
               const status =
-                courseCurriculos.length === 0
+                latestList.length === 0
                   ? "none"
-                  : courseCurriculos.every((row) => row.status === "published")
+                  : latestList.every((row) => row.status === "published")
                     ? "published"
-                    : courseCurriculos.some((row) => row.status === "draft")
+                    : latestList.some((row) => row.status === "draft")
                       ? "draft"
-                      : courseCurriculos[0]?.status ?? "none";
+                      : latestList[0]?.status ?? "none";
               const isPublished = status === "published";
               const classesDoCurso = classes.filter((c) => c.curso_id === curso.id).length;
+              const latestCurriculo = courseCurriculos
+                .slice()
+                .sort((a, b) => (b.version ?? 0) - (a.version ?? 0))[0];
 
               return (
                 <div
@@ -837,7 +849,7 @@ export default function TurmasConfiguracoesPage() {
                             {isPublished ? "Currículo Publicado" : "Rascunho"}
                           </span>
                           <span>•</span>
-                          <span>v.{curriculo?.version ?? 1}</span>
+                          <span>v.{latestCurriculo?.version ?? 1}</span>
                           <span>•</span>
                           <span>{classesDoCurso} classes base</span>
                         </div>

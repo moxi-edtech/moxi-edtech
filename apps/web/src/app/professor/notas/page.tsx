@@ -83,6 +83,9 @@ export default function ProfessorNotasPage() {
           detalhado: "1",
           trimestre: String(trimestreSelecionado),
         })
+        if (turmaDisciplinaId) {
+          params.set("turmaDisciplinaId", turmaDisciplinaId)
+        }
         const res = await fetch(`/api/professor/pauta?${params.toString()}`, { cache: "no-store" })
         const json = await res.json().catch(() => null)
         if (!active) return
@@ -287,8 +290,8 @@ export default function ProfessorNotasPage() {
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-          <aside className="space-y-4">
-            <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+          <aside className="space-y-4 relative z-10 overflow-visible">
+            <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3 overflow-visible">
               <div className="text-sm font-semibold text-slate-900">Turma e disciplina</div>
               <select
                 value={turmaId}
@@ -299,7 +302,7 @@ export default function ProfessorNotasPage() {
                   setDisciplinaNome(null)
                   setPauta([])
                 }}
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
                 required
               >
                 <option value="">Turma</option>
@@ -318,7 +321,7 @@ export default function ProfessorNotasPage() {
                   setTurmaDisciplinaId(atrib?.turma_disciplina_id ?? null)
                   setDisciplinaNome(atrib?.disciplina.nome ?? null)
                 }}
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
                 required
                 disabled={!turmaId}
               >
@@ -334,7 +337,7 @@ export default function ProfessorNotasPage() {
               <select
                 value={trimestreSelecionado}
                 onChange={(event) => setTrimestreSelecionado(Number(event.target.value) as 1 | 2 | 3)}
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
                 disabled={!turmaId || periodosAtivos.length === 0}
               >
                 {periodosAtivos.length === 0 && <option value={trimestreSelecionado}>Sem períodos</option>}
