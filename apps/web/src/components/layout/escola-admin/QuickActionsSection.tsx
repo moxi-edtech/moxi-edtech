@@ -98,7 +98,7 @@ export default function QuickActionsSection({
     {
       label:    "Lançar Nota",
       icon:     FileText,
-      href:     `/escola/${escolaId}/admin/avaliacoes`,
+      href:     `/escola/${escolaId}/admin/notas`,
       disabled: !canLaunchNota,
       reason:   !avaliacaoFrequenciaOk
         ? "Configure avaliação e frequência primeiro."
