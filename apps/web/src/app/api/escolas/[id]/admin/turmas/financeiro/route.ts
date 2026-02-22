@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
-import { canManageEscolaResources } from "../../permissions";
+import { canManageEscolaResources } from "../../../permissions";
 
 export const dynamic = "force-dynamic";
 
