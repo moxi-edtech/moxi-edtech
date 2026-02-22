@@ -19,6 +19,8 @@ export interface TurmaItem {
   ocupacao_atual?: number;
   classe_nome?: string;
   curso_nome?: string;
+  professor_nome?: string | null;
+  status_curriculo?: string | null;
 
   // Properties from TurmaForm
   metadata?: {

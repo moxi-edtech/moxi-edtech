@@ -103,7 +103,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       ],
     });
 
-    const normalizedTurno = turno && turno !== 'todos' ? turno.toUpperCase() : null;
+    const normalizedTurno = turno && turno !== 'todos' ? normalizeTurno(turno) : null;
     if (normalizedTurno) query = query.eq('turno', normalizedTurno);
     if (cursoId) query = query.eq('curso_id', cursoId);
     if (status && status !== 'todos') query = query.eq('status_validacao', status);
