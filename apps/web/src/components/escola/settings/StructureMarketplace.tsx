@@ -58,8 +58,8 @@ export type CourseDetails = {
     status_completude?: string | null;
     curriculo_status?: string | null;
     matrix_ids: string[];
-    class_ids?: string[];
-    matrix_by_class?: Record<string, string[]>;
+    class_ids: string[];
+    matrix_by_class: Record<string, string[]>;
   }[];
   turmas: {
     id: string;

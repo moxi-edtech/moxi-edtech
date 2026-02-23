@@ -9,13 +9,7 @@ export const fetchCache = "force-no-store"
 
 const TIPOS_AVALIACAO = ["MAC", "NPP", "NPT"] as const
 
-type PendenciaTipo = {
-  tipo: string
-  avaliacao_id: string | null
-  notas_lancadas: number
-  pendentes: number
-  status: "ok" | "pendente" | "sem_avaliacao" | "sem_alunos"
-}
+import { PendenciaItem, PendenciaTipo } from "~types/pendencia"
 
 export async function GET(req: Request, context: { params: Promise<{ id: string; profileId: string }> }) {
   try {

@@ -52,7 +52,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       adminNome: adminNome || undefined,
       plano: escolaPlano || undefined,
     })
-    const sent = await sendMail({ to: adminEmail, subject, html, text })
+    // TODO: buildOnboardingEmail html/text are incorrectly inferred as Promise<string>. Hotfix with `as any`.
+    const sent = await sendMail({ to: adminEmail, subject, html: html as any, text: text as any })
     const mensagem = sent.ok
       ? '✉️ E-mail reenviado com instruções.'
       : '⚠️ Falha no envio do e-mail.'

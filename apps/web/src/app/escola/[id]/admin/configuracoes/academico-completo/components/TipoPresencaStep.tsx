@@ -239,7 +239,7 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
                     </div>
                     <div>
                       <p className="text-sm font-bold text-slate-900">Modelo de Avaliação</p>
-                      <p className="text-xs text-slate-500">{selectedModelo?.nome ?? modeloAvaliacao || 'Sem modelo'}</p>
+                      <p className="text-xs text-slate-500">{selectedModelo?.nome ?? (modeloAvaliacao || 'Sem modelo')}</p>
                     </div>
                   </div>
                   <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">

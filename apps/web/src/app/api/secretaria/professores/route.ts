@@ -99,6 +99,7 @@ export async function GET(req: Request) {
       }>
     >()
     const cargaRealByProfile = new Map<string, number>()
+    const profileByTeacherId = new Map<string, string>()
 
     if (profileIds.length > 0) {
       const { data: teachersRows } = await rlsClient
@@ -130,7 +131,6 @@ export async function GET(req: Request) {
       const assignmentTeacherIds = Array.from(
         new Set([...Array.from(teacherByProfile.values()), ...Array.from(legacyProfessorByProfile.values())])
       ).filter(Boolean) as string[]
-      const profileByTeacherId = new Map<string, string>()
       for (const [profileId, teacherId] of teacherByProfile.entries()) {
         if (teacherId) profileByTeacherId.set(teacherId, profileId)
       }

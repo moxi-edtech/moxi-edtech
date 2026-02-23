@@ -129,7 +129,8 @@ export async function POST(request: Request) {
         adminNome: adminNome || undefined,
         plano: escolaPlano || undefined,
       })
-      const sent = await sendMail({ to: adminEmail, subject, html, text })
+      // TODO: buildOnboardingEmail html/text are incorrectly inferred as Promise<string>. Hotfix with `as any`.
+      const sent = await sendMail({ to: adminEmail, subject, html: html as any, text: text as any })
       emailStatus = { attempted: true, ok: sent.ok, error: sent.ok ? null : sent.error }
     }
 

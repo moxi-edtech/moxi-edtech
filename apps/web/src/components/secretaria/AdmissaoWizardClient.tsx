@@ -283,7 +283,7 @@ function Step1Identificacao(props: {
     if (!isUuid(escolaId)) return false;
     if (!canEditDraft) return false;
     // only autosave if any field has content
-    const anyValue = Object.values(form).some((v) => (v ?? "").trim() !== "");
+    const anyValue = Object.values(form).some((v) => (typeof v === 'string' && v.trim() !== "") || (typeof v === 'boolean' && v !== false));
     return anyValue;
   }, [hydrated, escolaId, form, canEditDraft]);
 

@@ -40,6 +40,7 @@ export type ButtonTone =
   | "emerald"
   | "gray"
   | "green"
+  | "gold"
   | "navy"
   | "neutral"
   | "ok"
@@ -64,6 +65,7 @@ const toneClasses: Record<ButtonTone, string> = {
   emerald: "bg-emerald-600 text-white hover:bg-emerald-700",
   gray: "bg-slate-100 text-slate-700 hover:bg-slate-200",
   green: "bg-emerald-600 text-white hover:bg-emerald-700",
+  gold: "bg-klasse-gold text-white hover:bg-[#D4A32C]", // Using the color from TipoPresencaStep.tsx
   navy: "bg-slate-900 text-white hover:bg-slate-800",
   neutral: "bg-slate-200 text-slate-800 hover:bg-slate-300",
   ok: "bg-emerald-600 text-white hover:bg-emerald-700",
@@ -80,6 +82,7 @@ const outlineToneClasses: Record<ButtonTone, string> = {
   emerald: "border-emerald-500 text-emerald-600 hover:bg-emerald-50",
   gray: "border-slate-300 text-slate-700 hover:bg-slate-50",
   green: "border-emerald-500 text-emerald-600 hover:bg-emerald-50",
+  gold: "border-klasse-gold text-klasse-gold hover:bg-klasse-gold/10", // Using the color from TipoPresencaStep.tsx
   navy: "border-slate-700 text-slate-700 hover:bg-slate-50",
   neutral: "border-slate-300 text-slate-700 hover:bg-slate-50",
   ok: "border-emerald-500 text-emerald-600 hover:bg-emerald-50",
