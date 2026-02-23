@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { randomUUID } from 'crypto';
 import { supabaseServerTyped } from '@/lib/supabaseServer';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
 import type { Database } from '~types/supabase';
+import { buildPautaGeralPayload, renderPautaGeralStream } from '@/lib/pedagogico/pauta-geral';
 import { enqueueOutboxEvent, markOutboxEventFailed, markOutboxEventProcessed } from '@/lib/outbox';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+export const runtime = 'nodejs';
 
 const Body = z.object({
   turma_id: z.string().uuid(),
@@ -202,7 +206,100 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ ok: false, error: 'Erro ao fechar o período.' }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true }, { status: 200 });
+    let pdfGenerated = false;
+    let pdfError: string | null = null;
+
+    try {
+      const { data: existing } = await supabase
+        .from('pautas_oficiais')
+        .select('id, status')
+        .eq('escola_id', effectiveEscolaId)
+        .eq('turma_id', turma_id)
+        .eq('periodo_letivo_id', periodo_letivo_id)
+        .eq('tipo', 'trimestral')
+        .maybeSingle();
+
+      if (!existing || existing.status === 'FAILED') {
+        const { data: periodo } = await supabase
+          .from('periodos_letivos')
+          .select('numero')
+          .eq('escola_id', effectiveEscolaId)
+          .eq('id', periodo_letivo_id)
+          .maybeSingle();
+
+        const periodoNumero = periodo?.numero ?? null;
+        if (!periodoNumero) {
+          throw new Error('Período letivo inválido para pauta oficial.');
+        }
+
+        const { data: pautaRow } = await supabase
+          .from('pautas_oficiais')
+          .upsert({
+            escola_id: effectiveEscolaId,
+            turma_id: turma_id,
+            periodo_letivo_id,
+            pdf_path: '',
+            hash: randomUUID(),
+            tipo: 'trimestral',
+            status: 'PROCESSING',
+            generated_at: new Date().toISOString(),
+          }, { onConflict: 'escola_id,turma_id,periodo_letivo_id,tipo' })
+          .select('id')
+          .maybeSingle();
+
+        if (!pautaRow?.id) {
+          throw new Error('Falha ao iniciar geração da pauta oficial.');
+        }
+
+        const payload = await buildPautaGeralPayload({
+          supabase,
+          escolaId: effectiveEscolaId,
+          turmaId: turma_id,
+          periodoNumero,
+        });
+
+        const pdfStream = await renderPautaGeralStream(payload);
+        const pdfPath = `${effectiveEscolaId}/${turma_id}/${periodo_letivo_id}/pauta_geral.pdf`;
+        const adminUrl = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').trim();
+        const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim();
+        const admin = adminUrl && serviceKey ? createAdminClient<Database>(adminUrl, serviceKey) : null;
+        const storageClient = (admin ?? supabase) as any;
+
+        const { error: uploadError } = await storageClient.storage
+          .from('pautas_oficiais_fechadas')
+          .upload(pdfPath, pdfStream, {
+            upsert: true,
+            contentType: 'application/pdf',
+          });
+
+        if (uploadError) {
+          throw new Error(uploadError.message);
+        }
+
+        const { error: updateError } = await supabase
+          .from('pautas_oficiais')
+          .update({ status: 'SUCCESS', pdf_path: pdfPath, error_message: null })
+          .eq('id', pautaRow.id);
+
+        if (updateError) {
+          throw new Error(updateError.message);
+        }
+
+        pdfGenerated = true;
+      }
+    } catch (err) {
+      pdfError = err instanceof Error ? err.message : String(err);
+      console.error('Erro ao gerar pauta oficial:', pdfError);
+      await supabase
+        .from('pautas_oficiais')
+        .update({ status: 'FAILED', error_message: pdfError })
+        .eq('escola_id', effectiveEscolaId)
+        .eq('turma_id', turma_id)
+        .eq('periodo_letivo_id', periodo_letivo_id)
+        .eq('tipo', 'trimestral');
+    }
+
+    return NextResponse.json({ ok: true, pdf_generated: pdfGenerated, pdf_error: pdfError }, { status: 200 });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     console.error('Error in fechar-periodo frequencias API:', message);

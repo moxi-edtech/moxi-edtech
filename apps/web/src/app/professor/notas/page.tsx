@@ -12,7 +12,7 @@ type Atrib = {
   id: string
   turma_disciplina_id?: string | null
   curso_matriz_id?: string | null
-  turma: { id: string; nome: string | null }
+  turma: { id: string; nome: string | null; status_fecho?: string | null }
   disciplina: { id: string | null; nome: string | null }
 }
 
@@ -38,6 +38,7 @@ export default function ProfessorNotasPage() {
   const [pauta, setPauta] = useState<StudentGradeRow[]>([])
   const [loading, setLoading] = useState(false)
   const [periodosAtivos, setPeriodosAtivos] = useState<Array<1 | 2 | 3>>([])
+  const [turmaStatusFecho, setTurmaStatusFecho] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
   const [trimestreSelecionado, setTrimestreSelecionado] = useState<1 | 2 | 3>(1)
 
@@ -66,6 +67,16 @@ export default function ProfessorNotasPage() {
       return acc
     }, new Map<string, Atrib[]>())
   }, [atribs])
+
+  useEffect(() => {
+    if (!turmaId) {
+      setTurmaStatusFecho(null)
+      return
+    }
+
+    const item = atribs.find((a) => a.turma.id === turmaId)
+    setTurmaStatusFecho(item?.turma?.status_fecho ?? null)
+  }, [atribs, turmaId])
 
   useEffect(() => {
     if (!turmaId || !disciplinaId) {
@@ -149,6 +160,9 @@ export default function ProfessorNotasPage() {
 
   const handleSaveBatch = async (rows: StudentGradeRow[]) => {
     if (!turmaId || !disciplinaId) return
+    if (turmaStatusFecho && turmaStatusFecho !== "ABERTO") {
+      throw new Error("Turma fechada para lançamento de notas")
+    }
     const trimestre = trimestreSelecionado
     const payloads = [
       { tipo: "MAC", campo: "mac1" as const },
@@ -278,6 +292,7 @@ export default function ProfessorNotasPage() {
   }
 
   const data = useMemo(() => pauta, [pauta])
+  const turmaFechada = turmaStatusFecho && turmaStatusFecho !== "ABERTO"
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -353,7 +368,7 @@ export default function ProfessorNotasPage() {
               <button
                 type="button"
                 onClick={handleExportMiniPauta}
-                disabled={!turmaId || !disciplinaId || pauta.length === 0 || exporting}
+                disabled={!turmaId || !disciplinaId || pauta.length === 0 || exporting || turmaFechada}
                 className="w-full rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
               >
                 {exporting ? "Gerando PDF..." : "Exportar mini‑pauta"}
@@ -367,6 +382,10 @@ export default function ProfessorNotasPage() {
             ) : data.length === 0 ? (
               <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
                 Selecione a turma e disciplina para carregar os alunos.
+              </div>
+            ) : turmaFechada ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+                Lançamento de notas bloqueado: turma fechada.
               </div>
             ) : (
               <GradeEntryGrid

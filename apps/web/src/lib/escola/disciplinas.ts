@@ -4,12 +4,25 @@ import type { Database } from "~types/supabase";
 
 type Client = SupabaseClient<Database>;
 
+type AuthCacheEntry = { allowed: boolean; reason?: string; expiresAt: number };
+const authCache = new Map<string, AuthCacheEntry>();
+const AUTH_CACHE_TTL_MS = 5 * 60 * 1000;
+
+const authCacheKey = (escolaId: string, userId: string, requiredPermissions: string[]) =>
+  `${escolaId}:${userId}:${requiredPermissions.slice().sort().join("|")}`;
+
 export async function authorizeEscolaAction(
   s: Client,
   escolaId: string,
   userId: string,
   requiredPermissions: string[]
 ): Promise<{ allowed: boolean; reason?: string }> {
+  const cacheKey = authCacheKey(escolaId, userId, requiredPermissions);
+  const cached = authCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return { allowed: cached.allowed, reason: cached.reason };
+  }
+
   let allowed = false;
 
   try {
@@ -71,7 +84,9 @@ export async function authorizeEscolaAction(
     }
   } catch {}
 
-  return allowed ? { allowed: true } : { allowed: false, reason: "Sem permissão" };
+  const result = allowed ? { allowed: true } : { allowed: false, reason: "Sem permissão" };
+  authCache.set(cacheKey, { ...result, expiresAt: Date.now() + AUTH_CACHE_TTL_MS });
+  return result;
 }
 
 export function authorizeDisciplinaManage(

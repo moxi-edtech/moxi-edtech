@@ -155,12 +155,15 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       const mismatch: Array<{ disciplina_id: string; disciplina_nome?: string | null }> = []
 
       for (const row of cargas || []) {
-        const disciplinaId = row.curso_matriz?.disciplina_id ?? null
+        const cursoMatriz = Array.isArray(row.curso_matriz)
+          ? row.curso_matriz[0]
+          : row.curso_matriz
+        const disciplinaId = cursoMatriz?.disciplina_id ?? null
         if (!disciplinaId) continue
-        const entra = row.entra_no_horario ?? row.curso_matriz?.entra_no_horario ?? true
+        const entra = row.entra_no_horario ?? cursoMatriz?.entra_no_horario ?? true
         if (!entra) continue
-        const expected = row.carga_horaria_semanal ?? row.curso_matriz?.carga_horaria_semanal ?? 0
-        const nome = row.curso_matriz?.disciplina?.nome ?? null
+        const expected = row.carga_horaria_semanal ?? cursoMatriz?.carga_horaria_semanal ?? 0
+        const nome = cursoMatriz?.disciplina?.nome ?? null
 
         if (expected <= 0) {
           missing.push({ disciplina_id: disciplinaId, disciplina_nome: nome })

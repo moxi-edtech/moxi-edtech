@@ -28,13 +28,15 @@ type GradeEntryGridProps = {
   debounceMs?: number
   onSave?: (rows: StudentGradeRow[]) => Promise<void> | void
   highlightId?: string | null
+  onDataChange?: (rows: StudentGradeRow[]) => void
 }
 
 const INPUT_COLUMNS = ["mac1", "npp1", "npt1"] as const
 
 const clampNota = (value: string) => {
-  if (value.trim() === "") return null
-  const parsed = Number(value)
+  const normalized = value.replace(",", ".").trim()
+  if (normalized === "") return null
+  const parsed = Number(normalized)
   if (!Number.isFinite(parsed)) return null
   return Math.min(20, Math.max(0, parsed))
 }
@@ -57,6 +59,7 @@ export function GradeEntryGrid({
   debounceMs = 800,
   onSave,
   highlightId,
+  onDataChange,
 }: GradeEntryGridProps) {
   const [data, setData] = useState<StudentGradeRow[]>(initialData)
   const [isSaving, setIsSaving] = useState(false)
@@ -67,6 +70,16 @@ export function GradeEntryGrid({
   useEffect(() => {
     setData(initialData)
   }, [initialData])
+
+  const onDataChangeRef = useRef(onDataChange)
+
+  useEffect(() => {
+    onDataChangeRef.current = onDataChange
+  }, [onDataChange])
+
+  useEffect(() => {
+    onDataChangeRef.current?.(data)
+  }, [data])
 
   const flushSave = useCallback(async () => {
     if (!onSave || pendingIdsRef.current.size === 0) return
@@ -318,22 +331,55 @@ const GradeInput = ({
   inputRef: (el: HTMLInputElement | null) => void
   onNavigate: (deltaRow: number, deltaCol: number) => void
 }) => {
+  const [draft, setDraft] = useState(value === null ? "" : String(value))
+  const isFocusedRef = useRef(false)
+
+  useEffect(() => {
+    if (isFocusedRef.current) return
+    if (value === null && draft !== "") return
+    setDraft(value === null ? "" : String(value))
+  }, [value, draft])
+
+  const commitValue = (rawValue?: string) => {
+    onChange(rawValue ?? draft)
+  }
+
   return (
     <input
       ref={inputRef}
-      type="number"
-      min="0"
-      max="20"
-      value={value ?? ""}
-      onChange={(e) => onChange(e.target.value)}
+      type="text"
+      inputMode="decimal"
+      value={draft}
+      onFocus={() => {
+        isFocusedRef.current = true
+      }}
+      onBlur={(e) => {
+        isFocusedRef.current = false
+        const raw = e.currentTarget.value
+        setDraft(raw)
+        commitValue(raw)
+      }}
+      onChange={(e) => setDraft(e.target.value)}
       onKeyDown={(e) => {
         if (["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Enter"].includes(e.key)) {
           e.preventDefault()
         }
-        if (e.key === "ArrowDown" || e.key === "Enter") onNavigate(1, 0)
-        if (e.key === "ArrowUp") onNavigate(-1, 0)
-        if (e.key === "ArrowLeft") onNavigate(0, -1)
-        if (e.key === "ArrowRight") onNavigate(0, 1)
+        if (e.key === "ArrowDown" || e.key === "Enter") {
+          commitValue((e.currentTarget as HTMLInputElement).value)
+          onNavigate(1, 0)
+        }
+        if (e.key === "ArrowUp") {
+          commitValue((e.currentTarget as HTMLInputElement).value)
+          onNavigate(-1, 0)
+        }
+        if (e.key === "ArrowLeft") {
+          commitValue((e.currentTarget as HTMLInputElement).value)
+          onNavigate(0, -1)
+        }
+        if (e.key === "ArrowRight") {
+          commitValue((e.currentTarget as HTMLInputElement).value)
+          onNavigate(0, 1)
+        }
       }}
       className={`w-full h-8 text-center rounded border border-slate-200 font-bold outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all ${
         value !== null && value < 10 ? "text-rose-600 bg-rose-50" : "text-slate-900"

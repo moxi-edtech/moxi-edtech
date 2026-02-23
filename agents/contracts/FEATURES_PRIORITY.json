@@ -1,215 +1,526 @@
 {
-  "version": "1.1-PILOT-ANGOLA",
+  "version": "1.2-PILOT-ANGOLA",
+  "last_updated": "2026-02-22",
   "strategy": "CASH-FIRST & ANTI-CHURN + FULL ACADEMIC CYCLE (MINIMAL REAL)",
-  "goal": "Cobrir o ciclo acadêmico inteiro com o mínimo de módulos que realmente rodam uma escola (sem ERP pesado).",
-  "definition_of_done": {
-    "secretaria": [
-      "Cadastrar/Matricular aluno",
-      "Mover aluno (transferir, reativar, encerrar)",
-      "Emitir documentos oficiais",
-      "Operar balcão e fechar caixa",
-      "Resolver pendências (docs, financeiro, histórico)"
-    ],
-    "academico": [
-      "Definir ano letivo + períodos (trimestres)",
-      "Currículo published por ano letivo",
-      "Criar turmas e disciplinas aplicadas",
-      "Lançar frequência e notas",
-      "Gerar boletim e pautas",
-      "Fechar trimestre e ano com trilha auditável"
-    ],
-    "financeiro": [
-      "Gerar mensalidades idempotente",
-      "Registrar pagamentos e estornos",
-      "Conciliar extrato",
-      "Fecho de caixa cego",
-      "Relatórios básicos para decisão"
-    ],
-    "admin": [
-      "Setup health dashboard",
-      "Gestão de staff (kill switch)",
-      "Branding + documentos",
-      "Governança e auditoria"
+  "goal": "Cobrir o ciclo académico inteiro com o mínimo de módulos que realmente rodam uma escola angolana. Sem ERP pesado. Sem placeholder.",
+
+  "how_to_read_this_file": {
+    "priority_levels": {
+      "P0": "BLOCKER — sistema não pode entrar em piloto sem isto. Zero tolerância.",
+      "P1": "CORE OPERACIONAL — sem isto a escola não funciona no dia-a-dia.",
+      "P1.5": "OPERACIONAL AVANÇADO — necessário para operação sem supervisão constante.",
+      "P2": "ROBUSTEZ — melhora a operação, mas não bloqueia o piloto.",
+      "P2.5": "CICLO COMPLETO — cobre professores e alunos.",
+      "P3": "FUTURO — não entra no piloto."
+    },
+    "done_criteria": "Cada item tem critérios de done explícitos. 'Parece funcionar' não conta.",
+    "promotion_rules": "Um item pode ser promovido de P1 para P0 se: (a) bloquear outro item P0, ou (b) causar perda de dados em produção sem ele."
+  },
+
+  "cross_cutting_invariants": [
+    "Sem evidência executada (SQL/HTTP) = FAIL/WARN em qualquer verificação.",
+    "Performance > feature nova. Nenhuma feature nova entra com query N+1 conhecida.",
+    "Nada de placeholders em notas. Valor nulo é nulo, não zero.",
+    "Currículo por ano tem de ser versionado e auditável.",
+    "SSOT de frequência é único: tabela `frequencias`.",
+    "Financeiro: cada transação tem comprovante ou referência bancária.",
+    "Financeiro: saldo de caixa fecha diariamente (entradas - saídas = diferença física declarada).",
+    "Financeiro: dados imutáveis após conciliação (só estornos auditados, nunca DELETE).",
+    "UX: rede pode cair 30s. Acções críticas precisam de idempotência + outbox.",
+    "Relatórios rodam para qualquer período histórico, não só 'este mês'.",
+    "Service Role banida de endpoints humanos. Sem excepção."
+  ],
+
+  "invariants_angola": [
+    "MOEDA ÚNICA: Kwanza (Kz) em 100% do sistema. Sem euro, sem dólar.",
+    "IDENTIDADE: validação estrita BI (com/sem máscara) e NIF quando aplicável.",
+    "CULTURA DO PAPEL: todo digital tem PDF/impresso impecável e com timbre.",
+    "ANTI-FRAUDE: Fecho de Caixa Cego é obrigatório e inegociável.",
+    "PERFORMANCE: Portal do Aluno < 3s em 3G instável (Unitel).",
+    "UNITEL PROOF: retry seguro + idempotência + UX que não quebra em rede lenta."
+  ],
+
+  "shared_p0_foundation": {
+    "description": "Estes itens são P0 para TODOS os portais. Não são repetidos por portal para evitar ambiguidade. Se não está aqui, não é P0 partilhado.",
+    "items": [
+      {
+        "id": "SHARED-P0.1",
+        "name": "TENANT HARD ISOLATION",
+        "description": "escola_id NOT NULL + índices compostos começando por escola_id + zero cross-tenant em TODA query/RPC.",
+        "done_when": [
+          "SELECT em information_schema.columns mostra is_nullable='NO' para escola_id em todas as tabelas core.",
+          "Nenhuma query de endpoint humano sem filtro por escola_id.",
+          "Teste HTTP: utilizador de escola A não consegue ler dados de escola B (403)."
+        ],
+        "blocks": ["todos os portais"]
+      },
+      {
+        "id": "SHARED-P0.2",
+        "name": "RLS REAL POR ROLE",
+        "description": "Policies separadas e testadas para Secretaria (RW), Aluno (R próprio), Professor (R turmas atribuídas), Admin (ALL).",
+        "done_when": [
+          "pg_policies mostra pelo menos 1 policy por tabela crítica.",
+          "Teste HTTP com cada role confirma isolamento (403 onde esperado).",
+          "Professor não lê alunos de outra escola.",
+          "Aluno não lê dados de outro aluno."
+        ],
+        "blocks": ["todos os portais"]
+      },
+      {
+        "id": "SHARED-P0.3",
+        "name": "SERVICE ROLE BANIDA DE ENDPOINTS HUMANOS",
+        "description": "SUPABASE_SERVICE_ROLE_KEY só existe em jobs/cron/workers/provisioning.",
+        "done_when": [
+          "rg em apps/web/src/app/api retorna zero ocorrências de service_role fora de jobs/workers/cron/inngest.",
+          "Todos os endpoints humanos usam cliente autenticado com RLS activo."
+        ],
+        "blocks": ["todos os portais"]
+      },
+      {
+        "id": "SHARED-P0.4",
+        "name": "AUDIT TRAIL IMUTÁVEL",
+        "description": "Log obrigatório de Quem/Quando/De onde/O quê para toda escrita crítica.",
+        "done_when": [
+          "Tabela audit_log existe com escola_id, user_id, action, table_name, row_id, old_value, new_value, created_at.",
+          "Trigger ou middleware regista escritas em: matriculas, notas, pagamentos, frequencias, fecho_caixa.",
+          "Nenhuma linha de audit_log pode ser deletada (RLS sem DELETE para qualquer role)."
+        ],
+        "blocks": ["portal_secretaria", "portal_admin"]
+      }
     ]
   },
+
   "priorities_by_portal": {
+
     "portal_secretaria": {
+      "note": "P0 de segurança/tenant está em shared_p0_foundation. Não repetir aqui.",
+
       "P0": {
-        "description": "INFRA DE GUERRA: Segurança máxima, zero perda de dados, balcão rápido.",
+        "description": "OPERAÇÃO DE BALCÃO — o que a secretaria precisa para não parar.",
         "items": [
-          "TENANT HARD ISOLATION: escola_id NOT NULL + indexes + anti-cross-tenant em TODA query/RPC do portal.",
-          "RLS DE VERDADE: Policies separadas para Secretaria (RW), Aluno (R próprio), Professor (R), Admin (ALL).",
-          "SEARCH GLOBAL OTIMIZADO (Ctrl+K): Nome/BI (com/sem máscara)/Telefone/Processo com ranking + tenant filter.",
-          "AUDIT TRAIL IMUTÁVEL: Log obrigatório de 'Quem/Quando/De onde/O quê' para toda escrita crítica.",
-          "VALIDAÇÕES DURAS PRÉ-AÇÃO: pagar/estornar/matricular/emitir doc nunca pode gerar duplicidade nem estado inválido.",
-          "SERVICE ROLE BANIDA de endpoints humanos (somente jobs/cron/workers)."
+          {
+            "id": "SEC-P0.1",
+            "name": "SEARCH GLOBAL OTIMIZADO (Ctrl+K)",
+            "description": "Nome / BI (com ou sem máscara) / Telefone / Nº de processo com ranking + tenant filter.",
+            "done_when": [
+              "p95 da busca ≤ 300ms medido com server timing.",
+              "Busca por BI sem máscara encontra aluno com BI mascarado (e vice-versa).",
+              "Zero resultados de outra escola retornados."
+            ]
+          },
+          {
+            "id": "SEC-P0.2",
+            "name": "VALIDAÇÕES DURAS PRÉ-ACÇÃO",
+            "description": "Pagar / estornar / matricular / emitir doc nunca gera duplicidade nem estado inválido.",
+            "done_when": [
+              "Tentar pagar mensalidade já paga retorna erro com mensagem clara (não cria segundo pagamento).",
+              "Tentar matricular aluno já matriculado na turma retorna 409.",
+              "Tentar emitir certificado sem notas completas retorna erro descritivo."
+            ]
+          }
         ]
       },
+
       "P1": {
-        "description": "OPERAÇÃO DIÁRIA: o que faz a escola andar.",
+        "description": "OPERAÇÃO DIÁRIA — o que faz a escola andar.",
         "items": [
-          "DOCUMENTOS OFICIAIS: Declarações/Certificados com Timbre + Assinatura + QR + numeração sequencial por escola.",
-          "MAPA DE PENDÊNCIAS por aluno: Docs em falta, Dívidas, Bloqueios, Histórico incompleto, pendência de matrícula.",
-          "MATRÍCULAS EM LOTE: Transferir/Reativar/Encerrar/Desistência por turma inteira com auditoria.",
-          "FILA DE ATENDIMENTO: registrar atendimento (motivo, resolução, tempo) para reduzir suporte e provar valor."
+          {
+            "id": "SEC-P1.1",
+            "name": "DOCUMENTOS OFICIAIS",
+            "description": "Declarações / Certificados com Timbre + Assinatura + QR + numeração sequencial por escola.",
+            "done_when": [
+              "PDF gerado server-side com timbre e assinatura configurados pelo admin.",
+              "QR Code no documento aponta para URL de verificação que retorna dados do documento.",
+              "Numeração sequencial não repete (UNIQUE constraint em numero_documento por escola_id).",
+              "Emissão registada em audit_log."
+            ]
+          },
+          {
+            "id": "SEC-P1.2",
+            "name": "MAPA DE PENDÊNCIAS POR ALUNO",
+            "description": "Docs em falta, Dívidas, Bloqueios, Histórico incompleto, pendência de matrícula.",
+            "done_when": [
+              "Endpoint retorna todas as pendências activas para um aluno em ≤ 200ms.",
+              "Fonte de cada pendência é identificável (financeiro / académico / documental).",
+              "Pendências resolvidas saem do mapa em tempo real (não ficam em cache stale)."
+            ]
+          },
+          {
+            "id": "SEC-P1.3",
+            "name": "MATRÍCULAS EM LOTE",
+            "description": "Transferir / Reativar / Encerrar / Desistência por turma inteira com auditoria.",
+            "done_when": [
+              "Operação em lote de 30 alunos completa em < 5s.",
+              "Cada alteração individual registada em audit_log.",
+              "Rollback disponível em caso de erro parcial (ou reprocessamento idempotente)."
+            ]
+          },
+          {
+            "id": "SEC-P1.4",
+            "name": "FILA DE ATENDIMENTO",
+            "description": "Registar atendimento (motivo, resolução, tempo) para reduzir suporte e provar valor.",
+            "done_when": [
+              "Secretária consegue abrir, resolver e fechar um atendimento em < 3 cliques.",
+              "Histórico de atendimentos por aluno visível com timestamps.",
+              "Tempo médio de atendimento calculável por período."
+            ]
+          }
         ]
       },
+
       "P1.5": {
-        "description": "FINANCEIRO BLINDADO (Anti-fraude & controle operacional).",
+        "description": "FINANCEIRO BLINDADO — anti-fraude e controlo operacional.",
         "items": [
-          "POS VIRTUAL (Frente de Caixa): Buscar aluno → selecionar mensalidades → método → recibo.",
-          "FECHO DE CAIXA CEGO: operador declara valor físico ANTES de ver saldo do sistema (anti-roubo).",
-          "RECIBO NÃO NEGOCIÁVEL: PDF server-side com hash + QR para lookup (fallback se PDF falhar).",
-          "UPLOAD DE COMPROVATIVOS: obrigatório para transferência/depósito (foto/PDF).",
-          "ESTORNO FORMAL: nunca deletar; estornar com motivo + usuário + timestamp + vínculo.",
-          "PAGAMENTO PARCIAL CONTROLADO: regras claras (saldo restante, travas, auditoria), sem 'pago_parcial' bagunçado."
+          {
+            "id": "SEC-P1.5.1",
+            "name": "POS VIRTUAL (Frente de Caixa)",
+            "description": "Buscar aluno → seleccionar mensalidades → método de pagamento → recibo.",
+            "done_when": [
+              "Fluxo completo em < 5 cliques.",
+              "Recibo gerado automaticamente após confirmação.",
+              "Pagamento registado com idempotency key (retry seguro)."
+            ]
+          },
+          {
+            "id": "SEC-P1.5.2",
+            "name": "FECHO DE CAIXA CEGO",
+            "description": "Operador declara valor físico ANTES de ver saldo do sistema.",
+            "done_when": [
+              "UI não mostra saldo esperado antes da declaração do operador.",
+              "Diferença (declarado vs sistema) registada e visível para admin.",
+              "Fecho não pode ser desfeito (apenas auditado)."
+            ]
+          },
+          {
+            "id": "SEC-P1.5.3",
+            "name": "RECIBO NÃO NEGOCIÁVEL",
+            "description": "PDF server-side com hash + QR para lookup. Fallback texto se PDF falhar.",
+            "done_when": [
+              "QR no recibo verifica contra endpoint público sem autenticação.",
+              "Hash do recibo registado em tabela imutável.",
+              "Fallback em texto simples disponível quando PDF falha."
+            ]
+          },
+          {
+            "id": "SEC-P1.5.4",
+            "name": "ESTORNO FORMAL",
+            "description": "Nunca deletar pagamento. Estornar com motivo + utilizador + timestamp + vínculo.",
+            "done_when": [
+              "DELETE em pagamentos retorna 405 (Method Not Allowed) para qualquer role.",
+              "Estorno cria linha nova em financeiro_estornos com referência ao pagamento original.",
+              "Estorno registado em audit_log."
+            ]
+          }
         ]
       },
+
       "P2": {
-        "description": "ROBUSTEZ: operação forte mesmo com internet ruim.",
+        "description": "ROBUSTEZ — operação forte mesmo com internet ruim.",
         "items": [
-          "RESILIÊNCIA (Unitel Proof): idempotency keys em ações críticas + retry seguro.",
-          "CONCILIAÇÃO BANCÁRIA ASSISTIDA: upload CSV → matching → confirmação com anti-duplicidade.",
-          "PERFORMANCE PASS: paginação, evitar N+1, cache leve onde fizer sentido, <500ms server quando possível.",
-          "BOLETIM BLOQUEADO POR INADIMPLÊNCIA: regra configurável no admin; secretaria aplica e explica."
+          {
+            "id": "SEC-P2.1",
+            "name": "RESILIÊNCIA UNITEL PROOF",
+            "description": "Idempotency keys em acções críticas + retry seguro.",
+            "done_when": [
+              "Todas as mutations críticas aceitam e validam Idempotency-Key.",
+              "Segundo request com mesma chave retorna resposta idêntica sem efeito duplicado.",
+              "Cliente tem outbox com retry exponencial para rede instável."
+            ]
+          },
+          {
+            "id": "SEC-P2.2",
+            "name": "CONCILIAÇÃO BANCÁRIA ASSISTIDA",
+            "description": "Upload CSV → matching → confirmação com anti-duplicidade.",
+            "done_when": [
+              "CSV de extracto bancário importado sem erros de parsing.",
+              "Matching automático cobre ≥ 80% dos casos comuns.",
+              "Duplicados detectados e marcados antes de confirmar importação."
+            ]
+          },
+          {
+            "id": "SEC-P2.3",
+            "name": "PERFORMANCE PASS",
+            "description": "Paginação, sem N+1, cache leve, < 500ms server em listagens.",
+            "done_when": [
+              "EXPLAIN ANALYZE sem Seq Scan em tabelas > 10k rows.",
+              "Nenhum endpoint de lista com N+1 identificado.",
+              "p95 < 500ms em condições normais (server timing)."
+            ]
+          }
         ]
       }
     },
+
     "portal_admin": {
+      "note": "P0 de segurança/tenant está em shared_p0_foundation.",
+
       "P0": {
-        "description": "GOVERNANÇA: escola pronta pra operar sem suporte infinito.",
+        "description": "GOVERNANÇA — escola pronta para operar sem suporte infinito.",
         "items": [
-          "TENANT ISOLATION (hard) + RLS com testes automatizados para tabelas críticas.",
-          "SETUP HEALTH DASHBOARD: ano letivo ativo, currículo published, turmas ok, preços ok, caixa habilitado.",
-          "GESTÃO DE STAFF: convidar, resetar senha, atribuir role, KILL SWITCH (bloqueio imediato).",
-          "BRANDING: logo/cabeçalho/rodapé/assinatura oficial para documentos.",
-          "SERVICE ROLE BANIDA de endpoints de UI."
+          {
+            "id": "ADM-P0.1",
+            "name": "SETUP HEALTH DASHBOARD",
+            "description": "Ano letivo activo, currículo published, turmas ok, preços ok, caixa habilitado.",
+            "done_when": [
+              "vw_escola_setup_status retorna percentage correcto (0/25/50/75/100).",
+              "Dashboard carrega em < 200ms via MV (sem COUNT ao vivo).",
+              "Cada check tem link directo para resolver o problema."
+            ]
+          },
+          {
+            "id": "ADM-P0.2",
+            "name": "GESTÃO DE STAFF",
+            "description": "Convidar, resetar senha, atribuir role, KILL SWITCH (bloqueio imediato).",
+            "done_when": [
+              "Kill switch revoga sessão activa em < 5s (não apenas na próxima sessão).",
+              "Convite tem expiração (max 48h).",
+              "Alteração de role registada em audit_log."
+            ]
+          },
+          {
+            "id": "ADM-P0.3",
+            "name": "BRANDING",
+            "description": "Logo / cabeçalho / rodapé / assinatura oficial para todos os documentos.",
+            "done_when": [
+              "Todos os PDFs gerados usam o branding da escola (não placeholder).",
+              "Alteração de logo reflecte em documentos novos imediatamente.",
+              "Documentos antigos mantêm o branding da altura de emissão (imutável)."
+            ]
+          }
         ]
       },
+
       "P1": {
-        "description": "CONFIG ACADÊMICA: o esqueleto da escola (mínimo real).",
+        "description": "CONFIG ACADÉMICA — o esqueleto da escola.",
         "items": [
-          "ANO LETIVO ATIVO + TRIMESTRES (I/II/III) + trava_notas_em por período.",
-          "CURRÍCULO VERSIONADO POR ANO: draft/published + publish único + auditoria + rollback controlado.",
-          "APLICAR PRESET: cria currículo draft + itens (disciplinas/estrutura) para o ano letivo.",
-          "GERAR TURMAS: cria turmas + turma_disciplinas a partir do currículo published.",
-          "SETUP WIZARD em 7 passos com validações e status (sem join bugado)."
+          {
+            "id": "ADM-P1.1",
+            "name": "ANO LETIVO ACTIVO + TRIMESTRES",
+            "description": "Ano letivo + 3 trimestres com dt_inicio, dt_fim, trava_notas_em.",
+            "done_when": [
+              "SELECT em periodos_letivos retorna exactamente 3 trimestres para o ano activo.",
+              "UNIQUE(escola_id, ano_letivo_id, tipo, numero) existe e funciona.",
+              "Trava de notas activa bloqueia lançamento após trava_notas_em."
+            ]
+          },
+          {
+            "id": "ADM-P1.2",
+            "name": "CURRÍCULO VERSIONADO",
+            "description": "draft / published / archived + publish único + auditoria.",
+            "done_when": [
+              "Zero linhas com mais de 1 published por (escola, curso, ano) — verificado com SQL.",
+              "Publicar arquiva a versão anterior automaticamente.",
+              "Histórico de versões visível no admin."
+            ]
+          },
+          {
+            "id": "ADM-P1.3",
+            "name": "PRESET + GERAR TURMAS",
+            "description": "Aplicar preset → draft → publish → gerar turmas com turma_disciplinas.",
+            "done_when": [
+              "Cada turma gerada tem turma_disciplinas vinculadas ao currículo published.",
+              "Nenhuma turma sem disciplinas (verificado com SQL de integridade).",
+              "Processo completo (preset → turmas) documentado e testado end-to-end."
+            ]
+          },
+          {
+            "id": "ADM-P1.4",
+            "name": "SETUP WIZARD (4 passos)",
+            "description": "Guided setup: Ano letivo → Config avaliação → Preset → Turmas.",
+            "done_when": [
+              "Wizard completo leva escola de zero a operacional em < 30 min.",
+              "Cada passo valida antes de avançar (não é possível pular).",
+              "Estado do wizard persistido (pode ser retomado se interrompido)."
+            ]
+          }
         ]
       },
+
       "P1.5": {
-        "description": "ENGENHARIA FINANCEIRA: regras para operar caixa sem caos.",
+        "description": "ENGENHARIA FINANCEIRA — regras para operar caixa sem caos.",
         "items": [
-          "TABELAS DE PREÇO: por classe/turno/ano letivo (granular).",
-          "GERAÇÃO DE MENSALIDADES: job/trigger idempotente com anti-duplicidade.",
-          "POLÍTICAS: vencimento, tolerância, bloqueios, regras de cobrança mínima.",
-          "CONTAS BANCÁRIAS DA ESCOLA: IBAN/contas/referências para recibos e conciliação.",
-          "APROVAÇÃO DE FECHO: admin vê diferenças declaradas vs sistema e aprova/justifica."
+          {
+            "id": "ADM-P1.5.1",
+            "name": "TABELAS DE PREÇO",
+            "description": "Por classe / turno / ano letivo (granular).",
+            "done_when": [
+              "Admin consegue definir preço diferente por turno (manhã vs tarde).",
+              "Preços históricos imutáveis após activação (não afectar cobranças passadas).",
+              "Zero cobranças geradas com preço nulo ou zero por acidente."
+            ]
+          },
+          {
+            "id": "ADM-P1.5.2",
+            "name": "GERAÇÃO DE MENSALIDADES IDEMPOTENTE",
+            "description": "Job/trigger idempotente com anti-duplicidade.",
+            "done_when": [
+              "Executar geração duas vezes não cria duplicados.",
+              "UNIQUE constraint em (escola_id, matricula_id, mes, ano) existe e funciona.",
+              "Job regista em audit_log cada lote gerado."
+            ]
+          }
         ]
       },
+
       "P2": {
-        "description": "AUDITORIA & ESCALA: reduzir risco e suporte.",
+        "description": "AUDITORIA E ESCALA.",
         "items": [
-          "AUDIT EXPLORER: investigar ações (por usuário/módulo/período/aluno) com trilha completa.",
-          "IMPORTAÇÃO CONTROLADA: Rascunho Inteligente + relatório de inconsistências + aprovação admin.",
-          "RELATÓRIOS SIMPLES: inadimplência por turma, recebimentos por dia, conciliados vs pendentes."
+          {
+            "id": "ADM-P2.1",
+            "name": "AUDIT EXPLORER",
+            "description": "Investigar acções por utilizador / módulo / período / aluno.",
+            "done_when": [
+              "Filtro por utilizador + intervalo de datas funciona em < 1s.",
+              "Resultado mostra old_value e new_value lado a lado.",
+              "Exportação para CSV disponível."
+            ]
+          },
+          {
+            "id": "ADM-P2.2",
+            "name": "IMPORTAÇÃO CONTROLADA",
+            "description": "Rascunho inteligente + relatório de inconsistências + aprovação admin.",
+            "done_when": [
+              "Import não confirma nada sem aprovação explícita do admin.",
+              "Relatório de inconsistências gerado antes da confirmação.",
+              "Rollback disponível em até 24h após import."
+            ]
+          }
         ]
       }
     },
+
     "portal_professor": {
       "P2.5": {
-        "description": "VIDA ACADÊMICA REAL (mínimo para cobrir o ciclo inteiro).",
+        "description": "VIDA ACADÉMICA REAL — mínimo para cobrir o ciclo inteiro.",
         "items": [
-          "DIÁRIO DE CLASSE: selecionar turma/disciplina/período → lançar frequência (SSOT) + observações.",
-          "LANÇAMENTO DE NOTAS: por avaliação/trimestre com regras claras e sem placeholders.",
-          "PAUTA (mini pauta / pauta final): export/print do que foi lançado e do que está em falta.",
-          "TRAVA POR PERÍODO: quando admin fecha trimestre, professor não altera; só via retificação auditada."
+          {
+            "id": "PROF-P2.5.1",
+            "name": "DIÁRIO DE CLASSE",
+            "description": "Seleccionar turma/disciplina/período → lançar frequência (SSOT) + observações.",
+            "done_when": [
+              "Frequência escrita em tabela `frequencias` (SSOT, não em outra tabela).",
+              "Upsert: lançar frequência duas vezes não cria duplicado.",
+              "Professor só vê turmas que lhe foram atribuídas."
+            ]
+          },
+          {
+            "id": "PROF-P2.5.2",
+            "name": "LANÇAMENTO DE NOTAS",
+            "description": "Por avaliação/trimestre com regras claras e sem placeholders.",
+            "done_when": [
+              "Nota nula é nula (não zero). Distinção visível na UI.",
+              "Avaliação criada on-demand se não existir para o trimestre.",
+              "Professor não consegue lançar nota após trava_notas_em do período."
+            ]
+          },
+          {
+            "id": "PROF-P2.5.3",
+            "name": "PAUTA E EXPORT",
+            "description": "Mini pauta / pauta final: export/print do lançado e do que está em falta.",
+            "done_when": [
+              "Pauta gerada em < 3s para turma com 50 alunos.",
+              "Alunos sem nota marcados visualmente (não aparecem como zero).",
+              "Export PDF com timbre da escola."
+            ]
+          },
+          {
+            "id": "PROF-P2.5.4",
+            "name": "TRAVA POR PERÍODO",
+            "description": "Quando admin fecha trimestre, professor não altera. Só via retificação auditada.",
+            "done_when": [
+              "POST /api/professor/notas retorna 403 após trava_notas_em.",
+              "Retificação requer aprovação do admin + registo em audit_log.",
+              "Professor vê mensagem clara sobre o motivo do bloqueio."
+            ]
+          }
         ]
       }
     },
+
     "portal_aluno": {
       "P1": {
-        "description": "AUTOATENDIMENTO (redução de fila e churn).",
+        "description": "AUTOATENDIMENTO — redução de fila e churn.",
         "items": [
-          "LOGIN SIMPLIFICADO: nº processo + senha (ou SMS quando possível).",
-          "DASHBOARD: notas/faltas/avisos numa tela só (carregamento <3s).",
-          "EXTRATO FINANCEIRO: o que deve, o que pagou, 2ª via de recibo.",
-          "CARTEIRA DIGITAL: QR Code para identificação."
+          {
+            "id": "ALU-P1.1",
+            "name": "LOGIN SIMPLIFICADO",
+            "description": "Nº de processo + senha (ou SMS quando possível).",
+            "done_when": [
+              "Login com nº de processo funciona sem email.",
+              "Reset de senha por SMS funciona em rede Unitel.",
+              "Sessão expira em 30 dias (não 24h — aluno usa esporadicamente)."
+            ]
+          },
+          {
+            "id": "ALU-P1.2",
+            "name": "DASHBOARD DO ALUNO",
+            "description": "Notas / faltas / avisos numa tela só em < 3s em 3G.",
+            "done_when": [
+              "First Contentful Paint < 3s em throttle 3G no Lighthouse.",
+              "Dados de todas as disciplinas do trimestre actual visíveis sem scroll excessivo.",
+              "Zero dados de outro aluno visíveis (RLS verificado)."
+            ]
+          },
+          {
+            "id": "ALU-P1.3",
+            "name": "EXTRATO FINANCEIRO",
+            "description": "O que deve, o que pagou, 2ª via de recibo.",
+            "done_when": [
+              "Aluno vê mensalidades em aberto e pagas com datas.",
+              "Download de recibo em PDF funciona sem autenticação adicional (link temporário).",
+              "Valores em Kz (nunca em outra moeda)."
+            ]
+          }
         ]
       },
+
       "P2": {
-        "description": "INTERATIVIDADE LEVE (sem virar rede social).",
+        "description": "INTERACTIVIDADE LEVE.",
         "items": [
-          "ENVIAR COMPROVATIVO: aluno fotografa talão/ATM e envia (fila da secretaria).",
-          "SOLICITAR DOCUMENTO: pedido cai na fila com SLA e status."
+          {
+            "id": "ALU-P2.1",
+            "name": "ENVIAR COMPROVATIVO",
+            "description": "Aluno fotografa talão/ATM e envia. Cai na fila da secretaria.",
+            "done_when": [
+              "Upload de imagem funciona em conexão 3G lenta (não timeout).",
+              "Secretaria recebe notificação de novo comprovativo.",
+              "Comprovativo associado à mensalidade correcta."
+            ]
+          }
         ]
       }
     }
   },
-  "academic_cycle_minimal": {
-    "scope": "Cobrir do setup do ano letivo até o fechamento anual e emissão de documentos finais.",
-    "phases": [
-      {
-        "name": "Setup do Ano",
-        "must_have": [
-          "Ano letivo ativo",
-          "Trimestres configurados",
-          "Currículo published por ano",
-          "Turmas geradas e vinculadas ao currículo"
-        ]
-      },
-      {
-        "name": "Operação Trimestral",
-        "must_have": [
-          "Frequência SSOT (upsert único por aula/dia)",
-          "Notas por avaliação/trimestre (sem placeholders)",
-          "Boletim com missing_count/has_missing",
-          "Trava de período ao fechar trimestre"
-        ]
-      },
-      {
-        "name": "Fechamento Anual",
-        "must_have": [
-          "Fecho do 3º trimestre",
-          "Status final de matrícula (concluída/reprovada/transferida)",
-          "Histórico acadêmico consistente",
-          "Documentos finais emitíveis (declarações/certificados)"
-        ]
-      }
-    ]
-  },
-  "cross_cutting_invariants": [
-    "Sem evidência executada = FAIL/WARN.",
-    "Performance > feature nova.",
-    "Nada de placeholders em notas.",
-    "Currículo por ano precisa ser versionado e auditável.",
-    "SSOT de frequência é único (frequencias).",
-    "Financeiro: cada transação financeira deve ter comprovante ou referência bancária.",
-    "Financeiro: saldo de caixa deve fechar diariamente (entradas - saídas = diferença física).",
-    "Financeiro: dados financeiros imutáveis após conciliação (só estornos auditados).",
-    "UX: internet pode cair por 30s — ações críticas precisam de idempotência.",
-    "Relatórios devem rodar para qualquer período histórico (não só 'este mês')."
-  ],
-  "invariants_angola": [
-    "MOEDA ÚNICA: Kwanza (Kz) em 100% do sistema.",
-    "IDENTIDADE: validação estrita BI (com/sem máscara) e NIF quando aplicável.",
-    "CULTURA DO PAPEL: todo digital deve ter PDF/impresso impecável.",
-    "ANTI-FRAUDE: Fecho de Caixa Cego é obrigatório e inegociável.",
-    "PERFORMANCE: Portal do Aluno <3s em 3G instável.",
-    "UNITEL PROOF: retry seguro + idempotência + UX que não quebra em rede lenta."
-  ],
+
   "implementation_order": [
-    "P0 Secretaria + P0 Admin (tenant/RLS/audit/search/service-role ban)",
-    "P1 Admin (ano letivo/trimestres/currículo versionado/publish/turmas)",
-    "P1.5 Secretaria + Admin (caixa/recibo/fecho/estorno/parcial/regras)",
-    "P2 Secretaria (conciliação/bloqueios/performance pass)",
-    "P2.5 Professor (diário, frequência, notas, pautas, travas)",
-    "P1 Aluno (dashboard + extrato + recibos) + P2 Aluno (comprovativos/pedidos)"
+    "1. shared_p0_foundation (TODOS os portais — blocker absoluto)",
+    "2. ADM-P0 + ADM-P1 (ano letivo, currículo, turmas — esqueleto da escola)",
+    "3. SEC-P0 + SEC-P1 + SEC-P1.5 (operação de balcão + financeiro blindado)",
+    "4. SEC-P2 (robustez — idempotência, conciliação, performance)",
+    "5. PROF-P2.5 (diário, notas, pautas, travas)",
+    "6. ALU-P1 + ALU-P2 (dashboard + extrato + comprovativos)"
   ],
+
   "explicit_non_goals_for_pilot": [
     "ERP de RH completo",
     "Biblioteca, cantina, transporte",
     "Comunicação estilo rede social",
     "Relatórios avançados (DRE complexa, BI pesado)",
-    "Automação de cobrança multi-canal total (fica P3)"
-  ]
+    "Automação de cobrança multi-canal total",
+    "Integração bancária directa (API do banco)"
+  ],
+
+  "promotion_rules": {
+    "description": "Condições para mover um item de uma prioridade para outra.",
+    "P1_to_P0": [
+      "O item bloqueia um item já classificado como P0.",
+      "A ausência do item causa perda de dados em produção.",
+      "A ausência do item cria vulnerabilidade de segurança directa."
+    ],
+    "P2_to_P1": [
+      "Feedback de escola piloto indica que a ausência bloqueia operação diária.",
+      "Métrica de churn aponta para o item como causa directa."
+    ],
+    "demotion": "Um item pode ser rebaixado se se descobrir que não é necessário para o piloto. Requer aprovação explícita do product owner com justificação registada."
+  }
 }

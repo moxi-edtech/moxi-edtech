@@ -48,6 +48,7 @@ export const sidebarConfig: SidebarConfig = {
     },
     { href: "/escola/[escolaId]/admin/avisos", label: "Avisos", icon: "Megaphone" },
     { href: "/escola/[escolaId]/horarios/quadro", label: "Horários", icon: "CalendarClock" },
+    { href: "/escola/[escolaId]/admin/documentos-oficiais", label: "Documentos Oficiais", icon: "FileText" },
     {
       href: "/escola/[escolaId]/admin/configuracoes",
       label: "Configurações",
@@ -103,6 +104,7 @@ export const sidebarConfig: SidebarConfig = {
         { href: "/escola/[escolaId]/secretaria/exportacoes", label: "Exportações" },
       ],
     },
+    { href: "/escola/[escolaId]/secretaria/documentos-oficiais", label: "Documentos Oficiais", icon: "FileText" },
     { href: "/escola/[escolaId]/secretaria/importacoes", label: "Histórico de Importações", icon: "History" },
   ],
   financeiro: [

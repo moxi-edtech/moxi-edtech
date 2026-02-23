@@ -56,18 +56,22 @@ export async function GET() {
     const turmaMetaRows = turmaIds.length
       ? await admin
           .from('turmas')
-          .select('id, nome, curso_id, classe_id')
+          .select('id, nome, curso_id, classe_id, status_fecho')
           .in('id', turmaIds)
           .eq('escola_id', escolaId)
       : { data: [] as any[] }
 
     const turmaMeta = (turmaMetaRows as any).data || []
-    const turmaMap = new Map<string, { nome: string | null; curso_id: string | null; classe_id: string | null }>()
+    const turmaMap = new Map<
+      string,
+      { nome: string | null; curso_id: string | null; classe_id: string | null; status_fecho: string | null }
+    >()
     for (const t of turmaMeta) {
       turmaMap.set(t.id, {
         nome: t.nome ?? null,
         curso_id: t.curso_id ?? null,
         classe_id: t.classe_id ?? null,
+        status_fecho: t.status_fecho ?? null,
       })
     }
 
@@ -183,7 +187,7 @@ export async function GET() {
         id: r.id,
         turma_disciplina_id: r.id,
         curso_matriz_id: r.curso_matriz_id,
-        turma: { id: r.turma_id, nome: turmaInfo?.nome ?? null },
+        turma: { id: r.turma_id, nome: turmaInfo?.nome ?? null, status_fecho: turmaInfo?.status_fecho ?? null },
         disciplina: { id: matriz.disciplinaId, nome: matriz.disciplinaNome },
       }
     })

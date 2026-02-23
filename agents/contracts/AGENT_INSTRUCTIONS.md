@@ -1,335 +1,542 @@
-# AGENT_INSTRUCTION.md — KLASSE (Admin Academic Setup) + Pilot Readiness Workflow
+# AGENT_INSTRUCTIONS.md — KLASSE (Admin Academic Setup) + Pilot Readiness Workflow
+
+> **Versão:** 1.2  
+> **Audiência:** Agentes de IA, devs externos, devs internos a fazer onboarding.  
+> **Princípio:** Nada de "parece". PASS só com evidência executada. Ambiguidade é WARN, não PASS.
+
+---
 
 ## OBJETIVO
+
 Implementar e verificar, com evidência real, o core vital do "Portal do Admin → Configurações Acadêmicas" para piloto (3–5 escolas):
+
 - Ano letivo + períodos (TRIMESTRES Angola)
 - Currículo versionado por ano (draft/published)
 - Turmas geradas a partir do currículo publicado
-- Frequência (SSOT = frequencias)
+- Frequência (SSOT = `frequencias`)
 - Avaliações/Notas trimestrais on-demand
 - Boletim mínimo (view/RPC) com missing flags
 - Status do setup (view/RPC) sem contagens bugadas
 
-O agente NÃO assume nada. Sem evidência explícita = FAIL ou WARN.
+---
+
+## REGRAS INVIOLÁVEIS
+
+1. **DB/migrations primeiro.** Nunca criar endpoint antes de ter o schema correcto.
+2. **RPCs/views de leitura antes de endpoints.** O endpoint só pode existir se a view/RPC já funciona.
+3. **Endpoints antes de UI.** A UI não pode existir se o endpoint não retorna dados reais.
+4. **PASS só com evidência.** SQL executado ou HTTP com resposta real. Screenshots não contam.
+5. **Sem service role em endpoints humanos.** Sem excepção. Ver P0.4.
+6. **Ambiguidade é WARN, não PASS.** Se o resultado é parcialmente correcto, é WARN com descrição do que falta.
+7. **WARN acumulado bloqueia PILOT GO.** Mais de 3 WARNs activos = NO-GO até resolução.
 
 ---
 
-## REGRA GERAL (NÃO QUEBRAR)
-1) DB/migrations primeiro (SSOT, constraints, índices).
-2) RPCs/views de leitura (status, boletim, frequencia).
-3) Endpoints (Admin/Professor).
-4) UI (ConfigPage + Wizard 1-4).
-5) Testes E2E manuais com evidência (SQL + HTTP).
+## COMO LIDAR COM EVIDÊNCIA AMBÍGUA
+
+Quando o resultado de uma verificação não é claramente PASS nem FAIL:
+
+| Situação | Classificação | Acção |
+|---|---|---|
+| Query retorna resultado mas com dados suspeitos (ex: contagens a zero quando deveriam ter dados) | WARN | Descrever o que é suspeito + SQL alternativo para confirmar |
+| Endpoint retorna 200 mas payload não tem todos os campos esperados | WARN | Listar campos em falta |
+| Constraint existe mas não cobre todos os casos especificados | WARN | Descrever o gap |
+| Evidência executada mas em ambiente de desenvolvimento, não staging/produção | WARN | Marcar como "DEV-ONLY, verificar em staging" |
+| Teste de segurança retorna 403 mas por razão diferente da esperada | WARN | Investigar razão real do 403 |
+
+**Formato de WARN:**
+```
+⚠️ WARN [P1.2] Currículo versionado — parcialmente correcto
+Evidência: SELECT retorna 2 linhas, esperado 3 (trimestre 3 em falta)
+Query executada: <SQL>
+Resultado obtido: <output>
+O que falta: periodos_letivos trimestre 3 não foi criado para escola_id=X
+Acção necessária: executar migration ou verificar seed
+Bloqueador para PILOT GO: SIM (sem trimestre 3, fecho de ano não funciona)
+```
 
 ---
 
-# 🔥 ORDEM DE PRIORIDADE DE IMPLEMENTAÇÃO (NÃO ALTERAR)
+## COMO LIDAR COM REGRESSÕES
 
-## 🔴 P0 — MULTI-TENANT + INTEGRIDADE (BLOCKER)
-### P0.1 — escola_id NOT NULL em tabelas core
+Se um item anteriormente marcado como PASS quebra numa verificação posterior:
+
+1. Reclassificar imediatamente como `REGRESSION`.
+2. Não apagar a evidência anterior — adicionar nova entrada com timestamp.
+3. Bloquear merge de qualquer PR relacionado até resolução.
+4. Formato:
+
+```
+🔴 REGRESSION [P0.2] Índices por escola_id — foi PASS em 2026-02-01, quebrou em 2026-02-10
+Causa provável: migration X adicionou tabela nova sem índice
+Evidência original: <referência>
+Evidência actual: <SQL + output mostrando ausência>
+Acção: criar índice em tabela Y, verificar migration Z
+```
+
+---
+
+## ORDEM DE PRIORIDADE (NÃO ALTERAR SEM APROVAÇÃO)
+
+```
+P0 → P1 → P2 → P2.5
+```
+
+Nunca começar P1 com P0 em FAIL ou REGRESSION activo.  
+Nunca começar P2 com P1 em FAIL ou REGRESSION activo.
+
+---
+
+# 🔴 P0 — MULTI-TENANT + INTEGRIDADE (BLOCKER)
+
+### P0.1 — `escola_id` NOT NULL em tabelas core
+
 **Verificar (SQL):**
 ```sql
-select table_name, is_nullable
-from information_schema.columns
-where table_schema='public'
-  and column_name='escola_id'
-  and table_name in (
+SELECT table_name, is_nullable
+FROM information_schema.columns
+WHERE table_schema = 'public'
+  AND column_name = 'escola_id'
+  AND table_name IN (
     'escolas','anos_letivos','periodos_letivos',
     'cursos','classes','turmas','matriculas',
     'turma_disciplinas','curso_curriculos','curriculo_itens',
     'avaliacoes','notas',
-    'frequencias', -- SSOT
+    'frequencias',
     'financeiro_titulos','financeiro_cobrancas','pagamentos'
   );
-
-Esperado: nenhum is_nullable='YES'.
-
-P0.2 — índices começando por escola_id (tabelas grandes)
-
-Verificar (SQL):
-
-select tablename, indexname, indexdef
-from pg_indexes
-where schemaname='public'
-  and tablename in ('alunos','matriculas','turmas','notas','avaliacoes','frequencias','financeiro_titulos','pagamentos')
-order by tablename, indexname;
-
-Esperado: pelo menos 1 índice composto por tabela crítica começando com escola_id.
-
-P0.3 — RLS real por role (secretaria/professor/aluno/admin_escola)
-
-Evidência (SQL policies):
-
-select tablename, policyname, roles, cmd
-from pg_policies
-where schemaname='public'
-  and tablename in ('alunos','matriculas','turmas','notas','avaliacoes','frequencias','pagamentos');
-
-Evidência (HTTP):
-	•	professor não lê alunos de outra escola (403)
-	•	aluno lê só dados próprios (200) e não lê de outro (403)
-	•	secretaria/admin_escola lê só da própria escola (200)
-
-P0.4 — Service Role fora de endpoints humanos
-
-Verificar (repo-wide):
-	•	FAIL se SUPABASE_SERVICE_ROLE_KEY aparecer em apps/web/src/app/api/**/route.ts fora de jobs|workers|provisioning|cron.
-Comandos:
-	•	rg -n "SUPABASE_SERVICE_ROLE_KEY|supabaseAdmin|service_role" apps/web/src/app/api
-	•	rg -n "createClient<Database>\(" apps/web/src/app/api
-
-⸻
-
-🔴 P1 — CORE DO PORTAL CONFIG (Admin Setup) (BLOCKER)
-
-Aqui é onde teu wireframe vira realidade.
-
-P1.1 — Ano letivo + Períodos (TRIMESTRE 1/2/3 Angola)
-
-DB Required:
-	•	anos_letivos(escola_id, ano, dt_inicio, dt_fim, ativo)
-	•	periodos_letivos(escola_id, ano_letivo_id, tipo='TRIMESTRE', numero=1..3, dt_inicio, dt_fim, trava_notas_em)
-Constraints:
-	•	UNIQUE(escola_id, ano) em anos_letivos (ou por intervalo se preferir)
-	•	UNIQUE(escola_id, ano_letivo_id, tipo, numero) em periodos_letivos
-Evidência (SQL):
-
-select al.ano, pl.tipo, pl.numero, pl.dt_inicio, pl.dt_fim, pl.trava_notas_em
-from anos_letivos al
-join periodos_letivos pl on pl.ano_letivo_id=al.id
-where al.escola_id = '<ESCOLA_ID>' and al.ativo=true
-order by pl.numero;
-
-Esperado: 3 linhas TRIMESTRE (1,2,3).
-
-P1.2 — Currículo versionado por ano (draft/published)
-
-SSOT recomendado:
-	•	curso_curriculos(id, escola_id, curso_id, ano_letivo_id, version int, status 'draft'|'published'|'archived', created_at, created_by)
-	•	curriculo_itens(id, escola_id, curso_curriculo_id, classe_id, disciplina_id, aulas_semana int, obrigatoria bool, modelo_avaliacao jsonb)
-Constraints vitais:
-	•	UNIQUE(escola_id, curso_id, ano_letivo_id, version)
-	•	UNIQUE publicado: (escola_id, curso_id, ano_letivo_id) WHERE status=‘published’
-Evidência (SQL):
-
-select escola_id, curso_id, ano_letivo_id, version, status, created_at
-from curso_curriculos
-where escola_id='<ESCOLA_ID>' and ano_letivo_id='<ANO_LETIVO_ID>'
-order by curso_id, version desc;
-
-P1.3 — Aplicar Preset → cria versão draft + itens
-
-RPC/Endpoint requerido:
-	•	POST /api/escola/:id/admin/curriculo/apply-preset
-Evidência:
-	•	cria 1 curso_curriculos(status='draft')
-	•	cria N curriculo_itens
-SQL:
-
-select count(*) from curriculo_itens where escola_id='<ESCOLA_ID>' and curso_curriculo_id='<CURR_ID>';
-
-P1.4 — Publicar Currículo (trava published único)
-
-RPC/Endpoint requerido:
-	•	POST /api/escola/:id/admin/curriculo/publish
-Evidência:
-	•	troca draft → published
-	•	se já existir published, arquiva o anterior ou falha com mensagem clara
-SQL:
-
-select curso_id, count(*) 
-from curso_curriculos
-where escola_id='<ESCOLA_ID>' and ano_letivo_id='<ANO_LETIVO_ID>' and status='published'
-group by curso_id having count(*)>1;
-
-Esperado: 0 linhas.
-
-Testes (Agent):
-1) Attempt call via raw DB_URL/psql as postgres:
-   Expect: ERROR permission denied admin_escola required
-   => This is PASS (security gate working), not FAIL.
-
-2) Run real test as authenticated admin_escola:
-   - create draft v2 (insert curso_curriculos version=2 + backfill curso_matriz.curso_curriculo_id)
-   - call RPC curriculo_publish(...)
-   Expect:
-     - returns ok=true
-     - v2 status='published'
-     - previous published becomes 'archived'
-     - uniqueness holds: only 1 published per (escola,curso,ano)
-     - turma_disciplinas rebuilt for turmas in that (curso,ano) only
-
-3) Idempotency:
-   - call RPC again same params
-   Expect: ok=true + message contains 'idempotent'
-
-P1.5 — Turmas: gerar + hidratar turma_disciplinas a partir do currículo published
-
-Endpoint requerido:
-	•	POST /api/escola/:id/admin/turmas/generate (gera turmas por curso/classe/turno/capacidade)
-DB:
-	•	turmas referenciando curso_id, classe_id, ano_letivo_id, turno
-Evidência:
-	•	 ao criar turma, turma_disciplinas preenchida (trigger/RPC) usando curriculo published
-SQL:
-
-select td.turma_id, count(*) as disciplinas
-from turma_disciplinas td
-where td.escola_id='<ESCOLA_ID>' and td.turma_id='<TURMA_ID>'
-group by td.turma_id;
-
-P1.6 — Setup Status (ConfigPage) sem bug de contagem (NUNCA JOIN multiplicando)
-
-SSOT: view/RPC agregando por subqueries separadas.
-Requisito:
-	•	has_ano_letivo_ativo
-	•	has_3_trimestres
-	•	has_curriculo_published
-	•	has_turmas_no_ano
-	•	percentage = 0/25/50/75/100
-Evidência (SQL):
-
-select * from vw_escola_setup_status where escola_id='<ESCOLA_ID>';
-
-
-⸻
-
-🔴 P2 — OPERAÇÃO DIÁRIA (Professor/Aluno) (BLOCKER)
-
-P2.1 — Frequência (SSOT = frequencias)
-
-Modelo mínimo recomendado:
-	•	registro por aula: UNIQUE(escola_id, matricula_id, aula_id)
-OU registro por dia: UNIQUE(escola_id, matricula_id, data)
-Exigir: rota do professor escreve em frequencias.
-Evidência (SQL):
-
-select indexname, indexdef
-from pg_indexes
-where schemaname='public' and tablename like 'frequencias%';
-
-Teste: lançar 2x mesma aula/data → não duplica (upsert).
-P2.2 — Avaliações + Notas trimestrais (on-demand) (sem placeholder)
-
-Constraints vitais:
-	•	avaliacoes UNIQUE(escola_id, turma_disciplina_id, ano_letivo, trimestre, tipo)
-	•	notas UNIQUE(escola_id, matricula_id, avaliacao_id)
-Endpoint requerido (professor):
-	•	POST /api/professor/notas
-	•	resolve matricula_id via (turma_id + aluno_id)
-	•	resolve turma_disciplina_id
-	•	cria avaliacao on-demand (trimestre atual) se não existir
-	•	upsert nota (matricula_id + avaliacao_id)
-Evidência:
-
-select * from avaliacoes where escola_id='<ESCOLA_ID>' order by created_at desc limit 5;
-select * from notas where escola_id='<ESCOLA_ID>' order by created_at desc limit 5;
-
-P2.3 — Boletim mínimo (view/RPC) com missing flags
-
-Requisito:
-	•	por matrícula + trimestre:
-	•	lista disciplinas (turma_disciplinas)
-	•	agrega notas existentes
-	•	calcula missing_count e has_missing
-Evidência:
-
-select * from vw_boletim_por_matricula
-where escola_id='<ESCOLA_ID>' and matricula_id='<MATRICULA_ID>' and trimestre=1;
-
-
-⸻
-
-🧩 IMPLEMENTAÇÃO — WORKFLOW PARA O AGENTE (DB → API → UI)
-
-FASE 1 — DB/MIGRATIONS (obrigatório antes de UI)
-	1.	Criar/ajustar:
-
-	•	anos_letivos, periodos_letivos
-	•	curso_curriculos, curriculo_itens
-	•	constraints/índices/rls necessários
-
-	2.	Ajustar SSOT:
-
-	•	garantir frequencias como SSOT (rota escreve nela + unique/upsert)
-
-	3.	Notas:
-
-	•	alinhar schema avaliacoes + notas com uniques corretos
-
-	4.	Views/RPCs:
-
-	•	vw_escola_setup_status
-	•	vw_boletim_por_matricula
-	•	vw_frequencia_resumo_aluno (ou RPC)
-
-Output esperado: migrações novas em supabase/migrations/.
-
-⸻
-
-FASE 2 — ENDPOINTS (Admin + Professor)
-
-Admin
-	•	GET /api/escola/:id/admin/setup/status
-	•	POST /api/escola/:id/admin/ano-letivo/upsert
-	•	POST /api/escola/:id/admin/periodos-letivos/upsert-bulk
-	•	POST /api/escola/:id/admin/curriculo/apply-preset
-	•	POST /api/escola/:id/admin/curriculo/publish
-	•	POST /api/escola/:id/admin/turmas/generate
-
-Professor
-	•	POST /api/professor/frequencias (SSOT)
-	•	POST /api/professor/notas (on-demand)
-
-Regra: endpoints humanos SEM service role.
-
-⸻
-
-FASE 3 — UI (Wireframe novo)
-
-Tela 1 — ConfiguracoesPage
-	•	consome setup/status
-	•	renderiza cards (academic/financial/users)
-	•	banner NeedsAcademicSetupBanner com:
-	•	botão “Iniciar Assistente” → Wizard
-	•	botão “Ver o que falta” → lista checks + links diretos
-
-Wizard 1/4 — Ano Letivo + Períodos
-	•	cria/edita ano letivo ativo
-	•	gera 3 trimestres automaticamente com datas editáveis + trava_notas_em
-
-Wizard 2/4 — Frequência + Avaliação
-	•	fixa SSOT = frequencias (por aula, recomendado)
-	•	modelo de avaliação (mínimo): “Simplificado” ou “Tradicional (MAC/NPP/PT)”
-	•	grava config (pode ser tabela escola_avaliacao_config ou JSON em escolas.settings)
-
-Wizard 3/4 — Presets
-	•	aplica preset → cria currículo draft
-	•	preview real (contagem de classes/disciplinas)
-
-Wizard 4/4 — Turmas
-	•	gera turmas por classe/turno/capacidade
-	•	confirma → cria turmas + turma_disciplinas
-
-⸻
-
-✅ SAÍDA DO AGENTE (FORMATO OBRIGATÓRIO)
-
-Para cada item:
-	•	[P1.2] Currículo versionado por ano — PASS
-Evidence: <SQL result + migration file + endpoint>
-	•	[P2.2] Notas trimestrais on-demand — FAIL
-Reason: endpoint insere em schema antigo
-Evidence: <HTTP + query>
-
-Ao final:
-	•	PILOT READINESS: GO / NO-GO
-	•	BLOCKERS: 
-	•	WARNINGS: 
-
-⸻
-
-❌ REGRA FINAL
-
-Nada de “parece”.
-PASS só com evidência executada (SQL/HTTP/log).
+```
+
+**Esperado:** zero linhas com `is_nullable = 'YES'`.  
+**Se falhar:** FAIL — identificar tabela(s) em falta e criar migration com `ALTER TABLE ... ALTER COLUMN escola_id SET NOT NULL`.
+
+---
+
+### P0.2 — Índices compostos começando por `escola_id`
+
+**Verificar (SQL):**
+```sql
+SELECT tablename, indexname, indexdef
+FROM pg_indexes
+WHERE schemaname = 'public'
+  AND tablename IN (
+    'alunos','matriculas','turmas','notas',
+    'avaliacoes','frequencias','financeiro_titulos','pagamentos'
+  )
+ORDER BY tablename, indexname;
+```
+
+**Esperado:** pelo menos 1 índice composto por tabela crítica com `escola_id` como primeira coluna.  
+**Índices mínimos obrigatórios:**
+```sql
+-- Exemplos do padrão esperado:
+CREATE INDEX idx_notas_escola_matricula ON notas(escola_id, matricula_id);
+CREATE INDEX idx_frequencias_escola_turma_data ON frequencias(escola_id, turma_id, data);
+CREATE INDEX idx_avaliacoes_escola_turma_disc ON avaliacoes(escola_id, turma_disciplina_id, trimestre);
+```
+
+---
+
+### P0.3 — RLS real por role
+
+**Verificar (SQL):**
+```sql
+SELECT tablename, policyname, roles, cmd
+FROM pg_policies
+WHERE schemaname = 'public'
+  AND tablename IN (
+    'alunos','matriculas','turmas','notas',
+    'avaliacoes','frequencias','pagamentos'
+  );
+```
+
+**Esperado:** pelo menos 1 policy por tabela, cobrindo pelo menos `SELECT` com filtro por `escola_id`.
+
+**Verificar (HTTP) — obrigatório, não apenas SQL:**
+
+| Cenário | Endpoint | Esperado |
+|---|---|---|
+| Professor autentica e tenta ler alunos de outra escola | `GET /api/secretaria/alunos?escolaId=<outra>` | 403 |
+| Aluno autentica e tenta ler dados de outro aluno | `GET /api/aluno/notas/<outro_matricula_id>` | 403 |
+| Secretaria autentica e lê alunos da sua escola | `GET /api/secretaria/alunos` | 200 com dados corretos |
+
+**Nota:** um 403 por razão diferente da RLS (ex: middleware de auth) conta como WARN, não PASS. Verificar a razão real.
+
+---
+
+### P0.4 — Service Role banida de endpoints humanos
+
+**Verificar (repo):**
+```bash
+# Deve retornar zero resultados fora de jobs/workers/cron/provisioning
+rg -n "SUPABASE_SERVICE_ROLE_KEY\|supabaseAdmin\|service_role" apps/web/src/app/api \
+  | grep -v "jobs\|workers\|cron\|provisioning\|inngest"
+```
+
+**Esperado:** zero resultados.  
+**Se encontrar:** FAIL — cada ocorrência é um risco de cross-tenant. Substituir por cliente autenticado com RLS.
+
+---
+
+# 🔴 P1 — CORE DO PORTAL CONFIG (BLOCKER)
+
+### P1.1 — Ano letivo + Períodos (TRIMESTRE 1/2/3 Angola)
+
+**Schema requerido:**
+```sql
+-- anos_letivos
+id uuid PK, escola_id uuid NOT NULL, ano int NOT NULL,
+dt_inicio date, dt_fim date, ativo boolean DEFAULT false
+UNIQUE(escola_id, ano)
+
+-- periodos_letivos
+id uuid PK, escola_id uuid NOT NULL, ano_letivo_id uuid NOT NULL,
+tipo text CHECK(tipo = 'TRIMESTRE'), numero int CHECK(numero IN (1,2,3)),
+dt_inicio date, dt_fim date, trava_notas_em timestamptz
+UNIQUE(escola_id, ano_letivo_id, tipo, numero)
+```
+
+**Verificar (SQL):**
+```sql
+SELECT al.ano, pl.tipo, pl.numero, pl.dt_inicio, pl.dt_fim, pl.trava_notas_em
+FROM anos_letivos al
+JOIN periodos_letivos pl ON pl.ano_letivo_id = al.id
+WHERE al.escola_id = '<ESCOLA_ID>' AND al.ativo = true
+ORDER BY pl.numero;
+```
+
+**Esperado:** exactamente 3 linhas com `tipo = 'TRIMESTRE'` e `numero IN (1, 2, 3)`.
+
+---
+
+### P1.2 — Currículo versionado por ano (draft/published)
+
+**Schema requerido:**
+```sql
+-- curso_curriculos
+id uuid PK, escola_id uuid NOT NULL, curso_id uuid NOT NULL,
+ano_letivo_id uuid NOT NULL, version int NOT NULL,
+status text CHECK(status IN ('draft','published','archived')),
+created_at timestamptz, created_by uuid
+UNIQUE(escola_id, curso_id, ano_letivo_id, version)
+-- Garantir apenas 1 published por (escola, curso, ano):
+UNIQUE(escola_id, curso_id, ano_letivo_id) WHERE status = 'published'
+
+-- curriculo_itens
+id uuid PK, escola_id uuid NOT NULL, curso_curriculo_id uuid NOT NULL,
+classe_id uuid, disciplina_id uuid, aulas_semana int,
+obrigatoria boolean, modelo_avaliacao jsonb
+```
+
+**Verificar (SQL):**
+```sql
+-- Nenhum curso deve ter mais de 1 published por (escola, curso, ano)
+SELECT escola_id, curso_id, ano_letivo_id, COUNT(*) AS total_published
+FROM curso_curriculos
+WHERE escola_id = '<ESCOLA_ID>'
+  AND ano_letivo_id = '<ANO_LETIVO_ID>'
+  AND status = 'published'
+GROUP BY escola_id, curso_id, ano_letivo_id
+HAVING COUNT(*) > 1;
+```
+
+**Esperado:** zero linhas.
+
+---
+
+### P1.3 — Aplicar Preset → cria versão draft + itens
+
+**Endpoint requerido:** `POST /api/escola/:id/admin/curriculo/apply-preset`
+
+**Verificar (HTTP):**
+```http
+POST /api/escola/<ESCOLA_ID>/admin/curriculo/apply-preset
+{ "preset": "ensino_medio_angola_2024", "ano_letivo_id": "<ANO_ID>" }
+
+Esperado: 201 + { ok: true, curriculo_id: "<ID>", itens_criados: N }
+```
+
+**Verificar (SQL):**
+```sql
+SELECT cc.id, cc.status, cc.version, COUNT(ci.id) AS total_itens
+FROM curso_curriculos cc
+LEFT JOIN curriculo_itens ci ON ci.curso_curriculo_id = cc.id
+WHERE cc.escola_id = '<ESCOLA_ID>'
+GROUP BY cc.id, cc.status, cc.version
+ORDER BY cc.created_at DESC
+LIMIT 5;
+```
+
+**Esperado:** 1 linha com `status = 'draft'` e `total_itens > 0`.
+
+---
+
+### P1.4 — Publicar Currículo (trava published único)
+
+**Endpoint requerido:** `POST /api/escola/:id/admin/curriculo/publish`
+
+**Testes obrigatórios (executar em sequência):**
+
+```
+Teste 1 — Publicação normal:
+  Input: curriculo_id com status='draft'
+  Esperado: { ok: true } + status muda para 'published'
+  SQL: SELECT status FROM curso_curriculos WHERE id='<ID>' → 'published'
+
+Teste 2 — Segunda publicação (deve arquivar a primeira):
+  Input: novo curriculo_id draft para o mesmo (escola, curso, ano)
+  Esperado: { ok: true } + primeiro fica 'archived', segundo fica 'published'
+  SQL: SELECT status, version FROM curso_curriculos WHERE escola_id='<ID>'
+       ORDER BY version → v1: archived, v2: published
+
+Teste 3 — Idempotência:
+  Input: mesmo curriculo_id já publicado
+  Esperado: { ok: true, message: "already published" } ou { ok: true, idempotent: true }
+  Sem efeito secundário (nenhuma linha alterada)
+
+Teste 4 — Tentativa sem permissão:
+  Input: professor tenta publicar
+  Esperado: 403
+```
+
+---
+
+### P1.5 — Turmas + `turma_disciplinas` a partir do currículo published
+
+**Endpoint requerido:** `POST /api/escola/:id/admin/turmas/generate`
+
+**Verificar (SQL após gerar turma):**
+```sql
+SELECT td.turma_id, COUNT(*) AS disciplinas_vinculadas
+FROM turma_disciplinas td
+WHERE td.escola_id = '<ESCOLA_ID>'
+  AND td.turma_id = '<TURMA_ID>'
+GROUP BY td.turma_id;
+```
+
+**Esperado:** 1 linha com `disciplinas_vinculadas` igual ao número de `curriculo_itens` do currículo publicado para aquele curso/classe.
+
+**Verificar consistência (deve ser zero):**
+```sql
+-- Turmas sem disciplinas vinculadas (sinal de bug no trigger/RPC)
+SELECT t.id, t.nome
+FROM turmas t
+LEFT JOIN turma_disciplinas td ON td.turma_id = t.id
+WHERE t.escola_id = '<ESCOLA_ID>'
+  AND td.turma_id IS NULL;
+```
+
+---
+
+### P1.6 — Setup Status sem bug de contagem
+
+**View requerida:** `vw_escola_setup_status`
+
+**Verificar (SQL):**
+```sql
+SELECT
+  escola_id,
+  has_ano_letivo_ativo,
+  has_3_trimestres,
+  has_curriculo_published,
+  has_turmas_no_ano,
+  percentage
+FROM vw_escola_setup_status
+WHERE escola_id = '<ESCOLA_ID>';
+```
+
+**Esperado:** 1 linha com todos os campos presentes e `percentage` em `{0, 25, 50, 75, 100}`.
+
+**Verificar anti-JOIN-multiplicado:**
+```sql
+-- Se a view usa JOINs, verificar que os counts não estão inflados
+-- Comparar contagem da view com contagem directa:
+SELECT COUNT(*) FROM turmas WHERE escola_id = '<ESCOLA_ID>';
+-- vs o que a view reporta em has_turmas_no_ano
+```
+
+---
+
+# 🔴 P2 — OPERAÇÃO DIÁRIA (BLOCKER)
+
+### P2.1 — Frequência (SSOT = `frequencias`)
+
+**Constraint obrigatória:**
+```sql
+-- Por aula (recomendado):
+UNIQUE(escola_id, matricula_id, aula_id)
+-- Ou por dia (alternativo):
+UNIQUE(escola_id, matricula_id, data, turma_disciplina_id)
+```
+
+**Verificar (SQL):**
+```sql
+SELECT indexname, indexdef
+FROM pg_indexes
+WHERE schemaname = 'public'
+  AND tablename = 'frequencias';
+```
+
+**Teste de duplicidade (obrigatório):**
+```
+1. Lançar presença para aluno X, turma Y, data Z
+2. Lançar exactamente a mesma presença novamente
+Esperado: segundo lançamento retorna 200/204 sem criar duplicado (upsert)
+SQL: SELECT COUNT(*) FROM frequencias WHERE matricula_id='X' AND data='Z' → 1 (não 2)
+```
+
+---
+
+### P2.2 — Avaliações + Notas trimestrais on-demand
+
+**Constraints obrigatórias:**
+```sql
+avaliacoes: UNIQUE(escola_id, turma_disciplina_id, ano_letivo, trimestre, tipo)
+notas: UNIQUE(escola_id, matricula_id, avaliacao_id)
+```
+
+**Endpoint requerido:** `POST /api/professor/notas`
+
+**Comportamento esperado:**
+1. Se avaliação não existe para `(turma_disciplina_id, trimestre, tipo)` → criar on-demand.
+2. Resolver `matricula_id` via `(turma_id, aluno_id)` — nunca aceitar `matricula_id` directamente do cliente sem validar que pertence à turma.
+3. Upsert nota: `INSERT ... ON CONFLICT (escola_id, matricula_id, avaliacao_id) DO UPDATE`.
+
+**Verificar (SQL após lançar nota):**
+```sql
+SELECT n.valor, a.trimestre, a.tipo, a.created_at
+FROM notas n
+JOIN avaliacoes a ON a.id = n.avaliacao_id
+WHERE n.escola_id = '<ESCOLA_ID>'
+ORDER BY n.created_at DESC
+LIMIT 5;
+```
+
+---
+
+### P2.3 — Boletim mínimo com missing flags
+
+**View requerida:** `vw_boletim_por_matricula`
+
+**Campos obrigatórios:** `disciplina_nome`, `nota_valor`, `missing_count`, `has_missing`, `trimestre`.
+
+**Verificar (SQL):**
+```sql
+SELECT disciplina_nome, nota_valor, missing_count, has_missing
+FROM vw_boletim_por_matricula
+WHERE escola_id = '<ESCOLA_ID>'
+  AND matricula_id = '<MATRICULA_ID>'
+  AND trimestre = 1;
+```
+
+**Verificar consistência:**
+```sql
+-- has_missing deve ser TRUE quando missing_count > 0
+SELECT COUNT(*) FROM vw_boletim_por_matricula
+WHERE escola_id = '<ESCOLA_ID>'
+  AND has_missing = false
+  AND missing_count > 0;
+-- Esperado: 0 (inconsistência seria bug na view)
+```
+
+---
+
+# 🧩 WORKFLOW DE IMPLEMENTAÇÃO (ORDEM OBRIGATÓRIA)
+
+```
+FASE 1: DB + Migrations
+  → anos_letivos, periodos_letivos
+  → curso_curriculos, curriculo_itens
+  → constraints, índices, RLS
+  → frequencias SSOT
+  → avaliacoes + notas com uniques
+  → views: vw_escola_setup_status, vw_boletim_por_matricula
+
+FASE 2: RPCs + Endpoints
+  → GET  /api/escola/:id/admin/setup/status
+  → POST /api/escola/:id/admin/ano-letivo/upsert
+  → POST /api/escola/:id/admin/periodos-letivos/upsert-bulk
+  → POST /api/escola/:id/admin/curriculo/apply-preset
+  → POST /api/escola/:id/admin/curriculo/publish
+  → POST /api/escola/:id/admin/turmas/generate
+  → POST /api/professor/frequencias
+  → POST /api/professor/notas
+
+FASE 3: UI
+  → ConfiguracoesPage (consome setup/status)
+  → NeedsAcademicSetupBanner
+  → Wizard 1/4: Ano Letivo + Períodos
+  → Wizard 2/4: Frequência + Avaliação config
+  → Wizard 3/4: Presets + draft curriculo
+  → Wizard 4/4: Turmas
+```
+
+**Regra:** nunca avançar de fase sem evidência de que a fase anterior está completa.
+
+---
+
+# ✅ FORMATO DE SAÍDA DO AGENTE
+
+### Por item verificado:
+
+```
+✅ PASS [P0.1] escola_id NOT NULL em tabelas core
+Evidence: query executada em 2026-02-10 14:32 UTC
+SQL: SELECT table_name, is_nullable FROM information_schema.columns WHERE ...
+Result: 14 linhas, todas is_nullable='NO'
+```
+
+```
+⚠️ WARN [P1.2] Currículo versionado — constraint parcial
+Evidence: UNIQUE existe mas não cobre WHERE status='published'
+SQL: SELECT indexdef FROM pg_indexes WHERE tablename='curso_curriculos'
+Result: index sem partial condition
+Acção: ALTER INDEX ou recriar com WHERE status='published'
+Bloqueador para PILOT GO: SIM
+```
+
+```
+🔴 FAIL [P2.1] Frequência — duplicidade possível
+Evidence: INSERT duplicado cria 2 linhas
+SQL: SELECT COUNT(*) FROM frequencias WHERE matricula_id='X' AND data='Z'
+Result: 2
+Acção: adicionar UNIQUE constraint + migrar dados duplicados existentes
+```
+
+```
+🔴 REGRESSION [P0.4] Service Role em endpoint humano
+Foi PASS em 2026-02-01. Encontrado em PR #127.
+File: apps/web/src/app/api/secretaria/alunos/route.ts:34
+Acção: substituir por cliente autenticado com RLS
+```
+
+### Sumário final obrigatório:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PILOT READINESS: GO / NO-GO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PASS:      X itens
+WARN:      Y itens (listar)
+FAIL:      Z itens (listar)
+REGRESSION: W itens (listar)
+
+BLOCKERS ACTIVOS:
+  - [P0.4] Service Role em 2 endpoints
+  - [P1.4] Publish sem arquivar anterior
+
+WARNS ACTIVOS:
+  - [P1.2] Constraint parcial (não bloqueia se resolvido em 48h)
+
+DECISÃO: NO-GO
+Razão: 2 BLOCKERs activos. Resolver antes de activar piloto.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+---
+
+## REGRA FINAL
+
+Nada de "parece funcionar". Nada de "deve estar correcto".  
+PASS só com evidência executada (SQL com output real / HTTP com response real / log de produção).  
+Ambiguidade é WARN. WARN acumulado (> 3) é NO-GO.
