@@ -5,7 +5,11 @@ import { createElement, type ReactElement } from "react"
 import { applyKf2ListInvariants } from "@/lib/kf2"
 import { GradeEngine, type RawGradeRow } from "@/lib/pedagogico/grade-engine"
 import { TransitionEngine } from "@/lib/pedagogico/transition-engine"
-import type { PautaAnualPayload, PautaAnualDisciplinaNotas } from "@/lib/pedagogico/pauta-anual-types"
+import type {
+  PautaAnualPayload,
+  PautaAnualDisciplinaNotas,
+  PautaAnualAlunoRow,
+} from "@/lib/pedagogico/pauta-anual-types"
 import { PautaAnualV1 } from "@/templates/pdf/ministerio/PautaAnualV1"
 
 type Client = SupabaseClient<Database>
@@ -209,7 +213,7 @@ export async function buildPautaAnualModeloPayload({
   const { metadata, disciplinas } = await buildPautaAnualBase({ supabase, escolaId, turmaId })
   const emptyNotas: PautaAnualDisciplinaNotas = { mt1: "-", mt2: "-", mt3: "-", mfd: "-" }
 
-  const alunos = Array.from({ length: linhas }).map((_, index) => {
+  const alunos: PautaAnualAlunoRow[] = Array.from({ length: linhas }).map((_, index) => {
     const disciplinasNotas: Record<string, PautaAnualDisciplinaNotas> = {}
     disciplinas.forEach((disciplina) => {
       disciplinasNotas[disciplina.id] = { ...emptyNotas }
@@ -218,7 +222,7 @@ export async function buildPautaAnualModeloPayload({
       aluno_id: `modelo-${index + 1}`,
       numero: index + 1,
       nome: "____________________________",
-      idade: "-",
+      idade: "-" as const,
       sexo: "-",
       disciplinas: disciplinasNotas,
       resultado_final: "—",
@@ -253,7 +257,7 @@ async function buildPautaAnualBase({
 
   const { data: escola } = await supabase
     .from("escolas")
-    .select("nome, responsavel, diretor_nome")
+    .select("nome")
     .eq("id", escolaId)
     .maybeSingle()
 
@@ -311,8 +315,8 @@ async function buildPautaAnualBase({
       turno: turma.turno ?? "—",
       emissao: new Date().toLocaleString("pt-PT"),
       diretorTurma: diretorNome ?? "—",
-      subDirector: escola?.responsavel ?? "—",
-      diretorGeral: escola?.diretor_nome ?? escola?.responsavel ?? "—",
+      subDirector: "—",
+      diretorGeral: "—",
       local: "—",
     },
     disciplinas,

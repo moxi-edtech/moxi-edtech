@@ -4,7 +4,11 @@ import type { Database } from "~types/supabase"
 import { createElement, type ReactElement } from "react"
 import { applyKf2ListInvariants } from "@/lib/kf2"
 import { GradeEngine, type RawGradeRow } from "@/lib/pedagogico/grade-engine"
-import type { PautaGeralPayload, PautaGeralDisciplinaNotas } from "@/lib/pedagogico/pauta-geral-types"
+import type {
+  PautaGeralPayload,
+  PautaGeralDisciplinaNotas,
+  PautaGeralAlunoRow,
+} from "@/lib/pedagogico/pauta-geral-types"
 import { PautaGeralV1 } from "@/templates/pdf/ministerio/PautaGeralV1"
 
 type Client = SupabaseClient<Database>
@@ -219,7 +223,7 @@ export async function buildPautaGeralModeloPayload({
   })
 
   const emptyNotas: PautaGeralDisciplinaNotas = { mac: "-", npp: "-", pt: "-", mt: "-" }
-  const alunos = Array.from({ length: linhas }).map((_, index) => {
+  const alunos: PautaGeralAlunoRow[] = Array.from({ length: linhas }).map((_, index) => {
     const disciplinasNotas: Record<string, PautaGeralDisciplinaNotas> = {}
     disciplinas.forEach((disciplina) => {
       disciplinasNotas[disciplina.id] = { ...emptyNotas }
@@ -228,7 +232,7 @@ export async function buildPautaGeralModeloPayload({
       aluno_id: `modelo-${index + 1}`,
       numero: index + 1,
       nome: "____________________________",
-      idade: "-",
+      idade: "-" as const,
       sexo: "-",
       disciplinas: disciplinasNotas,
       obs: "",
@@ -265,7 +269,7 @@ async function buildPautaGeralBase({
 
   const { data: escola } = await supabase
     .from("escolas")
-    .select("nome, responsavel, diretor_nome")
+    .select("nome")
     .eq("id", escolaId)
     .maybeSingle()
 
@@ -324,8 +328,8 @@ async function buildPautaGeralBase({
       trimestre: String(periodoNumero),
       emissao: new Date().toLocaleString("pt-PT"),
       diretorTurma: diretorNome ?? "—",
-      subDirector: escola?.responsavel ?? "—",
-      diretorGeral: escola?.diretor_nome ?? escola?.responsavel ?? "—",
+      subDirector: "—",
+      diretorGeral: "—",
       local: "—",
     },
     disciplinas,

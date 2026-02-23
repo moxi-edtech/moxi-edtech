@@ -46,7 +46,6 @@ const COURSE_CODE_ALIASES: Record<string, string> = {
   INF: "TI",
   TEC_INFO: "TIG",
   GES: "TG",
-  CIV: "CC",
   SAU: "ENF",
   FAR: "FARM",
   EST: "ESTO",
