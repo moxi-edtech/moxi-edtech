@@ -227,7 +227,9 @@ export async function GET(req: Request) {
           | null
       }>) {
         const avaliacao = Array.isArray(row.avaliacoes) ? row.avaliacoes[0] : row.avaliacoes
-        const trimestre = usarTrimestres ? avaliacao?.trimestre ?? null : 0
+        const trimestre = usarTrimestres
+          ? (typeof avaliacao?.trimestre === 'number' ? avaliacao.trimestre : 0)
+          : 0
         if (usarTrimestres && !trimestre) continue
         if (!notasPorMatricula.has(row.matricula_id)) {
           notasPorMatricula.set(row.matricula_id, { sum: {}, count: {}, weightedSum: {}, weightSum: {} })

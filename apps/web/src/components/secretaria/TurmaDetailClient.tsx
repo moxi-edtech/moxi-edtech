@@ -586,7 +586,7 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
         setToast({ message: "Pauta em processamento. Aguarde.", type: "success" })
         return
       }
-      if (json.download_url) triggerDownload(json.download_url)
+      if ('download_url' in json && json.download_url) triggerDownload(json.download_url)
     } catch (e: any) {
       setToast({ message: e?.message || "Falha ao gerar pauta", type: "error" })
     } finally {
@@ -605,7 +605,7 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
         setToast({ message: "Pauta em processamento. Aguarde.", type: "success" })
         return
       }
-      if (json.download_url) triggerDownload(json.download_url)
+      if ('download_url' in json && json.download_url) triggerDownload(json.download_url)
     } catch (e: any) {
       setToast({ message: e?.message || "Falha ao gerar pauta", type: "error" })
     } finally {

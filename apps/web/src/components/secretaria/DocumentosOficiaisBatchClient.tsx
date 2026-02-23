@@ -51,18 +51,7 @@ type JobItem = {
 
 type ToastState = { message: string; type: "success" | "error" } | null;
 
-type PendenciaItem = {
-  turma_disciplina_id: string;
-  disciplina_id: string | null;
-  disciplina_nome: string;
-  tipo: string;
-  trimestre: number | null;
-  avaliacao_id: string | null;
-  total_alunos: number;
-  notas_lancadas: number;
-  pendentes: number;
-  status: "SEM_AVALIACAO" | "NOTAS_PENDENTES" | "OK";
-};
+import { PendenciaItem, PendenciaTipo } from "~types/pendencia";
 
 function Toast({ toast, onDismiss }: { toast: ToastState; onDismiss: () => void }) {
   useEffect(() => {
@@ -767,45 +756,44 @@ export default function DocumentosOficiaisBatchClient() {
           </div>
         ) : (
           <div className="space-y-3">
-            {pendencias.map((row) => (
-              <div
-                key={`${row.turma_disciplina_id}-${row.tipo}-${row.trimestre}`}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 px-4 py-3"
-              >
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">{row.disciplina_nome}</p>
-                  <p className="text-xs text-slate-500">
-                    {row.tipo} • Trimestre {row.trimestre ?? "—"}
-                  </p>
-                </div>
-                <div className="flex flex-col items-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!activeTurma) return;
-                      setPendenciasModalOpen(false);
-                      handleOpenNotas(activeTurma, row);
-                    }}
-                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-600"
-                  >
-                    <NotebookPen className="h-3 w-3" /> Lançar notas
-                  </button>
-                  {row.status === "SEM_AVALIACAO" ? (
-                    <span className="inline-flex items-center rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700">
-                      Sem avaliação
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
-                      {row.pendentes} nota(s) pendentes
-                    </span>
-                  )}
-                  <p className="text-[11px] text-slate-400">
-                    {row.notas_lancadas}/{row.total_alunos} lançadas
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
+                      {pendencias.flatMap((pendenciaItem) => pendenciaItem.tipos.map((pendenciaTipo) => (
+                        <div
+                          key={`${pendenciaItem.turma_disciplina_id}-${pendenciaTipo.tipo}-${pendenciaItem.trimestre}`}
+                          className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 px-4 py-3"
+                        >
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900">{pendenciaItem.disciplina_nome}</p>
+                            <p className="text-xs text-slate-500">
+                              {pendenciaTipo.tipo} • Trimestre {pendenciaItem.trimestre ?? "—"}
+                            </p>
+                          </div>
+                          <div className="flex flex-col items-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!activeTurma) return;
+                                setPendenciasModalOpen(false);
+                                handleOpenNotas(activeTurma, pendenciaItem);
+                              }}
+                              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-600"
+                            >
+                              <NotebookPen className="h-3 w-3" /> Lançar notas
+                            </button>
+                            {pendenciaTipo.status === "SEM_AVALIACAO" ? (
+                              <span className="inline-flex items-center rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-semibold text-rose-700">
+                                Sem avaliação
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+                                {pendenciaTipo.pendentes} nota(s) pendentes
+                              </span>
+                            )}
+                            <p className="text-[11px] text-slate-400">
+                              {pendenciaTipo.notas_lancadas}/{pendenciaItem.total_alunos} lançadas
+                            </p>
+                          </div>
+                        </div>
+                      )))}          </div>
         )}
       </ModalShell>
 

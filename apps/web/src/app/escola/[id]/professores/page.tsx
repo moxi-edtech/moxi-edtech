@@ -54,29 +54,7 @@ type Professor = {
   pendencias_total?:    number | null
 }
 
-type PendenciaTipo = {
-  tipo:           string
-  avaliacao_id:   string | null
-  notas_lancadas: number
-  pendentes:      number
-  status:         "ok" | "pendente" | "sem_avaliacao" | "sem_alunos"
-}
-
-type PendenciaItem = {
-  turma_disciplina_id: string
-  turma_id:            string
-  turma_nome:          string | null
-  disciplina_id:       string | null
-  disciplina_nome:     string | null
-  trimestre:           number | null
-  total_alunos:        number
-  tipos:               PendenciaTipo[]
-}
-
-type PendenciasResponse = {
-  items:  PendenciaItem[]
-  resumo: { total_pendencias: number; turmas_afetadas: number }
-}
+import { PendenciaItem, PendenciaTipo, PendenciasResponse } from "~types/pendencia"
 
 type PendenciasState = {
   loading: boolean

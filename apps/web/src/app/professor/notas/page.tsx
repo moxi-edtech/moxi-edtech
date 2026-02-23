@@ -368,7 +368,7 @@ export default function ProfessorNotasPage() {
               <button
                 type="button"
                 onClick={handleExportMiniPauta}
-                disabled={!turmaId || !disciplinaId || pauta.length === 0 || exporting || turmaFechada}
+                disabled={!turmaId || !disciplinaId || pauta.length === 0 || exporting || !!turmaFechada}
                 className="w-full rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
               >
                 {exporting ? "Gerando PDF..." : "Exportar mini‑pauta"}

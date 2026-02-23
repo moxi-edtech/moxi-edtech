@@ -163,16 +163,16 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         const entra = row.entra_no_horario ?? cursoMatriz?.entra_no_horario ?? true
         if (!entra) continue
         const expected = row.carga_horaria_semanal ?? cursoMatriz?.carga_horaria_semanal ?? 0
-        const nome = cursoMatriz?.disciplina?.nome ?? null
+        const disciplinaNome = (Array.isArray(cursoMatriz?.disciplina) ? cursoMatriz?.disciplina[0] : cursoMatriz?.disciplina)?.nome ?? null
 
         if (expected <= 0) {
-          missing.push({ disciplina_id: disciplinaId, disciplina_nome: nome })
+          missing.push({ disciplina_id: disciplinaId, disciplina_nome: disciplinaNome })
           continue
         }
 
         const assigned = disciplinaCounts[disciplinaId] || 0
         if (assigned !== expected) {
-          mismatch.push({ disciplina_id: disciplinaId, disciplina_nome: nome })
+          mismatch.push({ disciplina_id: disciplinaId, disciplina_nome: disciplinaNome })
         }
       }
 

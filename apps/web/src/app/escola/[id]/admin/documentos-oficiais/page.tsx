@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export default function Page() {
   return (
     <>
-      <AuditPageView portal="admin" acao="PAGE_VIEW" entity="documentos_oficiais" />
+      <AuditPageView portal="admin_escola" acao="PAGE_VIEW" entity="documentos_oficiais" />
       <DocumentosOficiaisBatchClient />
     </>
   );

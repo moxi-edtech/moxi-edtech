@@ -155,6 +155,8 @@ const buildFallbackPreset = (
         nome,
         classe: cls.nome as string,
         tipo: "core",
+        componente: "GERAL",
+        horas: 4,
       })),
     );
 

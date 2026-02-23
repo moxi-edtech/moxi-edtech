@@ -106,9 +106,10 @@ function applyDefaults(payload: DisciplinaForm) {
     ...payload,
     classificacao: payload.classificacao ?? "core",
     entra_no_horario: payload.entra_no_horario ?? true,
-    avaliacao: payload.avaliacao?.mode
-      ? payload.avaliacao
-      : { mode: "inherit_school", base_id: null },
+    avaliacao: {
+      mode: (payload.avaliacao?.mode as AvaliacaoMode) ?? "inherit_school",
+      base_id: payload.avaliacao?.base_id ?? null,
+    },
     periodo_mode: payload.periodo_mode ?? "ano",
     periodos_ativos:
       payload.periodos_ativos && payload.periodos_ativos.length > 0
