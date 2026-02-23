@@ -92,13 +92,11 @@ export const pautasLote = inngest.createFunction(
                   throw new Error(`PDF inválido (tamanho ${pdfBuffer.length})`)
                 }
                 pdfPath = `${escola_id}/${turmaId}/${periodo_letivo_id}/pauta_geral.pdf`
-                const pdfArrayBuffer = pdfBuffer.buffer.slice(
-                  pdfBuffer.byteOffset,
-                  pdfBuffer.byteOffset + pdfBuffer.byteLength
-                )
+                const pdfArrayBuffer = new Uint8Array(pdfBuffer).buffer
+                const pdfBlob = new Blob([pdfArrayBuffer], { type: "application/pdf" })
                 const { error: uploadError } = await supabase.storage
                   .from("pautas_oficiais_fechadas")
-                  .upload(pdfPath, pdfArrayBuffer, {
+                  .upload(pdfPath, pdfBlob, {
                     upsert: true,
                     contentType: "application/pdf",
                   })
@@ -126,13 +124,11 @@ export const pautasLote = inngest.createFunction(
                   throw new Error(`PDF inválido (tamanho ${pdfBuffer.length})`)
                 }
                 pdfPath = `${escola_id}/${turmaId}/${periodo_letivo_id ?? "anual"}/pauta_anual.pdf`
-                const pdfArrayBuffer = pdfBuffer.buffer.slice(
-                  pdfBuffer.byteOffset,
-                  pdfBuffer.byteOffset + pdfBuffer.byteLength
-                )
+                const pdfArrayBuffer = new Uint8Array(pdfBuffer).buffer
+                const pdfBlob = new Blob([pdfArrayBuffer], { type: "application/pdf" })
                 const { error: uploadError } = await supabase.storage
                   .from("pautas_oficiais_fechadas")
-                  .upload(pdfPath, pdfArrayBuffer, {
+                  .upload(pdfPath, pdfBlob, {
                     upsert: true,
                     contentType: "application/pdf",
                   })

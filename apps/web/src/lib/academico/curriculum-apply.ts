@@ -469,14 +469,16 @@ async function createCurriculoDraft(args: {
   let nextVersion = (last?.version ?? 0) + 1;
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    const payload = classeIds.map((classeId) => ({
-      escola_id: escolaId,
-      curso_id: cursoId,
-      ano_letivo_id: anoLetivoId,
-      version: nextVersion,
-      status: "draft",
-      classe_id: classeId,
-    }));
+    const payload: Database["public"]["Tables"]["curso_curriculos"]["Insert"][] = classeIds.map(
+      (classeId) => ({
+        escola_id: escolaId,
+        curso_id: cursoId,
+        ano_letivo_id: anoLetivoId,
+        version: nextVersion,
+        status: "draft",
+        classe_id: classeId,
+      })
+    )
 
     const { data: curriculos, error } = await supabase
       .from("curso_curriculos")
