@@ -38,7 +38,27 @@ type PeriodoItem = {
 const cx = (...classes: Array<string | false | null | undefined>) =>
   classes.filter(Boolean).join(" ");
 
-export function PautaRapidaModal() {
+type PautaRapidaModalProps = {
+  initialTurmaId?: string;
+  initialPeriodoNumero?: number;
+  initialDisciplinaId?: string;
+  initialTurmaLabel?: string;
+  lockTurma?: boolean;
+  showPeriodoTabs?: boolean;
+  pendingPeriodoNumeros?: number[];
+  hideNavigation?: boolean;
+};
+
+export function PautaRapidaModal({
+  initialTurmaId,
+  initialPeriodoNumero,
+  initialDisciplinaId,
+  initialTurmaLabel,
+  lockTurma = false,
+  showPeriodoTabs = false,
+  pendingPeriodoNumeros = [],
+  hideNavigation = false,
+}: PautaRapidaModalProps) {
   const router = useRouter();
   const [anoLetivo, setAnoLetivo] = useState<number>(new Date().getFullYear());
   const [turmas, setTurmas] = useState<TurmaItem[]>([]);
@@ -64,8 +84,16 @@ export function PautaRapidaModal() {
   }, []);
 
   useEffect(() => {
+    if (initialTurmaId && initialTurmaId !== turmaId) {
+      setTurmaId(initialTurmaId);
+      setDisciplinaId("");
+    }
+  }, [initialTurmaId, turmaId]);
+
+  useEffect(() => {
     let active = true;
     const load = async () => {
+      if (lockTurma) return;
       setLoadingTurmas(true);
       try {
         const params = new URLSearchParams({ ano: String(anoLetivo) });
@@ -87,7 +115,7 @@ export function PautaRapidaModal() {
     return () => {
       active = false;
     };
-  }, [accessToken, anoLetivo]);
+  }, [accessToken, anoLetivo, lockTurma]);
 
   useEffect(() => {
     if (!turmaId) {
@@ -126,6 +154,13 @@ export function PautaRapidaModal() {
       active = false;
     };
   }, [accessToken, turmaId]);
+
+  useEffect(() => {
+    if (typeof initialPeriodoNumero !== "number") return;
+    if (!periodos.length) return;
+    const target = periodos.find((p) => p.numero === initialPeriodoNumero);
+    if (target) setPeriodoNumero(target.numero);
+  }, [initialPeriodoNumero, periodos]);
 
   useEffect(() => {
     if (!turmaId || !disciplinaId || !periodoNumero) {
@@ -183,6 +218,15 @@ export function PautaRapidaModal() {
     });
   }, [disciplinas, periodoNumero]);
 
+  useEffect(() => {
+    if (!initialDisciplinaId) return;
+    if (disciplinaId) return;
+    const exists = disciplinasFiltradas.some((disc) => disc.disciplina?.id === initialDisciplinaId);
+    if (exists) {
+      setDisciplinaId(initialDisciplinaId);
+    }
+  }, [disciplinaId, disciplinasFiltradas, initialDisciplinaId]);
+
   const turmaSelecionada = useMemo(
     () => turmas.find((t) => t.id === turmaId) ?? null,
     [turmas, turmaId]
@@ -199,9 +243,9 @@ export function PautaRapidaModal() {
     if (!stillValid) setDisciplinaId("");
   }, [disciplinaId, disciplinasFiltradas]);
 
-  const turmaLabel = turmaSelecionada
-    ? turmaSelecionada.turma_nome || turmaSelecionada.nome || "Turma"
-    : "Turma";
+  const turmaLabel =
+    initialTurmaLabel ||
+    (turmaSelecionada ? turmaSelecionada.turma_nome || turmaSelecionada.nome || "Turma" : "Turma");
 
   const handleOpen = (path: string) => {
     if (!turmaId) return;
@@ -309,36 +353,44 @@ export function PautaRapidaModal() {
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <label className="text-xs font-semibold uppercase text-slate-500">Ano letivo</label>
-          <input
-            type="number"
-            value={anoLetivo}
-            onChange={(event) => setAnoLetivo(Number(event.target.value))}
-            className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-          />
-        </div>
+        {!lockTurma && (
+          <div>
+            <label className="text-xs font-semibold uppercase text-slate-500">Ano letivo</label>
+            <input
+              type="number"
+              value={anoLetivo}
+              onChange={(event) => setAnoLetivo(Number(event.target.value))}
+              className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+            />
+          </div>
+        )}
         <div>
           <label className="text-xs font-semibold uppercase text-slate-500">Turma</label>
-          <div className="mt-1 flex items-center gap-2">
-            <select
-              value={turmaId}
-              onChange={(event) => setTurmaId(event.target.value)}
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-            >
-              <option value="">Selecione a turma</option>
-              {turmas.map((turma) => {
-                const label = turma.turma_nome || turma.nome || "Turma";
-                const meta = [turma.classe_nome, turma.turno].filter(Boolean).join(" • ");
-                return (
-                  <option key={turma.id} value={turma.id}>
-                    {meta ? `${label} (${meta})` : label}
-                  </option>
-                );
-              })}
-            </select>
-            {loadingTurmas ? <Loader2 className="h-4 w-4 animate-spin text-slate-400" /> : null}
-          </div>
+          {lockTurma ? (
+            <div className="mt-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+              {turmaLabel}
+            </div>
+          ) : (
+            <div className="mt-1 flex items-center gap-2">
+              <select
+                value={turmaId}
+                onChange={(event) => setTurmaId(event.target.value)}
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+              >
+                <option value="">Selecione a turma</option>
+                {turmas.map((turma) => {
+                  const label = turma.turma_nome || turma.nome || "Turma";
+                  const meta = [turma.classe_nome, turma.turno].filter(Boolean).join(" • ");
+                  return (
+                    <option key={turma.id} value={turma.id}>
+                      {meta ? `${label} (${meta})` : label}
+                    </option>
+                  );
+                })}
+              </select>
+              {loadingTurmas ? <Loader2 className="h-4 w-4 animate-spin text-slate-400" /> : null}
+            </div>
+          )}
         </div>
       </div>
 
@@ -364,86 +416,121 @@ export function PautaRapidaModal() {
 
       <div>
         <label className="text-xs font-semibold uppercase text-slate-500">Período</label>
-        <div className="mt-1 flex items-center gap-2">
-          <select
-            value={periodoNumero}
-            onChange={(event) => setPeriodoNumero(Number(event.target.value))}
-            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-            disabled={!turmaId || periodos.length === 0}
-          >
-            {periodos.length === 0 && (
-              <option value={periodoNumero}>Sem períodos</option>
+        {showPeriodoTabs && periodos.length > 0 ? (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {periodos.map((periodo) => {
+              const active = periodo.numero === periodoNumero
+              const hasPendencia = pendingPeriodoNumeros.includes(periodo.numero)
+              return (
+                <button
+                  key={periodo.id}
+                  type="button"
+                  onClick={() => setPeriodoNumero(periodo.numero)}
+                  className={`rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    active
+                      ? "bg-klasse-green text-white"
+                      : "border border-slate-200 bg-white text-slate-600"
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    {`Trimestre ${periodo.numero}`}
+                    {hasPendencia ? (
+                      <span className={`h-1.5 w-1.5 rounded-full ${active ? "bg-white" : "bg-rose-500"}`} />
+                    ) : null}
+                  </span>
+                </button>
+              )
+            })}
+            {loadingDisciplinas ? <Loader2 className="h-4 w-4 animate-spin text-slate-400" /> : null}
+          </div>
+        ) : (
+          <div className="mt-1 flex items-center gap-2">
+            <select
+              value={periodoNumero}
+              onChange={(event) => setPeriodoNumero(Number(event.target.value))}
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+              disabled={!turmaId || periodos.length === 0}
+            >
+              {periodos.length === 0 && (
+                <option value={periodoNumero}>Sem períodos</option>
+              )}
+              {periodos.map((periodo) => (
+                <option key={periodo.id} value={periodo.numero}>
+                  {`Período ${periodo.numero}`}
+                </option>
+              ))}
+            </select>
+            {loadingDisciplinas ? <Loader2 className="h-4 w-4 animate-spin text-slate-400" /> : null}
+          </div>
+        )}
+      </div>
+
+      {!lockTurma && (
+        <>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => handleOpen(`/api/secretaria/turmas/${turmaId}/pauta`)}
+              disabled={!turmaId}
+              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
+            >
+              <FileText className="h-4 w-4" />
+              Pauta digital (Excel)
+            </button>
+            <button
+              type="button"
+              onClick={() => handleOpen(`/api/secretaria/turmas/${turmaId}/pauta-branca`)}
+              disabled={!turmaId}
+              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
+            >
+              <LayoutDashboard className="h-4 w-4" />
+              Pauta em branco
+            </button>
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => handleOpen(`/api/secretaria/turmas/${turmaId}/mini-pautas`)}
+              disabled={!turmaId}
+              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
+            >
+              <FileText className="h-4 w-4" />
+              Mini-pautas
+            </button>
+            <button
+              type="button"
+              onClick={handleExportMiniPauta}
+              disabled={!turmaId || !disciplinaId || exportingMiniPauta}
+              className="flex items-center justify-center gap-2 rounded-lg bg-klasse-green px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {exportingMiniPauta ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+              Mini-pauta (PDF)
+            </button>
+            <button
+              type="button"
+              onClick={handleExportPautaTrimestral}
+              disabled={!turmaId || !disciplinaId || exportingTrimestral || periodos.length === 0}
+              className="flex items-center justify-center gap-2 rounded-lg bg-klasse-gold px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              {exportingTrimestral ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+              Pauta Trimestral (PDF)
+            </button>
+            {!hideNavigation && (
+              <button
+                type="button"
+                onClick={() =>
+                  turmaId && router.push(`/secretaria/notas?turmaId=${turmaId}&disciplinaId=${disciplinaId}`)
+                }
+                disabled={!turmaId}
+                className="flex items-center justify-center gap-2 rounded-lg bg-klasse-gold px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                Gerenciar notas da {turmaLabel}
+              </button>
             )}
-            {periodos.map((periodo) => (
-              <option key={periodo.id} value={periodo.numero}>
-                {`Período ${periodo.numero}`}
-              </option>
-            ))}
-          </select>
-          {loadingDisciplinas ? <Loader2 className="h-4 w-4 animate-spin text-slate-400" /> : null}
-        </div>
-      </div>
-
-      <div className="grid gap-2 sm:grid-cols-2">
-        <button
-          type="button"
-          onClick={() => handleOpen(`/api/secretaria/turmas/${turmaId}/pauta`)}
-          disabled={!turmaId}
-          className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
-        >
-          <FileText className="h-4 w-4" />
-          Pauta digital (Excel)
-        </button>
-        <button
-          type="button"
-          onClick={() => handleOpen(`/api/secretaria/turmas/${turmaId}/pauta-branca`)}
-          disabled={!turmaId}
-          className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
-        >
-          <LayoutDashboard className="h-4 w-4" />
-          Pauta em branco
-        </button>
-      </div>
-
-      <div className="grid gap-2 sm:grid-cols-2">
-        <button
-          type="button"
-          onClick={() => handleOpen(`/api/secretaria/turmas/${turmaId}/mini-pautas`)}
-          disabled={!turmaId}
-          className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
-        >
-          <FileText className="h-4 w-4" />
-          Mini-pautas
-        </button>
-        <button
-          type="button"
-          onClick={handleExportMiniPauta}
-          disabled={!turmaId || !disciplinaId || exportingMiniPauta}
-          className="flex items-center justify-center gap-2 rounded-lg bg-klasse-green px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
-        >
-          {exportingMiniPauta ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-          Mini-pauta (PDF)
-        </button>
-        <button
-          type="button"
-          onClick={handleExportPautaTrimestral}
-          disabled={!turmaId || !disciplinaId || exportingTrimestral || periodos.length === 0}
-          className="flex items-center justify-center gap-2 rounded-lg bg-klasse-gold px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
-        >
-          {exportingTrimestral ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-          Pauta Trimestral (PDF)
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            turmaId && router.push(`/secretaria/notas?turmaId=${turmaId}&disciplinaId=${disciplinaId}`)
-          }
-          disabled={!turmaId}
-          className="flex items-center justify-center gap-2 rounded-lg bg-klasse-gold px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
-        >
-          Gerenciar notas da {turmaLabel}
-        </button>
-      </div>
+          </div>
+        </>
+      )}
 
       {disciplinaSelecionada ? (
         <p className="text-xs text-slate-500">

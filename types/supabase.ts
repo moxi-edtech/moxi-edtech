@@ -1288,9 +1288,72 @@ export type Database = {
           },
         ]
       }
+      curriculum_preset_subjects: {
+        Row: {
+          component: Database["public"]["Enums"]["discipline_component"]
+          grade_level: string
+          id: string
+          name: string
+          preset_id: string | null
+          subject_type: string | null
+          weekly_hours: number
+        }
+        Insert: {
+          component: Database["public"]["Enums"]["discipline_component"]
+          grade_level: string
+          id?: string
+          name: string
+          preset_id?: string | null
+          subject_type?: string | null
+          weekly_hours?: number
+        }
+        Update: {
+          component?: Database["public"]["Enums"]["discipline_component"]
+          grade_level?: string
+          id?: string
+          name?: string
+          preset_id?: string | null
+          subject_type?: string | null
+          weekly_hours?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curriculum_preset_subjects_preset_id_fkey"
+            columns: ["preset_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_presets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      curriculum_presets: {
+        Row: {
+          category: Database["public"]["Enums"]["course_category"]
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["course_category"]
+          created_at?: string | null
+          description?: string | null
+          id: string
+          name: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["course_category"]
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       curso_curriculos: {
         Row: {
           ano_letivo_id: string
+          classe_id: string | null
           created_at: string
           created_by: string | null
           curso_id: string
@@ -1301,6 +1364,7 @@ export type Database = {
         }
         Insert: {
           ano_letivo_id: string
+          classe_id?: string | null
           created_at?: string
           created_by?: string | null
           curso_id: string
@@ -1311,6 +1375,7 @@ export type Database = {
         }
         Update: {
           ano_letivo_id?: string
+          classe_id?: string | null
           created_at?: string
           created_by?: string | null
           curso_id?: string
@@ -1384,7 +1449,9 @@ export type Database = {
           obrigatoria: boolean
           ordem: number | null
           periodos_ativos: number[] | null
+          status_avaliacao: string | null
           status_completude: string | null
+          status_horario: string | null
         }
         Insert: {
           ativo?: boolean
@@ -1405,7 +1472,9 @@ export type Database = {
           obrigatoria?: boolean
           ordem?: number | null
           periodos_ativos?: number[] | null
+          status_avaliacao?: string | null
           status_completude?: string | null
+          status_horario?: string | null
         }
         Update: {
           ativo?: boolean
@@ -1426,7 +1495,9 @@ export type Database = {
           obrigatoria?: boolean
           ordem?: number | null
           periodos_ativos?: number[] | null
+          status_avaliacao?: string | null
           status_completude?: string | null
+          status_horario?: string | null
         }
         Relationships: [
           {
@@ -4948,27 +5019,36 @@ export type Database = {
           componentes: Json
           created_at: string
           escola_id: string
+          formula: Json
           id: string
           is_default: boolean | null
           nome: string
+          regras: Json
+          tipo: string
           updated_at: string
         }
         Insert: {
           componentes?: Json
           created_at?: string
           escola_id: string
+          formula?: Json
           id?: string
           is_default?: boolean | null
           nome: string
+          regras?: Json
+          tipo?: string
           updated_at?: string
         }
         Update: {
           componentes?: Json
           created_at?: string
           escola_id?: string
+          formula?: Json
           id?: string
           is_default?: boolean | null
           nome?: string
+          regras?: Json
+          tipo?: string
           updated_at?: string
         }
         Relationships: []
@@ -4980,6 +5060,7 @@ export type Database = {
           escola_id: string
           id: string
           matricula_id: string
+          updated_at: string
           valor: number
         }
         Insert: {
@@ -4988,6 +5069,7 @@ export type Database = {
           escola_id: string
           id?: string
           matricula_id: string
+          updated_at?: string
           valor: number
         }
         Update: {
@@ -4996,6 +5078,7 @@ export type Database = {
           escola_id?: string
           id?: string
           matricula_id?: string
+          updated_at?: string
           valor?: number
         }
         Relationships: [
@@ -5652,6 +5735,229 @@ export type Database = {
             columns: ["mensalidade_id"]
             isOneToOne: false
             referencedRelation: "vw_search_mensalidades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pautas_lote_itens: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          job_id: string
+          pdf_path: string | null
+          status: string
+          turma_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          job_id: string
+          pdf_path?: string | null
+          status?: string
+          turma_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          job_id?: string
+          pdf_path?: string | null
+          status?: string
+          turma_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pautas_lote_itens_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "pautas_lote_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pautas_lote_itens_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pautas_lote_itens_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_secretaria"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "pautas_lote_itens_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_turmas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pautas_lote_jobs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          error_message: string | null
+          escola_id: string
+          failed_count: number
+          id: string
+          periodo_letivo_id: string | null
+          processed: number
+          status: string
+          success_count: number
+          tipo: string
+          total_turmas: number
+          updated_at: string
+          zip_path: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          escola_id: string
+          failed_count?: number
+          id?: string
+          periodo_letivo_id?: string | null
+          processed?: number
+          status?: string
+          success_count?: number
+          tipo: string
+          total_turmas?: number
+          updated_at?: string
+          zip_path?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          escola_id?: string
+          failed_count?: number
+          id?: string
+          periodo_letivo_id?: string | null
+          processed?: number
+          status?: string
+          success_count?: number
+          tipo?: string
+          total_turmas?: number
+          updated_at?: string
+          zip_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pautas_lote_jobs_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pautas_lote_jobs_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pautas_lote_jobs_periodo_letivo_id_fkey"
+            columns: ["periodo_letivo_id"]
+            isOneToOne: false
+            referencedRelation: "periodos_letivos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pautas_oficiais: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          escola_id: string
+          generated_at: string
+          hash: string
+          id: string
+          pdf_path: string
+          periodo_letivo_id: string
+          status: string
+          tipo: string
+          turma_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          escola_id: string
+          generated_at?: string
+          hash: string
+          id?: string
+          pdf_path: string
+          periodo_letivo_id: string
+          status?: string
+          tipo?: string
+          turma_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          escola_id?: string
+          generated_at?: string
+          hash?: string
+          id?: string
+          pdf_path?: string
+          periodo_letivo_id?: string
+          status?: string
+          tipo?: string
+          turma_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pautas_oficiais_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pautas_oficiais_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pautas_oficiais_periodo_letivo_id_fkey"
+            columns: ["periodo_letivo_id"]
+            isOneToOne: false
+            referencedRelation: "periodos_letivos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pautas_oficiais_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pautas_oficiais_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_secretaria"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "pautas_oficiais_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_turmas"
             referencedColumns: ["id"]
           },
         ]
@@ -6402,6 +6708,58 @@ export type Database = {
           },
         ]
       }
+      school_subjects: {
+        Row: {
+          created_at: string | null
+          custom_name: string | null
+          custom_weekly_hours: number | null
+          escola_id: string
+          id: string
+          is_active: boolean | null
+          preset_subject_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          custom_name?: string | null
+          custom_weekly_hours?: number | null
+          escola_id: string
+          id?: string
+          is_active?: boolean | null
+          preset_subject_id: string
+        }
+        Update: {
+          created_at?: string | null
+          custom_name?: string | null
+          custom_weekly_hours?: number | null
+          escola_id?: string
+          id?: string
+          is_active?: boolean | null
+          preset_subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_subjects_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_subjects_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "school_subjects_preset_subject_id_fkey"
+            columns: ["preset_subject_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_preset_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       secoes: {
         Row: {
           escola_id: string
@@ -6902,6 +7260,198 @@ export type Database = {
           },
         ]
       }
+      teacher_courses: {
+        Row: {
+          created_at: string
+          curso_id: string
+          escola_id: string
+          id: string
+          teacher_id: string
+        }
+        Insert: {
+          created_at?: string
+          curso_id: string
+          escola_id: string
+          id?: string
+          teacher_id: string
+        }
+        Update: {
+          created_at?: string
+          curso_id?: string
+          escola_id?: string
+          id?: string
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_courses_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "cursos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_courses_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_cursos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_courses_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_courses_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_courses_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teacher_skills: {
+        Row: {
+          created_at: string
+          disciplina_id: string
+          escola_id: string
+          id: string
+          teacher_id: string
+        }
+        Insert: {
+          created_at?: string
+          disciplina_id: string
+          escola_id: string
+          id?: string
+          teacher_id: string
+        }
+        Update: {
+          created_at?: string
+          disciplina_id?: string
+          escola_id?: string
+          id?: string
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_skills_disciplina_id_fkey"
+            columns: ["disciplina_id"]
+            isOneToOne: false
+            referencedRelation: "disciplinas_catalogo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_skills_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_skills_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teacher_skills_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teachers: {
+        Row: {
+          area_formacao: string | null
+          carga_horaria_maxima: number
+          created_at: string
+          data_nascimento: string | null
+          escola_id: string
+          genero: string
+          habilitacoes: string
+          id: string
+          is_diretor_turma: boolean
+          nome_completo: string
+          numero_bi: string | null
+          profile_id: string
+          telefone_principal: string | null
+          turnos_disponiveis: string[]
+          updated_at: string
+          vinculo_contratual: string
+        }
+        Insert: {
+          area_formacao?: string | null
+          carga_horaria_maxima: number
+          created_at?: string
+          data_nascimento?: string | null
+          escola_id: string
+          genero: string
+          habilitacoes: string
+          id?: string
+          is_diretor_turma?: boolean
+          nome_completo: string
+          numero_bi?: string | null
+          profile_id: string
+          telefone_principal?: string | null
+          turnos_disponiveis?: string[]
+          updated_at?: string
+          vinculo_contratual: string
+        }
+        Update: {
+          area_formacao?: string | null
+          carga_horaria_maxima?: number
+          created_at?: string
+          data_nascimento?: string | null
+          escola_id?: string
+          genero?: string
+          habilitacoes?: string
+          id?: string
+          is_diretor_turma?: boolean
+          nome_completo?: string
+          numero_bi?: string | null
+          profile_id?: string
+          telefone_principal?: string | null
+          turnos_disponiveis?: string[]
+          updated_at?: string
+          vinculo_contratual?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teachers_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teachers_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "teachers_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       turma_disciplinas: {
         Row: {
           avaliacao_disciplina_id: string | null
@@ -7121,6 +7671,7 @@ export type Database = {
           nome: string
           sala: string | null
           session_id: string | null
+          status_fecho: string
           status_validacao: string | null
           turma_code: string | null
           turma_codigo: string | null
@@ -7144,6 +7695,7 @@ export type Database = {
           nome: string
           sala?: string | null
           session_id?: string | null
+          status_fecho?: string
           status_validacao?: string | null
           turma_code?: string | null
           turma_codigo?: string | null
@@ -7167,6 +7719,7 @@ export type Database = {
           nome?: string
           sala?: string | null
           session_id?: string | null
+          status_fecho?: string
           status_validacao?: string | null
           turma_code?: string | null
           turma_codigo?: string | null
@@ -8589,6 +9142,25 @@ export type Database = {
           },
         ]
       }
+      vw_professor_pendencias: {
+        Row: {
+          avaliacao_id: string | null
+          disciplina_id: string | null
+          disciplina_nome: string | null
+          escola_id: string | null
+          notas_lancadas: number | null
+          pendentes: number | null
+          professor_id: string | null
+          profile_id: string | null
+          tipo: string | null
+          total_alunos: number | null
+          trimestre: number | null
+          turma_disciplina_id: string | null
+          turma_id: string | null
+          turma_nome: string | null
+        }
+        Relationships: []
+      }
       vw_radar_inadimplencia: {
         Row: {
           aluno_id: string | null
@@ -9284,6 +9856,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      cleanup_pautas_zip: { Args: never; Returns: undefined }
       conciliar_transacoes_auto_match: {
         Args: { p_escola_id: string; p_import_id?: string }
         Returns: Json
@@ -9383,6 +9956,7 @@ export type Database = {
           nome: string
           sala: string | null
           session_id: string | null
+          status_fecho: string
           status_validacao: string | null
           turma_code: string | null
           turma_codigo: string | null
@@ -9400,12 +9974,58 @@ export type Database = {
       current_tenant_escola_id: { Args: never; Returns: string }
       current_user_id: { Args: never; Returns: string }
       current_user_role: { Args: never; Returns: string }
-      curriculo_publish: {
+      curriculo_create_avaliacoes_for_turmas: {
         Args: {
           p_ano_letivo_id: string
+          p_classe_id?: string
           p_curso_id: string
           p_escola_id: string
-          p_rebuild_turmas?: boolean
+        }
+        Returns: number
+      }
+      curriculo_publish:
+        | {
+            Args: {
+              p_ano_letivo_id: string
+              p_curso_id: string
+              p_escola_id: string
+              p_rebuild_turmas?: boolean
+              p_version: number
+            }
+            Returns: {
+              message: string
+              ok: boolean
+              pendencias: Json
+              pendencias_count: number
+              previous_published_curriculo_id: string
+              published_curriculo_id: string
+            }[]
+          }
+        | {
+            Args: {
+              p_ano_letivo_id: string
+              p_classe_id?: string
+              p_curso_id: string
+              p_escola_id: string
+              p_rebuild_turmas?: boolean
+              p_version: number
+            }
+            Returns: {
+              message: string
+              ok: boolean
+              pendencias: Json
+              pendencias_count: number
+              previous_published_curriculo_id: string
+              published_curriculo_id: string
+            }[]
+          }
+      curriculo_publish_single: {
+        Args: {
+          p_ano_letivo_id: string
+          p_classe_id: string
+          p_curso_id: string
+          p_escola_id: string
+          p_rebuild_turmas: boolean
           p_version: number
         }
         Returns: {
@@ -9417,12 +10037,26 @@ export type Database = {
           published_curriculo_id: string
         }[]
       }
-      curriculo_rebuild_turma_disciplinas: {
-        Args: {
-          p_ano_letivo_id: string
-          p_curso_id: string
-          p_escola_id: string
-        }
+      curriculo_rebuild_turma_disciplinas:
+        | {
+            Args: {
+              p_ano_letivo_id: string
+              p_curso_id: string
+              p_escola_id: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_ano_letivo_id: string
+              p_classe_id?: string
+              p_curso_id: string
+              p_escola_id: string
+            }
+            Returns: undefined
+          }
+      curriculum_recalc_status: {
+        Args: { p_curso_matriz_id?: string; p_escola_id: string }
         Returns: undefined
       }
       dashboard: { Args: never; Returns: Json }
@@ -9862,6 +10496,36 @@ export type Database = {
           turma_codigo: string
         }[]
       }
+      get_teacher_assignments_by_profiles: {
+        Args: { p_escola_id: string; p_profile_ids: string[] }
+        Returns: {
+          carga_horaria_semanal: number
+          disciplina_nome: string
+          profile_id: string
+          turma_id: string
+          turma_nome: string
+        }[]
+      }
+      get_teacher_compliance_status: {
+        Args: { p_teacher_ids: string[]; p_trimestre_id: string }
+        Returns: {
+          status: string
+          teacher_id: string
+        }[]
+      }
+      get_turma_disciplinas_pedagogico: {
+        Args: { p_escola_id: string; p_turma_id: string }
+        Returns: {
+          carga_horaria_semanal: number
+          disciplina_id: string
+          disciplina_nome: string
+          id: string
+          periodos_ativos: number[]
+          professor_email: string
+          professor_nome: string
+          turma_id: string
+        }[]
+      }
       get_user_escola_id:
         | { Args: never; Returns: string }
         | { Args: { p_user_id: string }; Returns: string }
@@ -9879,6 +10543,22 @@ export type Database = {
       has_access_to_escola_fast: {
         Args: { p_escola_id: string }
         Returns: boolean
+      }
+      horario_auto_configurar_cargas: {
+        Args: {
+          p_escola_id: string
+          p_overwrite?: boolean
+          p_strategy?: string
+          p_turma_id: string
+        }
+        Returns: {
+          disciplina_id: string
+          disciplina_nome: string
+          new_carga: number
+          old_carga: number
+          source: string
+          turma_disciplina_id: string
+        }[]
       }
       immutable_unaccent: { Args: { "": string }; Returns: string }
       importar_alunos: {
@@ -9908,6 +10588,10 @@ export type Database = {
           ok: boolean
           turmas_created: number
         }[]
+      }
+      increment_pautas_lote_job: {
+        Args: { p_failed: boolean; p_job_id: string; p_success: boolean }
+        Returns: undefined
       }
       initcap_angola: { Args: { "": string }; Returns: string }
       is_admin_escola: { Args: never; Returns: boolean }
@@ -10158,6 +10842,7 @@ export type Database = {
       refresh_mv_migracao_turmas_lookup: { Args: never; Returns: undefined }
       refresh_mv_ocupacao_turmas: { Args: never; Returns: undefined }
       refresh_mv_pagamentos_status: { Args: never; Returns: undefined }
+      refresh_mv_professor_pendencias: { Args: never; Returns: undefined }
       refresh_mv_radar_inadimplencia: { Args: never; Returns: undefined }
       refresh_mv_secretaria_alunos_resumo: { Args: never; Returns: undefined }
       refresh_mv_secretaria_dashboard_counts: {
@@ -10375,6 +11060,10 @@ export type Database = {
         }
         Returns: Json
       }
+      try_start_pautas_lote_job: {
+        Args: { p_escola_id: string; p_job_id: string }
+        Returns: boolean
+      }
       unaccent: { Args: { "": string }; Returns: string }
       update_financeiro_from_pagamento: {
         Args: { p_event: Json }
@@ -10422,7 +11111,19 @@ export type Database = {
     Enums: {
       app_plan_tier: "essencial" | "profissional" | "premium"
       cobranca_status: "enviada" | "entregue" | "respondida" | "paga" | "falha"
+      course_category:
+        | "PRIMARIO"
+        | "ESG_CICLO1"
+        | "ESG_PUNIV"
+        | "TECNICO"
+        | "TECNICO_SAUDE"
       curriculo_status: "draft" | "published" | "archived"
+      discipline_component:
+        | "GERAL"
+        | "SOCIO_CULTURAL"
+        | "CIENTIFICA"
+        | "TECNICA"
+        | "ESPECIFICA"
       fecho_status: "draft" | "declared" | "approved" | "rejected"
       financeiro_categoria_item:
         | "uniforme"
@@ -10616,7 +11317,21 @@ export const Constants = {
     Enums: {
       app_plan_tier: ["essencial", "profissional", "premium"],
       cobranca_status: ["enviada", "entregue", "respondida", "paga", "falha"],
+      course_category: [
+        "PRIMARIO",
+        "ESG_CICLO1",
+        "ESG_PUNIV",
+        "TECNICO",
+        "TECNICO_SAUDE",
+      ],
       curriculo_status: ["draft", "published", "archived"],
+      discipline_component: [
+        "GERAL",
+        "SOCIO_CULTURAL",
+        "CIENTIFICA",
+        "TECNICA",
+        "ESPECIFICA",
+      ],
       fecho_status: ["draft", "declared", "approved", "rejected"],
       financeiro_categoria_item: [
         "uniforme",

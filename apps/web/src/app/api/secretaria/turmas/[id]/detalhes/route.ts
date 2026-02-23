@@ -134,31 +134,50 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     let disciplinasData: any[] | null = null;
     let disciplinasError: Error | null = null;
     try {
-      let disciplinasQuery = disciplinaClient
-        .from('turma_disciplinas_professores')
-        .select(`
-          id,
-          turma_id,
-          professor_id,
-          disciplina_id,
-          syllabus_id,
-          professores (
+      const { data: pedagogicoRows, error: pedagogicoError } = await supabase
+        .rpc('get_turma_disciplinas_pedagogico', {
+          p_escola_id: escolaId,
+          p_turma_id: turmaId,
+        });
+
+      if (!pedagogicoError && Array.isArray(pedagogicoRows) && pedagogicoRows.length > 0) {
+        disciplinasData = pedagogicoRows.map((row: any) => ({
+          id: row.disciplina_id ?? row.id,
+          turma_id: row.turma_id,
+          turma_disciplina_id: row.id,
+          disciplina: { id: row.disciplina_id, nome: row.disciplina_nome },
+          professores: row.professor_nome
+            ? { profiles: { nome: row.professor_nome, email: row.professor_email } }
+            : null,
+          periodos_ativos: row.periodos_ativos ?? null,
+        }));
+      } else {
+        let disciplinasQuery = disciplinaClient
+          .from('turma_disciplinas_professores')
+          .select(`
             id,
-            apelido,
-            profile_id,
-            profiles!professores_profile_id_fkey ( nome, email )
-          ),
-          syllabi ( id, nome )
-        `)
-        .eq('turma_id', turmaId)
-        .eq('escola_id', escolaId)
-        .order('created_at', { ascending: false });
+            turma_id,
+            professor_id,
+            disciplina_id,
+            syllabus_id,
+            professores (
+              id,
+              apelido,
+              profile_id,
+              profiles!professores_profile_id_fkey ( nome, email )
+            ),
+            syllabi ( id, nome )
+          `)
+          .eq('turma_id', turmaId)
+          .eq('escola_id', escolaId)
+          .order('created_at', { ascending: false });
 
-      disciplinasQuery = applyKf2ListInvariants(disciplinasQuery, { defaultLimit: 50 });
+        disciplinasQuery = applyKf2ListInvariants(disciplinasQuery, { defaultLimit: 50 });
 
-      const { data, error } = await disciplinasQuery;
-      disciplinasData = data ?? [];
-      disciplinasError = error ? new Error(error.message) : null;
+        const { data, error } = await disciplinasQuery;
+        disciplinasData = data ?? [];
+        disciplinasError = error ? new Error(error.message) : null;
+      }
     } catch (e) {
       disciplinasError = e instanceof Error ? e : new Error('Erro ao buscar disciplinas');
     }
@@ -210,6 +229,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       disciplinasData = (fallbackRows || []).map((row: any) => ({
         id: row.curso_matriz?.disciplinas_catalogo?.id || row.curso_matriz?.disciplina_id || row.curso_matriz_id,
         turma_id: turmaId,
+        turma_disciplina_id: row.id,
         disciplina: row.curso_matriz?.disciplinas_catalogo || null,
         professores: null,
         periodos_ativos: row.periodos_ativos ?? null,
@@ -238,6 +258,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       disciplinasData = (matrizRows || []).map((row: any) => ({
         id: row.disciplinas_catalogo?.id || row.disciplina_id || row.id,
         turma_id: turmaId,
+        turma_disciplina_id: null,
         disciplina: row.disciplinas_catalogo || null,
         professores: null,
         periodos_ativos: row.periodos_ativos ?? null,
@@ -275,6 +296,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     const disciplinas = (disciplinasData || []).map(td => ({
       id: td.syllabi?.id || td.disciplina?.id || td.disciplina_id || '',
+      turma_disciplina_id: td.turma_disciplina_id || td.id || null,
       nome: td.syllabi?.nome || td.disciplina?.nome || 'Disciplina Desconhecida',
       sigla: '',
       professor: td.professores?.profiles?.nome || td.professores?.apelido || 'Sem Professor',
