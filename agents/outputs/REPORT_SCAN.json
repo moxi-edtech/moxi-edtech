@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-02-24T00:01:48.957Z",
+  "timestamp": "2026-02-24T01:13:30.671Z",
   "repoRoot": "/Users/gundja/moxi-edtech",
   "summary": {
     "critical": 0,
@@ -112,7 +112,7 @@
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
         },
         {
-          "file": "apps/web/src/components/aluno/dashboard/DashboardLoader.tsx",
+          "file": "apps/web/src/components/aluno/disciplinas/DisciplinasList.tsx",
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
         }
       ],
