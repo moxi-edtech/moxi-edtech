@@ -58,6 +58,7 @@ DECLARE
   v_turmas int := 0;
   v_professores int := 0;
   v_disciplinas int := 0;
+  v_ano_letivo int;
 BEGIN
   IF p_escola_id IS DISTINCT FROM public.current_tenant_escola_id() THEN
     RAISE EXCEPTION 'forbidden';
@@ -65,6 +66,22 @@ BEGIN
 
   IF NOT public.user_has_role_in_school(p_escola_id, ARRAY['admin_escola', 'secretaria', 'admin']) THEN
     RAISE EXCEPTION 'forbidden';
+  END IF;
+
+  SELECT ano INTO v_ano_letivo
+  FROM anos_letivos
+  WHERE id = p_ano_letivo_id
+    AND escola_id = p_escola_id;
+
+  IF v_ano_letivo IS NULL THEN
+    v_validations := v_validations || jsonb_build_array(jsonb_build_object(
+      'regra', 'ano_letivo_existe',
+      'severidade', 'P0',
+      'entidade', 'anos_letivos',
+      'mensagem', 'Ano letivo não encontrado para esta escola.',
+      'bloqueante', true
+    ));
+    v_blockers := v_blockers + 1;
   END IF;
 
   v_periodos_novos := p_changes -> 'periodos';
@@ -262,26 +279,27 @@ BEGIN
   SELECT COUNT(DISTINCT m.id) INTO v_alunos
   FROM matriculas m
   WHERE m.escola_id = p_escola_id
-    AND m.ano_letivo_id = p_ano_letivo_id
-    AND m.status = 'activa';
+    AND m.ano_letivo = v_ano_letivo
+    AND m.status IN ('activa', 'ativa', 'ativo', 'active');
 
   SELECT COUNT(*) INTO v_turmas
   FROM turmas t
   WHERE t.escola_id = p_escola_id
-    AND t.ano_letivo_id = p_ano_letivo_id;
+    AND t.ano_letivo = v_ano_letivo;
 
   SELECT COUNT(DISTINCT td.professor_id) INTO v_professores
   FROM turma_disciplinas td
   JOIN turmas t ON t.id = td.turma_id
   WHERE t.escola_id = p_escola_id
-    AND t.ano_letivo_id = p_ano_letivo_id
+    AND t.ano_letivo = v_ano_letivo
     AND td.professor_id IS NOT NULL;
 
-  SELECT COUNT(DISTINCT td.disciplina_id) INTO v_disciplinas
+  SELECT COUNT(DISTINCT cm.disciplina_id) INTO v_disciplinas
   FROM turma_disciplinas td
   JOIN turmas t ON t.id = td.turma_id
+  JOIN curso_matriz cm ON cm.id = td.curso_matriz_id
   WHERE t.escola_id = p_escola_id
-    AND t.ano_letivo_id = p_ano_letivo_id;
+    AND t.ano_letivo = v_ano_letivo;
 
   RETURN jsonb_build_object(
     'ok', true,

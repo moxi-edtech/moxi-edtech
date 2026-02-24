@@ -26,8 +26,9 @@ DECLARE
   v_blockers jsonb := '[]'::jsonb;
   v_stage text := 'SETUP_EMPTY';
   v_next_action jsonb;
-  v_config_href text := format('/escola/%s/admin/configuracoes/academico-completo', p_escola_id);
-  v_avaliacao_href text := format('/escola/%s/admin/configuracoes/avaliacao-frequencia', p_escola_id);
+  v_calendario_href text := format('/escola/%s/admin/configuracoes/calendario', p_escola_id);
+  v_avaliacao_href text := format('/escola/%s/admin/configuracoes/avaliacao', p_escola_id);
+  v_turmas_href text := format('/escola/%s/admin/configuracoes/turmas', p_escola_id);
 BEGIN
   IF p_escola_id IS DISTINCT FROM public.current_tenant_escola_id() THEN
     RAISE EXCEPTION 'forbidden';
@@ -137,7 +138,7 @@ BEGIN
       'severity', 'P0',
       'title', 'Ano letivo ativo não encontrado',
       'detail', 'Defina um ano letivo ativo para continuar.',
-      'fix_cta', jsonb_build_object('label', 'Configurar ano letivo', 'href', v_config_href)
+      'fix_cta', jsonb_build_object('label', 'Configurar ano letivo', 'href', v_calendario_href)
     ));
   END IF;
 
@@ -147,7 +148,7 @@ BEGIN
       'severity', 'P0',
       'title', 'Períodos letivos ausentes',
       'detail', 'Crie os períodos do ano letivo antes de avançar.',
-      'fix_cta', jsonb_build_object('label', 'Configurar períodos', 'href', v_config_href)
+      'fix_cta', jsonb_build_object('label', 'Configurar períodos', 'href', v_calendario_href)
     ));
   END IF;
 
@@ -157,7 +158,7 @@ BEGIN
       'severity', 'P0',
       'title', 'Períodos sobrepostos',
       'detail', 'Revise as datas para evitar conflitos.',
-      'fix_cta', jsonb_build_object('label', 'Revisar períodos', 'href', v_config_href)
+      'fix_cta', jsonb_build_object('label', 'Revisar períodos', 'href', v_calendario_href)
     ));
   END IF;
 
@@ -167,7 +168,7 @@ BEGIN
       'severity', 'P0',
       'title', 'Pesos dos períodos incoerentes',
       'detail', 'A soma dos pesos deve fechar 100%.',
-      'fix_cta', jsonb_build_object('label', 'Revisar pesos', 'href', v_config_href)
+      'fix_cta', jsonb_build_object('label', 'Revisar pesos', 'href', v_calendario_href)
     ));
   END IF;
 
@@ -177,7 +178,7 @@ BEGIN
       'severity', 'P0',
       'title', 'Trava de notas inválida',
       'detail', 'A trava deve ser igual ou posterior ao fim do período.',
-      'fix_cta', jsonb_build_object('label', 'Revisar travas', 'href', v_config_href)
+      'fix_cta', jsonb_build_object('label', 'Revisar travas', 'href', v_calendario_href)
     ));
   END IF;
 
@@ -197,7 +198,7 @@ BEGIN
       'severity', 'P1',
       'title', 'Currículo rascunho ausente',
       'detail', 'Aplique um preset para criar o currículo.',
-      'fix_cta', jsonb_build_object('label', 'Aplicar preset', 'href', v_config_href)
+      'fix_cta', jsonb_build_object('label', 'Aplicar preset', 'href', v_turmas_href)
     ));
   END IF;
 
@@ -207,7 +208,7 @@ BEGIN
       'severity', 'P0',
       'title', 'Currículo publicado ausente',
       'detail', 'Publique o currículo antes de gerar turmas.',
-      'fix_cta', jsonb_build_object('label', 'Publicar currículo', 'href', v_config_href)
+      'fix_cta', jsonb_build_object('label', 'Publicar currículo', 'href', v_turmas_href)
     ));
   END IF;
 
@@ -217,7 +218,7 @@ BEGIN
       'severity', 'P0',
       'title', 'Nenhuma turma gerada',
       'detail', 'Gere turmas a partir do currículo publicado.',
-      'fix_cta', jsonb_build_object('label', 'Gerar turmas', 'href', v_config_href)
+      'fix_cta', jsonb_build_object('label', 'Gerar turmas', 'href', v_turmas_href)
     ));
   END IF;
 
@@ -227,7 +228,7 @@ BEGIN
       'severity', 'P0',
       'title', 'Turmas sem disciplinas',
       'detail', 'Republique o currículo para reconstruir disciplinas.',
-      'fix_cta', jsonb_build_object('label', 'Reconstruir disciplinas', 'href', v_config_href)
+      'fix_cta', jsonb_build_object('label', 'Reconstruir disciplinas', 'href', v_turmas_href)
     ));
   END IF;
 
@@ -273,13 +274,13 @@ BEGIN
       END,
     'href',
       CASE
-        WHEN v_ano_letivo_id IS NULL OR v_ano_ativo IS NOT TRUE THEN v_config_href
-        WHEN NOT v_periodos_ok THEN v_config_href
+        WHEN v_ano_letivo_id IS NULL OR v_ano_ativo IS NOT TRUE THEN v_calendario_href
+        WHEN NOT v_periodos_ok THEN v_calendario_href
         WHEN NOT v_avaliacao_ok THEN v_avaliacao_href
-        WHEN NOT v_curriculo_draft_ok THEN v_config_href
-        WHEN NOT v_curriculo_published_ok THEN v_config_href
-        WHEN NOT v_turmas_ok THEN v_config_href
-        ELSE v_config_href
+        WHEN NOT v_curriculo_draft_ok THEN v_turmas_href
+        WHEN NOT v_curriculo_published_ok THEN v_turmas_href
+        WHEN NOT v_turmas_ok THEN v_turmas_href
+        ELSE v_calendario_href
       END
   );
 

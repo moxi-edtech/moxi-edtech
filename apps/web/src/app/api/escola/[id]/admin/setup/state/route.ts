@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createRouteClient } from "@/lib/supabase/route-client";
+import { supabaseServerTyped } from "@/lib/supabaseServer";
+import type { Database } from "~types/supabase";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export async function GET(
@@ -10,7 +11,7 @@ export async function GET(
   try {
     const url = new URL(req.url);
     const anoParam = url.searchParams.get("ano");
-    const supabase = await createRouteClient();
+    const supabase = await supabaseServerTyped<Database>();
     const { data: auth } = await supabase.auth.getUser();
     const user = auth?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
