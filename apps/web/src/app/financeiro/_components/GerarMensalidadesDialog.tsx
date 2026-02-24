@@ -2,12 +2,13 @@
 'use client'
 
 import { useState } from 'react'
-import { toast } from 'sonner'
 import { CalendarDays, Wallet, Loader2, AlertCircle } from 'lucide-react'
+import { useToast } from "@/components/feedback/FeedbackSystem"
 
 export function GerarMensalidadesDialog() {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const { success, error, toast: rawToast } = useToast()
   
   // Defaults para o mês seguinte
   const today = new Date()
@@ -33,14 +34,18 @@ export function GerarMensalidadesDialog() {
       const geradas = json.stats?.geradas || 0
       
       if (geradas > 0) {
-        toast.success(`Processo concluído! ${geradas} cobranças geradas.`)
+        success(`Processo concluído! ${geradas} cobranças geradas.`)
         setOpen(false)
       } else {
-        toast.info('Processo concluído. Nenhuma nova cobrança foi necessária (todas já existiam ou foram barradas pelo escudo financeiro).')
+        rawToast({
+          variant: "info",
+          title: "Processo concluído.",
+          message: "Nenhuma nova cobrança foi necessária (todas já existiam ou foram barradas pelo escudo financeiro).",
+        })
       }
 
     } catch (e: any) {
-      toast.error(e.message)
+      error(e.message)
     } finally {
       setLoading(false)
     }

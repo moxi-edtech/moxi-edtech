@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import Link from "next/link";
-import { toast } from "sonner";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 import {
   Upload,
   FileUp,
@@ -17,12 +17,12 @@ import {
   Check,
   AlertTriangle,
   Eye,
-  Loader2,
   CalendarCheck,
   Wallet,
   Filter,
   FileText,
 } from "lucide-react";
+import { Skeleton } from "@/components/feedback/FeedbackSystem";
 
 // -----------------------------
 // Types
@@ -244,6 +244,7 @@ function SelectPill(props: {
 // Page
 // -----------------------------
 const ConciliacaoBancaria: React.FC = () => {
+  const { success, error, warning, toast: rawToast } = useToast();
   const [transacoes, setTransacoes] = useState<TransacaoBancaria[]>([]);
   const [arquivos, setArquivos] = useState<File[]>([]);
   const [bancoSelecionado, setBancoSelecionado] = useState<string>("BAI");
@@ -282,12 +283,12 @@ const ConciliacaoBancaria: React.FC = () => {
         }));
         setTransacoes(parsed);
       } else {
-        toast.error(result.error || "Erro ao carregar transações.");
+        error(result.error || "Erro ao carregar transações.");
         setTransacoes([]);
       }
     } catch (e) {
       console.error(e);
-      toast.error("Erro de conexão ao carregar transações.");
+      error("Erro de conexão ao carregar transações.");
       setTransacoes([]);
     } finally {
       setLoadingTransactions(false);
@@ -302,11 +303,11 @@ const ConciliacaoBancaria: React.FC = () => {
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
       if (acceptedFiles.length === 0) {
-        toast.error("Selecione um arquivo.");
+      error("Selecione um arquivo.");
         return;
       }
       if (!bancoSelecionado) {
-        toast.error("Selecione o banco.");
+      error("Selecione o banco.");
         return;
       }
 
@@ -326,16 +327,16 @@ const ConciliacaoBancaria: React.FC = () => {
         const result = await response.json();
 
         if (response.ok && result.ok) {
-          toast.success("Extrato importado com sucesso!");
+          success("Extrato importado com sucesso.");
           setArquivos([file]);
           fetchTransactions();
         } else {
-          toast.error(result.error || "Erro ao importar extrato.");
+          error(result.error || "Erro ao importar extrato.");
           setArquivos([]);
         }
       } catch (e) {
         console.error(e);
-        toast.error("Erro de conexão ou servidor.");
+        error("Erro de conexão ou servidor.");
         setArquivos([]);
       } finally {
         setProcessingUpload(false);
@@ -377,7 +378,7 @@ const ConciliacaoBancaria: React.FC = () => {
       );
     }
 
-    toast.success("Matching processado. Revise as sugestões antes de confirmar.");
+    success("Matching processado.", "Revise as sugestões antes de confirmar.");
   };
 
   const conciliarTransacao = async (transacaoId: string, alunoId: string, mensalidadeId?: string) => {
@@ -396,14 +397,14 @@ const ConciliacaoBancaria: React.FC = () => {
 
       const result = await response.json();
       if (response.ok && result.ok) {
-        toast.success("Transação conciliada e pagamento liquidado!");
+        success("Transação conciliada.", "Pagamento liquidado.");
         fetchTransactions();
       } else {
-        toast.error(result.error || "Erro ao conciliar transação.");
+        error(result.error || "Erro ao conciliar transação.");
       }
     } catch (e) {
       console.error(e);
-      toast.error("Erro de conexão/servidor ao conciliar.");
+      error("Erro de conexão/servidor ao conciliar.");
     } finally {
       setProcessingUpload(false);
     }
@@ -411,7 +412,7 @@ const ConciliacaoBancaria: React.FC = () => {
 
   const ignorarTransacao = (transacaoId: string) => {
     setTransacoes((prev) => prev.map((t) => (t.id === transacaoId ? { ...t, status: "ignorado" } : t)));
-    toast.message("Transação marcada como ignorada.");
+    rawToast({ variant: "info", title: "Transação marcada como ignorada." });
   };
 
   const resumo = useMemo(() => {
@@ -460,7 +461,11 @@ const ConciliacaoBancaria: React.FC = () => {
                     Matching automático
                   </SoftButton>
 
-                  <SoftButton icon={BarChart3} variant="secondary" onClick={() => toast.message("TODO: relatório")}>
+                  <SoftButton
+                    icon={BarChart3}
+                    variant="secondary"
+                    onClick={() => rawToast({ variant: "info", title: "Relatório em preparação." })}
+                  >
                     Relatório
                   </SoftButton>
 
@@ -643,7 +648,9 @@ const ConciliacaoBancaria: React.FC = () => {
             >
               <input {...getInputProps()} />
               {processingUpload ? (
-                <Loader2 className="mx-auto mb-3 h-12 w-12 animate-spin text-slate-400" />
+                <div className="mx-auto mb-3 h-12 w-12">
+                  <Skeleton className="h-12 w-12 rounded-full" />
+                </div>
               ) : (
                 <Upload className="mx-auto mb-3 h-12 w-12 text-slate-400" />
               )}
@@ -763,8 +770,10 @@ const ConciliacaoBancaria: React.FC = () => {
                   {loadingTransactions ? (
                     <tr>
                       <td colSpan={8} className="px-6 py-10 text-center text-slate-500">
-                        <Loader2 className="mx-auto mb-2 h-8 w-8 animate-spin" />
-                        Carregando transações...
+                        <div className="mx-auto space-y-2 max-w-xs">
+                          <Skeleton className="h-4 w-40 mx-auto" />
+                          <Skeleton className="h-3 w-56 mx-auto" />
+                        </div>
                       </td>
                     </tr>
                   ) : transacoes.length === 0 ? (
@@ -867,7 +876,7 @@ const ConciliacaoBancaria: React.FC = () => {
 
                                 {t.status === "pendente" && !t.alunoMatch ? (
                                   <button
-                                    onClick={() => toast.message("TODO: modal de busca manual")}
+                                    onClick={() => rawToast({ variant: "info", title: "Busca manual em preparação." })}
                                     className="rounded-xl p-2 text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
                                     title="Buscar aluno"
                                   >
@@ -884,7 +893,7 @@ const ConciliacaoBancaria: React.FC = () => {
                                 </button>
 
                                 <button
-                                  onClick={() => toast.message("TODO: drawer de detalhes")}
+                                  onClick={() => rawToast({ variant: "info", title: "Detalhes em preparação." })}
                                   className="rounded-xl p-2 text-slate-600 hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
                                   title="Detalhes"
                                 >

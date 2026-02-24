@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { applyKf2ListInvariants } from "@/lib/kf2"; // Keep this import if applyKf2ListInvariants is used elsewhere or in a fallback scenario not shown
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"; // Keep this import if resolveEscolaIdForUser is used elsewhere or in a fallback scenario not shown
+import { requireFeature } from "@/lib/plan/requireFeature";
+import { HttpError } from "@/lib/errors";
 
 // --- TYPE INTERFACES (Keep existing interfaces or adjust as needed) ---
 interface PaymentRow {
@@ -121,6 +123,15 @@ export async function GET(
         ok: false, 
         error: "Não autenticado" 
       }, { status: 401 });
+    }
+
+    try {
+      await requireFeature("doc_qr_code");
+    } catch (err) {
+      if (err instanceof HttpError) {
+        return NextResponse.json({ ok: false, error: err.message, code: err.code }, { status: err.status });
+      }
+      throw err;
     }
     
     console.log(`[EXTRATO-REMOTO] Usuário: ${user.email} (${user.id})`);

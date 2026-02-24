@@ -4,6 +4,8 @@ export function buildReportMarkdown(report: ScanReport) {
   const lines: string[] = [];
   lines.push("# REPORT_SCAN.md — KLASSE FOUNDATION AUDIT");
   lines.push("");
+  lines.push(`- Verificado em: \`${report.timestamp}\``);
+  lines.push("");
   lines.push("## 1. SUMÁRIO EXECUTIVO");
   lines.push("");
   lines.push(`- Findings CRÍTICOS: **${report.summary.critical}**`);

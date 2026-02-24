@@ -10,8 +10,8 @@ import {
   Wallet,
   Plus,
 } from "lucide-react";
-import { toast } from "sonner";
 import { ModalPagamentoRapido } from "@/components/secretaria/ModalPagamentoRapido";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 type MensalidadeResumo = {
   id: string;
@@ -113,6 +113,7 @@ export function AcoesRapidasBalcao({
   mensalidades,
 }: AcoesRapidasBalcaoProps) {
   const router = useRouter();
+  const { success, error } = useToast();
 
   const [modalAberto, setModalAberto] = useState(false);
   const [mensalidadeAtual, setMensalidadeAtual] = useState<MensalidadeResumo | null>(
@@ -135,7 +136,7 @@ export function AcoesRapidasBalcao({
 
   const openPagamento = useCallback(() => {
     if (!mensalidadeSugerida) {
-      toast.error("Não há mensalidades pendentes para este aluno.");
+      error("Não há mensalidades pendentes para este aluno.");
       return;
     }
     setMensalidadeAtual(mensalidadeSugerida);
@@ -269,7 +270,7 @@ export function AcoesRapidasBalcao({
         }}
         onSuccess={() => {
           router.refresh();
-          toast.success("Situação financeira atualizada.");
+          success("Situação financeira atualizada.");
         }}
       />
     </>

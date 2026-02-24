@@ -8,7 +8,29 @@ import {
   buildPesoPorTipo,
   resolveModeloAvaliacao,
 } from '@/lib/academico/avaliacao-utils'
-import { getSupabaseServerClient } from '@/lib/supabase-server'
+import type { Database } from '~types/supabase'
+
+type ProfessorRow = { id: string }
+type TurmaRow = { id: string; curso_id: string | null; classe_id: string | null }
+type TurmaDisciplinaRow = { id: string; professor_id: string | null; curso_matriz_id: string | null }
+type CursoMatrizRow = {
+  id: string
+  disciplina_id: string | null
+  avaliacao_mode: string | null
+  avaliacao_modelo_id: string | null
+  avaliacao_disciplina_id: string | null
+}
+type MatriculaRow = {
+  id: string
+  aluno_id: string | null
+  numero_chamada: number | null
+  alunos?: {
+    id?: string | null
+    nome?: string | null
+    profile_id?: string | null
+    profiles?: { avatar_url?: string | null } | null
+  } | null
+}
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -22,7 +44,7 @@ const Query = z.object({
 
 export async function GET(req: Request) {
   try {
-    const supabase = await supabaseServerTyped<any>()
+    const supabase = await supabaseServerTyped<Database>()
     const { data: userRes } = await supabase.auth.getUser()
     const user = userRes?.user
     if (!user) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
@@ -41,16 +63,17 @@ export async function GET(req: Request) {
     if (!parsed.success) {
       return NextResponse.json({ error: 'Parâmetros inválidos' }, { status: 400 })
     }
+    const turmaIdValue = parsed.data.turmaId
+    const disciplinaIdValue = parsed.data.disciplinaId
+    const turmaDisciplinaIdValue = parsed.data.turmaDisciplinaId
+    const trimestreValue = parsed.data.trimestre
     const detalhadoRaw = searchParams.get('detalhado') ?? ''
     const detalhado = ['1', 'true', 'yes'].includes(detalhadoRaw.toLowerCase())
 
-    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
+    const escolaId = await resolveEscolaIdForUser(supabase, user.id)
     if (!escolaId) return NextResponse.json({ error: 'Escola não encontrada' }, { status: 400 })
 
-    const admin = getSupabaseServerClient()
-    if (!admin) {
-      return NextResponse.json({ error: 'SUPABASE_SERVICE_ROLE_KEY ausente' }, { status: 500 })
-    }
+    const admin = supabase
 
     const { data: professor } = await admin
       .from('professores')
@@ -58,16 +81,20 @@ export async function GET(req: Request) {
       .eq('profile_id', user.id)
       .eq('escola_id', escolaId)
       .maybeSingle()
-    const professorId = (professor as any)?.id as string | undefined
+    const professorId = (professor as ProfessorRow | null)?.id
     if (!professorId) return NextResponse.json({ error: 'Professor não encontrado' }, { status: 403 })
 
     const { data: turma } = await admin
       .from('turmas')
       .select('id, curso_id, classe_id')
-      .eq('id', turmaId)
+      .eq('id', turmaIdValue)
       .eq('escola_id', escolaId)
       .maybeSingle()
     if (!turma) return NextResponse.json({ error: 'Turma não encontrada' }, { status: 404 })
+    const turmaRow = turma as TurmaRow
+    if (!turmaRow.curso_id || !turmaRow.classe_id) {
+      return NextResponse.json({ error: 'Turma sem curso/classe associada' }, { status: 422 })
+    }
 
     let matrizFallback:
       | { id: string; disciplina_id: string | null; avaliacao_mode: string | null; avaliacao_modelo_id: string | null; avaliacao_disciplina_id: string | null }
@@ -75,36 +102,36 @@ export async function GET(req: Request) {
 
     let turmaDisciplina: { id: string; professor_id: string | null; curso_matriz_id: string | null } | null = null
 
-    if (parsed.data.turmaDisciplinaId) {
+    if (turmaDisciplinaIdValue) {
       const { data } = await admin
         .from('turma_disciplinas')
         .select('id, professor_id, curso_matriz_id')
         .eq('escola_id', escolaId)
-        .eq('turma_id', turmaId)
-        .eq('id', parsed.data.turmaDisciplinaId)
+        .eq('turma_id', turmaIdValue)
+        .eq('id', turmaDisciplinaIdValue)
         .maybeSingle()
-      turmaDisciplina = data as any
+      turmaDisciplina = data as TurmaDisciplinaRow | null
     } else {
       const { data: matrizData } = await admin
         .from('curso_matriz')
         .select('id, disciplina_id, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id')
         .eq('escola_id', escolaId)
-        .eq('curso_id', turma.curso_id)
-        .eq('classe_id', turma.classe_id)
-        .eq('disciplina_id', disciplinaId)
+        .eq('curso_id', turmaRow.curso_id)
+        .eq('classe_id', turmaRow.classe_id)
+        .eq('disciplina_id', disciplinaIdValue)
         .eq('ativo', true)
         .maybeSingle()
-      matrizFallback = (matrizData as any) ?? null
+      matrizFallback = (matrizData as CursoMatrizRow | null) ?? null
 
       if (matrizFallback?.id) {
         const { data } = await admin
           .from('turma_disciplinas')
           .select('id, professor_id, curso_matriz_id')
           .eq('escola_id', escolaId)
-          .eq('turma_id', turmaId)
+          .eq('turma_id', turmaIdValue)
           .eq('curso_matriz_id', matrizFallback.id)
           .maybeSingle()
-        turmaDisciplina = data as any
+        turmaDisciplina = data as TurmaDisciplinaRow | null
       }
     }
 
@@ -118,8 +145,8 @@ export async function GET(req: Request) {
         .from('turma_disciplinas_professores')
         .select('id')
         .eq('escola_id', escolaId)
-        .eq('turma_id', turmaId)
-        .eq('disciplina_id', disciplinaId)
+        .eq('turma_id', turmaIdValue)
+        .eq('disciplina_id', disciplinaIdValue)
         .eq('professor_id', professorId)
         .maybeSingle()
       isProfessorAssigned = Boolean(assignment)
@@ -129,6 +156,10 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Professor não atribuído à disciplina' }, { status: 403 })
     }
 
+    if (!turmaDisciplina.curso_matriz_id) {
+      return NextResponse.json({ error: 'Disciplina sem matriz associada' }, { status: 400 })
+    }
+
     const { data: matrizData } = await admin
       .from('curso_matriz')
       .select('id, disciplina_id, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id')
@@ -136,21 +167,23 @@ export async function GET(req: Request) {
       .eq('id', turmaDisciplina.curso_matriz_id)
       .eq('ativo', true)
       .maybeSingle()
-    const matriz = (matrizData as any) ?? matrizFallback
+    const matriz = (matrizData as CursoMatrizRow | null) ?? matrizFallback
 
     if (!matriz) {
       return NextResponse.json({ error: 'Disciplina não vinculada à matriz da turma' }, { status: 400 })
     }
 
-    if (matriz.disciplina_id && matriz.disciplina_id !== disciplinaId) {
+    if (matriz.disciplina_id && matriz.disciplina_id !== disciplinaIdValue) {
       return NextResponse.json({ error: 'Disciplina não vinculada à matriz da turma' }, { status: 400 })
     }
 
+    const cursoId = turmaRow.curso_id
+    const classeId = turmaRow.classe_id
     const modelo = await resolveModeloAvaliacao({
       supabase: admin,
       escolaId,
-      cursoId: turma.curso_id,
-      classeId: turma.classe_id,
+      cursoId,
+      classeId,
       matriz,
     })
 
@@ -174,7 +207,7 @@ export async function GET(req: Request) {
       `
       )
       .eq('escola_id', escolaId)
-      .eq('turma_id', turmaId)
+      .eq('turma_id', turmaIdValue)
       .in('status', ['ativo', 'ativa', 'active'])
       .order('numero_chamada', { ascending: true, nullsFirst: false })
 
@@ -185,8 +218,8 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: matriculasError.message }, { status: 400 })
     }
 
-    const matriculaRows = (matriculas || []).filter((row: any) => row?.alunos)
-    const matriculaIds = matriculaRows.map((row: any) => row.id)
+    const matriculaRows = (matriculas || []).filter((row: MatriculaRow) => row?.alunos)
+    const matriculaIds = matriculaRows.map((row: MatriculaRow) => row.id)
 
     const notasPorMatricula = new Map<
       string,
@@ -208,8 +241,8 @@ export async function GET(req: Request) {
         .eq('avaliacoes.turma_disciplina_id', turmaDisciplina.id)
         .in('matricula_id', matriculaIds)
 
-      if (detalhado && parsed.data.trimestre && usarTrimestres) {
-        notasQuery = notasQuery.eq('avaliacoes.trimestre', parsed.data.trimestre)
+      if (detalhado && trimestreValue && usarTrimestres) {
+        notasQuery = notasQuery.eq('avaliacoes.trimestre', trimestreValue)
       }
 
       const { data: notasRows, error: notasError } = await notasQuery
@@ -254,8 +287,8 @@ export async function GET(req: Request) {
       }
     }
 
-    if (detalhado && parsed.data.trimestre) {
-      const trimestre = parsed.data.trimestre
+    if (detalhado && trimestreValue) {
+      const trimestre = trimestreValue
       const pickTipo = (stats: { tipoSum?: Record<string, number>; tipoCount?: Record<string, number> } | undefined, tipo: string) => {
         if (!stats?.tipoSum || !stats?.tipoCount) return null
         const sum = stats.tipoSum[tipo] ?? 0
@@ -294,7 +327,7 @@ export async function GET(req: Request) {
         return Number(avg.toFixed(2))
       }
 
-      const payload = matriculaRows.map((row: any) => {
+      const payload = matriculaRows.map((row: MatriculaRow) => {
         const stats = notasPorMatricula.get(row.id)
         const mac = resolveValor(stats, 'MAC')
         const npp = resolveValor(stats, 'NPP')
@@ -345,7 +378,7 @@ export async function GET(req: Request) {
       return Number(mediaSimples.toFixed(2))
     }
 
-    const payload = matriculaRows.map((row: any) => {
+    const payload = matriculaRows.map((row: MatriculaRow) => {
       const stats = notasPorMatricula.get(row.id)
       const notas = {
         t1: calcularNota(stats, 1),

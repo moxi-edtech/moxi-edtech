@@ -135,4 +135,4 @@ Criar `vw_search_*` para normalizar campos e ranking:
 ---
 
 ## Referências
-- `docs/big-tech-performance.md`
+- `agents/specs/performance.md`

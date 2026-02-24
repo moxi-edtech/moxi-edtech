@@ -94,7 +94,7 @@ const mapAulas = (items: any[]): SchedulerAula[] =>
   });
 
 const fetchJson = async (url: string, signal: AbortSignal) => {
-  const res = await fetch(url, { cache: "no-store", signal });
+  const res = await fetch(url, { cache: "force-cache", signal });
   const json = await res.json().catch(() => ({}));
   return { res, json };
 };

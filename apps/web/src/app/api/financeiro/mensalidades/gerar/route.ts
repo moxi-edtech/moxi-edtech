@@ -15,10 +15,20 @@ const BodySchema = z.object({
 export async function POST(req: Request) {
   try {
     const supabase = await supabaseServerTyped<Database>()
+    const supabaseAny = supabase as any
     const { data: { user } } = await supabase.auth.getUser()
     
     if (!user) {
       return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
+    }
+
+    const idempotencyKey =
+      req.headers.get('Idempotency-Key') ?? req.headers.get('idempotency-key')
+    if (!idempotencyKey) {
+      return NextResponse.json(
+        { ok: false, error: 'Idempotency-Key header é obrigatório' },
+        { status: 400 }
+      )
     }
 
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
@@ -36,6 +46,18 @@ export async function POST(req: Request) {
       }, { status: 400 })
     }
 
+    const { data: existingIdempotency } = await supabaseAny
+      .from('idempotency_keys')
+      .select('result')
+      .eq('escola_id', escolaId)
+      .eq('scope', 'financeiro_mensalidades_gerar')
+      .eq('key', idempotencyKey)
+      .maybeSingle()
+
+    if (existingIdempotency?.result) {
+      return NextResponse.json(existingIdempotency.result, { status: 200 })
+    }
+
     const { ano_letivo, mes_referencia, dia_vencimento } = parsed.data
 
     // Chama a RPC Blindada (com Escudo Financeiro)
@@ -51,10 +73,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ 
+    const responsePayload = { 
       ok: true, 
       stats: data // Retorna { geradas: N }
-    })
+    }
+
+    await supabaseAny.from('idempotency_keys').upsert(
+      {
+        escola_id: escolaId,
+        scope: 'financeiro_mensalidades_gerar',
+        key: idempotencyKey,
+        result: responsePayload,
+      },
+      { onConflict: 'escola_id,scope,key' }
+    )
+
+    return NextResponse.json(responsePayload)
 
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: e.message }, { status: 500 })

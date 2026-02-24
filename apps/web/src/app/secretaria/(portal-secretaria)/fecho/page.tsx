@@ -2,11 +2,12 @@
 
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import FechoCaixaCego from "@/components/secretaria/FechoCaixaCego";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 export default function SecretariaFechoPage() {
   const router = useRouter();
+  const { success } = useToast();
   const dayKey = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   const handleConfirm = async (declaracao: {
@@ -52,7 +53,7 @@ export default function SecretariaFechoPage() {
     const sistemaTotal = sistema.numerario + sistema.tpa + sistema.transferencia + sistema.mcx;
     const diferencaTotal = declaradoTotal - sistemaTotal;
 
-    toast.success("Fecho declarado. Aguardando aprovação do financeiro.");
+    success("Fecho declarado.", "Aguardando aprovação do financeiro.");
 
     return {
       sistema,

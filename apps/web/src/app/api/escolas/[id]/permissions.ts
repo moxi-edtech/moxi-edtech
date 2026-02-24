@@ -1,21 +1,26 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 
+type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
+type EscolaUserRow = Database["public"]["Tables"]["escola_users"]["Row"];
+type EscolaAdministradorRow = Database["public"]["Tables"]["escola_administradores"]["Row"];
+
 export async function canManageEscolaResources(
   admin: SupabaseClient<Database>,
   escolaId: string,
   userId: string
 ): Promise<boolean> {
   try {
-    const { data: profile } = await (admin as any)
+    const { data: profile } = await admin
       .from("profiles")
       .select("role, escola_id, current_escola_id")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .maybeSingle();
 
-    const role = (profile as any)?.role as string | undefined;
-    const escolaFromProfile = (profile as any)?.escola_id || (profile as any)?.current_escola_id;
+    const profileRow = profile as ProfileRow | null;
+    const role = profileRow?.role as string | undefined;
+    const escolaFromProfile = profileRow?.escola_id || profileRow?.current_escola_id;
 
     // Perfis com privilégios globais
     if (role === "super_admin" || role === "global_admin") return true;
@@ -29,24 +34,26 @@ export async function canManageEscolaResources(
   } catch {}
 
   try {
-    const { data: vinc } = await (admin as any)
+    const { data: vinc } = await admin
       .from("escola_users")
       .select("papel, role")
       .eq("escola_id", escolaId)
       .eq("user_id", userId)
       .maybeSingle();
-    const papel = ((vinc as any)?.papel ?? (vinc as any)?.role) as string | undefined;
+    const vincRow = vinc as EscolaUserRow | null;
+    const papel = (vincRow?.papel ?? (vincRow as { role?: string | null } | null)?.role) as string | undefined;
     if (papel) return true;
   } catch {}
 
   try {
-    const { data: adminLink } = await (admin as any)
+    const { data: adminLink } = await admin
       .from("escola_administradores")
       .select("user_id")
       .eq("escola_id", escolaId)
       .eq("user_id", userId)
       .limit(1);
-    if (adminLink && (adminLink as any[]).length > 0) return true;
+    const links = adminLink as EscolaAdministradorRow[] | null;
+    if (links && links.length > 0) return true;
   } catch {}
 
   return false;

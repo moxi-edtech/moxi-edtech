@@ -49,7 +49,7 @@ export default function StudentPortalLayout({ children }: { children: React.Reac
         )
         if (!mounted || !escolaId) return
         try {
-          const res = await fetch(`/api/escolas/${escolaId}/nome`, { cache: 'no-store' })
+          const res = await fetch(`/api/escolas/${escolaId}/nome`)
           const json = await res.json().catch(() => null)
           const p = json?.plano ?? null
           if (mounted && p) setPlan(parsePlanTier(p))

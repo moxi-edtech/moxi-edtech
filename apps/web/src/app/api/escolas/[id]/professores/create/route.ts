@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
 import type { Database, TablesInsert } from '~types/supabase'
 import { createRouteClient } from '@/lib/supabase/route-client'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { hasPermission, mapPapelToGlobalRole, normalizePapel } from '@/lib/permissions'
 import { sanitizeEmail } from '@/lib/sanitize'
+import { callAuthAdminJob } from '@/lib/auth-admin-job'
 
 const TurnosSchema = z.enum(['Manhã', 'Tarde', 'Noite'])
 
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const requesterId = userRes?.user?.id
     if (!requesterId) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
-    const userEscolaId = await resolveEscolaIdForUser(supabase as any, requesterId, escolaId)
+    const userEscolaId = await resolveEscolaIdForUser(supabase, requesterId, escolaId)
     if (!userEscolaId || userEscolaId !== escolaId) {
       return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     }
@@ -69,10 +69,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       .eq('escola_id', escolaId)
       .limit(1)
 
-    const papelReq = normalizePapel(vinc?.[0]?.papel ?? (vinc?.[0] as any)?.role)
+    const papelReq = normalizePapel(vinc?.[0]?.papel ?? (vinc?.[0] as { role?: string | null } | undefined)?.role)
 
     const profCheckRes = await supabase
-      .from('profiles' as any)
+      .from('profiles')
       .select('escola_id, role')
       .eq('user_id', requesterId)
       .maybeSingle()
@@ -97,16 +97,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
     if (!allowed) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
 
-    const adminUrl = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').trim()
-    const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim()
-    if (!adminUrl || !serviceKey) {
-      return NextResponse.json({ ok: false, error: 'SUPABASE_SERVICE_ROLE_KEY ausente' }, { status: 500 })
-    }
-
-    const admin = createAdminClient<Database>(adminUrl, serviceKey)
-
     let userId: string | undefined
-    const { data: prof } = await admin
+    const { data: prof } = await supabase
       .from('profiles')
       .select('user_id')
       .eq('email', email)
@@ -115,19 +107,16 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     userId = prof?.[0]?.user_id as string | undefined
 
     if (!userId) {
-      const { data: authRow } = await (admin as any)
-        .from('auth.users')
-        .select('id')
-        .eq('email', email)
-        .maybeSingle()
-      userId = authRow?.id as string | undefined
+      const existing = await callAuthAdminJob(req, 'findUserByEmail', { email })
+      const existingUser = existing as { user?: { id?: string | null } | null } | null
+      userId = existingUser?.user?.id ?? undefined
     }
 
     let tempPassword: string | null = null
     let userCreated = false
     if (!userId) {
       tempPassword = generateStrongPassword(12)
-      const created = await admin.auth.admin.createUser({
+      const created = await callAuthAdminJob(req, 'createUser', {
         email,
         password: tempPassword,
         email_confirm: true,
@@ -138,11 +127,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           escola_id: escolaId,
           must_change_password: true,
         },
+        app_metadata: { role: roleEnum, escola_id: escolaId },
       })
-      if (created.error) {
-        return NextResponse.json({ ok: false, error: created.error.message }, { status: 400 })
-      }
-      userId = created.data?.user?.id
+      const createdUser = created as { user?: { id?: string | null } | null } | null
+      userId = createdUser?.user?.id ?? undefined
       userCreated = Boolean(userId)
     }
 
@@ -160,14 +148,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       current_escola_id: escolaId,
     }
 
-    const { error: profileError } = await admin
+    const { error: profileError } = await supabase
       .from('profiles')
       .upsert(profilePayload, { onConflict: 'user_id' })
     if (profileError) {
       return NextResponse.json({ ok: false, error: profileError.message }, { status: 400 })
     }
 
-    const { error: escolaUsersError } = await admin
+    const { error: escolaUsersError } = await supabase
       .from('escola_users')
       .upsert({
         escola_id: escolaId,
@@ -178,11 +166,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json({ ok: false, error: escolaUsersError.message }, { status: 400 })
     }
 
-    await admin.auth.admin.updateUserById(userId, {
-      app_metadata: { role: roleEnum, escola_id: escolaId },
+    await callAuthAdminJob(req, 'updateUserById', {
+      userId,
+      attributes: { app_metadata: { role: roleEnum, escola_id: escolaId } },
     })
 
-    const { data: professorRow } = await admin
+    const { data: professorRow } = await supabase
       .from('professores')
       .select('id')
       .eq('escola_id', escolaId)
@@ -190,12 +179,13 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       .maybeSingle()
 
     if (!professorRow?.id) {
-      await admin
+      const insertPayload: TablesInsert<"professores"> = { escola_id: escolaId, profile_id: userId }
+      await supabase
         .from('professores')
-        .insert({ escola_id: escolaId, profile_id: userId } as any)
+        .insert(insertPayload)
     }
 
-    const { data: teacherRow, error: teacherErr } = await admin
+    const { data: teacherRow, error: teacherErr } = await supabase
       .from('teachers')
       .upsert({
         escola_id: escolaId,
@@ -223,26 +213,26 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const disciplinaIds = Array.from(new Set(body.disciplinas_habilitadas || []))
 
     if (teacherId) {
-      await admin
+      await supabase
         .from('teacher_skills')
         .delete()
         .eq('teacher_id', teacherId)
 
       if (disciplinaIds.length > 0) {
-        const { data: valid } = await admin
+        const { data: valid } = await supabase
           .from('disciplinas_catalogo')
           .select('id')
           .eq('escola_id', escolaId)
           .in('id', disciplinaIds)
 
-        const validIds = (valid || []).map((d: any) => d.id)
+        const validIds = (valid || []).map((d: { id: string }) => d.id)
         if (validIds.length > 0) {
           const skills = validIds.map((id: string) => ({
             escola_id: escolaId,
             teacher_id: teacherId,
             disciplina_id: id,
           }))
-          await admin
+          await supabase
             .from('teacher_skills')
             .upsert(skills, { onConflict: 'teacher_id,disciplina_id' })
         }

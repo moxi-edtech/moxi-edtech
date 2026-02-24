@@ -71,4 +71,4 @@ Documentar o fluxo Pedagógico (UI → API → DB), com origem única de dados e
 ---
 
 ## Referências
-- `docs/big-tech-performance.md`
+- `agents/specs/performance.md`

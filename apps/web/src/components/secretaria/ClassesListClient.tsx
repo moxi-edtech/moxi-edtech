@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, BookOpen } from "lucide-react";
+import { BookOpen } from "lucide-react";
+import { Skeleton } from "@/components/feedback/FeedbackSystem";
 import Link from "next/link";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildEscolaUrl } from "@/lib/escola/url";
@@ -57,8 +58,10 @@ export default function ClassesListClient() {
 
       {(loading || escolaLoading) && (
         <div className="text-center p-8">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-moxinexa-teal" />
-          <p className="text-slate-500 mt-2">Carregando...</p>
+          <div className="mx-auto space-y-2 max-w-xs">
+            <Skeleton className="h-4 w-40 mx-auto" />
+            <Skeleton className="h-3 w-56 mx-auto" />
+          </div>
         </div>
       )}
 

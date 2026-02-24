@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react"
-import { toast } from "sonner"
 
 import { CURRICULUM_PRESETS_META } from "@/lib/academico/curriculum-presets"
+import { useToast } from "@/components/feedback/FeedbackSystem"
 
 export type Catalogo = { id: string; nome: string; codigo?: string; curso_id?: string }
 
@@ -58,6 +58,7 @@ function formatCurrencyInput(val: string) {
 }
 
 export function usePrecosLogic(escolaId: string) {
+  const { success, error } = useToast()
   const [sessions, setSessions] = useState<SessionItem[]>([])
   const [selectedSession, setSelectedSession] = useState<string>("")
   const [anoLetivoFallback, setAnoLetivoFallback] = useState<number>(new Date().getFullYear())
@@ -261,7 +262,7 @@ export function usePrecosLogic(escolaId: string) {
       setTabelas((json.items as TabelaPrecoItem[]) || [])
       setResolved(json.resolved || null)
     } catch (e: unknown) {
-      toast.error(formatError(e, "Erro ao carregar tabelas"))
+      error(formatError(e, "Erro ao carregar tabelas"))
     } finally {
       if (tabelasRequestRef.current === requestId) {
         setLoading(false)
@@ -293,7 +294,7 @@ export function usePrecosLogic(escolaId: string) {
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Erro ao resolver preços")
       setResolved(json.resolved || null)
     } catch (e: unknown) {
-      toast.error(formatError(e, "Erro ao simular preço"))
+      error(formatError(e, "Erro ao simular preço"))
     } finally {
       if (simulacaoRequestRef.current === requestId) {
         setResolving(false)
@@ -344,11 +345,11 @@ export function usePrecosLogic(escolaId: string) {
       const json = await res.json().catch(() => null)
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Erro ao salvar preços")
 
-      toast.success("Tabela salva com sucesso")
+      success("Tabela salva com sucesso")
       setForm(initialForm)
       carregarTabelas()
     } catch (e: unknown) {
-      toast.error(formatError(e, "Falha ao salvar"))
+      error(formatError(e, "Falha ao salvar"))
     } finally {
       setSaving(false)
     }

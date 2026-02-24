@@ -8,7 +8,7 @@ import {
   Download,
   FileText,
   Filter,
-  Loader2,
+  RefreshCw,
   Archive,
   ExternalLink,
   Eye,
@@ -440,7 +440,7 @@ export default function DocumentosOficiaisBatchClient() {
         >
           <div className="flex items-center gap-4">
             {effectiveStatus === "RUNNING" ? (
-              <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+              <RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
             ) : effectiveStatus === "DONE" ? (
               <CheckCircle2 className="w-6 h-6 text-[#1F6B3B]" />
             ) : (
@@ -549,7 +549,7 @@ export default function DocumentosOficiaisBatchClient() {
             {loading && (
               <tr>
                 <td colSpan={6} className="px-6 py-6 text-sm text-slate-500">
-                  <Loader2 className="inline-block h-4 w-4 animate-spin mr-2" /> A carregar turmas…
+                  <RefreshCw className="inline-block h-4 w-4 animate-spin mr-2" /> A carregar turmas…
                 </td>
               </tr>
             )}
@@ -681,7 +681,7 @@ export default function DocumentosOficiaisBatchClient() {
                 )}
                 {!job.download_url && job.status === "PROCESSING" && (
                   <span className="inline-flex items-center gap-1 text-amber-600">
-                    <Loader2 className="h-3 w-3 animate-spin" /> A processar…
+                    <RefreshCw className="h-3 w-3 animate-spin" /> A processar…
                   </span>
                 )}
                 {job.status === "FAILED" && (
@@ -748,7 +748,7 @@ export default function DocumentosOficiaisBatchClient() {
       >
         {pendenciasLoading ? (
           <div className="flex items-center gap-2 text-sm text-slate-500">
-            <Loader2 className="h-4 w-4 animate-spin" /> Carregando pendências...
+            <RefreshCw className="h-4 w-4 animate-spin" /> Carregando pendências...
           </div>
         ) : pendencias.length === 0 ? (
           <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
@@ -833,7 +833,7 @@ export default function DocumentosOficiaisBatchClient() {
             className="flex items-center gap-2 bg-[#E3B23C] text-slate-950 px-6 py-2.5 rounded-full text-sm font-bold hover:brightness-105 transition-all disabled:opacity-70"
           >
             {submitting ? (
-              <><Loader2 className="w-4 h-4 animate-spin" /> A iniciar...</>
+              <><RefreshCw className="w-4 h-4 animate-spin" /> A iniciar...</>
             ) : (
               <><FileText className="w-4 h-4" /> Gerar Lote Oficial (ZIP)</>
             )}

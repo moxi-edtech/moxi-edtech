@@ -1,8 +1,8 @@
 // apps/web/src/app/api/auth/login/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
+import { callAuthAdminJob } from "@/lib/auth-admin-job";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -52,67 +52,11 @@ function mapAuthError(err: any): { status: number; message: string } {
 
 // ---------- Resolver identificador (numero_login / telefone → email) ----------
 
-async function resolveIdentifierToEmail(
-  identifier: string
-): Promise<string | null> {
-  // Se já parece email, não mexe
+async function resolveIdentifierToEmail(req: NextRequest, identifier: string): Promise<string | null> {
   if (identifier.includes("@")) return null;
-
-  const adminUrl = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
-  const serviceRole = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
-  if (!adminUrl || !serviceRole) {
-    return null;
-  }
-
-  const admin = createAdminClient<Database>(adminUrl, serviceRole);
-
   try {
-    // 1) numero_login tipo C1D0001 (3 hex + 4 dígitos)
-    const numeroLoginLike = /^[A-F0-9]{3}\d{4}$/i;
-    if (numeroLoginLike.test(identifier)) {
-      const numero = identifier.toUpperCase();
-      const { data, error } = await admin
-        .from("profiles")
-        .select("email")
-        .eq("numero_login", numero)
-        .limit(1);
-
-      if (!error) {
-        const email = (data?.[0] as any)?.email as string | undefined;
-        if (email) return email.toLowerCase();
-      }
-    }
-
-    // 2) Legacy: só dígitos
-    const onlyDigits = /^\d{5,}$/;
-    if (onlyDigits.test(identifier)) {
-      // numero_login == digits
-      const { data: byNumero, error: e1 } = await admin
-        .from("profiles")
-        .select("email")
-        .eq("numero_login", identifier)
-        .limit(1);
-
-      if (!e1) {
-        const email = (byNumero?.[0] as any)?.email as string | undefined;
-        if (email) return email.toLowerCase();
-      }
-
-      // telefone == digits
-      const { data: byPhone, error: e2 } = await admin
-        .from("profiles")
-        .select("email")
-        .eq("telefone", identifier)
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      if (!e2) {
-        const email = (byPhone?.[0] as any)?.email as string | undefined;
-        if (email) return email.toLowerCase();
-      }
-    }
-
-    return null;
+    const result = await callAuthAdminJob(req, "resolveIdentifierToEmail", { identifier });
+    return (result as any)?.email ? String((result as any).email).toLowerCase() : null;
   } catch (error) {
     console.error("[login] resolveIdentifierToEmail error:", error);
     return null;
@@ -158,23 +102,9 @@ export async function POST(req: NextRequest) {
 
     // Se o identificador não é email e não há service role, retorne um erro claro
     const isEmail = rawIdentifier.includes("@");
-    const hasServiceRole = Boolean((process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim());
-    if (!isEmail && !hasServiceRole) {
-      if (process.env.DEBUG_AUTH === "1") {
-        console.warn("[login] Non-email identifier used but SUPABASE_SERVICE_ROLE_KEY is missing. Identifier:", rawIdentifier);
-      }
-      return new NextResponse(
-        JSON.stringify({
-          ok: false,
-          error: "Servidor sem chave de serviço para resolver usuário. Use seu e-mail para entrar ou configure SUPABASE_SERVICE_ROLE_KEY.",
-        }),
-        { status: 400, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } }
-      );
-    }
-
     console.log('[login] rawIdentifier:', rawIdentifier);
     // Tenta resolver identificador numérico / numero_login / telefone para email
-    const translatedEmail = isEmail ? null : await resolveIdentifierToEmail(rawIdentifier);
+    const translatedEmail = isEmail ? null : await resolveIdentifierToEmail(req, rawIdentifier);
     console.log('[login] translatedEmail:', translatedEmail);
 
     if (!isEmail && !translatedEmail) {
@@ -226,21 +156,15 @@ export async function POST(req: NextRequest) {
       // Em desenvolvimento, se o erro for de e-mail não confirmado,
       // tente confirmar automaticamente e refazer o login.
       const isDev = process.env.NODE_ENV !== "production";
-      const adminUrl = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
-      const serviceRole = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
-      const canAdmin = Boolean(isDev && adminUrl && serviceRole);
-
+      const canAdmin = Boolean(isDev);
       if (canAdmin && (mapped.message?.toLowerCase?.() || "").includes("e-mail não confirmado")) {
         try {
-          const admin = createAdminClient<Database>(adminUrl, serviceRole);
-          const { data: prof } = await admin
-            .from("profiles")
-            .select("user_id")
-            .eq("email", email)
-            .limit(1);
-          const uid = (prof?.[0] as any)?.user_id as string | undefined;
+          const found = await callAuthAdminJob(req, "findUserByEmail", { email });
+          const uid = (found as any)?.user?.id as string | undefined;
           if (uid) {
-            try { await (admin as any).auth.admin.updateUserById(uid, { email_confirm: true } as any) } catch {}
+            try {
+              await callAuthAdminJob(req, "updateUserById", { userId: uid, attributes: { email_confirm: true } });
+            } catch {}
             // Retry sign in after confirming
             const retry = await supabase.auth.signInWithPassword({ email, password });
             data = retry.data as any;

@@ -1,15 +1,22 @@
 import { NextResponse } from 'next/server'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import type { Database } from '~types/supabase'
+
+type QuadroRow = { slot_id: string | null; turma_id: string | null; disciplina_id: string | null; sala_id: string | null }
+type SlotRow = { id: string; turno_id: string | null; ordem: number | null; inicio: string | null; fim: string | null; dia_semana: number | null; is_intervalo: boolean | null }
+type TurmaRow = { id: string; nome: string | null; sala: string | null }
+type DisciplinaRow = { id: string; nome: string | null }
+type SalaRow = { id: string; nome: string | null }
 
 export async function GET() {
   try {
-    const supabase = await supabaseServerTyped<any>()
+    const supabase = await supabaseServerTyped<Database>()
     const { data: userRes } = await supabase.auth.getUser()
     const user = userRes?.user
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
-    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
+    const escolaId = await resolveEscolaIdForUser(supabase, user.id)
     if (!escolaId) return NextResponse.json({ ok: true, items: [] })
 
     const { data: prof } = await supabase
@@ -29,10 +36,18 @@ export async function GET() {
 
     if (quadroErr) return NextResponse.json({ ok: false, error: quadroErr.message }, { status: 400 })
 
-    const slotIds = Array.from(new Set((quadroRows || []).map((r: any) => r.slot_id).filter(Boolean)))
-    const turmaIds = Array.from(new Set((quadroRows || []).map((r: any) => r.turma_id).filter(Boolean)))
-    const disciplinaIds = Array.from(new Set((quadroRows || []).map((r: any) => r.disciplina_id).filter(Boolean)))
-    const salaIds = Array.from(new Set((quadroRows || []).map((r: any) => r.sala_id).filter(Boolean)))
+    const slotIds = Array.from(
+      new Set((quadroRows || []).map((r: QuadroRow) => r.slot_id).filter((id): id is string => Boolean(id)))
+    )
+    const turmaIds = Array.from(
+      new Set((quadroRows || []).map((r: QuadroRow) => r.turma_id).filter((id): id is string => Boolean(id)))
+    )
+    const disciplinaIds = Array.from(
+      new Set((quadroRows || []).map((r: QuadroRow) => r.disciplina_id).filter((id): id is string => Boolean(id)))
+    )
+    const salaIds = Array.from(
+      new Set((quadroRows || []).map((r: QuadroRow) => r.sala_id).filter((id): id is string => Boolean(id)))
+    )
 
     const [slotsRes, turmasRes, discRes, salasRes] = await Promise.all([
       slotIds.length
@@ -41,45 +56,46 @@ export async function GET() {
             .select('id, turno_id, ordem, inicio, fim, dia_semana, is_intervalo')
             .eq('escola_id', escolaId)
             .in('id', slotIds)
-        : Promise.resolve({ data: [] as any[] }),
+        : Promise.resolve({ data: [] as SlotRow[] }),
       turmaIds.length
         ? supabase
             .from('turmas')
             .select('id, nome, sala')
             .eq('escola_id', escolaId)
             .in('id', turmaIds)
-        : Promise.resolve({ data: [] as any[] }),
+        : Promise.resolve({ data: [] as TurmaRow[] }),
       disciplinaIds.length
         ? supabase
             .from('disciplinas_catalogo')
             .select('id, nome')
             .eq('escola_id', escolaId)
             .in('id', disciplinaIds)
-        : Promise.resolve({ data: [] as any[] }),
+        : Promise.resolve({ data: [] as DisciplinaRow[] }),
       salaIds.length
         ? supabase
             .from('salas')
             .select('id, nome')
             .eq('escola_id', escolaId)
             .in('id', salaIds)
-        : Promise.resolve({ data: [] as any[] }),
+        : Promise.resolve({ data: [] as SalaRow[] }),
     ])
 
-    const slotMap = new Map<string, any>()
-    for (const s of (slotsRes as any).data || []) slotMap.set(s.id, s)
-    const turmaMap = new Map<string, string>()
+    const slotMap = new Map<string, SlotRow>()
+    for (const s of ((slotsRes as { data?: SlotRow[] }).data || [])) slotMap.set(s.id, s)
+    const turmaMap = new Map<string, string | null>()
     const turmaSalaMap = new Map<string, string | null>()
-    for (const t of (turmasRes as any).data || []) {
-      turmaMap.set(t.id, t.nome)
+    for (const t of ((turmasRes as { data?: TurmaRow[] }).data || [])) {
+      turmaMap.set(t.id, t.nome ?? null)
       turmaSalaMap.set(t.id, t.sala ?? null)
     }
-    const discMap = new Map<string, string>()
-    for (const d of (discRes as any).data || []) discMap.set(d.id, d.nome)
-    const salaMap = new Map<string, string>()
-    for (const s of (salasRes as any).data || []) salaMap.set(s.id, s.nome)
+    const discMap = new Map<string, string | null>()
+    for (const d of ((discRes as { data?: DisciplinaRow[] }).data || [])) discMap.set(d.id, d.nome ?? null)
+    const salaMap = new Map<string, string | null>()
+    for (const s of ((salasRes as { data?: SalaRow[] }).data || [])) salaMap.set(s.id, s.nome ?? null)
 
     const items = (quadroRows || [])
-      .map((row: any) => {
+      .map((row: QuadroRow) => {
+        if (!row.slot_id || !row.turma_id || !row.disciplina_id) return null
         const slot = slotMap.get(row.slot_id)
         if (!slot || slot.is_intervalo) return null
         return {

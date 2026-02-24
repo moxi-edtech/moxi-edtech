@@ -89,13 +89,15 @@ export default function ConfigSystemShell({
             )}
           </div>
           <div className="flex flex-col gap-2">
-            <button
-              className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-              onClick={onSave}
-              disabled={saveDisabled || !onSave}
-            >
-              {customSaveLabel || "Salvar"}
-            </button>
+            {onSave && (
+              <button
+                className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                onClick={onSave}
+                disabled={saveDisabled}
+              >
+                {customSaveLabel || "Salvar"}
+              </button>
+            )}
             {testHref && (
               <Link
                 href={testHref}
@@ -165,13 +167,15 @@ export default function ConfigSystemShell({
               <p className="text-xs text-slate-500">Sem impacto calculado.</p>
             )}
             <div className="flex flex-col gap-2">
-              <button
-                className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-                onClick={onSave}
-                disabled={saveDisabled || !onSave}
-              >
-                {customSaveLabel || "Salvar"}
-              </button>
+              {onSave && (
+                <button
+                  className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                  onClick={onSave}
+                  disabled={saveDisabled}
+                >
+                  {customSaveLabel || "Salvar"}
+                </button>
+              )}
               {testHref && (
                 <Link
                   href={testHref}

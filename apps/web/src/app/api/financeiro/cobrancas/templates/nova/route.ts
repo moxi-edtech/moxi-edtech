@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     }
 
     const { nome, canal, corpo } = parsed.data;
-    const { data: tpl, error } = await (supabase as any)
+    const { data: tpl, error } = await supabase
       .from("financeiro_templates_cobranca")
       .insert({
         escola_id: escolaId,
@@ -55,8 +55,9 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ ok: true, template: tpl });
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("create template unexpected:", e);
-    return NextResponse.json({ error: e?.message || "Erro interno" }, { status: 500 });
+    const message = e instanceof Error ? e.message : "Erro interno";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

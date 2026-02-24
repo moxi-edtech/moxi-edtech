@@ -3,13 +3,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { toast } from "sonner";
 import {
   AlertCircle,
   ArrowRight,
   BookOpenCheck,
   CheckCircle2,
-  Loader2,
+  RefreshCw,
   Plus,
   School,
   Trash2,
@@ -18,6 +17,7 @@ import {
 import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
 import { buildConfigMenuItems } from "../_shared/menuItems";
 import { DisciplinaModal, type DisciplinaForm } from "@/components/escola/settings/_components/DisciplinaModal";
+import { Skeleton, useToast } from "@/components/feedback/FeedbackSystem";
 
 type Curso = { id: string; nome: string };
 type Classe = { id: string; curso_id?: string; nome: string; turno?: string | null };
@@ -125,6 +125,7 @@ export default function TurmasConfiguracoesPage() {
   const params = useParams() as { id?: string };
   const escolaId = params?.id;
   const base = escolaId ? `/escola/${escolaId}/admin/configuracoes` : "";
+  const { success, error, warning, toast: rawToast, dismiss } = useToast();
   const menuItems = buildConfigMenuItems(base);
 
   const [loading, setLoading] = useState(true);
@@ -198,7 +199,7 @@ export default function TurmasConfiguracoesPage() {
       }
     } catch (e) {
       console.error(e);
-      toast.error("Erro ao carregar dados acadêmicos.");
+      error("Erro ao carregar dados acadêmicos.");
     } finally {
       setLoading(false);
     }
@@ -344,7 +345,7 @@ export default function TurmasConfiguracoesPage() {
         );
       }
     } catch (e: any) {
-      toast.error(e?.message || "Falha ao carregar dados do curso.");
+      error(e?.message || "Falha ao carregar dados do curso.");
       setModal(null);
     } finally {
       setModalLoading(false);
@@ -381,7 +382,7 @@ export default function TurmasConfiguracoesPage() {
   const handlePublish = async () => {
     if (!escolaId || !selectedCurriculo || !selectedCursoId) return;
     if (!publishConfirm) {
-      toast.error("Confirme a publicação para continuar.");
+      error("Confirme a publicação para continuar.");
       return;
     }
 
@@ -403,10 +404,10 @@ export default function TurmasConfiguracoesPage() {
         throw new Error(json?.error || "Falha ao publicar currículo.");
       }
       await fetchCurriculoStatus();
-      toast.success("Currículo publicado.");
+      success("Currículo publicado.");
       closeModal();
     } catch (e: any) {
-      toast.error(e?.message || "Erro ao publicar currículo.");
+      error(e?.message || "Erro ao publicar currículo.");
     } finally {
       setModalActionLoading(false);
     }
@@ -453,9 +454,9 @@ export default function TurmasConfiguracoesPage() {
       setClassesDrafts(
         classesBase.map((c) => ({ id: c.id, nome: c.nome, turno: c.turno ?? "M" }))
       );
-      toast.success("Classes base salvas.");
+      success("Classes base salvas.");
     } catch (e: any) {
-      toast.error(e?.message || "Falha ao salvar classes.");
+      error(e?.message || "Falha ao salvar classes.");
     } finally {
       setModalActionLoading(false);
     }
@@ -476,9 +477,9 @@ export default function TurmasConfiguracoesPage() {
         throw new Error(json?.error || "Falha ao remover classe.");
       }
       setClassesDrafts((prev) => prev.filter((row) => row.id !== id));
-      toast.success("Classe removida.");
+      success("Classe removida.");
     } catch (e: any) {
-      toast.error(e?.message || "Erro ao remover classe.");
+      error(e?.message || "Erro ao remover classe.");
     }
   };
 
@@ -486,7 +487,7 @@ export default function TurmasConfiguracoesPage() {
     if (!escolaId || !selectedCursoId || !anoLetivo) return;
     if (!selectedCurriculoAllPublished) {
       const names = pendingPublishedClasses.map((cls) => cls.nome).join(", ");
-      toast.error(
+      error(
         names
           ? `Publique o currículo das classes: ${names}.`
           : "Publique o currículo antes de gerar turmas."
@@ -503,7 +504,7 @@ export default function TurmasConfiguracoesPage() {
       }));
 
     if (!payload.length) {
-      toast.error("Selecione ao menos uma classe.");
+      error("Selecione ao menos uma classe.");
       return;
     }
 
@@ -525,10 +526,10 @@ export default function TurmasConfiguracoesPage() {
       if (!res.ok || json?.ok === false) {
         throw new Error(json?.error || "Falha ao gerar turmas.");
       }
-      toast.success("Turmas geradas com sucesso.");
+      success("Turmas geradas com sucesso.");
       closeModal();
     } catch (e: any) {
-      toast.error(e?.message || "Erro ao gerar turmas.");
+      error(e?.message || "Erro ao gerar turmas.");
     } finally {
       setModalActionLoading(false);
     }
@@ -570,7 +571,7 @@ export default function TurmasConfiguracoesPage() {
     try {
       if (disciplinaModalMode === "create") {
         if (!ctx.classesBase.length) {
-          toast.error("Cadastre classes base antes.");
+          error("Cadastre classes base antes.");
           return;
         }
         const targetClassIds = payload.class_ids?.length
@@ -578,7 +579,7 @@ export default function TurmasConfiguracoesPage() {
           : ctx.classesBase.map((classe) => classe.id);
         const targetClasses = ctx.classesBase.filter((classe) => targetClassIds.includes(classe.id));
         if (!targetClasses.length) {
-          toast.error("Selecione ao menos uma classe.");
+          error("Selecione ao menos uma classe.");
           return;
         }
         await Promise.all(
@@ -621,7 +622,7 @@ export default function TurmasConfiguracoesPage() {
         }
 
         if (!matrixIds.length) {
-          toast.error("Nenhuma classe selecionada para aplicar alterações.");
+          error("Nenhuma classe selecionada para aplicar alterações.");
           return;
         }
 
@@ -658,9 +659,9 @@ export default function TurmasConfiguracoesPage() {
 
       const disciplinas = await fetchCourseDisciplinas(selectedCursoId);
       setCtx((prev) => (prev ? { ...prev, disciplinas } : prev));
-      toast.success("Disciplina salva.");
+      success("Disciplina salva.");
     } catch (e: any) {
-      toast.error(e?.message || "Falha ao salvar disciplina.");
+      error(e?.message || "Falha ao salvar disciplina.");
     }
   };
 
@@ -683,22 +684,34 @@ export default function TurmasConfiguracoesPage() {
       );
       const disciplinas = await fetchCourseDisciplinas(selectedCursoId);
       setCtx((prev) => (prev ? { ...prev, disciplinas } : prev));
-      toast.success("Disciplina removida.");
+      success("Disciplina removida.");
     } catch (e: any) {
-      toast.error(e?.message || "Falha ao remover disciplina.");
+      error(e?.message || "Falha ao remover disciplina.");
     }
   };
 
   const handleConfirmSetup = async () => {
     if (!escolaId) return;
+    let toastId: string | null = null;
     try {
-      await fetch(`/api/escola/${escolaId}/admin/setup/commit`, {
+      toastId = rawToast({ variant: "syncing", title: "Publicando configuração...", duration: 0 });
+      const res = await fetch(`/api/escola/${escolaId}/admin/setup/commit`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": crypto.randomUUID(),
+        },
         body: JSON.stringify({ changes: { turmas: true } }),
       });
-    } catch (e) {
-      console.error(e);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json?.ok === false) {
+        throw new Error(json?.error || "Falha ao publicar configurações.");
+      }
+      if (toastId) dismiss(toastId);
+      success("Configurações publicadas.");
+    } catch (err) {
+      if (toastId) dismiss(toastId);
+      error(err instanceof Error ? err.message : "Falha ao publicar configurações.");
     }
   };
 
@@ -772,9 +785,9 @@ export default function TurmasConfiguracoesPage() {
                     throw new Error(json?.error || "Falha ao publicar currículo.");
                   }
                   await fetchCurriculoStatus();
-                  toast.success("Currículo publicado para todas as classes.");
+                  success("Currículo publicado para todas as classes.");
                 } catch (e: any) {
-                  toast.error(e?.message || "Erro ao publicar currículo.");
+                  error(e?.message || "Erro ao publicar currículo.");
                 } finally {
                   setModalActionLoading(false);
                 }
@@ -789,7 +802,7 @@ export default function TurmasConfiguracoesPage() {
 
         {loading ? (
           <div className="py-10 flex justify-center">
-            <Loader2 className="animate-spin text-slate-300" />
+            <Skeleton className="h-4 w-40" />
           </div>
         ) : cursos.length === 0 ? (
           <div className="text-center py-8 text-slate-500 border border-dashed rounded-xl">
@@ -928,7 +941,7 @@ export default function TurmasConfiguracoesPage() {
                 disabled={!publishConfirm || modalActionLoading}
                 className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
               >
-                {modalActionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookOpenCheck className="h-4 w-4" />}
+                {modalActionLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <BookOpenCheck className="h-4 w-4" />}
                 Publicar currículo
               </button>
             </div>
@@ -1001,14 +1014,14 @@ export default function TurmasConfiguracoesPage() {
                 disabled={modalActionLoading}
                 className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
               >
-                {modalActionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar mudanças"}
+                {modalActionLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Salvar mudanças"}
               </button>
             </div>
           }
         >
           {modalLoading ? (
             <div className="py-10 flex justify-center">
-              <Loader2 className="animate-spin text-slate-300" />
+              <RefreshCw className="animate-spin text-slate-300" />
             </div>
           ) : (
             <div className="space-y-3">
@@ -1078,7 +1091,7 @@ export default function TurmasConfiguracoesPage() {
                 disabled={modalActionLoading}
                 className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
               >
-                {modalActionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                {modalActionLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
                 Gerar turmas
               </button>
             </div>
@@ -1086,7 +1099,7 @@ export default function TurmasConfiguracoesPage() {
         >
           {modalLoading ? (
             <div className="py-10 flex justify-center">
-              <Loader2 className="animate-spin text-slate-300" />
+              <RefreshCw className="animate-spin text-slate-300" />
             </div>
           ) : (
             <div className="space-y-3">
@@ -1169,7 +1182,7 @@ export default function TurmasConfiguracoesPage() {
         >
           {modalLoading ? (
             <div className="py-10 flex justify-center">
-              <Loader2 className="animate-spin text-slate-300" />
+              <RefreshCw className="animate-spin text-slate-300" />
             </div>
           ) : (
             <div className="space-y-3">

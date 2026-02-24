@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { toast } from 'react-hot-toast'; // Assumindo react-hot-toast para notificações
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 interface FinalizarMatriculaButtonProps {
   matriculaId: string;
@@ -23,6 +23,7 @@ interface FinalizarMatriculaButtonProps {
 
 export function FinalizarMatriculaButton({ matriculaId, alunoNome, escolaId }: FinalizarMatriculaButtonProps) {
   const router = useRouter();
+  const { success, error } = useToast();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [statusFinal, setStatusFinal] = useState<'concluido' | 'reprovado' | ''>('');
@@ -30,7 +31,7 @@ export function FinalizarMatriculaButton({ matriculaId, alunoNome, escolaId }: F
 
   const handleSubmit = async () => {
     if (!statusFinal) {
-      toast.error('Selecione um status final.');
+      error('Selecione um status final.');
       return;
     }
 
@@ -52,11 +53,11 @@ export function FinalizarMatriculaButton({ matriculaId, alunoNome, escolaId }: F
         throw new Error(errorData.error || 'Erro ao finalizar matrícula.');
       }
 
-      toast.success(`Matrícula de ${alunoNome} finalizada como ${statusFinal}.`);
+      success(`Matrícula de ${alunoNome} finalizada como ${statusFinal}.`);
       setOpen(false);
       router.refresh(); // Recarregar a página para mostrar o status atualizado
     } catch (error: any) {
-      toast.error(error.message || 'Falha ao finalizar matrícula.');
+      error(error.message || 'Falha ao finalizar matrícula.');
     } finally {
       setLoading(false);
     }

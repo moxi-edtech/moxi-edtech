@@ -3,7 +3,6 @@ import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { recordAuditServer } from "@/lib/audit";
-import { getSupabaseServerClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -93,6 +92,7 @@ export async function POST(request: Request) {
     const intentId = (payload.meta as any)?.pagamento_intent_id ?? null;
     if (intentId) {
       await confirmPagamentoIntent({
+        supabase,
         intentId: String(intentId),
         escolaId,
         metodo,
@@ -111,6 +111,7 @@ export async function POST(request: Request) {
 }
 
 async function confirmPagamentoIntent({
+  supabase,
   intentId,
   escolaId,
   metodo,
@@ -119,6 +120,7 @@ async function confirmPagamentoIntent({
   evidenceUrl,
   meta,
 }: {
+  supabase: Awaited<ReturnType<typeof supabaseServerTyped<any>>>;
   intentId: string;
   escolaId: string;
   metodo: string;
@@ -127,10 +129,7 @@ async function confirmPagamentoIntent({
   evidenceUrl: string | null;
   meta: Record<string, any>;
 }) {
-  const admin = getSupabaseServerClient();
-  if (!admin) return;
-
-  const { data: intent, error } = await admin
+  const { data: intent, error } = await supabase
     .from("pagamento_intents")
     .select("id, escola_id, status, servico_pedido_id")
     .eq("id", intentId)
@@ -147,7 +146,7 @@ async function confirmPagamentoIntent({
   const normalizedMetodo = metodo === "kwik" ? "kiwk" : metodo;
   const newStatus = normalizedMetodo === "cash" ? "settled" : "pending";
 
-  await admin
+  await supabase
     .from("pagamento_intents")
     .update({
       method: normalizedMetodo,
@@ -161,7 +160,7 @@ async function confirmPagamentoIntent({
     .eq("id", intentId);
 
   if (newStatus === "settled" && intent.servico_pedido_id) {
-    await admin
+    await supabase
       .from("servico_pedidos")
       .update({ status: "granted" })
       .eq("id", intent.servico_pedido_id)

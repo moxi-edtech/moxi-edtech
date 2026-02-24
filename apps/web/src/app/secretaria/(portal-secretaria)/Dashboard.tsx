@@ -7,7 +7,7 @@ import {
   RefreshCcw, Upload, Crown,
   Clock, UserCheck, KeyRound
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { BuscaBalcaoRapido } from "@/components/secretaria/BuscaBalcaoRapido";
@@ -26,6 +26,7 @@ import {
   TaskList,
   NoticePanel,
 } from "@/components/dashboard";
+import { RadarOperacional, type OperationalAlert } from "@/components/feedback/FeedbackSystem";
 import type { DashboardCounts, DashboardRecentes, Plano } from "./types";
 
 type BalcaoModal =
@@ -74,6 +75,38 @@ export function Dashboard({
   const { escolaId, isLoading: escolaLoading } = useEscolaId();
   const [filaOpen, setFilaOpen] = useState(false);
   const [balcaoModal, setBalcaoModal] = useState<BalcaoModal>(null);
+  const alerts = useMemo(() => {
+    const items: OperationalAlert[] = [];
+    const pendencias = recentes?.pendencias ?? counts?.pendencias ?? 0;
+    if (pendencias > 0) {
+      items.push({
+        id: "pendencias",
+        severity: pendencias >= 5 ? "critical" : "warning",
+        categoria: "academico",
+        titulo: `${pendencias} pendência${pendencias !== 1 ? "s" : ""} no painel`,
+        descricao: "Há matrículas ou importações que precisam de validação.",
+        count: pendencias,
+        link: "/secretaria/alertas",
+        link_label: "Ver pendências",
+      });
+    }
+
+    const avisos = recentes?.avisos_recentes?.length ?? 0;
+    if (avisos > 0) {
+      items.push({
+        id: "avisos",
+        severity: "info",
+        categoria: "documentos",
+        titulo: "Avisos recentes do dia",
+        descricao: "Revise os avisos mais recentes antes de encerrar o turno.",
+        count: avisos,
+        link: "/secretaria/avisos",
+        link_label: "Abrir avisos",
+      });
+    }
+
+    return items;
+  }, [counts?.pendencias, recentes?.avisos_recentes?.length, recentes?.pendencias]);
 
   return (
     <div className="flex flex-col h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden">
@@ -110,6 +143,8 @@ export function Dashboard({
                 </div>
               }
             />
+
+            <RadarOperacional alerts={alerts} role="secretaria" />
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <KpiCard label="Total Alunos" value={counts?.alunos} icon={Users} variant="brand" />

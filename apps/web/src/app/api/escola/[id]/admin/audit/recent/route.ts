@@ -13,7 +13,7 @@ export async function GET(
     const user = auth?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
-    const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
+    const userEscolaId = await resolveEscolaIdForUser(supabase, user.id, escolaId);
     if (!userEscolaId || userEscolaId !== escolaId) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
@@ -29,7 +29,7 @@ export async function GET(
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from('audit_logs')
       .select('id, action, entity, created_at, actor_id, portal')
       .eq('escola_id', userEscolaId)
@@ -41,7 +41,7 @@ export async function GET(
     }
 
     return NextResponse.json({ ok: true, data: data ?? [] });
-  } catch (e) {
+  } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Erro inesperado";
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }

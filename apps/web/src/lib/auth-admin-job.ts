@@ -7,7 +7,12 @@ type AdminAction =
   | "deleteUser"
   | "getUserById"
   | "listUsers"
-  | "generateLink";
+  | "generateLink"
+  | "findUserByEmail"
+  | "resolveIdentifierToEmail"
+  | "activateStudentAccess"
+  | "seedSuperAdmin"
+  | "seedTest";
 
 type AdminRequest = {
   action: AdminAction;

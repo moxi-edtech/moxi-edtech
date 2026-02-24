@@ -3,6 +3,8 @@ import { supabaseServerTyped } from "@/lib/supabaseServer"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas"
 import { buildPautaAnualPayload, renderPautaAnualBuffer } from "@/lib/pedagogico/pauta-anual"
+import { requireFeature } from "@/lib/plan/requireFeature"
+import { HttpError } from "@/lib/errors"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -23,6 +25,15 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id)
     if (!authz.allowed) {
       return NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 })
+    }
+
+    try {
+      await requireFeature("doc_qr_code")
+    } catch (err) {
+      if (err instanceof HttpError) {
+        return NextResponse.json({ ok: false, error: err.message, code: err.code }, { status: err.status })
+      }
+      throw err
     }
 
     const payload = await buildPautaAnualPayload({ supabase, escolaId, turmaId })

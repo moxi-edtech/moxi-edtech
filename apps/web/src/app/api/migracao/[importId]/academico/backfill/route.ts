@@ -1,6 +1,5 @@
 // @kf2 allow-scan
 import { NextRequest, NextResponse } from "next/server";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import type { Database } from "~types/supabase";
 import { importBelongsToEscola, userHasAccessToEscola } from "../../../auth-helpers";
@@ -79,13 +78,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ importId: 
 
 async function runBackfill(apply: boolean, req: NextRequest, importId: string) {
   try {
-    const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!adminUrl || !serviceKey) {
-      return NextResponse.json({ ok: false, error: "Configuração do servidor incompleta." }, { status: 500 });
-    }
-
     const url = new URL(req.url);
     const escolaId = (url.searchParams.get("escola_id") || "").trim();
     if (!escolaId) return NextResponse.json({ ok: false, error: "escola_id é obrigatório." }, { status: 400 });
@@ -95,7 +87,7 @@ async function runBackfill(apply: boolean, req: NextRequest, importId: string) {
     const authUser = userRes?.user;
     if (!authUser) return NextResponse.json({ ok: false, error: "Não autenticado." }, { status: 401 });
 
-    const admin = createAdminClient<Database>(adminUrl, serviceKey);
+    const admin = routeClient as any;
 
     const hasAccess = await userHasAccessToEscola(admin as any, escolaId, authUser.id);
     if (!hasAccess) return NextResponse.json({ ok: false, error: "Acesso negado à escola." }, { status: 403 });

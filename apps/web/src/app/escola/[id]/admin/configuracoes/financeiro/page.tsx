@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { toast } from "sonner";
 import { 
   Wallet, 
   CalendarClock, 
@@ -16,6 +15,7 @@ import {
 import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
 import { buildConfigMenuItems } from "../_shared/menuItems";
 import { ModalShell } from "@/components/ui/ModalShell";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 // --- TYPES ---
 type FinanceiroConfig = {
@@ -58,6 +58,7 @@ export default function FinanceiroConfiguracoesPage() {
   const params = useParams() as { id?: string };
   const escolaId = params?.id;
   const base = escolaId ? `/escola/${escolaId}/admin/configuracoes` : "";
+  const { toast, dismiss, success, error } = useToast();
   
   const menuItems = buildConfigMenuItems(base);
 
@@ -125,20 +126,33 @@ export default function FinanceiroConfiguracoesPage() {
       }
       
       // Commit do setup step
-      await fetch(`/api/escola/${escolaId}/admin/setup/commit`, {
+      const commitRes = await fetch(`/api/escola/${escolaId}/admin/setup/commit`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": crypto.randomUUID(),
+        },
         body: JSON.stringify({ changes: { financeiro: true } }),
       });
+      const commitJson = await commitRes.json().catch(() => ({}));
+      if (!commitRes.ok || commitJson?.ok === false) {
+        throw new Error(commitJson?.error || "Falha ao publicar configurações.");
+      }
     });
 
-    toast.promise(promise, {
-      loading: 'Aplicando regras financeiras...',
-      success: 'Política financeira atualizada!',
-      error: 'Erro ao salvar regras.'
-    });
+    const tid = toast({ variant: "syncing", title: "Aplicando regras financeiras...", duration: 0 });
 
-    try { await promise; } finally { setSaving(false); }
+    try {
+      await promise;
+      dismiss(tid);
+      success("Política financeira atualizada.");
+    } catch (err) {
+      dismiss(tid);
+      error("Erro ao salvar regras.");
+      console.error(err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const loadCatalog = async () => {
@@ -177,11 +191,11 @@ export default function FinanceiroConfiguracoesPage() {
   const handleSaveServico = async () => {
     if (!escolaId) return;
     if (!catalogForm.codigo.trim() || !catalogForm.nome.trim()) {
-      toast.error("Código e nome são obrigatórios.");
+      error("Código e nome são obrigatórios.");
       return;
     }
     if (catalogType === "documento" && !catalogForm.codigo.startsWith("DOC_")) {
-      toast.error("Documentos devem usar prefixo DOC_.");
+      error("Documentos devem usar prefixo DOC_.");
       return;
     }
     setCatalogSaving(true);
@@ -213,10 +227,10 @@ export default function FinanceiroConfiguracoesPage() {
         return [json.item, ...prev];
       });
       setCatalogForm(DEFAULT_SERVICO);
-      toast.success("Serviço salvo com sucesso.");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Erro ao salvar serviço";
-      toast.error(message);
+      success("Serviço salvo com sucesso.");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro ao salvar serviço";
+      error(message);
     } finally {
       setCatalogSaving(false);
     }

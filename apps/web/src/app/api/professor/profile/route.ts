@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import type { Database } from '~types/supabase'
 
 const TurnosSchema = z.enum(['Manhã', 'Tarde', 'Noite'])
 
@@ -17,12 +18,12 @@ const UpdateSchema = z.object({
 
 export async function GET() {
   try {
-    const supabase = await supabaseServerTyped<any>()
+    const supabase = await supabaseServerTyped<Database>()
     const { data: userRes } = await supabase.auth.getUser()
     const user = userRes?.user
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
-    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
+    const escolaId = await resolveEscolaIdForUser(supabase, user.id)
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 403 })
 
     const { data: teacherRow } = await supabase
@@ -52,7 +53,7 @@ export async function GET() {
       ok: true,
       profile: {
         ...teacherRow,
-        disciplinas_habilitadas: (skillsRows || []).map((row: any) => row.disciplina_id),
+        disciplinas_habilitadas: (skillsRows || []).map((row: { disciplina_id: string }) => row.disciplina_id),
       },
       disciplinas: disciplinasCatalogo || [],
     })
@@ -63,12 +64,12 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const supabase = await supabaseServerTyped<any>()
+    const supabase = await supabaseServerTyped<Database>()
     const { data: userRes } = await supabase.auth.getUser()
     const user = userRes?.user
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
-    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
+    const escolaId = await resolveEscolaIdForUser(supabase, user.id)
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 403 })
 
     const parsed = UpdateSchema.safeParse(await req.json().catch(() => ({})))
@@ -123,7 +124,7 @@ export async function POST(req: Request) {
         .eq('escola_id', escolaId)
         .in('id', disciplinaIds)
 
-      const validIds = (valid || []).map((d: any) => d.id)
+      const validIds = (valid || []).map((d: { id: string }) => d.id)
       if (validIds.length > 0) {
         const rows = validIds.map((id: string) => ({
           escola_id: escolaId,

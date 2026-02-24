@@ -83,17 +83,17 @@ export async function DELETE(
       const [periodosRes, turmasRes, matriculasRes] = await Promise.all([
         (s as any)
           .from('periodos_letivos')
-          .select('id', { count: 'exact', head: true })
+          .select('id', { count: 'estimated', head: true })
           .eq('ano_letivo_id', sessionId),
         anoLetivoNome
           ? (s as any)
               .from('turmas')
-              .select('id', { count: 'exact', head: true })
+              .select('id', { count: 'estimated', head: true })
               .eq('ano_letivo', anoLetivoNome)
           : Promise.resolve({ count: 0 }),
         (s as any)
           .from('matriculas')
-          .select('id', { count: 'exact', head: true })
+          .select('id', { count: 'estimated', head: true })
           .eq('ano_letivo_id', sessionId),
       ]);
 

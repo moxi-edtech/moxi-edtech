@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { BookOpen, Trash2, Check, Settings, Plus } from "lucide-react";
-import { toast } from "sonner";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 import { CURRICULUM_PRESETS_META, type CurriculumKey } from "@/lib/onboarding";
 import { CURRICULUM_PRESETS } from "@/lib/onboarding";
@@ -128,6 +128,7 @@ async function apiGet<T>(url: string, signal?: AbortSignal): Promise<T> {
 
 // ---------- Component ----------
 export default function StructureMarketplace({ escolaId }: { escolaId: string }) {
+  const { success, error, warning, toast: rawToast } = useToast();
   const searchParams = useSearchParams();
   const resolvePendenciasRequested = searchParams?.get("resolvePendencias") === "1";
   const courseIdFromQuery = searchParams?.get("cursoId") || searchParams?.get("curso_id");
@@ -228,7 +229,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       setCourses(data || []);
     } catch (e: any) {
       console.error(e);
-      toast.error(e?.message || "Erro ao carregar cursos.");
+      error(e?.message || "Erro ao carregar cursos.");
     } finally {
       setLoadingCourses(false);
     }
@@ -407,7 +408,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         setDetails(nextDetails);
       } catch (e: any) {
         console.error(e);
-        toast.error(e?.message || "Erro ao carregar detalhes do curso.");
+        error(e?.message || "Erro ao carregar detalhes do curso.");
         setSelectedCourseId(null);
       } finally {
         setLoadingDetails(false);
@@ -492,11 +493,11 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       const curriculos = curriculoStatusByCurso[cursoId] ?? [];
       const hasPublished = curriculos.length > 0 && curriculos.every((c) => c.status === "published");
       if (!hasPublished) {
-        toast.error("Publique o currículo antes de gerar turmas.");
+        error("Publique o currículo antes de gerar turmas.");
         return;
       }
       if (!curriculoAnoLetivo?.ano) {
-        toast.error("Ano letivo ativo não encontrado.");
+        error("Ano letivo ativo não encontrado.");
         return;
       }
 
@@ -523,9 +524,9 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
             if (!res.ok || json?.ok === false) {
               throw new Error(json?.error || "Falha ao gerar turmas.");
             }
-            toast.success("Turmas geradas com sucesso.");
+            success("Turmas geradas com sucesso.");
           } catch (e: any) {
-            toast.error(e?.message || "Falha ao gerar turmas.");
+            error(e?.message || "Falha ao gerar turmas.");
           }
         },
       });
@@ -599,7 +600,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     setDraft((prev) => {
       if (!prev) return prev;
       if (prev.subjects.some((s) => s.nome === disciplina.nome)) {
-        toast.error("Já existe.");
+        error("Já existe.");
         return prev;
       }
       return { ...prev, subjects: [...prev.subjects, disciplina] };
@@ -629,10 +630,10 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         if (!res.ok || json?.ok === false) {
           throw new Error(json?.error || "Falha ao instalar preset.");
         }
-        toast.success("Instalação concluída.");
+        success("Instalação concluída.");
         fetchCourses();
       } catch (e: any) {
-        toast.error(e?.message || "Falha ao instalar preset.");
+        error(e?.message || "Falha ao instalar preset.");
       } finally {
         setQuickInstallingKey(null);
       }
@@ -644,15 +645,15 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     if (!draft) return;
 
     if (!draft.label.trim()) {
-      toast.error("Nome do curso é obrigatório.");
+      error("Nome do curso é obrigatório.");
       return;
     }
     if (draft.classes.length === 0) {
-      toast.error("Selecione ao menos 1 classe.");
+      error("Selecione ao menos 1 classe.");
       return;
     }
     if (draft.subjects.length === 0) {
-      toast.error("Adicione ao menos 1 disciplina.");
+      error("Adicione ao menos 1 disciplina.");
       return;
     }
 
@@ -755,13 +756,13 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         }
       }
 
-      toast.success("Curso criado com sucesso.");
+      success("Curso criado com sucesso.");
       setShowModal(false);
       setDraft(null);
       fetchCourses();
       setActiveTab("my_courses");
     } catch (e: any) {
-      toast.error(e?.message || "Erro ao criar curso.");
+      error(e?.message || "Erro ao criar curso.");
     } finally {
       setInstalling(false);
     }
@@ -769,7 +770,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
 
   const handleRemoveCourse = useCallback((id: string, totalAlunos: number) => {
     if (totalAlunos > 0) {
-      toast.error("Curso tem alunos vinculados.");
+      error("Curso tem alunos vinculados.");
       return;
     }
 
@@ -789,10 +790,10 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
           if (!res.ok || json?.ok === false) {
             throw new Error(json?.error || "Erro ao remover curso.");
           }
-          toast.success("Curso removido.");
+          success("Curso removido.");
           fetchCourses();
         } catch (e: any) {
-          toast.error(e?.message || "Erro ao remover curso.");
+          error(e?.message || "Erro ao remover curso.");
         }
       },
     });
@@ -804,7 +805,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       try {
         if (disciplinaModalMode === "create") {
           if (details.classes.length === 0) {
-            toast.error("Cadastre classes antes de adicionar disciplinas.");
+            error("Cadastre classes antes de adicionar disciplinas.");
             return;
           }
 
@@ -813,7 +814,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
             : details.classes.map((classe) => classe.id);
           const targetClasses = details.classes.filter((classe) => targetClassIds.includes(classe.id));
           if (targetClasses.length === 0) {
-            toast.error("Selecione ao menos uma classe.");
+            error("Selecione ao menos uma classe.");
             return;
           }
 
@@ -849,7 +850,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
             })
           );
 
-          toast.success("Disciplina criada.");
+          success("Disciplina criada.");
           const nextDetails = await fetchCourseDetails(selectedCourseId);
           setDetails(nextDetails);
           return;
@@ -864,7 +865,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         }
 
         if (matrixIds.length === 0) {
-          toast.error("Nenhuma classe selecionada para aplicar alterações.");
+          error("Nenhuma classe selecionada para aplicar alterações.");
           return;
         }
 
@@ -898,11 +899,11 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
           })
         );
 
-        toast.success("Disciplina atualizada.");
+        success("Disciplina atualizada.");
         const nextDetails = await fetchCourseDetails(selectedCourseId);
         setDetails(nextDetails);
       } catch (e: any) {
-        toast.error(e?.message || "Falha ao salvar disciplina.");
+        error(e?.message || "Falha ao salvar disciplina.");
       }
     },
     [
@@ -953,11 +954,11 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
           })
         );
 
-        toast.success("Disciplina removida.");
+        success("Disciplina removida.");
         const nextDetails = await fetchCourseDetails(selectedCourseId);
         setDetails(nextDetails);
       } catch (e: any) {
-        toast.error(e?.message || "Falha ao remover disciplina.");
+        error(e?.message || "Falha ao remover disciplina.");
       }
     },
     [details, escolaId, fetchCourseDetails, selectedCourseId]

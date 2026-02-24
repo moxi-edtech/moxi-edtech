@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server"
-import { createClient as createAdminClient } from "@supabase/supabase-js"
-import type { Database } from "~types/supabase"
 import { createRouteClient } from "@/lib/supabase/route-client"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 import { hasAnyPermission, normalizePapel } from "@/lib/permissions"
@@ -38,10 +36,7 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
     const allowed = hasAnyPermission(papelReq, ["criar_usuario", "editar_usuario"])
     if (!allowed) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 })
 
-    const adminUrl = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim()
-    const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? "").trim()
-    const admin = adminUrl && serviceKey ? createAdminClient<Database>(adminUrl, serviceKey) : null
-    const queryClient = (admin ?? supabase) as any
+    const queryClient = supabase as any
 
     const { data: vinculos, error: vincErr } = await queryClient
       .from("escola_users")

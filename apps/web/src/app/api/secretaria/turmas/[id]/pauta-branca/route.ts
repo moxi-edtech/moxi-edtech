@@ -3,6 +3,8 @@ import * as XLSX from 'xlsx';
 import { supabaseServerTyped } from '@/lib/supabaseServer';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
 import { applyKf2ListInvariants } from '@/lib/kf2';
+import { requireFeature } from '@/lib/plan/requireFeature';
+import { HttpError } from '@/lib/errors';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -20,6 +22,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const { id: turmaId } = await params;
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
     if (!escolaId) return new NextResponse('Escola não encontrada', { status: 403 });
+
+    try {
+      await requireFeature('doc_qr_code');
+    } catch (err) {
+      if (err instanceof HttpError) {
+        return NextResponse.json({ ok: false, error: err.message, code: err.code }, { status: err.status });
+      }
+      throw err;
+    }
 
     const { data: turmaData, error: turmaError } = await supabase
       .from('turmas')

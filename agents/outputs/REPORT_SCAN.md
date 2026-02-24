@@ -1,9 +1,11 @@
 # REPORT_SCAN.md — KLASSE FOUNDATION AUDIT
 
+- Verificado em: `2026-02-24T00:01:48.957Z`
+
 ## 1. SUMÁRIO EXECUTIVO
 
 - Findings CRÍTICOS: **0**
-- Findings ALTO: **5**
+- Findings ALTO: **4**
 - Total findings: **7**
 
 ## 2. ACHADOS (ordenado por severidade)
@@ -12,31 +14,31 @@
 - Severidade: **HIGH**
 - Status: **PARTIAL**
 - Evidências:
-  - `apps/web/src/hooks/useHorarioData.ts` — match: /cache:\s*['\"]no-store['\"]/i
+  - `tools/validator/fluency-validator-monorepo.js` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/hooks/useMatriculaLogic.ts` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/lib/auth-admin-job.ts` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/app/financeiro/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/app/professor/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/components/financeiro/GerarMensalidadesModal.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/components/financeiro/MissingPricingAlert.tsx` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/web/src/components/layout/PortalLayout.tsx` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/web/src/components/layout/StudentPortalLayout.tsx` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/web/src/components/professor/AssignmentsBanner.tsx` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/web/src/components/super-admin/UsuariosListClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/components/secretaria/BalcaoAtendimento.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/components/secretaria/BuscaBalcaoRapido.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/components/secretaria/DocumentosEmissaoHubClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/secretaria/DocumentosOficiaisBatchClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/components/secretaria/FilaAtendimentoModal.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/components/secretaria/ImportacoesListClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/components/secretaria/MatriculasListClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/components/secretaria/ModalPagamentoRapido.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/components/secretaria/PagamentoModal.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/components/secretaria/PautaRapidaModal.tsx` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/web/src/components/secretaria/ProfessoresListClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/components/secretaria/TurmaDetailClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/web/src/components/secretaria/TurmaForm.tsx` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/web/src/components/system/ConfigHealthBanner.tsx` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/web/src/app/documentos/[publicId]/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/app/financeiro/_components/RadarInadimplenciaActive.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/app/financeiro/fecho/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/app/professor/frequencias/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/app/professor/notas/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/app/professor/perfil/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/app/secretaria/(portal-secretaria)/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/aluno/dashboard/DashboardLoader.tsx` — match: /cache:\s*['\"]no-store['\"]/i
 - Recomendação: Remover no-store onde houver MV/camadas cacheáveis; manter só em rotas realmente sensíveis.
 
 ### F09_MV — F09 — Radar de Inadimplência com MATERIALIZED VIEW
@@ -78,19 +80,6 @@
   - `supabase/migrations/20260127020139_remote_schema.sql` — match: /ux_mv_secretaria_matriculas_turma_status/i
 - Recomendação: Garantir MV + UNIQUE INDEX + refresh function + cron job + view wrapper para secretária e admin (sem cálculo ao vivo).
 
-### PLAN_GUARD — P0.3 — Controle de planos (backend + UI)
-- Severidade: **HIGH**
-- Status: **PARTIAL**
-- Evidências:
-  - `apps/web/src/app/api/financeiro/recibos/emitir/route.ts` — backend guard (fin_recibo_pdf): não
-  - `apps/web/src/app/api/financeiro/extrato/aluno/[alunoId]/pdf/route.ts` — backend guard (doc_qr_code): sim
-  - `apps/web/src/app/api/secretaria/turmas/[id]/alunos/pdf/route.ts` — backend guard (doc_qr_code): sim
-  - `apps/web/src/app/api/secretaria/turmas/[id]/alunos/lista/route.ts` — backend guard (doc_qr_code): sim
-  - `apps/web/src/components/financeiro/ReciboImprimivel.tsx` — ui guard (fin_recibo_pdf): sim
-  - `apps/web/src/components/financeiro/ExtratoActions.tsx` — ui guard (doc_qr_code): sim
-  - `apps/web/src/components/secretaria/TurmaDetailClient.tsx` — ui guard (doc_qr_code): sim
-- Recomendação: Garantir requireFeature em rotas premium e usePlanFeature em entrypoints UI.
-
 ### KF2 — KF2 — Pesquisa Global (Command Palette) invariants
 - Severidade: **LOW**
 - Status: **VALIDATED**
@@ -106,11 +95,10 @@
 - Severidade: **LOW**
 - Status: **VALIDATED**
 - Evidências:
-  - `E2E_CHECKLIST_ADMISSAO.md` — match: /audit_logs|auditLog|create_audit/i
-  - `MIGRATION_ADMISSAO_P0.sql` — match: /audit_logs|auditLog|create_audit/i
   - `temp_supabase_output.ts` — match: /audit_logs|auditLog|create_audit/i
   - `types/database.ts` — match: /audit_logs|auditLog|create_audit/i
   - `types/supabase.ts` — match: /audit_logs|auditLog|create_audit/i
+  - `tools/validator/fluency-validator-monorepo.js` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/migrations/20260127020139_remote_schema.sql` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/migrations/20260127020700_admin_get_escola_health_metrics_rpc.sql` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/migrations/20260127140000_create_confirmar_conciliacao_transacao_rpc.sql` — match: /audit_logs|auditLog|create_audit/i
@@ -131,4 +119,18 @@
   - `supabase/migrations/20260203000013_update_finalizar_matricula_rpc.sql` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/migrations/20260203000015_refactor_gerar_mensalidades_trigger.sql` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/migrations/20260203000016_add_audit_to_finance_rpcs.sql` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/migrations/20260203000018_rpc_conciliar_transacoes_auto_match.sql` — match: /audit_logs|auditLog|create_audit/i
 - Recomendação: Padronizar schema: actor, action, entity, before, after, ip, created_at; garantir coverage financeiro/matrícula.
+
+### PLAN_GUARD — P0.3 — Controle de planos (backend + UI)
+- Severidade: **LOW**
+- Status: **VALIDATED**
+- Evidências:
+  - `apps/web/src/app/api/financeiro/recibos/emitir/route.ts` — backend guard (fin_recibo_pdf): sim
+  - `apps/web/src/app/api/financeiro/extrato/aluno/[alunoId]/pdf/route.ts` — backend guard (doc_qr_code): sim
+  - `apps/web/src/app/api/secretaria/turmas/[id]/alunos/pdf/route.ts` — backend guard (doc_qr_code): sim
+  - `apps/web/src/app/api/secretaria/turmas/[id]/alunos/lista/route.ts` — backend guard (doc_qr_code): sim
+  - `apps/web/src/components/financeiro/ReciboImprimivel.tsx` — ui guard (fin_recibo_pdf): sim
+  - `apps/web/src/components/financeiro/ExtratoActions.tsx` — ui guard (doc_qr_code): sim
+  - `apps/web/src/components/secretaria/TurmaDetailClient.tsx` — ui guard (doc_qr_code): sim
+- Recomendação: Garantir requireFeature em rotas premium e usePlanFeature em entrypoints UI.

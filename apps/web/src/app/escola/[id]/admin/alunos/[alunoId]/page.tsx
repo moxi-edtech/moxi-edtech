@@ -2,7 +2,8 @@
 
 import { use, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, ArrowLeft, Save, User, Phone, Users, Shield } from "lucide-react";
+import { RefreshCw, ArrowLeft, Save, User, Phone, Users, Shield } from "lucide-react";
+import { Skeleton } from "@/components/feedback/FeedbackSystem";
 
 type Aluno = {
   id: string;
@@ -73,8 +74,10 @@ export default function AlunoEditPage({ params }: { params: Promise<{ id: string
     return (
       <div className="w-full max-w-4xl mx-auto p-6 bg-slate-50 rounded-xl">
         <div className="bg-white p-8 rounded-xl border border-slate-200 shadow-sm text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-moxinexa-teal" />
-          <div className="text-slate-600">Carregando dados do aluno...</div>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-40 mx-auto" />
+            <Skeleton className="h-3 w-56 mx-auto" />
+          </div>
         </div>
       </div>
     );
@@ -252,7 +255,7 @@ export default function AlunoEditPage({ params }: { params: Promise<{ id: string
             className="inline-flex items-center gap-2 rounded-lg bg-moxinexa-teal px-6 py-3 text-sm font-bold text-white hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-teal-900/20 transition-all active:scale-95 transform hover:-translate-y-0.5"
           >
             {saving ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <RefreshCw className="h-4 w-4 animate-spin" />
             ) : (
               <Save className="h-4 w-4" />
             )}

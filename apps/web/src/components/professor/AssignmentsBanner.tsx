@@ -9,7 +9,7 @@ export default function AssignmentsBanner() {
     let active = true
     ;(async () => {
       try {
-        const res = await fetch('/api/professor/atribuicoes', { cache: 'no-store' })
+        const res = await fetch('/api/professor/atribuicoes')
         const json = await res.json().catch(()=>null)
         if (!active) return
         setHas(res.ok && json?.ok && Array.isArray(json.items) && json.items.length > 0)

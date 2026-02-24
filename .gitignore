@@ -91,3 +91,6 @@ supabase_temp/
 supabase_*.tar.gz
 # pnpm store cache (evita blobs grandes no repo)
 .pnpm-store/
+.env.validator
+REPORT_SCAN_LIVE.json
+validator-package.json

@@ -12,7 +12,7 @@ import {
   ArrowRight,
   Layers,
 } from "lucide-react";
-import { toast } from "sonner";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 type BackfillPreviewAPI = {
   ok?: boolean;
@@ -54,6 +54,7 @@ export default function BackfillStep({ importId, escolaId, onNext, onBack }: Bac
   const [rawPreview, setRawPreview] = useState<BackfillPreviewAPI | null>(null);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { success: toastSuccess, error: toastError } = useToast();
 
   useEffect(() => {
     fetchPreview();
@@ -110,12 +111,12 @@ export default function BackfillStep({ importId, escolaId, onNext, onBack }: Bac
       try {
         await fetch(`/api/escolas/${encodeURIComponent(escolaId)}/academico/offers/backfill`, { method: "POST" });
       } catch (_) {}
-      toast.success("Estrutura criada com sucesso! 🚀");
+      toastSuccess("Estrutura criada com sucesso.");
       setSuccess(true);
       // Recarrega preview para refletir estado atual (opcional)
       fetchPreview();
     } catch (err: any) {
-      toast.error(err?.message || "Erro ao processar.");
+      toastError(err?.message || "Erro ao processar.");
       setError(err?.message || "Erro ao processar.");
     } finally {
       setProcessing(false);

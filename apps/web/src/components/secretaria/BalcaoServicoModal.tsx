@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Check, CreditCard, FileText, Loader2, Shield, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { toast } from "sonner";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 type ServicoOption = {
   id: string;
@@ -51,6 +51,7 @@ export function BalcaoServicoModal({
   onDecision,
 }: Props) {
   const supabase = createClient();
+  const { error } = useToast();
   const [loading, setLoading] = useState(false);
   const [decision, setDecision] = useState<BalcaoDecision | null>(null);
   const [selectedCodigo, setSelectedCodigo] = useState<string | null>(null);
@@ -70,26 +71,26 @@ export function BalcaoServicoModal({
 
   async function handleContinuar() {
     if (!alunoId) {
-      toast.error("Aluno não selecionado.");
+      error("Aluno não selecionado.");
       return;
     }
 
     if (!servicoCodigo) {
-      toast.error("Selecione um serviço.");
+      error("Selecione um serviço.");
       return;
     }
 
     setLoading(true);
     setDecision(null);
-    const { data, error } = await supabase.rpc("balcao_criar_pedido_e_decidir", {
+    const { data, error: rpcError } = await supabase.rpc("balcao_criar_pedido_e_decidir", {
       p_servico_codigo: servicoCodigo,
       p_aluno_id: alunoId,
       p_contexto: {},
     });
     setLoading(false);
 
-    if (error) {
-      toast.error(error.message || "Erro ao criar pedido.");
+    if (rpcError) {
+      error(rpcError.message || "Erro ao criar pedido.");
       return;
     }
 

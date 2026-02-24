@@ -5,7 +5,7 @@ import {
   Clock, Plus, Trash2, Coffee, Sun, Moon, Sunset, 
   Save, Wand2, ArrowRight, Settings2, MoreVertical 
 } from "lucide-react";
-import { toast } from "sonner"; // Feedback decente
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 // --- TYPES (Mantidos) ---
 export type HorarioSlot = {
@@ -37,6 +37,7 @@ const DIAS = [
 
 // --- COMPONENT ---
 export function SlotsConfig({ value, onChange, onSave }: any) {
+  const { success } = useToast();
   const [activeTurno, setActiveTurno] = useState("matinal");
   const [activeDia, setActiveDia] = useState(1);
   const [showGenerator, setShowGenerator] = useState(false); // Esconde o gerador por padrão
@@ -51,7 +52,7 @@ export function SlotsConfig({ value, onChange, onSave }: any) {
   // Actions
   const handleRemove = (id: string) => {
     onChange(value.filter((s: HorarioSlot) => s.id !== id));
-    toast.success("Tempo removido");
+    success("Tempo removido.");
   };
 
   const handleApplyGenerator = (newSlots: HorarioSlot[]) => {
@@ -61,7 +62,7 @@ export function SlotsConfig({ value, onChange, onSave }: any) {
       );
       onChange([...cleanList, ...newSlots]);
       setShowGenerator(false);
-      toast.success("Grade gerada com sucesso!");
+      success("Grade gerada com sucesso.");
   };
 
   const currentTurnoData = TURNOS.find(t => t.id === activeTurno);

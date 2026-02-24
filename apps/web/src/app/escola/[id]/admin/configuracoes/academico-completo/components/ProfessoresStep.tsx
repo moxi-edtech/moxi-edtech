@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { toast } from 'sonner';
 import { type Course, type Teacher } from '@/types/academico.types';
 import { StepHeader } from './StepHeader';
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 type Props = {
   escolaId: string;
@@ -14,6 +14,7 @@ type Props = {
 
 export default function ProfessoresStep({ escolaId, cursos, professores, onCursosAtualizados }: Props) {
   const [atribuicoes, setAtribuicoes] = useState<Record<string, string>>({});
+  const { success, error } = useToast();
 
   useEffect(() => {
     const inicial = cursos.reduce((acc, curso) => {
@@ -32,9 +33,9 @@ export default function ProfessoresStep({ escolaId, cursos, professores, onCurso
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Falha ao atribuir.");
       onCursosAtualizados(cursos.map(c => c.id === cursoId ? result.data : c));
-      toast.success("Professor atribuído!");
+      success("Professor atribuído.");
     } catch (error: any) {
-      toast.error(error.message);
+      error(error.message);
       setAtribuicoes(prev => ({ ...prev, [cursoId]: originalProfessorId })); // Reverte
     }
   };
@@ -69,4 +70,3 @@ export default function ProfessoresStep({ escolaId, cursos, professores, onCurso
     </div>
   );
 }
-

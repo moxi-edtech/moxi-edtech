@@ -3,8 +3,9 @@ import { supabaseServerTyped } from '@/lib/supabaseServer';
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { requireFeature } from "@/lib/plan/requireFeature";
+import { HttpError } from "@/lib/errors";
 import type { Database } from "~types/supabase";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 export const dynamic = 'force-dynamic';
 
@@ -27,12 +28,16 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 });
     }
 
-    const adminUrl = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const admin = adminUrl && serviceRoleKey
-      ? createAdminClient<Database>(adminUrl, serviceRoleKey)
-      : null;
-    const disciplinaClient = admin ?? supabase;
+    try {
+      await requireFeature("doc_qr_code");
+    } catch (err) {
+      if (err instanceof HttpError) {
+        return NextResponse.json({ ok: false, error: err.message, code: err.code }, { status: err.status });
+      }
+      throw err;
+    }
+
+    const disciplinaClient = supabase;
 
     const { id: turmaId } = await params;
     console.log('Fetching turma ID:', turmaId);

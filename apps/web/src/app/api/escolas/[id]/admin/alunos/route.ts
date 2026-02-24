@@ -2,16 +2,52 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import type { Database } from "~types/supabase";
+
+type ProfileResumo = { email: string | null; numero_login: string | null };
+type AlunoRow = {
+  id: string;
+  nome: string | null;
+  status: string | null;
+  created_at: string | null;
+  profile_id: string | null;
+  escola_id: string;
+  profiles?: ProfileResumo | ProfileResumo[] | null;
+};
+
+type CandidaturaRow = {
+  id: string;
+  aluno_id: string | null;
+  status: string | null;
+  created_at: string | null;
+  nome_candidato: string | null;
+  dados_candidato: { [key: string]: unknown } | null;
+  alunos?: {
+    id?: string | null;
+    nome?: string | null;
+    nome_completo?: string | null;
+    numero_processo?: string | null;
+    bi_numero?: string | null;
+    email?: string | null;
+  } | Array<{
+    id?: string | null;
+    nome?: string | null;
+    nome_completo?: string | null;
+    numero_processo?: string | null;
+    bi_numero?: string | null;
+    email?: string | null;
+  }> | null;
+};
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id: escolaId } = await ctx.params;
   try {
-    const s = await supabaseServerTyped<any>();
+    const s = await supabaseServerTyped<Database>();
     const { data: userRes } = await s.auth.getUser();
     const user = userRes?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
-    const resolvedEscolaId = await resolveEscolaIdForUser(s as any, user.id, escolaId);
+    const resolvedEscolaId = await resolveEscolaIdForUser(s, user.id, escolaId);
     if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
@@ -71,7 +107,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     const { data, error } = await query;
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
 
-    const alunoItems = (data ?? []).map((row: any) => {
+    const alunoItems = (data ?? []).map((row: AlunoRow) => {
       const prof = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
       return {
         id: row.id,
@@ -84,7 +120,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       };
     });
 
-    let candidaturaItems: Array<any> = [];
+    let candidaturaItems: Array<{ id: string; nome: string; email: string | null; numero_login: null; created_at: string | null; status: string | null; origem: 'candidatura'; aluno_id: string | null; }> = [];
     if (status !== "archived") {
       let candQuery = s
         .from("candidaturas")
@@ -118,17 +154,17 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         return NextResponse.json({ ok: false, error: candError.message }, { status: 400 });
       }
 
-      candidaturaItems = (candData ?? []).map((row: any) => {
+      candidaturaItems = (candData ?? []).map((row) => {
         const alunoRaw = Array.isArray(row.alunos) ? row.alunos[0] : row.alunos;
-        const payload = row.dados_candidato || {};
+        const payload = (row.dados_candidato || {}) as Record<string, unknown>;
         const nome =
           alunoRaw?.nome_completo ||
           alunoRaw?.nome ||
-          payload.nome_completo ||
-          payload.nome ||
+          (payload.nome_completo as string | undefined) ||
+          (payload.nome as string | undefined) ||
           row.nome_candidato ||
           "";
-        const email = alunoRaw?.email || payload.email || payload.encarregado_email || null;
+        const email = alunoRaw?.email || (payload.email as string | undefined) || (payload.encarregado_email as string | undefined) || null;
         return {
           id: row.id,
           nome,

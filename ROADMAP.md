@@ -106,6 +106,6 @@ Nada entra sem:
 ## REFERÊNCIAS
 - `docs/pedagogico-map.md`
 - `docs/global-search-roadmap.md`
-- `docs/big-tech-performance.md`
+- `agents/specs/performance.md`
 
 KLASSE não cresce em cima de gambiarra.

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Banknote, CreditCard, Loader2, ReceiptText, Upload, X } from "lucide-react";
-import { toast } from "sonner";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 type Method = "cash" | "tpa" | "transfer" | "mcx" | "kiwk";
 
@@ -36,6 +36,7 @@ export function PagamentoModal({
   const [gatewayRef, setGatewayRef] = useState("");
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ status: "success" | "error"; message: string } | null>(null);
+  const { success, error } = useToast();
 
   const needsRef = useMemo(() => method === "tpa", [method]);
   const needsEvidence = useMemo(() => method === "transfer", [method]);
@@ -52,15 +53,15 @@ export function PagamentoModal({
 
   async function handleConfirmar() {
     if (!alunoId) {
-      toast.error("Aluno não selecionado.");
+      error("Aluno não selecionado.");
       return;
     }
     if (needsRef && !reference.trim()) {
-      toast.error("Referência obrigatória.");
+      error("Referência obrigatória.");
       return;
     }
     if (needsEvidence && !evidenceUrl.trim()) {
-      toast.error("Comprovativo obrigatório.");
+      error("Comprovativo obrigatório.");
       return;
     }
 
@@ -97,7 +98,7 @@ export function PagamentoModal({
     const json = await response.json().catch(() => ({}));
     if (!response.ok || !json?.ok) {
       setLoading(false);
-      toast.error(json?.error || "Falha ao registrar pagamento.");
+      error(json?.error || "Falha ao registrar pagamento.");
       setFeedback({
         status: "error",
         message: json?.error || "Falha ao registrar pagamento.",
@@ -106,11 +107,11 @@ export function PagamentoModal({
     }
 
     const status = json?.data?.status ?? (method === "cash" ? "settled" : "pending");
-    toast.success(
-      status === "settled"
-        ? "Pagamento liquidado e serviço liberado."
-        : "Pagamento registrado como pendente."
-    );
+    if (status === "settled") {
+      success("Pagamento liquidado.", "Serviço liberado.");
+    } else {
+      success("Pagamento registado.", "Serviço pendente de confirmação.");
+    }
     setFeedback({
       status: "success",
       message:

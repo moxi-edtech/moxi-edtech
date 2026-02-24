@@ -2,7 +2,8 @@
 
 import React, { use, useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Loader2, Search, Filter, UserPlus, Archive, RotateCcw, Trash2, Edit } from "lucide-react";
+import { RefreshCw, Search, Filter, UserPlus, Archive, RotateCcw, Trash2, Edit } from "lucide-react";
+import { Skeleton } from "@/components/feedback/FeedbackSystem";
 
 type Aluno = {
   id: string;
@@ -206,7 +207,7 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
                 className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-moxinexa-teal px-5 py-3 text-sm font-bold text-white hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-teal-900/20 transition-all"
               >
                 {creating ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <RefreshCw className="h-4 w-4 animate-spin" />
                 ) : (
                   <UserPlus className="h-4 w-4" />
                 )}
@@ -270,8 +271,10 @@ export default function Page({ params }: { params: Promise<{ id: string }> }) {
               {loading ? (
                 <tr>
                   <td colSpan={5} className="p-8 text-center text-slate-500">
-                    <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-                    Carregando alunos...
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-40 mx-auto" />
+                      <Skeleton className="h-3 w-56 mx-auto" />
+                    </div>
                   </td>
                 </tr>
               ) : alunos.length === 0 ? (

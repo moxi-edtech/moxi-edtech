@@ -7,8 +7,8 @@ import { SlotsConfig, type HorarioSlot } from "@/components/escola/horarios/Slot
 import { useOfflineStatus } from "@/hooks/useOfflineStatus";
 import { enqueueOfflineAction } from "@/lib/offline/queue";
 import { shouldAppearInScheduler } from "@/lib/rules/scheduler-rules";
-import { toast } from "sonner";
 import { Spinner } from "@/components/ui/Spinner";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 type Turno = {
   id: string;
@@ -28,6 +28,7 @@ export default function HorariosSlotsPage() {
   const escolaId = params?.id as string;
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { success, error, toast: rawToast } = useToast();
   const [slots, setSlots] = useState<HorarioSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -68,7 +69,6 @@ export default function HorariosSlotsPage() {
       setLoading(true);
       try {
         const res = await fetch(`/api/escolas/${escolaId}/horarios/slots`, {
-          cache: "no-store",
           signal: controller.signal,
         });
         const json = await res.json().catch(() => ({}));
@@ -101,7 +101,6 @@ export default function HorariosSlotsPage() {
       setLoadingTurmas(true);
       try {
         const res = await fetch(`/api/escolas/${escolaId}/turmas?limit=50`, {
-          cache: "no-store",
           signal: controller.signal,
         });
         const json = await res.json().catch(() => ({}));
@@ -165,7 +164,7 @@ export default function HorariosSlotsPage() {
           `/api/secretaria/turmas/${selectedTurmaId}/disciplinas?escola_id=${encodeURIComponent(
             escolaId
           )}`,
-          { cache: "no-store", signal: controller.signal }
+          { signal: controller.signal }
         );
         const json = await res.json().catch(() => ({}));
         if (controller.signal.aborted || requestId !== requestRef.current) return;
@@ -212,7 +211,7 @@ export default function HorariosSlotsPage() {
 
       if (!online) {
         await enqueueOfflineAction(request);
-        toast.message("Configuração enviada para sincronização.");
+        rawToast({ variant: "info", title: "Configuração enviada para sincronização." });
         return;
       }
 
@@ -224,13 +223,9 @@ export default function HorariosSlotsPage() {
       const json = await res.json().catch(() => ({}));
       if (res.ok && json.ok) {
         setSlots(json.items || []);
-        toast.success("Estrutura de horários salva!", {
-          description: "Agora você pode distribuir as aulas nas turmas.",
-          action: {
-            label: "Ir para o Quadro",
-            onClick: () => router.push(`/escola/${escolaId}/horarios/quadro`),
-          },
-          duration: 5000,
+        success("Estrutura de horários salva.", "Agora você pode distribuir as aulas nas turmas.", {
+          label: "Ir para o Quadro",
+          onClick: () => router.push(`/escola/${escolaId}/horarios/quadro`),
         });
       } else {
         setSaveError(json?.error || "Falha ao salvar slots");

@@ -30,6 +30,7 @@ const s = StyleSheet.create({
     textAlign: "center",
   },
   table: {
+    width: "100%",
     borderWidth: 1,
     borderColor: "#1f2937",
   },
@@ -37,26 +38,85 @@ const s = StyleSheet.create({
     flexDirection: "row",
     borderBottomWidth: 1,
     borderBottomColor: "#1f2937",
+    minHeight: 24,
+    alignItems: "center",
   },
-  cell: {
+  headerRow: {
+    backgroundColor: "#f8fafc",
+    fontWeight: "bold",
+  },
+  colNum: {
+    width: 25,
     borderRightWidth: 1,
     borderRightColor: "#1f2937",
-    paddingVertical: 2,
-    paddingHorizontal: 2,
+    padding: 2,
+    textAlign: "center",
+  },
+  colNome: {
+    width: 180,
+    borderRightWidth: 1,
+    borderRightColor: "#1f2937",
+    padding: 4,
+  },
+  colIdade: {
+    width: 35,
+    borderRightWidth: 1,
+    borderRightColor: "#1f2937",
+    padding: 2,
+    textAlign: "center",
+  },
+  colSexo: {
+    width: 30,
+    borderRightWidth: 1,
+    borderRightColor: "#1f2937",
+    padding: 2,
+    textAlign: "center",
+  },
+  colObs: {
+    width: 60,
+    padding: 2,
+    textAlign: "center",
+  },
+  subjectsContainer: {
+    flex: 1,
+    flexDirection: "row",
+    borderRightWidth: 1,
+    borderRightColor: "#1f2937",
+  },
+  subjectBlock: {
+    flex: 1,
+    borderRightWidth: 1,
+    borderRightColor: "#1f2937",
+  },
+  subjectHeaderTop: {
+    height: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#1f2937",
     justifyContent: "center",
+    alignItems: "center",
   },
-  cellHeader: {
+  subjectHeaderBottom: {
+    flexDirection: "row",
+    height: 16,
+  },
+  gradeCell: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    borderRightWidth: 1,
+    borderRightColor: "#1f2937",
+  },
+  gradeCellLast: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  text: {
+    fontSize: 7,
+  },
+  textBold: {
+    fontSize: 7,
     fontWeight: "bold",
-    textAlign: "center",
-  },
-  cellCenter: {
-    textAlign: "center",
-  },
-  cellRight: {
-    textAlign: "right",
-  },
-  disciplinaHeader: {
-    backgroundColor: "#f8fafc",
   },
   footer: {
     marginTop: 10,
@@ -86,13 +146,7 @@ const chunkRows = <T,>(rows: T[], size: number) => {
   return chunks
 }
 
-const toPercent = (value: number) => `${value.toFixed(2)}%`
-
 export function PautaGeralV1({ metadata, disciplinas, alunos }: Props) {
-  const fixedWidth = 6 + 28 + 5 + 4 + 8
-  const disciplinaWidth = disciplinas.length > 0 ? (100 - fixedWidth) / disciplinas.length : 0
-  const disciplinaCellWidth = disciplinaWidth / 4
-
   const pages = chunkRows(alunos, ROWS_PER_PAGE)
 
   return (
@@ -112,75 +166,103 @@ export function PautaGeralV1({ metadata, disciplinas, alunos }: Props) {
           </Text>
 
           <View style={s.table}>
-            <View style={[s.row, s.disciplinaHeader]} wrap={false}>
-              <View style={[s.cell, { width: toPercent(6) }]}>
-                <Text style={[s.cellHeader, s.cellCenter]}>Nº</Text>
+            <View style={[s.row, s.headerRow, { minHeight: 32 }]} wrap={false}>
+              <View style={s.colNum}>
+                <Text style={s.textBold}>Nº</Text>
               </View>
-              <View style={[s.cell, { width: toPercent(28) }]}>
-                <Text style={[s.cellHeader, s.cellCenter]}>Nome Completo do Aluno</Text>
+              <View style={s.colNome}>
+                <Text style={s.textBold}>Nome Completo do Aluno</Text>
               </View>
-              <View style={[s.cell, { width: toPercent(5) }]}>
-                <Text style={[s.cellHeader, s.cellCenter]}>Idade</Text>
+              <View style={s.colIdade}>
+                <Text style={s.textBold}>Idade</Text>
               </View>
-              <View style={[s.cell, { width: toPercent(4) }]}>
-                <Text style={[s.cellHeader, s.cellCenter]}>Sexo</Text>
+              <View style={s.colSexo}>
+                <Text style={s.textBold}>Sexo</Text>
               </View>
-              {disciplinas.map((disciplina) => (
-                <View key={disciplina.id} style={[s.cell, { width: toPercent(disciplinaWidth) }]}>
-                  <Text style={[s.cellHeader, s.cellCenter]}>{disciplina.nome}</Text>
-                </View>
-              ))}
-              <View style={[s.cell, { width: toPercent(8) }]}>
-                <Text style={[s.cellHeader, s.cellCenter]}>Obs.</Text>
-              </View>
-            </View>
-
-            <View style={[s.row, s.disciplinaHeader]} wrap={false}>
-              <View style={[s.cell, { width: toPercent(6) }]} />
-              <View style={[s.cell, { width: toPercent(28) }]} />
-              <View style={[s.cell, { width: toPercent(5) }]} />
-              <View style={[s.cell, { width: toPercent(4) }]} />
-              {disciplinas.map((disciplina) => (
-                <View key={`sub-${disciplina.id}`} style={{ flexDirection: "row", width: toPercent(disciplinaWidth) }}>
-                  {["MAC", "NPP", "PT", "MT"].map((label, idx) => (
-                    <View key={`${disciplina.id}-${label}`} style={[s.cell, { width: toPercent(disciplinaCellWidth) }]}> 
-                      <Text style={[s.cellHeader, s.cellCenter]}>{label}</Text>
+              <View style={s.subjectsContainer}>
+                {disciplinas.map((disciplina, index) => (
+                  <View
+                    key={disciplina.id}
+                    style={[
+                      s.subjectBlock,
+                      index === disciplinas.length - 1 ? { borderRightWidth: 0 } : {},
+                    ]}
+                  >
+                    <View style={s.subjectHeaderTop}>
+                      <Text style={s.textBold}>{disciplina.nome.substring(0, 10)}</Text>
                     </View>
-                  ))}
-                </View>
-              ))}
-              <View style={[s.cell, { width: toPercent(8) }]} />
+                    <View style={s.subjectHeaderBottom}>
+                      <View style={s.gradeCell}>
+                        <Text style={s.textBold}>MAC</Text>
+                      </View>
+                      <View style={s.gradeCell}>
+                        <Text style={s.textBold}>NPP</Text>
+                      </View>
+                      <View style={s.gradeCell}>
+                        <Text style={s.textBold}>PT</Text>
+                      </View>
+                      <View style={s.gradeCellLast}>
+                        <Text style={s.textBold}>MT</Text>
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </View>
+              <View style={s.colObs}>
+                <Text style={s.textBold}>Obs.</Text>
+              </View>
             </View>
 
             {pageRows.map((aluno) => (
               <View key={aluno.aluno_id} style={s.row} wrap={false}>
-                <View style={[s.cell, { width: toPercent(6) }]}>
-                  <Text style={[s.cellCenter]}>{String(aluno.numero).padStart(2, "0")}</Text>
+                <View style={s.colNum}>
+                  <Text style={s.text}>{String(aluno.numero).padStart(2, "0")}</Text>
                 </View>
-                <View style={[s.cell, { width: toPercent(28) }]}>
-                  <Text>{aluno.nome}</Text>
+                <View style={s.colNome}>
+                  <Text style={s.text}>{aluno.nome.substring(0, 40)}</Text>
                 </View>
-                <View style={[s.cell, { width: toPercent(5) }]}>
-                  <Text style={[s.cellCenter]}>{aluno.idade}</Text>
+                <View style={s.colIdade}>
+                  <Text style={s.text}>{aluno.idade}</Text>
                 </View>
-                <View style={[s.cell, { width: toPercent(4) }]}>
-                  <Text style={[s.cellCenter]}>{aluno.sexo}</Text>
+                <View style={s.colSexo}>
+                  <Text style={s.text}>{aluno.sexo}</Text>
                 </View>
-                {disciplinas.map((disciplina) => {
-                  const notas = aluno.disciplinas[disciplina.id]
-                  const values = [notas?.mac ?? "-", notas?.npp ?? "-", notas?.pt ?? "-", notas?.mt ?? "-"]
-                  return (
-                    <View key={`${aluno.aluno_id}-${disciplina.id}`} style={{ flexDirection: "row", width: toPercent(disciplinaWidth) }}>
-                      {values.map((valor, idx) => (
-                        <View key={`${aluno.aluno_id}-${disciplina.id}-${idx}`} style={[s.cell, { width: toPercent(disciplinaCellWidth) }]}> 
-                          <Text style={[s.cellCenter]}>{valor}</Text>
+                <View style={s.subjectsContainer}>
+                  {disciplinas.map((disciplina, index) => {
+                    const notas = aluno.disciplinas[disciplina.id] ?? {
+                      mac: "-",
+                      npp: "-",
+                      pt: "-",
+                      mt: "-",
+                    }
+
+                    return (
+                      <View
+                        key={`${aluno.aluno_id}-${disciplina.id}`}
+                        style={[
+                          s.subjectBlock,
+                          { flexDirection: "row" },
+                          index === disciplinas.length - 1 ? { borderRightWidth: 0 } : {},
+                        ]}
+                      >
+                        <View style={s.gradeCell}>
+                          <Text style={s.text}>{notas.mac}</Text>
                         </View>
-                      ))}
-                    </View>
-                  )
-                })}
-                <View style={[s.cell, { width: toPercent(8) }]}>
-                  <Text>{aluno.obs}</Text>
+                        <View style={s.gradeCell}>
+                          <Text style={s.text}>{notas.npp}</Text>
+                        </View>
+                        <View style={s.gradeCell}>
+                          <Text style={s.text}>{notas.pt}</Text>
+                        </View>
+                        <View style={s.gradeCellLast}>
+                          <Text style={s.textBold}>{notas.mt}</Text>
+                        </View>
+                      </View>
+                    )
+                  })}
+                </View>
+                <View style={s.colObs}>
+                  <Text style={s.text}>{aluno.obs || "-"}</Text>
                 </View>
               </View>
             ))}

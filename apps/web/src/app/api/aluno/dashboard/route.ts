@@ -19,6 +19,12 @@ type DatabaseWithAvisos = Database & {
   };
 };
 
+type RotinaRow = { weekday: number | null; inicio: string | null; fim: string | null; sala: string | null };
+type NotaRow = { valor: number | null; created_at: string | null };
+type MensalidadeRow = { status: string | null };
+type StatusFinanceiro = { emDia: boolean; pendentes: number; error?: string };
+type AvisoRow = { id: string; titulo: string | null; resumo: string | null; origem: string | null; created_at: string | null };
+
 export async function GET() {
   try {
     const { supabase, ctx } = await getAlunoContext();
@@ -26,7 +32,7 @@ export async function GET() {
     const { userId, escolaId, matriculaId, turmaId } = ctx;
 
     // Próxima aula (heurística: próxima rotina da turma pelo weekday atual)
-    let proxima_aula: any = null;
+    let proxima_aula: RotinaRow | null = null;
     try {
       if (turmaId) {
         const now = new Date();
@@ -45,7 +51,7 @@ export async function GET() {
     } catch {}
 
     // Última nota lançada (placeholder: depende de schema de notas)
-    let ultima_nota: any = null;
+    let ultima_nota: NotaRow | null = null;
     try {
       if (matriculaId && escolaId) {
         const { data: ns } = await supabase
@@ -60,7 +66,7 @@ export async function GET() {
     } catch {}
 
     // Status financeiro (baseado em mensalidades do aluno)
-    let status_financeiro: any = { emDia: true, pendentes: 0 };
+    let status_financeiro: StatusFinanceiro = { emDia: true, pendentes: 0 };
     try {
       const { data: matriculaData, error: matriculaError } = escolaId && matriculaId
         ? await supabase
@@ -82,7 +88,7 @@ export async function GET() {
 
         if (mensalidadesError) throw mensalidadesError;
 
-        const pend = (mens || []).filter((m: any) => m.status === 'pendente' || m.status === 'atrasado').length;
+        const pend = (mens || []).filter((m: MensalidadeRow) => m.status === 'pendente' || m.status === 'atrasado').length;
         status_financeiro = { emDia: pend === 0, pendentes: pend };
       }
     } catch (e) {
@@ -91,7 +97,7 @@ export async function GET() {
     }
 
     // Avisos recentes (até 3)
-    let avisos_recentes: any[] = [];
+    let avisos_recentes: Array<{ id: string; titulo: string | null; resumo: string | null; origem: string | null; data: string | null }> = [];
     try {
       if (escolaId) {
         const supabaseAvisos = supabase as unknown as import("@supabase/supabase-js").SupabaseClient<DatabaseWithAvisos>;
@@ -101,7 +107,7 @@ export async function GET() {
           .eq('escola_id', escolaId)
           .order('created_at', { ascending: false })
           .limit(3);
-        avisos_recentes = (avs || []).map((a: any) => ({
+        avisos_recentes = (avs || []).map((a: AvisoRow) => ({
           id: a.id,
           titulo: a.titulo,
           resumo: a.resumo,

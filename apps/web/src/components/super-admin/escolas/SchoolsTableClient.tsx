@@ -3,7 +3,6 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import toast, { Toaster } from "react-hot-toast";
 import { Button } from "@/components/ui/Button";
 import ConfigHealthBanner from "@/components/system/ConfigHealthBanner";
 import { SchoolsHeader } from "./SchoolsHeader";
@@ -12,6 +11,7 @@ import { SchoolsTable } from "./SchoolsTable";
 import { SchoolsPagination } from "./SchoolsPagination";
 import type { SchoolsTableProps, School, OnboardingProgress, EditForm } from "./types";
 import { parsePlanTier, PLAN_NAMES, type PlanTier } from "@/config/plans";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 const BillingModal = dynamic(() => import("@/components/super-admin/SchoolBillingModal"))
 const ConfirmModal = dynamic(() => import("@/components/super-admin/ConfirmActionModal"))
@@ -25,6 +25,7 @@ export default function SchoolsTableClient({
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
+  const { success, error } = useToast();
 
   const [schools, setSchools] = useState<School[]>(initialSchools);
   const [loading, setLoading] = useState(false);
@@ -94,7 +95,7 @@ export default function SchoolsTableClient({
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setErrorMsg(msg);
-      toast.error('Erro ao recarregar dados');
+      error('Erro ao recarregar dados');
     } finally {
       setLoading(false);
     }
@@ -184,12 +185,12 @@ export default function SchoolsTableClient({
       });
       const json = await res.json().catch(() => ({ ok: false }));
       if (!res.ok || !json?.ok) throw new Error((json && json.error) || 'Falha ao reparar admins');
-      toast.success(dryRun ? 'Dry‑run concluído' : 'Admins reparados com sucesso');
+      success(dryRun ? 'Dry‑run concluído' : 'Admins reparados com sucesso');
       await reload();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setErrorMsg(msg);
-      toast.error('Erro ao reparar admins');
+      error('Erro ao reparar admins');
     } finally {
       setLoading(false);
     }
@@ -232,11 +233,11 @@ export default function SchoolsTableClient({
       setSchools(prev => prev.map(s => s.id === schoolId ? { ...s, ...editForm } : s));
       setEditingId(null);
       setEditForm({});
-      toast.success('Escola atualizada com sucesso!');
+      success('Escola atualizada com sucesso.');
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setErrorMsg(msg);
-      toast.error('Erro ao atualizar escola');
+      error('Erro ao atualizar escola');
     } finally {
       setSaving(null);
     }
@@ -256,7 +257,6 @@ export default function SchoolsTableClient({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Toaster position="top-right" />
       <ConfigHealthBanner />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">

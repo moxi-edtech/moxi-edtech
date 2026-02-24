@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import type { Database } from "~types/supabase";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
 import { recordAuditServer } from "@/lib/audit";
 
 export async function POST(request: NextRequest) {
-  const supabase = await supabaseServerTyped<any>();
+  const supabase = await supabaseServerTyped<Database>();
   const { data: userRes } = await supabase.auth.getUser();
   const user = userRes?.user;
   if (!user) {
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
     if (!turma_code || !ano_letivo) {
       return NextResponse.json({ error: "turma_id ou (turma_code + ano_letivo) são obrigatórios" }, { status: 400 });
     }
-    const { data: turmaRow, error: turmaErr } = await (supabase as any).rpc("create_or_get_turma_by_code", {
+    const { data: turmaRow, error: turmaErr } = await supabase.rpc("create_or_get_turma_by_code", {
       p_escola_id: escola_id,
       p_ano_letivo: ano_letivo,
       p_turma_code: turma_code,
@@ -51,16 +52,17 @@ export async function POST(request: NextRequest) {
     if (!finalTurmaId) return NextResponse.json({ error: "Falha ao resolver turma" }, { status: 400 });
   }
 
-  const { data, error } = await (supabase as any).rpc("matricular_em_massa_por_turma", {
+  const { data, error } = await supabase.rpc("matricular_em_massa_por_turma", {
     p_import_id: import_id,
     p_escola_id: escola_id,
     p_turma_id: finalTurmaId,
   });
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  const row = Array.isArray(data) && data.length ? data[0] : data;
+  type ImportRow = { success_count?: number; error_count?: number; errors?: unknown };
+  const row = (Array.isArray(data) && data.length ? data[0] : data) as ImportRow | null;
 
   // Confirma matrículas criadas para o import/turma pelo fluxo oficial
-  const { data: matriculasCriadas } = await (supabase as any)
+  const { data: matriculasCriadas } = await supabase
     .from('matriculas')
     .select('id')
     .eq('escola_id', escola_id)
@@ -70,7 +72,7 @@ export async function POST(request: NextRequest) {
   const confirm_errors: Array<{ id: string; error: string }> = [];
   if (matriculasCriadas && matriculasCriadas.length > 0) {
     for (const m of matriculasCriadas) {
-      const { error: cErr } = await (supabase as any).rpc('confirmar_matricula', {
+      const { error: cErr } = await supabase.rpc('confirmar_matricula', {
         p_matricula_id: m.id,
       });
       if (cErr) confirm_errors.push({ id: m.id as string, error: cErr.message });

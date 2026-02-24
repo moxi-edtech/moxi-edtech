@@ -31,9 +31,9 @@
     "db:select:local": "bash scripts/db-select-local.sh",
     "test:rls": "psql -f supabase/tests/assert_tenant_rls.sql",
     "agent:kf2": "tsx agents/scan/kf2-search-audit.ts",
-    "agent:scan": "tsx agents/scripts/codex-scan-v2.ts --repo . --contracts agents/contracts --out agents/outputs",
-    "agents:scan": "tsx agents/scripts/codex-scan-v2.ts --repo . --contracts agents/contracts --out agents/outputs",
-    "agents:gate": "tsx agents/scripts/perf-gate.ts --scan agents/outputs/REPORT_SCAN.json --contracts agents/contracts --out agents/outputs",
+    "agent:scan": "tsx agents/scripts/codex-scan-v2.ts --repo . --contracts agents --out agents/outputs",
+    "agents:scan": "tsx agents/scripts/codex-scan-v2.ts --repo . --contracts agents --out agents/outputs",
+    "agents:gate": "tsx agents/scripts/perf-gate.ts --scan agents/outputs/REPORT_SCAN.json --contracts agents --out agents/outputs",
     "agents:apply": "tsx agents/scripts/apply-agent.ts --plan agents/outputs/PLAN_PATCHES.json --gate agents/outputs/PERF_GATE.json --repo . --mode safe",
     "scan": "bash scripts/scan-report.sh"
   },

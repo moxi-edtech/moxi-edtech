@@ -25,15 +25,21 @@ const payloadSchema = z.object({
   avaliacao_config: avaliacaoConfigSchema.optional(),
 });
 
-const hasComponentes = (config: unknown): config is { componentes?: { code: string }[] } => {
+type AvaliacaoComponente = { code: string; peso?: number; ativo?: boolean };
+type AvaliacaoConfig = { componentes?: AvaliacaoComponente[] };
+
+const hasComponentes = (config: unknown): config is AvaliacaoConfig => {
   if (!config || typeof config !== 'object') return false;
   const componentes = (config as { componentes?: unknown }).componentes;
   return Array.isArray(componentes) && componentes.length > 0;
 };
 
-const normalizeComponentes = (config: unknown) => {
-  if (Array.isArray(config)) return { componentes: config };
-  if (config && typeof config === 'object' && Array.isArray((config as any).componentes)) return config;
+const normalizeComponentes = (config: unknown): AvaliacaoConfig | null => {
+  if (Array.isArray(config)) return { componentes: config as AvaliacaoComponente[] };
+  if (config && typeof config === 'object') {
+    const componentes = (config as { componentes?: unknown }).componentes;
+    if (Array.isArray(componentes)) return { componentes: componentes as AvaliacaoComponente[] };
+  }
   return null;
 };
 
@@ -48,22 +54,26 @@ const resolveDefaultConfig = async (supabase: SupabaseClient<Database>, escolaId
     .maybeSingle();
 
   if (!data) return null;
-  return normalizeComponentes((data as any).componentes);
+  return normalizeComponentes(data.componentes);
 };
 
-const withNoStore = (response: NextResponse) => {
+const withNoStore = (response: NextResponse, start?: number) => {
   response.headers.set('Cache-Control', 'no-store');
+  if (start !== undefined) {
+    response.headers.set('Server-Timing', `app;dur=${Date.now() - start}`);
+  }
   return response;
 };
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
+  const start = Date.now();
   try {
     const { id: requestedEscolaId } = await params;
     const supabase = await supabaseServerTyped<Database>();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-      return withNoStore(NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 }));
+      return withNoStore(NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 }), start);
     }
 
     const { data: hasRole, error: rolesError } = await supabase
@@ -74,18 +84,24 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
     if (rolesError) {
       console.error('Error fetching user roles:', rolesError);
-      return withNoStore(NextResponse.json({ ok: false, error: 'Erro ao verificar permissões.' }, { status: 500 }));
+      return withNoStore(
+        NextResponse.json({ ok: false, error: 'Erro ao verificar permissões.' }, { status: 500 }),
+        start
+      );
     }
 
     if (!hasRole) {
-      return withNoStore(NextResponse.json({ ok: false, error: 'Você não tem permissão para executar esta ação.' }, { status: 403 }));
+      return withNoStore(
+        NextResponse.json({ ok: false, error: 'Você não tem permissão para executar esta ação.' }, { status: 403 }),
+        start
+      );
     }
 
-    const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId);
+    const userEscolaId = await resolveEscolaIdForUser(supabase, user.id, requestedEscolaId);
     const effectiveEscolaId = userEscolaId ?? requestedEscolaId;
 
     if (userEscolaId && userEscolaId !== requestedEscolaId) {
-      return withNoStore(NextResponse.json({ ok: false, error: 'Acesso negado a esta escola.' }, { status: 403 }));
+      return withNoStore(NextResponse.json({ ok: false, error: 'Acesso negado a esta escola.' }, { status: 403 }), start);
     }
 
     const { data: config, error } = await supabase
@@ -96,7 +112,10 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
     if (error) {
       console.error('Error fetching configuracoes_escola:', error);
-      return withNoStore(NextResponse.json({ ok: false, error: 'Erro ao carregar configurações.' }, { status: 500 }));
+      return withNoStore(
+        NextResponse.json({ ok: false, error: 'Erro ao carregar configurações.' }, { status: 500 }),
+        start
+      );
     }
 
     const modeloAvaliacao = (config?.modelo_avaliacao as string | null) ?? 'PADRAO_ESCOLA';
@@ -114,22 +133,23 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
         avaliacao_config: avaliacaoConfig,
         has_config: Boolean(config),
       },
-    }));
+    }), start);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     console.error('Error in avaliacao-frequencia GET API:', message);
-    return withNoStore(NextResponse.json({ ok: false, error: message }, { status: 500 }));
+    return withNoStore(NextResponse.json({ ok: false, error: message }, { status: 500 }), start);
   }
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const start = Date.now();
   try {
     const { id: requestedEscolaId } = await params;
     const supabase = await supabaseServerTyped<Database>();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
-      return withNoStore(NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 }));
+      return withNoStore(NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 }), start);
     }
 
     const { data: hasRole, error: rolesError } = await supabase
@@ -140,25 +160,34 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     if (rolesError) {
       console.error('Error fetching user roles:', rolesError);
-      return withNoStore(NextResponse.json({ ok: false, error: 'Erro ao verificar permissões.' }, { status: 500 }));
+      return withNoStore(
+        NextResponse.json({ ok: false, error: 'Erro ao verificar permissões.' }, { status: 500 }),
+        start
+      );
     }
 
     if (!hasRole) {
-      return withNoStore(NextResponse.json({ ok: false, error: 'Você não tem permissão para executar esta ação.' }, { status: 403 }));
+      return withNoStore(
+        NextResponse.json({ ok: false, error: 'Você não tem permissão para executar esta ação.' }, { status: 403 }),
+        start
+      );
     }
 
-    const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId);
+    const userEscolaId = await resolveEscolaIdForUser(supabase, user.id, requestedEscolaId);
     const effectiveEscolaId = userEscolaId ?? requestedEscolaId;
 
     if (userEscolaId && userEscolaId !== requestedEscolaId) {
-      return withNoStore(NextResponse.json({ ok: false, error: 'Acesso negado a esta escola.' }, { status: 403 }));
+      return withNoStore(NextResponse.json({ ok: false, error: 'Acesso negado a esta escola.' }, { status: 403 }), start);
     }
 
     const body = await req.json();
     const parseResult = payloadSchema.safeParse(body);
 
     if (!parseResult.success) {
-      return withNoStore(NextResponse.json({ ok: false, error: 'Dados inválidos.', issues: parseResult.error.issues }, { status: 400 }));
+      return withNoStore(
+        NextResponse.json({ ok: false, error: 'Dados inválidos.', issues: parseResult.error.issues }, { status: 400 }),
+        start
+      );
     }
 
     const payload = parseResult.data;
@@ -175,7 +204,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     if (existingError) {
       console.error('Error fetching existing configuracoes_escola:', existingError);
-      return withNoStore(NextResponse.json({ ok: false, error: 'Erro ao preparar configurações.' }, { status: 500 }));
+      return withNoStore(
+        NextResponse.json({ ok: false, error: 'Erro ao preparar configurações.' }, { status: 500 }),
+        start
+      );
     }
 
     const baseConfig = existing ?? {
@@ -204,13 +236,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     if (error) {
       console.error('Error upserting configuracoes_escola:', error);
-      return withNoStore(NextResponse.json({ ok: false, error: 'Erro ao salvar configurações.' }, { status: 500 }));
+      return withNoStore(
+        NextResponse.json({ ok: false, error: 'Erro ao salvar configurações.' }, { status: 500 }),
+        start
+      );
     }
 
-    return withNoStore(NextResponse.json({ ok: true, data: { ...data, has_config: true } }, { status: 200 }));
+    return withNoStore(NextResponse.json({ ok: true, data: { ...data, has_config: true } }, { status: 200 }), start);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     console.error('Error in avaliacao-frequencia POST API:', message);
-    return withNoStore(NextResponse.json({ ok: false, error: message }, { status: 500 }));
+    return withNoStore(NextResponse.json({ ok: false, error: message }, { status: 500 }), start);
   }
 }

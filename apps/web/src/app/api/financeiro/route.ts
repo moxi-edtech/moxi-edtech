@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
 
   if (escolaId) {
     try {
-      const { anoLetivo, items } = await findClassesSemPreco(s as any, escolaId, anoLetivoParam);
+      const { anoLetivo, items } = await findClassesSemPreco(s as Awaited<ReturnType<typeof supabaseServer>>, escolaId, anoLetivoParam);
       const total = items.length;
 
       cursosPendentes.total = total;
@@ -54,8 +54,9 @@ export async function GET(req: NextRequest) {
       cursosPendentes.porEscolaAno[escolaId] = {
         [String(anoLetivo)]: total,
       };
-    } catch (e: any) {
-      console.warn("⚠️ Falha ao calcular preços pendentes:", e?.message || e);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      console.warn("⚠️ Falha ao calcular preços pendentes:", message);
     }
   }
 

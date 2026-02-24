@@ -2,13 +2,12 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { toast } from "sonner";
 import { 
   Calculator, 
   Variable, 
   Pencil, 
   Save, 
-  Loader2, 
+  RefreshCw, 
   AlertCircle, 
   GraduationCap,
   CalendarClock,
@@ -17,6 +16,7 @@ import {
 import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
 import { buildConfigMenuItems } from "../_shared/menuItems";
 import AcademicStep2Config from "@/components/escola/onboarding/AcademicStep2Config";
+import { Skeleton, useToast } from "@/components/feedback/FeedbackSystem";
 
 type Componente = { code: string; peso: number; ativo: boolean };
 type AvaliacaoConfigData = { componentes: Componente[] };
@@ -42,6 +42,7 @@ export default function AvaliacaoUnificadaClient() {
   const params = useParams() as { id?: string };
   const escolaId = params?.id;
   const base = escolaId ? `/escola/${escolaId}/admin/configuracoes` : "";
+  const { toast, dismiss, success, error } = useToast();
 
   // --- ESTADOS ---
   const [loading, setLoading] = useState(true);
@@ -58,7 +59,7 @@ export default function AvaliacaoUnificadaClient() {
   if (!escolaId) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <Loader2 className="h-6 w-6 animate-spin text-slate-300" />
+        <Skeleton className="h-4 w-40" />
       </div>
     );
   }
@@ -122,10 +123,11 @@ export default function AvaliacaoUnificadaClient() {
 
   const handleSave = async () => {
     if (!escolaId) {
-      toast.error("Escola não identificada.");
+      error("Escola não identificada.");
       return;
     }
     setSaving(true);
+    const tid = toast({ variant: "syncing", title: "Aplicando regras...", duration: 0 });
     const promise = fetch(`/api/escola/${escolaId}/admin/configuracoes/avaliacao-frequencia`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -147,16 +149,18 @@ export default function AvaliacaoUnificadaClient() {
       return json;
     });
 
-    toast.promise(promise, {
-      loading: 'Aplicando regras...',
-      success: 'Regras atualizadas!',
-      error: 'Erro ao salvar.',
-    });
-
     try {
       await promise;
+      dismiss(tid);
+      success("Regras atualizadas.");
       setIsEditing(false);
-    } catch (e) { console.error(e); } finally { setSaving(false); }
+    } catch (e) {
+      dismiss(tid);
+      error("Erro ao salvar.");
+      console.error(e);
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Helper Visual KLASSE
@@ -294,14 +298,14 @@ export default function AvaliacaoUnificadaClient() {
               // TOKEN: Gold (#E3B23C) para Ação de Salvar (CTA)
               className="inline-flex items-center gap-2 rounded-xl bg-[#E3B23C] px-6 py-2.5 text-sm font-bold text-white shadow-sm hover:brightness-95 transition-all disabled:opacity-70 disabled:grayscale"
             >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Salvar Alterações
             </button>
           </div>
         )}
       </div>
       {loading ? (
-        <div className="py-24 flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-slate-300" /></div>
+        <div className="py-24 flex justify-center"><Skeleton className="h-4 w-40" /></div>
       ) : (
         <div className="space-y-6">
           

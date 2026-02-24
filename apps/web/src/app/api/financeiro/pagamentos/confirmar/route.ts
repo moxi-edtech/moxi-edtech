@@ -8,7 +8,17 @@ export const fetchCache = "force-no-store";
 
 export async function POST(req: Request) {
   try {
+    const idempotencyKey =
+      req.headers.get("Idempotency-Key") ?? req.headers.get("idempotency-key");
+    if (!idempotencyKey) {
+      return NextResponse.json(
+        { ok: false, error: "Idempotency-Key header é obrigatório" },
+        { status: 400 }
+      );
+    }
+
     const supabase = await supabaseServer();
+    const supabaseAny = supabase as any;
     const { data: userRes } = await supabase.auth.getUser();
     const user = userRes?.user;
 
@@ -28,6 +38,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 400 });
     }
 
+    const { data: existingIdempotency } = await supabaseAny
+      .from("idempotency_keys")
+      .select("result")
+      .eq("escola_id", escolaId)
+      .eq("scope", "financeiro_pagamentos_confirmar")
+      .eq("key", idempotencyKey)
+      .maybeSingle();
+
+    if (existingIdempotency?.result) {
+      return NextResponse.json(existingIdempotency.result, { status: 200 });
+    }
+
     if (external_ref || proof_url) {
       const { error: updateError } = await supabase
         .from("finance_payment_intents")
@@ -45,13 +67,26 @@ export async function POST(req: Request) {
 
     const { data, error } = await supabase.rpc("finance_confirm_payment", {
       p_intent_id: intent_id,
+      p_dedupe_key_override: idempotencyKey,
     });
 
     if (error) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
     }
 
-    return NextResponse.json({ ok: true, intent: data });
+    const responsePayload = { ok: true, intent: data };
+
+    await supabaseAny.from("idempotency_keys").upsert(
+      {
+        escola_id: escolaId,
+        scope: "financeiro_pagamentos_confirmar",
+        key: idempotencyKey,
+        result: responsePayload,
+      },
+      { onConflict: "escola_id,scope,key" }
+    );
+
+    return NextResponse.json(responsePayload);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro interno";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

@@ -22,12 +22,8 @@ function getEnv() {
   const anonKey = (
     process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
   ).trim();
-  const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
-
   const hasUrl = Boolean(url);
   const hasAnonKey = !!anonKey && anonKey.length > 10 && !/YOUR-?anon-?key/i.test(anonKey);
-  const hasServiceKey =
-    !!serviceKey && (serviceKey.startsWith("ey") || serviceKey.startsWith("sb_secret_")) && !/YOUR-service-role-key/i.test(serviceKey);
 
   const mode = process.env.VERCEL
     ? "vercel"
@@ -35,7 +31,7 @@ function getEnv() {
       ? "production"
       : "development";
 
-  return { url, anonKey, hasUrl, hasAnonKey, hasServiceKey, mode } as const;
+  return { url, anonKey, hasUrl, hasAnonKey, mode } as const;
 }
 
 async function checkSupabaseAuthHealth(url: string, anonKey: string) {
@@ -79,7 +75,6 @@ export async function GET() {
       env: {
         hasUrl: env.hasUrl,
         hasAnonKey: env.hasAnonKey,
-        hasServiceKey: env.hasServiceKey,
         mode: env.mode,
       },
       supabase: supabaseDetails,

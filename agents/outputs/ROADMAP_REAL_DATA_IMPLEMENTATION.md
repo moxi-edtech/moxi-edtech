@@ -246,9 +246,9 @@ Separar o status de currículo por domínio (horário vs avaliação), permitir 
 ---
 
 ## Referências relacionadas
-- `agents/contracts/README.md`
-- `agents/contracts/KLASSE_ANALISE_COMPETITIVA_ANGOSCHOOL_2026-02-05.md`
-- `agents/contracts/KLASSE_PAUTAS_MINISTERIAIS_ROADMAP_2026-02-05.md`
+- `agents/CONTRACTS.md`
+- `agents/research/analise_competitiva.md`
+- `agents/research/pautas_ministeriais.md`
 
 ---
 

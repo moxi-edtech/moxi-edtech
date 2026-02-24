@@ -154,7 +154,7 @@ export async function POST(request: Request) {
 
     // 5. Operações Auth requerem service role; manter apenas limpeza em DB
     const authDeletionSuccess = false
-    const authDeletionMessage = 'Usuário no Auth não foi removido (service_role banido).'
+    const authDeletionMessage = 'Usuário no Auth não foi removido (service role banido).'
 
     // 6. Revalidar cache para atualizar a UI
     revalidatePath('/super-admin/usuarios')

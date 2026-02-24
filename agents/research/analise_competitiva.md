@@ -258,6 +258,6 @@ Se fizermos isso, o KLASSE domina:
 ---
 
 ## Referências relacionadas
-- `agents/contracts/README.md`
-- `docs/big-tech-performance.md`
+- `agents/CONTRACTS.md`
+- `agents/specs/performance.md`
 - `agents/outputs/ROADMAP_REAL_DATA_IMPLEMENTATION.md`

@@ -2,8 +2,9 @@
 
 import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Loader2 } from "lucide-react";
-import { toast } from "sonner";
+import { ArrowLeft } from "lucide-react";
+import { Skeleton } from "@/components/feedback/FeedbackSystem";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 type IdentidadeForm = {
   nome: string;
@@ -20,6 +21,7 @@ type Props = {
 export default function IdentidadePage({ params }: Props) {
   const { id: escolaId } = use(params);
   const base = escolaId ? `/escola/${escolaId}/admin/configuracoes` : "";
+  const { error } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState<IdentidadeForm>({
@@ -42,7 +44,7 @@ export default function IdentidadePage({ params }: Props) {
         const json = await res.json().catch(() => null);
         if (cancelled) return;
         if (!res.ok) {
-          toast.error(json?.error ?? "Falha ao carregar identidade.");
+          error(json?.error ?? "Falha ao carregar identidade.");
           return;
         }
         setFormData({
@@ -52,9 +54,9 @@ export default function IdentidadePage({ params }: Props) {
           logo_url: json?.data?.logo_url ?? null,
           cor_primaria: json?.data?.cor_primaria ?? null,
         });
-      } catch (error) {
-        console.error(error);
-        toast.error("Erro inesperado ao carregar identidade.");
+      } catch (err) {
+        console.error(err);
+        error("Erro inesperado ao carregar identidade.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -89,10 +91,10 @@ export default function IdentidadePage({ params }: Props) {
           </div>
         </div>
 
-        {loading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-slate-300" />
-          </div>
+      {loading ? (
+        <div className="flex justify-center py-20">
+          <Skeleton className="h-4 w-40" />
+        </div>
         ) : (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr_0.8fr]">
             <div className="space-y-6">

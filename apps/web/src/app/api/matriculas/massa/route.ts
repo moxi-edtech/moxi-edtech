@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { buildTurmaCode } from "@/lib/turma";
 import type { MatriculaMassaPayload } from "~types/matricula";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import type { Database } from "~types/supabase";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
 import { recordAuditServer } from "@/lib/audit";
 
 export async function POST(request: NextRequest) {
-  const supabase = await supabaseServerTyped<any>();
+  const supabase = await supabaseServerTyped<Database>();
   const { data: userRes } = await supabase.auth.getUser();
   const user = userRes?.user;
   if (!user) {
@@ -62,22 +63,23 @@ export async function POST(request: NextRequest) {
       shift: turno_codigo,
       section: String(turma_letra),
     });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "TurmaCode inválido" }, { status: 400 });
+  } catch (e: unknown) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : "TurmaCode inválido" }, { status: 400 });
   }
 
   let resolvedTurmaId = turma_id;
   try {
-    const { data: turmaRow, error: turmaErr } = await (supabase as any).rpc("create_or_get_turma_by_code", {
+    const { data: turmaRow, error: turmaErr } = await supabase.rpc("create_or_get_turma_by_code", {
       p_escola_id: escola_id,
       p_ano_letivo: ano_letivo,
       p_turma_code: turmaCode,
     });
     if (turmaErr) throw turmaErr;
     const turmaData = Array.isArray(turmaRow) ? turmaRow[0] : turmaRow;
-    resolvedTurmaId = (turmaData as any)?.id || resolvedTurmaId;
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Falha ao resolver turma" }, { status: 400 });
+    const turmaRecord = turmaData as { id?: string } | null;
+    resolvedTurmaId = turmaRecord?.id || resolvedTurmaId;
+  } catch (e: unknown) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Falha ao resolver turma" }, { status: 400 });
   }
 
   if (!resolvedTurmaId) {
@@ -116,7 +118,7 @@ export async function POST(request: NextRequest) {
   const confirm_errors: Array<{ id: string; error: string }> = [];
   if (matriculasCriadas && matriculasCriadas.length > 0) {
     for (const row of matriculasCriadas) {
-      const { error: cErr } = await (supabase as any).rpc('confirmar_matricula', {
+      const { error: cErr } = await supabase.rpc('confirmar_matricula', {
         p_matricula_id: row.id,
       });
       if (cErr) confirm_errors.push({ id: row.id as string, error: cErr.message });

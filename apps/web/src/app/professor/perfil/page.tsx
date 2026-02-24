@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 type DisciplinaItem = { id: string; nome: string };
 
@@ -22,6 +22,7 @@ type ProfilePayload = {
 export default function ProfessorPerfilPage() {
   const [loading, setLoading] = useState(true);
   const [disciplinas, setDisciplinas] = useState<DisciplinaItem[]>([]);
+  const { error } = useToast();
   const [form, setForm] = useState<ProfilePayload>({
     nome_completo: null,
     genero: null,
@@ -47,7 +48,7 @@ export default function ProfessorPerfilPage() {
         setForm(json.profile);
         setDisciplinas(json.disciplinas || []);
       } else {
-        toast.error(json?.error || "Falha ao carregar perfil");
+        error(json?.error || "Falha ao carregar perfil");
       }
       setLoading(false);
     };
