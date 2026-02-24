@@ -9861,15 +9861,26 @@ export type Database = {
         Args: { p_escola_id: string; p_import_id?: string }
         Returns: Json
       }
-      config_commit: {
-        Args: {
-          p_ano_letivo: number
-          p_changes: Json
-          p_escola_id: string
-          p_idempotency_key: string
-        }
-        Returns: Json
-      }
+      config_commit:
+        | {
+            Args: {
+              p_ano_letivo: number
+              p_changes: Json
+              p_escola_id: string
+              p_idempotency_key: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_ano_letivo_id: string
+              p_changes: Json
+              p_escola_id: string
+              p_idempotency_key: string
+              p_user_id: string
+            }
+            Returns: Json
+          }
       confirmar_conciliacao_transacao: {
         Args: {
           p_aluno_id: string
@@ -10019,6 +10030,23 @@ export type Database = {
               published_curriculo_id: string
             }[]
           }
+      curriculo_publish_legacy: {
+        Args: {
+          p_ano_letivo_id: string
+          p_curso_id: string
+          p_escola_id: string
+          p_rebuild_turmas?: boolean
+          p_version: number
+        }
+        Returns: {
+          message: string
+          ok: boolean
+          pendencias: Json
+          pendencias_count: number
+          previous_published_curriculo_id: string
+          published_curriculo_id: string
+        }[]
+      }
       curriculo_publish_single: {
         Args: {
           p_ano_letivo_id: string
@@ -10732,10 +10760,19 @@ export type Database = {
       }
       outbox_requeue_stuck: { Args: never; Returns: undefined }
       partitions_info: { Args: never; Returns: Json }
-      preview_apply_changes: {
-        Args: { p_ano_letivo: number; p_changes: Json; p_escola_id: string }
-        Returns: Json
-      }
+      preview_apply_changes:
+        | {
+            Args: { p_ano_letivo: number; p_changes: Json; p_escola_id: string }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_ano_letivo_id: string
+              p_changes: Json
+              p_escola_id: string
+            }
+            Returns: Json
+          }
       preview_matricula_number: {
         Args: { p_escola_id: string }
         Returns: number
@@ -11182,6 +11219,25 @@ export type Database = {
         id: string | null
         nome: string | null
         status_aprovacao: string | null
+      }
+      sandbox_diff_entry: {
+        entidade: string | null
+        campo: string | null
+        antes: string | null
+        depois: string | null
+      }
+      sandbox_impact: {
+        alunos_impactados: number | null
+        turmas_afetadas: number | null
+        professores_envolvidos: number | null
+        disciplinas_afetadas: number | null
+      }
+      sandbox_validation: {
+        regra: string | null
+        severidade: string | null
+        entidade: string | null
+        mensagem: string | null
+        bloqueante: boolean | null
       }
       turma_update: {
         id: string | null

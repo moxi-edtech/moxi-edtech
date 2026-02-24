@@ -1,6 +1,6 @@
 # REPORT_SCAN.md — KLASSE FOUNDATION AUDIT
 
-- Verificado em: `2026-02-24T00:01:48.957Z`
+- Verificado em: `2026-02-24T01:13:30.671Z`
 
 ## 1. SUMÁRIO EXECUTIVO
 
@@ -38,7 +38,7 @@
   - `apps/web/src/app/professor/notas/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/app/professor/perfil/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/app/secretaria/(portal-secretaria)/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/web/src/components/aluno/dashboard/DashboardLoader.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/aluno/disciplinas/DisciplinasList.tsx` — match: /cache:\s*['\"]no-store['\"]/i
 - Recomendação: Remover no-store onde houver MV/camadas cacheáveis; manter só em rotas realmente sensíveis.
 
 ### F09_MV — F09 — Radar de Inadimplência com MATERIALIZED VIEW
