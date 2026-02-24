@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { toast } from "sonner";
 import { 
   Check, 
   ChevronRight, 
@@ -20,6 +19,7 @@ import { CURRICULUM_PRESETS } from "@/lib/onboarding/curriculum-presets";
 import AcademicStep1 from "./AcademicStep1";
 import AcademicStep2 from "./AcademicStep2";
 import AcademicStep2Config from "./AcademicStep2Config";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 import {
   type TurnosState,
@@ -129,6 +129,7 @@ function WizardStepper({ currentStep }: { currentStep: number }) {
 
 // --- MAIN COMPONENT ---
 export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoolName }: Props) {
+  const { toast, dismiss, success, error, warning } = useToast();
   const [step, setStep] = useState(1);
 
   // --- STATES (STEP 1) ---
@@ -303,7 +304,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
 
   const handleCreateSession = async () => {
     setCreatingSession(true);
-    const tid = toast.loading("Salvando sessão...");
+    let tid = toast({ variant: "syncing", title: "Salvando sessão...", duration: 0 });
     try {
       const r1 = await fetch(`/api/escola/${escolaId}/admin/ano-letivo/upsert`, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -328,26 +329,30 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
       setAnoLetivoId(aid);
       setSessaoAtiva({ id: aid, nome: `Ano ${anoLetivo}`, ano_letivo: String(anoLetivo), data_inicio: dataInicio, data_fim: dataFim, status: 'ativa' });
       setPeriodos(j2.data || []);
-      toast.success("Ano letivo configurado.", { id: tid });
+      dismiss(tid);
+      success("Ano letivo configurado.");
       return true;
     } catch (e: any) {
-      toast.error(e.message, { id: tid });
+      dismiss(tid);
+      error(e.message);
       return false;
     } finally { setCreatingSession(false); }
   };
 
   const handleSavePreferences = async () => {
-    const tid = toast.loading("Salvando regras...");
+    let tid = toast({ variant: "syncing", title: "Salvando regras...", duration: 0 });
     try {
       const r = await fetch(`/api/escola/${escolaId}/admin/configuracoes/avaliacao-frequencia`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ frequencia_modelo: frequenciaModelo, frequencia_min_percent: frequenciaMinPercent, modelo_avaliacao: modeloAvaliacao, avaliacao_config: avaliacaoConfig })
       });
       if (!r.ok) throw new Error("Erro ao salvar regras");
-      toast.success("Regras salvas.", { id: tid });
+      dismiss(tid);
+      success("Regras salvas.");
       return true;
     } catch (e: any) {
-      toast.error(e.message, { id: tid });
+      dismiss(tid);
+      error(e.message);
       return false;
     }
   };
@@ -358,11 +363,11 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   };
 
   const handleApplyCurriculumPreset = async () => {
-    if (!matrix.length) return toast.error("Matriz vazia.");
-    if (!anoLetivoId) return toast.error("Sessão não definida.");
+    if (!matrix.length) return error("Matriz vazia.");
+    if (!anoLetivoId) return error("Sessão não definida.");
     
     setApplyingPreset(true);
-    const tid = toast.loading("Criando cursos e disciplinas...");
+    let tid = toast({ variant: "syncing", title: "Criando cursos e disciplinas...", duration: 0 });
     
     try {
       const grouped = matrix.reduce((acc, row) => {
@@ -376,7 +381,8 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
 
       for (const k in grouped) {
         const { cursoNome, rows } = grouped[k];
-        toast.info(`Processando ${cursoNome}...`, { id: tid });
+        dismiss(tid);
+        tid = toast({ variant: "syncing", title: `Processando ${cursoNome}...`, duration: 0 });
         
         const bp = CURRICULUM_PRESETS[k as keyof typeof CURRICULUM_PRESETS] || [];
         const subjects = Array.from(new Set(bp.map((d: any) => d.nome)));
@@ -438,16 +444,18 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
         }
       }
       setAppliedCursos(applied);
-      toast.success("Estrutura criada!", { id: tid });
+      dismiss(tid);
+      success("Estrutura criada.");
       setStep(4);
     } catch (e: any) {
-      toast.error(e.message, { id: tid });
+      dismiss(tid);
+      error(e.message);
     } finally { setApplyingPreset(false); }
   };
 
   const handleGenerateTurmas = async () => {
-    if (!anoLetivoId) return toast.error("Sem ano letivo.");
-    const tid = toast.loading("Gerando turmas...");
+    if (!anoLetivoId) return error("Sem ano letivo.");
+    let tid = toast({ variant: "syncing", title: "Gerando turmas...", duration: 0 });
     try {
       const slotsRes = await fetch(`/api/escolas/${escolaId}/horarios/slots`, { cache: "no-store" });
       const slotsJson = await slotsRes.json().catch(() => null);
@@ -501,7 +509,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
 
       const overloads = Array.from(cargaPorClasse.entries()).filter(([, carga]) => carga > totalSlots);
       if (overloads.length > 0 && totalSlots > 0) {
-        toast.warning(
+        warning(
           `Carga semanal acima da capacidade: ${overloads
             .map(([classe, carga]) => `${classe} (${carga}/${totalSlots})`)
             .join(", ")}. Ajuste o currículo ou o turno.`
@@ -559,11 +567,13 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
           });
         }
       }
-      toast.success("Configuração concluída!", { id: tid });
+      dismiss(tid);
+      success("Configuração concluída.");
       if (onComplete) onComplete();
       else window.location.href = `/escola/${escolaId}/admin/dashboard`;
     } catch (e: any) {
-      toast.error(e.message, { id: tid });
+      dismiss(tid);
+      error(e.message);
     }
   };
 

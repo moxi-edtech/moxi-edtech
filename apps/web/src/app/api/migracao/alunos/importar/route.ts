@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient as createAdminClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { importBelongsToEscola, userHasAccessToEscola } from "../../auth-helpers";
 import { resolveTabelaPreco } from "@/lib/financeiro/tabela-preco";
@@ -19,13 +19,6 @@ interface ImportBody {
 }
 
 export async function POST(request: Request) {
-  const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!adminUrl || !serviceKey) {
-    return NextResponse.json({ error: "SUPABASE configuration missing" }, { status: 500 });
-  }
-
   // Autentica usuário
   const routeClient = await createRouteClient();
   const { data: userRes } = await routeClient.auth.getUser();
@@ -49,7 +42,7 @@ export async function POST(request: Request) {
   let startMonth = Number(body.startMonth ?? todayMonth);
   if (!Number.isFinite(startMonth) || startMonth < 1 || startMonth > 12) startMonth = todayMonth;
 
-  const supabase = createAdminClient<Database>(adminUrl, serviceKey);
+  const supabase = routeClient as SupabaseClient<Database>;
 
   // Verifica acesso e pertencimento do importId
   const hasAccess = await userHasAccessToEscola(supabase, escolaId, authUser.id);

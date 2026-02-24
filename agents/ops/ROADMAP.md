@@ -2,7 +2,7 @@
 
 > **Versão:** 1.2  
 > **Princípio:** Nada entra sem performance aceitável, auditabilidade mínima e previsibilidade operacional.  
-> **Referência de prioridades:** Ver `FEATURES_PRIORITY.json` para critérios de done por item.
+> **Referência de prioridades:** Ver `agents/specs/FEATURES_PRIORITY.json` para critérios de done por item.
 
 ---
 
@@ -10,7 +10,7 @@
 
 Cada fase tem:
 - **Entrada:** o que tem de estar DONE para esta fase começar.
-- **Itens:** referências directas ao `FEATURES_PRIORITY.json`.
+- **Itens:** referências directas ao `agents/specs/FEATURES_PRIORITY.json`.
 - **Saída:** o que tem de estar DONE para esta fase terminar.
 - **KPIs:** métricas mensuráveis que confirmam a saída.
 
@@ -23,7 +23,7 @@ Uma fase não começa se a anterior não satisfaz os critérios de saída. Sem e
 
 **Critério de entrada:** repo criado, Supabase provisionado, ambiente de staging funcional.
 
-**Itens (de `FEATURES_PRIORITY.json`):**
+**Itens (de `agents/specs/FEATURES_PRIORITY.json`):**
 - `SHARED-P0.1` — Tenant hard isolation (escola_id NOT NULL + índices)
 - `SHARED-P0.2` — RLS real por role
 - `SHARED-P0.3` — Service Role banida de endpoints humanos
@@ -183,6 +183,6 @@ Uma fase não começa se a anterior não satisfaz os critérios de saída. Sem e
 
 ## Referências
 
-- `FEATURES_PRIORITY.json` — critérios de done por item
-- `AGENT_INSTRUCTIONS.md` — workflow de verificação e evidência
-- `big-tech-performance.md` — SLAs e regras de performance
+- `agents/specs/FEATURES_PRIORITY.json` — critérios de done por item
+- `agents/ops/PILOT_CHECKLIST.md` — workflow de verificação e evidência
+- `agents/specs/performance.md` — SLAs e regras de performance

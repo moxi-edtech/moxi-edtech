@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,18 @@ export async function GET() {
         { ok: false, error: "Não autenticado" },
         { status: 401 }
       );
+    }
+
+    const metaEscolaId =
+      (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? null;
+    const escolaId = await resolveEscolaIdForUser(
+      s as any,
+      user.id,
+      null,
+      metaEscolaId ? String(metaEscolaId) : null
+    );
+    if (!escolaId) {
+      return NextResponse.json({ ok: false, error: "Perfil sem escola vinculada" }, { status: 400 });
     }
     
     // A view vw_radar_inadimplencia já filtra por `escola_id = current_tenant_escola_id()`
@@ -39,6 +52,7 @@ export async function GET() {
           "status_mensalidade",
         ].join(", ")
       )
+      .eq("escola_id", escolaId)
       .not("aluno_id", "is", null);
 
     query = applyKf2ListInvariants(query, {
@@ -69,6 +83,7 @@ export async function GET() {
         .from("matriculas")
         .select("aluno_id, numero_matricula, created_at")
         .in("aluno_id", alunoIds)
+        .eq("escola_id", escolaId)
         .order("created_at", { ascending: false });
 
       if (matsError) {

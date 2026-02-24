@@ -19,10 +19,10 @@ import {
   User
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { toast } from "sonner";
 import { useDebounce } from "@/hooks/useDebounce";
 import { BalcaoServicoModal, type BalcaoDecision } from "@/components/secretaria/BalcaoServicoModal";
 import { MotivoBloqueioModal } from "@/components/secretaria/MotivoBloqueioModal";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 const kwanza = new Intl.NumberFormat("pt-AO", {
   style: "currency",
@@ -176,6 +176,7 @@ export default function BalcaoAtendimento({
   embedded = false,
 }: BalcaoAtendimentoProps) {
   const supabase = createClient();
+  const { success, error, toast: rawToast } = useToast();
 
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearchTerm = useDebounce(searchTerm, 400);
@@ -217,7 +218,7 @@ export default function BalcaoAtendimento({
   useEffect(() => {
     let mounted = true;
     async function loadServicos() {
-      const { data, error } = await supabase
+      const { data, error: fetchError } = await supabase
         .from("servicos_escola")
         .select("id, codigo, nome, descricao, valor_base")
         .eq("escola_id", escolaId)
@@ -225,13 +226,13 @@ export default function BalcaoAtendimento({
 
       if (!mounted) return;
 
-      if (error) {
-        console.error(error);
-        toast.error("Erro ao carregar serviços.");
+      if (fetchError) {
+        console.error(fetchError);
+        error("Erro ao carregar serviços.");
         setServicosDisponiveis([]);
         return;
       }
-      const mapped = (data ?? []).map((row: any) => ({
+      const mapped = (data ?? []).map((row: { id: string; codigo: string; nome: string; descricao: string | null; valor_base: number | null }) => ({
         id: row.id,
         codigo: row.codigo,
         nome: row.nome,
@@ -252,14 +253,14 @@ export default function BalcaoAtendimento({
     async (alunoId: string) => {
       setAlunoDossierLoading(true);
       try {
-        const { data: dossier, error } = await supabase.rpc("get_aluno_dossier", {
+        const { data: dossier, error: dossierError } = await supabase.rpc("get_aluno_dossier", {
           p_escola_id: escolaId,
           p_aluno_id: alunoId,
         });
 
-        if (error || !dossier) {
-          console.error(error);
-          toast.error("Erro ao carregar dossiê do aluno.");
+        if (dossierError || !dossier) {
+          console.error(dossierError);
+          error("Erro ao carregar dossiê do aluno.");
           setAlunoSelecionado(null);
           setMensalidadesDisponiveis([]);
           setCarrinho([]);
@@ -399,12 +400,12 @@ export default function BalcaoAtendimento({
           (c as Mensalidade).mes_referencia === m.mes_referencia &&
           (c as Mensalidade).ano_referencia === m.ano_referencia
       );
-      if (exists) return toast.message("Mensalidade já está no carrinho.");
+      if (exists) return rawToast({ variant: "info", title: "Mensalidade já está no carrinho." });
     }
 
     if (item.tipo === "servico") {
       const exists = carrinho.some((c) => c.tipo === "servico" && c.id === item.id);
-      if (exists) return toast.message("Serviço já está no carrinho.");
+      if (exists) return rawToast({ variant: "info", title: "Serviço já está no carrinho." });
     }
 
     setCarrinho((prev) => [...prev, item]);
@@ -487,8 +488,8 @@ export default function BalcaoAtendimento({
 
   // --- Checkout ---
   const handleCheckout = async () => {
-    if (!alunoSelecionado?.id) return toast.error("Nenhum aluno selecionado.");
-    if (carrinho.length === 0) return toast.error("Carrinho vazio.");
+    if (!alunoSelecionado?.id) return error("Nenhum aluno selecionado.");
+    if (carrinho.length === 0) return error("Carrinho vazio.");
 
     const mensalidadesCarrinho = carrinho.filter(
       (item): item is Mensalidade => item.tipo === "mensalidade"
@@ -500,19 +501,19 @@ export default function BalcaoAtendimento({
     if (total === 0) {
       const documentosGratis = servicosCarrinho.filter((servico) => servico.documento_tipo);
       if (documentosGratis.length === 0) {
-        return toast.error("Nada para emitir.");
+        return error("Nada para emitir.");
       }
       setIsSubmitting(true);
       try {
         for (const servico of documentosGratis) {
           await handleEmitDocumento(servico, { openInNewTab: true });
         }
-        toast.success("Documento emitido.");
+        success("Documento emitido.");
         limparCarrinho();
         await loadAlunoDossier(alunoSelecionado.id);
         await fetchAuditFeed(alunoSelecionado.id, alunoSelecionado.matricula_id);
       } catch (e: any) {
-        toast.error(e?.message || "Erro ao emitir documento.");
+        error(e?.message || "Erro ao emitir documento.");
       } finally {
         setIsSubmitting(false);
       }
@@ -522,7 +523,7 @@ export default function BalcaoAtendimento({
     if (total === 0) {
       const documentosGratis = servicosCarrinho.filter((servico) => servico.documento_tipo);
       if (documentosGratis.length === 0) {
-        return toast.error("Nada para emitir.");
+        return error("Nada para emitir.");
       }
       setIsSubmitting(true);
       try {
@@ -533,7 +534,7 @@ export default function BalcaoAtendimento({
             novosLinks.push({ label: servico.nome, url });
           }
         }
-        toast.success("Documento emitido.");
+        success("Documento emitido.");
         if (novosLinks.length > 0) {
           setPrintQueue((prev) => [...novosLinks, ...prev]);
         }
@@ -541,7 +542,7 @@ export default function BalcaoAtendimento({
         await loadAlunoDossier(alunoSelecionado.id);
         await fetchAuditFeed(alunoSelecionado.id, alunoSelecionado.matricula_id);
       } catch (e: any) {
-        toast.error(e?.message || "Erro ao emitir documento.");
+        error(e?.message || "Erro ao emitir documento.");
       } finally {
         setIsSubmitting(false);
       }
@@ -550,15 +551,15 @@ export default function BalcaoAtendimento({
 
     if (total > 0) {
       if (metodo === "cash" && valorRecebidoNum < total) {
-        return toast.error("Valor recebido insuficiente.");
+        return error("Valor recebido insuficiente.");
       }
 
       if (metodo === "tpa" && !paymentReference.trim()) {
-        return toast.error("Referência obrigatória para TPA.");
+        return error("Referência obrigatória para TPA.");
       }
 
       if (metodo === "transfer" && !paymentEvidenceUrl.trim()) {
-        return toast.error("Comprovativo obrigatório para Transferência.");
+        return error("Comprovativo obrigatório para Transferência.");
       }
     }
 
@@ -651,7 +652,7 @@ export default function BalcaoAtendimento({
           : metodo === "cash"
           ? `Pagamento registrado. Troco: ${kwanza.format(troco)}`
           : "Pagamento registrado.";
-      toast.success(successMessage);
+      success(successMessage);
       setPaymentFeedback({ status: "success", message: successMessage });
 
       limparCarrinho();
@@ -659,7 +660,7 @@ export default function BalcaoAtendimento({
       await fetchAuditFeed(alunoSelecionado.id, alunoSelecionado.matricula_id);
     } catch (e: any) {
       console.error(e);
-      toast.error(e?.message || "Erro ao finalizar pagamento.");
+      error(e?.message || "Erro ao finalizar pagamento.");
       setPaymentFeedback({
         status: "error",
         message: e?.message || "Erro ao finalizar pagamento.",
@@ -691,12 +692,12 @@ export default function BalcaoAtendimento({
     options?: { openInNewTab?: boolean }
   ): Promise<string | null> => {
     if (!alunoSelecionado?.id) {
-      toast.error("Aluno não selecionado.");
+      error("Aluno não selecionado.");
       return null;
     }
     const tipo = getDocumentoTipo(servico);
     if (!tipo) {
-      toast.error("Tipo de documento não identificado.");
+      error("Tipo de documento não identificado.");
       return null;
     }
 
@@ -733,7 +734,7 @@ export default function BalcaoAtendimento({
       if (popup) {
         popup.close();
       }
-      toast.error(message);
+      error(message);
       return null;
     } finally {
       setEmittingDocId(null);
@@ -742,7 +743,7 @@ export default function BalcaoAtendimento({
 
   const handleAdicionarServico = async (servico: Servico) => {
     if (!alunoSelecionado?.id) {
-      toast.error("Aluno não selecionado.");
+      error("Aluno não selecionado.");
       return;
     }
 
@@ -777,9 +778,9 @@ export default function BalcaoAtendimento({
             documento_tipo: documentoTipo,
             pedido_id: decision.pedido_id,
           });
-          toast.success("Documento liberado. Pode imprimir.");
+          success("Documento liberado.", "Pode imprimir.");
         } else {
-          toast.success("Serviço liberado.");
+          success("Serviço liberado.");
         }
         if (alunoSelecionado?.id) {
           void fetchAuditFeed(alunoSelecionado.id, alunoSelecionado.matricula_id);
@@ -794,10 +795,10 @@ export default function BalcaoAtendimento({
         pedido_id: decision.pedido_id,
         pagamento_intent_id: decision.payment_intent_id,
       });
-      toast.success("Item adicionado ao carrinho.");
+      success("Item adicionado ao carrinho.");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Erro ao adicionar serviço";
-      toast.error(message);
+      error(message);
     } finally {
       setAddingServicoId(null);
     }
@@ -814,9 +815,9 @@ export default function BalcaoAtendimento({
           documento_tipo: documentoTipo,
           pedido_id: decision.pedido_id,
         });
-        toast.success("Documento liberado. Pode imprimir.");
+        success("Documento liberado.", "Pode imprimir.");
       } else {
-        toast.success("Serviço liberado.");
+        success("Serviço liberado.");
       }
       if (alunoSelecionado?.id) {
         void fetchAuditFeed(alunoSelecionado.id, alunoSelecionado.matricula_id);
@@ -837,7 +838,7 @@ export default function BalcaoAtendimento({
 
     const servico = servicosDisponiveis.find((item) => item.codigo === decision.servico_codigo);
     if (!servico) {
-      toast.error("Serviço não encontrado.");
+      error("Serviço não encontrado.");
       return;
     }
     adicionarAoCarrinho({
@@ -847,7 +848,7 @@ export default function BalcaoAtendimento({
       pedido_id: decision.pedido_id,
       pagamento_intent_id: decision.payment_intent_id,
     });
-    toast.success("Item adicionado ao carrinho.");
+    success("Item adicionado ao carrinho.");
   }, [alunoSelecionado, fetchAuditFeed, servicosDisponiveis]);
 
   useEffect(() => {

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BookOpen, FileText, Loader2, Search, User } from "lucide-react";
+import { BookOpen, FileText, RefreshCw, Search, User } from "lucide-react";
 
 type DocumentoTipo =
   | "declaracao_frequencia"
@@ -348,7 +348,7 @@ export default function DocumentosEmissaoHubClient({
             className="w-full rounded-xl border border-slate-200 bg-slate-50 px-10 py-3 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/10"
           />
           {loading && (
-            <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-klasse-green" />
+            <RefreshCw className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-klasse-green" />
           )}
         </div>
 
@@ -498,7 +498,7 @@ export default function DocumentosEmissaoHubClient({
           disabled={!canSubmit}
           className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          {submitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : null}
           {isPago ? "Pagar e Emitir" : "Emitir e Imprimir"}
         </button>
       </div>

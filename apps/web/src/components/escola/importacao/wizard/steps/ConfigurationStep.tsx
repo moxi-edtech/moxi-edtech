@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { Loader2, CheckCircle, Save, Info, ArrowLeft, X, AlertCircle } from "lucide-react";
-import { toast } from "sonner";
 import { buildEscolaUrl } from "@/lib/escola/url";
 import { useUserRole } from "@/hooks/useUserRole";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 type Curso = {
   id: string;
@@ -65,6 +65,7 @@ export default function ConfigurationStep({
   const [availableClasses, setAvailableClasses] = useState<AvailableClasse[]>([]);
   const [availableCourses, setAvailableCourses] = useState<AvailableCurso[]>([]);
   const { userRole, isLoading: loadingRole } = useUserRole();
+  const { success, error, toast: rawToast } = useToast();
 
   const canApproveCourses = useMemo(() => userRole === 'admin' || userRole === 'superadmin', [userRole]);
 
@@ -81,18 +82,18 @@ export default function ConfigurationStep({
         if (classesRes.ok) {
           setAvailableClasses(classesJson.items || classesJson.data || []);
         } else {
-          toast.error("Erro ao carregar classes disponíveis.");
+          error("Erro ao carregar classes disponíveis.");
         }
 
         const coursesJson = await coursesRes.json();
         if (coursesRes.ok) {
           setAvailableCourses(coursesJson.items || coursesJson.data || []);
         } else {
-          toast.error("Erro ao carregar cursos disponíveis.");
+          error("Erro ao carregar cursos disponíveis.");
         }
-      } catch (error) {
-        console.error("Erro ao carregar dados auxiliares:", error);
-        toast.error("Erro de conexão ao carregar dados auxiliares.");
+      } catch (err) {
+        console.error("Erro ao carregar dados auxiliares:", err);
+        error("Erro de conexão ao carregar dados auxiliares.");
       } finally {
         setLoading(false);
       }
@@ -144,11 +145,11 @@ export default function ConfigurationStep({
         throw new Error(result.error || "Erro ao salvar configurações.");
       }
 
-      toast.success("Configurações salvas com sucesso!");
+      success("Configurações salvas com sucesso.");
       onComplete();
     } catch (error: any) {
       console.error("Erro ao salvar configurações:", error);
-      toast.error(error.message || "Erro de conexão ao salvar configurações.");
+      error(error.message || "Erro de conexão ao salvar configurações.");
     } finally {
       setLoading(false);
     }
@@ -171,7 +172,11 @@ export default function ConfigurationStep({
           : turma
       )
     );
-    toast.info("Todas as turmas em rascunho foram marcadas para ativação ao salvar.");
+    rawToast({
+      variant: "info",
+      title: "Turmas em rascunho marcadas para ativação.",
+      message: "Essas turmas serão ativadas ao salvar.",
+    });
   };
 
   const hasCursosToApprove = useMemo(() => cursosToConfigure.some(c => c.status_aprovacao === 'pendente'), [cursosToConfigure]);

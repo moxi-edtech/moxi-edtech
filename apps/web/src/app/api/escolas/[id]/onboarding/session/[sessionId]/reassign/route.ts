@@ -88,9 +88,9 @@ export async function POST(
 
     const [turmasCountRes, matriculasCountRes] = await Promise.all([
       anoOrigem
-        ? (s as any).from('turmas').select('id', { count: 'exact', head: true }).eq('ano_letivo', anoOrigem)
+        ? (s as any).from('turmas').select('id', { count: 'estimated', head: true }).eq('ano_letivo', anoOrigem)
         : Promise.resolve({ count: 0 }),
-      (s as any).from('matriculas').select('id', { count: 'exact', head: true }).eq('ano_letivo_id', sessionId),
+      (s as any).from('matriculas').select('id', { count: 'estimated', head: true }).eq('ano_letivo_id', sessionId),
     ]);
     const before = {
       turmas: turmasCountRes?.count ?? 0,

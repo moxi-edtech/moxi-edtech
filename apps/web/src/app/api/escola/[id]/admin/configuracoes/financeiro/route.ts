@@ -15,7 +15,7 @@ const payloadSchema = z.object({
 });
 
 const resolveAnoLetivoAtivo = async (supabase: Awaited<ReturnType<typeof createRouteClient>>, escolaId: string) => {
-  const { data: anoLetivo } = await (supabase as any)
+  const { data: anoLetivo } = await supabase
     .from("anos_letivos")
     .select("id, ano")
     .eq("escola_id", escolaId)
@@ -26,24 +26,28 @@ const resolveAnoLetivoAtivo = async (supabase: Awaited<ReturnType<typeof createR
   return anoLetivo ?? null;
 };
 
-const withNoStore = (response: NextResponse) => {
+const withNoStore = (response: NextResponse, start?: number) => {
   response.headers.set("Cache-Control", "no-store");
+  if (start !== undefined) {
+    response.headers.set("Server-Timing", `app;dur=${Date.now() - start}`);
+  }
   return response;
 };
 
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
+  const start = Date.now();
   try {
     const { id: requestedEscolaId } = await params;
     const supabase = await createRouteClient();
     const { data: auth } = await supabase.auth.getUser();
     const user = auth?.user;
     if (!user) {
-      return withNoStore(NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 }));
+      return withNoStore(NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 }), start);
     }
 
-    const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId);
+    const userEscolaId = await resolveEscolaIdForUser(supabase, user.id, requestedEscolaId);
     if (!userEscolaId || userEscolaId !== requestedEscolaId) {
-      return withNoStore(NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 }));
+      return withNoStore(NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 }), start);
     }
 
     const { data: hasRole, error: rolesError } = await supabase
@@ -53,18 +57,24 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       });
 
     if (rolesError) {
-      return withNoStore(NextResponse.json({ ok: false, error: "Erro ao verificar permissões." }, { status: 500 }));
+      return withNoStore(
+        NextResponse.json({ ok: false, error: "Erro ao verificar permissões." }, { status: 500 }),
+        start
+      );
     }
     if (!hasRole) {
-      return withNoStore(NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 }));
+      return withNoStore(NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 }), start);
     }
 
     const anoLetivo = await resolveAnoLetivoAtivo(supabase, userEscolaId);
     if (!anoLetivo) {
-      return withNoStore(NextResponse.json({ ok: false, error: "Ano letivo não encontrado." }, { status: 400 }));
+      return withNoStore(
+        NextResponse.json({ ok: false, error: "Ano letivo não encontrado." }, { status: 400 }),
+        start
+      );
     }
 
-    const { data } = await (supabase as any)
+    const { data } = await supabase
       .from("financeiro_tabelas")
       .select("dia_vencimento, multa_atraso_percentual, multa_diaria")
       .eq("escola_id", userEscolaId)
@@ -84,26 +94,27 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
         bloquear_inadimplentes: false,
         moeda: "AOA",
       },
-    }));
+    }), start);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Erro inesperado";
-    return withNoStore(NextResponse.json({ ok: false, error: msg }, { status: 500 }));
+    return withNoStore(NextResponse.json({ ok: false, error: msg }, { status: 500 }), start);
   }
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const start = Date.now();
   try {
     const { id: requestedEscolaId } = await params;
     const supabase = await createRouteClient();
     const { data: auth } = await supabase.auth.getUser();
     const user = auth?.user;
     if (!user) {
-      return withNoStore(NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 }));
+      return withNoStore(NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 }), start);
     }
 
-    const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId);
+    const userEscolaId = await resolveEscolaIdForUser(supabase, user.id, requestedEscolaId);
     if (!userEscolaId || userEscolaId !== requestedEscolaId) {
-      return withNoStore(NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 }));
+      return withNoStore(NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 }), start);
     }
 
     const { data: hasRole, error: rolesError } = await supabase
@@ -113,21 +124,30 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       });
 
     if (rolesError) {
-      return withNoStore(NextResponse.json({ ok: false, error: "Erro ao verificar permissões." }, { status: 500 }));
+      return withNoStore(
+        NextResponse.json({ ok: false, error: "Erro ao verificar permissões." }, { status: 500 }),
+        start
+      );
     }
     if (!hasRole) {
-      return withNoStore(NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 }));
+      return withNoStore(NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 }), start);
     }
 
     const body = await req.json().catch(() => ({}));
     const parsed = payloadSchema.safeParse(body);
     if (!parsed.success) {
-      return withNoStore(NextResponse.json({ ok: false, error: "Dados inválidos.", issues: parsed.error.issues }, { status: 400 }));
+      return withNoStore(
+        NextResponse.json({ ok: false, error: "Dados inválidos.", issues: parsed.error.issues }, { status: 400 }),
+        start
+      );
     }
 
     const anoLetivo = await resolveAnoLetivoAtivo(supabase, userEscolaId);
     if (!anoLetivo) {
-      return withNoStore(NextResponse.json({ ok: false, error: "Ano letivo não encontrado." }, { status: 400 }));
+      return withNoStore(
+        NextResponse.json({ ok: false, error: "Ano letivo não encontrado." }, { status: 400 }),
+        start
+      );
     }
 
     const payload = {
@@ -142,14 +162,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       valor_mensalidade: 0,
     };
 
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("financeiro_tabelas")
       .upsert(payload, { onConflict: "escola_id,ano_letivo,curso_id,classe_id" })
       .select("dia_vencimento, multa_atraso_percentual, multa_diaria")
       .single();
 
     if (error) {
-      return withNoStore(NextResponse.json({ ok: false, error: error.message }, { status: 500 }));
+      return withNoStore(NextResponse.json({ ok: false, error: error.message }, { status: 500 }), start);
     }
 
     return withNoStore(NextResponse.json({
@@ -161,9 +181,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         bloquear_inadimplentes: parsed.data.bloquear_inadimplentes ?? false,
         moeda: parsed.data.moeda ?? "AOA",
       },
-    }));
+    }), start);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Erro inesperado";
-    return withNoStore(NextResponse.json({ ok: false, error: msg }, { status: 500 }));
+    return withNoStore(NextResponse.json({ ok: false, error: msg }, { status: 500 }), start);
   }
 }

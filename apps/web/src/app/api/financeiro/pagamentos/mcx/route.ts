@@ -6,6 +6,12 @@ export async function POST(req: Request) {
   const supabase = (await supabaseServer()) as any;
 
   try {
+    const idempotencyKey =
+      req.headers.get('Idempotency-Key') ?? req.headers.get('idempotency-key');
+    if (!idempotencyKey) {
+      return NextResponse.json({ error: 'Idempotency-Key header é obrigatório' }, { status: 400 });
+    }
+
     const body = await req.json().catch(() => ({}));
     const { mensalidadeId, telemovel } = body ?? {};
 
@@ -16,12 +22,29 @@ export async function POST(req: Request) {
     // 1) Buscar dados da mensalidade
     const { data: mensalidade, error: errMen } = await supabase
       .from('mensalidades')
-      .select('valor_previsto, aluno:alunos(nome)')
+      .select('valor_previsto, escola_id, aluno:alunos(nome)')
       .eq('id', mensalidadeId)
       .single();
 
     if (errMen || !mensalidade) {
       return NextResponse.json({ error: 'Mensalidade não encontrada' }, { status: 404 });
+    }
+
+    const escolaId = (mensalidade as { escola_id?: string | null }).escola_id ?? null;
+    if (!escolaId) {
+      return NextResponse.json({ error: 'Escola não identificada' }, { status: 400 });
+    }
+
+    const { data: existingIdempotency } = await supabase
+      .from('idempotency_keys')
+      .select('result')
+      .eq('escola_id', escolaId)
+      .eq('scope', 'financeiro_pagamentos_mcx')
+      .eq('key', idempotencyKey)
+      .maybeSingle();
+
+    if (existingIdempotency?.result) {
+      return NextResponse.json(existingIdempotency.result, { status: 200 });
     }
 
     // 2) Chamar o Gateway (MCX)
@@ -53,10 +76,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Erro ao registar transação' }, { status: 500 });
     }
 
-    return NextResponse.json({
+    const responsePayload = {
       message: 'Notificação enviada para o telemóvel',
       transactionId: pgResponse.transactionId,
-    });
+    };
+
+    await supabase
+      .from('idempotency_keys')
+      .upsert(
+        {
+          escola_id: escolaId,
+          scope: 'financeiro_pagamentos_mcx',
+          key: idempotencyKey,
+          result: responsePayload,
+        },
+        { onConflict: 'escola_id,scope,key' }
+      );
+
+    return NextResponse.json(responsePayload);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Erro interno';
     return NextResponse.json({ error: message }, { status: 500 });

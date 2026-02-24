@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, AlertCircle, Wand2, Check, Save } from "lucide-react";
-import { toast } from "sonner";
 import { parseTurmaCode, findCursoIdByFuzzy as findCursoBySigla, findClasseByNum, normalizeTurmaCode } from "@/lib/turma";
 import { saveAndValidateTurma } from "@/features/turmas/actions";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 import { TurmaItem } from "~/types/turmas";
 
@@ -57,6 +57,7 @@ function useDebouncedEffect(effect: () => void, deps: Array<unknown>, delayMs: n
 }
 
 export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFormProps) {
+  const { success, error: toastError, warning, toast: rawToast } = useToast();
   // Estados do Formulário
   const [nome, setNome] = useState(initialData?.nome || "");
   const [turmaCodigo, setTurmaCodigo] = useState(initialData?.turma_codigo || "");
@@ -134,7 +135,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
     let mounted = true;
 
     async function fetchJson(url: string): Promise<ItemSelect[]> {
-      const res = await fetch(url, { cache: "no-store" });
+      const res = await fetch(url);
       let json: Record<string, unknown> | null = null;
       try {
         const parsed = await res.json();
@@ -219,7 +220,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
   // --- 2) Inteligência: AutoFill determinístico (sem race) ---
   const executeAutoFill = (force: boolean) => {
     if ((cursos.length === 0 || classes.length === 0) && force) {
-      toast.warning("Listas não carregadas — usando apenas o código para sugerir.");
+      warning("Listas não carregadas — usando apenas o código para sugerir.");
     }
 
     const codigoAlvo = codigoReferencia;
@@ -227,7 +228,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
 
     const info = parseTurmaCode(codigoAlvo);
     if (!info) {
-      if (force) toast.error("Código inválido. Use o formato CURSO-CLASSE-TURNO-LETRA (ex: TI-10-M-A).");
+      if (force) toastError("Código inválido. Use o formato CURSO-CLASSE-TURNO-LETRA (ex: TI-10-M-A).");
       return;
     }
 
@@ -319,12 +320,14 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
     if (corrections > 0) {
       setAutoFilled(true);
       lastAutofillCodigoRef.current = codigoAlvo;
-      if (force) toast.success(`${corrections} campos sugeridos automaticamente.`);
+      if (force) success(`${corrections} campos sugeridos automaticamente.`);
     } else if (hadParserHints) {
       setAutoFilled(true);
       lastAutofillCodigoRef.current = codigoAlvo;
     } else {
-      if (force) toast.info("Nada para corrigir — já está consistente.");
+      if (force) {
+        rawToast({ variant: "info", title: "Nada para corrigir — já está consistente." });
+      }
     }
   };
 
@@ -441,13 +444,13 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
 
       await saveAndValidateTurma(payload);
 
-      toast.success("Turma validada e ativada com sucesso!");
+      success("Turma validada e ativada com sucesso.");
       onSuccess();
     } catch (e: unknown) {
       console.error(e);
       const message = e instanceof Error ? e.message : "Erro ao salvar.";
       setError(message);
-      toast.error(message);
+      toastError(message);
     } finally {
       setLoading(false);
     }

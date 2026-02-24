@@ -3,7 +3,7 @@
 Severidade: **CRITICAL**
 
 ## Escopo
-Auditoria de DB (migrations aplicadas via `supabase db push`), APIs, libs e componentes conforme `docs/big-tech-performance.md`.
+Auditoria de DB (migrations aplicadas via `supabase db push`), APIs, libs e componentes conforme `agents/specs/performance.md`.
 
 ## Relação com o padrão Big Tech
 - Pilar A (Reads pré-calculados): migrations `20260201000000_p0_performance_compliance.sql` + `20260201001000_mv_financeiro_missing_pricing.sql` criam `mv_*`, `vw_*`, `refresh_mv_*` e cron.

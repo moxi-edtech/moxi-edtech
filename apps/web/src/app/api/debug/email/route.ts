@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
 import { buildOnboardingEmail } from "@/lib/mailer";
+import { callAuthAdminJob } from "@/lib/auth-admin-job";
+import type { Database } from "~types/supabase";
+
+type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
+type EscolaRow = Database["public"]["Tables"]["escolas"]["Row"];
+type EscolaUserRow = Database["public"]["Tables"]["escola_users"]["Row"];
+type LinkData = { properties?: { action_link?: string | null }; action_link?: string | null };
 
 export const dynamic = "force-dynamic";
 
@@ -26,56 +31,37 @@ export async function GET(req: Request) {
       .from("profiles").select("role").eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(1)
-    const role = (prof?.[0] as any)?.role || null
+    const role = (prof?.[0] as ProfileRow | undefined)?.role || null
     if (role !== "super_admin") return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 })
 
     const origin = url.origin
     // Use centralized redirect that routes user based on role/escola/onboarding
     const redirectTo = `${origin}/redirect`
 
-    // Prefer admin client for consistent access
-    const hasAdmin = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
-    const admin = hasAdmin
-      ? createAdminClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
-      : null
-
     // Fetch escola nome e plano
     let escolaNome = ""
     let plano: string | null = null
-    if (admin) {
-      const { data: esc } = await admin.from("escolas").select("nome, plano").eq("id", escolaId).limit(1)
-      escolaNome = (esc?.[0] as any)?.nome || ""
-      plano = (esc?.[0] as any)?.plano || null
-    } else {
-      const { data: esc } = await s.from("escolas").select("nome, plano").eq("id", escolaId).limit(1)
-      escolaNome = (esc?.[0] as any)?.nome || ""
-      plano = (esc?.[0] as any)?.plano || null
-    }
+    const { data: esc } = await s.from("escolas").select("nome, plano, plano_atual").eq("id", escolaId).limit(1)
+    const escolaRow = (esc?.[0] as (EscolaRow & { plano?: string | null; plano_atual?: string | null }) | undefined) ?? null
+    escolaNome = escolaRow?.nome || ""
+    plano = escolaRow?.plano_atual || escolaRow?.plano || null
 
     // Resolve admin email/nome (provided or lookup first admin vinculo)
     let adminEmail = providedEmail
     let adminNome: string | null = null
     if (!adminEmail) {
-      if (admin) {
-        const { data: vinc } = await admin
-          .from("escola_users").select("user_id,papel").eq("escola_id", escolaId)
-          .in("papel", ["admin", "staff_admin"] as any).limit(1)
-        const uid = (vinc?.[0] as any)?.user_id as string | undefined
-        if (uid) {
-          const { data: p } = await admin.from("profiles").select("email, nome").eq("user_id", uid).limit(1)
-          adminEmail = (p?.[0] as any)?.email || null
-          adminNome = (p?.[0] as any)?.nome || null
-        }
-      } else {
-        const { data: vinc } = await s
-          .from("escola_users").select("user_id,papel").eq("escola_id", escolaId)
-          .in("papel", ["admin", "staff_admin"] as any).limit(1)
-        const uid = (vinc?.[0] as any)?.user_id as string | undefined
-        if (uid) {
-          const { data: p } = await s.from("profiles").select("email, nome").eq("user_id", uid).limit(1)
-          adminEmail = (p?.[0] as any)?.email || null
-          adminNome = (p?.[0] as any)?.nome || null
-        }
+      const { data: vinc } = await s
+        .from("escola_users")
+        .select("user_id,papel")
+        .eq("escola_id", escolaId)
+        .in("papel", ["admin", "staff_admin"])
+        .limit(1)
+      const uid = (vinc?.[0] as EscolaUserRow | undefined)?.user_id as string | undefined
+      if (uid) {
+        const { data: p } = await s.from("profiles").select("email, nome").eq("user_id", uid).limit(1)
+        const profileRow = (p?.[0] as ProfileRow | undefined) ?? null
+        adminEmail = profileRow?.email || null
+        adminNome = profileRow?.nome || null
       }
     }
 
@@ -85,17 +71,16 @@ export async function GET(req: Request) {
 
     // Try generating action link
     let actionLink: string | null = null
-    if (admin) {
-      try {
-        const { data: linkData } = await (admin as any).auth.admin.generateLink({
-          type: mode === "magic" ? "magiclink" : "invite",
-          email: adminEmail,
-          options: { redirectTo }
-        })
-        actionLink = (linkData?.properties?.action_link || linkData?.action_link || null) as string | null
-      } catch {
-        actionLink = null
-      }
+    try {
+      const linkDataRaw = await callAuthAdminJob(req, "generateLink", {
+        type: mode === "magic" ? "magiclink" : "invite",
+        email: adminEmail,
+        options: { redirectTo },
+      })
+      const linkData = linkDataRaw as LinkData | null
+      actionLink = linkData?.properties?.action_link || linkData?.action_link || null
+    } catch {
+      actionLink = null
     }
 
     const link = actionLink || redirectTo

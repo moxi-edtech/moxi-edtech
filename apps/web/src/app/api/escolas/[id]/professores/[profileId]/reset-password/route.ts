@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
-import type { Database } from '~types/supabase'
 import { createRouteClient } from '@/lib/supabase/route-client'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { hasPermission, normalizePapel } from '@/lib/permissions'
+import { callAuthAdminJob } from '@/lib/auth-admin-job'
 
 const generateStrongPassword = (len = 12) => {
   const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -43,23 +42,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     }
 
-    const adminUrl = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').trim()
-    const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim()
-    if (!adminUrl || !serviceKey) {
-      return NextResponse.json({ ok: false, error: 'SUPABASE_SERVICE_ROLE_KEY ausente' }, { status: 500 })
-    }
-
-    const admin = createAdminClient<Database>(adminUrl, serviceKey)
     const tempPassword = generateStrongPassword(12)
 
-    const { error } = await admin.auth.admin.updateUserById(profileId, {
-      password: tempPassword,
-      user_metadata: { must_change_password: true },
+    await callAuthAdminJob(req, 'updateUserById', {
+      userId: profileId,
+      attributes: { password: tempPassword, user_metadata: { must_change_password: true } },
     })
-
-    if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
-    }
 
     return NextResponse.json({ ok: true, senha_temp: tempPassword })
   } catch (err) {

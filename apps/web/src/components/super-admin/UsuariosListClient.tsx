@@ -79,8 +79,8 @@ function ListaUsuarios() {
         setError(null);
 
         const [usersRes, escolasRes] = await Promise.all([
-          fetch("/api/super-admin/users/list", { cache: "no-store" }),
-          fetch("/api/super-admin/escolas/list", { cache: "no-store" }),
+          fetch("/api/super-admin/users/list"),
+          fetch("/api/super-admin/escolas/list"),
         ]);
 
         if (!usersRes.ok) throw new Error("Falha ao carregar usuários");

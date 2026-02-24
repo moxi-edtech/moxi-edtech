@@ -1,95 +1,96 @@
-# RELATÓRIO DE VALIDAÇÃO KLASSE - MONOREPO EDITION
+# KLASSE — Relatório de Validação de Contratos
+> Gerado em: 2026-02-24T00:00:11.673Z  
+> Contratos: agents/specs/performance.md v1.1 · agents/ops/PILOT_CHECKLIST.md v1.2 · agents/specs/FEATURES_PRIORITY.json v1.2
 
-**Data**: 2026-01-29T16:28:20.217Z
-**Arquivos carregados**: 796
+## Sumário
 
-## 📁 ESTATÍSTICAS DO MONOREPO
+| Status | Count |
+|--------|-------|
+| ✅ PASS | 10 |
+| ⚠️ WARN | 0 |
+| 🟡 PARTIAL | 0 |
+| 🔴 FAIL | 0 |
+| 🚨 CRITICAL | 0 |
 
-| Tipo | Quantidade |
-|------|------------|
-| components | 200 |
-| pages | 161 |
-| api | 249 |
-| hooks | 10 |
-| lib | 60 |
+## Pilot Readiness: ✅ GO
 
-## 📈 STATUS DAS VERIFICAÇÕES
+---
 
-### P0 (0/1 ✅)
+## Checks Detalhados
 
-#### ❌ P0.5: FAIL
-Service Role usada em rotas humanas (59 ocorrências). PRIMEIRAS:
+### ✅ [SHARED-P0.3] Service Role banida de endpoints humanos
+**Status:** `PASS`  
+**Contrato:** agents/specs/FEATURES_PRIORITY.json → SHARED-P0.3
 
-**Evidências**:
-- apps/web/src/app/api/health/route.ts: SUPABASE_SERVICE_ROLE_KEY
-- apps/web/src/app/api/seed-superadmin/route.ts: SUPABASE_SERVICE_ROLE_KEY
-- apps/web/src/app/api/alunos/ativar-acesso/route.ts: SUPABASE_SERVICE_ROLE_KEY
-- ... e mais 7
+Nenhum problema detectado. ✅
 
-### API (2/4 ✅)
+### ✅ [PILAR-A-EXACT-COUNT] Pilar A — zero count: 'exact' em produção
+**Status:** `PASS`  
+**Contrato:** agents/specs/performance.md → Pilar A
 
-#### ⚠️ API.1: WARNING
-13 endpoints sem handlers de método HTTP explícitos
+Nenhum problema detectado. ✅
 
-**Evidências**:
-- Módulos de API encontrados: financeiro, health, migracao, seed-superadmin, teste-rpc, aluno, alunos, auth, debug, escolas, jobs, matriculas, professor, secretaria, super-admin, test, webhooks, admin, public, escola
-- financeiro: 45 endpoints
-- health: 2 endpoints
-- ... e mais 18
+### ✅ [PILAR-C-FORCE-CACHE] Pilar C — force-cache ausente em rotas operacionais
+**Status:** `PASS`  
+**Contrato:** agents/specs/performance.md → Pilar C
 
-#### ❌ API.2: FAIL
-16 endpoints com possíveis problemas de segurança
+Nenhum problema detectado. ✅
 
-**Evidências**:
-- apps/web/src/app/api/financeiro/route.ts: Sem verificação de autenticação ou RLS
-- apps/web/src/app/api/health/route.ts: Sem verificação de autenticação ou RLS
-- apps/web/src/app/api/seed-superadmin/route.ts: Sem verificação de autenticação ou RLS
-- ... e mais 2
+### ✅ [NO_STORE_AUDIT] Cache — auditoria de no-store em layouts e configs
+**Status:** `PASS`  
+**Contrato:** agents/specs/performance.md → Pilar C (tabela de cache por tipo de dado)
 
-#### ✅ API.3: PASS
+Nenhum ficheiro de layout/config com no-store detectado. ✅
 
+### ✅ [MV_CHECK] Materialized Views — artefactos obrigatórios (MV + INDEX + refresh + wrapper + cron)
+**Status:** `PASS`  
+**Contrato:** agents/specs/performance.md → Pilar A + Regras operacionais para MVs
 
-**Evidências**:
-- ✅ Padrões de resposta consistentes na amostra
+| MV | INDEX | Refresh Fn | Wrapper | Cron | Status |
+|---|---|---|---|---|---|
+| `mv_radar_inadimplencia` | ✅ | ✅ | ✅ | ✅ | `PASS` |
+| `mv_pagamentos_status` | ✅ | ✅ | ✅ | ✅ | `PASS` |
+| `mv_secretaria_dashboard_counts` | ✅ | ✅ | ✅ | ✅ | `PASS` |
+| `mv_secretaria_matriculas_status` | ✅ | ✅ | ✅ | ✅ | `PASS` |
+| `mv_secretaria_matriculas_turma_status` | ✅ | ✅ | ✅ | ✅ | `PASS` |
 
-#### ✅ API.4: PASS
+### ✅ [PLAN_GUARD] Controlo de planos — backend guard + UI guard obrigatórios em simultâneo
+**Status:** `PASS`  
+**Contrato:** agents/specs/FEATURES_PRIORITY.json → SHARED-P0.2 + SEC-P0.2
 
+Nenhum problema detectado. ✅
 
-**Evidências**:
-- ✅ Tratamento de erros presente na amostra
+### ✅ [GF4] GF4 — Audit Trail (cobertura + schema padronizado)
+**Status:** `PASS`  
+**Contrato:** agents/specs/FEATURES_PRIORITY.json → SHARED-P0.4
 
-### UI (1/3 ✅)
+- Audit log existe: ✅
 
-#### ✅ UI.1: PASS
+### ✅ [KF2] KF2 — Pesquisa Global (Command Palette)
+**Status:** `PASS`  
+**Contrato:** ROADMAP.md → Busca global p95 ≤ 300ms
 
+- Hook: `apps/web/src/hooks/useGlobalSearch.ts`
+- Componente: `apps/web/src/components/GlobalSearch.tsx`
 
-**Evidências**:
-- React: 46 componentes
-- Next.js: 33 componentes
-- Supabase: 0 componentes
-- ... e mais 2
+### ✅ [PILAR-C-SPINNER] Pilar C — sem spinner global em páginas de trabalho
+**Status:** `PASS`  
+**Contrato:** agents/specs/performance.md → Pilar C
 
-#### ⚠️ UI.2: WARNING
-9 componentes com exportações misturadas
+Nenhum problema detectado. ✅
 
-**Evidências**:
-- src/components/dashboard/ActionCard.stories.tsx: mistura export default e named exports
-- src/components/dashboard/DashboardHeader.stories.tsx: mistura export default e named exports
-- src/components/dashboard/KpiCard.stories.tsx: mistura export default e named exports
-- ... e mais 2
+### ✅ [PILAR-B-IDEMPOTENCY] Pilar B — Idempotency-Key em mutations críticas
+**Status:** `PASS`  
+**Contrato:** agents/specs/performance.md → Pilar B
 
-#### ⚠️ UI.3: WARNING
-51 componentes sem estados explícitos de loading/error
+Nenhum problema detectado. ✅
 
-**Evidências**:
-- src/components/dashboard/ActionCard.stories.tsx: sem estados de loading/error
-- src/components/dashboard/DashboardHeader.stories.tsx: sem estados de loading/error
-- src/components/dashboard/KpiCard.stories.tsx: sem estados de loading/error
-- ... e mais 2
+---
 
-## 🎯 RECOMENDAÇÕES PARA MONOREPO
+## Plano de Acção
 
-1. **Padronizar APIs**: Resolver inconsistências nos endpoints
-3. **Refatorar Service Role**: Remover de endpoints humanos
-4. **Documentar shared packages**: Garantir que packages/ sejam bem documentados
-5. **CI/CD para monorepo**: Configurar testes em todos os apps
+### Antes do Piloto (blockers)
+Nenhum blocker activo. Sistema pronto para piloto. ✅
+
+### Após o Piloto (melhorias)
+Nenhuma melhoria pendente. ✅

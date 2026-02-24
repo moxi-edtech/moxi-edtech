@@ -3,6 +3,8 @@ import { supabaseServerTyped } from '@/lib/supabaseServer';
 import * as XLSX from 'xlsx';
 import { applyKf2ListInvariants } from '@/lib/kf2';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
+import { requireFeature } from '@/lib/plan/requireFeature';
+import { HttpError } from '@/lib/errors';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -21,6 +23,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
     if (!escolaId) {
       return new NextResponse('Escola não encontrada', { status: 403 });
+    }
+
+    try {
+      await requireFeature('doc_qr_code');
+    } catch (err) {
+      if (err instanceof HttpError) {
+        return NextResponse.json({ ok: false, error: err.message, code: err.code }, { status: err.status });
+      }
+      throw err;
     }
 
     // 1. Fetch Turma, Alunos, and Disciplinas

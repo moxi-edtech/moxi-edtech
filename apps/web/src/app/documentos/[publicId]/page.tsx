@@ -34,7 +34,7 @@ export default async function DocumentoValidationPage({
   }
 
   const url = await getAbsoluteUrlServer(`/api/public/documentos/${publicId}?hash=${hash}`);
-  const res = await fetch(url, { cache: "no-store" });
+  const res = await fetch(url, { next: { revalidate: 60 } });
   const data = (await res.json().catch(() => ({}))) as ValidationResponse;
 
   const valid = Boolean(data.ok && data.valid);

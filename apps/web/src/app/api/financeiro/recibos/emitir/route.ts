@@ -4,6 +4,8 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { HttpError } from "@/lib/errors";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { recordAuditServer } from "@/lib/audit";
+import { requireFeature } from "@/lib/plan/requireFeature";
+import type { Database } from "~types/supabase";
 
 const PayloadSchema = z.object({
   mensalidadeId: z.string().uuid(),
@@ -17,6 +19,15 @@ type ReciboResponse = {
 
 export async function POST(req: NextRequest) {
   try {
+    const idempotencyKey =
+      req.headers.get("Idempotency-Key") ?? req.headers.get("idempotency-key");
+    if (!idempotencyKey) {
+      return NextResponse.json(
+        { ok: false, error: "Idempotency-Key header é obrigatório" },
+        { status: 400 }
+      );
+    }
+
     const payload = PayloadSchema.safeParse(await req.json().catch(() => ({})));
     if (!payload.success) {
       return NextResponse.json(
@@ -27,7 +38,8 @@ export async function POST(req: NextRequest) {
 
     const { mensalidadeId } = payload.data;
 
-    const supabase = await supabaseServerTyped();
+    const supabase = await supabaseServerTyped<Database>();
+    const supabaseAny = supabase as any;
     const { data: userRes } = await supabase.auth.getUser();
     const user = userRes?.user;
     if (!user) {
@@ -42,12 +54,36 @@ export async function POST(req: NextRequest) {
       (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ??
       null;
 
-    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id, undefined, metadataEscolaId);
+    const escolaId = await resolveEscolaIdForUser(supabase, user.id, undefined, metadataEscolaId);
     if (!escolaId) {
       return NextResponse.json(
         { ok: false, error: "Usuário sem escola associada", code: "NO_SCHOOL" },
         { status: 403 }
       );
+    }
+
+    const { data: existingIdempotency } = await supabaseAny
+      .from("idempotency_keys")
+      .select("result")
+      .eq("escola_id", escolaId)
+      .eq("scope", "financeiro_recibo_emitir")
+      .eq("key", idempotencyKey)
+      .maybeSingle();
+
+    if (existingIdempotency?.result) {
+      return NextResponse.json(existingIdempotency.result, { status: 200 });
+    }
+
+    try {
+      await requireFeature("fin_recibo_pdf");
+    } catch (err) {
+      if (err instanceof HttpError) {
+        return NextResponse.json(
+          { ok: false, error: err.message, code: err.code },
+          { status: err.status }
+        );
+      }
+      throw err;
     }
 
     const { data, error } = await supabase.rpc("emitir_recibo", {
@@ -58,14 +94,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
     }
 
-    if (!data || (data as any)?.ok === false) {
+    const dataPayload = data as { ok?: boolean; erro?: string; public_id?: string; doc_id?: string } | null;
+    if (!dataPayload || dataPayload?.ok === false) {
       return NextResponse.json(
-        { ok: false, error: (data as any)?.erro || "Falha ao emitir recibo." },
+        { ok: false, error: dataPayload?.erro || "Falha ao emitir recibo." },
         { status: 400 }
       );
     }
 
-    const publicId = String((data as any).public_id || "");
+    const publicId = String(dataPayload.public_id || "");
     if (!publicId) {
       return NextResponse.json(
         { ok: false, error: "Recibo emitido sem identificador público." },
@@ -81,7 +118,7 @@ export async function POST(req: NextRequest) {
         .select("validation_base_url")
         .eq("id", escolaId)
         .maybeSingle();
-      baseUrl = (escola as any)?.validation_base_url ?? null;
+      baseUrl = (escola as { validation_base_url?: string | null } | null)?.validation_base_url ?? null;
     }
 
     const urlValidacao = baseUrl
@@ -90,16 +127,26 @@ export async function POST(req: NextRequest) {
 
     const response: ReciboResponse = {
       ok: true,
-      doc_id: String((data as any).doc_id),
+      doc_id: String(dataPayload.doc_id),
       url_validacao: urlValidacao,
     };
+
+    await supabaseAny.from("idempotency_keys").upsert(
+      {
+        escola_id: escolaId,
+        scope: "financeiro_recibo_emitir",
+        key: idempotencyKey,
+        result: response,
+      },
+      { onConflict: "escola_id,scope,key" }
+    );
 
     recordAuditServer({
       escolaId,
       portal: "financeiro",
       acao: "RECIBO_EMITIDO",
       entity: "documentos_emitidos",
-      entityId: String((data as any).doc_id),
+      entityId: String(dataPayload.doc_id),
       details: { mensalidade_id: mensalidadeId, public_id: publicId },
     }).catch(() => null);
 

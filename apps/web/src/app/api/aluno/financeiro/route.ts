@@ -1,5 +1,14 @@
 import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
+type MensalidadeRow = {
+  id: string;
+  ano_referencia: number | null;
+  mes_referencia: number | null;
+  valor_previsto: number | null;
+  data_vencimento: string | null;
+  status: string | null;
+  data_pagamento_efetiva: string | null;
+};
 
 export async function GET() {
   try {
@@ -20,10 +29,10 @@ export async function GET() {
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
 
     const hoje = new Date().toISOString().slice(0, 10);
-    const rows = (data || []).map((m: any) => {
+    const rows = (data || []).map((m: MensalidadeRow) => {
       const competencia = `${m.ano_referencia}-${String(m.mes_referencia).padStart(2, '0')}`;
-      const vencimento = m.data_vencimento as string;
-      const pago_em = m.data_pagamento_efetiva as string | null;
+      const vencimento = m.data_vencimento ?? "";
+      const pago_em = m.data_pagamento_efetiva ?? null;
       let status: 'pago' | 'pendente' | 'atrasado' = 'pendente';
       if ((m.status as string) === 'pago') status = 'pago';
       else if (vencimento && vencimento < hoje) status = 'atrasado';

@@ -3,6 +3,8 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { requireFeature } from "@/lib/plan/requireFeature";
+import { HttpError } from "@/lib/errors";
 
 // Força a renderização dinâmica para garantir que a autenticação seja verificada a cada request
 export const dynamic = 'force-dynamic';
@@ -31,6 +33,15 @@ export async function GET(req: Request) {
     const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id);
     if (!authz.allowed) {
       return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão de acesso.' }, { status: 403 });
+    }
+
+    try {
+      await requireFeature("doc_qr_code");
+    } catch (err) {
+      if (err instanceof HttpError) {
+        return NextResponse.json({ ok: false, error: err.message, code: err.code }, { status: err.status });
+      }
+      throw err;
     }
 
     // Headers de versionamento (Boas práticas)

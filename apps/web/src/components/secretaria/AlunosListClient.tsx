@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Loader2,
   Search,
   Filter,
   Plus,
@@ -21,6 +20,7 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { fetchJsonWithOffline } from "@/lib/offline/fetch";
 import { OfflineBanner } from "@/components/system/OfflineBanner";
+import { Skeleton } from "@/components/feedback/FeedbackSystem";
 
 /**
  * KLASSE UI notes:
@@ -431,8 +431,10 @@ export default function AlunosListClient() {
                 {loading ? (
                   <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                     <td colSpan={5} className="p-12 text-center text-slate-600">
-                      <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-klasse-gold" />
-                      Carregando…
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-40 mx-auto" />
+                        <Skeleton className="h-3 w-56 mx-auto" />
+                      </div>
                     </td>
                   </tr>
                 ) : items.length === 0 ? (

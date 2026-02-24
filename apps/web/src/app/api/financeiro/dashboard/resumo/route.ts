@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import type { Database } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -68,15 +69,15 @@ export async function GET(request: Request) {
     }
 
     const previsto = (kpis ?? []).reduce(
-      (acc: number, row: any) => acc + Number(row.previsto_total ?? 0),
+      (acc: number, row: { previsto_total: number | null }) => acc + Number(row.previsto_total ?? 0),
       0
     );
     const realizado = (kpis ?? []).reduce(
-      (acc: number, row: any) => acc + Number(row.realizado_total ?? 0),
+      (acc: number, row: { realizado_total: number | null }) => acc + Number(row.realizado_total ?? 0),
       0
     );
     const inadimplencia = (kpis ?? []).reduce(
-      (acc: number, row: any) => acc + Number(row.inadimplencia_total ?? 0),
+      (acc: number, row: { inadimplencia_total: number | null }) => acc + Number(row.inadimplencia_total ?? 0),
       0
     );
 

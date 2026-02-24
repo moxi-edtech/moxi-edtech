@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/Button"
-import { toast } from "react-hot-toast"
+import { useToast } from "@/components/feedback/FeedbackSystem"
 
 type Props = {
   escolaId: string | number
@@ -13,6 +13,7 @@ export default function SchoolBillingModal({ escolaId, onClose }: Props) {
   const [valor, setValor] = useState("")
   const [vencimento, setVencimento] = useState("")
   const [sending, setSending] = useState(false)
+  const { success, error } = useToast()
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -43,11 +44,11 @@ export default function SchoolBillingModal({ escolaId, onClose }: Props) {
                 const res = await fetch(`/api/super-admin/escolas/${escolaId}/billing-email`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ valor, vencimento }) })
                 const json = await res.json()
                 if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao enviar cobrança')
-                toast.success('Cobrança enviada')
+                success('Cobrança enviada')
                 onClose()
               } catch (e) {
                 const m = e instanceof Error ? e.message : String(e)
-                toast.error(`Erro: ${m}`)
+                error(`Erro: ${m}`)
               } finally {
                 setSending(false)
               }

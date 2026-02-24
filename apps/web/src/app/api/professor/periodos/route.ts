@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
-import { getSupabaseServerClient } from '@/lib/supabase-server'
 
 const Query = z.object({
   turma_id: z.string().uuid(),
@@ -25,12 +24,7 @@ export async function GET(req: Request) {
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 })
 
-    const admin = getSupabaseServerClient()
-    if (!admin) {
-      return NextResponse.json({ ok: false, error: 'SUPABASE_SERVICE_ROLE_KEY ausente' }, { status: 500 })
-    }
-
-    const { data: professor } = await admin
+    const { data: professor } = await supabase
       .from('professores')
       .select('id')
       .eq('profile_id', user.id)
@@ -39,7 +33,7 @@ export async function GET(req: Request) {
     const professorId = (professor as any)?.id as string | undefined
     if (!professorId) return NextResponse.json({ ok: false, error: 'Professor não encontrado' }, { status: 403 })
 
-    const { data: turma } = await admin
+    const { data: turma } = await supabase
       .from('turmas')
       .select('id, curso_id, classe_id, ano_letivo')
       .eq('id', parsed.data.turma_id)
@@ -47,7 +41,7 @@ export async function GET(req: Request) {
       .maybeSingle()
     if (!turma) return NextResponse.json({ ok: false, error: 'Turma não encontrada' }, { status: 404 })
 
-    const { data: assignment } = await admin
+    const { data: assignment } = await supabase
       .from('turma_disciplinas')
       .select('id')
       .eq('escola_id', escolaId)
@@ -57,7 +51,7 @@ export async function GET(req: Request) {
 
     let hasAccess = Boolean(assignment)
     if (!hasAccess) {
-      const { data: tdp } = await admin
+      const { data: tdp } = await supabase
         .from('turma_disciplinas_professores')
         .select('id')
         .eq('escola_id', escolaId)
@@ -71,7 +65,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: false, error: 'Professor não atribuído à turma' }, { status: 403 })
     }
 
-    const { data: anoLetivo } = await admin
+    const { data: anoLetivo } = await supabase
       .from('anos_letivos')
       .select('id')
       .eq('escola_id', escolaId)
@@ -82,7 +76,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: true, items: [] })
     }
 
-    const { data: periodos, error: periodosError } = await admin
+    const { data: periodos, error: periodosError } = await supabase
       .from('periodos_letivos')
       .select('id, numero, tipo, data_inicio, data_fim')
       .eq('escola_id', escolaId)

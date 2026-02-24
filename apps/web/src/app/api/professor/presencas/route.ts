@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { enqueueOutboxEvent, markOutboxEventFailed, markOutboxEventProcessed } from '@/lib/outbox'
+import type { Database } from '~types/supabase'
 
 const Body = z.object({
   turma_id: z.string().uuid(),
@@ -12,10 +13,10 @@ const Body = z.object({
 })
 
 export async function POST(req: Request) {
-  let supabase: any = null
+  let supabase: Awaited<ReturnType<typeof supabaseServerTyped<Database>>> | null = null
   const outboxEventId: string | null = null
   try {
-    supabase = await supabaseServerTyped<any>()
+    supabase = await supabaseServerTyped<Database>()
     const { data: userRes } = await supabase.auth.getUser()
     const user = userRes?.user
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
@@ -29,7 +30,7 @@ export async function POST(req: Request) {
     if (!parsed.success) return NextResponse.json({ ok: false, error: parsed.error.issues?.[0]?.message || 'Dados inválidos' }, { status: 400 })
     const body = parsed.data
 
-    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
+    const escolaId = await resolveEscolaIdForUser(supabase, user.id)
     if (!escolaId) return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 })
 
     const { data: professor } = await supabase
@@ -38,7 +39,7 @@ export async function POST(req: Request) {
       .eq('profile_id', user.id)
       .eq('escola_id', escolaId)
       .maybeSingle()
-    const professorId = (professor as any)?.id as string | undefined
+    const professorId = (professor as { id?: string } | null)?.id
     if (!professorId) return NextResponse.json({ ok: false, error: 'Professor não encontrado' }, { status: 403 })
 
     const { data: turma } = await supabase
@@ -48,6 +49,12 @@ export async function POST(req: Request) {
       .eq('escola_id', escolaId)
       .maybeSingle()
     if (!turma) return NextResponse.json({ ok: false, error: 'Turma não encontrada' }, { status: 404 })
+    if (!turma.ano_letivo) {
+      return NextResponse.json({ ok: false, error: 'Ano letivo não definido para a turma.' }, { status: 400 })
+    }
+    if (!turma.curso_id || !turma.classe_id) {
+      return NextResponse.json({ ok: false, error: 'Turma sem curso/classe associada.' }, { status: 400 })
+    }
 
     const { data: anoLetivo } = await supabase
       .from('anos_letivos')

@@ -3,6 +3,7 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { normalizeAnoLetivo, resolveTabelaPreco } from "@/lib/financeiro/tabela-preco";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { type SupabaseClient, type User } from "@supabase/supabase-js";
+import type { Database } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,10 @@ function isUUID(value?: string | null) {
   return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(value);
 }
 
-async function usuarioTemAcessoEscola(client: SupabaseClient, userId: string, escolaId: string) {
+type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
+type EscolaAdminRow = Database["public"]["Tables"]["escola_administradores"]["Row"];
+
+async function usuarioTemAcessoEscola(client: SupabaseClient<Database>, userId: string, escolaId: string) {
   if (!escolaId) return false;
 
   try {
@@ -22,7 +26,7 @@ async function usuarioTemAcessoEscola(client: SupabaseClient, userId: string, es
       .order("created_at", { ascending: false })
       .limit(1);
 
-    const perfil = prof?.[0] as any;
+    const perfil = prof?.[0] as ProfileRow | undefined;
     const role = perfil?.role as string | undefined;
     if (role === "super_admin") return true;
     if (perfil?.current_escola_id === escolaId || perfil?.escola_id === escolaId) return true;
@@ -35,7 +39,7 @@ async function usuarioTemAcessoEscola(client: SupabaseClient, userId: string, es
       .eq("escola_id", escolaId)
       .eq("user_id", userId)
       .maybeSingle();
-    if ((vinc as any)?.papel) return true;
+    if (vinc?.papel) return true;
   } catch {}
 
   try {
@@ -45,7 +49,8 @@ async function usuarioTemAcessoEscola(client: SupabaseClient, userId: string, es
       .eq("escola_id", escolaId)
       .eq("user_id", userId)
       .limit(1);
-    if (adminLink && (adminLink as any[]).length > 0) return true;
+    const links = adminLink as EscolaAdminRow[] | null;
+    if (links && links.length > 0) return true;
   } catch {}
 
   return false;
@@ -91,7 +96,11 @@ export async function GET(req: NextRequest) {
     const user = userRes?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
-    let session: any = null;
+    type AnoLetivoSession = Pick<
+      Database["public"]["Tables"]["anos_letivos"]["Row"],
+      "id" | "escola_id" | "ano" | "data_inicio" | "data_fim" | "ativo"
+    >;
+    let session: AnoLetivoSession | null = null;
     if (sessionId && isUUID(sessionId)) {
       try {
         const { data } = await supabase
@@ -104,15 +113,15 @@ export async function GET(req: NextRequest) {
     }
 
     const resolvedFromSession = session?.escola_id && isUUID(session.escola_id)
-      ? await resolveEscolaIdForUser(supabase as any, user.id, session.escola_id)
+      ? await resolveEscolaIdForUser(supabase, user.id, session.escola_id)
       : null;
     const escolaId =
       resolvedFromSession ||
-      (await resolveEscolaIdForUser(supabase as any, user.id, searchParams.get("escola_id")));
+      (await resolveEscolaIdForUser(supabase, user.id, searchParams.get("escola_id")));
 
     if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 400 });
 
-    const autorizado = await usuarioTemAcessoEscola(supabase as any, user.id, escolaId);
+    const autorizado = await usuarioTemAcessoEscola(supabase, user.id, escolaId);
     if (!autorizado) {
       return NextResponse.json({ ok: false, error: "Sem permissão para consultar preços" }, { status: 403 });
     }
@@ -148,7 +157,7 @@ export async function GET(req: NextRequest) {
       allowMensalidadeFallback: true, // permite usar regras legadas de mensalidade se não houver tabela específica
     } as const;
 
-    const { tabela, origem } = await resolveTabelaPreco(supabase as any, pricingParams);
+    const { tabela, origem } = await resolveTabelaPreco(supabase, pricingParams);
 
     if (!tabela) {
       return NextResponse.json(

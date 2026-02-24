@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 import { randomUUID } from "crypto"
-import { createClient as createAdminClient } from "@supabase/supabase-js"
 import { supabaseServerTyped } from "@/lib/supabaseServer"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas"
 import { buildPautaAnualPayload, renderPautaAnualBuffer } from "@/lib/pedagogico/pauta-anual"
 import type { Database } from "~types/supabase"
+import { requireFeature } from "@/lib/plan/requireFeature"
+import { HttpError } from "@/lib/errors"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -38,6 +39,15 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id)
     if (!authz.allowed) {
       return NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 })
+    }
+
+    try {
+      await requireFeature("doc_qr_code")
+    } catch (err) {
+      if (err instanceof HttpError) {
+        return NextResponse.json({ ok: false, error: err.message, code: err.code }, { status: err.status })
+      }
+      throw err
     }
 
     const mode = searchParams.get("mode") ?? ""
@@ -108,18 +118,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
         throw new Error("PDF inválido gerado")
       }
       const pdfPath = `${escolaId}/${turmaId}/${parsed.data.periodoLetivoId}/pauta_anual.pdf`
-      const pdfArrayBuffer = pdfBuffer.buffer.slice(
-        pdfBuffer.byteOffset,
-        pdfBuffer.byteOffset + pdfBuffer.byteLength
-      )
-      const adminUrl = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim()
-      const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? "").trim()
-      const admin = adminUrl && serviceKey ? createAdminClient<Database>(adminUrl, serviceKey) : null
-      const storageClient = (admin ?? supabase) as any
-
-      const { error: uploadError } = await storageClient.storage
+      const pdfBody = Buffer.from(pdfBuffer)
+      const { error: uploadError } = await supabase.storage
         .from("pautas_oficiais_fechadas")
-        .upload(pdfPath, pdfArrayBuffer, {
+        .upload(pdfPath, pdfBody, {
           upsert: true,
           contentType: "application/pdf",
         })

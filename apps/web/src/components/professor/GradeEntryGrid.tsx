@@ -8,6 +8,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table"
 import { CheckCircle2, Loader2 } from "lucide-react"
+import { SyncIndicator } from "@/components/feedback/FeedbackSystem"
 
 export type StudentGradeRow = {
   id: string
@@ -174,6 +175,15 @@ export function GradeEntryGrid({
             <span className="font-medium text-slate-700">{info.getValue()}</span>
           </div>
         ),
+      }),
+      columnHelper.accessor("_status", {
+        header: "Status",
+        size: 80,
+        cell: (info) => {
+          const status = info.getValue()
+          const mapped = status === "pending" ? "syncing" : status === "error" ? "error" : "synced"
+          return <SyncIndicator status={mapped} compact />
+        },
       }),
       columnHelper.group({
         header: "Iº TRIMESTRE",

@@ -28,7 +28,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       return NextResponse.json({ ok: false, error: 'Parâmetros inválidos.' }, { status: 400 });
     }
 
-    const userEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId);
+    const userEscolaId = await resolveEscolaIdForUser(supabase, user.id, requestedEscolaId);
     const effectiveEscolaId = userEscolaId ?? requestedEscolaId;
 
     if (userEscolaId && userEscolaId !== requestedEscolaId) {
@@ -89,8 +89,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     return NextResponse.json({ ok: true, items: periodos || [] });
-  } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Erro inesperado';
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

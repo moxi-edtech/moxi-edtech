@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     const escolaId = await resolveEscolaIdForUser(supabase, user.id);
     if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não identificada" }, { status: 403 });
 
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("financeiro_templates_cobranca")
       .select("id, escola_id, nome, canal, corpo, criado_por, created_at")
       .eq("escola_id", escolaId)
@@ -26,8 +26,9 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({ ok: true, data });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[GET /templates] unexpected:", err);
-    return NextResponse.json({ ok: false, error: err?.message || "Erro interno" }, { status: 500 });
+    const message = err instanceof Error ? err.message : "Erro interno";
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

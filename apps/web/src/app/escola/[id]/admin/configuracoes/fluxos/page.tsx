@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { toast } from "sonner";
 import { 
   FileText, // Ícone de validação (papel)
   User,     // Ícone de professor
@@ -17,6 +16,7 @@ import {
 import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
 import { buildConfigMenuItems } from "../_shared/menuItems";
 import { SistemaStatusModal } from "../_components/SistemaStatusModal";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 // --- TYPES ---
 type WorkflowStep = {
@@ -34,6 +34,7 @@ export default function FluxosConfiguracaoPage() {
   const params = useParams() as { id?: string };
   const escolaId = params?.id;
   const base = escolaId ? `/escola/${escolaId}/admin/configuracoes` : "";
+  const { success } = useToast();
   
   const menuItems = buildConfigMenuItems(base);
 
@@ -104,7 +105,7 @@ export default function FluxosConfiguracaoPage() {
     setSaving(true);
     // Simulação de delay de rede
     await new Promise(r => setTimeout(r, 800));
-    toast.success("Fluxo atualizado com sucesso!");
+    success("Fluxo atualizado com sucesso.");
     setSaving(false);
   };
 

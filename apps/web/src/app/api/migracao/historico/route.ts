@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import { createRouteClient } from "@/lib/supabase/route-client";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
-import type { Database } from "~types/supabase";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export async function GET(req: Request) {
@@ -10,17 +8,10 @@ export async function GET(req: Request) {
   const authUser = userRes?.user;
   if (!authUser) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
 
-  const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!adminUrl || !serviceKey) {
-    return NextResponse.json({ error: "SUPABASE configuration missing" }, { status: 500 });
-  }
-  const admin = createAdminClient<Database>(adminUrl, serviceKey);
-
   // Lista escolas às quais o usuário pertence
   const escolaIds: string[] = [];
   try {
-    const { data: vincs } = await admin
+    const { data: vincs } = await supa
       .from("escola_users")
       .select("escola_id")
       .eq("user_id", authUser.id);
@@ -31,7 +22,7 @@ export async function GET(req: Request) {
   if (escolaIds.length === 0) {
     // Fallback: tenta escola do perfil
     try {
-      const { data: prof } = await admin
+      const { data: prof } = await supa
         .from("profiles")
         .select("current_escola_id, escola_id")
         .eq("user_id", authUser.id)
@@ -47,7 +38,7 @@ export async function GET(req: Request) {
   const limit = Math.min(Math.max(Number(url.searchParams.get('limit') || 30), 1), 50)
   const cursor = url.searchParams.get('cursor')
 
-  let query = admin
+  let query = supa
     .from("import_migrations")
     .select(
       `

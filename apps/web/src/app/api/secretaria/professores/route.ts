@@ -1,6 +1,4 @@
 import { NextResponse } from 'next/server'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
-import type { Database } from '~types/supabase'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 
@@ -40,12 +38,9 @@ export async function GET(req: Request) {
       return dt.toISOString()
     })()
 
-    const adminUrl = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').trim()
-    const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim()
-    const admin = adminUrl && serviceKey ? createAdminClient<Database>(adminUrl, serviceKey) : null
-    const queryClient = (admin ?? s) as any
+    const queryClient = s as any
     const rlsClient = s as any
-    const assignmentClient = (admin ?? rlsClient) as any
+    const assignmentClient = rlsClient as any
 
     // Mapear cargo (UI) -> papéis do portal
     const cargoToPapels: Record<string, string[]> = {

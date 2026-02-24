@@ -2,7 +2,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import type { Database, TablesInsert } from '~types/supabase'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { createRouteClient } from '@/lib/supabase/route-client'
 import { recordAuditServer } from '@/lib/audit'
 import { hasPermission, mapPapelToGlobalRole, normalizePapel } from '@/lib/permissions'
@@ -137,36 +136,18 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
     let tempPassword: string | null = null
     let userCreated = false
-    const adminUrl = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').trim()
-    const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim()
-    const admin = adminUrl && serviceKey ? createAdminClient<Database>(adminUrl, serviceKey) : null
 
     const resolveExistingUserId = async () => {
-      const normalizedEmail = email.toLowerCase()
-      if (admin) {
-        const { data: authRow, error: authErr } = await (admin as any)
-          .from('auth.users')
-          .select('id')
-          .eq('email', normalizedEmail)
-          .maybeSingle()
-        if (!authErr && authRow?.id) return authRow.id
-
-        const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
-        if (error) return null
-        const found = (data?.users || []).find((u) => u.email?.toLowerCase() === normalizedEmail)
-        return found?.id ?? null
-      }
       try {
-        const list = await callAuthAdminJob(req, 'listUsers', { page: 1, perPage: 1000 })
-        const found = (list?.users || []).find((u: any) => u.email?.toLowerCase() === normalizedEmail)
-        return found?.id ?? null
+        const found = await callAuthAdminJob(req, 'findUserByEmail', { email })
+        return (found as any)?.user?.id ?? null
       } catch {
         return null
       }
     }
 
-    if (!userId && admin) {
-      const { data: adminProfile } = await admin
+    if (!userId) {
+      const { data: adminProfile } = await supabase
         .from('profiles')
         .select('user_id, numero_login')
         .eq('email', email)
@@ -187,8 +168,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       tempPassword = generateStrongPassword(12)
 
       let createError: string | null = null
-      if (admin) {
-        const created = await admin.auth.admin.createUser({
+      try {
+        const created = await callAuthAdminJob(req, 'createUser', {
           email,
           password: tempPassword,
           email_confirm: true,
@@ -199,32 +180,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
             escola_id: escolaId,
             must_change_password: true,
           },
+          app_metadata: { role: roleEnum, escola_id: escolaId },
         })
-        if (created.error) {
-          createError = created.error.message
-        } else {
-          userId = created.data?.user?.id
-          userCreated = Boolean(userId)
-        }
-      } else {
-        try {
-          const created = await callAuthAdminJob(req, 'createUser', {
-            email,
-            password: tempPassword,
-            email_confirm: true,
-            user_metadata: {
-              nome,
-              full_name: nome,
-              role: roleEnum,
-              escola_id: escolaId,
-              must_change_password: true,
-            },
-          })
-          userId = (created as any)?.user?.id
-          userCreated = Boolean(userId)
-        } catch (error) {
-          createError = error instanceof Error ? error.message : 'Auth admin job failed'
-        }
+        userId = (created as any)?.user?.id
+        userCreated = Boolean(userId)
+      } catch (error) {
+        createError = error instanceof Error ? error.message : 'Auth admin job failed'
       }
 
       if (!userId)
@@ -244,8 +205,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         current_escola_id: escolaId,
       }
 
-      const profileClient = admin ?? supabase
-      const { error: profileError } = await profileClient
+      const { error: profileError } = await supabase
         .from('profiles')
         .upsert(profilePayload, { onConflict: 'user_id' })
 
@@ -255,25 +215,15 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     }
 
     // Always sync app_metadata
-    if (admin) {
-      const { error: updateErr } = await admin.auth.admin.updateUserById(userId!, {
-        app_metadata: { role: roleEnum, escola_id: escolaId },
-      })
-      if (updateErr) {
-        return NextResponse.json({ ok: false, error: updateErr.message }, { status: 400 })
-      }
-    } else {
-      await callAuthAdminJob(req, 'updateUserById', {
-        userId: userId!,
-        attributes: { app_metadata: { role: roleEnum, escola_id: escolaId } },
-      })
-    }
+    await callAuthAdminJob(req, 'updateUserById', {
+      userId: userId!,
+      attributes: { app_metadata: { role: roleEnum, escola_id: escolaId } },
+    })
 
     // -------------------------------
     // 7) Link to escola_users
     // -------------------------------
-    const escolaUsersClient = admin ?? supabase
-    const { error: escolaUsersError } = await escolaUsersClient
+    const { error: escolaUsersError } = await supabase
       .from('escola_users')
       .upsert({
         escola_id: escolaId,

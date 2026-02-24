@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
 import {
-  Loader2, UsersRound, BookOpen, UserCheck, Download,
+  RefreshCw, UsersRound, BookOpen, UserCheck, Download,
   MoreVertical, UserPlus, FileText, CalendarCheck, Settings,
   School, LayoutDashboard, GraduationCap, MapPin, X,
   AlertCircle, CheckCircle2, Lock, ChevronLeft,
@@ -11,6 +11,7 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { usePlanFeature } from "@/hooks/usePlanFeature";
 import { GradeEntryGrid, type StudentGradeRow } from "@/components/professor/GradeEntryGrid";
+import { Skeleton } from "@/components/feedback/FeedbackSystem";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 //
@@ -616,8 +617,8 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
   // ── States ────────────────────────────────────────────────────────────────
   if (loading) return (
     <div className="h-[60vh] flex flex-col items-center justify-center gap-3 text-slate-400">
-      <Loader2 className="w-8 h-8 animate-spin text-[#1F6B3B]" />
-      <p className="text-xs font-medium">A carregar turma…</p>
+      <Skeleton className="h-5 w-40" />
+      <Skeleton className="h-4 w-56" />
     </div>
   );
 
@@ -1099,7 +1100,7 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
                   )}
                   {notasLoading ? (
                     <div className="flex items-center gap-2 text-sm text-slate-500">
-                      <Loader2 className="h-4 w-4 animate-spin" /> Carregando pauta…
+                      <RefreshCw className="h-4 w-4 animate-spin" /> Carregando pauta…
                     </div>
                   ) : (
                     <GradeEntryGrid

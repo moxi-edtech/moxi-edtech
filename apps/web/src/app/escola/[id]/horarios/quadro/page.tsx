@@ -11,9 +11,9 @@ import { enqueueOfflineAction } from "@/lib/offline/queue";
 import { useHorarioBaseData, useHorarioTurmaData } from "@/hooks/useHorarioData";
 import { Spinner } from "@/components/ui/Spinner";
 import { Select } from "@/components/ui/Select";
-import { toast } from "sonner";
 import { pdf } from "@react-pdf/renderer";
 import { QuadroHorarioPdf } from "@/templates/pdf/horarios/QuadroHorario";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 const DIAS_SEMANA = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"];
 
@@ -21,6 +21,7 @@ export default function QuadroHorariosPage() {
   const params = useParams();
   const escolaId = params?.id as string;
   const { online } = useOfflineStatus();
+  const { success, error, warning, toast: rawToast } = useToast();
   const [isMounted, setIsMounted] = useState(false);
 
   const [versaoId, setVersaoId] = useState<string | null>(null);
@@ -91,7 +92,7 @@ export default function QuadroHorariosPage() {
   useEffect(() => {
     if (!escolaId) return;
     let active = true;
-    fetch(`/api/escolas/${escolaId}/nome`, { cache: "no-store" })
+    fetch(`/api/escolas/${escolaId}/nome`)
       .then((res) => res.json())
       .then((json) => {
         if (!active) return;
@@ -105,7 +106,7 @@ export default function QuadroHorariosPage() {
 
   useEffect(() => {
     let active = true;
-    fetch("/api/secretaria/professores?pageSize=200", { cache: "no-store" })
+    fetch("/api/secretaria/professores?pageSize=200")
       .then((res) => res.json())
       .then((json) => {
         if (!active) return;
@@ -165,10 +166,10 @@ export default function QuadroHorariosPage() {
 
     Promise.all([
       fetch(`/api/escolas/${escolaId}/disciplinas?curso_id=${targetCursoId}&limit=500`, {
-        cache: "no-store",
+        cache: "force-cache",
       }).then((res) => res.json()),
       fetch(`/api/escolas/${escolaId}/curriculo/padroes?curso_id=${targetCursoId}`, {
-        cache: "no-store",
+        cache: "force-cache",
       }).then((res) => res.json()),
     ])
       .then(([disciplinasJson, padroesJson]) => {
@@ -378,7 +379,7 @@ export default function QuadroHorariosPage() {
     if (targetSlotsPerDay <= temposAulaCount) return;
     try {
       setAdjustingSlots(true);
-      const res = await fetch(`/api/escolas/${escolaId}/horarios/slots`, { cache: "no-store" });
+      const res = await fetch(`/api/escolas/${escolaId}/horarios/slots`);
       const json = await res.json().catch(() => null);
       if (!res.ok || json?.ok === false) {
         throw new Error(json?.error || "Falha ao carregar slots.");
@@ -438,7 +439,7 @@ export default function QuadroHorariosPage() {
       });
 
       if (newSlots.length === 0) {
-        toast.message("Slots já estão no limite.");
+        rawToast({ variant: "info", title: "Slots já estão no limite." });
         return;
       }
 
@@ -452,10 +453,10 @@ export default function QuadroHorariosPage() {
         throw new Error(saveJson?.error || "Falha ao salvar slots.");
       }
 
-      toast.success(`Slots ajustados para ${targetSlotsPerDay} aulas/dia.`);
+      success(`Slots ajustados para ${targetSlotsPerDay} aulas/dia.`);
       setBaseRefreshToken((prev) => prev + 1);
     } catch (e: any) {
-      toast.error(e?.message || "Falha ao ajustar slots.");
+      error(e?.message || "Falha ao ajustar slots.");
     } finally {
       setAdjustingSlots(false);
     }
@@ -480,10 +481,10 @@ export default function QuadroHorariosPage() {
       if (!res.ok || json?.ok === false) {
         throw new Error(json?.error || "Falha ao gerar turmas no contraturno.");
       }
-      toast.success("Turma de contraturno gerada.");
+      success("Turma de contraturno gerada.");
       setBaseRefreshToken((prev) => prev + 1);
     } catch (e: any) {
-      toast.error(e?.message || "Falha ao gerar contraturno.");
+      error(e?.message || "Falha ao gerar contraturno.");
     } finally {
       setGeneratingContraturno(false);
     }
@@ -505,9 +506,9 @@ export default function QuadroHorariosPage() {
       setGrid({});
       setAulas((prev) => prev.map((aula) => ({ ...aula, temposAlocados: 0 })));
       setRefreshToken((prev) => prev + 1);
-      toast.success("Quadro limpo com sucesso.");
+      success("Quadro limpo com sucesso.");
     } catch (e: any) {
-      toast.error(e?.message || "Falha ao limpar o quadro.");
+      error(e?.message || "Falha ao limpar o quadro.");
     } finally {
       setClearingQuadro(false);
     }
@@ -536,7 +537,7 @@ export default function QuadroHorariosPage() {
 
   const handleDownloadPdf = async () => {
     if (!selectedTurma || !horariosDisponiveis || horariosDisponiveis.length === 0) {
-      toast.error("Selecione uma turma e configure os horários.");
+      error("Selecione uma turma e configure os horários.");
       return;
     }
 
@@ -566,7 +567,7 @@ export default function QuadroHorariosPage() {
       link.click();
       window.URL.revokeObjectURL(url);
     } catch (e: any) {
-      toast.error(e?.message || "Falha ao gerar PDF.");
+      error(e?.message || "Falha ao gerar PDF.");
     } finally {
       setDownloadingPdf(false);
     }
@@ -574,7 +575,7 @@ export default function QuadroHorariosPage() {
 
   const handlePrint = () => {
     if (!selectedTurma || !horariosDisponiveis || horariosDisponiveis.length === 0) {
-      toast.error("Selecione uma turma e configure os horários.");
+      error("Selecione uma turma e configure os horários.");
       return;
     }
 
@@ -621,7 +622,7 @@ export default function QuadroHorariosPage() {
 
     const printWindow = window.open("", "_blank", "noopener,noreferrer");
     if (!printWindow) {
-      toast.error("Não foi possível abrir a janela de impressão.");
+      error("Não foi possível abrir a janela de impressão.");
       return;
     }
     printWindow.document.write(html);
@@ -674,13 +675,15 @@ export default function QuadroHorariosPage() {
           body: JSON.stringify(payload),
           type: "horarios_quadro",
         });
-        toast.message("Quadro salvo no dispositivo.", {
-          description: "Sincronizaremos quando a conexão voltar.",
+        rawToast({
+          variant: "info",
+          title: "Quadro salvo no dispositivo.",
+          message: "Sincronizaremos quando a conexão voltar.",
         });
         return;
       }
       if (!online && mode === "publish") {
-        toast.error("Modo offline: conecte-se para publicar o quadro.");
+        error("Modo offline: conecte-se para publicar o quadro.");
         return;
       }
 
@@ -705,29 +708,24 @@ export default function QuadroHorariosPage() {
           const nomes = json.details.missing
             .map((item: any) => item.disciplina || item.disciplina_nome)
             .filter(Boolean);
-          toast.error("Cargas horárias pendentes", {
-            description: nomes.length ? nomes.join(", ") : json?.error,
-          });
+          error("Cargas horárias pendentes", nomes.length ? nomes.join(", ") : json?.error);
         }
         if (json?.details?.mismatch?.length) {
           const nomes = json.details.mismatch
             .map((item: any) => item.disciplina || item.disciplina_nome)
             .filter(Boolean);
-          toast.error("Distribuição incompleta", {
-            description: nomes.length ? nomes.join(", ") : json?.error,
-          });
+          error("Distribuição incompleta", nomes.length ? nomes.join(", ") : json?.error);
         }
         return;
       }
 
       setConflictSlots({});
-      toast.success(mode === "publish" ? "Quadro publicado!" : "Quadro salvo!", {
-        description:
-          mode === "publish"
-            ? "Publicação concluída sem pendências."
-            : "Você pode ajustar a distribuição a qualquer momento.",
-        duration: 5000,
-      });
+      success(
+        mode === "publish" ? "Quadro publicado." : "Quadro salvo.",
+        mode === "publish"
+          ? "Publicação concluída sem pendências."
+          : "Você pode ajustar a distribuição a qualquer momento."
+      );
     } finally {
       if (mode === "draft") {
         setSaving(false);
@@ -751,12 +749,10 @@ export default function QuadroHorariosPage() {
       });
       const json = await res.json().catch(() => ({}));
       if (res.ok && json.ok) {
-        toast.success("Cargas preenchidas", {
-          description: `${json?.data?.updated ?? 0} disciplina(s) atualizadas.`,
-        });
+        success("Cargas preenchidas", `${json?.data?.updated ?? 0} disciplina(s) atualizadas.`);
         setRefreshToken((prev) => prev + 1);
       } else {
-        toast.error(json?.error || "Falha ao configurar cargas");
+        error(json?.error || "Falha ao configurar cargas");
       }
     } finally {
       setAutoConfiguring(false);
@@ -781,7 +777,7 @@ export default function QuadroHorariosPage() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json?.ok) {
-        toast.error(json?.error || "Falha ao auto-completar o quadro");
+        error(json?.error || "Falha ao auto-completar o quadro");
         return;
       }
 
@@ -807,9 +803,10 @@ export default function QuadroHorariosPage() {
         }))
       );
       setConflictSlots({});
-      toast.success("Quadro gerado", {
-        description: `Preenchidos ${json?.stats?.filled ?? 0} de ${json?.stats?.total_slots ?? 0} slots.`,
-      });
+      success(
+        "Quadro gerado",
+        `Preenchidos ${json?.stats?.filled ?? 0} de ${json?.stats?.total_slots ?? 0} slots.`
+      );
       if (Array.isArray(json?.unmet) && json.unmet.length > 0) {
         const reasonLabel = (reason: string) => {
           switch (reason) {
@@ -832,10 +829,7 @@ export default function QuadroHorariosPage() {
         const unmetDetails = json.unmet
           .map((item: any) => `${item.disciplina_id}: ${reasonLabel(item.reason)}`)
           .slice(0, 6)
-        toast.error("Pendências no auto-completar", {
-          description: unmetDetails.join(" | "),
-          duration: 7000,
-        })
+        error("Pendências no auto-completar", unmetDetails.join(" | "))
       }
     } finally {
       setAutoScheduling(false);
@@ -845,7 +839,7 @@ export default function QuadroHorariosPage() {
   const handleAssignProfessor = async (aula: (typeof aulas)[number], professorUserId: string) => {
     if (!turmaId) return;
     if (!aula?.cursoMatrizId) {
-      toast.error("Disciplina sem vínculo de currículo.");
+      error("Disciplina sem vínculo de currículo.");
       return;
     }
     try {
@@ -861,10 +855,10 @@ export default function QuadroHorariosPage() {
       if (!res.ok || json?.ok === false) {
         throw new Error(json?.error || "Falha ao atribuir professor.");
       }
-      toast.success("Professor atribuído.");
+      success("Professor atribuído.");
       setRefreshToken((prev) => prev + 1);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Falha ao atribuir professor.");
+    } catch (err) {
+      error(err instanceof Error ? err.message : "Falha ao atribuir professor.");
     }
   };
 
@@ -872,7 +866,7 @@ export default function QuadroHorariosPage() {
     if (!escolaId || !turmaId) return;
     const sala = salas.find((item) => item.id === salaId);
     if (!sala) {
-      toast.error("Sala não encontrada.");
+      error("Sala não encontrada.");
       return;
     }
     try {
@@ -885,15 +879,15 @@ export default function QuadroHorariosPage() {
       if (!res.ok || json?.ok === false) {
         throw new Error(json?.error || "Falha ao atribuir sala.");
       }
-      toast.success("Sala atribuída à turma.");
+      success("Sala atribuída à turma.");
       setTurmas((prev) =>
         prev.map((turma) =>
           turma.id === turmaId ? { ...turma, sala: sala.nome } : turma
         )
       );
       setBaseRefreshToken((prev) => prev + 1);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Falha ao atribuir sala.");
+    } catch (err) {
+      error(err instanceof Error ? err.message : "Falha ao atribuir sala.");
     }
   };
 
@@ -939,11 +933,11 @@ export default function QuadroHorariosPage() {
         })
       );
 
-      toast.success("Disciplina atualizada.");
+      success("Disciplina atualizada.");
       setCurriculoModalOpen(false);
       setRefreshToken((prev) => prev + 1);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Falha ao atualizar disciplina.");
+    } catch (err) {
+      error(err instanceof Error ? err.message : "Falha ao atualizar disciplina.");
     }
   };
 
@@ -957,10 +951,10 @@ export default function QuadroHorariosPage() {
     const json = await res.json().catch(() => ({}));
     if (res.ok && json.ok && json.item) {
       setSalas((prev) => [...prev, json.item]);
-      toast.success("Sala adicionada.");
+      success("Sala adicionada.");
       return;
     }
-    toast.error(json?.error || "Falha ao adicionar sala.");
+    error(json?.error || "Falha ao adicionar sala.");
   };
 
   if (isLoading && !turmaId) {

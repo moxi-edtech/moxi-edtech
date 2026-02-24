@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
 import {
   BookOpen,
   Layers,
@@ -42,6 +41,7 @@ import {
   SchoolCurriculumManager,
   type BaseCurriculumSubject,
 } from "./SchoolCurriculumManager";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 // --- CONFIGURAÇÃO ---
 const PRESET_CATEGORY_MAP: Record<CurriculumKey, CurriculumCategory> = {
@@ -241,6 +241,7 @@ export default function AcademicStep2({
   curriculumOverrides,
   onCurriculumOverridesChange,
 }: AcademicStep2Props) {
+  const { toast, dismiss, success, error } = useToast();
   const [selectedPresetKey, setSelectedPresetKey] = useState<CurriculumKey | "">("");
   const [addedCourses, setAddedCourses] = useState<AddedCourse[]>([]);
   const [selectedCurriculumCourse, setSelectedCurriculumCourse] = useState<CurriculumKey | "">("");
@@ -639,7 +640,7 @@ export default function AcademicStep2({
                 initialOverrides={initialOverrides}
                 onSave={async (payload) => {
                   const prefix = `${selectedCurriculumCourse}::${selectedCurriculumClass}::`;
-                  const tid = toast.loading("Salvando matriz...");
+                  const tid = toast({ variant: "syncing", title: "Salvando matriz...", duration: 0 });
                   const nextOverrides = Object.fromEntries(
                     Object.entries(curriculumOverrides).filter(([key]) => !key.startsWith(prefix))
                   ) as Record<string, number>;
@@ -657,9 +658,11 @@ export default function AcademicStep2({
                     if (!res.ok || json?.ok === false) {
                       throw new Error(json?.error || "Erro ao salvar a matriz");
                     }
-                    toast.success("Matriz salva.", { id: tid });
-                  } catch (error) {
-                    toast.error(error instanceof Error ? error.message : "Erro ao salvar.", { id: tid });
+                    dismiss(tid);
+                    success("Matriz salva.");
+                  } catch (err) {
+                    dismiss(tid);
+                    error(err instanceof Error ? err.message : "Erro ao salvar.");
                   }
                 }}
                 onCancel={() => setManagerSeed((prev) => prev + 1)}

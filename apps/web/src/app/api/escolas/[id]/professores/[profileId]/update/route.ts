@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
-import type { Database } from '~types/supabase'
 import { createRouteClient } from '@/lib/supabase/route-client'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { hasPermission, normalizePapel } from '@/lib/permissions'
@@ -60,15 +58,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     }
 
-    const adminUrl = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').trim()
-    const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim()
-    if (!adminUrl || !serviceKey) {
-      return NextResponse.json({ ok: false, error: 'SUPABASE_SERVICE_ROLE_KEY ausente' }, { status: 500 })
-    }
-
-    const admin = createAdminClient<Database>(adminUrl, serviceKey)
-
-    const { data: teacherRow } = await admin
+    const { data: teacherRow } = await supabase
       .from('teachers')
       .select('id')
       .eq('escola_id', escolaId)
@@ -77,14 +67,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
     let teacherId = teacherRow?.id ?? null
     if (!teacherId) {
-      const { data: profileRow } = await admin
+      const { data: profileRow } = await supabase
         .from('profiles')
         .select('nome, email')
         .eq('user_id', profileId)
         .maybeSingle()
 
       const nomeCompleto = profileRow?.nome || profileRow?.email || 'Professor'
-      const { data: createdTeacher, error: createErr } = await admin
+      const { data: createdTeacher, error: createErr } = await supabase
         .from('teachers')
         .insert({
           escola_id: escolaId,
@@ -110,7 +100,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       teacherId = createdTeacher.id
     }
 
-    const { error: updateErr } = await admin
+    const { error: updateErr } = await supabase
       .from('teachers')
       .update({
         genero: body.genero,
@@ -130,20 +120,20 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       return NextResponse.json({ ok: false, error: updateErr.message }, { status: 400 })
     }
 
-    await admin
+    await supabase
       .from('profiles')
       .update({ telefone: body.telefone_principal ?? null })
       .eq('user_id', profileId)
 
     const disciplinaIds = Array.from(new Set(body.disciplinas_habilitadas || []))
 
-    await admin
+    await supabase
       .from('teacher_skills')
       .delete()
       .eq('teacher_id', teacherId)
 
     if (disciplinaIds.length > 0) {
-      const { data: valid } = await admin
+      const { data: valid } = await supabase
         .from('disciplinas_catalogo')
         .select('id')
         .eq('escola_id', escolaId)
@@ -156,7 +146,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
           teacher_id: teacherId,
           disciplina_id: id,
         }))
-        await admin
+        await supabase
           .from('teacher_skills')
           .upsert(rows, { onConflict: 'teacher_id,disciplina_id' })
       }

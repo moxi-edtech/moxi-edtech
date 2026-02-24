@@ -1,8 +1,8 @@
 # Roadmap — P0 Item 2 (Service-role Ban + Audit Trail)
 
 **Referências**
-- `docs/big-tech-performance.md` (writes instantâneos + idempotência)
-- `agents/contracts/FEATURES_PRIORITY.json` (P0 Secretaria/Admin)
+- `agents/specs/performance.md` (writes instantâneos + idempotência)
+- `agents/specs/FEATURES_PRIORITY.json` (P0 Secretaria/Admin)
 - `agents/outputs/ROADMAP_REAL_DATA_IMPLEMENTATION.md`
 
 ---

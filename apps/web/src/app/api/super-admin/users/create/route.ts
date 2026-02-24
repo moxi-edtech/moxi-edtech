@@ -1,22 +1,15 @@
 // apps/web/src/app/api/super-admin/users/create/route.ts
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 import { recordAuditServer } from "@/lib/audit";
-import { getSupabaseServerClient } from "@/lib/supabase-server";
+import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { callAuthAdminJob } from "@/lib/auth-admin-job";
 // ❌ REMOVIDO: import { generateNumeroLogin } from "@/lib/generateNumeroLogin";
 
 // top-level não deve criar client
 
 export async function POST(request: Request) {
-  const admin = getSupabaseServerClient();
-  if (!admin) {
-    return new Response(
-      "Supabase not configured (SUPABASE_URL or key missing)",
-      { status: 503 },
-    );
-  }
-  const supabase = admin;
+  const supabase = await supabaseServerTyped<Database>();
 
   try {
     const body = await request.json();
@@ -131,21 +124,26 @@ export async function POST(request: Request) {
 
     // 3) Create auth user (ou reaproveita se já existir)
     {
-      const { data, error } = await admin.auth.admin.createUser({
-        email: email.trim().toLowerCase(),
-        password,
-        email_confirm: true,
-        user_metadata: {
-          nome,
-          role: roleEnum,
-          must_change_password: true,
-        },
-        // app_metadata carrega role e escola no JWT
-        app_metadata: { role: roleEnum, escola_id: escolaId } as any,
-      });
+      let data: any = null;
+      let error: any = null;
+      try {
+        data = await callAuthAdminJob(request, "createUser", {
+          email: email.trim().toLowerCase(),
+          password,
+          email_confirm: true,
+          user_metadata: {
+            nome,
+            role: roleEnum,
+            must_change_password: true,
+          },
+          app_metadata: { role: roleEnum, escola_id: escolaId },
+        });
+      } catch (err) {
+        error = err;
+      }
 
-      if (error || !data?.user) {
-        const msg = error?.message?.toLowerCase() || "";
+      if (!data?.user) {
+        const msg = (error?.message || "").toLowerCase();
         const looksLikeExisting =
           /already been registered|already registered|user exists|email exists/.test(
             msg,
@@ -153,21 +151,14 @@ export async function POST(request: Request) {
 
         if (looksLikeExisting) {
           try {
-            const { data: users } =
-              await admin.auth.admin.listUsers({
-                page: 1,
-                perPage: 1000,
-              });
-            const found = users?.users?.find(
-              (u: any) =>
-                String(u.email).toLowerCase() ===
-                email.trim().toLowerCase(),
-            );
-            if (found) {
-              authUser = { user: { id: String(found.id) } };
+            const found = await callAuthAdminJob(request, "findUserByEmail", {
+              email: email.trim().toLowerCase(),
+            });
+            if ((found as any)?.user?.id) {
+              authUser = { user: { id: String((found as any).user.id) } };
             }
           } catch (_) {
-            // ignore, will fall through and report original error
+            // ignore
           }
         }
 
@@ -187,7 +178,7 @@ export async function POST(request: Request) {
     }
 
     // 4) Create / upsert profile (sem numero_login aqui)
-    const { error: profileError } = await admin
+    const { error: profileError } = await supabase
       .from("profiles" as any)
       .upsert(
         [
@@ -207,7 +198,7 @@ export async function POST(request: Request) {
     if (profileError) {
       if (createdNewAuthUser) {
         try {
-          await admin.auth.admin.deleteUser(authUser!.user.id);
+          await callAuthAdminJob(request, "deleteUser", { userId: authUser!.user.id });
         } catch {
           /* ignore */
         }
@@ -219,7 +210,7 @@ export async function POST(request: Request) {
     }
 
     // 5) Link to school in escola_users
-    const { error: vinculoError } = await admin
+    const { error: vinculoError } = await supabase
       .from("escola_users" as any)
       .upsert(
         [
@@ -234,11 +225,11 @@ export async function POST(request: Request) {
     if (vinculoError) {
       if (createdNewAuthUser) {
         try {
-          await admin
+          await supabase
             .from("profiles" as any)
             .delete()
             .eq("user_id", authUser!.user.id);
-          await admin.auth.admin.deleteUser(authUser!.user.id);
+          await callAuthAdminJob(request, "deleteUser", { userId: authUser!.user.id });
         } catch {
           /* ignore */
         }

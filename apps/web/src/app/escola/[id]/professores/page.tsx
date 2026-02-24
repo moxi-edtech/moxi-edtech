@@ -11,7 +11,7 @@ import {
 } from "@heroicons/react/24/outline"
 import {
   BookOpen, UserCheck, UserX, LayoutGrid, List,
-  X, AlertCircle, CheckCircle2, ChevronLeft, Loader2,
+  X, AlertCircle, CheckCircle2, ChevronLeft, RefreshCw,
 } from "lucide-react"
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
@@ -400,7 +400,7 @@ function ProfDetailDrawer({ prof, pendenciasState, onClose, onEdit }: {
             </h3>
             {!pendenciasState || pendenciasState.loading ? (
               <div className="flex items-center gap-2 text-xs text-slate-400 py-2">
-                <Loader2 size={13} className="animate-spin" /> A carregar…
+                <RefreshCw size={13} className="animate-spin" /> A carregar…
               </div>
             ) : pendenciasState.error ? (
               <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">

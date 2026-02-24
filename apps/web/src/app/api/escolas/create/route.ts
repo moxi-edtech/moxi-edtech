@@ -2,16 +2,32 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import type { DBWithRPC } from '@/types/supabase-augment'
-import { createClient } from '@supabase/supabase-js'
-import type { SupabaseClient } from '@supabase/supabase-js'
 import { buildOnboardingEmail, sendMail } from '@/lib/mailer'
 import { parsePlanTier } from '@/config/plans'
+import { callAuthAdminJob } from '@/lib/auth-admin-job'
+
+type CreateEscolaPayload = {
+  ok?: boolean
+  escolaId?: string
+  escola_id?: string
+  escolaNome?: string
+  escola_nome?: string
+  mensagemAdmin?: string
+  [key: string]: unknown
+}
+
+type AuthUserData = {
+  user?: {
+    app_metadata?: { role?: string | null } | null
+    user_metadata?: { role?: string | null } | null
+  } | null
+} | null
 
 const BodySchema = z.object({
   nome: z.string().trim().min(1, 'Nome da escola é obrigatório'),
   nif: z.string().trim().optional().nullable(),
   endereco: z.string().trim().optional().nullable(),
-  plano: z.enum(['essencial', 'standard', 'premium']).optional().nullable(),
+  plano: z.enum(['essencial', 'profissional', 'premium']).optional().nullable(),
   admin: z
     .object({
       email: z.string().email('Email do administrador inválido').optional().nullable(),
@@ -28,8 +44,9 @@ export async function POST(request: Request) {
     const supabase = await supabaseServerTyped<DBWithRPC>()
     // Early auth/role guard to provide clearer errors than raw RLS violations
     try {
-      const { data: u } = await (supabase as any).auth.getUser()
-      const role = (u?.user?.app_metadata as any)?.role || (u?.user?.user_metadata as any)?.role || null
+      const { data: u } = await supabase.auth.getUser()
+      const authData = u as AuthUserData
+      const role = authData?.user?.app_metadata?.role || authData?.user?.user_metadata?.role || null
       if (role !== 'super_admin') {
         return NextResponse.json({ ok: false, error: 'Somente Super Admin pode criar escolas.' }, { status: 403 })
       }
@@ -51,26 +68,13 @@ export async function POST(request: Request) {
     const adminTelefone = body.admin?.telefone ? body.admin.telefone.replace(/\D/g, '') : null
     const adminNome = body.admin?.nome ? body.admin.nome.trim() : null
 
-    // 2) Use service-role client for RPC to bypass RLS reliably
-    const adminUrl = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-    if (!adminUrl || !serviceKey) {
-      return NextResponse.json(
-        { ok: false, error: 'Server misconfigured: falta SUPABASE_SERVICE_ROLE_KEY (e URL).' },
-        { status: 500 }
-      )
-    }
-
-    const admin = createClient<DBWithRPC>(adminUrl, serviceKey)
-
-    const { data, error } = await (admin as any).rpc('create_escola_with_admin', {
+    const { data, error } = await supabase.rpc('create_escola_with_admin', {
       p_nome: body.nome,
-      p_nif: nif,
-      p_endereco: body.endereco ?? null,
-      p_admin_email: adminEmail,
-      p_admin_telefone: adminTelefone,
-      p_admin_nome: adminNome,
+      p_nif: nif ?? '',
+      p_endereco: body.endereco ?? '',
+      p_admin_email: adminEmail ?? '',
+      p_admin_telefone: adminTelefone ?? '',
+      p_admin_nome: adminNome ?? '',
     })
 
     if (error) {
@@ -84,11 +88,11 @@ export async function POST(request: Request) {
 
     // A função retorna um JSON com { ok, escolaId, escolaNome, mensagemAdmin }
     // Supabase tipa como Json; garantir objeto
-    const payload = typeof data === 'string' ? safeParseJSON(data) : data
+    const payload = (typeof data === 'string' ? safeParseJSON(data) : data) as CreateEscolaPayload
 
     const origin = new URL(request.url).origin
     const actionLink = `${origin}/login`
-    const escolaNome = (payload as any)?.escolaNome || (payload as any)?.escola_nome || body.nome
+    const escolaNome = payload?.escolaNome || payload?.escola_nome || body.nome
     const escolaPlano = body.plano ? parsePlanTier(body.plano) : null
 
     // 3) Garantir criação/vínculo do admin (sem convite; retorna senha gerada)
@@ -96,10 +100,10 @@ export async function POST(request: Request) {
     let adminUserCreated = false
     let adminError: string | null = null
 
-    const escolaId = (payload as any)?.escolaId || (payload as any)?.escola_id || null
+    const escolaId = payload?.escolaId || payload?.escola_id || null
 
     if (escolaId && body.plano) {
-      await (admin as any)
+      await supabase
         .from('escolas')
         .update({ plano_atual: body.plano })
         .eq('id', escolaId)
@@ -107,7 +111,7 @@ export async function POST(request: Request) {
 
     if (adminEmail && escolaId) {
       try {
-        const provision = await ensureAdminUser(admin, {
+        const provision = await ensureAdminUser(request, supabase, {
           email: adminEmail,
           nome: adminNome,
           telefone: adminTelefone,
@@ -115,8 +119,8 @@ export async function POST(request: Request) {
         })
         adminPassword = provision.password
         adminUserCreated = provision.createdNew
-      } catch (e: any) {
-        adminError = e?.message || 'Falha ao provisionar admin'
+      } catch (e: unknown) {
+        adminError = e instanceof Error ? e.message : 'Falha ao provisionar admin'
       }
     }
 
@@ -129,8 +133,7 @@ export async function POST(request: Request) {
         adminNome: adminNome || undefined,
         plano: escolaPlano || undefined,
       })
-      // TODO: buildOnboardingEmail html/text are incorrectly inferred as Promise<string>. Hotfix with `as any`.
-      const sent = await sendMail({ to: adminEmail, subject, html: html as any, text: text as any })
+      const sent = await sendMail({ to: adminEmail, subject, html: String(html), text: String(text) })
       emailStatus = { attempted: true, ok: sent.ok, error: sent.ok ? null : sent.error }
     }
 
@@ -159,41 +162,41 @@ function generateStrongPassword(len = 12) {
 }
 
 async function ensureAdminUser(
-  admin: SupabaseClient,
+  req: Request,
+  supabase: Awaited<ReturnType<typeof supabaseServerTyped<DBWithRPC>>>,
   params: { email: string; nome?: string | null; telefone?: string | null; escolaId: string }
 ) {
   const email = params.email.toLowerCase()
   const telefone = params.telefone ? params.telefone.replace(/\D/g, '') : null
 
-  // Verifica se já existe usuário com este email
-  const { data: list, error: listErr } = await (admin as any).auth.admin.listUsers({ page: 1, perPage: 1000 })
-  if (listErr) throw listErr
-  const existing = list?.users?.find((u: any) => (u.email || '').toLowerCase() === email)
-
-  let userId: string | null = existing?.id || existing?.user?.id || null
+  const existing = await callAuthAdminJob(req, 'findUserByEmail', { email })
+  const existingUser = existing as { user?: { id?: string } } | null
+  let userId: string | null = existingUser?.user?.id || null
   let password: string | null = null
   let createdNew = false
 
   if (!userId) {
     password = generateStrongPassword(12)
-    const { data: created, error: cErr } = await (admin as any).auth.admin.createUser({
+    const created = await callAuthAdminJob(req, 'createUser', {
       email,
       password,
       email_confirm: true,
       user_metadata: { role: 'admin', must_change_password: true, nome: params.nome ?? undefined },
+      app_metadata: { role: 'admin' },
     })
-    if (cErr) throw cErr
-    userId = created?.user?.id ?? null
+    const createdUser = created as { user?: { id?: string } } | null
+    userId = createdUser?.user?.id ?? null
     createdNew = true
   }
 
   if (!userId) throw new Error('Não foi possível obter user_id para o admin')
+  const ensuredUserId: string = userId
 
-  await (admin as any).from('profiles').upsert(
+  await supabase.from('profiles').upsert(
     {
-      user_id: userId,
+      user_id: ensuredUserId,
       email,
-      nome: params.nome ?? null,
+      nome: params.nome ?? email,
       telefone,
       role: 'admin',
       escola_id: params.escolaId,
@@ -202,16 +205,16 @@ async function ensureAdminUser(
     { onConflict: 'user_id' }
   )
 
-  await (admin as any).from('escola_administradores').upsert(
+  await supabase.from('escola_administradores').upsert(
     {
       escola_id: params.escolaId,
-      user_id: userId,
+      user_id: ensuredUserId,
       cargo: 'administrador_principal',
     },
     { onConflict: 'escola_id,user_id' }
   )
 
-  return { userId, createdNew, password }
+  return { userId: ensuredUserId, createdNew, password }
 }
 
 function safeParseJSON(input: string) {

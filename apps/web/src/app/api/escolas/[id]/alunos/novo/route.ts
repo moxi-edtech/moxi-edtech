@@ -3,8 +3,7 @@ import { z } from 'zod'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { hasPermission } from '@/lib/permissions'
 import { recordAuditServer } from '@/lib/audit'
-import { createClient } from '@supabase/supabase-js'
-import type { Database } from '~types/supabase'
+import { callAuthAdminJob } from '@/lib/auth-admin-job'
 
 const BodySchema = z.object({
   nome: z.string().trim().min(1, 'Informe o nome'),
@@ -69,11 +68,7 @@ export async function POST(
       return NextResponse.json({ ok: false, error: 'Perfil não vinculado à escola' }, { status: 403 })
     }
 
-    // Cliente Admin para ignorar RLS na escrita
-    const admin = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    )
+    const admin = await supabaseServer()
 
     // 2. Preparação do Payload
     const insertPayload: any = {
@@ -89,33 +84,30 @@ export async function POST(
       insertPayload.email = body.email
 
       // Tenta criar usuário
-      const { data: createdUser, error: createErr } = await admin.auth.admin.createUser({
-        email: body.email,
-        email_confirm: true,
-        user_metadata: { nome: body.nome },
-        app_metadata: { role: 'aluno', escola_id: escolaId } 
-      })
+      let createdUser: any = null
+      try {
+        createdUser = await callAuthAdminJob(req, 'createUser', {
+          email: body.email,
+          email_confirm: true,
+          user_metadata: { nome: body.nome },
+          app_metadata: { role: 'aluno', escola_id: escolaId },
+        })
+      } catch {
+        createdUser = null
+      }
 
-      if (createErr) {
+      if (!(createdUser as any)?.user?.id) {
         // SE o erro for "usuário já existe", nós recuperamos ele em vez de falhar
         // Isso permite recadastrar alunos antigos
-        if (createErr.message?.includes('already been registered') || createErr.status === 422) {
-           const { data: listUsers } = await admin.auth.admin.listUsers() 
-           // Nota: listUsers não filtra por email nativamente de forma simples no admin client v2 dependendo da versão, 
-           // mas para performance em escala, o ideal seria getByEmail se disponível ou tratar erro. 
-           // Assumindo fluxo simples:
-           const existing = listUsers.users.find(u => u.email === body.email)
-           if (existing) {
-             targetUserId = existing.id
-             // Opcional: Atualizar metadata do usuário existente para garantir role aluno
-           } else {
-             return NextResponse.json({ ok: false, error: 'Email já registrado mas usuário não encontrado.' }, { status: 400 })
-           }
+        const existing = await callAuthAdminJob(req, 'findUserByEmail', { email: body.email })
+        const existingId = (existing as any)?.user?.id as string | undefined
+        if (existingId) {
+          targetUserId = existingId
         } else {
-          return NextResponse.json({ ok: false, error: createErr.message }, { status: 400 })
+          return NextResponse.json({ ok: false, error: 'Email já registrado mas usuário não encontrado.' }, { status: 400 })
         }
       } else {
-        targetUserId = createdUser?.user?.id
+        targetUserId = (createdUser as any)?.user?.id
       }
 
       // Se temos um User ID (novo ou existente), vinculamos

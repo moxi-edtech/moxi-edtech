@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient as createAdminClient } from '@supabase/supabase-js'
-import type { Database } from '~types/supabase'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { hasPermission } from '@/lib/permissions'
 import { recordAuditServer } from '@/lib/audit'
@@ -18,13 +16,8 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
     const { data: profCheck } = await s.from('profiles' as any).select('escola_id').eq('user_id', user.id).maybeSingle()
     if (!profCheck || (profCheck as any).escola_id !== escolaId) return NextResponse.json({ ok: false, error: 'Perfil não vinculado à escola' }, { status: 403 })
 
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ ok: false, error: 'Configuração do Supabase ausente' }, { status: 500 })
-    }
-    const admin = createAdminClient<Database>(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
-
     // Confirm secao belongs to escola (via join turma)
-    const { data: t } = await admin
+    const { data: t } = await s
       .from('secoes')
       .select('id, turma_id, turmas!inner(id, escola_id)')
       .eq('id', secaoId)
@@ -33,13 +26,13 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
     if (!ok) return NextResponse.json({ ok: false, error: 'Seção não encontrada' }, { status: 404 })
 
     // Dependent deletions
-    const { data: mats } = await admin.from('matriculas').select('id').eq('secao_id', secaoId)
+    const { data: mats } = await s.from('matriculas').select('id').eq('secao_id', secaoId)
     const matIds = (mats || []).map((m: any) => m.id)
-    try { if (matIds.length > 0) await admin.from('frequencias').delete().in('matricula_id', matIds) } catch {}
-    try { await admin.from('rotinas').delete().eq('secao_id', secaoId) } catch {}
-    try { await admin.from('atribuicoes_prof').delete().eq('secao_id', secaoId) } catch {}
-    try { await admin.from('matriculas').delete().eq('secao_id', secaoId) } catch {}
-    const { error: delErr } = await admin.from('secoes').delete().eq('id', secaoId)
+    try { if (matIds.length > 0) await s.from('frequencias').delete().in('matricula_id', matIds) } catch {}
+    try { await s.from('rotinas').delete().eq('secao_id', secaoId) } catch {}
+    try { await s.from('atribuicoes_prof').delete().eq('secao_id', secaoId) } catch {}
+    try { await s.from('matriculas').delete().eq('secao_id', secaoId) } catch {}
+    const { error: delErr } = await s.from('secoes').delete().eq('id', secaoId)
     if (delErr) return NextResponse.json({ ok: false, error: delErr.message }, { status: 400 })
 
     recordAuditServer({ escolaId, portal: 'admin_escola', acao: 'SECAO_EXCLUIDA_CASCADE', entity: 'secao', entityId: secaoId, details: { matIds } }).catch(() => null)

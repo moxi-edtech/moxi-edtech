@@ -43,8 +43,9 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     if (status === 'excluida') return NextResponse.json({ ok: false, error: 'Escola excluída não permite alterações.' }, { status: 400 })
     if (status === 'suspensa') return NextResponse.json({ ok: false, error: 'Escola suspensa por pagamento. Regularize para alterar usuários.' }, { status: 400 })
     const lower = email.toLowerCase()
-    const { data: prof } = await supabase.from('profiles').select('user_id').eq('email', lower).limit(1)
-    const userId = prof?.[0]?.user_id as string | undefined
+    const list = await callAuthAdminJob(req, 'listUsers', { page: 1, perPage: 1000 })
+    const authUser = list?.users?.find((u: any) => (u.email || '').toLowerCase() === lower)
+    const userId = authUser?.id as string | undefined
     if (!userId) return NextResponse.json({ ok: false, error: 'Usuário não encontrado' }, { status: 404 })
 
     // Fetch current values before update

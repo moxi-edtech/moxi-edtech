@@ -13,7 +13,7 @@ Você NÃO é um gerador cego de código.
 
 ### 1. SCAN (default)
 - Ler o repositório inteiro
-- Validar features listadas no FEATURES_PRIORITY.json
+- Validar features listadas no agents/specs/FEATURES_PRIORITY.json
 - Verificar:
   - O que está IMPLEMENTADO
   - O que está PARCIAL
@@ -132,4 +132,4 @@ Antes de mexer em UI, consultar:
 ## PERFORMANCE — REFERÊNCIAS OBRIGATÓRIAS
 
 Para garantir performance, consultar:
-- `docs/big-tech-performance.md`
+- `agents/specs/performance.md`

@@ -11,10 +11,10 @@ import {
   Smartphone,
   Loader2,
 } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { ReciboImprimivel } from "@/components/financeiro/ReciboImprimivel";
 import { usePlanFeature } from "@/hooks/usePlanFeature";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 type MetodoPagamento = "cash" | "tpa" | "transfer" | "mcx" | "kiwk";
 
@@ -198,6 +198,7 @@ export function ModalPagamentoRapido({
   const [concluido, setConcluido] = useState(false);
   const [paymentReference, setPaymentReference] = useState("");
   const [paymentEvidenceUrl, setPaymentEvidenceUrl] = useState("");
+  const { success, error } = useToast();
   const [paymentGatewayRef, setPaymentGatewayRef] = useState("");
   const [recibo, setRecibo] = useState<{ url_validacao: string | null } | null>(null);
   const [printRequested, setPrintRequested] = useState(false);
@@ -304,17 +305,17 @@ export function ModalPagamentoRapido({
     if (!mensalidade) return;
 
     if (!trocoValido) {
-      toast.error("O valor pago deve ser maior ou igual ao valor devido.");
+      error("O valor pago deve ser maior ou igual ao valor devido.");
       return;
     }
 
     if (metodo === "tpa" && !paymentReference.trim()) {
-      toast.error("Referência obrigatória para TPA.");
+      error("Referência obrigatória para TPA.");
       return;
     }
 
     if (metodo === "transfer" && !paymentEvidenceUrl.trim()) {
-      toast.error("Comprovativo obrigatório para Transferência.");
+      error("Comprovativo obrigatório para Transferência.");
       return;
     }
 
@@ -374,7 +375,7 @@ export function ModalPagamentoRapido({
       }
 
       setConcluido(true);
-      toast.success("Pagamento registrado. Recibo emitido (quando disponível).");
+      success("Pagamento registado.", "Recibo disponível para impressão.");
 
       window.setTimeout(() => {
         safeClose();
@@ -382,7 +383,7 @@ export function ModalPagamentoRapido({
       }, 1200);
     } catch (err: any) {
       if (err?.name === "AbortError") return;
-      toast.error(err instanceof Error ? err.message : "Não foi possível processar o pagamento.");
+      error(err instanceof Error ? err.message : "Não foi possível processar o pagamento.");
     } finally {
       setProcessando(false);
     }

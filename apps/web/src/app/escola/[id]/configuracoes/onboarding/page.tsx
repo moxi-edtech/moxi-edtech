@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from "react";
 import { createClient } from "@/lib/supabaseClient"; 
-import { Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/feedback/FeedbackSystem";
 
 // Importa os teus componentes (ajusta os caminhos se necessário)
 import AcademicSetupWizard from "@/components/escola/onboarding/AcademicSetupWizard";
@@ -84,8 +84,8 @@ export default function ConfiguracoesPage({ params }: Props) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-slate-50">
           <div className="flex flex-col items-center gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
-            <p className="text-sm text-slate-500 font-medium">A carregar configurações...</p>
+            <Skeleton className="h-5 w-44" />
+            <Skeleton className="h-4 w-56" />
           </div>
         </div>
       );

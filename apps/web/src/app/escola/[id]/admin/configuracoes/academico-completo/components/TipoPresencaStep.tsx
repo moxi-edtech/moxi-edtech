@@ -2,7 +2,6 @@
 
 import { use, useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import { toast } from "sonner";
 import { 
   Calculator, 
   Variable, 
@@ -18,6 +17,7 @@ import {
 import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
 import AcademicStep2Config from "@/components/escola/onboarding/AcademicStep2Config";
 import { buildConfigMenuItems } from "../../_shared/menuItems";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 // --- TIPAGENS ---
 type Componente = { code: string; peso: number; ativo: boolean };
@@ -54,6 +54,7 @@ type Props = {
 export default function AvaliacaoUnificadaPage({ params }: Props) {
   const { id: escolaId } = use(params);
   const base = `/escola/${escolaId}/admin/configuracoes`;
+  const { toast, dismiss, success, error } = useToast();
 
   // --- ESTADOS ---
   const [loading, setLoading] = useState(true);
@@ -139,16 +140,14 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
       return res.json();
     });
 
-    toast.promise(promise, {
-      loading: 'Aplicando novas regras...',
-      success: 'Regras atualizadas com sucesso!',
-      error: 'Erro ao salvar configurações.',
-    });
-
     try {
+      const tid = toast({ variant: "syncing", title: "Aplicando novas regras...", duration: 0 });
       await promise;
+      dismiss(tid);
+      success("Regras atualizadas com sucesso.");
       setIsEditing(false); // Volta para modo visualização após sucesso
     } catch (e) {
+      error("Erro ao salvar configurações.");
       console.error(e);
     } finally {
       setSaving(false);

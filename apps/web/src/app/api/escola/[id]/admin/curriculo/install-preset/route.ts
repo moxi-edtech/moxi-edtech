@@ -230,7 +230,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (options.generateTurmas) {
       const { count: turmasExistentes } = await supabase
         .from('turmas')
-        .select('id', { count: 'exact', head: true })
+        .select('id', { count: 'estimated', head: true })
         .eq('escola_id', userEscolaId)
         .eq('curso_id', cursoId)
         .eq('ano_letivo', anoLetivo.ano);

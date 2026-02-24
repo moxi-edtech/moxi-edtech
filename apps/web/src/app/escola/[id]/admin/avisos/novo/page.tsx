@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 const PUBLICOS = [
   { value: "todos", label: "Todos" },
@@ -13,6 +13,7 @@ const PUBLICOS = [
 
 export default function AvisosNovoPage() {
   const { escolaId } = useEscolaId();
+  const { success, error } = useToast();
   const [form, setForm] = useState({
     titulo: "",
     conteudo: "",
@@ -28,11 +29,11 @@ export default function AvisosNovoPage() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!escolaId) {
-      toast.error("Escola não identificada.");
+      error("Escola não identificada.");
       return;
     }
     if (!form.titulo.trim() || !form.conteudo.trim()) {
-      toast.error("Preencha título e conteúdo.");
+      error("Preencha título e conteúdo.");
       return;
     }
     setSaving(true);
@@ -46,10 +47,10 @@ export default function AvisosNovoPage() {
       if (!res.ok || !json?.ok) {
         throw new Error(json?.error || "Falha ao criar aviso");
       }
-      toast.success("Aviso criado com sucesso.");
+      success("Aviso criado com sucesso.");
       setForm({ titulo: "", conteudo: "", publico_alvo: "todos" });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Falha ao criar aviso");
+      error(err instanceof Error ? err.message : "Falha ao criar aviso");
     } finally {
       setSaving(false);
     }

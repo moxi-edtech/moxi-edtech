@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/Button"
-import { toast } from "react-hot-toast"
+import { useToast } from "@/components/feedback/FeedbackSystem"
 
 type Props = {
   action: 'suspend' | 'reactivate' | 'delete'
@@ -15,6 +15,7 @@ type Props = {
 export default function ConfirmActionModal({ action, escolaId, escolaNome, onClose, onChanged }: Props) {
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState(false)
+  const { success, error } = useToast()
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -58,7 +59,7 @@ export default function ConfirmActionModal({ action, escolaId, escolaNome, onClo
                   const json = await res.json()
                   if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao eliminar escola')
                   onChanged('deleted', json.mode)
-                  toast.success(json.mode === 'soft' ? 'Escola marcada como excluída' : 'Escola eliminada')
+                  success(json.mode === 'soft' ? 'Escola marcada como excluída' : 'Escola eliminada')
                   onClose()
                   return
                 }
@@ -71,15 +72,15 @@ export default function ConfirmActionModal({ action, escolaId, escolaNome, onClo
                 if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha na operação')
                 if (action === 'suspend') {
                   onChanged('suspensa')
-                  toast.success('Escola suspensa')
+                  success('Escola suspensa')
                 } else {
                   onChanged('ativa')
-                  toast.success('Escola reativada')
+                  success('Escola reativada')
                 }
                 onClose()
               } catch (e) {
                 const m = e instanceof Error ? e.message : String(e)
-                toast.error(`Erro: ${m}`)
+                error(`Erro: ${m}`)
               } finally {
                 setBusy(false)
               }

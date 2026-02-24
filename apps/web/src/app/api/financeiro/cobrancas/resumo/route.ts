@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import type { Database } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const supabase = await supabaseServerTyped<any>();
+    const supabase = await supabaseServerTyped<Database>();
     const { data: userRes } = await supabase.auth.getUser();
     const user = userRes?.user;
     if (!user) {

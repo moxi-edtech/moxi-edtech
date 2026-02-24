@@ -1,14 +1,14 @@
 // apps/web/src/app/api/escolas/[id]/alunos/invite/route.ts
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createClient } from "@supabase/supabase-js";
-import type { Database, TablesInsert } from "~types/supabase";
+import type { TablesInsert } from "~types/supabase";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { hasPermission } from "@/lib/permissions";
 import { recordAuditServer } from "@/lib/audit";
 // ❌ REMOVIDO: import { generateNumeroLogin } from "@/lib/generateNumeroLogin";
 import { buildCredentialsEmail, sendMail } from "@/lib/mailer";
 import { sanitizeEmail } from "@/lib/sanitize";
+import { callAuthAdminJob } from "@/lib/auth-admin-job";
 
 const BodySchema = z.object({
   email: z.string().email(),
@@ -76,28 +76,10 @@ export async function POST(
       );
     }
 
-    if (
-      !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-      !process.env.SUPABASE_SERVICE_ROLE_KEY
-    ) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: "Falta SUPABASE_SERVICE_ROLE_KEY para convidar.",
-        },
-        { status: 500 },
-      );
-    }
-
-    const admin = createClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY,
-    );
-
     // 1) Tentar reaproveitar numero_login existente (se o aluno já tiver matrícula)
     let numeroLogin: string | null = null;
     try {
-      const { data: existing } = await admin
+      const { data: existing } = await s
         .from("profiles" as any)
         .select("numero_login")
         .eq("email", email)
@@ -114,7 +96,7 @@ export async function POST(
     // (via next_matricula_number) quando a matrícula for criada/confirmada.
 
     // 2) Verificar se já existe usuário para esse email
-    const { data: prof } = await admin
+    const { data: prof } = await s
       .from("profiles")
       .select("user_id")
       .eq("email", email)
@@ -125,24 +107,18 @@ export async function POST(
 
     if (!userId) {
       // Convida novo usuário
-      const { data: inv, error: invErr } = await (admin as any).auth.admin
-        .inviteUserByEmail(email, {
+      const inv = await callAuthAdminJob(req, "inviteUserByEmail", {
+        email,
+        options: {
           data: {
             nome,
             role: "aluno",
-            // numero_usuario: numeroLogin || undefined, // só se já existir
             must_change_password: true,
           },
-        });
+        },
+      })
 
-      if (invErr) {
-        return NextResponse.json(
-          { ok: false, error: invErr.message },
-          { status: 400 },
-        );
-      }
-
-      userId = inv?.user?.id;
+      userId = (inv as any)?.user?.id;
       invited = true;
 
       if (!userId) {
@@ -154,7 +130,7 @@ export async function POST(
 
       // Cria profile para o convidado
       try {
-        await admin.from("profiles").insert([
+        await s.from("profiles").insert([
           {
             user_id: userId,
             email,
@@ -171,20 +147,23 @@ export async function POST(
 
       // Atualiza app_metadata com role/escola (e numero_usuario só se já existir)
       try {
-        await (admin as any).auth.admin.updateUserById(userId, {
-          app_metadata: {
-            role: "aluno",
-            escola_id: escolaId,
-            numero_usuario: numeroLogin || undefined,
+        await callAuthAdminJob(req, "updateUserById", {
+          userId,
+          attributes: {
+            app_metadata: {
+              role: "aluno",
+              escola_id: escolaId,
+              numero_usuario: numeroLogin || undefined,
+            },
           },
-        });
+        })
       } catch {
         // best-effort
       }
     } else {
       // Usuário já existe: garante role/escola e mantém (ou reaproveita) numero_login
       try {
-        await admin
+        await s
           .from("profiles")
         .update({
           role: "aluno" as any,
@@ -198,13 +177,16 @@ export async function POST(
       }
 
       try {
-        await (admin as any).auth.admin.updateUserById(userId, {
-          app_metadata: {
-            role: "aluno",
-            escola_id: escolaId,
-            numero_usuario: numeroLogin || undefined,
+        await callAuthAdminJob(req, "updateUserById", {
+          userId,
+          attributes: {
+            app_metadata: {
+              role: "aluno",
+              escola_id: escolaId,
+              numero_usuario: numeroLogin || undefined,
+            },
           },
-        });
+        })
       } catch {
         // best-effort
       }
@@ -212,7 +194,7 @@ export async function POST(
 
     // 3) Vincula à tabela escola_users
     try {
-      await admin
+      await s
         .from("escola_users")
         .upsert(
           {
@@ -229,7 +211,7 @@ export async function POST(
     // 4) Tenta vincular ao aluno (registro em alunos)
     if (alunoId) {
       try {
-        await admin
+        await s
           .from("alunos")
           .update({ profile_id: userId! } as any)
           .eq("id", alunoId);
@@ -238,7 +220,7 @@ export async function POST(
       }
     } else {
       try {
-        await admin
+        await s
           .from("alunos")
           .update({ profile_id: userId! } as any)
           .eq("escola_id", escolaId)
@@ -265,7 +247,7 @@ export async function POST(
     // - e depois, quando matriculado, pode receber outro email com as credenciais completas.
     try {
       if (numeroLogin) {
-        const { data: esc } = await admin
+        const { data: esc } = await s
           .from("escolas" as any)
           .select("nome")
           .eq("id", escolaId)

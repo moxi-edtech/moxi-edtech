@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { 
-  Loader2, 
+  RefreshCw,
   Printer, 
   Banknote, 
   CreditCard, 
@@ -14,8 +14,8 @@ import {
   Building2,
   Search
 } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 // --- TYPES ---
 type FechoItem = {
@@ -67,6 +67,7 @@ const formatKz = (value: number) =>
 export const dynamic = "force-dynamic";
 
 export default function FechoCaixaPage() {
+  const { success, error: toastError } = useToast();
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [data, setData] = useState<FechoResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -128,9 +129,9 @@ export default function FechoCaixaPage() {
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao declarar fecho");
       setFechoResult(json.data as FechoDeclaracao);
-      toast.success("Fecho declarado com sucesso.");
+      success("Fecho declarado com sucesso.");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro ao declarar fecho.");
+      toastError(err instanceof Error ? err.message : "Erro ao declarar fecho.");
     } finally {
       setDeclaring(false);
     }
@@ -153,9 +154,9 @@ export default function FechoCaixaPage() {
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao aprovar fecho");
       setFechoResult(json.data as FechoDeclaracao);
-      toast.success("Fecho atualizado.");
+      success("Fecho atualizado.");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro ao aprovar fecho.");
+      toastError(err instanceof Error ? err.message : "Erro ao aprovar fecho.");
     } finally {
       setApproving(false);
     }
@@ -232,7 +233,7 @@ export default function FechoCaixaPage() {
         {/* Loading State */}
         {loading && (
           <div className="flex items-center gap-2 text-xs font-medium text-slate-400 px-3">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Atualizando dados...
+            <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Atualizando dados...
           </div>
         )}
       </div>

@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import type { Database } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(_req: Request) {
   try {
-    const supabase = await supabaseServerTyped<any>();
+    const supabase = await supabaseServerTyped<Database>();
     const { data: userRes } = await supabase.auth.getUser();
     if (!userRes?.user) {
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
@@ -59,7 +60,8 @@ export async function GET(_req: Request) {
     });
 
     return NextResponse.json({ ok: true, escolaId, series }, { status: 200 });
-  } catch (err: any) {
-    return NextResponse.json({ ok: false, error: err?.message || 'Erro inesperado' }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Erro inesperado';
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }

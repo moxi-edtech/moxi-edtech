@@ -1,6 +1,6 @@
 'use client'
 
-import { Calculator, CalendarDays, CheckCircle2, Edit3, Loader2, Search, Banknote } from "lucide-react"
+import { Calculator, CalendarDays, CheckCircle2, Edit3, RefreshCw, Search, Banknote } from "lucide-react"
 import React from "react"
 
 import { initialForm, usePrecosLogic } from "./usePrecosLogic"
@@ -95,7 +95,7 @@ export default function PrecosClient({ escolaId }: { escolaId: string }) {
               disabled={loading}
               className="text-xs font-medium text-slate-500 hover:text-emerald-600 transition-colors"
             >
-              {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : "Atualizar"}
+              {loading ? <RefreshCw className="w-3 h-3 animate-spin" /> : "Atualizar"}
             </button>
           </div>
 
@@ -262,7 +262,7 @@ export default function PrecosClient({ escolaId }: { escolaId: string }) {
                   disabled={saving}
                   className="inline-flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm transition-all shadow-sm shadow-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                   {form.id ? "Atualizar Regra" : "Criar Regra"}
                 </button>
               </div>
@@ -309,7 +309,7 @@ export default function PrecosClient({ escolaId }: { escolaId: string }) {
               <div className="flex-1 w-full">
                 {resolving ? (
                   <div className="text-sm text-slate-400 flex items-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" /> Calculando...
+                    <RefreshCw className="w-4 h-4 animate-spin" /> Calculando...
                   </div>
                 ) : resolved?.tabela ? (
                   <div className="space-y-1">

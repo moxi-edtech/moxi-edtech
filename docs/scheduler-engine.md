@@ -64,4 +64,4 @@ Construir o motor de horários com base relacional e UI tátil (drag & drop), ga
 
 ## Referências
 - `docs/session-implementation-notes.md`
-- `agents/contracts/KLASSE_PAUTAS_MINISTERIAIS_ROADMAP_2026-02-05.md`
+- `agents/research/pautas_ministeriais.md`

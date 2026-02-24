@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { 
-  Loader2, 
   Search, 
   Filter, 
   Download, 
@@ -19,6 +18,7 @@ import {
   IdCard
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { Skeleton } from "@/components/feedback/FeedbackSystem";
 
 type Professor = {
   id: string;
@@ -62,7 +62,7 @@ export default function ProfessoresListClient() {
         pageSize: String(pageSize) 
       });
       
-      const res = await fetch(`/api/secretaria/professores?${params.toString()}`, { cache: 'no-store' });
+      const res = await fetch(`/api/secretaria/professores?${params.toString()}`);
       const json = await res.json();
       
       if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao carregar professores');
@@ -304,8 +304,10 @@ export default function ProfessoresListClient() {
               {loading ? (
                 <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                   <td colSpan={5} className="p-8 text-center text-slate-500">
-                    <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-                    Carregando professores...
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-40 mx-auto" />
+                      <Skeleton className="h-3 w-56 mx-auto" />
+                    </div>
                   </td>
                 </tr>
               ) : items.length === 0 ? (

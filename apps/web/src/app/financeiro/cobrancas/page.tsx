@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { Plus } from "lucide-react";
-import { toast } from "sonner";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 type Campanha = {
   id: string;
@@ -40,6 +40,7 @@ export default function SistemaCobrancas() {
 
   const [mostrarCriarCampanha, setMostrarCriarCampanha] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const { success, error } = useToast();
 
   const [novaCampanha, setNovaCampanha] = useState<Partial<Campanha>>({
     titulo: "",
@@ -71,7 +72,7 @@ export default function SistemaCobrancas() {
       setCampanhas(Array.isArray(json) ? json : json.data ?? []);
     } catch (err: any) {
       console.error("fetchCampanhas:", err);
-      toast.error(err?.message ?? "Erro ao carregar campanhas");
+      error(err?.message ?? "Erro ao carregar campanhas");
     } finally {
       setLoadingCampanhas(false);
     }
@@ -86,7 +87,7 @@ export default function SistemaCobrancas() {
       setTemplates(Array.isArray(json) ? json : json.data ?? []);
     } catch (err: any) {
       console.error("fetchTemplates:", err);
-      toast.error(err?.message ?? "Erro ao carregar templates");
+      error(err?.message ?? "Erro ao carregar templates");
     } finally {
       setLoadingTemplates(false);
     }
@@ -101,7 +102,7 @@ export default function SistemaCobrancas() {
       setAlunos(Array.isArray(json) ? json : json.data ?? []);
     } catch (err: any) {
       console.error("fetchAlunos:", err);
-      toast.error(err?.message ?? "Erro ao carregar alunos");
+      error(err?.message ?? "Erro ao carregar alunos");
     } finally {
       setLoadingAlunos(false);
     }
@@ -116,7 +117,7 @@ export default function SistemaCobrancas() {
   const handleCreateSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!novaCampanha.titulo || !novaCampanha.canal) {
-      toast.error("Título e canal são obrigatórios");
+      error("Título e canal são obrigatórios");
       return;
     }
     setSubmitting(true);
@@ -140,7 +141,7 @@ export default function SistemaCobrancas() {
       if (!res.ok) {
         throw new Error(json?.error || json?.message || "Erro ao criar campanha");
       }
-      toast.success("Campanha criada");
+      success("Campanha criada.");
       setMostrarCriarCampanha(false);
       // update local state with the created campaign returned by the API
       const created = (json as any).campaign ?? (json as any).data ?? null;
@@ -153,7 +154,7 @@ export default function SistemaCobrancas() {
       setNovaCampanha({ titulo: "", canal: "whatsapp", template_id: undefined });
     } catch (err: any) {
       console.error("criarNovaCampanha:", err);
-      toast.error(err?.message ?? "Erro ao criar campanha");
+      error(err?.message ?? "Erro ao criar campanha");
     } finally {
       setSubmitting(false);
     }

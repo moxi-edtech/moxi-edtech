@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
-  Loader2,
   Search,
   Download,
   UserPlus,
@@ -18,8 +17,10 @@ import {
   MoreVertical,
   CheckCircle2,
   XCircle,
+  Clock,
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { Skeleton } from "@/components/feedback/FeedbackSystem";
 
 import StatusForm from "./StatusForm";
 import TransferForm from "./TransferForm";
@@ -458,7 +459,7 @@ export default function MatriculasListClient() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard title="Total Matrículas" value={total} icon={Users} tone="slate" />
         <KpiCard title="Matrículas Ativas" value={statusCounts["ativa"] || 0} icon={UserCheck} tone="emerald" />
-        <KpiCard title="Pendentes (a ativar)" value={statusCounts["pendente"] || 0} icon={Loader2} tone="amber" />
+        <KpiCard title="Pendentes (a ativar)" value={statusCounts["pendente"] || 0} icon={Clock} tone="amber" />
         <KpiCard title="Turmas Envolvidas" value={turmasUnicas.size} icon={BookOpen} tone="violet" />
       </div>
 
@@ -672,8 +673,10 @@ export default function MatriculasListClient() {
               {loading ? (
                 <tr style={{ display: "table", width: "100%", tableLayout: "fixed" }}>
                   <td colSpan={5} className="p-12 text-center text-slate-500">
-                    <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin text-klasse-gold" />
-                    A carregar registos...
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-40 mx-auto" />
+                      <Skeleton className="h-3 w-56 mx-auto" />
+                    </div>
                   </td>
                 </tr>
               ) : items.length === 0 ? (

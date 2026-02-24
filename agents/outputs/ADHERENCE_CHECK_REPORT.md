@@ -1,7 +1,7 @@
 # Adherência — Entregas vs Prioridades (KLASSE)
 
 Referências utilizadas:
-- `agents/contracts/FEATURES_PRIORITY.json`
+- `agents/specs/FEATURES_PRIORITY.json`
 - `agents/outputs/SESSION_SUMMARY_FULL_ACADEMIC_CYCLE.md`
 - `agents/outputs/SESSION_SUMMARY_ACADEMIC_CYCLE.md`
 - `agents/outputs/ROADMAP_REAL_DATA_IMPLEMENTATION.md`

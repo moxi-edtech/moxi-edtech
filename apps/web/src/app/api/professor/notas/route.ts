@@ -4,6 +4,7 @@ import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { recordAuditServer } from '@/lib/audit'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { enqueueOutboxEvent, markOutboxEventFailed, markOutboxEventProcessed } from '@/lib/outbox'
+import type { Database } from '~types/supabase'
 
 const Body = z.object({
   turma_id: z.string().uuid(),
@@ -17,10 +18,10 @@ const Body = z.object({
 })
 
 export async function POST(req: Request) {
-  let supabase: any = null
+  let supabase: Awaited<ReturnType<typeof supabaseServerTyped<Database>>> | null = null
   const outboxEventId: string | null = null
   try {
-    supabase = await supabaseServerTyped<any>()
+    supabase = await supabaseServerTyped<Database>()
     const { data: userRes } = await supabase.auth.getUser()
     const user = userRes?.user
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
@@ -35,8 +36,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: parsed.error.issues?.[0]?.message || 'Dados inválidos' }, { status: 400 })
     }
     const body = parsed.data
+    if (!body.disciplina_id || !body.turma_disciplina_id) {
+      return NextResponse.json({ ok: false, error: 'Disciplina inválida para lançamento.' }, { status: 400 })
+    }
 
-    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
+    const escolaId = await resolveEscolaIdForUser(supabase, user.id);
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: 'Escola não encontrada' }, { status: 400 });
     }

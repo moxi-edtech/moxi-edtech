@@ -15,7 +15,7 @@ import {
   X,
   Wrench,
 } from "lucide-react";
-import { toast } from "sonner";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
 import {
@@ -190,6 +190,7 @@ export default function CurriculumBuilder({
   onCancel?: () => void;
   initialPresetKey?: CurriculumKey | null;
 }) {
+  const { success, error } = useToast();
   const [step, setStep] = useState(1);
   const [category, setCategory] = useState<CategoryId>("geral");
   const [trackFilter, setTrackFilter] = useState<TrackFilter>(null);
@@ -466,11 +467,11 @@ export default function CurriculumBuilder({
 
   const handleNext = () => {
     if (step === 1 && !config.presetKey) {
-      toast.error("Selecione um curso ou crie um personalizado.");
+      error("Selecione um curso ou crie um personalizado.");
       return;
     }
     if (step === 2 && config.classes.length === 0) {
-      toast.error("Selecione pelo menos uma classe.");
+      error("Selecione pelo menos uma classe.");
       return;
     }
     if (
@@ -479,7 +480,7 @@ export default function CurriculumBuilder({
       !config.turnos.tarde &&
       !config.turnos.noite
     ) {
-      toast.error("Selecione pelo menos um turno.");
+      error("Selecione pelo menos um turno.");
       return;
     }
 
@@ -497,15 +498,15 @@ export default function CurriculumBuilder({
 
   const handleFinish = async () => {
     if (!config.presetKey) {
-      toast.error("Configuração inválida: preset principal não definido.");
+      error("Configuração inválida: preset principal não definido.");
       return;
     }
     if (config.isCustom && !config.associatedPreset) {
-      toast.error("Configuração inválida: preset associado para curso customizado não definido.");
+      error("Configuração inválida: preset associado para curso customizado não definido.");
       return;
     }
     if (config.classes.length === 0) {
-      toast.error("Selecione pelo menos uma classe.");
+      error("Selecione pelo menos uma classe.");
       return;
     }
 
@@ -570,11 +571,11 @@ export default function CurriculumBuilder({
         );
       }
 
-      toast.success(json.message || "Currículo aplicado com sucesso!");
+      success(json.message || "Currículo aplicado com sucesso.");
       onComplete?.();
     } catch (e: any) {
       console.error(e);
-      toast.error(e.message || "Erro ao salvar configuração");
+      error(e.message || "Erro ao salvar configuração");
     } finally {
       setIsSaving(false);
     }
@@ -1262,6 +1263,7 @@ function CustomCourseModal({
   });
 
   const [newSub, setNewSub] = useState("");
+  const { error } = useToast();
 
   const handleAddSub = () => {
     const trimmed = newSub.trim();
@@ -1492,19 +1494,19 @@ function CustomCourseModal({
           <button
             onClick={() => {
               if (!data.label.trim()) {
-                toast.error("Digite um nome para o curso");
+                error("Digite um nome para o curso");
                 return;
               }
               if (!data.associatedPreset) {
-                toast.error("Selecione um tipo oficial para associar");
+                error("Selecione um tipo oficial para associar");
                 return;
               }
               if (data.classes.length === 0) {
-                toast.error("Selecione pelo menos uma classe");
+                error("Selecione pelo menos uma classe");
                 return;
               }
               if (data.subjects.length === 0) {
-                toast.error("Adicione pelo menos uma disciplina");
+                error("Adicione pelo menos uma disciplina");
                 return;
               }
               onSave({

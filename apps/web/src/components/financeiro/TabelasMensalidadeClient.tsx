@@ -5,9 +5,9 @@ import {
   Plus, Filter, Search, Edit, Trash2, AlertCircle, 
   DollarSign, Calendar, Layers, BookOpen, X
 } from "lucide-react";
-import { toast } from "sonner";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildEscolaUrl } from "@/lib/escola/url";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 // --- TIPOS ---
 type Item = { 
@@ -32,6 +32,7 @@ export default function TabelasMensalidadeClient() {
   const { escolaId, isLoading: escolaLoading, error: escolaError } = useEscolaId();
   void escolaLoading
   void escolaError
+  const { toast, dismiss, success, error } = useToast();
   
   // Filtros
   const [search, setSearch] = useState("");
@@ -68,7 +69,7 @@ export default function TabelasMensalidadeClient() {
         }
 
     } catch {
-      toast.error("Erro ao carregar dados.");
+      error("Erro ao carregar dados.");
     } finally {
       setLoading(false);
     }
@@ -112,17 +113,19 @@ export default function TabelasMensalidadeClient() {
   const handleDelete = async (id: string) => {
     if (!confirm("Tem a certeza que deseja apagar esta regra de preço?")) return;
     
-    const t = toast.loading("A apagar...");
+    const t = toast({ variant: "syncing", title: "A apagar...", duration: 0 });
     try {
         const res = await fetch(`/api/financeiro/tabelas-mensalidade?id=${id}`, { method: 'DELETE' });
         if (res.ok) {
-            toast.success("Regra removida.", { id: t });
+            dismiss(t);
+            success("Regra removida.");
             loadAll();
         } else {
             throw new Error();
         }
     } catch {
-        toast.error("Erro ao remover.", { id: t });
+        dismiss(t);
+        error("Erro ao remover.");
     }
   };
 
@@ -253,6 +256,7 @@ type PriceRuleFormProps = {
 };
 
 function PriceRuleForm({ onClose, onSuccess, initialData, cursos, defaultAno }: PriceRuleFormProps) {
+    const { success, error } = useToast();
     const getClasseNumero = (nome: string) => {
         const match = nome.match(/\d+/);
         return match ? parseInt(match[0], 10) : null;
@@ -318,9 +322,9 @@ function PriceRuleForm({ onClose, onSuccess, initialData, cursos, defaultAno }: 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const valorNumber = parseValor(formData.valor);
-        if(valorNumber === null || valorNumber <= 0) return toast.error("Valor é obrigatório e deve ser numérico");
-        if(regime === 'geral' && !formData.classe_id) return toast.error("Selecione a classe (1ª a 9ª)");
-        if(regime === 'curso' && (!formData.curso_id || !formData.classe_id)) return toast.error("Curso e classe do curso são obrigatórios");
+        if(valorNumber === null || valorNumber <= 0) return error("Valor é obrigatório e deve ser numérico");
+        if(regime === 'geral' && !formData.classe_id) return error("Selecione a classe (1ª a 9ª)");
+        if(regime === 'curso' && (!formData.curso_id || !formData.classe_id)) return error("Curso e classe do curso são obrigatórios");
         
         setSaving(true);
         try {
@@ -343,7 +347,7 @@ function PriceRuleForm({ onClose, onSuccess, initialData, cursos, defaultAno }: 
 
             const json = await res.json();
             if(json.ok) {
-                toast.success("Regra guardada!");
+                success("Regra guardada.");
                 
                 if(formData.applyExisting) {
                     await fetch('/api/financeiro/tabelas-mensalidade/apply', {
@@ -355,7 +359,7 @@ function PriceRuleForm({ onClose, onSuccess, initialData, cursos, defaultAno }: 
                             classe_id: payload.classe_id
                         })
                     });
-                    toast.success("Preços atualizados nos alunos existentes.");
+                    success("Preços atualizados nos alunos existentes.");
                 }
 
                 onSuccess();
@@ -364,7 +368,7 @@ function PriceRuleForm({ onClose, onSuccess, initialData, cursos, defaultAno }: 
             }
         } catch(e) {
             const message = e instanceof Error ? e.message : "Erro ao salvar.";
-            toast.error(message);
+            error(message);
         } finally {
             setSaving(false);
         }

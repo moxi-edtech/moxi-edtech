@@ -4,6 +4,8 @@ import { authorizeTurmasManage } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { requireFeature } from "@/lib/plan/requireFeature";
+import { HttpError } from "@/lib/errors";
 
 type AlunoTurmaRow = {
   matricula_id: string;
@@ -48,6 +50,15 @@ export async function GET(
 
     const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id);
     if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 });
+
+    try {
+      await requireFeature("doc_qr_code");
+    } catch (err) {
+      if (err instanceof HttpError) {
+        return NextResponse.json({ ok: false, error: err.message, code: err.code }, { status: err.status });
+      }
+      throw err;
+    }
 
     headers.set('Deprecation', 'true');
     headers.set('Link', `</api/escolas/${escolaId}/turmas>; rel="successor-version"`);

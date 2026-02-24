@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { AlertCircle, Check, Loader2, Save } from "lucide-react";
+import { AlertCircle, Check, RefreshCw, Save } from "lucide-react";
 
 /**
  * KLASSE Standard:
@@ -418,7 +418,7 @@ function Step1Identificacao(props: {
         <div className="flex items-center gap-2 text-sm">
           {saving ? (
             <span className="inline-flex items-center gap-2 text-slate-500">
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <RefreshCw className="h-4 w-4 animate-spin" />
               Salvando…
             </span>
           ) : lastSavedAt ? (
@@ -838,7 +838,7 @@ function Step2FitAcademico(props: {
         <div className="flex items-center gap-2 text-sm">
           {saving ? (
             <span className="inline-flex items-center gap-2 text-slate-500">
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <RefreshCw className="h-4 w-4 animate-spin" />
               Salvando…
             </span>
           ) : null}
@@ -892,7 +892,7 @@ function Step2FitAcademico(props: {
           <h3 className="text-sm font-semibold text-slate-700">Turmas disponíveis</h3>
           {loadingVagas ? (
             <span className="inline-flex items-center gap-2 text-xs text-slate-500">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
               Carregando…
             </span>
           ) : null}

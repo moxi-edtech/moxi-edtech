@@ -93,7 +93,7 @@ export async function DELETE(
   try {
     const { count: turmasCount, error: countErr } = await (supabase as any)
       .from('turmas')
-      .select('id', { count: 'exact', head: true })
+      .select('id', { count: 'estimated', head: true })
       .eq('escola_id', escolaId)
       .eq('curso_id', cursoId);
 

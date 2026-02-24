@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
 import { supabaseServerTyped } from '@/lib/supabaseServer';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
@@ -260,12 +259,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
         const pdfStream = await renderPautaGeralStream(payload);
         const pdfPath = `${effectiveEscolaId}/${turma_id}/${periodo_letivo_id}/pauta_geral.pdf`;
-        const adminUrl = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').trim();
-        const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim();
-        const admin = adminUrl && serviceKey ? createAdminClient<Database>(adminUrl, serviceKey) : null;
-        const storageClient = (admin ?? supabase) as any;
-
-        const { error: uploadError } = await storageClient.storage
+        const { error: uploadError } = await supabase.storage
           .from('pautas_oficiais_fechadas')
           .upload(pdfPath, pdfStream, {
             upsert: true,

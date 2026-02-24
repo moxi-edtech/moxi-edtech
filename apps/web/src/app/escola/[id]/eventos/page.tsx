@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { toast } from "sonner";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 type Evento = {
   id: string;
@@ -28,6 +28,7 @@ function fmtDateTime(dt: Date) {
 
 export default function EventosPage() {
   const { escolaId } = useEscolaId();
+  const { success, error } = useToast();
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [modalAberto, setModalAberto] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -72,7 +73,7 @@ export default function EventosPage() {
 
   async function salvarEvento() {
     if (!escolaId) {
-      toast.error("Escola não identificada.");
+      error("Escola não identificada.");
       return;
     }
     if (!formData.titulo || !formData.inicio_at) return;
@@ -80,7 +81,7 @@ export default function EventosPage() {
     setLoading(true);
     try {
       if (formData.fim_at && formData.inicio_at >= formData.fim_at) {
-        toast.error("O fim deve ser maior que o início");
+        error("O fim deve ser maior que o início");
         return;
       }
 
@@ -118,11 +119,11 @@ export default function EventosPage() {
         ]);
       }
 
-      toast.success("Evento salvo.");
+      success("Evento salvo.");
       setModalAberto(false);
       setEditing(null);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Falha ao salvar evento");
+      error(err instanceof Error ? err.message : "Falha ao salvar evento");
     } finally {
       setLoading(false);
     }
@@ -140,9 +141,9 @@ export default function EventosPage() {
         throw new Error(json?.error || "Falha ao remover evento");
       }
       setEventos((prev) => prev.filter((item) => item.id !== ev.id));
-      toast.success("Evento removido.");
+      success("Evento removido.");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Falha ao remover evento");
+      error(err instanceof Error ? err.message : "Falha ao remover evento");
     } finally {
       setLoading(false);
     }

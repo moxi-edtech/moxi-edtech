@@ -2,9 +2,10 @@
 
 import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { toast } from "sonner";
-import { ArrowLeft, Save, Loader2, Calendar, Lock, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Save, RefreshCw, Calendar, Lock, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Skeleton } from "@/components/feedback/FeedbackSystem";
 import { format, parseISO } from "date-fns"; // Recomendo usar date-fns se tiver, senão use helpers nativos abaixo
+import { useToast } from "@/components/feedback/FeedbackSystem";
 
 // --- TYPES ---
 type Periodo = {
@@ -32,6 +33,7 @@ const toInputDate = (isoString?: string | null) => {
 export default function CalendarioConfigPage({ params }: Props) {
   const { id: escolaId } = use(params);
   const base = escolaId ? `/escola/${escolaId}/admin/configuracoes` : "";
+  const { toast, dismiss, success, error, warning } = useToast();
 
   // --- STATE ---
   const [loading, setLoading] = useState(true);
@@ -61,7 +63,7 @@ export default function CalendarioConfigPage({ params }: Props) {
           setPeriodos(json.periodos);
           setAnoLetivo(json.ano_letivo);
         } else {
-          toast.error("Não foi possível carregar os períodos.");
+          error("Não foi possível carregar os períodos.");
         }
       } catch (e) {
         console.error(e);
@@ -97,7 +99,7 @@ export default function CalendarioConfigPage({ params }: Props) {
     
     // Validação antes do envio
     if (!isPesoValido) {
-      toast.warning(`A soma dos pesos é ${pesoTotal}%. Deve ser exatamente 100%.`);
+      warning(`A soma dos pesos é ${pesoTotal}%. Deve ser exatamente 100%.`);
       // Não bloqueamos o save, mas avisamos (soft lock)
     }
 
@@ -110,20 +112,33 @@ export default function CalendarioConfigPage({ params }: Props) {
       if (!res.ok) throw new Error("Falha ao salvar");
       
       // Commit do setup (opcional, dependendo da sua arquitetura)
-      await fetch(`/api/escola/${escolaId}/admin/setup/commit`, {
+      const commitRes = await fetch(`/api/escola/${escolaId}/admin/setup/commit`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ changes: { periodos: periodos.map(p => p.id) } }),
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": crypto.randomUUID(),
+        },
+        body: JSON.stringify({ changes: { periodos: periodos.map((p) => p.id) } }),
       });
+      const commitJson = await commitRes.json().catch(() => ({}));
+      if (!commitRes.ok || commitJson?.ok === false) {
+        throw new Error(commitJson?.error || "Falha ao publicar alterações.");
+      }
     });
 
-    toast.promise(promise, {
-      loading: "Salvando estrutura...",
-      success: "Calendário atualizado!",
-      error: "Erro ao salvar alterações."
-    });
+    const tid = toast({ variant: "syncing", title: "Salvando estrutura...", duration: 0 });
 
-    try { await promise; } finally { setSaving(false); }
+    try {
+      await promise;
+      dismiss(tid);
+      success("Calendário atualizado.");
+    } catch (err) {
+      dismiss(tid);
+      error("Erro ao salvar alterações.");
+      console.error(err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -159,7 +174,7 @@ export default function CalendarioConfigPage({ params }: Props) {
             disabled={saving || loading}
             className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-6 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#D4A32C] hover:shadow-md disabled:opacity-70 disabled:grayscale"
           >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {saving ? "Salvando..." : "Salvar Alterações"}
           </button>
         </div>
@@ -167,7 +182,7 @@ export default function CalendarioConfigPage({ params }: Props) {
         {/* CONTENT */}
         {loading ? (
           <div className="flex justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-slate-300" />
+            <Skeleton className="h-4 w-40" />
           </div>
         ) : (
           <div className="space-y-6">
