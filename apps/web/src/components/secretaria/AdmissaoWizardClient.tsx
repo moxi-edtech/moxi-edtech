@@ -2,7 +2,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Check, RefreshCw, Save } from "lucide-react";
 
 /**
@@ -46,6 +46,39 @@ function useDebouncedValue<T>(value: T, delayMs: number) {
   }, [value, delayMs]);
   return debounced;
 }
+
+type LocalDraftCache = {
+  updatedAt: number;
+  candidaturaId?: string | null;
+  identificacao?: DraftIdentificacao;
+  fit?: { cursoId?: string; classeId?: string; turmaId?: string };
+};
+
+const LOCAL_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
+const getDraftKey = (escolaId: string) => `admissao:draft:${escolaId}`;
+
+const readLocalDraft = (escolaId: string): LocalDraftCache | null => {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(getDraftKey(escolaId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as LocalDraftCache;
+    if (!parsed?.updatedAt || Date.now() - parsed.updatedAt > LOCAL_DRAFT_TTL_MS) {
+      window.localStorage.removeItem(getDraftKey(escolaId));
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+const writeLocalDraft = (escolaId: string, patch: Partial<LocalDraftCache>) => {
+  if (typeof window === "undefined") return;
+  const current = readLocalDraft(escolaId) ?? { updatedAt: Date.now() };
+  const next = { ...current, ...patch, updatedAt: Date.now() };
+  window.localStorage.setItem(getDraftKey(escolaId), JSON.stringify(next));
+};
 
 type JsonRecord = Record<string, unknown>;
 
@@ -182,6 +215,7 @@ function Step1Identificacao(props: {
   const [error, setError] = useState<string | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [localRestored, setLocalRestored] = useState(false);
 
   // hydrate initial
   useEffect(() => {
@@ -210,6 +244,23 @@ function Step1Identificacao(props: {
       mesmo_que_encarregado: Boolean(initialData.dados_candidato?.mesmo_que_encarregado),
     });
   }, [initialData]);
+
+  useEffect(() => {
+    if (!hydrated || initialData || !isUuid(escolaId)) return;
+    const cached = readLocalDraft(escolaId);
+    if (cached?.identificacao) {
+      setForm((prev) => ({ ...prev, ...cached.identificacao }));
+      const hasAny = Object.values(cached.identificacao).some(
+        (value) =>
+          (typeof value === "string" && value.trim() !== "") ||
+          (typeof value === "boolean" && value)
+      );
+      if (hasAny) setLocalRestored(true);
+    }
+    if (!candidaturaId && cached?.candidaturaId && isUuid(String(cached.candidaturaId))) {
+      setCandidaturaId(String(cached.candidaturaId));
+    }
+  }, [hydrated, initialData, escolaId, candidaturaId, setCandidaturaId]);
 
   const debouncedForm = useDebouncedValue(form, 650);
 
@@ -263,16 +314,38 @@ function Step1Identificacao(props: {
   const lastHashRef = useRef<string>("");
 
   const payload = useMemo(() => {
+    const telefoneRaw = (form.telefone ?? "").trim();
+    const telefoneDigits = telefoneRaw.replace(/\D/g, "");
+    const telefone = telefoneDigits.length >= 6 ? telefoneRaw : undefined;
+
+    const responsavelContatoRaw = (form.responsavel_contato ?? "").trim();
+    const responsavelContatoDigits = responsavelContatoRaw.replace(/\D/g, "");
+    const responsavelContato = responsavelContatoDigits.length >= 6 ? responsavelContatoRaw : undefined;
+
+    const emailRaw = (form.email ?? "").trim();
+    const email = /[^@\s]+@[^@\s]+\.[^@\s]+/.test(emailRaw) ? emailRaw : undefined;
+
+    const numeroDocumentoRaw = (form.numero_documento ?? "").trim();
+    const numeroDocumento = numeroDocumentoRaw.length >= 3 ? numeroDocumentoRaw : undefined;
+
+    const biNumero =
+      form.tipo_documento === "BI" && numeroDocumentoRaw.length === 14
+        ? numeroDocumentoRaw
+        : undefined;
+
     // IMPORTANT: no nulls; no empty strings
     const clean = pickDefined({
       escolaId: safeUuid(escolaId), // must be uuid
       candidaturaId: safeUuid(candidaturaId),
       source: "walkin",
-      ...pickDefined(form),
-      bi_numero:
-        form.tipo_documento === "BI"
-          ? (form.numero_documento ?? "")
-          : undefined,
+      ...pickDefined({
+        ...form,
+        telefone,
+        responsavel_contato: responsavelContato,
+        email,
+        numero_documento: numeroDocumento,
+      }),
+      bi_numero: biNumero,
     });
 
     return clean;
@@ -340,6 +413,14 @@ function Step1Identificacao(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedForm, hydrated]);
 
+  useEffect(() => {
+    if (!hydrated || !isUuid(escolaId)) return;
+    writeLocalDraft(escolaId, {
+      candidaturaId,
+      identificacao: debouncedForm,
+    });
+  }, [debouncedForm, hydrated, escolaId, candidaturaId]);
+
   const normalizePhone = (value: string) => {
     const trimmed = value.trim();
     const hasPlus = trimmed.startsWith("+");
@@ -357,9 +438,9 @@ function Step1Identificacao(props: {
     if (docType || docNumber) {
       if (!docType) errors.tipo_documento = "Selecione o tipo de documento.";
       if (!docNumber) errors.numero_documento = "Informe o número do documento.";
-      if (docType.toUpperCase() === "BI" && docNumber && !/^[A-Za-z0-9]{14}$/.test(docNumber)) {
-        errors.numero_documento = "BI deve ter 14 caracteres alfanuméricos.";
-      }
+    if (docType.toUpperCase() === "BI" && docNumber && !/^[A-Za-z0-9]{14}$/.test(docNumber)) {
+      errors.numero_documento = "BI deve ter 14 caracteres alfanuméricos.";
+    }
     }
     const phone = (draft.telefone ?? "").replace(/\D/g, "");
     if (phone && phone.length < 6) {
@@ -381,6 +462,14 @@ function Step1Identificacao(props: {
     }
     if (name === "telefone" || name === "responsavel_contato") {
       setForm((p) => ({ ...p, [name]: normalizePhone(value) }));
+      return;
+    }
+    if (name === "numero_documento") {
+      const docType = (form.tipo_documento ?? "").toUpperCase();
+      const nextValue = docType === "BI"
+        ? value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 14)
+        : value;
+      setForm((p) => ({ ...p, [name]: nextValue }));
       return;
     }
     setForm((p) => ({ ...p, [name]: value }));
@@ -408,6 +497,11 @@ function Step1Identificacao(props: {
           <p className="text-sm text-slate-500">
             Preencha o básico. O sistema salva automaticamente como rascunho.
           </p>
+          {localRestored && !initialData && (
+            <p className="mt-1 text-xs text-emerald-700">
+              Dados restaurados localmente após queda ou retorno.
+            </p>
+          )}
           {!canEditDraft && (
             <p className="mt-1 text-xs text-amber-700">
               Esta candidatura já foi submetida e não pode ser editada.
@@ -668,8 +762,19 @@ function Step1Identificacao(props: {
  * Step 2: Fit Acadêmico
  * ========================= */
 
-type RefItem = { id: string; nome: string };
-type TurmaVaga = { id: string; nome: string; turno?: string | null; vagas_disponiveis?: number | null };
+type RefItem = { id: string; nome: string; curso_id?: string | null };
+type TurmaVaga = {
+  id: string;
+  nome: string;
+  turma_codigo?: string | null;
+  turno?: string | null;
+  vagas_disponiveis?: number | null;
+  curso_id?: string | null;
+  classe_id?: string | null;
+  curso_nome?: string | null;
+  classe_nome?: string | null;
+  ano_letivo?: number | null;
+};
 
 function Step2FitAcademico(props: {
   onBack: () => void;
@@ -681,12 +786,25 @@ function Step2FitAcademico(props: {
   setClasseId: (id: string | null) => void;
   initialData: CandidaturaDraft | null;
   canEditDraft: boolean;
+  hydrated: boolean;
 }) {
-  const { onBack, onNext, escolaId, candidaturaId, setTurmaId, setCursoId, setClasseId, initialData, canEditDraft } = props;
+  const {
+    onBack,
+    onNext,
+    escolaId,
+    candidaturaId,
+    setTurmaId,
+    setCursoId,
+    setClasseId,
+    initialData,
+    canEditDraft,
+    hydrated,
+  } = props;
 
   const [cursos, setCursos] = useState<RefItem[]>([]);
   const [classes, setClasses] = useState<RefItem[]>([]);
   const [turmas, setTurmas] = useState<TurmaVaga[]>([]);
+  const [classesComPreco, setClassesComPreco] = useState<string[]>([]);
 
   const [sel, setSel] = useState({
     cursoId: "",
@@ -698,6 +816,7 @@ function Step2FitAcademico(props: {
   const [loadingVagas, setLoadingVagas] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [localRestored, setLocalRestored] = useState(false);
 
   // hydrate initial
   useEffect(() => {
@@ -713,6 +832,24 @@ function Step2FitAcademico(props: {
       setTurmaId(initialData.turma_preferencial_id);
     }
   }, [initialData, setClasseId, setCursoId, setTurmaId]);
+
+  useEffect(() => {
+    if (!hydrated || initialData || !isUuid(escolaId)) return;
+    const cached = readLocalDraft(escolaId);
+    if (cached?.fit) {
+      setSel((prev) => ({
+        ...prev,
+        cursoId: cached.fit?.cursoId ?? prev.cursoId,
+        classeId: cached.fit?.classeId ?? prev.classeId,
+        turmaId: cached.fit?.turmaId ?? prev.turmaId,
+      }));
+      const hasAny = Boolean(cached.fit?.cursoId || cached.fit?.classeId || cached.fit?.turmaId);
+      if (hasAny) setLocalRestored(true);
+      if (cached.fit?.cursoId) setCursoId(cached.fit.cursoId);
+      if (cached.fit?.classeId) setClasseId(cached.fit.classeId);
+      if (cached.fit?.turmaId) setTurmaId(cached.fit.turmaId);
+    }
+  }, [hydrated, initialData, escolaId, setClasseId, setCursoId, setTurmaId]);
 
   // load cursos/classes
   useEffect(() => {
@@ -740,11 +877,12 @@ function Step2FitAcademico(props: {
 
   // load turmas/vagas
   useEffect(() => {
-    if (!isUuid(escolaId)) return;
-    const cursoId = safeUuid(sel.cursoId);
-    const classeId = safeUuid(sel.classeId);
+    if (!isUuid(escolaId)) {
+      setError("Contexto inválido: escolaId não é UUID.");
+      return;
+    }
 
-    if (!cursoId || !classeId) {
+    if (!safeUuid(sel.cursoId)) {
       setTurmas([]);
       return;
     }
@@ -752,21 +890,36 @@ function Step2FitAcademico(props: {
     (async () => {
       setLoadingVagas(true);
       setError(null);
-      const url = `/api/secretaria/admissoes/vagas?escolaId=${encodeURIComponent(
-        escolaId
-      )}&cursoId=${encodeURIComponent(cursoId)}&classeId=${encodeURIComponent(classeId)}`;
-      const res = await fetch(url);
+      const params = new URLSearchParams({ escolaId });
+      if (initialData?.ano_letivo) {
+        params.set("ano", String(initialData.ano_letivo));
+      }
+      params.set("cursoId", sel.cursoId);
+      if (safeUuid(sel.classeId)) {
+        params.set("classeId", sel.classeId);
+      }
+      const res = await fetch(`/api/secretaria/admissoes/vagas?${params.toString()}`);
       const json = await res.json().catch(() => ({}));
       setLoadingVagas(false);
 
       if (!res.ok) {
-        setError(json?.error ?? "Falha ao carregar vagas.");
+        setError(json?.error ?? "Falha ao carregar turmas.");
         return;
       }
 
-      setTurmas(Array.isArray(json) ? json : []);
+      const rows = Array.isArray(json?.items) ? json.items : Array.isArray(json) ? json : [];
+      const metaClasses = Array.isArray(json?.meta?.classesComPreco)
+        ? json.meta.classesComPreco
+        : [];
+      setTurmas(rows);
+      setClassesComPreco(metaClasses);
+      if (initialData?.turma_preferencial_id) {
+        const turma = rows.find((row) => row.id === initialData.turma_preferencial_id);
+        if (turma?.curso_id) setCursoId(turma.curso_id);
+        if (turma?.classe_id) setClasseId(turma.classe_id);
+      }
     })();
-  }, [sel.cursoId, sel.classeId, escolaId]);
+  }, [escolaId, initialData?.ano_letivo, initialData?.turma_preferencial_id, sel.cursoId, sel.classeId, setClasseId, setCursoId]);
 
   const updateDraft = useCallback(
     async (patch: { curso_id?: string; classe_id?: string; turma_preferencial_id?: string }) => {
@@ -807,32 +960,72 @@ function Step2FitAcademico(props: {
     [escolaId, candidaturaId, canEditDraft]
   );
 
-  const onSelectCurso = async (cursoId: string) => {
+  const onSelectCurso = (cursoId: string) => {
     setSel((p) => ({ ...p, cursoId, turmaId: "" }));
-    setCursoId(cursoId || null);
-    await updateDraft({ curso_id: cursoId, classe_id: sel.classeId, turma_preferencial_id: "" });
   };
 
-  const onSelectClasse = async (classeId: string) => {
+  const onSelectClasse = (classeId: string) => {
     setSel((p) => ({ ...p, classeId, turmaId: "" }));
-    setClasseId(classeId || null);
-    await updateDraft({ curso_id: sel.cursoId, classe_id: classeId, turma_preferencial_id: "" });
   };
 
   const onSelectTurma = async (turmaId: string) => {
     setSel((p) => ({ ...p, turmaId }));
     setTurmaId(turmaId);
-    await updateDraft({ curso_id: sel.cursoId, classe_id: sel.classeId, turma_preferencial_id: turmaId });
+    const turma = turmas.find((row) => row.id === turmaId);
+    const cursoId = turma?.curso_id || null;
+    const classeId = turma?.classe_id || null;
+    setCursoId(cursoId);
+    setClasseId(classeId);
+    await updateDraft({ curso_id: cursoId ?? undefined, classe_id: classeId ?? undefined, turma_preferencial_id: turmaId });
   };
 
   const canAdvance = safeUuid(sel.turmaId) && safeUuid(candidaturaId);
+
+  useEffect(() => {
+    if (!hydrated || !isUuid(escolaId)) return;
+    writeLocalDraft(escolaId, {
+      candidaturaId,
+      fit: {
+        cursoId: sel.cursoId,
+        classeId: sel.classeId,
+        turmaId: sel.turmaId,
+      },
+    });
+  }, [hydrated, escolaId, candidaturaId, sel.cursoId, sel.classeId, sel.turmaId]);
+
+  const classesFromTurmas = useMemo(() => {
+    const map = new Map<string, RefItem>();
+    turmas.forEach((turma) => {
+      if (turma.classe_id) {
+        map.set(turma.classe_id, {
+          id: turma.classe_id,
+          nome: turma.classe_nome || "Classe",
+          curso_id: turma.curso_id ?? null,
+        });
+      }
+    });
+    return Array.from(map.values());
+  }, [turmas]);
+
+  const classOptions = useMemo(() => {
+    const filtered = sel.cursoId
+      ? classes.filter((c) => c.curso_id === sel.cursoId)
+      : classes;
+    const priceFiltered = classesComPreco.length > 0
+      ? filtered.filter((c) => classesComPreco.includes(c.id))
+      : filtered;
+    if (priceFiltered.length > 0) return priceFiltered;
+    return sel.cursoId
+      ? classesFromTurmas.filter((c) => c.curso_id === sel.cursoId)
+      : classesFromTurmas;
+  }, [classes, classesComPreco, classesFromTurmas, sel.cursoId]);
 
   return (
     <div className="space-y-5">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-klasse-green">Fit Acadêmico</h2>
-          <p className="text-sm text-slate-500">Curso, classe e turma preferencial.</p>
+          <p className="text-sm text-slate-500">Selecione a turma preferencial.</p>
         </div>
 
         <div className="flex items-center gap-2 text-sm">
@@ -857,14 +1050,22 @@ function Step2FitAcademico(props: {
         </div>
       )}
 
+      {localRestored && !initialData && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+          <p className="text-sm font-semibold text-emerald-700">
+            Dados restaurados localmente após queda ou retorno.
+          </p>
+        </div>
+      )}
+
       <div className="grid gap-3 md:grid-cols-2">
         <select
           value={sel.cursoId}
-          onChange={(e) => void onSelectCurso(e.target.value)}
+          onChange={(e) => onSelectCurso(e.target.value)}
           disabled={loadingCfg || !safeUuid(candidaturaId) || !canEditDraft}
           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
         >
-          <option value="">Selecione o curso</option>
+          <option value="">Filtrar por curso</option>
           {cursos.map((c) => (
             <option key={c.id} value={c.id}>
               {c.nome}
@@ -874,12 +1075,12 @@ function Step2FitAcademico(props: {
 
         <select
           value={sel.classeId}
-          onChange={(e) => void onSelectClasse(e.target.value)}
-          disabled={loadingCfg || !sel.cursoId || !safeUuid(candidaturaId) || !canEditDraft}
+          onChange={(e) => onSelectClasse(e.target.value)}
+          disabled={loadingCfg || !safeUuid(candidaturaId) || !canEditDraft}
           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
         >
-          <option value="">Selecione a classe</option>
-          {classes.map((c) => (
+          <option value="">Filtrar por classe</option>
+          {classOptions.map((c) => (
             <option key={c.id} value={c.id}>
               {c.nome}
             </option>
@@ -917,8 +1118,14 @@ function Step2FitAcademico(props: {
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate font-semibold text-slate-900">{t.nome}</p>
-                    <p className="text-xs text-slate-500">{t.turno ? `Turno: ${t.turno}` : "Turno: —"}</p>
+                    <p className="truncate font-semibold text-slate-900">
+                      {t.turma_codigo ? `${t.turma_codigo} · ${t.nome}` : t.nome}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {t.curso_nome ? `${t.curso_nome} · ` : ""}
+                      {t.classe_nome ? `${t.classe_nome} · ` : ""}
+                      {t.turno ? `Turno: ${t.turno}` : "Turno: —"}
+                    </p>
                   </div>
                   <div className="shrink-0 text-xs text-slate-600">
                     Vagas: {t.vagas_disponiveis ?? "—"}
@@ -927,9 +1134,17 @@ function Step2FitAcademico(props: {
               </button>
             );
           })}
-          {!loadingVagas && turmas.length === 0 ? (
-            <p className="text-sm text-slate-500">Nenhuma turma disponível para esta seleção.</p>
-          ) : null}
+      {!loadingVagas && turmas.length === 0 ? (
+        <p className="text-sm text-slate-500">
+          {sel.cursoId
+            ? sel.classeId
+              ? "Preço de matrícula não configurado — peça ao admin."
+              : classesComPreco.length === 0
+                ? "Preço de matrícula não configurado para este curso — peça ao admin."
+                : "Selecione a classe para ver turmas disponíveis."
+            : "Selecione um curso para ver turmas disponíveis."}
+        </p>
+      ) : null}
         </div>
       </div>
 
@@ -971,6 +1186,9 @@ function Step3Pagamento(props: {
   initialData: CandidaturaDraft | null;
   resumeMode: boolean;
   onEditDados: () => void;
+  setBaseCanEditDraft: (value: boolean) => void;
+  setEditOverride: (value: boolean) => void;
+  setResumeMode: (value: boolean) => void;
 }) {
   const {
     onBack,
@@ -984,6 +1202,9 @@ function Step3Pagamento(props: {
     initialData,
     resumeMode,
     onEditDados,
+    setBaseCanEditDraft,
+    setEditOverride,
+    setResumeMode,
   } = props;
 
   const [payment, setPayment] = useState({
@@ -991,11 +1212,13 @@ function Step3Pagamento(props: {
     comprovativo_url: "",
     amount: "",
     referencia: "",
+    parcial: false,
   });
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SimpleResult | null>(null);
   const [priceHint, setPriceHint] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     if (!isUuid(escolaId) || !isUuid(cursoId) || !isUuid(classeId)) return;
@@ -1027,7 +1250,7 @@ function Step3Pagamento(props: {
         const valorMatricula = Number(json?.data?.valor_matricula ?? 0);
         if (valorMatricula > 0) {
           setPriceHint(String(valorMatricula));
-          if (!payment.amount) {
+          if (!payment.parcial) {
             setPayment((p) => ({ ...p, amount: String(valorMatricula) }));
           }
         } else {
@@ -1043,7 +1266,18 @@ function Step3Pagamento(props: {
   }, [escolaId, cursoId, classeId, anoLetivo, payment.amount]);
 
   const onChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
+    const { name, value, type } = e.target;
+    if (type === "checkbox") {
+      const checked = (e.target as HTMLInputElement).checked;
+      setPayment((p) => {
+        const next = { ...p, [name]: checked };
+        if (!checked && priceHint) {
+          next.amount = String(priceHint);
+        }
+        return next;
+      });
+      return;
+    }
     setPayment((p) => ({ ...p, [name]: value }));
   };
 
@@ -1058,6 +1292,21 @@ function Step3Pagamento(props: {
   const handleFinalizarMatricula = async () => {
     if (!canFinalize) {
       setResult({ ok: false, error: "Candidatura ou turma inválida." });
+      return;
+    }
+
+    const amountValue = payment.amount ? Number(payment.amount) : null;
+    if (payment.parcial) {
+      if (!amountValue || amountValue <= 0) {
+        setResult({ ok: false, error: "Informe o valor pago." });
+        return;
+      }
+      if (priceHint && amountValue >= Number(priceHint)) {
+        setResult({ ok: false, error: "Pagamento parcial deve ser menor que o valor total." });
+        return;
+      }
+    } else if (!priceHint && (!amountValue || amountValue <= 0)) {
+      setResult({ ok: false, error: "Informe o valor da matrícula." });
       return;
     }
 
@@ -1093,7 +1342,23 @@ function Step3Pagamento(props: {
     );
 
     setLoading(false);
-    if (!convertResp.ok) return setResult({ ok: false, error: convertResp.error });
+    if (!convertResp.ok) {
+      const shouldReopen = convertResp.status >= 500;
+      if (shouldReopen && isUuid(candidaturaId)) {
+        try {
+          await postJson<SimpleResult>(
+            "/api/secretaria/admissoes/reabrir",
+            { candidatura_id: candidaturaId }
+          );
+          setBaseCanEditDraft(true);
+          setEditOverride(true);
+          setResumeMode(false);
+          setResult({ ok: false, error: "Falha na conversão. Candidatura reaberta para edição." });
+          return;
+        } catch {}
+      }
+      return setResult({ ok: false, error: convertResp.error });
+    }
     setResult({ ok: true, message: "Matrícula concluída pela secretaria." });
   };
 
@@ -1116,15 +1381,66 @@ function Step3Pagamento(props: {
   if (result) {
     return (
       <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-klasse-green">Resultado</h2>
+        <div>
+          <h2 className="text-lg font-semibold text-klasse-green">Resultado</h2>
+          {result.ok ? (
+            <p className="text-sm font-semibold text-klasse-green">
+              {result.message || "Operação concluída com sucesso."}
+            </p>
+          ) : (
+            <p className="text-sm font-semibold text-red-600">Erro: {result.error}</p>
+          )}
+        </div>
+
         {result.ok ? (
-          <p className="text-sm font-semibold text-klasse-green">
-            {result.message || "Operação concluída com sucesso."}
-          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => router.push(`/escola/${escolaId}/secretaria/matriculas`)}
+              className="rounded-xl bg-klasse-green px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
+            >
+              Ir para matrículas
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push(`/escola/${escolaId}/secretaria/admissoes/nova`)}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-klasse-gold/40"
+            >
+              Nova admissão
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push(`/escola/${escolaId}/secretaria/admissoes`)}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-klasse-gold/40"
+            >
+              Voltar ao radar
+            </button>
+          </div>
         ) : (
-          <p className="text-sm font-semibold text-red-600">Erro: {result.error}</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setResult(null)}
+              className="rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
+            >
+              Tentar novamente
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push(`/escola/${escolaId}/secretaria/admissoes`)}
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-klasse-gold/40"
+            >
+              Voltar ao radar
+            </button>
+          </div>
         )}
-        <pre className="rounded-xl bg-slate-100 p-4 text-xs">{JSON.stringify(result, null, 2)}</pre>
+
+        {!result.ok && (
+          <details className="rounded-xl bg-slate-100 px-4 py-3 text-xs text-slate-600">
+            <summary className="cursor-pointer font-semibold text-slate-600">Detalhes técnicos</summary>
+            <pre className="mt-2 whitespace-pre-wrap">{JSON.stringify(result, null, 2)}</pre>
+          </details>
+        )}
       </div>
     );
   }
@@ -1132,10 +1448,10 @@ function Step3Pagamento(props: {
   return (
     <div className="space-y-5">
       {resumeMode && (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h3 className="text-sm font-semibold text-slate-700">Resumo do Candidato</h3>
+              <h3 className="text-sm font-semibold text-klasse-green">Resumo do Candidato</h3>
               <p className="text-xs text-slate-500">
                 Dados bloqueados até ação explícita de edição.
               </p>
@@ -1143,7 +1459,7 @@ function Step3Pagamento(props: {
             <button
               type="button"
               onClick={onEditDados}
-              className="rounded-lg border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-white"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:border-klasse-gold/40"
             >
               Editar Dados
             </button>
@@ -1199,20 +1515,37 @@ function Step3Pagamento(props: {
           <option value="TRANSFERENCIA">Transferência</option>
         </select>
 
-        <input
-          type="number"
-          name="amount"
-          value={payment.amount}
-          onChange={onChange}
-          placeholder="Valor"
-          className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
-        />
+        <label className="flex items-center gap-2 text-xs text-slate-600">
+          <input
+            type="checkbox"
+            name="parcial"
+            checked={payment.parcial}
+            onChange={onChange}
+            className="h-4 w-4 rounded border-slate-300 text-klasse-green focus:ring-klasse-gold/40"
+          />
+          Pagamento parcial
+        </label>
 
-        {priceHint ? (
-          <p className="text-xs text-slate-500">
-            Valor da matrícula configurado: <span className="font-semibold">{priceHint}</span>
+        {payment.parcial || !priceHint ? (
+          <input
+            type="number"
+            name="amount"
+            value={payment.amount}
+            onChange={onChange}
+            placeholder={priceHint ? "Valor pago" : "Valor da matrícula"}
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
+          />
+        ) : (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+            Valor da matrícula: <span className="font-semibold">{priceHint}</span>
+          </div>
+        )}
+
+        {!priceHint && !payment.parcial && (
+          <p className="text-xs text-amber-700">
+            Sem tabela de preço configurada. Informe o valor da matrícula.
           </p>
-        ) : null}
+        )}
 
         {(payment.metodo_pagamento === "TPA" || payment.metodo_pagamento === "TRANSFERENCIA") && (
           <input
@@ -1273,6 +1606,7 @@ function Step3Pagamento(props: {
  * ========================= */
 
 export default function AdmissaoWizardClient({ escolaId }: { escolaId: string }) {
+  const router = useRouter();
   const [step, setStep] = useState(1);
   const [candidaturaId, setCandidaturaId] = useState<string | null>(null);
   const [turmaId, setTurmaId] = useState<string | null>(null);
@@ -1283,6 +1617,11 @@ export default function AdmissaoWizardClient({ escolaId }: { escolaId: string })
   const [baseCanEditDraft, setBaseCanEditDraft] = useState(true);
   const [resumeMode, setResumeMode] = useState(false);
   const [editOverride, setEditOverride] = useState(false);
+  const [showDrafts, setShowDrafts] = useState(false);
+  const [draftsLoading, setDraftsLoading] = useState(false);
+  const [draftsError, setDraftsError] = useState<string | null>(null);
+  const [wizardError, setWizardError] = useState<string | null>(null);
+  const [draftItems, setDraftItems] = useState<Array<{ id: string; nome_candidato: string | null; status: string | null; updated_at?: string | null }>>([]);
 
   const canEditDraft = baseCanEditDraft || editOverride;
 
@@ -1303,11 +1642,13 @@ export default function AdmissaoWizardClient({ escolaId }: { escolaId: string })
           setClasseId(json.item?.classe_id ?? null);
           setTurmaId(json.item?.turma_preferencial_id ?? null);
           const status = String(json.item?.status ?? '').toLowerCase();
-          const isResumeStatus = status === 'matriculado';
-          setBaseCanEditDraft(status === 'rascunho' || status === '');
-          setResumeMode(isResumeStatus);
+          const canEdit = status === 'rascunho' || status === '';
+          const resumeStatuses = ['matriculado', 'aprovada', 'aguardando_pagamento'];
+          const paymentStatuses = ['matriculado', 'aprovada', 'aguardando_pagamento'];
+          setBaseCanEditDraft(canEdit);
+          setResumeMode(resumeStatuses.includes(status));
           setEditOverride(false);
-          if (isResumeStatus) {
+          if (paymentStatuses.includes(status)) {
             setStep(3);
           }
         }
@@ -1321,22 +1662,179 @@ export default function AdmissaoWizardClient({ escolaId }: { escolaId: string })
     }
   }, [searchParams]);
 
-  const handleEditDados = () => {
+  const handleEditDados = async () => {
+    setWizardError(null);
+    if (candidaturaId && initialData?.status) {
+      const status = String(initialData.status).toLowerCase();
+      if (status !== 'rascunho') {
+        const resp = await postJson<SimpleResult>(
+          "/api/secretaria/admissoes/reabrir",
+          { candidatura_id: candidaturaId }
+        );
+        if (!resp.ok) {
+          setWizardError(resp.error);
+          return;
+        }
+      }
+    }
     setEditOverride(true);
     setResumeMode(false);
     setStep(1);
   };
 
+  const loadDrafts = useCallback(async () => {
+    if (!isUuid(escolaId)) return;
+    setDraftsLoading(true);
+    setDraftsError(null);
+    try {
+      const params = new URLSearchParams({ escolaId, limit: "20" });
+      const res = await fetch(`/api/secretaria/admissoes/rascunhos?${params.toString()}`, { cache: "no-store" });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error ?? "Falha ao carregar rascunhos.");
+      }
+      setDraftItems(Array.isArray(json.items) ? json.items : []);
+    } catch (err: any) {
+      setDraftsError(err.message || "Falha ao carregar rascunhos.");
+    } finally {
+      setDraftsLoading(false);
+    }
+  }, [escolaId]);
+
+  const handleResume = (id: string) => {
+    if (!isUuid(id)) return;
+    const next = `/escola/${escolaId}/secretaria/admissoes/nova?candidaturaId=${id}`;
+    router.push(next);
+  };
+
+  const handleDeleteDraft = async (id: string) => {
+    if (!isUuid(id)) return;
+    const confirmDelete = window.confirm("Excluir este rascunho? Esta ação não pode ser desfeita.");
+    if (!confirmDelete) return;
+    try {
+      const params = new URLSearchParams({ escolaId });
+      const res = await fetch(`/api/secretaria/admissoes/rascunhos?${params.toString()}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error ?? "Falha ao excluir rascunho.");
+      }
+      setDraftItems((prev) => prev.filter((item) => item.id !== id));
+      const cached = readLocalDraft(escolaId);
+      if (cached?.candidaturaId === id) {
+        writeLocalDraft(escolaId, { candidaturaId: null, identificacao: {}, fit: {} });
+      }
+    } catch (err: any) {
+      setDraftsError(err.message || "Falha ao excluir rascunho.");
+    }
+  };
+
+  const handleDeleteAllDrafts = async () => {
+    const confirmDelete = window.confirm("Excluir todos os rascunhos? Esta ação não pode ser desfeita.");
+    if (!confirmDelete) return;
+    try {
+      const params = new URLSearchParams({ escolaId });
+      const res = await fetch(`/api/secretaria/admissoes/rascunhos?${params.toString()}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ all: true }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.ok) {
+        throw new Error(json?.error ?? "Falha ao excluir rascunhos.");
+      }
+      setDraftItems([]);
+      writeLocalDraft(escolaId, { candidaturaId: null, identificacao: {}, fit: {} });
+    } catch (err: any) {
+      setDraftsError(err.message || "Falha ao excluir rascunhos.");
+    }
+  };
+
   return (
     <div className="space-y-4">
-      <div>
+      <div className="flex items-start justify-between gap-3">
         <h1 className="text-xl font-semibold text-klasse-green">Nova Admissão</h1>
-        <p className="text-sm text-slate-500">
-          Fluxo rascunho → submetida → aprovada → matriculado.
-        </p>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => {
+              setShowDrafts((prev) => !prev);
+              if (!showDrafts) void loadDrafts();
+            }}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:border-klasse-gold/40"
+          >
+            Retomar rascunho
+          </button>
+          {showDrafts && (
+            <div className="absolute right-0 mt-2 w-72 rounded-xl border border-slate-200 bg-white shadow-xl p-3 z-30">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[11px] font-semibold text-slate-500 uppercase">Rascunhos</p>
+                {draftItems.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleDeleteAllDrafts}
+                    className="text-[11px] font-semibold text-rose-600 hover:text-rose-700"
+                  >
+                    Limpar tudo
+                  </button>
+                )}
+              </div>
+              {draftsLoading && (
+                <p className="text-xs text-slate-500">Carregando rascunhos…</p>
+              )}
+              {draftsError && (
+                <p className="text-xs text-rose-600">{draftsError}</p>
+              )}
+              {!draftsLoading && !draftsError && draftItems.length === 0 && (
+                <p className="text-xs text-slate-500">Nenhum rascunho encontrado.</p>
+              )}
+              <div className="space-y-2">
+                {draftItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleResume(item.id)}
+                        className="text-left flex-1"
+                      >
+                        <p className="font-semibold text-slate-700">
+                          {item.nome_candidato || "Sem nome"}
+                        </p>
+                        <p className="text-[10px] text-slate-400">
+                          {item.status || "rascunho"}
+                        </p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteDraft(item.id)}
+                        className="text-[10px] font-semibold text-rose-600 hover:text-rose-700"
+                      >
+                        Limpar
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
+      <p className="text-sm text-slate-500">
+        Fluxo rascunho → submetida → aprovada → matriculado.
+      </p>
 
       <div className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        {wizardError && (
+          <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {wizardError}
+          </div>
+        )}
         {step === 1 ? (
           <Step1Identificacao
             onNext={() => setStep(2)}
@@ -1358,6 +1856,7 @@ export default function AdmissaoWizardClient({ escolaId }: { escolaId: string })
             setClasseId={setClasseId}
             initialData={initialData}
             canEditDraft={canEditDraft}
+            hydrated={hydrated}
           />
         ) : (
           <Step3Pagamento
@@ -1372,6 +1871,9 @@ export default function AdmissaoWizardClient({ escolaId }: { escolaId: string })
             initialData={initialData}
             resumeMode={resumeMode}
             onEditDados={handleEditDados}
+            setBaseCanEditDraft={setBaseCanEditDraft}
+            setEditOverride={setEditOverride}
+            setResumeMode={setResumeMode}
           />
         )}
       </div>

@@ -34,17 +34,32 @@ export async function loginAction(_: unknown, formData: FormData) {
   }
 
   if (data.user) {
+    const { data: prof } = await supabase
+      .from("profiles")
+      .select("current_escola_id, escola_id")
+      .eq("user_id", data.user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const metaEscolaId = (data.user.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? null;
+    const preferredEscolaId = (prof as any)?.current_escola_id || (prof as any)?.escola_id || metaEscolaId || null;
+
     const { data: escolaUsuarios, error: userError } = await supabase
       .from("escola_users")
       .select("papel, escola_id")
       .eq("user_id", data.user.id)
-      .limit(1);
+      .order("created_at", { ascending: false })
+      .limit(5);
 
     if (userError) {
       console.error("Erro ao buscar papel/escola do usuário:", userError);
     }
 
-    const firstLink = Array.isArray(escolaUsuarios) ? escolaUsuarios[0] : null;
+    const preferredLink = Array.isArray(escolaUsuarios)
+      ? escolaUsuarios.find((link) => link.escola_id === preferredEscolaId)
+      : null;
+    const firstLink = preferredLink || (Array.isArray(escolaUsuarios) ? escolaUsuarios[0] : null);
 
     if (firstLink) {
       const { papel, escola_id } = firstLink;

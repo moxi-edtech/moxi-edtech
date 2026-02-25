@@ -146,7 +146,7 @@ function ConfirmDialog({ open, message, loading, onConfirm, onCancel }: {
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4 animate-in zoom-in-95 duration-150">
         <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+          <AlertCircle className="w-5 h-5 text-[#9a7010] flex-shrink-0 mt-0.5" />
           <p className="text-sm font-medium text-slate-700">{message}</p>
         </div>
         <div className="flex justify-end gap-3">
@@ -172,8 +172,8 @@ function UpgradeModal({ open, onClose }: { open: boolean; onClose: () => void })
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4 animate-in zoom-in-95 duration-150">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-amber-50">
-            <Lock className="w-5 h-5 text-amber-600" />
+          <div className="p-2.5 rounded-xl bg-[#E3B23C]/10">
+            <Lock className="w-5 h-5 text-[#9a7010]" />
           </div>
           <div>
             <h3 className="font-bold text-slate-900 text-sm">Funcionalidade bloqueada</h3>
@@ -221,8 +221,8 @@ function PillTabs({ active, onChange, count }: {
           className={`
             px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200
             ${active === id
-              ? "bg-slate-900 text-white shadow-sm"
-              : "text-slate-500 hover:text-slate-800"
+              ? "bg-white text-slate-900 shadow-sm border border-slate-200"
+              : "text-slate-500 hover:text-slate-700"
             }
           `}
         >
@@ -238,12 +238,13 @@ function PillTabs({ active, onChange, count }: {
 function MatriculaBadge({ status }: { status: string }) {
   const ok = ["ativa", "ativo"].includes(status.toLowerCase());
   return (
-    <span className={`
-      px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border
-      ${ok
-        ? "bg-[#1F6B3B]/10 text-[#1F6B3B] border-[#1F6B3B]/20"
-        : "bg-rose-50 text-rose-600 border-rose-100"}
-    `}>
+    <span
+      className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${
+        ok
+          ? "bg-[#1F6B3B]/10 text-[#1F6B3B] border-[#1F6B3B]/20"
+          : "bg-rose-50 text-rose-700 border-rose-200"
+      }`}
+    >
       {status}
     </span>
   );
@@ -252,11 +253,11 @@ function MatriculaBadge({ status }: { status: string }) {
 function FinanceiroBadge({ status }: { status?: "em_dia" | "atraso" }) {
   if (!status) return <span className="text-[10px] text-slate-400">—</span>;
   return status === "em_dia" ? (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#1F6B3B]/10 text-[#1F6B3B] text-[10px] font-bold border border-[#1F6B3B]/20">
+    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#1F6B3B]/10 text-[#1F6B3B] text-[10px] font-bold border border-[#1F6B3B]/20">
       <CheckCircle2 size={9} /> Em dia
     </span>
   ) : (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 text-rose-600 text-[10px] font-bold border border-rose-100">
+    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 text-[10px] font-bold border border-rose-200">
       <AlertCircle size={9} /> Atraso
     </span>
   );
@@ -266,22 +267,17 @@ function FinanceiroBadge({ status }: { status?: "em_dia" | "atraso" }) {
 
 function AlunoRow({ aluno, style }: { aluno: Aluno; style?: React.CSSProperties }) {
   return (
-    <tr className="hover:bg-slate-50 transition-colors group" style={style}>
-      <td className="px-6 py-4 font-mono text-slate-400 text-xs">
+    <tr className="group hover:bg-slate-50/80 transition-colors" style={style}>
+      <td className="px-5 py-3.5 text-[10px] font-semibold text-slate-400">
         {String(aluno.numero).padStart(2, "0")}
       </td>
-      <td className="px-6 py-4">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-xs font-bold text-slate-600 flex-shrink-0">
-            {aluno.nome[0]}
-          </div>
-          <div className="min-w-0">
-            <p className="font-bold text-slate-800 text-sm truncate">{aluno.nome}</p>
-            <p className="text-[10px] text-slate-400">BI: {aluno.bi || "—"}</p>
-          </div>
+      <td className="px-5 py-3.5">
+        <div className="min-w-0">
+          <p className="font-bold text-slate-800 truncate">{aluno.nome}</p>
+          <p className="text-[10px] text-slate-400">BI: {aluno.bi || "—"}</p>
         </div>
       </td>
-      <td className="px-6 py-4">
+      <td className="px-5 py-3.5">
         <div className="flex flex-col gap-1">
           <span className="inline-flex items-center rounded-md bg-slate-100 px-2 py-1 font-mono text-[11px] font-bold text-slate-700 ring-1 ring-slate-200 w-fit">
             {aluno.numero_matricula ?? "—"}
@@ -289,11 +285,11 @@ function AlunoRow({ aluno, style }: { aluno: Aluno; style?: React.CSSProperties 
           <MatriculaBadge status={aluno.status_matricula || "indefinido"} />
         </div>
       </td>
-      <td className="px-6 py-4">
+      <td className="px-5 py-3.5">
         <FinanceiroBadge status={aluno.status_financeiro} />
       </td>
-      <td className="px-6 py-4 text-right">
-        <button className="p-2 text-slate-300 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors opacity-0 group-hover:opacity-100">
+      <td className="px-5 py-3.5 text-right">
+        <button className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:border-[#1F6B3B] hover:text-[#1F6B3B] transition-colors opacity-0 group-hover:opacity-100">
           <MoreVertical size={15} />
         </button>
       </td>
@@ -315,29 +311,29 @@ function DocCard({ icon: Icon, title, desc, onClick, highlight, locked }: {
     <button
       onClick={onClick}
       className={`
-        relative p-5 rounded-xl border transition-all duration-200 flex flex-col items-start gap-3
+        relative p-5 rounded-2xl border transition-all duration-200 flex flex-col items-start gap-3
         group text-left w-full hover:-translate-y-0.5
         ${highlight
-          ? "bg-[#1F6B3B] border-[#1F6B3B] hover:shadow-lg hover:shadow-green-900/20"
-          : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-md"
+          ? "bg-[#1F6B3B]/10 border-[#1F6B3B]/20 hover:shadow-sm"
+          : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm"
         }
       `}
     >
       {locked && (
-        <span className="absolute top-3 right-3 p-1 rounded-md bg-black/10">
-          <Lock size={10} className={highlight ? "text-white/60" : "text-slate-400"} />
+        <span className="absolute top-3 right-3 p-1 rounded-md bg-slate-100">
+          <Lock size={10} className="text-slate-400" />
         </span>
       )}
 
       <div className={`p-2.5 rounded-xl transition-colors ${
-        highlight ? "bg-white/15" : "bg-slate-100 group-hover:bg-slate-200"
+        highlight ? "bg-white" : "bg-slate-100 group-hover:bg-slate-200"
       }`}>
-        <Icon size={18} className={highlight ? "text-white" : "text-slate-600"} />
+        <Icon size={18} className={highlight ? "text-[#1F6B3B]" : "text-slate-600"} />
       </div>
 
       <div>
-        <h4 className={`font-bold text-sm ${highlight ? "text-white" : "text-slate-800"}`}>{title}</h4>
-        <p className={`text-xs mt-0.5 leading-relaxed ${highlight ? "text-white/70" : "text-slate-500"}`}>{desc}</p>
+        <h4 className={`font-bold text-sm ${highlight ? "text-slate-900" : "text-slate-900"}`}>{title}</h4>
+        <p className={`text-xs mt-0.5 leading-relaxed ${highlight ? "text-slate-500" : "text-slate-500"}`}>{desc}</p>
       </div>
     </button>
   );
@@ -641,20 +637,20 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
   const ocupacaoPct = Math.min((turma.ocupacao / max) * 100, 100);
   const ocupacaoBar = ocupacaoPct >= 100 ? "bg-rose-500"
     : ocupacaoPct >= 80 ? "bg-[#E3B23C]"
-    : "bg-white/80";
+    : "bg-[#1F6B3B]";
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
 
       {/* ── HERO — dark green, strong identity ───────────────────────────── */}
-      <div className="bg-[#1F6B3B] text-white">
+      <div className="bg-slate-50/50">
         <div className="max-w-7xl mx-auto px-6 pt-6 pb-8">
 
           {/* Breadcrumb */}
           <Link
             href="/secretaria/turmas"
-            className="inline-flex items-center gap-1.5 text-white/60 hover:text-white text-xs font-medium mb-6 transition-colors"
+            className="inline-flex items-center gap-1.5 text-slate-500 hover:text-slate-700 text-xs font-medium mb-6 transition-colors"
           >
             <ChevronLeft size={14} /> Turmas
           </Link>
@@ -663,14 +659,14 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             <div className="flex items-center gap-5">
               {/* Avatar — white on green */}
-              <div className="w-16 h-16 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center flex-shrink-0 backdrop-blur-sm">
-                <span className="text-2xl font-black tracking-tighter text-white">
+              <div className="w-16 h-16 rounded-2xl bg-[#1F6B3B]/10 border border-[#1F6B3B]/20 flex items-center justify-center flex-shrink-0">
+                <span className="text-2xl font-black tracking-tighter text-[#1F6B3B]">
                   {turma.nome.substring(0, 2).toUpperCase()}
                 </span>
               </div>
 
               <div>
-                <h1 className="text-2xl font-black text-white tracking-tight">{turma.nome}</h1>
+                <h1 className="text-2xl font-black text-slate-900 tracking-tight">{turma.nome}</h1>
                 <div className="flex flex-wrap items-center gap-2 mt-2">
                   {[
                     { icon: School,        label: turma.classe_nome },
@@ -679,7 +675,7 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
                     { icon: MapPin,        label: `Sala ${turma.sala || "N/D"}` },
                   ].filter(Boolean).map(({ icon: Icon, label }: any) => (
                     <span key={label}
-                      className="flex items-center gap-1.5 bg-white/10 border border-white/15 px-2.5 py-1 rounded-lg text-xs font-medium text-white/80">
+                      className="flex items-center gap-1.5 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600">
                       <Icon size={11} /> {label}
                     </span>
                   ))}
@@ -689,12 +685,12 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
 
             {/* Actions — settings subtle, matricular gold */}
             <div className="flex gap-3 flex-shrink-0">
-              <button className="p-2.5 bg-white/10 border border-white/20 rounded-xl text-white/70 hover:text-white hover:bg-white/20 transition-colors">
+              <button className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors">
                 <Settings size={17} />
               </button>
               <Link
                 href={`/secretaria/admissoes/nova?turmaId=${turma.id}`}
-                className="flex items-center gap-2 bg-[#E3B23C] text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:brightness-95 transition-all shadow-lg shadow-black/20 active:scale-95"
+                className="flex items-center gap-2 bg-[#E3B23C] text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:brightness-95 transition-all shadow-sm active:scale-95"
               >
                 <UserPlus size={16} /> Matricular
               </Link>
@@ -705,59 +701,59 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-8">
 
             {/* Ocupação */}
-            <div className="bg-white/10 border border-white/15 rounded-xl p-4 backdrop-blur-sm">
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">Capacidade</p>
-                <UsersRound size={14} className="text-white/40" />
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Capacidade</p>
+                <UsersRound size={14} className="text-slate-400" />
               </div>
               <div className="flex items-baseline gap-1.5 mb-3">
-                <span className="text-2xl font-black text-white">{turma.ocupacao}</span>
-                <span className="text-sm text-white/50">/ {turma.capacidade}</span>
+                <span className="text-2xl font-black text-slate-900">{turma.ocupacao}</span>
+                <span className="text-sm text-slate-400">/ {turma.capacidade}</span>
                 <span className={`ml-auto text-xs font-bold ${
-                  ocupacaoPct >= 100 ? "text-rose-300" :
-                  ocupacaoPct >= 80  ? "text-[#E3B23C]" : "text-white/60"
+                  ocupacaoPct >= 100 ? "text-rose-600" :
+                  ocupacaoPct >= 80  ? "text-[#9a7010]" : "text-slate-400"
                 }`}>
                   {Math.round(ocupacaoPct)}%
                 </span>
               </div>
-              <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+              <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                 <div className={`h-full rounded-full transition-all ${ocupacaoBar}`}
                   style={{ width: `${ocupacaoPct}%` }} />
               </div>
             </div>
 
             {/* Diretor */}
-            <div className="bg-white/10 border border-white/15 rounded-xl p-4 backdrop-blur-sm">
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">Diretor de Turma</p>
-                <UserCheck size={14} className="text-white/40" />
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Diretor de Turma</p>
+                <UserCheck size={14} className="text-slate-400" />
               </div>
               {turma.diretor ? (
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-white/20 border border-white/20 flex items-center justify-center text-sm font-bold text-white flex-shrink-0">
+                  <div className="w-9 h-9 rounded-full bg-[#1F6B3B]/10 border border-[#1F6B3B]/20 flex items-center justify-center text-sm font-bold text-[#1F6B3B] flex-shrink-0">
                     {turma.diretor.nome[0]}
                   </div>
                   <div className="min-w-0">
-                    <p className="font-bold text-white text-sm truncate">{turma.diretor.nome}</p>
-                    <p className="text-[10px] text-white/50 truncate">{turma.diretor.email}</p>
+                    <p className="font-bold text-slate-900 text-sm truncate">{turma.diretor.nome}</p>
+                    <p className="text-[10px] text-slate-400 truncate">{turma.diretor.email}</p>
                   </div>
                 </div>
               ) : (
-                <button className="text-xs font-bold text-[#E3B23C] hover:underline flex items-center gap-1.5 mt-1">
+                <button className="text-xs font-bold text-[#9a7010] hover:underline flex items-center gap-1.5 mt-1">
                   <UserPlus size={12} /> Atribuir professor
                 </button>
               )}
             </div>
 
             {/* Ano letivo */}
-            <div className="bg-white/10 border border-white/15 rounded-xl p-4 backdrop-blur-sm">
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-white/50">Ano Letivo</p>
-                <CalendarCheck size={14} className="text-white/40" />
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Ano Letivo</p>
+                <CalendarCheck size={14} className="text-slate-400" />
               </div>
-              <p className="text-2xl font-black text-white">{turma.ano_letivo}</p>
-              <span className="inline-flex items-center gap-1.5 mt-2 text-[10px] font-bold text-white/60">
-                <span className="w-1.5 h-1.5 rounded-full bg-white/40 animate-pulse" />
+              <p className="text-2xl font-black text-slate-900">{turma.ano_letivo}</p>
+              <span className="inline-flex items-center gap-1.5 mt-2 text-[10px] font-bold text-slate-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#1F6B3B]/60 animate-pulse" />
                 Em andamento
               </span>
             </div>
@@ -766,7 +762,7 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
 
         {/* ── Tab bar — sits at bottom of hero, transitions into content ── */}
         <div className="max-w-7xl mx-auto px-6 pb-0">
-          <div className="flex items-center justify-between border-t border-white/10 pt-4 pb-0">
+          <div className="flex items-center justify-between border-t border-slate-200 pt-4 pb-0">
             <PillTabs
               active={activeTab}
               onChange={setActiveTab}
@@ -784,23 +780,24 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
           <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-1 duration-300">
             <div className="overflow-x-auto">
               <div ref={alunosScrollRef} className="max-h-[600px] overflow-y-auto">
-                <table className="w-full table-fixed text-left text-sm">
+                <table className="min-w-full text-sm">
                   <thead
                     className="bg-slate-50 border-b border-slate-100 sticky top-0 z-10"
                     style={{ display: "table", width: "100%", tableLayout: "fixed" }}
                   >
                     <tr>
-                      <th className="px-6 py-3.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider w-14">Nº</th>
-                      <th className="px-6 py-3.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Estudante</th>
-                      <th className="px-6 py-3.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Matrícula</th>
-                      <th className="px-6 py-3.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Financeiro</th>
-                      <th className="px-6 py-3.5 text-right text-[11px] font-bold text-slate-400 uppercase tracking-wider w-16">—</th>
+                      <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest w-14">Nº</th>
+                      <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Aluno</th>
+                      <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Matrícula</th>
+                      <th className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Financeiro</th>
+                      <th className="px-5 py-3 text-right text-[10px] font-bold text-slate-400 uppercase tracking-widest w-16">—</th>
                     </tr>
                   </thead>
                   <tbody
                     className="divide-y divide-slate-50"
                     style={alunos.length > 0 ? {
-                      position: "relative", display: "block",
+                      position: "relative",
+                      display: "block",
                       height: alunosVirtualizer.getTotalSize(),
                     } : undefined}
                   >
@@ -816,9 +813,13 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
                           key={alunos[vr.index].aluno_id}
                           aluno={alunos[vr.index]}
                           style={{
-                            position: "absolute", top: 0, left: 0,
+                            position: "absolute",
+                            top: 0,
+                            left: 0,
                             transform: `translateY(${vr.start}px)`,
-                            width: "100%", display: "table", tableLayout: "fixed",
+                            width: "100%",
+                            display: "table",
+                            tableLayout: "fixed",
                           }}
                         />
                       ))
@@ -844,7 +845,7 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
                 <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${
                   periodoClosed
                     ? "bg-[#1F6B3B]/10 text-[#1F6B3B] border-[#1F6B3B]/20"
-                    : "bg-amber-50 text-amber-700 border-amber-200"
+                    : "bg-[#E3B23C]/10 text-[#9a7010] border-[#E3B23C]/20"
                 }`}>
                   {periodoClosed ? <><CheckCircle2 size={11} /> Fechado</> : "Aberto"}
                 </span>
@@ -868,14 +869,14 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
                 <button
                   onClick={() => setConfirmOpen(true)}
                   disabled={closing || !periodoId || periodoClosed}
-                  className="px-5 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-bold disabled:opacity-40 hover:bg-slate-800 transition-colors"
+                  className="px-5 py-2.5 bg-[#E3B23C] text-white rounded-xl text-sm font-bold disabled:opacity-40 hover:brightness-95 transition-colors"
                 >
                   {closing ? "A fechar…" : "Fechar período"}
                 </button>
               </div>
 
               {periodos.length === 0 && (
-                <p className="mt-3 text-xs text-amber-600 flex items-center gap-1.5">
+                <p className="mt-3 text-xs text-[#9a7010] flex items-center gap-1.5">
                   <AlertCircle size={11} /> Nenhum período encontrado para este ano letivo.
                 </p>
               )}
@@ -899,12 +900,12 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
                       <UserCheck size={11} className="flex-shrink-0" />
                       {d.professor
                         ? <span className="truncate">{d.professor}</span>
-                        : <span className="text-amber-600 font-semibold">Professor N/D</span>
+                        : <span className="text-[#9a7010] font-semibold">Professor N/D</span>
                       }
                     </p>
                     <div className="flex flex-col gap-2">
                       <button
-                        className="w-full py-2 text-xs font-bold bg-slate-100 text-slate-600 rounded-lg group-hover:bg-slate-900 group-hover:text-white transition-colors"
+                        className="w-full py-2 text-xs font-bold bg-slate-100 text-slate-600 rounded-lg group-hover:bg-[#E3B23C] group-hover:text-white transition-colors"
                         onClick={() =>
                           setActionModal({
                             type: "notas",
@@ -921,7 +922,7 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
                       </button>
                       {!d.professor && (
                         <button
-                          className="w-full py-2 text-xs font-bold bg-amber-50 text-amber-700 rounded-lg border border-amber-200 hover:bg-amber-100 transition-colors"
+                          className="w-full py-2 text-xs font-bold bg-[#E3B23C]/10 text-[#9a7010] rounded-lg border border-[#E3B23C]/20 hover:bg-[#E3B23C]/20 transition-colors"
                           onClick={() =>
                             setActionModal({
                               type: "professor",
@@ -1128,7 +1129,7 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
                   <Link
                     href={`/escola/${escolaId}/professores?tab=atribuir`}
                     onClick={() => setActionModal(null)}
-                    className="px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-bold hover:bg-amber-600"
+                    className="px-4 py-2 rounded-xl bg-[#E3B23C] text-white text-sm font-bold hover:brightness-95"
                   >
                     Atribuir agora
                   </Link>

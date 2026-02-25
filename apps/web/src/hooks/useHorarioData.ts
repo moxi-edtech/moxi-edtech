@@ -94,9 +94,16 @@ const mapAulas = (items: any[]): SchedulerAula[] =>
   });
 
 const fetchJson = async (url: string, signal: AbortSignal) => {
-  const res = await fetch(url, { cache: "force-cache", signal });
-  const json = await res.json().catch(() => ({}));
-  return { res, json };
+  try {
+    const res = await fetch(url, { cache: "force-cache", signal });
+    const json = await res.json().catch(() => ({}));
+    return { res, json };
+  } catch (err: any) {
+    if (err?.name === "AbortError") {
+      return { res: new Response(null, { status: 499 }), json: {} };
+    }
+    throw err;
+  }
 };
 
 export function useHorarioBaseData(escolaId?: string, refreshToken?: number) {

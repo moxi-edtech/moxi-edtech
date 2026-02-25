@@ -57,8 +57,9 @@ type QuickAction = {
   subtitle: string;
   icon: React.ComponentType<{ className?: string }>;
   onClick: () => void;
-  emphasis?: "primary";
   badge?: "alert" | null;
+  isPagamento?: boolean;
+  inadimplente?: boolean;
   disabled?: boolean;
 };
 
@@ -69,36 +70,37 @@ function QuickCard(props: {
   const { action } = props;
   const Icon = action.icon;
 
+  const isPagamentoCritico = action.isPagamento && action.inadimplente;
+
   return (
     <button
       type="button"
       onClick={action.onClick}
       disabled={action.disabled}
       className={cx(
-        "relative w-full rounded-xl border border-slate-200 bg-white p-4 text-left",
-        "hover:bg-slate-50 transition-colors",
+        "relative w-full rounded-2xl border border-slate-200 bg-white p-4 text-left",
+        "hover:border-[#1F6B3B]/30 hover:shadow-sm transition-all",
         "disabled:opacity-60 disabled:cursor-not-allowed",
-        action.emphasis === "primary" && "ring-1 ring-klasse-gold/25"
+        isPagamentoCritico && "border-rose-200"
       )}
     >
       {action.badge === "alert" ? (
-        <span className="absolute top-2 right-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-white text-xs font-semibold">
-          !
-        </span>
+        <span className="absolute top-3 right-3 inline-flex h-2.5 w-2.5 items-center justify-center rounded-full bg-rose-500 animate-pulse" />
       ) : null}
 
       <div className="flex items-start gap-3">
         <div
           className={cx(
-            "h-10 w-10 rounded-xl border border-slate-200 bg-slate-100 flex items-center justify-center shrink-0"
+            "rounded-xl border border-slate-200 p-2 flex items-center justify-center shrink-0",
+            isPagamentoCritico ? "bg-rose-100 text-rose-600 border-rose-200" : "bg-slate-100 text-slate-500"
           )}
         >
-          <Icon className="h-5 w-5 text-slate-600" />
+          <Icon className="h-5 w-5" />
         </div>
 
         <div className="min-w-0">
-          <div className="text-sm font-semibold text-slate-900">{action.title}</div>
-          <div className="text-xs text-slate-500">{action.subtitle}</div>
+          <div className="text-sm font-bold text-slate-900">{action.title}</div>
+          <div className="text-xs text-slate-400">{action.subtitle}</div>
         </div>
       </div>
     </button>
@@ -166,7 +168,8 @@ export function AcoesRapidasBalcao({
         subtitle: "Propina",
         icon: CreditCard,
         onClick: openPagamento,
-        emphasis: "primary",
+        isPagamento: true,
+        inadimplente: totalPendente > 0,
         badge: totalPendente > 0 ? "alert" : null,
         disabled: !mensalidadeSugerida,
       },
@@ -205,54 +208,71 @@ export function AcoesRapidasBalcao({
   return (
     <>
       <div className="space-y-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
-              Ações rápidas
-            </div>
-            <div className="text-sm font-medium text-slate-900 truncate">
-              {alunoNome}
-            </div>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Balcão rápido</span>
+            <span className="text-sm font-bold text-slate-900 truncate">{alunoNome}</span>
           </div>
+        </div>
 
-          <div className="text-right">
-            <div className="text-xs text-slate-500">Pendente</div>
+        <div
+          className={cx(
+            "rounded-2xl border px-4 py-3 shadow-sm flex flex-col gap-1",
+            totalPendente > 0
+              ? "bg-rose-50 border-rose-200"
+              : "bg-[#1F6B3B]/5 border-[#1F6B3B]/20"
+          )}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <span
+              className={cx(
+                "text-[10px] font-bold uppercase tracking-widest",
+                totalPendente > 0 ? "text-rose-600" : "text-[#1F6B3B]/70"
+              )}
+            >
+              {totalPendente > 0 ? "Em dívida" : "Situação financeira"}
+            </span>
+            <span className="text-[10px] font-semibold text-slate-400">Resumo</span>
+          </div>
+          <div className="flex items-end justify-between gap-3">
             <div
               className={cx(
-                "text-sm font-semibold",
-                totalPendente > 0 ? "text-slate-900" : "text-slate-500"
+                "text-2xl font-black",
+                totalPendente > 0 ? "text-rose-700" : "text-[#1F6B3B]"
               )}
-              title={moneyAOA.format(totalPendente)}
             >
               {moneyAOA.format(totalPendente)}
             </div>
+            <span className="text-xs text-slate-400">Kz</span>
           </div>
         </div>
 
-        {/* Top actions (3 col) */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {actions.slice(0, 3).map((a) => (
-            <QuickCard key={a.id} action={a} />
-          ))}
-        </div>
-
-        {/* Secondary actions (2 col) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {actions.slice(3).map((a) => (
-            <QuickCard key={a.id} action={a} />
-          ))}
-        </div>
-
-        {/* Context hint (optional, neutral) */}
         {pendentes.length > 0 && mensalidadeSugerida ? (
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
-            Sugestão: pagar{" "}
-            <span className="font-semibold text-slate-900">
-              {mensalidadeSugerida.mes}/{mensalidadeSugerida.ano}
+          <div className="rounded-2xl border border-[#E3B23C]/20 bg-[#E3B23C]/10 px-4 py-3 text-xs text-slate-500">
+            Mês em aberto: {" "}
+            <span className="text-sm font-bold text-[#9a7010]">
+              {mensalidadeSugerida.mes}/{mensalidadeSugerida.ano} — {moneyAOA.format(mensalidadeSugerida.valor)}
             </span>{" "}
-            ({moneyAOA.format(mensalidadeSugerida.valor)}).
+            <button
+              type="button"
+              onClick={openPagamento}
+              className="ml-2 text-xs font-bold text-[#1F6B3B] underline"
+            >
+              Pagar agora
+            </button>
           </div>
         ) : null}
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {actions.map((a, index) => {
+            const shouldSpan = actions.length === 5 && index === actions.length - 1;
+            return (
+              <div key={a.id} className={shouldSpan ? "sm:col-span-3" : ""}>
+                <QuickCard action={a} />
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       <ModalPagamentoRapido

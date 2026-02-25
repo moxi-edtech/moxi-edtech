@@ -125,19 +125,51 @@ export default function QuadroHorariosPage() {
   }, []);
 
   useEffect(() => {
-    if (!escolaId) return;
-    const key = `horarios:versao:${escolaId}`;
+    if (!escolaId || !turmaId) return;
+    const key = `horarios:versao:${escolaId}:${turmaId}`;
     const stored = typeof window !== "undefined" ? window.sessionStorage.getItem(key) : null;
     if (stored) {
       setVersaoId(stored);
       return;
     }
-    const next = crypto.randomUUID();
-    if (typeof window !== "undefined") {
-      window.sessionStorage.setItem(key, next);
-    }
-    setVersaoId(next);
-  }, [escolaId]);
+
+    let active = true;
+    fetch(`/api/secretaria/turmas/${turmaId}/horario/versao?escola_id=${encodeURIComponent(escolaId)}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (!active) return;
+        if (json?.ok && json?.versao_id) {
+          if (typeof window !== "undefined") {
+            window.sessionStorage.setItem(key, json.versao_id);
+          }
+          setVersaoId(json.versao_id);
+          return;
+        }
+        if (typeof window !== "undefined") {
+          window.sessionStorage.removeItem(key);
+        }
+        const next = crypto.randomUUID();
+        if (typeof window !== "undefined") {
+          window.sessionStorage.setItem(key, next);
+        }
+        setVersaoId(next);
+      })
+      .catch(() => {
+        if (!active) return;
+        if (typeof window !== "undefined") {
+          window.sessionStorage.removeItem(key);
+        }
+        const next = crypto.randomUUID();
+        if (typeof window !== "undefined") {
+          window.sessionStorage.setItem(key, next);
+        }
+        setVersaoId(next);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [escolaId, turmaId]);
 
   useEffect(() => {
     if (turmas.length === 0) {

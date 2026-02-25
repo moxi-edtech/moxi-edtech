@@ -1,1 +1,31 @@
-export { default } from "@/app/secretaria/(portal-secretaria)/alunos/page";
+import { redirect } from "next/navigation";
+import AuditPageView from "@/components/audit/AuditPageView";
+import AlunosSecretariaPage from "@/components/secretaria/AlunosSecretariaPage";
+import { supabaseServer } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  const { id: escolaId } = await params;
+  const supabase = await supabaseServer();
+  const { data: session } = await supabase.auth.getUser();
+  const user = session?.user;
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const resolvedEscolaId = await resolveEscolaIdForUser(supabase, user.id, escolaId);
+  if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+    redirect("/login");
+  }
+
+  return (
+    <>
+      <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="alunos_list" />
+      <AlunosSecretariaPage escolaId={escolaId} />
+    </>
+  );
+}

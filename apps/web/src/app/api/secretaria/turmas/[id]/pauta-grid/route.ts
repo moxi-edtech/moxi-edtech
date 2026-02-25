@@ -4,8 +4,6 @@ import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { authorizeTurmasManage } from '@/lib/escola/disciplinas'
 import { applyKf2ListInvariants } from '@/lib/kf2'
-import { requireFeature } from '@/lib/plan/requireFeature'
-import { HttpError } from '@/lib/errors'
 import {
   buildComponentesAtivos,
   buildPesoPorTipo,
@@ -42,15 +40,6 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
     const authz = await authorizeTurmasManage(supabase as any, escolaId, user.id)
     if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 })
-
-    try {
-      await requireFeature('doc_qr_code')
-    } catch (err) {
-      if (err instanceof HttpError) {
-        return NextResponse.json({ ok: false, error: err.message, code: err.code }, { status: err.status })
-      }
-      throw err
-    }
 
     const { data: turma } = await supabase
       .from('turmas')

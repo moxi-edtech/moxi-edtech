@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { AcoesRapidasBalcao } from "@/components/secretaria/AcoesRapidasBalcao";
 import { DossierHeader } from "@/components/aluno/DossierHeader";
 import { DossierTabs } from "@/components/aluno/DossierTabs";
-import { DossierFinanceiroSection, DossierHistoricoSection, DossierPerfilSection } from "@/components/aluno/DossierSeccoes";
+import { DossierDocumentosSection, DossierFinanceiroSection, DossierHistoricoSection, DossierPerfilSection } from "@/components/aluno/DossierSeccoes";
 import { normalizeDossier, toMensalidadeAcoes } from "@/lib/aluno";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
@@ -34,11 +34,10 @@ export default async function AlunoPerfilPage({ escolaId, alunoId, role }: { esc
           slotPerfil={<DossierPerfilSection aluno={aluno} />}
           slotFinanceiro={<DossierFinanceiroSection aluno={aluno} />}
           slotHistorico={<DossierHistoricoSection aluno={aluno} />}
-          slotDocumentos={<div className="text-sm text-slate-500">Documentos disponíveis no balcão.</div>}
+          slotDocumentos={<DossierDocumentosSection alunoId={alunoId} />}
         />
         {role === "secretaria" && (
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-            <h2 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-4">Balcão Rápido</h2>
             <AcoesRapidasBalcao
               alunoId={alunoId}
               alunoNome={aluno.perfil.nome}
