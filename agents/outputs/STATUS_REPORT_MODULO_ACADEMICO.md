@@ -216,13 +216,13 @@ O módulo Académico já tem pilares fortes de backend: publish via RPC, control
 7. **SSOT de disciplinas**: presets DB + `school_subjects` agora são a fonte primária no install/apply.
 8. **`conta_para_media_med` no cálculo oficial**: boletim/pauta anual respeitam disciplinas que não contam.
 9. **Governança do catálogo global**: RPCs admin-only para gerir presets e disciplinas globais.
+10. **Telemetria padronizada**: eventos de publish e fecho de turma emitidos no backend.
 
 #### 🔴 Alta prioridade pendente
 - Sem pendências críticas após os últimos ajustes.
 
 #### 🟡 Média prioridade pendente
 1. Criar testes de contrato DB+API para evitar regressão dos gates (API e insert direto via SQL).
-2. Padronizar métricas/telemetria do publish (latência/erros) e fecho de turma.
 
 #### 🟢 Baixa prioridade pendente
 1. Consolidar nomenclatura de status (`status_aprovacao`, `status_validacao`, `curriculo_status`) em contrato único.
