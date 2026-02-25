@@ -186,27 +186,27 @@ Escopo validado: Next.js App Router + TypeScript (`apps/web/src/**`) e Supabase 
 ### Resumo executivo (maturidade Enterprise)
 O módulo Académico já tem pilares fortes de backend: publish via RPC, controle transacional com lock, RLS ativa em tabelas centrais e modelagem normalizada de `turma_disciplinas`. O problema principal hoje não é ausência de funcionalidade, é **coerência de contrato entre fluxos**. Existem caminhos modernos (presets globais + customização por escola) convivendo com fluxos legados (`CURRICULUM_PRESETS` em código + `disciplinas_catalogo`), e múltiplas rotas de criação de turma com enforcement desigual. Para um padrão Enterprise (Workday/ServiceNow-like), o risco está em bypass de regras de status e em governança de schema não totalmente unificada.
 
-### Prioridades de correção
+### Prioridades de correção (atualizado pós-fixes)
 
-#### Alta prioridade
+#### ✅ Já coberto nesta sequência de PRs
+1. **Hard gate backend para criação de turma**: `POST /api/escolas/[id]/turmas` agora valida currículo publicado (com ano/classe) antes do insert.
+2. **Hard gate no PostgreSQL**: trigger `trg_ensure_curriculo_published` + função reforçada bloqueiam insert direto em `turmas` sem currículo publicado e sem matriz.
+3. **Flag de impacto oficial**: `conta_para_media_med` adicionada e propagada no RPC `gerar_turmas_from_curriculo` para `turma_disciplinas`.
+4. **Integridade de avaliações**: FK `avaliacoes.turma_disciplina_id -> turma_disciplinas(id)` adicionada com pre-check de órfãos.
+
+#### 🔴 Alta prioridade pendente
 1. **Unificar SSOT de disciplinas**: escolher definitivamente o motor (`curriculum_preset_subjects` + `school_subjects` OU legado), com plano de migração e depreciação.
-2. **Hard gate backend para criação de turma**: toda criação (API/server action/RPC) deve exigir currículo publicado e classe coberta.
-3. **Adicionar flag de impacto oficial na aprovação** (`conta_para_media_med` ou equivalente) e conectar em RPCs de cálculo de resultado anual.
-4. **Fechar lacunas de integridade por FK** (especialmente ligações de avaliação/nota/frequência com `turma_disciplinas`, se realmente ausentes no schema vigente).
+2. **Conectar `conta_para_media_med` ao cálculo final oficial** (boletim/pauta/anual) de forma única e testada ponta-a-ponta.
+3. **Governança explícita do catálogo global**: política formal para quem pode alterar presets globais.
 
-#### Média prioridade
-1. Tornar explícita política de governança do catálogo global (quem pode alterar presets globais e por qual role).
-2. Criar pre-flight de completude por curso inteiro (classes esperadas x classes com matriz válida).
+#### 🟡 Média prioridade pendente
+1. Criar testes de contrato DB+API para evitar regressão dos gates (API e insert direto via SQL).
+2. Criar pre-flight de completude por curso inteiro (classes esperadas x classes com matriz válida), além da validação por classe.
 3. Adicionar observabilidade: logs/audit padronizados para publish + geração de turmas em todos os caminhos.
 
-#### Baixa prioridade
+#### 🟢 Baixa prioridade pendente
 1. Consolidar nomenclatura de status (`status_aprovacao`, `status_validacao`, `curriculo_status`) em contrato único.
 2. Reduzir fallback de presets em memória quando DB estiver disponível para evitar drift de conteúdo.
-
-### Quick wins (alto impacto / baixo esforço)
-- Aplicar bloqueio de currículo publicado no `POST /api/escolas/[id]/turmas`.
-- Criar coluna booleana explícita para impacto em aprovação e popular default seguro.
-- Adicionar testes de contrato (API + RPC) para garantir que não existe criação de turma com currículo draft.
 
 ### Hardening estrutural (refactors maiores)
 - Migrar completamente o fluxo de presets para DB (com versionamento e trilha de auditoria), removendo dependência do grande preset hardcoded como fonte primária.
