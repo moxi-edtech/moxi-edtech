@@ -65,6 +65,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const pdfBuffer = await renderPautaGeralBuffer(payload)
     const headers = new Headers({
       "Content-Type": "application/pdf",
+      "X-Klasse-Pdf-Template": "PautaGeralV1",
+      "X-Klasse-Pdf-Kind": "trimestral-geral",
       "Content-Disposition": `attachment; filename=Pauta_Geral_${payload.metadata.turma}_${numero}T.pdf`,
     })
 

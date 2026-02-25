@@ -40,6 +40,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const pdfBuffer = await renderPautaAnualBuffer(payload)
     const headers = new Headers({
       "Content-Type": "application/pdf",
+      "X-Klasse-Pdf-Template": "PautaAnualV1",
+      "X-Klasse-Pdf-Kind": "anual",
       "Content-Disposition": `attachment; filename=Pauta_Anual_${payload.metadata.turma}.pdf`,
     })
 

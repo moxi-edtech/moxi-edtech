@@ -30,13 +30,16 @@ const s = StyleSheet.create({
     textAlign: "center",
   },
   table: {
+    width: "100%",
     borderWidth: 1,
     borderColor: "#1f2937",
+    marginTop: 6,
   },
   row: {
     flexDirection: "row",
     borderBottomWidth: 1,
     borderBottomColor: "#1f2937",
+    alignItems: "center",
   },
   cell: {
     borderRightWidth: 1,
@@ -54,6 +57,38 @@ const s = StyleSheet.create({
   },
   disciplinaHeader: {
     backgroundColor: "#f8fafc",
+  },
+  rotatedContainer: {
+    width: "100%",
+    height: 90,
+    borderBottomWidth: 1,
+    borderBottomColor: "#1f2937",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    paddingBottom: 4,
+  },
+  rotatedText: {
+    fontSize: 7,
+    textTransform: "uppercase",
+    transform: "rotate(-90deg)",
+    width: 90,
+    textAlign: "left",
+  },
+  gradesWrapper: {
+    flexDirection: "row",
+    width: "100%",
+    height: 16,
+  },
+  gradeCell: {
+    flex: 1,
+    borderRightWidth: 1,
+    borderRightColor: "#1f2937",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  fixedHeaderCell: {
+    height: 106,
+    justifyContent: "center",
   },
   footer: {
     marginTop: 10,
@@ -88,7 +123,6 @@ const toPercent = (value: number) => `${value.toFixed(2)}%`
 export function PautaAnualV1({ metadata, disciplinas, alunos }: Props) {
   const fixedWidth = 6 + 28 + 5 + 4 + 10
   const disciplinaWidth = disciplinas.length > 0 ? (100 - fixedWidth) / disciplinas.length : 0
-  const disciplinaCellWidth = disciplinaWidth / 4
   const pages = chunkRows(alunos, ROWS_PER_PAGE)
 
   return (
@@ -109,43 +143,47 @@ export function PautaAnualV1({ metadata, disciplinas, alunos }: Props) {
 
           <View style={s.table}>
             <View style={[s.row, s.disciplinaHeader]} wrap={false}>
-              <View style={[s.cell, { width: toPercent(6) }]}>
+              <View style={[s.cell, s.fixedHeaderCell, { width: toPercent(6) }]}> 
                 <Text style={[s.cellHeader, s.cellCenter]}>Nº</Text>
               </View>
-              <View style={[s.cell, { width: toPercent(28) }]}>
+              <View style={[s.cell, s.fixedHeaderCell, { width: toPercent(28) }]}> 
                 <Text style={[s.cellHeader, s.cellCenter]}>Nome Completo do Aluno</Text>
               </View>
-              <View style={[s.cell, { width: toPercent(5) }]}>
+              <View style={[s.cell, s.fixedHeaderCell, { width: toPercent(5) }]}> 
                 <Text style={[s.cellHeader, s.cellCenter]}>Idade</Text>
               </View>
-              <View style={[s.cell, { width: toPercent(4) }]}>
+              <View style={[s.cell, s.fixedHeaderCell, { width: toPercent(4) }]}> 
                 <Text style={[s.cellHeader, s.cellCenter]}>Sexo</Text>
               </View>
               {disciplinas.map((disciplina) => (
-                <View key={disciplina.id} style={[s.cell, { width: toPercent(disciplinaWidth) }]}>
-                  <Text style={[s.cellHeader, s.cellCenter]}>{disciplina.nome}</Text>
+                <View key={disciplina.id} style={[s.cell, { width: toPercent(disciplinaWidth), paddingHorizontal: 0, paddingVertical: 0 }]}> 
+                  <View style={s.rotatedContainer}>
+                    <Text style={s.rotatedText}>{disciplina.nome}</Text>
+                  </View>
+                  <View style={s.gradesWrapper}>
+                    {[
+                      "MT1",
+                      "MT2",
+                      "MT3",
+                      "MFD",
+                    ].map((label) => (
+                      <View
+                        key={`${disciplina.id}-${label}`}
+                        style={[
+                          s.gradeCell,
+                          { flex: 1 },
+                          label === "MFD" ? { borderRightWidth: 0 } : {},
+                        ]}
+                      >
+                        <Text style={[s.cellHeader, s.cellCenter]}>{label}</Text>
+                      </View>
+                    ))}
+                  </View>
                 </View>
               ))}
-              <View style={[s.cell, { width: toPercent(10) }]}>
+              <View style={[s.cell, s.fixedHeaderCell, { width: toPercent(10), borderRightWidth: 0 }]}> 
                 <Text style={[s.cellHeader, s.cellCenter]}>Resultado Final</Text>
               </View>
-            </View>
-
-            <View style={[s.row, s.disciplinaHeader]} wrap={false}>
-              <View style={[s.cell, { width: toPercent(6) }]} />
-              <View style={[s.cell, { width: toPercent(28) }]} />
-              <View style={[s.cell, { width: toPercent(5) }]} />
-              <View style={[s.cell, { width: toPercent(4) }]} />
-              {disciplinas.map((disciplina) => (
-                <View key={`sub-${disciplina.id}`} style={{ flexDirection: "row", width: toPercent(disciplinaWidth) }}>
-                  {["MT1", "MT2", "MT3", "MFD"].map((label) => (
-                    <View key={`${disciplina.id}-${label}`} style={[s.cell, { width: toPercent(disciplinaCellWidth) }]}> 
-                      <Text style={[s.cellHeader, s.cellCenter]}>{label}</Text>
-                    </View>
-                  ))}
-                </View>
-              ))}
-              <View style={[s.cell, { width: toPercent(10) }]} />
             </View>
 
             {pageRows.map((aluno) => (
@@ -168,14 +206,21 @@ export function PautaAnualV1({ metadata, disciplinas, alunos }: Props) {
                   return (
                     <View key={`${aluno.aluno_id}-${disciplina.id}`} style={{ flexDirection: "row", width: toPercent(disciplinaWidth) }}>
                       {values.map((valor, idx) => (
-                        <View key={`${aluno.aluno_id}-${disciplina.id}-${idx}`} style={[s.cell, { width: toPercent(disciplinaCellWidth) }]}> 
+                        <View
+                          key={`${aluno.aluno_id}-${disciplina.id}-${idx}`}
+                          style={[
+                            s.cell,
+                            { flex: 1 },
+                            idx === values.length - 1 ? { borderRightWidth: 0 } : {},
+                          ]}
+                        >
                           <Text style={[s.cellCenter]}>{valor}</Text>
                         </View>
                       ))}
                     </View>
                   )
                 })}
-                <View style={[s.cell, { width: toPercent(10) }]}>
+                <View style={[s.cell, { width: toPercent(10), borderRightWidth: 0 }]}> 
                   <Text style={[s.cellCenter]}>{aluno.resultado_final}</Text>
                 </View>
               </View>
