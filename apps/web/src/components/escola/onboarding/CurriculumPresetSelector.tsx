@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from "react";
 import {
-  CURRICULUM_PRESETS,
   CURRICULUM_PRESETS_META,
   type CurriculumKey,
 } from "@/lib/onboarding";
+import { usePresetSubjects } from "@/hooks/usePresetSubjects";
 import { BookOpen, ChevronDown, Check, Info } from "lucide-react";
 import {
   PRESET_TO_TYPE,
@@ -120,7 +120,7 @@ export function CurriculumPresetSelector({
       ? TYPE_COLORS[selectedType]
       : TYPE_COLORS.geral;
 
-  const subjectsPreview = value ? CURRICULUM_PRESETS[value] ?? [] : [];
+  const { subjects: subjectsPreview } = usePresetSubjects(value ?? null);
 
   return (
     <section className="w-full space-y-6">
@@ -262,7 +262,7 @@ export function CurriculumPresetSelector({
                 <div className="flex items-center gap-3 pt-2 text-xs text-slate-600">
                   <span className="flex items-center gap-1">
                     <BookOpen className="w-3 h-3" />
-                    {selectedMeta.subjectsCount} disciplinas
+                    {subjectsPreview.length} disciplinas
                   </span>
                   <span className="text-slate-300">•</span>
                   <span className="text-emerald-600 font-medium">
@@ -280,7 +280,7 @@ export function CurriculumPresetSelector({
                 <ChevronDown className="w-3 h-3 group-open:rotate-180 transition-transform" />
                 Ver disciplinas incluídas (
                 {Math.min(
-                  selectedMeta.subjectsCount,
+                  subjectsPreview.length,
                   subjectsPreview.length
                 )}
                 )
@@ -292,12 +292,12 @@ export function CurriculumPresetSelector({
                       key={idx}
                       className="text-xs text-slate-600 px-2 py-1 bg-white rounded border border-slate-100"
                     >
-                      {subject.nome}
+                      {subject.name}
                     </li>
                   ))}
-                  {selectedMeta.subjectsCount > 9 && (
+                  {subjectsPreview.length > 9 && (
                     <li className="text-xs text-slate-400 px-2 py-1 italic">
-                      +{selectedMeta.subjectsCount - 9} mais...
+                      +{subjectsPreview.length - 9} mais...
                     </li>
                   )}
                 </ul>

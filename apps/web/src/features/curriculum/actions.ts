@@ -1,7 +1,15 @@
 "use server";
 
-import { CURRICULUM_PRESETS, type CurriculumDisciplineBlueprint, type CurriculumKey } from "@/lib/onboarding";
+import type { CurriculumKey } from "@/lib/academico/curriculum-presets";
 import { createClient } from "@/utils/supabase/server";
+
+type CurriculumDisciplineBlueprint = {
+  nome: string;
+  classe: string;
+  componente: string;
+  tipo?: string;
+  horas?: number | null;
+};
 
 const COMMON_TRUNK_SUBJECTS = [
   "Português",
@@ -160,6 +168,54 @@ const buildFallbackPreset = (
       })),
     );
 
+const loadPresetBlueprint = async (
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  escolaId: string,
+  presetKey: CurriculumKey,
+): Promise<CurriculumDisciplineBlueprint[]> => {
+  const { data: presetRows, error: presetErr } = await supabase
+    .from("curriculum_preset_subjects")
+    .select("id, name, grade_level, component, weekly_hours, subject_type")
+    .eq("preset_id", presetKey);
+
+  if (presetErr) throw presetErr;
+
+  const presetIds = (presetRows || []).map((row: any) => row.id).filter(Boolean);
+  if (presetIds.length === 0) return [];
+
+  const { data: schoolRows, error: schoolErr } = await supabase
+    .from("school_subjects")
+    .select("preset_subject_id, custom_name, custom_weekly_hours, is_active")
+    .eq("escola_id", escolaId)
+    .in("preset_subject_id", presetIds);
+
+  if (schoolErr) throw schoolErr;
+
+  const schoolMap = new Map(
+    (schoolRows || []).map((row: any) => [row.preset_subject_id, row])
+  );
+
+  return (presetRows || [])
+    .map((row: any) => {
+      const override = schoolMap.get(row.id) as
+        | {
+            custom_name?: string | null;
+            custom_weekly_hours?: number | null;
+            is_active?: boolean | null;
+          }
+        | undefined;
+      if (override?.is_active === false) return null;
+      return {
+        nome: String(override?.custom_name ?? row.name ?? "").trim(),
+        classe: String(row.grade_level ?? "").trim(),
+        componente: row.component ?? "GERAL",
+        tipo: row.subject_type ?? "core",
+        horas: Number(override?.custom_weekly_hours ?? row.weekly_hours ?? 0),
+      } as CurriculumDisciplineBlueprint;
+    })
+    .filter((row): row is CurriculumDisciplineBlueprint => Boolean(row && row.nome && row.classe));
+};
+
 export async function hydrateCourseCurriculum(
   escolaId: string,
   cursoId: string,
@@ -186,7 +242,7 @@ export async function hydrateCourseCurriculum(
   if (!classes || classes.length === 0) return;
 
   const presetKey = detectPresetByCourse((curso as any).nome, (curso as any).codigo);
-  const preset = presetKey ? CURRICULUM_PRESETS[presetKey] : null;
+  const preset = presetKey ? await loadPresetBlueprint(supabase, escolaId, presetKey) : null;
   const buildRowsFromBlueprint = (source: CurriculumDisciplineBlueprint[]) =>
     classes.flatMap((cls) => {
       if (!cls?.nome) return [] as any[];

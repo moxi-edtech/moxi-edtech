@@ -23,7 +23,7 @@ export const dynamic = "force-dynamic";
 // Tipos
 // ─────────────────────────────────────────────────────────────────────────────
 
-type SearchParams = { q?: string; days?: string };
+type SearchParams = { q?: string; days?: string; portal?: string };
 type AuditLog = Database["public"]["Tables"]["audit_logs"]["Row"];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -34,6 +34,17 @@ function parseDays(days?: string): number {
   const d = parseInt(days ?? "30", 10);
   return Number.isFinite(d) && d > 0 ? d : 30;
 }
+
+const PORTAIS = [
+  { label: "Secretaria", value: "secretaria" },
+  { label: "Professor", value: "professor" },
+  { label: "Financeiro", value: "financeiro" },
+  { label: "Aluno", value: "aluno" },
+  { label: "Encarregado", value: "encarregado" },
+  { label: "Admin", value: "admin_escola" },
+] as const;
+
+const PORTAIS_SET = new Set<string>(PORTAIS.map((p) => p.value));
 
 function sinceFromDays(days: number): string {
   if (days >= 3650) return "1970-01-01";
@@ -410,6 +421,10 @@ export default async function Page(props: {
   if (!resolvedEscolaId || resolvedEscolaId !== escolaId) redirect("/login");
 
   const q = (searchParams.q ?? "").trim();
+  const portal = PORTAIS_SET.has(searchParams.portal ?? "")
+    ? (searchParams.portal as typeof PORTAIS[number]["value"])
+    : "secretaria";
+  const portalLabel = PORTAIS.find((p) => p.value === portal)?.label ?? "Secretaria";
   const days = parseDays(searchParams.days);
   const since = sinceFromDays(days);
 
@@ -419,7 +434,7 @@ export default async function Page(props: {
     .from("audit_logs")
     .select("id, created_at, action, entity, entity_id, details")
     .eq("escola_id", escolaId)
-    .eq("portal", "secretaria")
+    .eq("portal", portal)
     .gte("created_at", since)
     .order("created_at", { ascending: false })
     .limit(200);
@@ -480,7 +495,7 @@ export default async function Page(props: {
                     Relatórios da Secretaria
                   </h1>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Audit trail de todas as acções da secretaria · últimos {days}{" "}
+                    Audit trail de todas as acções do portal {portalLabel.toLowerCase()} · últimos {days}{" "}
                     {days === 1 ? "dia" : "dias"}
                   </p>
                 </div>
@@ -488,7 +503,7 @@ export default async function Page(props: {
 
               <div className="flex items-center gap-2 flex-shrink-0">
                 <Link
-                  href={`${basePath}/export?format=csv&days=${days}&q=${encodeURIComponent(q)}`}
+                  href={`${basePath}/export?format=csv&days=${days}&q=${encodeURIComponent(q)}&portal=${portal}`}
                   target="_blank"
                   rel="noreferrer"
                   className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:border-[#1F6B3B] hover:text-[#1F6B3B] transition-colors"
@@ -497,7 +512,7 @@ export default async function Page(props: {
                   CSV
                 </Link>
                 <Link
-                  href={`${basePath}/export?format=json&days=${days}&q=${encodeURIComponent(q)}`}
+                  href={`${basePath}/export?format=json&days=${days}&q=${encodeURIComponent(q)}&portal=${portal}`}
                   target="_blank"
                   rel="noreferrer"
                   className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:border-[#1F6B3B] hover:text-[#1F6B3B] transition-colors"
@@ -551,7 +566,7 @@ export default async function Page(props: {
                   {PERIODOS.map((p) => (
                     <Link
                       key={p.value}
-                      href={`${basePath}?days=${p.value}&q=${encodeURIComponent(q)}`}
+                      href={`${basePath}?days=${p.value}&q=${encodeURIComponent(q)}&portal=${portal}`}
                       className={`rounded-lg px-3 py-1.5 text-xs font-bold border transition-colors ${
                         String(days) === p.value
                           ? "bg-[#1F6B3B] text-white border-[#1F6B3B]"
@@ -585,7 +600,18 @@ export default async function Page(props: {
                   <Filter size={11} />
                   Filtrar
                 </button>
-                {q && (
+                <select
+                  name="portal"
+                  defaultValue={portal}
+                  className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600"
+                >
+                  {PORTAIS.map((p) => (
+                    <option key={p.value} value={p.value}>
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
+                {(q || portal !== "secretaria") && (
                   <Link
                     href={`${basePath}?days=${days}`}
                     className="text-xs font-semibold text-slate-400 hover:text-slate-600"

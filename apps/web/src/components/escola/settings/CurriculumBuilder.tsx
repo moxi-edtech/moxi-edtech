@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Layers,
   BookOpen,
@@ -19,10 +19,10 @@ import { useToast } from "@/components/feedback/FeedbackSystem";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
 import {
-  CURRICULUM_PRESETS,
   CURRICULUM_PRESETS_META,
   type CurriculumKey,
 } from "@/lib/onboarding";
+import { createClient } from "@/lib/supabaseClient";
 import {
   TYPE_ICONS,
   TYPE_COLORS,
@@ -144,22 +144,12 @@ const normalizeClassLabel = (cls: string): string => {
   return /classe$/i.test(trimmed) ? trimmed : `${trimmed} Classe`;
 };
 
-const getSubjectsFromPreset = (key: CurriculumKey | null): string[] => {
+const getSubjectsFromPreset = (
+  key: CurriculumKey | null,
+  cache: Record<string, string[]>
+): string[] => {
   if (!key) return [];
-  const blueprint = CURRICULUM_PRESETS[key];
-  if (!blueprint) return [];
-
-  const seen = new Set<string>();
-  const ordered: string[] = [];
-
-  blueprint.forEach((item) => {
-    if (!seen.has(item.nome)) {
-      seen.add(item.nome);
-      ordered.push(item.nome);
-    }
-  });
-
-  return ordered;
+  return cache[key] ?? [];
 };
 
 function CourseTypeIcon({
@@ -190,6 +180,7 @@ export default function CurriculumBuilder({
   onCancel?: () => void;
   initialPresetKey?: CurriculumKey | null;
 }) {
+  const supabase = useMemo(() => createClient(), []);
   const { success, error } = useToast();
   const [step, setStep] = useState(1);
   const [category, setCategory] = useState<CategoryId>("geral");
@@ -198,6 +189,42 @@ export default function CurriculumBuilder({
   const [showModal, setShowModal] = useState(false);
   const [newSubject, setNewSubject] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [presetSubjectsByKey, setPresetSubjectsByKey] = useState<Record<string, string[]>>({});
+
+  const loadPresetSubjects = useCallback(async (key: CurriculumKey | null) => {
+    if (!key) return [];
+    if (presetSubjectsByKey[key]) return presetSubjectsByKey[key];
+
+    const { data: presetRows, error: presetErr } = await supabase
+      .from("curriculum_preset_subjects")
+      .select("id, name")
+      .eq("preset_id", key);
+    if (presetErr) throw presetErr;
+
+    const presetIds = (presetRows || []).map((row: any) => row.id).filter(Boolean);
+    let schoolMap = new Map<string, any>();
+    if (presetIds.length > 0) {
+      const { data: schoolRows, error: schoolErr } = await supabase
+        .from("school_subjects")
+        .select("preset_subject_id, custom_name, is_active")
+        .eq("escola_id", escolaId)
+        .in("preset_subject_id", presetIds);
+      if (schoolErr) throw schoolErr;
+      schoolMap = new Map((schoolRows || []).map((row: any) => [row.preset_subject_id, row]));
+    }
+
+    const subjects = (presetRows || [])
+      .map((row: any) => {
+        const override = schoolMap.get(row.id);
+        if (override?.is_active === false) return null;
+        return String(override?.custom_name ?? row.name ?? "").trim();
+      })
+      .filter(Boolean) as string[];
+
+    const unique = Array.from(new Set(subjects));
+    setPresetSubjectsByKey((prev) => ({ ...prev, [key]: unique }));
+    return unique;
+  }, [escolaId, presetSubjectsByKey, supabase]);
   const subjectsScrollRef = useRef<HTMLDivElement | null>(null);
 
   const [config, setConfig] = useState<BuilderConfig>({
@@ -340,7 +367,7 @@ export default function CurriculumBuilder({
   // AÇÕES
   // ------------------------------------------------------
 
-  const handleSelectPreset = (preset: any, isCustom: boolean) => {
+  const handleSelectPreset = async (preset: any, isCustom: boolean) => {
     const presetKey = (preset.key || null) as CurriculumKey | null;
     const baseKey: string =
       (isCustom && preset.associatedPreset) || preset.key;
@@ -365,7 +392,7 @@ export default function CurriculumBuilder({
     const subjects: string[] =
       isCustom && preset.subjects
         ? preset.subjects
-        : getSubjectsFromPreset(presetKey);
+        : await loadPresetSubjects(presetKey);
 
     setConfig({
       presetKey: presetKey,
@@ -387,19 +414,22 @@ export default function CurriculumBuilder({
     if (config.presetKey === initialPresetKey) return;
 
     const meta = CURRICULUM_PRESETS_META[initialPresetKey];
-    const subjects = getSubjectsFromPreset(initialPresetKey);
 
     handleTrackSelect(getSafeTypeFromPreset(initialPresetKey));
 
-    handleSelectPreset(
-      {
-        key: initialPresetKey,
-        label: meta?.label,
-        classes: (meta?.classes || []).map(normalizeClassLabel),
-        subjects,
-      },
-      false
-    );
+    loadPresetSubjects(initialPresetKey)
+      .then((subjects) => {
+        void handleSelectPreset(
+          {
+            key: initialPresetKey,
+            label: meta?.label,
+            classes: (meta?.classes || []).map(normalizeClassLabel),
+            subjects,
+          },
+          false
+        );
+      })
+      .catch(() => null);
   }, [initialPresetKey, config.presetKey]);
 
   const toggleClass = (cls: string) => {
@@ -601,7 +631,7 @@ export default function CurriculumBuilder({
 
     setShowModal(false);
     setCategory("custom");
-    handleSelectPreset(newCustom, true);
+    void handleSelectPreset(newCustom, true);
   };
 
   // ------------------------------------------------------
@@ -884,7 +914,7 @@ export default function CurriculumBuilder({
                       return (
                         <div
                           key={p.key}
-                          onClick={() => handleSelectPreset(p, p.isCustom)}
+                          onClick={() => void handleSelectPreset(p, p.isCustom)}
                           className={`p-5 rounded-xl border-2 cursor-pointer transition-all hover:shadow-md flex items-center gap-4 relative
                             ${
                               isSelected
@@ -1228,6 +1258,8 @@ export default function CurriculumBuilder({
         <CustomCourseModal
           onClose={() => setShowModal(false)}
           onSave={handleSaveCustomFromModal}
+          presetSubjectsByKey={presetSubjectsByKey}
+          onLoadPresetSubjects={loadPresetSubjects}
         />
       )}
     </div>
@@ -1241,6 +1273,8 @@ export default function CurriculumBuilder({
 function CustomCourseModal({
   onClose,
   onSave,
+  presetSubjectsByKey,
+  onLoadPresetSubjects,
 }: {
   onClose: () => void;
   onSave: (data: {
@@ -1249,6 +1283,8 @@ function CustomCourseModal({
     classes: string[];
     subjects: string[];
   }) => void;
+  presetSubjectsByKey: Record<string, string[]>;
+  onLoadPresetSubjects: (key: CurriculumKey) => void;
 }) {
   const [data, setData] = useState<{
     label: string;
@@ -1349,11 +1385,12 @@ function CustomCourseModal({
                     return { ...prev, associatedPreset: "" };
                   }
 
+                  onLoadPresetSubjects(nextPreset);
                   const defaultClasses =
                     (CURRICULUM_PRESETS_META[nextPreset]?.classes || []).map(
                       normalizeClassLabel
                     );
-                  const defaultSubjects = getSubjectsFromPreset(nextPreset);
+                  const defaultSubjects = getSubjectsFromPreset(nextPreset, presetSubjectsByKey);
 
                   return {
                     ...prev,

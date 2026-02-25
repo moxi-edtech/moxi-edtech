@@ -217,6 +217,7 @@ O módulo Académico já tem pilares fortes de backend: publish via RPC, control
 8. **`conta_para_media_med` no cálculo oficial**: boletim/pauta anual respeitam disciplinas que não contam.
 9. **Governança do catálogo global**: RPCs admin-only para gerir presets e disciplinas globais.
 10. **Telemetria padronizada**: eventos de publish e fecho de turma emitidos no backend.
+11. **Presets hardcoded removidos**: leituras ativas passaram a consultar `curriculum_preset_subjects`.
 
 #### 🔴 Alta prioridade pendente
 - Sem pendências críticas após os últimos ajustes.
@@ -226,7 +227,7 @@ O módulo Académico já tem pilares fortes de backend: publish via RPC, control
 
 #### 🟢 Baixa prioridade pendente
 1. Consolidar nomenclatura de status (`status_aprovacao`, `status_validacao`, `curriculo_status`) em contrato único.
-2. Remover usos residuais de presets hardcoded onde houver leitura ativa de disciplinas.
+2. (removido) — uso de presets hardcoded substituído por leitura em DB nos fluxos ativos.
 
 ### Hardening estrutural (refactors maiores)
 - Migrar completamente o fluxo de presets para DB (com versionamento e trilha de auditoria), removendo dependência do grande preset hardcoded como fonte primária.
