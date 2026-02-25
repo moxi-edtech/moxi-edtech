@@ -14,15 +14,23 @@ export async function GET() {
   try {
     const { supabase, ctx } = await getAlunoContext();
     if (!ctx) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
-    const { alunoId } = ctx;
+    const { alunoId, escolaId, matriculaId, anoLetivo } = ctx;
 
     if (!alunoId) return NextResponse.json({ ok: true, mensalidades: [] });
 
     // Busca mensalidades por aluno, no formato do frontend do aluno
-    const { data, error } = await supabase
+    let query = supabase
       .from('mensalidades')
-      .select('id, ano_referencia, mes_referencia, valor_previsto, data_vencimento, status, data_pagamento_efetiva')
-      .eq('aluno_id', alunoId)
+      .select('id, ano_referencia, ano_letivo, mes_referencia, valor_previsto, data_vencimento, status, data_pagamento_efetiva, matricula_id')
+      .eq('aluno_id', alunoId);
+
+    if (escolaId) query = query.eq('escola_id', escolaId);
+    if (matriculaId) query = query.eq('matricula_id', matriculaId);
+    if (typeof anoLetivo === 'number') {
+      query = query.or(`ano_referencia.eq.${anoLetivo},ano_letivo.eq.${anoLetivo}`);
+    }
+
+    const { data, error } = await query
       .order('ano_referencia', { ascending: true })
       .order('mes_referencia', { ascending: true })
       .limit(50);
