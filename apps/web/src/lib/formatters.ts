@@ -16,6 +16,19 @@ export function formatDate(dateString?: string | null): string {
   return d.toLocaleDateString("pt-PT", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+export function formatDateTime(dateString?: string | null): string {
+  if (!dateString) return "—";
+  const d = new Date(dateString);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("pt-PT", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export function monthName(mes?: number | null): string {
   const m = mes ?? null;
   if (!m || m < 1 || m > 12) return "—";
