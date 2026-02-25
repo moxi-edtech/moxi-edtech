@@ -1,7 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
 import {
-  CURRICULUM_PRESETS,
   CURRICULUM_PRESETS_META,
   type CurriculumKey,
 } from "@/lib/academico/curriculum-presets";
@@ -556,32 +555,104 @@ async function createCurriculoDraft(args: {
 }
 
 function buildCargaByClassFromPreset(
-  presetKey: CurriculumKey,
+  presetSubjects: Array<{ name: string; gradeLevel: string; weeklyHours: number }>,
   allowedClasses?: string[],
   allowedSubjects?: string[]
 ): Record<string, number> {
-  const presetData = CURRICULUM_PRESETS[presetKey] ?? [];
   const classSet = new Set((allowedClasses ?? []).map((cls) => String(cls).trim()));
   const subjectSet = new Set((allowedSubjects ?? []).map((subj) => String(subj).trim()));
   const hasClassFilter = classSet.size > 0;
   const hasSubjectFilter = subjectSet.size > 0;
   const cargaByClass: Record<string, number> = {};
 
-  presetData.forEach((disciplina) => {
-    const nome = String(disciplina?.nome ?? "").trim();
-    const classe = String(disciplina?.classe ?? "").trim();
+  presetSubjects.forEach((disciplina) => {
+    const nome = String(disciplina?.name ?? "").trim();
+    const classe = String(disciplina?.gradeLevel ?? "").trim();
     if (!nome || !classe) return;
     if (hasClassFilter && !classSet.has(classe)) return;
     if (hasSubjectFilter && !subjectSet.has(nome)) return;
-    if (Number.isFinite(disciplina?.horas)) {
-      cargaByClass[`${nome}::${classe}`] = Number(disciplina.horas);
+    if (Number.isFinite(disciplina?.weeklyHours)) {
+      cargaByClass[`${nome}::${classe}`] = Number(disciplina.weeklyHours);
     }
   });
 
   return cargaByClass;
 }
 
-function resolveAdvancedConfig(payload: CurriculumApplyPayload, presetKey: CurriculumKey) {
+async function loadPresetSubjects(args: {
+  supabase: SupabaseClient<Database>;
+  escolaId: string;
+  presetKey: CurriculumKey;
+}) {
+  const { supabase, escolaId, presetKey } = args;
+  const { data: presetRows, error: presetErr } = await (supabase as any)
+    .from("curriculum_preset_subjects")
+    .select("id, name, grade_level, weekly_hours")
+    .eq("preset_id", presetKey);
+
+  if (presetErr) throw new Error(presetErr.message || "Falha ao carregar presets.");
+
+  const presetIds = (presetRows || []).map((row: any) => row.id).filter(Boolean);
+  if (presetIds.length === 0) {
+    throw new Error("Preset sem disciplinas cadastradas.");
+  }
+
+  let schoolMap = new Map<string, any>();
+  const { data: schoolRows, error: schoolErr } = await (supabase as any)
+    .from("school_subjects")
+    .select("preset_subject_id, custom_weekly_hours, custom_name, is_active")
+    .eq("escola_id", escolaId)
+    .in("preset_subject_id", presetIds);
+
+  if (schoolErr) throw new Error(schoolErr.message || "Falha ao carregar disciplinas da escola.");
+  schoolMap = new Map((schoolRows || []).map((row: any) => [row.preset_subject_id, row]));
+
+  return (presetRows || [])
+    .map((row: any) => {
+      const override = schoolMap.get(row.id);
+      if (override?.is_active === false) return null;
+      return {
+        name: String(override?.custom_name ?? row.name ?? "").trim(),
+        gradeLevel: String(row.grade_level ?? "").trim(),
+        weeklyHours: Number(override?.custom_weekly_hours ?? row.weekly_hours ?? 0),
+      };
+    })
+    .filter((row: any) => row && row.name && row.gradeLevel);
+}
+
+function buildDefaultAdvancedConfig(presetSubjects: Array<{ name: string; gradeLevel: string; weeklyHours: number }>) {
+  const presetClasses = Array.from(new Set(presetSubjects.map((row) => row.gradeLevel))).filter(Boolean);
+  const presetSubjectsUnique = Array.from(
+    new Set(presetSubjects.map((row) => row.name).filter(Boolean))
+  );
+  const cargaByClass = buildCargaByClassFromPreset(
+    presetSubjects,
+    presetClasses,
+    presetSubjectsUnique
+  );
+
+  const defaultTurnos: BuilderTurnos = { manha: true, tarde: false, noite: false };
+  const defaultMatrix: Record<string, boolean> = {};
+
+  for (const subject of presetSubjectsUnique) {
+    for (const cls of presetClasses) {
+      defaultMatrix[`${subject}::${cls}::M`] = true;
+    }
+  }
+
+  return {
+    classes: presetClasses,
+    subjects: presetSubjectsUnique,
+    matrix: defaultMatrix,
+    turnos: defaultTurnos,
+    cargaByClass,
+  } as AdvancedConfigPayload;
+}
+
+function resolveAdvancedConfig(
+  payload: CurriculumApplyPayload,
+  presetSubjects: Array<{ name: string; gradeLevel: string; weeklyHours: number }>
+) {
   const incoming = payload.advancedConfig;
 
   if (
@@ -599,41 +670,14 @@ function resolveAdvancedConfig(payload: CurriculumApplyPayload, presetKey: Curri
       cargaByClass: hasCargaByClass
         ? incoming.cargaByClass
         : buildCargaByClassFromPreset(
-            presetKey,
+            presetSubjects,
             incoming.classes,
             incoming.subjects
           ),
     };
   }
 
-  const presetMeta = CURRICULUM_PRESETS_META[presetKey];
-  const presetClasses = (presetMeta?.classes ?? []).filter(Boolean);
-  const presetData = CURRICULUM_PRESETS[presetKey] ?? [];
-  const presetSubjects = Array.from(
-    new Set(
-      presetData
-        .map((disciplina) => String(disciplina?.nome ?? "").trim())
-        .filter(Boolean)
-    )
-  );
-  const cargaByClass = buildCargaByClassFromPreset(presetKey, presetClasses, presetSubjects);
-
-  const defaultTurnos: BuilderTurnos = { manha: true, tarde: false, noite: false };
-  const defaultMatrix: Record<string, boolean> = {};
-
-  for (const subject of presetSubjects) {
-    for (const cls of presetClasses) {
-      defaultMatrix[`${subject}::${cls}::M`] = true;
-    }
-  }
-
-  return {
-    classes: presetClasses,
-    subjects: presetSubjects,
-    matrix: defaultMatrix,
-    turnos: defaultTurnos,
-    cargaByClass,
-  } as AdvancedConfigPayload;
+  return buildDefaultAdvancedConfig(presetSubjects);
 }
 
 export async function applyCurriculumPreset(
@@ -656,9 +700,11 @@ export async function applyCurriculumPreset(
     throw new Error("Preset sem course_code");
   }
 
+  const presetSubjects = await loadPresetSubjects({ supabase, escolaId, presetKey });
+
   const advancedConfig = resolveAdvancedConfig(
     { presetKey, customData, advancedConfig: advancedConfigInput },
-    presetKey
+    presetSubjects
   );
 
   if (!advancedConfig.classes?.length) {

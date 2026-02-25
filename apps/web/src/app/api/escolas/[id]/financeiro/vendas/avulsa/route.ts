@@ -4,6 +4,7 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { hasPermission } from "@/lib/permissions";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { recordAuditServer } from "@/lib/audit";
+import { emitirEvento } from "@/lib/eventos/emitirEvento";
 import type { Database } from "~types/supabase";
 
 const BodySchema = z.object({
@@ -174,6 +175,41 @@ export async function POST(
         pago_imediato: body.pago_imediato,
       },
     }).catch(() => null);
+
+    if (body.pago_imediato) {
+      try {
+        const { data: alunoRow } = await s
+          .from("alunos")
+          .select("nome, nome_completo")
+          .eq("id", body.aluno_id)
+          .maybeSingle();
+
+        const alunoNome = alunoRow?.nome_completo || alunoRow?.nome || "Aluno";
+        const valorFormatado = new Intl.NumberFormat("pt-AO", {
+          style: "currency",
+          currency: "AOA",
+        }).format(body.valor);
+
+        await emitirEvento(s, {
+          escola_id: escolaId,
+          tipo: "pagamento.confirmado",
+          payload: {
+            aluno_id: body.aluno_id,
+            aluno_nome: alunoNome,
+            valor: body.valor,
+            valor_formatado: valorFormatado,
+            metodo: body.metodo ?? "numerario",
+            apto_matricula: false,
+          },
+          actor_id: user.id,
+          actor_role: "admin",
+          entidade_tipo: "pagamento",
+          entidade_id: (pagamentoRes.data as { id: string }).id,
+        });
+      } catch (eventError) {
+        console.warn("[vendas/avulsa] falha ao emitir evento:", eventError);
+      }
+    }
 
     return NextResponse.json({
       ok: true,

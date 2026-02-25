@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import { supabaseServerTyped } from '@/lib/supabaseServer';
+import { emitirEvento } from '@/lib/eventos/emitirEvento';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
 import { applyCurriculumPreset, type CurriculumKey } from '@/lib/academico/curriculum-apply';
-import { CURRICULUM_PRESETS, CURRICULUM_PRESETS_META } from '@/lib/academico/curriculum-presets';
+import { CURRICULUM_PRESETS_META } from '@/lib/academico/curriculum-presets';
 import type { Database } from '~types/supabase';
 
 export const dynamic = 'force-dynamic';
@@ -39,31 +40,58 @@ const bodySchema = z.object({
     .default({ autoPublish: false, generateTurmas: true }),
 });
 
-const buildDefaultConfig = (presetKey: string) => {
-  const meta = CURRICULUM_PRESETS_META[presetKey as CurriculumKey];
-  const classes = (meta?.classes ?? []).filter(Boolean);
-  const presetData = CURRICULUM_PRESETS[presetKey as CurriculumKey] ?? [];
-  const subjects = Array.from(
-    new Set(
-      presetData
-        .map((d: any) => String(d?.nome ?? '').trim())
-        .filter(Boolean)
-    )
-  );
+const buildDefaultConfig = async (supabase: any, escolaId: string, presetKey: string) => {
+  const { data: presetRows, error: presetErr } = await supabase
+    .from('curriculum_preset_subjects')
+    .select('id, name, grade_level, weekly_hours')
+    .eq('preset_id', presetKey);
+
+  if (presetErr) throw new Error(presetErr.message || 'Falha ao carregar disciplinas do preset.');
+
+  const presetIds = (presetRows || []).map((row: any) => row.id).filter(Boolean);
+  if (presetIds.length === 0) {
+    throw new Error('Preset sem disciplinas cadastradas.');
+  }
+
+  const { data: schoolRows, error: schoolErr } = await supabase
+    .from('school_subjects')
+    .select('preset_subject_id, custom_weekly_hours, custom_name, is_active')
+    .eq('escola_id', escolaId)
+    .in('preset_subject_id', presetIds);
+
+  if (schoolErr) throw new Error(schoolErr.message || 'Falha ao carregar disciplinas da escola.');
+
+  const schoolMap = new Map((schoolRows || []).map((row: any) => [row.preset_subject_id, row]));
+
+  const subjectRows = (presetRows || [])
+    .map((row: any) => {
+      const override = schoolMap.get(row.id) as
+        | { is_active?: boolean | null; custom_name?: string | null; custom_weekly_hours?: number | null }
+        | undefined;
+      if (override?.is_active === false) return null;
+      return {
+        name: String(override?.custom_name ?? row.name ?? '').trim(),
+        gradeLevel: String(row.grade_level ?? '').trim(),
+        weeklyHours: Number(override?.custom_weekly_hours ?? row.weekly_hours ?? 0),
+      };
+    })
+    .filter(Boolean) as Array<{ name: string; gradeLevel: string; weeklyHours: number }>;
+
+  const classes = Array.from(new Set(subjectRows.map((row) => row.gradeLevel))).filter(Boolean);
+  const subjects = Array.from(new Set(subjectRows.map((row) => row.name))).filter(Boolean);
   const turnos = { manha: true, tarde: false, noite: false };
   const matrix: Record<string, boolean> = {};
   const cargaByClass: Record<string, number> = {};
+
   for (const subject of subjects) {
     for (const cls of classes) {
       matrix[`${subject}::${cls}::M`] = true;
     }
   }
-  presetData.forEach((disciplina: any) => {
-    const nome = String(disciplina?.nome ?? '').trim();
-    const classe = String(disciplina?.classe ?? '').trim();
-    if (!nome || !classe) return;
-    if (Number.isFinite(disciplina?.horas)) {
-      cargaByClass[`${nome}::${classe}`] = Number(disciplina.horas);
+
+  subjectRows.forEach((row) => {
+    if (Number.isFinite(row.weeklyHours)) {
+      cargaByClass[`${row.name}::${row.gradeLevel}`] = row.weeklyHours;
     }
   });
 
@@ -173,7 +201,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           escolaId: userEscolaId,
           presetKey: presetKey as CurriculumKey,
           customData: customData as any,
-          advancedConfig: advancedConfig ?? buildDefaultConfig(presetKey),
+          advancedConfig: advancedConfig ?? undefined,
           createTurmas: false,
           createCurriculo: true,
           anoLetivoId: anoLetivo.id,
@@ -224,6 +252,32 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           message: 'Falha ao publicar currículo.',
         }, { status: 409 });
       }
+
+      try {
+        const { data: profileRow } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        const role = (profileRow as { role?: string | null } | null)?.role ?? 'admin';
+        const actorRole = ['secretaria', 'professor', 'director'].includes(role) ? role : 'admin';
+        const curriculoNome = [applyResult?.curso?.nome, anoLetivo.ano].filter(Boolean).join(' ');
+
+        await emitirEvento(supabase, {
+          escola_id: userEscolaId,
+          tipo: 'curriculo.published',
+          payload: {
+            curriculo_nome: curriculoNome || 'Curriculo publicado',
+            ano_letivo: String(anoLetivo.ano),
+          },
+          actor_id: user.id,
+          actor_role: actorRole as 'admin' | 'secretaria' | 'professor' | 'director',
+          entidade_tipo: 'curriculo',
+          entidade_id: publishResult?.published_curriculo_id ?? applyResult?.curriculo?.id ?? null,
+        });
+      } catch (eventError) {
+        console.warn('[curriculo.install-preset] falha ao emitir evento:', eventError);
+      }
     }
 
     let turmasResult: any = null;
@@ -236,7 +290,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         .eq('ano_letivo', anoLetivo.ano);
 
       if (!turmasExistentes || turmasExistentes === 0) {
-        const configToUse = advancedConfig ?? buildDefaultConfig(presetKey);
+        const configToUse = advancedConfig ?? await buildDefaultConfig(supabase, userEscolaId, presetKey);
         const { data: classesRows } = await supabase
           .from('classes')
           .select('id, nome')

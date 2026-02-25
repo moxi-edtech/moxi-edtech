@@ -4,6 +4,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
 import { recordAuditServer } from "@/lib/audit";
+import { emitirEvento } from "@/lib/eventos/emitirEvento";
 
 export const dynamic = "force-dynamic";
 
@@ -159,6 +160,39 @@ export async function POST(req: Request) {
       entityId: (pagamento as any)?.id ?? null,
       details: { valor, metodo, mensalidade_id: mensalidade?.id ?? null },
     }).catch(() => null);
+
+    try {
+      const { data: alunoRow } = await supabase
+        .from("alunos")
+        .select("nome, nome_completo")
+        .eq("id", alunoId)
+        .maybeSingle();
+
+      const alunoNome = alunoRow?.nome_completo || alunoRow?.nome || "Aluno";
+      const valorFormatado = new Intl.NumberFormat("pt-AO", {
+        style: "currency",
+        currency: "AOA",
+      }).format(valor);
+
+      await emitirEvento(supabase, {
+        escola_id: escolaId,
+        tipo: "pagamento.confirmado",
+        payload: {
+          aluno_id: alunoId,
+          aluno_nome: alunoNome,
+          valor,
+          valor_formatado: valorFormatado,
+          metodo,
+          apto_matricula: false,
+        },
+        actor_id: user.id,
+        actor_role: "admin",
+        entidade_tipo: "pagamento",
+        entidade_id: (pagamento as any)?.id ?? null,
+      });
+    } catch (eventError) {
+      console.warn("[pagamentos.registrar] falha ao emitir evento:", eventError);
+    }
 
     return NextResponse.json({ ok: true, data: pagamento });
   } catch (err) {

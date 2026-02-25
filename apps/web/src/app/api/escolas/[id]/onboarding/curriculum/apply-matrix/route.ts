@@ -6,8 +6,6 @@ import { requireRoleInSchool } from "@/lib/authz";
 import { recordAuditServer } from "@/lib/audit";
 
 import { removeAccents } from "@/lib/turma";
-import { CURRICULUM_PRESETS, CURRICULUM_PRESETS_META, type CurriculumKey } from "@/lib/academico/curriculum-presets";
-import { PRESET_TO_TYPE } from "@/lib/courseTypes";
 
 // Helpers
 const normalizeNome = (nome: string): string =>

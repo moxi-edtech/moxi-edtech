@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { canManageEscolaResources } from "../../permissions";
-import { CURRICULUM_PRESETS, type CurriculumKey } from "@/lib/academico/curriculum-presets";
+import { type CurriculumKey } from "@/lib/academico/curriculum-presets";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -73,22 +73,7 @@ export async function GET(
 
     return NextResponse.json({ ok: true, source: "db", items });
   } catch (error: any) {
-    const code = error?.code as string | undefined;
     const message = error?.message as string | undefined;
-    const isMissingTable = code === "42P01" || (message && /does not exist/i.test(message));
-    if (!isMissingTable) {
-      return NextResponse.json({ ok: false, error: message || "Falha ao carregar presets" }, { status: 400 });
-    }
-
-    const preset = CURRICULUM_PRESETS[curriculumKey] ?? [];
-    const items = preset.map((disc) => ({
-      id: null,
-      name: disc.nome,
-      grade_level: disc.classe,
-      component: disc.componente,
-      weekly_hours: disc.horas,
-      school: null,
-    }));
-    return NextResponse.json({ ok: true, source: "preset", items });
+    return NextResponse.json({ ok: false, error: message || "Falha ao carregar presets" }, { status: 400 });
   }
 }
