@@ -149,7 +149,9 @@ export async function buildPautaAnualPayload({
         mfd = Math.round((mt1 + mt2 + mt3) / 3)
       }
 
-      mfds.push(mfd)
+      if (disciplina.conta_para_media_med !== false) {
+        mfds.push(mfd)
+      }
       disciplinasNotas[disciplina.id] = { mt1, mt2, mt3, mfd }
     })
 
@@ -263,24 +265,39 @@ async function buildPautaAnualBase({
   const { data: turmaDisciplinas } = await supabase
     .from("turma_disciplinas")
     .select(
-      "id, curso_matriz_id, curso_matriz(disciplina_id, disciplinas_catalogo(id, nome))"
+      "id, conta_para_media_med, curso_matriz_id, curso_matriz(disciplina_id, disciplinas_catalogo(id, nome))"
     )
     .eq("escola_id", escolaId)
     .eq("turma_id", turmaId)
 
-  const disciplinaMap = new Map<string, { id: string; nome: string }>()
-  const turmaDisciplinaToDisciplina = new Map<string, { id: string; nome: string }>()
+  const disciplinaMap = new Map<string, { id: string; nome: string; conta_para_media_med?: boolean }>()
+  const turmaDisciplinaToDisciplina = new Map<string, { id: string; nome: string; conta_para_media_med?: boolean }>()
 
   for (const row of (turmaDisciplinas || []) as any[]) {
     const disciplinaId = row?.curso_matriz?.disciplina_id ?? row?.curso_matriz?.disciplinas_catalogo?.id
     const disciplinaNome =
       row?.curso_matriz?.disciplinas_catalogo?.nome ?? "Disciplina"
+    const contaParaMedia = row?.conta_para_media_med !== false
     if (!disciplinaId) continue
     if (!disciplinaMap.has(disciplinaId)) {
-      disciplinaMap.set(disciplinaId, { id: disciplinaId, nome: disciplinaNome })
+      disciplinaMap.set(disciplinaId, {
+        id: disciplinaId,
+        nome: disciplinaNome,
+        conta_para_media_med: contaParaMedia,
+      })
+    } else if (!contaParaMedia) {
+      const existing = disciplinaMap.get(disciplinaId)
+      if (existing) {
+        existing.conta_para_media_med = false
+        disciplinaMap.set(disciplinaId, existing)
+      }
     }
     if (row?.id) {
-      turmaDisciplinaToDisciplina.set(row.id, { id: disciplinaId, nome: disciplinaNome })
+      turmaDisciplinaToDisciplina.set(row.id, {
+        id: disciplinaId,
+        nome: disciplinaNome,
+        conta_para_media_med: contaParaMedia,
+      })
     }
   }
 
