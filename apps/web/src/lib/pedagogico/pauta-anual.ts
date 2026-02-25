@@ -3,8 +3,6 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "~types/supabase"
 import { createElement, type ReactElement } from "react"
 import { applyKf2ListInvariants } from "@/lib/kf2"
-import { GradeEngine, type RawGradeRow } from "@/lib/pedagogico/grade-engine"
-import { TransitionEngine } from "@/lib/pedagogico/transition-engine"
 import type {
   PautaAnualPayload,
   PautaAnualDisciplinaNotas,
@@ -13,18 +11,6 @@ import type {
 import { PautaAnualV1 } from "@/templates/pdf/ministerio/PautaAnualV1"
 
 type Client = SupabaseClient<Database>
-
-const normalizeTipo = (tipo?: string | null) => {
-  const normalized = (tipo ?? "").trim().toUpperCase()
-  if (normalized === "NPT") return "PT"
-  return normalized
-}
-
-const averageOrNull = (values: number[]) => {
-  if (!values.length) return null
-  const sum = values.reduce((acc, value) => acc + value, 0)
-  return Number((sum / values.length).toFixed(2))
-}
 
 const calculateAge = (dateValue: string | null | undefined) => {
   if (!dateValue) return "-"
@@ -39,6 +25,31 @@ const calculateAge = (dateValue: string | null | undefined) => {
   return age >= 0 ? age : "-"
 }
 
+
+const NOTA_MINIMA_APROVACAO = 10
+const MAX_NEGATIVAS_RECURSO = 2
+
+type BoletimNotaRow = {
+  matricula_id: string | null
+  disciplina_id: string | null
+  trimestre: number | null
+  nota_final: number | null
+}
+
+function avaliarResultadoFinal(mfds: Array<number | "-">): "APROVADO" | "REPROVADO" | "RECURSO" | "PENDENTE" {
+  if (mfds.length === 0) return "PENDENTE"
+  if (mfds.some((mfd) => mfd === "-")) return "PENDENTE"
+
+  let negativas = 0
+  for (const mfd of mfds) {
+    if (typeof mfd === 'number' && mfd < NOTA_MINIMA_APROVACAO) negativas += 1
+  }
+
+  if (negativas === 0) return "APROVADO"
+  if (negativas <= MAX_NEGATIVAS_RECURSO) return "RECURSO"
+  return "REPROVADO"
+}
+
 export async function buildPautaAnualPayload({
   supabase,
   escolaId,
@@ -48,13 +59,11 @@ export async function buildPautaAnualPayload({
   escolaId: string
   turmaId: string
 }): Promise<PautaAnualPayload> {
-  const { metadata, disciplinas, turmaDisciplinaToDisciplina } = await buildPautaAnualBase({
+  const { metadata, disciplinas } = await buildPautaAnualBase({
     supabase,
     escolaId,
     turmaId,
   })
-  const turmaDisciplinaIds = Array.from(turmaDisciplinaToDisciplina.keys())
-
   let matriculasQuery = supabase
     .from("matriculas")
     .select(
@@ -98,87 +107,60 @@ export async function buildPautaAnualPayload({
     })
   })
 
-  const gradesMap = new Map<
-    string,
-    { mac: number[]; npp: number[]; pt: number[] }
-  >()
+  const disciplinaIds = disciplinas.map((d) => d.id)
+  const boletimByAlunoDisc = new Map<string, { t1: number | null; t2: number | null; t3: number | null }>()
 
-  if (matriculaIds.length > 0 && turmaDisciplinaIds.length > 0) {
-    const { data: notasRows, error: notasError } = await supabase
-      .from("notas")
-      .select("valor, matricula_id, avaliacoes ( trimestre, tipo, turma_disciplina_id )")
-      .eq("escola_id", escolaId)
+  if (matriculaIds.length > 0 && disciplinaIds.length > 0) {
+    const { data: boletimRows, error: boletimError } = await supabase
+      .from("vw_boletim_por_matricula")
+      .select("matricula_id, disciplina_id, trimestre, nota_final")
+      .eq("turma_id", turmaId)
       .in("matricula_id", matriculaIds)
-      .in("avaliacoes.turma_disciplina_id", turmaDisciplinaIds)
+      .in("disciplina_id", disciplinaIds)
 
-    if (notasError) throw new Error(notasError.message)
+    if (boletimError) throw new Error(boletimError.message)
 
-    for (const row of (notasRows || []) as any[]) {
-      const avaliacao = Array.isArray(row.avaliacoes) ? row.avaliacoes[0] : row.avaliacoes
-      const trimestre = avaliacao?.trimestre as 1 | 2 | 3 | null
-      if (!trimestre) continue
-      const disciplina = turmaDisciplinaToDisciplina.get(avaliacao?.turma_disciplina_id)
-      if (!disciplina) continue
-
-      const tipo = normalizeTipo(avaliacao?.tipo)
-      if (!tipo || !["MAC", "NPP", "PT"].includes(tipo)) continue
-
-      const key = `${row.matricula_id}:${disciplina.id}:${trimestre}`
-      const entry = gradesMap.get(key) ?? { mac: [], npp: [], pt: [] }
-      if (typeof row.valor === "number") {
-        if (tipo === "MAC") entry.mac.push(row.valor)
-        if (tipo === "NPP") entry.npp.push(row.valor)
-        if (tipo === "PT") entry.pt.push(row.valor)
-      }
-      gradesMap.set(key, entry)
+    for (const row of (boletimRows || []) as BoletimNotaRow[]) {
+      if (!row?.matricula_id || !row?.disciplina_id) continue
+      const key = `${row.matricula_id}:${row.disciplina_id}`
+      const current = boletimByAlunoDisc.get(key) ?? { t1: null, t2: null, t3: null }
+      if (row.trimestre === 1) current.t1 = row.nota_final
+      if (row.trimestre === 2) current.t2 = row.nota_final
+      if (row.trimestre === 3) current.t3 = row.nota_final
+      boletimByAlunoDisc.set(key, current)
     }
   }
 
-  const rawGrades: RawGradeRow[] = []
-  for (const [alunoId, info] of alunoInfo.entries()) {
-    for (const disciplina of disciplinas) {
-      for (const trimestre of [1, 2, 3] as const) {
-        const key = `${alunoId}:${disciplina.id}:${trimestre}`
-        const entry = gradesMap.get(key)
-        rawGrades.push({
-          aluno_id: alunoId,
-          aluno_nome: info.nome,
-          numero_turma: info.numero,
-          disciplina_id: disciplina.id,
-          disciplina_nome: disciplina.nome,
-          trimestre,
-          mac: entry ? averageOrNull(entry.mac) : null,
-          npp: entry ? averageOrNull(entry.npp) : null,
-          pt: entry ? averageOrNull(entry.pt) : null,
-        })
-      }
-    }
-  }
-
-  const pautaMatrix = GradeEngine.generatePautaMatrix(rawGrades)
-  const pautaFinal = TransitionEngine.processTurma(pautaMatrix)
-
-  const alunos = pautaFinal.map((student) => {
-    const info = alunoInfo.get(student.aluno_id)
+  const alunos = matriculaRows.map((row: any, index: number) => {
+    const alunoId = row?.alunos?.id as string
+    const info = alunoInfo.get(alunoId)
     const disciplinasNotas: Record<string, PautaAnualDisciplinaNotas> = {}
+    const mfds: Array<number | "-"> = []
+
     disciplinas.forEach((disciplina) => {
-      const subject = student.disciplinas[disciplina.id]
-      disciplinasNotas[disciplina.id] = {
-        mt1: subject?.t1?.mt ?? "-",
-        mt2: subject?.t2?.mt ?? "-",
-        mt3: subject?.t3?.mt ?? "-",
-        mfd: subject?.mfd ?? "-",
+      const key = `${row.id}:${disciplina.id}`
+      const notas = boletimByAlunoDisc.get(key) ?? { t1: null, t2: null, t3: null }
+      const mt1 = typeof notas.t1 === "number" ? Number(notas.t1.toFixed(2)) : "-"
+      const mt2 = typeof notas.t2 === "number" ? Number(notas.t2.toFixed(2)) : "-"
+      const mt3 = typeof notas.t3 === "number" ? Number(notas.t3.toFixed(2)) : "-"
+
+      let mfd: number | "-" = "-"
+      if (typeof mt1 === "number" && typeof mt2 === "number" && typeof mt3 === "number") {
+        mfd = Math.round((mt1 + mt2 + mt3) / 3)
       }
+
+      mfds.push(mfd)
+      disciplinasNotas[disciplina.id] = { mt1, mt2, mt3, mfd }
     })
 
     return {
-      aluno_id: student.aluno_id,
-      numero: info?.numero ?? student.numero_turma,
-      nome: info?.nome ?? student.aluno_nome,
+      aluno_id: alunoId,
+      numero: info?.numero ?? row.numero_chamada ?? index + 1,
+      nome: info?.nome ?? row?.alunos?.nome ?? "Sem nome",
       idade: info?.idade ?? "-",
       sexo: info?.sexo ?? "M",
       disciplinas: disciplinasNotas,
-      resultado_final: student.resultado_final,
+      resultado_final: avaliarResultadoFinal(mfds),
     }
   })
 
