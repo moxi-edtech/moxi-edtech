@@ -304,6 +304,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       escola_id: escolaId,
       curso_id: String(curso_id),
       ano_letivo: String(ano_letivo),
+      classe_id: classe_id ? String(classe_id) : null,
     });
 
     if (!gate.ok) {

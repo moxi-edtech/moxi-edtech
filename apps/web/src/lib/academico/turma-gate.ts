@@ -4,6 +4,7 @@ interface GateInput {
   escola_id: string;
   curso_id: string;
   ano_letivo: string;
+  classe_id?: string | null;
 }
 
 type GateErrorCode =
@@ -22,7 +23,7 @@ type GateResult =
 
 export async function validarCurriculoParaTurma(
   supabase: SupabaseClient,
-  { escola_id, curso_id, ano_letivo }: GateInput
+  { escola_id, curso_id, ano_letivo, classe_id }: GateInput
 ): Promise<GateResult> {
   const { data: curso, error: cursoError } = await supabase
     .from("cursos")
@@ -54,33 +55,34 @@ export async function validarCurriculoParaTurma(
     };
   }
 
-  const { data: curriculo, error: curriculoError } = await supabase
+  let curriculoQuery = supabase
     .from("curso_curriculos")
-    .select("id, status")
+    .select("id")
     .eq("curso_id", curso_id)
     .eq("escola_id", escola_id)
     .eq("ano_letivo_id", anoLetivoRow.id)
+    .eq("status", "published")
     .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(1);
 
-  if (curriculoError || !curriculo) {
+  if (classe_id) {
+    curriculoQuery = curriculoQuery.or(`classe_id.is.null,classe_id.eq.${classe_id}`);
+  }
+
+  const { data: curriculo, error: curriculoError } = await curriculoQuery.maybeSingle();
+
+  if (curriculoError) {
     return {
       ok: false,
-      error: `O curso "${curso.nome}" não tem currículo configurado para o ano letivo ${ano_letivo}. Configure e publique o currículo antes de criar turmas.`,
-      code: "CURRICULO_NAO_ENCONTRADO",
+      error: "Falha ao validar publicação do currículo no servidor. Tente novamente.",
+      code: "CURRICULO_NAO_PUBLICADO",
     };
   }
 
-  if (curriculo.status !== "published") {
-    const statusLabel: Record<string, string> = {
-      draft: "rascunho",
-      archived: "arquivado",
-    };
-    const label = statusLabel[curriculo.status] ?? curriculo.status;
+  if (!curriculo) {
     return {
       ok: false,
-      error: `O currículo do curso "${curso.nome}" está em ${label}. Publique o currículo antes de criar turmas.`,
+      error: `O curso "${curso.nome}" não tem currículo publicado para o ano letivo ${ano_letivo}. Publique o currículo antes de criar turmas.`,
       code: "CURRICULO_NAO_PUBLICADO",
     };
   }
