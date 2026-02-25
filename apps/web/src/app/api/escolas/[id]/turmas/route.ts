@@ -4,6 +4,7 @@ import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { canManageEscolaResources } from "../permissions";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { validarCurriculoParaTurma } from "@/lib/academico/turma-gate";
 
 const normalizeTurno = (turno: string | undefined): "M" | "T" | "N" | null => {
   const t = (turno || "").trim().toLowerCase();
@@ -297,6 +298,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     if (!nome || !turno || !ano_letivo || !curso_id) {
         return NextResponse.json({ ok: false, error: "Nome, Turno, Ano Letivo e curso_id são obrigatórios" }, { status: 400 });
+    }
+
+    const gate = await validarCurriculoParaTurma(supabase as any, {
+      escola_id: escolaId,
+      curso_id: String(curso_id),
+      ano_letivo: String(ano_letivo),
+    });
+
+    if (!gate.ok) {
+      return NextResponse.json({ ok: false, error: gate.error, code: gate.code }, { status: 422 });
     }
 
     // Valida ano_letivo contra anos_letivos da escola

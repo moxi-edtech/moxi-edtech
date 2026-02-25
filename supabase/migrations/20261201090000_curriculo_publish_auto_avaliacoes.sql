@@ -357,7 +357,7 @@ BEGIN
         IF v_turma_id IS NOT NULL THEN
           v_new_turmas_count := v_new_turmas_count + 1;
           FOR v_curso_matriz_item IN
-            SELECT cm.id, cm.disciplina_id, cm.classe_id, dc.aplica_modelo_avaliacao_id
+            SELECT cm.id, cm.disciplina_id, cm.classe_id, cm.conta_para_media_med, dc.aplica_modelo_avaliacao_id
             FROM public.curso_matriz cm
             JOIN public.disciplinas_catalogo dc
               ON dc.id = cm.disciplina_id
@@ -370,14 +370,16 @@ BEGIN
               turma_id,
               curso_matriz_id,
               professor_id,
-              modelo_avaliacao_id
+              modelo_avaliacao_id,
+              conta_para_media_med
             )
             VALUES (
               p_escola_id,
               v_turma_id,
               v_curso_matriz_item.id,
               null,
-              v_curso_matriz_item.aplica_modelo_avaliacao_id
+              v_curso_matriz_item.aplica_modelo_avaliacao_id,
+              COALESCE(v_curso_matriz_item.conta_para_media_med, true)
             )
             ON CONFLICT (escola_id, turma_id, curso_matriz_id) DO NOTHING;
             v_new_turma_disciplinas_count := v_new_turma_disciplinas_count + 1;
@@ -437,7 +439,7 @@ BEGIN
             IF v_turma_id IS NOT NULL THEN
               v_new_turmas_count := v_new_turmas_count + 1;
               FOR v_curso_matriz_item IN
-                SELECT cm.id, cm.disciplina_id, cm.classe_id, dc.aplica_modelo_avaliacao_id
+                SELECT cm.id, cm.disciplina_id, cm.classe_id, cm.conta_para_media_med, dc.aplica_modelo_avaliacao_id
                 FROM public.curso_matriz cm
                 JOIN public.disciplinas_catalogo dc
                   ON dc.id = cm.disciplina_id
@@ -450,14 +452,16 @@ BEGIN
                   turma_id,
                   curso_matriz_id,
                   professor_id,
-                  modelo_avaliacao_id
+                  modelo_avaliacao_id,
+                  conta_para_media_med
                 )
                 VALUES (
                   p_escola_id,
                   v_turma_id,
                   v_curso_matriz_item.id,
                   null,
-                  v_curso_matriz_item.aplica_modelo_avaliacao_id
+                  v_curso_matriz_item.aplica_modelo_avaliacao_id,
+                  COALESCE(v_curso_matriz_item.conta_para_media_med, true)
                 )
                 ON CONFLICT (escola_id, turma_id, curso_matriz_id) DO NOTHING;
                 v_new_turma_disciplinas_count := v_new_turma_disciplinas_count + 1;
