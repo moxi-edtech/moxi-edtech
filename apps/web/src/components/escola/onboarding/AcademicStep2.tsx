@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
   BookOpen,
   Layers,
@@ -19,10 +19,10 @@ import {
 import { useVirtualizer } from "@tanstack/react-virtual";
 
 import {
-  CURRICULUM_PRESETS,
   CURRICULUM_PRESETS_META,
   type CurriculumKey,
 } from "@/lib/onboarding";
+import { createClient } from "@/lib/supabaseClient";
 import {
   PRESET_TO_TYPE,
   type CourseType,
@@ -241,12 +241,14 @@ export default function AcademicStep2({
   curriculumOverrides,
   onCurriculumOverridesChange,
 }: AcademicStep2Props) {
+  const supabase = useMemo(() => createClient(), []);
   const { toast, dismiss, success, error } = useToast();
   const [selectedPresetKey, setSelectedPresetKey] = useState<CurriculumKey | "">("");
   const [addedCourses, setAddedCourses] = useState<AddedCourse[]>([]);
   const [selectedCurriculumCourse, setSelectedCurriculumCourse] = useState<CurriculumKey | "">("");
   const [selectedCurriculumClass, setSelectedCurriculumClass] = useState<string>("");
   const [managerSeed, setManagerSeed] = useState(0);
+  const [presetBlueprints, setPresetBlueprints] = useState<Record<string, any[]>>({});
 
   useEffect(() => {
     const uniqueKeys = Array.from(
@@ -289,8 +291,48 @@ export default function AcademicStep2({
     }
   };
 
+  const loadPresetBlueprint = useCallback(async (presetKey: CurriculumKey) => {
+    if (presetBlueprints[presetKey]) return presetBlueprints[presetKey];
+
+    const { data: presetRows, error: presetErr } = await supabase
+      .from("curriculum_preset_subjects")
+      .select("id, name, grade_level, component, weekly_hours, subject_type")
+      .eq("preset_id", presetKey);
+
+    if (presetErr) throw presetErr;
+
+    const presetIds = (presetRows || []).map((row: any) => row.id).filter(Boolean);
+    let schoolMap = new Map<string, any>();
+    if (presetIds.length > 0) {
+      const { data: schoolRows, error: schoolErr } = await supabase
+        .from("school_subjects")
+        .select("preset_subject_id, custom_name, custom_weekly_hours, is_active")
+        .eq("escola_id", escolaId)
+        .in("preset_subject_id", presetIds);
+      if (schoolErr) throw schoolErr;
+      schoolMap = new Map((schoolRows || []).map((row: any) => [row.preset_subject_id, row]));
+    }
+
+    const blueprint = (presetRows || [])
+      .map((row: any) => {
+        const override = schoolMap.get(row.id);
+        if (override?.is_active === false) return null;
+        return {
+          nome: String(override?.custom_name ?? row.name ?? "").trim(),
+          classe: String(row.grade_level ?? "").trim(),
+          componente: row.component ?? "GERAL",
+          tipo: row.subject_type ?? "core",
+          horas: Number(override?.custom_weekly_hours ?? row.weekly_hours ?? 0),
+        };
+      })
+      .filter((row: any) => row && row.nome && row.classe);
+
+    setPresetBlueprints((prev) => ({ ...prev, [presetKey]: blueprint }));
+    return blueprint;
+  }, [presetBlueprints, supabase]);
+
   // Actions
-  const handleAddCourse = () => {
+  const handleAddCourse = async () => {
     if (!selectedPresetKey) return;
     if (addedCourses.find((c) => c.id === selectedPresetKey)) {
       // Idealmente usar toast aqui, mas alert serve por hora se não tiver contexto
@@ -298,7 +340,7 @@ export default function AcademicStep2({
       return;
     }
 
-    const blueprint = CURRICULUM_PRESETS[selectedPresetKey];
+    const blueprint = await loadPresetBlueprint(selectedPresetKey);
     const meta = CURRICULUM_PRESETS_META[selectedPresetKey];
     if (!blueprint || !meta) return;
 
@@ -363,8 +405,8 @@ export default function AcademicStep2({
 
   const curriculumBlueprint = useMemo(() => {
     if (!selectedCurriculumCourse) return [];
-    return CURRICULUM_PRESETS[selectedCurriculumCourse] ?? [];
-  }, [selectedCurriculumCourse]);
+    return presetBlueprints[selectedCurriculumCourse] ?? [];
+  }, [presetBlueprints, selectedCurriculumCourse]);
 
   const availableCurriculumClasses = useMemo(() => {
     const classes = Array.from(new Set(curriculumBlueprint.map((d) => d.classe))).filter(Boolean);
@@ -383,6 +425,11 @@ export default function AcademicStep2({
       setSelectedCurriculumCourse(availableCurriculumCourses[0] ?? "");
     }
   }, [availableCurriculumCourses, selectedCurriculumCourse]);
+
+  useEffect(() => {
+    if (!selectedCurriculumCourse) return;
+    loadPresetBlueprint(selectedCurriculumCourse as CurriculumKey).catch(() => null);
+  }, [loadPresetBlueprint, selectedCurriculumCourse]);
 
   useEffect(() => {
     if (!selectedCurriculumCourse) {

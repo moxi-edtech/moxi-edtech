@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { 
   Check, 
   ChevronRight, 
@@ -13,7 +13,6 @@ import {
   CalendarCheck
 } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
-import { CURRICULUM_PRESETS } from "@/lib/onboarding/curriculum-presets";
 
 // Componentes Filhos (já refatorados anteriormente)
 import AcademicStep1 from "./AcademicStep1";
@@ -166,6 +165,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   const [estruturaCounts, setEstruturaCounts] = useState<{ cursos_total?: number; classes_total?: number; disciplinas_total?: number; } | null>(null);
 
   const supabase = useMemo(() => createClient(), []);
+  const presetCacheRef = useRef<Record<string, Array<{ nome: string; classe: string; horas: number }>>>({});
 
   // --- EFFECTS (Logic) ---
   
@@ -362,6 +362,47 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
     setMatrix(p => p.map(r => r.id === id ? { ...r, [f]: Math.max(0, n) } : r));
   };
 
+  const loadPresetBlueprint = async (presetKey: string) => {
+    if (presetCacheRef.current[presetKey]) return presetCacheRef.current[presetKey];
+
+    const { data: presetRows, error: presetErr } = await supabase
+      .from("curriculum_preset_subjects")
+      .select("id, name, grade_level, weekly_hours")
+      .eq("preset_id", presetKey);
+
+    if (presetErr) throw presetErr;
+
+    const presetIds = (presetRows || []).map((row: any) => row.id).filter(Boolean);
+    let schoolMap = new Map<string, any>();
+    if (presetIds.length > 0) {
+      const { data: schoolRows, error: schoolErr } = await supabase
+        .from("school_subjects")
+        .select("preset_subject_id, custom_name, custom_weekly_hours, is_active")
+        .eq("escola_id", escolaId)
+        .in("preset_subject_id", presetIds);
+      if (schoolErr) throw schoolErr;
+      schoolMap = new Map((schoolRows || []).map((row: any) => [row.preset_subject_id, row]));
+    }
+
+    const blueprint = (presetRows || [])
+      .map((row: any) => {
+        const override = schoolMap.get(row.id);
+        if (override?.is_active === false) return null;
+        return {
+          nome: String(override?.custom_name ?? row.name ?? "").trim(),
+          classe: String(row.grade_level ?? "").trim(),
+          horas: Number(override?.custom_weekly_hours ?? row.weekly_hours ?? 0),
+        };
+      })
+      .filter(
+        (row): row is { nome: string; classe: string; horas: number } =>
+          Boolean(row && row.nome && row.classe)
+      );
+
+    presetCacheRef.current[presetKey] = blueprint;
+    return blueprint;
+  };
+
   const handleApplyCurriculumPreset = async () => {
     if (!matrix.length) return error("Matriz vazia.");
     if (!anoLetivoId) return error("Sessão não definida.");
@@ -384,7 +425,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
         dismiss(tid);
         tid = toast({ variant: "syncing", title: `Processando ${cursoNome}...`, duration: 0 });
         
-        const bp = CURRICULUM_PRESETS[k as keyof typeof CURRICULUM_PRESETS] || [];
+        const bp = await loadPresetBlueprint(k);
         const subjects = Array.from(new Set(bp.map((d: any) => d.nome)));
         const classes = rows.map((r: any) => r.nome);
         const classSet = new Set(classes);
@@ -474,8 +515,8 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
         return acc;
       }, {} as Record<string, string[]>);
 
-      Object.entries(cursosAgrupados).forEach(([cursoKey, classes]) => {
-        const bp = CURRICULUM_PRESETS[cursoKey as keyof typeof CURRICULUM_PRESETS] || [];
+      for (const [cursoKey, classes] of Object.entries(cursosAgrupados)) {
+        const bp = await loadPresetBlueprint(cursoKey);
         const classSet = new Set(classes);
         const byKey = new Map<string, number>();
         bp.forEach((disciplina: any) => {
@@ -505,7 +546,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
           const current = cargaPorClasse.get(classe) ?? 0;
           cargaPorClasse.set(classe, current + hours);
         }
-      });
+      }
 
       const overloads = Array.from(cargaPorClasse.entries()).filter(([, carga]) => carga > totalSlots);
       if (overloads.length > 0 && totalSlots > 0) {

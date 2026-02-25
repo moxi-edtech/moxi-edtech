@@ -6,7 +6,7 @@ import { BookOpen, Trash2, Check, Settings, Plus } from "lucide-react";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 
 import { CURRICULUM_PRESETS_META, type CurriculumKey } from "@/lib/onboarding";
-import { CURRICULUM_PRESETS } from "@/lib/onboarding";
+import { createClient } from "@/lib/supabaseClient";
 import {
   PRESET_TO_TYPE,
   TYPE_COLORS,
@@ -128,6 +128,7 @@ async function apiGet<T>(url: string, signal?: AbortSignal): Promise<T> {
 
 // ---------- Component ----------
 export default function StructureMarketplace({ escolaId }: { escolaId: string }) {
+  const supabase = useMemo(() => createClient(), []);
   const { success, error, warning, toast: rawToast } = useToast();
   const searchParams = useSearchParams();
   const resolvePendenciasRequested = searchParams?.get("resolvePendencias") === "1";
@@ -536,14 +537,37 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
 
   // -------- Presets helpers --------
   const extractSubjectsFromPreset = useCallback(
-    (key: CurriculumKey): DraftDisciplina[] => {
-      const data: any = CURRICULUM_PRESETS[key];
-      let subjects: string[] = [];
-      if (Array.isArray(data)) subjects = data.map((d) => (typeof d === "string" ? d : d.nome));
-      else if (data) subjects = data.subjects || [];
+    async (key: CurriculumKey): Promise<DraftDisciplina[]> => {
+      const { data: presetRows, error: presetErr } = await supabase
+        .from("curriculum_preset_subjects")
+        .select("id, name")
+        .eq("preset_id", key);
+
+      if (presetErr) throw presetErr;
+
+      const presetIds = (presetRows || []).map((row: any) => row.id).filter(Boolean);
+      let schoolMap = new Map<string, any>();
+      if (presetIds.length > 0) {
+        const { data: schoolRows, error: schoolErr } = await supabase
+          .from("school_subjects")
+          .select("preset_subject_id, custom_name, is_active")
+          .eq("escola_id", escolaId)
+          .in("preset_subject_id", presetIds);
+        if (schoolErr) throw schoolErr;
+        schoolMap = new Map((schoolRows || []).map((row: any) => [row.preset_subject_id, row]));
+      }
+
+      const subjects = (presetRows || [])
+        .map((row: any) => {
+          const override = schoolMap.get(row.id);
+          if (override?.is_active === false) return null;
+          return String(override?.custom_name ?? row.name ?? "").trim();
+        })
+        .filter(Boolean) as string[];
+
       return Array.from(new Set(subjects)).map((nome) => buildDraftDisciplina(nome));
     },
-    [buildDraftDisciplina]
+    [buildDraftDisciplina, escolaId, supabase]
   );
 
   const presetsList = useMemo(() => {
@@ -554,9 +578,9 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   }, []);
 
   const openPresetConfig = useCallback(
-    (presetKey: string) => {
+    async (presetKey: string) => {
       const meta = CURRICULUM_PRESETS_META[presetKey as CurriculumKey];
-      const subjects = extractSubjectsFromPreset(presetKey as CurriculumKey);
+      const subjects = await extractSubjectsFromPreset(presetKey as CurriculumKey);
       const classes =
         meta?.classes && meta.classes.length > 0
           ? [...meta.classes]
@@ -1170,7 +1194,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                         </button>
                         <button
                           type="button"
-                          onClick={() => openPresetConfig(preset.key)}
+                          onClick={() => void openPresetConfig(preset.key)}
                           className="rounded-full bg-klasse-gold px-4 py-2 text-xs font-semibold text-white hover:brightness-95"
                         >
                           Configurar

@@ -4,11 +4,11 @@ import { useMemo } from "react";
 import type { ComponentType } from "react";
 import type { CurriculumKey } from "@/lib/onboarding";
 import {
-  CURRICULUM_PRESETS,
   CURRICULUM_PRESETS_META,
 } from "@/lib/onboarding";
 import { PRESET_TO_TYPE } from "@/lib/courseTypes";
 import { BookOpen, Briefcase, Layers, Check } from "lucide-react";
+import { usePresetCounts } from "@/hooks/usePresetCounts";
 
 interface CurriculumPresetSelectorProps {
   value: CurriculumKey | null;
@@ -45,6 +45,7 @@ export function CurriculumPresetSelector({
   value,
   onChange,
 }: CurriculumPresetSelectorProps) {
+  const { counts, loading: countsLoading } = usePresetCounts();
   const grouped = useMemo(() => {
     const groups: Record<GroupId, PresetCard[]> = {
       basico: [],
@@ -113,8 +114,7 @@ export function CurriculumPresetSelector({
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {items.map((preset) => {
                 const isSelected = value === preset.key;
-                const disciplinesCount =
-                  CURRICULUM_PRESETS[preset.key].length;
+                const disciplinesCount = counts[preset.key] ?? 0;
 
                 return (
                   <button
@@ -164,7 +164,7 @@ export function CurriculumPresetSelector({
                     <div className="mt-3 flex items-center gap-2 text-[11px] text-slate-500">
                       <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5">
                         <Layers size={12} className="text-slate-400" />
-                        <span>{disciplinesCount} disciplinas</span>
+                        <span>{countsLoading ? "—" : `${disciplinesCount} disciplinas`}</span>
                       </span>
                       <span className="truncate">
                         Baseada nas diretrizes do sistema angolano
