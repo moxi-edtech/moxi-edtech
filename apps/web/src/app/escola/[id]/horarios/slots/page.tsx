@@ -40,7 +40,9 @@ export default function HorariosSlotsPage() {
   const [turmaCarga, setTurmaCarga] = useState(0);
   const [disciplinasSemCarga, setDisciplinasSemCarga] = useState(0);
   const { online } = useOfflineStatus();
-  const requestRef = useRef(0);
+  const slotsRequestRef = useRef(0);
+  const turmasRequestRef = useRef(0);
+  const cargaRequestRef = useRef(0);
 
   const turnos = useMemo<Turno[]>(
     () => [
@@ -63,7 +65,7 @@ export default function HorariosSlotsPage() {
   useEffect(() => {
     if (!escolaId) return;
     const controller = new AbortController();
-    const requestId = ++requestRef.current;
+    const requestId = ++slotsRequestRef.current;
 
     const load = async () => {
       setLoading(true);
@@ -72,17 +74,17 @@ export default function HorariosSlotsPage() {
           signal: controller.signal,
         });
         const json = await res.json().catch(() => ({}));
-        if (controller.signal.aborted || requestId !== requestRef.current) return;
+        if (controller.signal.aborted || requestId !== slotsRequestRef.current) return;
         if (res.ok && json.ok) {
           setSlots(json.items || []);
         } else {
           setSlots([]);
         }
       } catch (error) {
-        if (controller.signal.aborted || requestId !== requestRef.current) return;
+        if (controller.signal.aborted || requestId !== slotsRequestRef.current) return;
         setSlots([]);
       } finally {
-        if (!controller.signal.aborted && requestId === requestRef.current) {
+        if (!controller.signal.aborted && requestId === slotsRequestRef.current) {
           setLoading(false);
         }
       }
@@ -95,7 +97,7 @@ export default function HorariosSlotsPage() {
   useEffect(() => {
     if (!escolaId) return;
     const controller = new AbortController();
-    const requestId = ++requestRef.current;
+    const requestId = ++turmasRequestRef.current;
 
     const loadTurmas = async () => {
       setLoadingTurmas(true);
@@ -104,7 +106,7 @@ export default function HorariosSlotsPage() {
           signal: controller.signal,
         });
         const json = await res.json().catch(() => ({}));
-        if (controller.signal.aborted || requestId !== requestRef.current) return;
+        if (controller.signal.aborted || requestId !== turmasRequestRef.current) return;
         const items = res.ok && json.ok && Array.isArray(json.items) ? json.items : [];
         setTurmas(
           items.map((item: any) => ({
@@ -116,10 +118,10 @@ export default function HorariosSlotsPage() {
           }))
         );
       } catch (error) {
-        if (controller.signal.aborted || requestId !== requestRef.current) return;
+        if (controller.signal.aborted || requestId !== turmasRequestRef.current) return;
         setTurmas([]);
       } finally {
-        if (!controller.signal.aborted && requestId === requestRef.current) {
+        if (!controller.signal.aborted && requestId === turmasRequestRef.current) {
           setLoadingTurmas(false);
         }
       }
@@ -156,7 +158,7 @@ export default function HorariosSlotsPage() {
       return;
     }
     const controller = new AbortController();
-    const requestId = ++requestRef.current;
+    const requestId = ++cargaRequestRef.current;
 
     const loadCarga = async () => {
       try {
@@ -167,7 +169,7 @@ export default function HorariosSlotsPage() {
           { signal: controller.signal }
         );
         const json = await res.json().catch(() => ({}));
-        if (controller.signal.aborted || requestId !== requestRef.current) return;
+        if (controller.signal.aborted || requestId !== cargaRequestRef.current) return;
         const items = res.ok && json.ok && Array.isArray(json.items) ? json.items : [];
         let total = 0;
         let missing = 0;
@@ -181,7 +183,7 @@ export default function HorariosSlotsPage() {
         setTurmaCarga(total);
         setDisciplinasSemCarga(missing);
       } catch (error) {
-        if (controller.signal.aborted || requestId !== requestRef.current) return;
+        if (controller.signal.aborted || requestId !== cargaRequestRef.current) return;
         setTurmaCarga(0);
         setDisciplinasSemCarga(0);
       }

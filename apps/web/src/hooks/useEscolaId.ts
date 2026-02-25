@@ -30,12 +30,6 @@ export function useEscolaId(): UseEscolaIdState {
           return;
         }
 
-        const metaEscola = (user.app_metadata as any)?.escola_id as string | undefined;
-        if (metaEscola) {
-          if (active) setEscolaId(String(metaEscola));
-          return;
-        }
-
         const { data: prof } = await supabase
           .from("profiles")
           .select("current_escola_id, escola_id")
@@ -45,6 +39,12 @@ export function useEscolaId(): UseEscolaIdState {
         const fromProfile = (prof?.[0] as any)?.current_escola_id || (prof?.[0] as any)?.escola_id;
         if (fromProfile) {
           if (active) setEscolaId(String(fromProfile));
+          return;
+        }
+
+        const metaEscola = (user.app_metadata as any)?.escola_id as string | undefined;
+        if (metaEscola) {
+          if (active) setEscolaId(String(metaEscola));
           return;
         }
 

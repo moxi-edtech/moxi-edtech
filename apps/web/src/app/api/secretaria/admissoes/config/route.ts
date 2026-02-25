@@ -30,7 +30,7 @@ export async function GET(request: Request) {
   try {
     const [cursos, classes] = await Promise.all([
       supabase.from('cursos').select('id, nome').eq('escola_id', escolaId),
-      supabase.from('classes').select('id, nome').eq('escola_id', escolaId),
+      supabase.from('classes').select('id, nome, curso_id').eq('escola_id', escolaId),
     ])
 
     return NextResponse.json({

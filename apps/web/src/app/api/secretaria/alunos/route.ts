@@ -1,7 +1,8 @@
 // @kf2 allow-scan
-import { kf2Range } from "@/lib/db/kf2";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { requireRoleInSchool } from "@/lib/authz";
+import { listAlunos, parseAlunoListFilters } from "@/lib/services/alunos.service";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -19,78 +20,25 @@ export async function GET(req: Request) {
     }
     const user = userRes.user;
 
-    const escolaId = await resolveEscolaIdForUser(supabase, user.id);
+    const url = new URL(req.url);
+    const requestedEscolaId = url.searchParams.get("escolaId") || url.searchParams.get("escola_id");
+    const escolaId = await resolveEscolaIdForUser(supabase, user.id, requestedEscolaId);
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: "Usuário não vinculado a nenhuma escola" }, { status: 403 });
     }
 
-    const url = new URL(req.url);
-    const q = (url.searchParams.get("q") || url.searchParams.get("search"))?.trim() || null;
-    const status = (url.searchParams.get("status") || "ativo").toLowerCase();
-    const anoParamRaw = url.searchParams.get("ano") || url.searchParams.get("ano_letivo");
-    const anoParam = anoParamRaw ? Number(anoParamRaw) : null;
-    const targetAno = Number.isFinite(anoParam) ? (anoParam as number) : null;
-
-    const limitParam = url.searchParams.get("limit") ?? url.searchParams.get("pageSize");
-    const pageParam = url.searchParams.get("page");
-    const offsetParam = url.searchParams.get("offset");
-    const cursorCreatedAt = url.searchParams.get("cursor_created_at");
-    const cursorId = url.searchParams.get("cursor_id");
-    const hasCursor = Boolean(cursorCreatedAt && cursorId);
-    const derivedOffset = pageParam && limitParam ? (Number(pageParam) - 1) * Number(limitParam) : undefined;
-    const { limit, from } = kf2Range(
-      limitParam ? Number(limitParam) : undefined,
-      hasCursor ? 0 : offsetParam ? Number(offsetParam) : derivedOffset
-    );
-
-    const { data, error } = await supabase.rpc("secretaria_list_alunos_kf2", {
-      p_escola_id: escolaId,
-      p_status: status,
-      p_q: q ?? undefined,
-      p_ano_letivo: targetAno ?? undefined,
-      p_limit: limit,
-      p_offset: from,
-      p_cursor_created_at: cursorCreatedAt ?? undefined,
-      p_cursor_id: cursorId ?? undefined,
+    const { error: roleError } = await requireRoleInSchool({
+      supabase,
+      escolaId,
+      roles: ["secretaria", "admin", "admin_escola", "staff_admin"],
     });
+    if (roleError) return roleError;
 
-    if (error) throw error;
-
-    let items = (data ?? []).map((row: any) => ({
-      ...row,
-      bilhete: row?.bi_numero ?? null,
-    }));
-
-    const includeResumo = url.searchParams.get("includeResumo") === "1";
-    if (includeResumo && q && items.length > 0 && items.length <= 10) {
-      const alunoIds = items.map((row: any) => row.aluno_id ?? row.id).filter(Boolean);
-
-      const { data: resumoRows } = await supabase
-        .from("vw_secretaria_alunos_resumo")
-        .select("aluno_id, turma_nome, total_em_atraso")
-        .in("aluno_id", alunoIds);
-
-      const resumoByAluno = new Map(
-        (resumoRows ?? []).map((row: any) => [row.aluno_id, row])
-      );
-
-      items = items.map((row: any) => {
-        const alunoId = row.aluno_id ?? row.id;
-        const resumo = resumoByAluno.get(alunoId);
-        return {
-          ...row,
-          turma_atual: resumo?.turma_nome ?? null,
-          total_em_atraso: Number(resumo?.total_em_atraso ?? 0),
-        };
-      });
-    }
-
-    const hasMore = items.length === limit;
-    const lastItem = hasMore ? items[items.length - 1] : null;
-    const nextCursor = lastItem
-      ? { created_at: lastItem.created_at, id: lastItem.id }
-      : null;
-    const nextOffset = hasMore ? from + items.length : null;
+    const filters = parseAlunoListFilters(url);
+    const { items, page } = await listAlunos(supabase, escolaId, filters, {
+      includeFinanceiro: true,
+      includeResumo: filters.includeResumo,
+    });
 
     return NextResponse.json({
       ok: true,
@@ -98,12 +46,8 @@ export async function GET(req: Request) {
       items,
       total: items.length,
       page: {
-        limit,
-        offset: from,
-        nextOffset,
-        hasMore,
+        ...page,
         total: items.length,
-        nextCursor,
       },
     });
   } catch (e: any) {

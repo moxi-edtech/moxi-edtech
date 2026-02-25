@@ -213,6 +213,22 @@ export async function POST(request: Request) {
       p_candidatura_id: candidaturaId ?? null,
     };
 
+    if (candidateData.turma_preferencial_id && (!candidateData.curso_id || !candidateData.classe_id)) {
+      const { data: turmaRow } = await supabase
+        .from("turmas")
+        .select("curso_id, classe_id")
+        .eq("id", candidateData.turma_preferencial_id)
+        .eq("escola_id", escolaId)
+        .maybeSingle();
+      if (turmaRow?.curso_id && !candidateData.curso_id) {
+        candidateData.curso_id = turmaRow.curso_id;
+      }
+      if (turmaRow?.classe_id && !candidateData.classe_id) {
+        candidateData.classe_id = turmaRow.classe_id;
+      }
+      rpcArgs.p_dados_candidato = candidateData;
+    }
+
     const { data, error } = await supabase.rpc("admissao_upsert_draft", rpcArgs);
 
     if (error) throw error;

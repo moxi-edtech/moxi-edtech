@@ -50,7 +50,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
     let alunoQuery = s
       .from('alunos')
-      .select('id, nome, responsavel, telefone_responsavel, status, created_at, profile_id, escola_id, profiles:profiles!alunos_profile_id_fkey(user_id, email, nome, telefone, data_nascimento, sexo, bi_numero, naturalidade, provincia, encarregado_relacao, numero_login)')
+      .select('id, nome, email, telefone, data_nascimento, sexo, bi_numero, naturalidade, responsavel, responsavel_nome, responsavel_contato, encarregado_nome, encarregado_telefone, telefone_responsavel, status, created_at, profile_id, escola_id, profiles:profiles!alunos_profile_id_fkey(user_id, email, nome, telefone, data_nascimento, sexo, bi_numero, naturalidade, provincia, encarregado_relacao, numero_login)')
       .eq('id', alunoId)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -81,25 +81,47 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     }
 
     const profObj = Array.isArray((aluno as any).profiles) ? (aluno as any).profiles[0] : (aluno as any).profiles
+    const { data: matricula } = await s
+      .from('matriculas')
+      .select('id, turma_id, created_at, status, turmas ( nome, cursos ( nome ) )')
+      .eq('aluno_id', alunoId)
+      .eq('escola_id', alunoEscolaId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    const turma = Array.isArray((matricula as any)?.turmas) ? (matricula as any)?.turmas?.[0] : (matricula as any)?.turmas
+    const curso = Array.isArray((turma as any)?.cursos) ? (turma as any)?.cursos?.[0] : (turma as any)?.cursos
+    const responsavelNome =
+      (aluno as any).responsavel || (aluno as any).responsavel_nome || (aluno as any).encarregado_nome || null
+    const responsavelTelefone =
+      (aluno as any).telefone_responsavel ||
+      (aluno as any).responsavel_contato ||
+      (aluno as any).encarregado_telefone ||
+      null
+
     return NextResponse.json({
       ok: true,
       item: {
         id: (aluno as any).id,
         nome: (aluno as any).nome,
-        responsavel: (aluno as any).responsavel,
-        telefone_responsavel: (aluno as any).telefone_responsavel,
+        responsavel: responsavelNome,
+        telefone_responsavel: responsavelTelefone,
         status: (aluno as any).status,
         profile_id: (aluno as any).profile_id,
         escola_id: alunoEscolaId,
-        email: profObj?.email ?? null,
+        email: (aluno as any).email ?? profObj?.email ?? null,
         numero_login: profObj?.numero_login ?? null,
-        telefone: profObj?.telefone ?? null,
-        data_nascimento: profObj?.data_nascimento ?? null,
-        sexo: profObj?.sexo ?? null,
-        bi_numero: profObj?.bi_numero ?? null,
-        naturalidade: profObj?.naturalidade ?? null,
+        telefone: (aluno as any).telefone ?? profObj?.telefone ?? null,
+        data_nascimento: (aluno as any).data_nascimento ?? profObj?.data_nascimento ?? null,
+        sexo: (aluno as any).sexo ?? profObj?.sexo ?? null,
+        bi_numero: (aluno as any).bi_numero ?? profObj?.bi_numero ?? null,
+        naturalidade: (aluno as any).naturalidade ?? profObj?.naturalidade ?? null,
         provincia: profObj?.provincia ?? null,
         encarregado_relacao: profObj?.encarregado_relacao ?? null,
+        turma_id: (matricula as any)?.turma_id ?? null,
+        turma_nome: (turma as any)?.nome ?? null,
+        turma_curso: (curso as any)?.nome ?? null,
       }
     })
   } catch (e) {

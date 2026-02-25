@@ -188,6 +188,96 @@ export type Database = {
           },
         ]
       }
+      aluno_encarregados: {
+        Row: {
+          aluno_id: string
+          created_at: string | null
+          encarregado_id: string
+          escola_id: string
+          id: string
+          principal: boolean | null
+          relacao: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          aluno_id: string
+          created_at?: string | null
+          encarregado_id: string
+          escola_id: string
+          id?: string
+          principal?: boolean | null
+          relacao?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          aluno_id?: string
+          created_at?: string | null
+          encarregado_id?: string
+          escola_id?: string
+          id?: string
+          principal?: boolean | null
+          relacao?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aluno_encarregados_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "alunos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aluno_encarregados_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_alunos_active"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aluno_encarregados_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_balcao_secretaria"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "aluno_encarregados_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_secretaria"
+            referencedColumns: ["aluno_id"]
+          },
+          {
+            foreignKeyName: "aluno_encarregados_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_alunos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aluno_encarregados_encarregado_id_fkey"
+            columns: ["encarregado_id"]
+            isOneToOne: false
+            referencedRelation: "encarregados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aluno_encarregados_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "aluno_encarregados_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       aluno_processo_counters: {
         Row: {
           escola_id: string
@@ -1913,6 +2003,54 @@ export type Database = {
             foreignKeyName: "documentos_sequencia_escola_id_fkey"
             columns: ["escola_id"]
             isOneToOne: true
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      encarregados: {
+        Row: {
+          bi_numero: string | null
+          created_at: string | null
+          email: string | null
+          escola_id: string
+          id: string
+          nome: string
+          telefone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          bi_numero?: string | null
+          created_at?: string | null
+          email?: string | null
+          escola_id: string
+          id?: string
+          nome: string
+          telefone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          bi_numero?: string | null
+          created_at?: string | null
+          email?: string | null
+          escola_id?: string
+          id?: string
+          nome?: string
+          telefone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "encarregados_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "encarregados_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
             referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
