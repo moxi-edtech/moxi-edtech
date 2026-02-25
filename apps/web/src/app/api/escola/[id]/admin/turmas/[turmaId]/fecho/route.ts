@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { supabaseServerTyped } from '@/lib/supabaseServer';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
+import { emitirEvento } from '@/lib/eventos/emitirEvento';
 import type { Database } from '~types/supabase';
 
 export const dynamic = 'force-dynamic';
@@ -134,6 +135,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       console.error('Error updating status_fecho:', error);
       return NextResponse.json({ ok: false, error: 'Erro ao atualizar status de fecho.' }, { status: 500 });
     }
+
+    emitirEvento(supabase, {
+      escola_id: effectiveEscolaId,
+      tipo: parse.data.status === 'FECHADO' ? 'turma.fechada' : 'turma.reaberta',
+      payload: {
+        turma_id: turmaId,
+        status_fecho: parse.data.status,
+        reason: parse.data.reason ?? null,
+      },
+      actor_id: user.id,
+      actor_role: 'admin',
+      entidade_tipo: 'turma',
+      entidade_id: turmaId,
+    }).catch(() => null);
 
     return NextResponse.json({ ok: true, data }, { status: 200 });
   } catch (e) {

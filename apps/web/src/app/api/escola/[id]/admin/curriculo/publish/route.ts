@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import { supabaseServerTyped } from '@/lib/supabaseServer';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
+import { emitirEvento } from '@/lib/eventos/emitirEvento';
 import type { Database } from '~types/supabase';
 
 export const dynamic = 'force-dynamic';
@@ -70,6 +71,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     const result = Array.isArray(data) ? data[0] : data;
     if (!result?.ok) {
+      emitirEvento(supabase, {
+        escola_id: userEscolaId,
+        tipo: 'curriculo.publish_failed',
+        payload: {
+          curso_id: cursoId,
+          ano_letivo_id: anoLetivoId,
+          version,
+          classe_id: bulk ? null : (classeId ?? null),
+          message: result?.message || 'Falha ao publicar currículo.',
+          pendencias: result?.pendencias ?? [],
+          pendencias_count: result?.pendencias_count ?? 0,
+        },
+        actor_id: user.id,
+        actor_role: 'admin',
+        entidade_tipo: 'curriculo',
+        entidade_id: null,
+      }).catch(() => null);
       return NextResponse.json({
         ok: false,
         error: result?.message || 'Falha ao publicar currículo.',
@@ -77,6 +95,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         pendencias_count: result?.pendencias_count ?? 0,
       }, { status: 400 });
     }
+
+    emitirEvento(supabase, {
+      escola_id: userEscolaId,
+      tipo: 'curriculo.published',
+      payload: {
+        curso_id: cursoId,
+        ano_letivo_id: anoLetivoId,
+        version,
+        classe_id: bulk ? null : (classeId ?? null),
+        rebuild_turmas: rebuildTurmas,
+        pendencias_count: result?.pendencias_count ?? 0,
+      },
+      actor_id: user.id,
+      actor_role: 'admin',
+      entidade_tipo: 'curriculo',
+      entidade_id: result?.published_curriculo_id ?? null,
+    }).catch(() => null);
 
     return NextResponse.json({ ok: true, data: result, idempotency_key: idempotencyKey });
   } catch (e) {

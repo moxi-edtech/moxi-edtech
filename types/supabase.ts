@@ -8690,6 +8690,7 @@ export type Database = {
         Row: {
           aluno_id: string | null
           ano_letivo: number | null
+          conta_para_media_med: boolean | null
           disciplina_id: string | null
           disciplina_nome: string | null
           disciplina_sigla: string | null
@@ -10355,6 +10356,45 @@ export type Database = {
             }
             Returns: undefined
           }
+      curriculum_preset_subjects_delete: {
+        Args: { p_subject_id: string }
+        Returns: boolean
+      }
+      curriculum_preset_subjects_upsert: {
+        Args: {
+          p_component: Database["public"]["Enums"]["discipline_component"]
+          p_grade_level: string
+          p_name: string
+          p_preset_id: string
+          p_subject_id: string
+          p_subject_type?: string
+          p_weekly_hours: number
+        }
+        Returns: {
+          component: Database["public"]["Enums"]["discipline_component"]
+          grade_level: string
+          id: string
+          name: string
+          preset_id: string
+          subject_type: string
+          weekly_hours: number
+        }[]
+      }
+      curriculum_presets_delete: { Args: { p_id: string }; Returns: boolean }
+      curriculum_presets_upsert: {
+        Args: {
+          p_category: Database["public"]["Enums"]["course_category"]
+          p_description?: string
+          p_id: string
+          p_name: string
+        }
+        Returns: {
+          category: Database["public"]["Enums"]["course_category"]
+          description: string
+          id: string
+          name: string
+        }[]
+      }
       curriculum_recalc_status: {
         Args: { p_curso_matriz_id?: string; p_escola_id: string }
         Returns: undefined
