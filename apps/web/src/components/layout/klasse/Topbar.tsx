@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Bell, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import SignOutButton from "@/components/auth/SignOutButton";
 import { CommandPalette } from "@/components/CommandPalette";
+import { NotificacoesDropdown } from "@/components/ui/NotificacoesDropdown";
 
 function cn(...c: Array<string | false | null | undefined>) {
   return c.filter(Boolean).join(" ");
@@ -47,15 +48,7 @@ export default function Topbar({
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          <button
-            className={cn(
-              "h-10 w-10 rounded-xl border border-slate-200 bg-white",
-              "hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-klasse-gold/20"
-            )}
-            aria-label="Notificações"
-          >
-            <Bell className="mx-auto h-5 w-5 text-slate-600" />
-          </button>
+          <NotificacoesDropdown />
 
           <div className="relative">
             <button
