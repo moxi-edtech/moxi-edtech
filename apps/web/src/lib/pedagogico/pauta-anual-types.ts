@@ -1,6 +1,7 @@
 export type PautaAnualDisciplina = {
   id: string
   nome: string
+  conta_para_media_med?: boolean
 }
 
 export type PautaAnualDisciplinaNotas = {

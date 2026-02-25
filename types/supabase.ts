@@ -903,6 +903,13 @@ export type Database = {
             referencedRelation: "periodos_letivos"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "avaliacoes_turma_disciplina_id_fkey"
+            columns: ["turma_disciplina_id"]
+            isOneToOne: false
+            referencedRelation: "turma_disciplinas"
+            referencedColumns: ["id"]
+          },
         ]
       }
       candidaturas: {
@@ -1529,6 +1536,7 @@ export type Database = {
           carga_horaria_semanal: number | null
           classe_id: string
           classificacao: string | null
+          conta_para_media_med: boolean
           created_at: string
           curso_curriculo_id: string | null
           curso_id: string
@@ -1552,6 +1560,7 @@ export type Database = {
           carga_horaria_semanal?: number | null
           classe_id: string
           classificacao?: string | null
+          conta_para_media_med?: boolean
           created_at?: string
           curso_curriculo_id?: string | null
           curso_id: string
@@ -1575,6 +1584,7 @@ export type Database = {
           carga_horaria_semanal?: number | null
           classe_id?: string
           classificacao?: string | null
+          conta_para_media_med?: boolean
           created_at?: string
           curso_curriculo_id?: string | null
           curso_id?: string
@@ -2283,6 +2293,57 @@ export type Database = {
           use_mv_dashboards?: boolean
         }
         Relationships: []
+      }
+      eventos: {
+        Row: {
+          actor_id: string | null
+          actor_role: string | null
+          created_at: string
+          entidade_id: string | null
+          entidade_tipo: string | null
+          escola_id: string
+          id: string
+          payload: Json
+          tipo: Database["public"]["Enums"]["evento_tipo"]
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_role?: string | null
+          created_at?: string
+          entidade_id?: string | null
+          entidade_tipo?: string | null
+          escola_id: string
+          id?: string
+          payload?: Json
+          tipo: Database["public"]["Enums"]["evento_tipo"]
+        }
+        Update: {
+          actor_id?: string | null
+          actor_role?: string | null
+          created_at?: string
+          entidade_id?: string | null
+          entidade_tipo?: string | null
+          escola_id?: string
+          id?: string
+          payload?: Json
+          tipo?: Database["public"]["Enums"]["evento_tipo"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eventos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "eventos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       events: {
         Row: {
@@ -5435,6 +5496,73 @@ export type Database = {
           },
         ]
       }
+      notificacoes: {
+        Row: {
+          action_label: string | null
+          action_url: string | null
+          corpo: string | null
+          created_at: string
+          destinatario_id: string
+          escola_id: string
+          evento_id: string
+          id: string
+          lida: boolean
+          lida_em: string | null
+          prioridade: Database["public"]["Enums"]["notificacao_prioridade"]
+          titulo: string
+        }
+        Insert: {
+          action_label?: string | null
+          action_url?: string | null
+          corpo?: string | null
+          created_at?: string
+          destinatario_id: string
+          escola_id: string
+          evento_id: string
+          id?: string
+          lida?: boolean
+          lida_em?: string | null
+          prioridade?: Database["public"]["Enums"]["notificacao_prioridade"]
+          titulo: string
+        }
+        Update: {
+          action_label?: string | null
+          action_url?: string | null
+          corpo?: string | null
+          created_at?: string
+          destinatario_id?: string
+          escola_id?: string
+          evento_id?: string
+          id?: string
+          lida?: boolean
+          lida_em?: string | null
+          prioridade?: Database["public"]["Enums"]["notificacao_prioridade"]
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notificacoes_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notificacoes_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notificacoes_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "eventos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -6848,6 +6976,7 @@ export type Database = {
       }
       school_subjects: {
         Row: {
+          conta_para_media_med: boolean
           created_at: string | null
           custom_name: string | null
           custom_weekly_hours: number | null
@@ -6857,6 +6986,7 @@ export type Database = {
           preset_subject_id: string
         }
         Insert: {
+          conta_para_media_med?: boolean
           created_at?: string | null
           custom_name?: string | null
           custom_weekly_hours?: number | null
@@ -6866,6 +6996,7 @@ export type Database = {
           preset_subject_id: string
         }
         Update: {
+          conta_para_media_med?: boolean
           created_at?: string | null
           custom_name?: string | null
           custom_weekly_hours?: number | null
@@ -7596,6 +7727,7 @@ export type Database = {
           avaliacao_mode: string | null
           carga_horaria_semanal: number | null
           classificacao: string | null
+          conta_para_media_med: boolean
           created_at: string
           curso_matriz_id: string
           entra_no_horario: boolean | null
@@ -7611,6 +7743,7 @@ export type Database = {
           avaliacao_mode?: string | null
           carga_horaria_semanal?: number | null
           classificacao?: string | null
+          conta_para_media_med?: boolean
           created_at?: string
           curso_matriz_id: string
           entra_no_horario?: boolean | null
@@ -7626,6 +7759,7 @@ export type Database = {
           avaliacao_mode?: string | null
           carga_horaria_semanal?: number | null
           classificacao?: string | null
+          conta_para_media_med?: boolean
           created_at?: string
           curso_matriz_id?: string
           entra_no_horario?: boolean | null
@@ -10697,6 +10831,16 @@ export type Database = {
         | { Args: { p_user_id: string }; Returns: string }
       get_user_export_json: { Args: { p_user_id: string }; Returns: Json }
       get_user_tenant: { Args: never; Returns: string }
+      get_users_by_role: {
+        Args: {
+          p_escola_id: string
+          p_roles: Database["public"]["Enums"]["user_role"][]
+        }
+        Returns: {
+          role: Database["public"]["Enums"]["user_role"]
+          user_id: string
+        }[]
+      }
       hard_delete_aluno: {
         Args: { p_aluno_id: string; p_reason?: string }
         Returns: undefined
@@ -10760,6 +10904,19 @@ export type Database = {
         Returns: undefined
       }
       initcap_angola: { Args: { "": string }; Returns: string }
+      inserir_notificacao: {
+        Args: {
+          p_action_label?: string
+          p_action_url?: string
+          p_corpo?: string
+          p_destinatario_id: string
+          p_escola_id: string
+          p_evento_id: string
+          p_prioridade?: Database["public"]["Enums"]["notificacao_prioridade"]
+          p_titulo: string
+        }
+        Returns: undefined
+      }
       is_admin_escola: { Args: never; Returns: boolean }
       is_escola_admin: { Args: { p_escola_id: string }; Returns: boolean }
       is_escola_diretor: { Args: { p_escola_id: string }; Returns: boolean }
@@ -11235,9 +11392,34 @@ export type Database = {
         }
         Returns: Json
       }
+      trg_evento_curriculo_published_fn: {
+        Args: { ev: Database["public"]["Tables"]["eventos"]["Row"] }
+        Returns: undefined
+      }
+      trg_evento_notas_lancadas_fn: {
+        Args: { ev: Database["public"]["Tables"]["eventos"]["Row"] }
+        Returns: undefined
+      }
+      trg_evento_pagamento_confirmado_fn: {
+        Args: { ev: Database["public"]["Tables"]["eventos"]["Row"] }
+        Returns: undefined
+      }
+      trg_evento_turmas_generated_fn: {
+        Args: { ev: Database["public"]["Tables"]["eventos"]["Row"] }
+        Returns: undefined
+      }
       try_start_pautas_lote_job: {
         Args: { p_escola_id: string; p_job_id: string }
         Returns: boolean
+      }
+      turma_set_status_fecho: {
+        Args: {
+          p_escola_id: string
+          p_reason?: string
+          p_status: string
+          p_turma_id: string
+        }
+        Returns: Json
       }
       unaccent: { Args: { "": string }; Returns: string }
       update_financeiro_from_pagamento: {
@@ -11299,6 +11481,14 @@ export type Database = {
         | "CIENTIFICA"
         | "TECNICA"
         | "ESPECIFICA"
+      evento_tipo:
+        | "curriculo.published"
+        | "turmas.generated"
+        | "notas.lancadas"
+        | "pagamento.confirmado"
+        | "matricula.concluida"
+        | "aluno.arquivado"
+        | "documento.emitido"
       fecho_status: "draft" | "declared" | "approved" | "rejected"
       financeiro_categoria_item:
         | "uniforme"
@@ -11331,6 +11521,7 @@ export type Database = {
         | "multicaixa"
         | "transferencia"
         | "deposito"
+      notificacao_prioridade: "info" | "aviso" | "urgente"
       outbox_status: "pending" | "processing" | "sent" | "failed" | "dead"
       pagamento_metodo: "cash" | "tpa" | "transfer" | "mcx" | "kwik"
       pagamento_status: "pending" | "settled" | "rejected" | "voided"
@@ -11526,6 +11717,15 @@ export const Constants = {
         "TECNICA",
         "ESPECIFICA",
       ],
+      evento_tipo: [
+        "curriculo.published",
+        "turmas.generated",
+        "notas.lancadas",
+        "pagamento.confirmado",
+        "matricula.concluida",
+        "aluno.arquivado",
+        "documento.emitido",
+      ],
       fecho_status: ["draft", "declared", "approved", "rejected"],
       financeiro_categoria_item: [
         "uniforme",
@@ -11563,6 +11763,7 @@ export const Constants = {
         "transferencia",
         "deposito",
       ],
+      notificacao_prioridade: ["info", "aviso", "urgente"],
       outbox_status: ["pending", "processing", "sent", "failed", "dead"],
       pagamento_metodo: ["cash", "tpa", "transfer", "mcx", "kwik"],
       pagamento_status: ["pending", "settled", "rejected", "voided"],
