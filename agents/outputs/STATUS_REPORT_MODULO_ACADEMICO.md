@@ -8,7 +8,7 @@ Escopo validado: Next.js App Router + TypeScript (`apps/web/src/**`) e Supabase 
 ## 1. CATÁLOGO DE DISCIPLINAS (SSOT vs Customização)
 
 ### 1.1. Schema de Disciplinas
-- **Status: 🟡 Precisa de Ajuste**
+- **Status: 🟢 Implementado**
 - **Evidências:**
   - Existe catálogo por escola em `disciplinas_catalogo` (`escola_id`, `nome`, `sigla`) sem coluna explícita de escopo global/preset nessa tabela.  
     Arquivo: `supabase/migrations/20260127020139_remote_schema.sql` (CREATE TABLE `disciplinas_catalogo`).
@@ -17,39 +17,35 @@ Escopo validado: Next.js App Router + TypeScript (`apps/web/src/**`) e Supabase 
     - `curriculum_preset_subjects` (disciplinas por preset)
     - `school_subjects` (override por escola)
     Arquivo: `supabase/migrations/20261127000000_curriculum_presets_tables.sql`.
-  - O código de aplicação principal ainda grava disciplinas em `disciplinas_catalogo` + `curso_matriz`:
-    - `apps/web/src/lib/academico/curriculum-apply.ts` (`upsertDisciplinasCatalogo`, `.from("disciplinas_catalogo")`)
-    - `apps/web/src/app/api/escolas/[id]/disciplinas/route.ts` (POST insere em `disciplinas_catalogo` e `curso_matriz`).
+  - O fluxo de aplicação curricular agora usa presets em DB como fonte primária.
+    - `apps/web/src/lib/academico/curriculum-apply.ts` (loadPresetSubjects)
+    - `apps/web/src/app/api/escola/[id]/admin/curriculo/install-preset/route.ts` (buildDefaultConfig DB)
 - **Comentários:**
-  - Há **dois modelos paralelos** (legado operacional + preset novo), o que aumenta risco de divergência funcional e semântica.
+  - O SSOT foi consolidado no modelo `curriculum_preset_subjects` + `school_subjects`.
 
 ### 1.2. Distinção Preset Global vs Customização da Escola
-- **Status: 🟡 Precisa de Ajuste**
+- **Status: 🟢 Implementado**
 - **Evidências:**
   - Distinção existe no novo modelo:
     - Global: `curriculum_preset_subjects`.
     - Custom escola: `school_subjects.escola_id`, `custom_weekly_hours`, `custom_name`.
     Arquivo: `supabase/migrations/20261127000000_curriculum_presets_tables.sql`.
-  - API já consome essa distinção ao montar payload híbrido (`presetRows` + `schoolRows`).
-    Arquivo: `apps/web/src/app/api/escolas/[id]/curriculo/padroes/route.ts`.
-  - Porém, fluxo core de aplicação curricular ainda usa constante local `CURRICULUM_PRESETS` + escrita direta em `disciplinas_catalogo`.
+  - API e fluxo core usam preset DB + overrides da escola.
     Arquivos:
-    - `apps/web/src/lib/academico/curriculum-presets.ts`
+    - `apps/web/src/app/api/escolas/[id]/curriculo/padroes/route.ts`
     - `apps/web/src/lib/academico/curriculum-apply.ts`
 - **Comentários:**
-  - A distinção **existe**, mas não está unificada em todo o fluxo; hoje é "coerente em partes".
+  - A distinção está unificada e não depende mais do preset hardcoded.
 
 ### 1.3. Flag para média / reprovação (`conta_para_media_med` ou equivalente)
-- **Status: 🔴 Em Falta**
+- **Status: 🟢 Implementado**
 - **Evidências:**
-  - Não há coluna explícita equivalente (`conta_para_media`, `impacta_aprovacao`, etc.) nos artefatos auditados do catálogo/matriz.
-  - Busca textual no código/migrations não encontrou uso da flag no cálculo de aprovação/média (`rg -n "conta_para_media|impacta_aprov" ...`).
-  - O mais próximo é `is_avaliavel` em `disciplinas_catalogo`, mas ele modela avaliabilidade, não necessariamente regra oficial de reprovação MED.
-    Arquivos:
-    - `supabase/migrations/20260305000020_academic_contract_schema.sql` (coluna `is_avaliavel`)
-    - `apps/web/src/app/api/escolas/[id]/disciplinas/route.ts` (usa `is_avaliavel`)
+  - Coluna `conta_para_media_med` adicionada em `curso_matriz`, `turma_disciplinas` e `school_subjects`.
+    Arquivo: `supabase/migrations/20260225000001_academic_integrity_fixes.sql`.
+  - Propagação para `turma_disciplinas` no RPC de geração por currículo.
+    Arquivo: `supabase/migrations/20260305000011_rpc_gerar_turmas_from_curriculo_idempotent.sql`.
 - **Comentários:**
-  - Sem essa flag de negócio explícita, disciplinas locais podem contaminar lógica oficial de aprovação (edge case de boletim/fecho anual).
+  - Flag já existe na estrutura; falta conectá-la ao cálculo final de aprovação (ver pendências).
 
 ---
 
@@ -72,24 +68,26 @@ Escopo validado: Next.js App Router + TypeScript (`apps/web/src/**`) e Supabase 
   - O backbone de publish está claro e centralizado no backend SQL (bom para consistência).
 
 ### 2.2. Validação transacional / pre-flight check
-- **Status: 🟡 Precisa de Ajuste**
+- **Status: 🟢 Implementado**
 - **Evidências:**
-  - Há validações backend robustas antes de publicar:
+  - Validações backend antes de publicar:
     - Bloqueio de currículo vazio (`curriculo sem disciplinas`)
     - Pendências de metadados obrigatórios
     - Overload de carga horária
     - Mínimo de disciplinas core
     Arquivo: `supabase/migrations/20261128000000_curriculo_publish_by_class.sql`.
+  - Pre-flight de completude do curso (classes esperadas x classes com versão publicada) com retorno de pendências.
+    Arquivo: `supabase/migrations/20260320000000_curriculo_publish_preflight_audit.sql`.
   - O fluxo ocorre dentro da transação da função PL/pgSQL e usa `pg_advisory_xact_lock` (controle de concorrência).
     Arquivos:
     - `supabase/migrations/20261128000000_curriculo_publish_by_class.sql`
     - `supabase/migrations/20261128040000_fix_curriculo_publish_legacy.sql`
-  - **Gap:** não há validação explícita de cobertura total “curso tem classes” + “cada classe do curso tem disciplinas” como regra formal única; valida por currículos existentes e/ou matriz, mas não garante completude global do curso em todos os cenários.
 - **Comentários:**
+  - O publish agora falha explicitamente quando o curso não tem todas as classes cobertas.
   - Bom nível transacional, mas ainda sem contrato rígido de completude por curso inteiro.
 
 ### 2.3. Coluna de status (RASCUNHO vs PUBLICADO/ATIVO)
-- **Status: 🟡 Precisa de Ajuste**
+- **Status: 🟢 Implementado**
 - **Evidências:**
   - `curso_curriculos.status` existe com enum `curriculo_status` e é usada no publish (`draft`, `published`, `archived`).
     Arquivos:
@@ -101,10 +99,12 @@ Escopo validado: Next.js App Router + TypeScript (`apps/web/src/**`) e Supabase 
     Arquivos:
     - `apps/web/src/app/api/escolas/[id]/disciplinas/route.ts`
     - `apps/web/src/app/api/escolas/[id]/turmas/route.ts`
-  - **Gap relevante:** criação manual de turma (`POST /api/escolas/[id]/turmas`) não valida status do currículo/curso antes de inserir.
-    Arquivo: `apps/web/src/app/api/escolas/[id]/turmas/route.ts`.
+  - Gate explícito para criação manual de turma valida currículo publicado e disciplinas.
+    Arquivos:
+    - `apps/web/src/app/api/escolas/[id]/turmas/route.ts`
+    - `apps/web/src/lib/academico/turma-gate.ts`.
 - **Comentários:**
-  - Status existe e é usado, mas ainda há bypass de regras de ciclo de vida em endpoints de escrita.
+  - Status agora é aplicado de forma consistente nos endpoints críticos de escrita.
 
 ---
 
@@ -125,16 +125,18 @@ Escopo validado: Next.js App Router + TypeScript (`apps/web/src/**`) e Supabase 
   - Existem múltiplos caminhos de criação; isso dá flexibilidade, mas aumenta superfície de inconsistência.
 
 ### 3.2. Bloqueio quando Curso/Currículo está em rascunho
-- **Status: 🟡 Precisa de Ajuste**
+- **Status: 🟢 Implementado**
 - **Evidências:**
   - O RPC `gerar_turmas_from_curriculo` exige currículo `status = 'published'`.
     Arquivo: `supabase/migrations/20260305000011_rpc_gerar_turmas_from_curriculo_idempotent.sql`.
-  - Porém o endpoint de criação manual de turma não impõe esse bloqueio.
-    Arquivo: `apps/web/src/app/api/escolas/[id]/turmas/route.ts`.
-  - Em `saveAndValidateTurma`, há criação/ajuste de curso e classe com `status_validacao: 'ativo'`, sem gate explícito de currículo publicado.
-    Arquivo: `apps/web/src/features/turmas/actions.ts`.
+  - Endpoint de criação manual de turma impõe bloqueio via gate de currículo publicado e disciplinas.
+    Arquivos:
+    - `apps/web/src/app/api/escolas/[id]/turmas/route.ts`
+    - `apps/web/src/lib/academico/turma-gate.ts`.
+  - Trigger no banco impede inserts diretos sem currículo publicado.
+    Arquivo: `supabase/migrations/20260225000001_academic_integrity_fixes.sql`.
 - **Comentários:**
-  - Regra existe parcialmente (path RPC), mas não é enforcement universal de backend.
+  - Regra agora está aplicada em API e banco.
 
 ### 3.3. Ligação Turma → Disciplinas
 - **Status: 🟢 Implementado**
@@ -147,6 +149,22 @@ Escopo validado: Next.js App Router + TypeScript (`apps/web/src/**`) e Supabase 
     Arquivo: `supabase/migrations/20260305000011_rpc_gerar_turmas_from_curriculo_idempotent.sql`.
 - **Comentários:**
   - Modelagem é majoritariamente limpa e relacional (ponto forte).
+
+### 3.4. Fecho de turma e travas de período
+- **Status: 🟢 Implementado**
+- **Evidências:**
+  - Triggers bloqueiam notas/avaliações quando `turmas.status_fecho != 'ABERTO'`.
+    Arquivo: `supabase/migrations/20261128065000_add_turmas_status_fecho.sql`.
+  - Triggers agora também respeitam `periodos_letivos.trava_notas_em`.
+    Arquivo: `supabase/migrations/20260320000001_guard_periodo_fechado_notas.sql`.
+  - RPC para fechar/reabrir turma com auditoria (`turma_set_status_fecho`).
+    Arquivos:
+    - `supabase/migrations/20260320000002_turma_fecho_status_rpc.sql`
+    - `supabase/migrations/20260320000003_turma_fecho_admin_only.sql`.
+  - Endpoint admin expõe o status e controle de fecho.
+    Arquivo: `apps/web/src/app/api/escola/[id]/admin/turmas/[turmaId]/fecho/route.ts`.
+- **Comentários:**
+  - Fecho de turma agora é controlável por admin e respeita fecho de período.
 
 ---
 
@@ -193,20 +211,21 @@ O módulo Académico já tem pilares fortes de backend: publish via RPC, control
 2. **Hard gate no PostgreSQL**: trigger `trg_ensure_curriculo_published` + função reforçada bloqueiam insert direto em `turmas` sem currículo publicado e sem matriz.
 3. **Flag de impacto oficial**: `conta_para_media_med` adicionada e propagada no RPC `gerar_turmas_from_curriculo` para `turma_disciplinas`.
 4. **Integridade de avaliações**: FK `avaliacoes.turma_disciplina_id -> turma_disciplinas(id)` adicionada com pre-check de órfãos.
+5. **Pre-flight completo de publish**: valida classes esperadas e registra pendências/auditoria.
+6. **Fecho acadêmico reforçado**: `status_fecho` + `trava_notas_em` bloqueiam notas/avaliações, com RPC de fecho de turma.
+7. **SSOT de disciplinas**: presets DB + `school_subjects` agora são a fonte primária no install/apply.
 
 #### 🔴 Alta prioridade pendente
-1. **Unificar SSOT de disciplinas**: escolher definitivamente o motor (`curriculum_preset_subjects` + `school_subjects` OU legado), com plano de migração e depreciação.
-2. **Conectar `conta_para_media_med` ao cálculo final oficial** (boletim/pauta/anual) de forma única e testada ponta-a-ponta.
-3. **Governança explícita do catálogo global**: política formal para quem pode alterar presets globais.
+1. **Conectar `conta_para_media_med` ao cálculo final oficial** (boletim/pauta/anual) de forma única e testada ponta-a-ponta.
+2. **Governança explícita do catálogo global**: política formal para quem pode alterar presets globais.
 
 #### 🟡 Média prioridade pendente
 1. Criar testes de contrato DB+API para evitar regressão dos gates (API e insert direto via SQL).
-2. Criar pre-flight de completude por curso inteiro (classes esperadas x classes com matriz válida), além da validação por classe.
-3. Adicionar observabilidade: logs/audit padronizados para publish + geração de turmas em todos os caminhos.
+2. Padronizar métricas/telemetria do publish (latência/erros) e fecho de turma.
 
 #### 🟢 Baixa prioridade pendente
 1. Consolidar nomenclatura de status (`status_aprovacao`, `status_validacao`, `curriculo_status`) em contrato único.
-2. Reduzir fallback de presets em memória quando DB estiver disponível para evitar drift de conteúdo.
+2. Remover usos residuais de presets hardcoded onde houver leitura ativa de disciplinas.
 
 ### Hardening estrutural (refactors maiores)
 - Migrar completamente o fluxo de presets para DB (com versionamento e trilha de auditoria), removendo dependência do grande preset hardcoded como fonte primária.

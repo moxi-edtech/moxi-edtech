@@ -6,7 +6,7 @@ import {
   RefreshCw, UsersRound, BookOpen, UserCheck, Download,
   MoreVertical, UserPlus, FileText, CalendarCheck, Settings,
   School, LayoutDashboard, GraduationCap, MapPin, X,
-  AlertCircle, CheckCircle2, Lock, ChevronLeft,
+  AlertCircle, CheckCircle2, Lock, Unlock, ChevronLeft,
 } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { usePlanFeature } from "@/hooks/usePlanFeature";
@@ -137,9 +137,22 @@ function Toast({ toast, onDismiss }: { toast: ToastState; onDismiss: () => void 
 
 // ─── Confirm dialog ───────────────────────────────────────────────────────────
 
-function ConfirmDialog({ open, message, loading, onConfirm, onCancel }: {
-  open: boolean; message: string; loading: boolean;
-  onConfirm: () => void; onCancel: () => void;
+function ConfirmDialog({
+  open,
+  message,
+  loading,
+  confirmLabel = "Confirmar",
+  confirmLoadingLabel = "A fechar…",
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  message: string;
+  loading: boolean;
+  confirmLabel?: string;
+  confirmLoadingLabel?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
 }) {
   if (!open) return null;
   return (
@@ -156,7 +169,7 @@ function ConfirmDialog({ open, message, loading, onConfirm, onCancel }: {
           </button>
           <button onClick={onConfirm} disabled={loading}
             className="px-4 py-2 rounded-xl bg-slate-900 text-white text-sm font-bold disabled:opacity-60 transition-colors">
-            {loading ? "A fechar…" : "Confirmar"}
+            {loading ? confirmLoadingLabel : confirmLabel}
           </button>
         </div>
       </div>
@@ -353,6 +366,12 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
   const [pautaGeralLoading, setPautaGeralLoading] = useState(false);
   const [pautaAnualLoading, setPautaAnualLoading] = useState(false);
   const [closing,       setClosing]       = useState(false);
+  const [turmaFechoStatus, setTurmaFechoStatus] = useState<"ABERTO" | "FECHADO" | null>(null);
+  const [turmaFechoAllowed, setTurmaFechoAllowed] = useState(false);
+  const [turmaFechoCanManage, setTurmaFechoCanManage] = useState(false);
+  const [turmaFechoLoading, setTurmaFechoLoading] = useState(false);
+  const [turmaFechoConfirmOpen, setTurmaFechoConfirmOpen] = useState(false);
+  const [turmaFechoTarget, setTurmaFechoTarget] = useState<"ABERTO" | "FECHADO" | null>(null);
   const [toast,         setToast]         = useState<ToastState>(null);
   const [confirmOpen,   setConfirmOpen]   = useState(false);
   const [upgradeOpen,   setUpgradeOpen]   = useState(false);
@@ -419,6 +438,37 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
       }
     }
     fetchPeriodos();
+  }, [escolaId, turmaId]);
+
+  useEffect(() => {
+    if (!escolaId || !turmaId) return;
+    let active = true;
+    async function fetchTurmaFecho() {
+      setTurmaFechoLoading(true);
+      try {
+        const res = await fetch(`/api/escola/${escolaId}/admin/turmas/${turmaId}/fecho`, { cache: "no-store" });
+        if (!active) return;
+        if (res.status === 403) {
+          setTurmaFechoAllowed(false);
+          return;
+        }
+        const json = await res.json().catch(() => null);
+        if (res.ok && json?.ok) {
+          setTurmaFechoAllowed(true);
+          setTurmaFechoStatus(json.status === "FECHADO" ? "FECHADO" : "ABERTO");
+          setTurmaFechoCanManage(Boolean(json?.can_manage));
+        } else {
+          setTurmaFechoAllowed(false);
+          setTurmaFechoCanManage(false);
+        }
+      } finally {
+        if (active) setTurmaFechoLoading(false);
+      }
+    }
+    fetchTurmaFecho();
+    return () => {
+      active = false;
+    };
   }, [escolaId, turmaId]);
 
   useEffect(() => {
@@ -519,6 +569,33 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
       setClosing(false);
     }
   }, [escolaId, turmaId, periodoId]);
+
+  const handleTurmaFechoConfirmed = useCallback(async () => {
+    if (!escolaId || !turmaId || !turmaFechoTarget) return;
+    setTurmaFechoLoading(true);
+    try {
+      const res = await fetch(`/api/escola/${escolaId}/admin/turmas/${turmaId}/fecho`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: turmaFechoTarget,
+          reason: turmaFechoTarget === "FECHADO" ? "Fecho manual da turma" : "Reabertura manual da turma",
+        }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao atualizar status da turma.");
+      setTurmaFechoStatus(turmaFechoTarget);
+      setTurmaFechoConfirmOpen(false);
+      setToast({
+        message: turmaFechoTarget === "FECHADO" ? "Turma fechada com sucesso." : "Turma reaberta com sucesso.",
+        type: "success",
+      });
+    } catch (e: any) {
+      setToast({ message: e.message || "Erro ao atualizar status da turma.", type: "error" });
+    } finally {
+      setTurmaFechoLoading(false);
+    }
+  }, [escolaId, turmaId, turmaFechoTarget]);
 
   const handleSaveNotas = useCallback(async (rows: StudentGradeRow[]) => {
     if (actionModal?.type !== "notas") return;
@@ -673,9 +750,22 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
                     turma.curso_nome ? { icon: GraduationCap, label: turma.curso_nome } : null,
                     { icon: CalendarCheck, label: turma.turno },
                     { icon: MapPin,        label: `Sala ${turma.sala || "N/D"}` },
-                  ].filter(Boolean).map(({ icon: Icon, label }: any) => (
-                    <span key={label}
-                      className="flex items-center gap-1.5 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600">
+                    turmaFechoStatus
+                      ? {
+                        icon: turmaFechoStatus === "FECHADO" ? Lock : CheckCircle2,
+                        label: turmaFechoStatus === "FECHADO" ? "Turma fechada" : "Turma aberta",
+                        className: turmaFechoStatus === "FECHADO"
+                          ? "bg-rose-50 border border-rose-200 text-rose-600"
+                          : "bg-[#1F6B3B]/10 border border-[#1F6B3B]/20 text-[#1F6B3B]",
+                      }
+                      : null,
+                  ].filter(Boolean).map(({ icon: Icon, label, className }: any) => (
+                    <span
+                      key={label}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${
+                        className ?? "bg-slate-100 border border-slate-200 text-slate-600"
+                      }`}
+                    >
                       <Icon size={11} /> {label}
                     </span>
                   ))}
@@ -688,6 +778,24 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
               <button className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition-colors">
                 <Settings size={17} />
               </button>
+              {turmaFechoAllowed && turmaFechoStatus && turmaFechoCanManage && (
+                <button
+                  onClick={() => {
+                    const nextStatus = turmaFechoStatus === "FECHADO" ? "ABERTO" : "FECHADO";
+                    setTurmaFechoTarget(nextStatus);
+                    setTurmaFechoConfirmOpen(true);
+                  }}
+                  disabled={turmaFechoLoading}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm active:scale-95 disabled:opacity-60 ${
+                    turmaFechoStatus === "FECHADO"
+                      ? "bg-[#1F6B3B] text-white hover:brightness-95"
+                      : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  {turmaFechoStatus === "FECHADO" ? <Unlock size={16} /> : <Lock size={16} />}
+                  {turmaFechoStatus === "FECHADO" ? "Reabrir turma" : "Fechar turma"}
+                </button>
+              )}
               <Link
                 href={`/secretaria/admissoes/nova?turmaId=${turma.id}`}
                 className="flex items-center gap-2 bg-[#E3B23C] text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:brightness-95 transition-all shadow-sm active:scale-95"
@@ -1036,8 +1144,23 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
         open={confirmOpen}
         message="Fechar o período selecionado? Esta ação não poderá ser desfeita."
         loading={closing}
+        confirmLabel="Confirmar"
+        confirmLoadingLabel="A fechar…"
         onConfirm={handleClosePeriodoConfirmed}
         onCancel={() => setConfirmOpen(false)}
+      />
+      <ConfirmDialog
+        open={turmaFechoConfirmOpen}
+        message={
+          turmaFechoTarget === "FECHADO"
+            ? "Fechar a turma para lançamentos? Esta ação impede notas e avaliações até reabertura."
+            : "Reabrir a turma para lançamentos?"
+        }
+        loading={turmaFechoLoading}
+        confirmLabel={turmaFechoTarget === "FECHADO" ? "Fechar turma" : "Reabrir turma"}
+        confirmLoadingLabel={turmaFechoTarget === "FECHADO" ? "A fechar…" : "A reabrir…"}
+        onConfirm={handleTurmaFechoConfirmed}
+        onCancel={() => setTurmaFechoConfirmOpen(false)}
       />
       <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} />
       <Toast toast={toast} onDismiss={() => setToast(null)} />
