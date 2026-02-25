@@ -214,10 +214,11 @@ O módulo Académico já tem pilares fortes de backend: publish via RPC, control
 5. **Pre-flight completo de publish**: valida classes esperadas e registra pendências/auditoria.
 6. **Fecho acadêmico reforçado**: `status_fecho` + `trava_notas_em` bloqueiam notas/avaliações, com RPC de fecho de turma.
 7. **SSOT de disciplinas**: presets DB + `school_subjects` agora são a fonte primária no install/apply.
+8. **`conta_para_media_med` no cálculo oficial**: boletim/pauta anual respeitam disciplinas que não contam.
+9. **Governança do catálogo global**: RPCs admin-only para gerir presets e disciplinas globais.
 
 #### 🔴 Alta prioridade pendente
-1. **Conectar `conta_para_media_med` ao cálculo final oficial** (boletim/pauta/anual) de forma única e testada ponta-a-ponta.
-2. **Governança explícita do catálogo global**: política formal para quem pode alterar presets globais.
+- Sem pendências críticas após os últimos ajustes.
 
 #### 🟡 Média prioridade pendente
 1. Criar testes de contrato DB+API para evitar regressão dos gates (API e insert direto via SQL).
