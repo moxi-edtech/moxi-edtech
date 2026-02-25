@@ -29,7 +29,7 @@ export async function GET() {
   try {
     const { supabase, ctx } = await getAlunoContext();
     if (!ctx) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
-    const { userId, escolaId, matriculaId, turmaId } = ctx;
+    const { escolaId, matriculaId, turmaId, anoLetivo } = ctx;
 
     // Próxima aula (heurística: próxima rotina da turma pelo weekday atual)
     let proxima_aula: RotinaRow | null = null;
@@ -80,11 +80,18 @@ export async function GET() {
       if (matriculaError) throw matriculaError;
 
       if (matriculaData && escolaId) {
-        const { data: mens, error: mensalidadesError } = await supabase
+        let mensalidadesQuery = supabase
           .from('mensalidades')
           .select('status')
           .eq('escola_id', escolaId)
           .eq('aluno_id', matriculaData.aluno_id);
+
+        if (matriculaId) mensalidadesQuery = mensalidadesQuery.eq('matricula_id', matriculaId);
+        if (typeof anoLetivo === 'number') {
+          mensalidadesQuery = mensalidadesQuery.or(`ano_referencia.eq.${anoLetivo},ano_letivo.eq.${anoLetivo}`);
+        }
+
+        const { data: mens, error: mensalidadesError } = await mensalidadesQuery;
 
         if (mensalidadesError) throw mensalidadesError;
 

@@ -7,6 +7,7 @@ export type AlunoContext = {
   alunoId: string | null;
   matriculaId: string | null;
   turmaId: string | null;
+  anoLetivo: number | null;
 };
 
 export async function getAlunoContext() {
@@ -19,6 +20,7 @@ export async function getAlunoContext() {
   let alunoId: string | null = null;
   let matriculaId: string | null = null;
   let turmaId: string | null = null;
+  let anoLetivo: number | null = null;
 
   try {
     const { data: vinc } = await supabase
@@ -41,19 +43,52 @@ export async function getAlunoContext() {
     escolaId = escolaId ?? (alunos?.[0]?.escola_id ?? null);
 
     if (alunoId) {
+      let activeAno: number | null = null;
+
+      if (escolaId) {
+        const { data: activeAnoRow } = await supabase
+          .from("anos_letivos")
+          .select("ano")
+          .eq('escola_id', escolaId)
+          .eq('ativo', true)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        activeAno = typeof activeAnoRow?.ano === 'number' ? activeAnoRow.ano : null;
+      }
+
       let matQuery = supabase
         .from("matriculas")
-        .select("id, turma_id, escola_id")
+        .select("id, turma_id, escola_id, ano_letivo")
         .eq('aluno_id', alunoId)
+        .in('status', ['ativo', 'ativa', 'active'])
+        .order('ano_letivo', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(1);
       if (escolaId) matQuery = matQuery.eq('escola_id', escolaId);
+      if (activeAno !== null) matQuery = matQuery.eq('ano_letivo', activeAno);
 
-      const { data: mats } = await matQuery;
+      let { data: mats } = await matQuery;
+
+      if ((!mats || mats.length === 0) && escolaId) {
+        const fallbackQuery = supabase
+          .from("matriculas")
+          .select("id, turma_id, escola_id, ano_letivo")
+          .eq('aluno_id', alunoId)
+          .eq('escola_id', escolaId)
+          .in('status', ['ativo', 'ativa', 'active'])
+          .order('ano_letivo', { ascending: false })
+          .order('created_at', { ascending: false })
+          .limit(1);
+        const fallback = await fallbackQuery;
+        mats = fallback.data;
+      }
+
       const mat = mats?.[0];
       matriculaId = mat?.id ?? null;
       turmaId = mat?.turma_id ?? null;
       escolaId = escolaId ?? (mat?.escola_id ?? null);
+      anoLetivo = typeof mat?.ano_letivo === 'number' ? mat.ano_letivo : null;
     }
   } catch {}
 
@@ -65,6 +100,7 @@ export async function getAlunoContext() {
       alunoId,
       matriculaId,
       turmaId,
+      anoLetivo,
     } as AlunoContext,
   };
 }
