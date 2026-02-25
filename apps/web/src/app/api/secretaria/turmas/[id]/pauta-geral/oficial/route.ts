@@ -4,7 +4,6 @@ import { randomUUID } from "crypto"
 import { supabaseServerTyped } from "@/lib/supabaseServer"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas"
-import type { Database } from "~types/supabase"
 import { buildPautaGeralPayload, renderPautaGeralBuffer } from "@/lib/pedagogico/pauta-geral"
 import { requireFeature } from "@/lib/plan/requireFeature"
 import { HttpError } from "@/lib/errors"
@@ -12,6 +11,7 @@ import { HttpError } from "@/lib/errors"
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 export const fetchCache = "force-no-store"
+export const runtime = "nodejs"
 
 const Query = z.object({
   periodoLetivoId: z.string().uuid(),
@@ -61,7 +61,13 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       }
 
       if (mode === "json") {
-        return NextResponse.json({ ok: true, status: "SUCCESS", download_url: signed.signedUrl })
+        return NextResponse.json({
+          ok: true,
+          status: "SUCCESS",
+          download_url: signed.signedUrl,
+          pdf_template: "PautaGeralV1",
+          pdf_kind: "trimestral-oficial",
+        })
       }
       return NextResponse.redirect(signed.signedUrl)
     }
