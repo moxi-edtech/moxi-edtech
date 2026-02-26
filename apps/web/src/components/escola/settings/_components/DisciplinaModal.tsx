@@ -95,23 +95,12 @@ const emptyDisciplina: DisciplinaForm = {
   area: null,
   periodos_ativos: [1, 2, 3],
   periodo_mode: "ano",
-  carga_horaria_semanal: 4,
+  carga_horaria_semanal: 0,
   classificacao: "core",
   entra_no_horario: true,
   avaliacao: { mode: "inherit_school", base_id: null },
   programa_texto: null,
 };
-
-function inferCargaFromName(nome: string) {
-  const value = normalizeName(nome).toLowerCase();
-  if (value.includes("portugues") || value.includes("língua") || value.includes("lingua")) return 4;
-  if (value.includes("matem")) return 4;
-  if (value.includes("fisic") || value.includes("quim") || value.includes("biolog")) return 3;
-  if (value.includes("hist") || value.includes("geograf") || value.includes("filos") || value.includes("sociol")) return 3;
-  if (value.includes("educa") && value.includes("fisic")) return 2;
-  if (value.includes("informat") || value.includes("tic") || value.includes("laborat")) return 2;
-  return 3;
-}
 
 function applyDefaults(payload: DisciplinaForm) {
   return {
@@ -127,10 +116,7 @@ function applyDefaults(payload: DisciplinaForm) {
       payload.periodos_ativos && payload.periodos_ativos.length > 0
         ? payload.periodos_ativos
         : [1, 2, 3],
-    carga_horaria_semanal:
-      payload.carga_horaria_semanal && payload.carga_horaria_semanal > 0
-        ? payload.carga_horaria_semanal
-        : inferCargaFromName(payload.nome || ""),
+    carga_horaria_semanal: payload.carga_horaria_semanal ?? 0,
   };
 }
 
@@ -170,7 +156,6 @@ export function DisciplinaModal({
 }: Props) {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [autoSavePending, setAutoSavePending] = useState(false);
   const [presetSubjects, setPresetSubjects] = useState<PresetSubject[] | null>(null);
   const allClassIds = useMemo(() => classOptions.map((item) => item.id), [classOptions]);
   const [form, setForm] = useState<DisciplinaForm>(() => ({
@@ -355,6 +340,7 @@ export function DisciplinaModal({
           .trim();
 
       const targetName = normalize(nextForm.nome);
+      const targetId = disciplineSelector?.value ?? initial?.id ?? null;
       const gradeLevels = (applyScope === "selected" && classIds.length > 0 ? classIds : allClassIds)
         .map((id) => classOptions.find((cls) => cls.id === id)?.nome ?? "")
         .map((name) => {
@@ -363,11 +349,12 @@ export function DisciplinaModal({
         })
         .filter((value): value is number => Number.isFinite(value));
 
+      const matchById = targetId ? presetItems.find((item) => item.id === targetId) : undefined;
       const matches = presetItems.filter((item) => normalize(item.name) === targetName);
       const matchingByGrade = matches.find((item) =>
         item.grade_level ? gradeLevels.includes(item.grade_level) : false
       );
-      const chosen = matchingByGrade ?? matches[0];
+      const chosen = matchById ?? matchingByGrade ?? matches[0];
       const weeklyHours =
         chosen?.school?.custom_weekly_hours ?? chosen?.weekly_hours ?? null;
 
@@ -376,22 +363,10 @@ export function DisciplinaModal({
       }
 
       setForm(nextForm);
-      setAutoSavePending(true);
     };
 
     void run();
   };
-
-  useEffect(() => {
-    if (!autoSavePending) return;
-    if (saving) return;
-    if (!canSave) {
-      setAutoSavePending(false);
-      return;
-    }
-    setAutoSavePending(false);
-    handleSave();
-  }, [autoSavePending, canSave, handleSave, saving]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10">
@@ -516,14 +491,14 @@ export function DisciplinaModal({
           <section className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-bold text-slate-900">Auto-preencher disciplina</p>
-              <p className="text-xs text-slate-500">Aplica padrões e salva automaticamente.</p>
+              <p className="text-xs text-slate-500">Aplica padrões do currículo oficial.</p>
             </div>
             <button
               type="button"
               onClick={handleAutoFill}
               className="rounded-lg bg-klasse-gold px-4 py-2 text-xs font-bold text-white shadow-sm hover:brightness-110"
             >
-              Auto-preencher e salvar
+              Auto-preencher
             </button>
           </section>
           {!appearsInScheduler && (
