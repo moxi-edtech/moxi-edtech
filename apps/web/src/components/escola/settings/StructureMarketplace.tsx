@@ -46,6 +46,7 @@ export type CourseDetails = {
     nome: string;
     codigo: string;
     carga_horaria_semanal: number;
+    conta_para_media_med?: boolean | null;
     is_core: boolean;
     participa_horario: boolean;
     is_avaliavel: boolean;
@@ -182,6 +183,8 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       carga_horaria_semanal: disciplina.carga_horaria_semanal,
       classificacao: disciplina.classificacao ?? (disciplina.is_core ? "core" : "complementar"),
       entra_no_horario: disciplina.entra_no_horario ?? disciplina.participa_horario,
+      is_avaliavel: disciplina.is_avaliavel ?? true,
+      conta_para_media_med: disciplina.conta_para_media_med ?? true,
       avaliacao: {
         mode: disciplina.avaliacao_mode_key ?? (disciplina.avaliacao_mode === "personalizada" ? "custom" : "inherit_school"),
         base_id: disciplina.avaliacao_disciplina_id ?? null,
@@ -339,6 +342,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
           nome: primary.nome,
           codigo: primary.sigla ?? primary.codigo ?? primary.nome?.slice(0, 6)?.toUpperCase() ?? "",
           carga_horaria_semanal: Number(primary.carga_horaria_semanal ?? primary.carga_horaria ?? 0),
+          conta_para_media_med: primary.conta_para_media_med ?? null,
           is_core: Boolean(primary.is_core ?? (primary.classificacao === "core" || primary.tipo === "core")),
           participa_horario: primary.entra_no_horario ?? true,
           is_avaliavel: primary.is_avaliavel ?? true,
@@ -856,7 +860,8 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                   carga_horaria_semanal: payload.carga_horaria_semanal,
                   carga_horaria: payload.carga_horaria_semanal,
                   classificacao: payload.classificacao,
-                  is_avaliavel: true,
+                  is_avaliavel: payload.is_avaliavel ?? true,
+                  conta_para_media_med: payload.conta_para_media_med ?? true,
                   area: payload.area ?? null,
                   periodos_ativos: payload.periodos_ativos,
                   entra_no_horario: payload.entra_no_horario,
@@ -905,7 +910,8 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                 carga_horaria_semanal: payload.carga_horaria_semanal,
                 carga_horaria: payload.carga_horaria_semanal,
                 classificacao: payload.classificacao,
-                is_avaliavel: true,
+                is_avaliavel: payload.is_avaliavel ?? true,
+                conta_para_media_med: payload.conta_para_media_med ?? true,
                 area: payload.area ?? null,
                 periodos_ativos: payload.periodos_ativos,
                 entra_no_horario: payload.entra_no_horario,

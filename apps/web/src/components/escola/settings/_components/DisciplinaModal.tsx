@@ -31,6 +31,8 @@ export type DisciplinaForm = {
   carga_horaria_semanal: number;
   classificacao: "core" | "complementar" | "optativa";
   entra_no_horario: boolean;
+  is_avaliavel?: boolean | null;
+  conta_para_media_med?: boolean | null;
   avaliacao: {
     mode: AvaliacaoMode;
     base_id?: string | null;
@@ -84,6 +86,10 @@ type PresetSubject = {
   name: string;
   grade_level: number | null;
   weekly_hours: number | null;
+  subject_type?: string | null;
+  conta_para_media_med?: boolean | null;
+  is_avaliavel?: boolean | null;
+  avaliacao_mode?: AvaliacaoMode | string | null;
   school?: {
     custom_weekly_hours?: number | null;
   } | null;
@@ -100,6 +106,8 @@ const emptyDisciplina: DisciplinaForm = {
   entra_no_horario: true,
   avaliacao: { mode: "inherit_school", base_id: null },
   programa_texto: null,
+  is_avaliavel: true,
+  conta_para_media_med: true,
 };
 
 function applyDefaults(payload: DisciplinaForm) {
@@ -117,6 +125,8 @@ function applyDefaults(payload: DisciplinaForm) {
         ? payload.periodos_ativos
         : [1, 2, 3],
     carga_horaria_semanal: payload.carga_horaria_semanal ?? 0,
+    is_avaliavel: payload.is_avaliavel ?? true,
+    conta_para_media_med: payload.conta_para_media_med ?? true,
   };
 }
 
@@ -360,6 +370,31 @@ export function DisciplinaModal({
 
       if (weeklyHours && weeklyHours > 0) {
         nextForm = { ...nextForm, carga_horaria_semanal: weeklyHours };
+      }
+
+      if (chosen?.subject_type) {
+        const type = String(chosen.subject_type).toLowerCase();
+        if (type === "core" || type === "complementar" || type === "optativa") {
+          nextForm = { ...nextForm, classificacao: type as DisciplinaForm["classificacao"] };
+        }
+      }
+
+      if (typeof chosen?.conta_para_media_med === "boolean") {
+        nextForm = { ...nextForm, conta_para_media_med: chosen.conta_para_media_med };
+      }
+
+      if (typeof chosen?.is_avaliavel === "boolean") {
+        nextForm = { ...nextForm, is_avaliavel: chosen.is_avaliavel };
+      }
+
+      if (chosen?.avaliacao_mode) {
+        nextForm = {
+          ...nextForm,
+          avaliacao: {
+            ...nextForm.avaliacao,
+            mode: chosen.avaliacao_mode as AvaliacaoMode,
+          },
+        };
       }
 
       setForm(nextForm);
