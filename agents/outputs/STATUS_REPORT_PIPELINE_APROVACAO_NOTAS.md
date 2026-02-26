@@ -9,9 +9,9 @@ run_scope: verificação (sem alterações de runtime)
 - ✅ Coberto: lançamento de notas centralizado em RPC + travas no banco para turma fechada e período travado.
 - ✅ Coberto: detecção de conflitos de horário em fluxo manual e auto-geração.
 - ✅ Coberto: há constraint estrutural no PostgreSQL (`EXCLUDE` por `professor_id+slot_id` e `sala_id+slot_id`) além das validações nas rotas.
-- ⚠️ Gap: `modelos_avaliacao.formula` existe no schema/CRUD, mas não está claramente executada no pipeline de lançamento.
+- ✅ Ajuste recente: `modelos_avaliacao.formula` passou a ser a fonte principal dos componentes/pesos.
 - ⚠️ Gap: coexistência de motores de cálculo pode gerar divergência de regra oficial (pauta vs engines legados).
-- ✅ Ajuste recente: `pauta-grid` agora devolve `componentes_ativos` + `peso_por_tipo`, e a UI usa os pesos do backend para calcular MT.
+- ✅ Ajuste recente: `pauta-grid` devolve `componentes_ativos` + `peso_por_tipo`, e a UI usa os pesos do backend para calcular MT.
 
 ---
 
@@ -77,16 +77,15 @@ Evidências:
 - `apps/web/src/app/api/escolas/[id]/modelos-avaliacao/route.ts`
 
 ### 3.2 Execução real da fórmula
-- A RPC de lançamento cria/atualiza avaliações e notas, mas não mostra execução explícita de `formula` JSON.
-- `professor/pauta` usa pesos/componentes para cálculo (ponderado), porém isso não prova engine única para aprovação final institucional.
+- A resolução de modelo agora prioriza `modelos_avaliacao.formula.componentes` (fallback para `componentes`).
+- Backfill preenche `formula` para modelos existentes.
 
 Evidências:
-- `supabase/migrations/20261128061000_update_lancar_notas_batch_updated_at.sql`
-- `apps/web/src/app/api/professor/pauta/route.ts`
+- `supabase/migrations/20260311020000_modelos_avaliacao_formula_backfill.sql`
+- `apps/web/src/lib/academico/avaliacao-utils.ts`
 
 Risco residual:
-- Possível divergência entre “fórmula configurada” e “fórmula efetivamente aplicada” em todos os fluxos.
-- Apesar do alinhamento de pesos entre API/UI, ainda falta usar `modelos_avaliacao.formula` como engine única.
+- Possível divergência entre engines legadas e regra oficial se houver caminhos fora do modelo.
 
 ---
 
