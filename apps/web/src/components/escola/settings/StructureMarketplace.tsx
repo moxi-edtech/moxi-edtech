@@ -36,6 +36,7 @@ export type ActiveCourse = {
   total_classes: number;
   total_turmas: number;
   total_alunos: number;
+  curriculum_key?: string | null;
 };
 
 export type CourseDetails = {
@@ -1022,6 +1023,8 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         />
         {details && (
           <DisciplinaModal
+            escolaId={escolaId}
+            cursoId={selectedCourseId}
             open={disciplinaModalOpen}
             mode={disciplinaModalMode}
             initial={disciplinaEditing}

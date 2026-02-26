@@ -53,6 +53,8 @@ type ClassOption = {
 };
 
 type Props = {
+  escolaId?: string | null;
+  cursoId?: string | null;
   open: boolean;
   mode: "create" | "edit";
   initial?: DisciplinaForm | null;
@@ -75,6 +77,16 @@ type Props = {
   onClose: () => void;
   onSave: (payload: DisciplinaForm) => Promise<void> | void;
   onDelete?: (id: string) => Promise<void> | void;
+};
+
+type PresetSubject = {
+  id: string;
+  name: string;
+  grade_level: number | null;
+  weekly_hours: number | null;
+  school?: {
+    custom_weekly_hours?: number | null;
+  } | null;
 };
 
 const emptyDisciplina: DisciplinaForm = {
@@ -139,6 +151,8 @@ function isValidCode(code: string) {
 }
 
 export function DisciplinaModal({
+  escolaId,
+  cursoId,
   open,
   mode,
   initial,
@@ -157,6 +171,7 @@ export function DisciplinaModal({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [autoSavePending, setAutoSavePending] = useState(false);
+  const [presetSubjects, setPresetSubjects] = useState<PresetSubject[] | null>(null);
   const allClassIds = useMemo(() => classOptions.map((item) => item.id), [classOptions]);
   const [form, setForm] = useState<DisciplinaForm>(() => ({
     ...emptyDisciplina,
@@ -315,8 +330,56 @@ export function DisciplinaModal({
   if (!open) return null;
 
   const handleAutoFill = () => {
-    setForm((prev) => applyDefaults({ ...prev }));
-    setAutoSavePending(true);
+    const run = async () => {
+      let nextForm = applyDefaults({ ...form });
+      const shouldFetch = Boolean(escolaId && cursoId && presetSubjects === null);
+      const presetItems = shouldFetch
+        ? await (async () => {
+            const res = await fetch(
+              `/api/escolas/${escolaId}/curriculo/padroes?curso_id=${cursoId}`,
+              { cache: "no-store" }
+            );
+            const json = await res.json().catch(() => null);
+            if (!res.ok || !json?.ok) return [];
+            return Array.isArray(json.items) ? (json.items as PresetSubject[]) : [];
+          })()
+        : presetSubjects ?? [];
+
+      if (shouldFetch) setPresetSubjects(presetItems);
+
+      const normalize = (value: string) =>
+        value
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .toLowerCase()
+          .trim();
+
+      const targetName = normalize(nextForm.nome);
+      const gradeLevels = (applyScope === "selected" && classIds.length > 0 ? classIds : allClassIds)
+        .map((id) => classOptions.find((cls) => cls.id === id)?.nome ?? "")
+        .map((name) => {
+          const match = name.match(/(\d+)/);
+          return match ? Number(match[1]) : null;
+        })
+        .filter((value): value is number => Number.isFinite(value));
+
+      const matches = presetItems.filter((item) => normalize(item.name) === targetName);
+      const matchingByGrade = matches.find((item) =>
+        item.grade_level ? gradeLevels.includes(item.grade_level) : false
+      );
+      const chosen = matchingByGrade ?? matches[0];
+      const weeklyHours =
+        chosen?.school?.custom_weekly_hours ?? chosen?.weekly_hours ?? null;
+
+      if (weeklyHours && weeklyHours > 0) {
+        nextForm = { ...nextForm, carga_horaria_semanal: weeklyHours };
+      }
+
+      setForm(nextForm);
+      setAutoSavePending(true);
+    };
+
+    void run();
   };
 
   useEffect(() => {
