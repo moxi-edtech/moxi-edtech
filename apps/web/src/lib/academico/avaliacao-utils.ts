@@ -19,6 +19,14 @@ const normalizeComponentes = (raw: unknown): ComponentConfig[] => {
   return []
 }
 
+const normalizeFormulaComponentes = (raw: unknown): ComponentConfig[] => {
+  if (!raw || typeof raw !== 'object') return []
+  const formula = raw as any
+  if (Array.isArray(formula.componentes)) return formula.componentes as ComponentConfig[]
+  if (Array.isArray(formula.components)) return formula.components as ComponentConfig[]
+  return []
+}
+
 const emptyResolved: ResolvedModelo = {
   componentes: [],
   tipo: 'trimestral',
@@ -41,11 +49,16 @@ const resolveDefaultModelo = async (
 
   if (!data) return null
 
+  const formula = (data as any).formula ?? {}
+  const formulaComponentes = normalizeFormulaComponentes(formula)
+
   return {
-    componentes: normalizeComponentes((data as any).componentes),
+    componentes: formulaComponentes.length
+      ? formulaComponentes
+      : normalizeComponentes((data as any).componentes),
     tipo: (data as any).tipo ?? 'trimestral',
     regras: (data as any).regras ?? {},
-    formula: (data as any).formula ?? {},
+    formula,
   }
 }
 
@@ -63,11 +76,16 @@ const resolveModeloById = async (
 
   if (!data) return null
 
+  const formula = (data as any).formula ?? {}
+  const formulaComponentes = normalizeFormulaComponentes(formula)
+
   return {
-    componentes: normalizeComponentes((data as any).componentes),
+    componentes: formulaComponentes.length
+      ? formulaComponentes
+      : normalizeComponentes((data as any).componentes),
     tipo: (data as any).tipo ?? 'trimestral',
     regras: (data as any).regras ?? {},
-    formula: (data as any).formula ?? {},
+    formula,
   }
 }
 
@@ -141,4 +159,3 @@ export const buildComponentesAtivos = (componentes: ComponentConfig[]) =>
   componentes
     .filter((comp) => comp?.code && comp?.ativo !== false)
     .map((comp) => comp.code!.toString().trim().toUpperCase())
-
