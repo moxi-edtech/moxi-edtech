@@ -305,6 +305,11 @@ export function PautaRapidaModal({
 
   const handleSaveBatch = async (rows: StudentGradeRow[]) => {
     if (!turmaId || !disciplinaId) return;
+    const turmaDisciplinaId = disciplinaSelecionada?.id ?? null;
+    const disciplinaCanonicalId = disciplinaSelecionada?.disciplina?.id ?? disciplinaId;
+    if (!turmaDisciplinaId) {
+      throw new Error("Disciplina inválida para lançamento.");
+    }
     const payloads = [
       { tipo: "MAC", campo: "mac1" as const },
       { tipo: "NPP", campo: "npp1" as const },
@@ -330,7 +335,8 @@ export function PautaRapidaModal({
         },
         body: JSON.stringify({
           turma_id: turmaId,
-          disciplina_id: disciplinaId,
+          disciplina_id: disciplinaCanonicalId,
+          turma_disciplina_id: turmaDisciplinaId,
           trimestre: periodoNumero,
           tipo_avaliacao: tipo,
           notas,
