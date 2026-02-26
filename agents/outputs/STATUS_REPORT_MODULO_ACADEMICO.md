@@ -236,6 +236,7 @@ O módulo Académico já tem pilares fortes de backend: publish via RPC, control
 12. **Engine de cálculo unificada**: `pauta-grid` expõe pesos/componentes e a UI usa esses dados para calcular MT.
 13. **Contexto por matrícula ativa + ano letivo ativo**: `get_aluno_dossier` retorna `matricula_ativa` e `ano_letivo_ativo`, consumido no balcão.
 14. **Acoplamento financeiro por matrícula/ano**: `get_aluno_dossier` filtra mensalidades por `matricula_id` (fallback por ano letivo).
+15. **Auto-preencher via DB**: `curriculum_preset_subjects` ganhou `conta_para_media_med`, `is_avaliavel`, `avaliacao_mode` e o modal usa esses campos.
 
 #### 🔴 Alta prioridade pendente
 - Sem pendências críticas após os últimos ajustes.

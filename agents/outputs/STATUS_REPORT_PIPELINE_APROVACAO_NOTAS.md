@@ -11,6 +11,7 @@ run_scope: verificação (sem alterações de runtime)
 - ✅ Coberto: há constraint estrutural no PostgreSQL (`EXCLUDE` por `professor_id+slot_id` e `sala_id+slot_id`) além das validações nas rotas.
 - ⚠️ Gap: `modelos_avaliacao.formula` existe no schema/CRUD, mas não está claramente executada no pipeline de lançamento.
 - ⚠️ Gap: coexistência de motores de cálculo pode gerar divergência de regra oficial (pauta vs engines legados).
+- ✅ Ajuste recente: `pauta-grid` agora devolve `componentes_ativos` + `peso_por_tipo`, e a UI usa os pesos do backend para calcular MT.
 
 ---
 
@@ -85,6 +86,7 @@ Evidências:
 
 Risco residual:
 - Possível divergência entre “fórmula configurada” e “fórmula efetivamente aplicada” em todos os fluxos.
+- Apesar do alinhamento de pesos entre API/UI, ainda falta usar `modelos_avaliacao.formula` como engine única.
 
 ---
 
