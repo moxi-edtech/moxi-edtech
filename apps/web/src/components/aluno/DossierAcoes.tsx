@@ -32,13 +32,13 @@ export function DossierAcoes({ role, aluno, escolaId }: { role: DossierRole; alu
     const isArquivado = aluno.perfil.status === "arquivado";
     return (
       <div className="flex items-center gap-2 flex-wrap">
-        <Link href={`/escola/${escolaId}/admin/alunos/${aluno.id}/editar`} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:border-[#1F6B3B] hover:text-[#1F6B3B]"><Pencil size={14} className="inline mr-1" />Editar</Link>
+        <Link href={`/escola/${escolaId}/admin/alunos/${aluno.id}/editar`} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-[#1F6B3B] hover:text-[#1F6B3B]"><Pencil size={14} className="inline mr-1" />Editar</Link>
         {!isArquivado ? (
-          <button disabled={loading} onClick={() => run(`/api/secretaria/alunos/${aluno.id}/delete`, { reason: "Arquivado via Admin" })} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:border-[#E3B23C]/40 hover:text-[#9a7010]"><Archive size={14} className="inline mr-1" />Arquivar</button>
+          <button disabled={loading} onClick={() => run(`/api/secretaria/alunos/${aluno.id}/delete`, { reason: "Arquivado via Admin" })} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-[#E3B23C]/40 hover:text-[#E3B23C]"><Archive size={14} className="inline mr-1" />Arquivar</button>
         ) : (
           <>
-            <button disabled={loading} onClick={() => run(`/api/secretaria/alunos/${aluno.id}/restore`)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:border-[#1F6B3B] hover:text-[#1F6B3B]"><RotateCcw size={14} className="inline mr-1" />Restaurar</button>
-            <button disabled={loading} onClick={() => run(`/api/secretaria/alunos/${aluno.id}/hard-delete`)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:border-rose-200 hover:text-rose-700"><Trash2 size={14} className="inline mr-1" />Eliminar</button>
+            <button disabled={loading} onClick={() => run(`/api/secretaria/alunos/${aluno.id}/restore`)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-[#1F6B3B] hover:text-[#1F6B3B]"><RotateCcw size={14} className="inline mr-1" />Restaurar</button>
+            <button disabled={loading} onClick={() => run(`/api/secretaria/alunos/${aluno.id}/hard-delete`)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-rose-200 hover:text-rose-700"><Trash2 size={14} className="inline mr-1" />Eliminar</button>
           </>
         )}
       </div>
@@ -49,7 +49,7 @@ export function DossierAcoes({ role, aluno, escolaId }: { role: DossierRole; alu
     <div className="flex items-center gap-2 flex-wrap">
       <Link
         href={`/secretaria/alunos/${aluno.id}/pagamento`}
-        className={`rounded-xl px-4 py-2.5 text-sm font-bold text-white ${
+        className={`rounded-xl px-4 py-2.5 text-sm font-semibold text-white ${
           aluno.financeiro.situacao === "inadimplente"
             ? "bg-[#E3B23C] hover:brightness-95"
             : "bg-[#1F6B3B] hover:bg-[#185830]"
@@ -59,20 +59,20 @@ export function DossierAcoes({ role, aluno, escolaId }: { role: DossierRole; alu
       </Link>
       <Link
         href={`/secretaria/alunos/${aluno.id}/editar`}
-        className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+        className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
       >
         <Pencil size={14} className="inline mr-1" />Editar
       </Link>
       <Link
         href={`/secretaria/alunos/${aluno.id}/documentos`}
-        className="px-2 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700"
+        className="px-2 py-2 text-sm font-medium text-slate-500 hover:text-slate-700"
       >
         <FileText size={14} className="inline mr-1" />Documentos
       </Link>
       {!aluno.matricula_atual?.is_atual && (
         <Link
           href={`/secretaria/admissoes/nova?alunoId=${aluno.id}`}
-          className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+          className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
         >
           <FileCheck size={14} className="inline mr-1" />Matricular
         </Link>

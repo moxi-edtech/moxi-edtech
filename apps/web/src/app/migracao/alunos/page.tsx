@@ -1,10 +1,5 @@
-import { Suspense } from 'react';
-import AlunoMigrationWizard from './wizard';
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return (
-    <Suspense fallback={<div>A carregar...</div>}>
-      <AlunoMigrationWizard />
-    </Suspense>
-  )
+  redirect("/secretaria/migracao/alunos");
 }

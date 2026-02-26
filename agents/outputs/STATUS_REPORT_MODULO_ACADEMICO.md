@@ -45,7 +45,7 @@ Escopo validado: Next.js App Router + TypeScript (`apps/web/src/**`) e Supabase 
   - Propagação para `turma_disciplinas` no RPC de geração por currículo.
     Arquivo: `supabase/migrations/20260305000011_rpc_gerar_turmas_from_curriculo_idempotent.sql`.
 - **Comentários:**
-  - Flag já existe na estrutura; falta conectá-la ao cálculo final de aprovação (ver pendências).
+  - Flag está integrada ao cálculo do boletim/pauta anual.
 
 ---
 
@@ -84,7 +84,6 @@ Escopo validado: Next.js App Router + TypeScript (`apps/web/src/**`) e Supabase 
     - `supabase/migrations/20261128040000_fix_curriculo_publish_legacy.sql`
 - **Comentários:**
   - O publish agora falha explicitamente quando o curso não tem todas as classes cobertas.
-  - Bom nível transacional, mas ainda sem contrato rígido de completude por curso inteiro.
 
 ### 2.3. Coluna de status (RASCUNHO vs PUBLICADO/ATIVO)
 - **Status: 🟢 Implementado**
@@ -105,6 +104,22 @@ Escopo validado: Next.js App Router + TypeScript (`apps/web/src/**`) e Supabase 
     - `apps/web/src/lib/academico/turma-gate.ts`.
 - **Comentários:**
   - Status agora é aplicado de forma consistente nos endpoints críticos de escrita.
+
+### 2.4. Nomenclatura de status (contrato único)
+- **Status: 🟢 Implementado**
+- **Evidências:**
+  - `cursos.status_aprovacao` usa valores como `aprovado`.
+    Arquivo: `supabase/migrations/20260127020139_remote_schema.sql`.
+  - `turmas.status_validacao` usa `ativo`, `rascunho`, `arquivado` (e é usado em filtros de listagem).
+    Arquivos:
+    - `supabase/migrations/20260127020139_remote_schema.sql`
+    - `apps/web/src/types/turmas.ts`
+  - `curso_curriculos.status` usa enum `curriculo_status` (`draft`, `published`, `archived`).
+    Arquivo: `supabase/migrations/20260127020139_remote_schema.sql`.
+  - `turmas.status_fecho` usa `ABERTO/FECHADO` para bloqueio de notas.
+    Arquivo: `supabase/migrations/20261128065000_add_turmas_status_fecho.sql`.
+- **Comentários:**
+  - RPC `get_estado_academico` fornece normalização (`active`, `draft`, `archived`, `open/closed`).
 
 ---
 
@@ -179,12 +194,12 @@ Escopo validado: Next.js App Router + TypeScript (`apps/web/src/**`) e Supabase 
     - `curriculum_presets` e `curriculum_preset_subjects`: somente leitura para `authenticated`.
     - `school_subjects`: read/write por `escola_id` do usuário.
     Arquivo: `supabase/migrations/20261127000000_curriculum_presets_tables.sql`.
-  - **Risco:** políticas de presets globais permitem leitura ampla a qualquer autenticado (ok para catálogo público), mas falta política explícita de escrita/admin global (fica implicitamente bloqueada por ausência de policy DML). Isso é seguro por default, porém pouco explícito para governança.
+  - **Risco mitigado:** escrita em presets globais é feita via RPCs admin-only (`curriculum_presets_*`), mantendo leitura pública e evitando DML direto.
 - **Comentários:**
   - Multi-tenant está bem encaminhado, mas governança de catálogo global merece política explícita/documentada.
 
 ### 4.2. Proteção contra exclusão com dados dependentes
-- **Status: 🟡 Precisa de Ajuste**
+- **Status: 🟢 Implementado**
 - **Evidências:**
   - Há proteção por FK em cadeias críticas:
     - `curso_matriz.disciplina_id -> disciplinas_catalogo(id) ON DELETE RESTRICT`
@@ -192,17 +207,17 @@ Escopo validado: Next.js App Router + TypeScript (`apps/web/src/**`) e Supabase 
     Arquivo: `supabase/migrations/20260127020139_remote_schema.sql`.
   - API de DELETE de disciplina também bloqueia quando há vínculo em currículo publicado/ativo.
     Arquivo: `apps/web/src/app/api/escolas/[id]/disciplinas/[disciplinaId]/route.ts`.
-  - **Gap estrutural:** no snapshot auditado, `avaliacoes.turma_disciplina_id` aparece como coluna obrigatória, mas não foi encontrada FK explícita para `turma_disciplinas(id)`; isso abre risco de órfãos por caminho lateral.
-    Arquivo: `supabase/migrations/20260127020139_remote_schema.sql`.
+  - FK adicionada para `avaliacoes.turma_disciplina_id -> turma_disciplinas(id)` com pre-check de órfãos.
+    Arquivo: `supabase/migrations/20260225000001_academic_integrity_fixes.sql`.
 - **Comentários:**
-  - Não parece trivial "apagar disciplina em uso" via fluxo feliz, mas há pontos de integridade que ainda podem ser endurecidos.
+  - Cadeia principal de integridade está coberta; manter revisão periódica de FKs restantes.
 
 ---
 
 ## 5. Conclusão e Recomendações
 
 ### Resumo executivo (maturidade Enterprise)
-O módulo Académico já tem pilares fortes de backend: publish via RPC, controle transacional com lock, RLS ativa em tabelas centrais e modelagem normalizada de `turma_disciplinas`. O problema principal hoje não é ausência de funcionalidade, é **coerência de contrato entre fluxos**. Existem caminhos modernos (presets globais + customização por escola) convivendo com fluxos legados (`CURRICULUM_PRESETS` em código + `disciplinas_catalogo`), e múltiplas rotas de criação de turma com enforcement desigual. Para um padrão Enterprise (Workday/ServiceNow-like), o risco está em bypass de regras de status e em governança de schema não totalmente unificada.
+O módulo Académico já tem pilares fortes de backend: publish via RPC, controle transacional com lock, RLS ativa em tabelas centrais e modelagem normalizada de `turma_disciplinas`. O problema principal hoje não é ausência de funcionalidade, é **coerência de contrato entre fluxos**. O SSOT de disciplinas foi consolidado em presets DB + overrides por escola, e os gates críticos agora são aplicados em API e banco. Para um padrão Enterprise (Workday/ServiceNow-like), o risco residual está em nomenclatura de status e governança de FKs.
 
 ### Prioridades de correção (atualizado pós-fixes)
 
@@ -230,6 +245,6 @@ O módulo Académico já tem pilares fortes de backend: publish via RPC, control
 2. (removido) — uso de presets hardcoded substituído por leitura em DB nos fluxos ativos.
 
 ### Hardening estrutural (refactors maiores)
-- Migrar completamente o fluxo de presets para DB (com versionamento e trilha de auditoria), removendo dependência do grande preset hardcoded como fonte primária.
+- Limpar artefactos de presets hardcoded remanescentes (assets/seed) e formalizar versionamento/auditoria do catálogo global.
 - Revisar integralmente a malha de FKs acadêmicas (curso_matriz ↔ turma_disciplinas ↔ avaliacoes/notas/frequencias) e impor `RESTRICT/NO ACTION` onde a regra de negócio exige.
 - Criar camada única de domínio para “estado acadêmico publicável”, evitando lógica dispersa entre route handlers, server actions e funções SQL.

@@ -3,13 +3,14 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { PlusCircle, UserPlus, Users, FileText, Megaphone, Calendar, Lock, X } from "lucide-react";
+import { PlusCircle, UserPlus, Users, FileText, Megaphone, Calendar, X } from "lucide-react";
 import type { SetupStatus } from "./setupStatus";
 import AvisosNovoPage from "@/app/escola/[id]/admin/avisos/novo/page";
 import EventosPage from "@/app/escola/[id]/eventos/page";
 import NovoFuncionarioPage from "@/app/escola/[id]/funcionarios/novo/page";
 import FuncionariosPage from "@/app/escola/[id]/funcionarios/page";
 import ProfessoresPage from "@/app/escola/[id]/professores/page";
+import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -29,58 +30,27 @@ type QuickAction = {
 
 function ActionCard({ action, onOpen }: { action: QuickAction; onOpen?: (action: QuickAction) => void }) {
   const Icon = action.icon;
-  const inner = (
-    <div className="relative group flex flex-col items-center justify-center gap-2.5 rounded-xl border px-2 py-5 transition-all bg-slate-50 border-slate-100 hover:bg-white hover:border-[#1F6B3B]/30 hover:shadow-md">
-      {/* Icon circle */}
-      <div className={`
-        flex h-11 w-11 items-center justify-center rounded-full shadow-sm ring-1 transition-all
-        ${action.disabled
-          ? "bg-slate-100 text-slate-300 ring-slate-200"
-          : "bg-white text-slate-500 ring-slate-200 group-hover:text-[#1F6B3B] group-hover:ring-[#1F6B3B]/20"
-        }
-      `}>
-        {action.disabled ? <Lock className="h-4 w-4" /> : <Icon className="h-5 w-5" />}
-      </div>
-
-      {/* Label */}
-      <span className={`
-        w-full text-center text-xs font-semibold leading-tight line-clamp-2
-        ${action.disabled ? "text-slate-400" : "text-slate-700"}
-      `}>
-        {action.label}
-      </span>
-
-      {/* Reason tooltip on hover — visible only when disabled */}
-      {action.disabled && action.reason && (
-        <div className="
-          absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-44 z-10
-          bg-slate-900 text-white text-[11px] font-medium rounded-lg px-3 py-2 text-center
-          opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-150
-          shadow-lg
-        ">
-          {action.reason}
-          <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900" />
-        </div>
-      )}
-    </div>
-  );
-
-  if (action.disabled) {
-    return <div className="cursor-not-allowed">{inner}</div>;
-  }
 
   if (action.opensModal && onOpen) {
     return (
-      <button type="button" onClick={() => onOpen(action)} className="block text-left">
-        {inner}
-      </button>
+      <AcaoRapidaCard
+        icon={<Icon className="h-5 w-5" />}
+        label={action.label}
+        onClick={() => onOpen(action)}
+        disabled={action.disabled}
+        disabledReason={action.reason}
+      />
     );
   }
 
   return (
-    <Link href={action.href} className="block">
-      {inner}
-    </Link>
+    <AcaoRapidaCard
+      icon={<Icon className="h-5 w-5" />}
+      label={action.label}
+      href={action.href}
+      disabled={action.disabled}
+      disabledReason={action.reason}
+    />
   );
 }
 

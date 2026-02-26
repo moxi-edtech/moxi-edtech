@@ -44,11 +44,17 @@ function isPendente(status?: string | null) {
   return s === "pendente" || s === "pago_parcial";
 }
 
-function sortByCompetenciaDesc(a: MensalidadeResumo, b: MensalidadeResumo) {
-  // Mais recente primeiro
+function sortByCompetenciaAsc(a: MensalidadeResumo, b: MensalidadeResumo) {
   const da = new Date(a.ano, (a.mes ?? 1) - 1, 1).getTime();
   const db = new Date(b.ano, (b.mes ?? 1) - 1, 1).getTime();
-  return db - da;
+  return da - db;
+}
+
+function sortByVencimentoAsc(a: MensalidadeResumo, b: MensalidadeResumo) {
+  const da = a.vencimento ? new Date(a.vencimento).getTime() : Number.POSITIVE_INFINITY;
+  const db = b.vencimento ? new Date(b.vencimento).getTime() : Number.POSITIVE_INFINITY;
+  if (da === db) return sortByCompetenciaAsc(a, b);
+  return da - db;
 }
 
 type QuickAction = {
@@ -128,9 +134,9 @@ export function AcoesRapidasBalcao({
 
     const suggested =
       pend.length > 0
-        ? [...pend].sort(sortByCompetenciaDesc)[0]
+        ? [...pend].sort(sortByVencimentoAsc)[0]
         : (mensalidades?.length ?? 0) > 0
-          ? [...mensalidades].sort(sortByCompetenciaDesc)[0]
+          ? [...mensalidades].sort(sortByCompetenciaAsc)[0]
           : null;
 
     return { pendentes: pend, totalPendente: total, mensalidadeSugerida: suggested };
@@ -219,7 +225,7 @@ export function AcoesRapidasBalcao({
           className={cx(
             "rounded-2xl border px-4 py-3 shadow-sm flex flex-col gap-1",
             totalPendente > 0
-              ? "bg-rose-50 border-rose-200"
+              ? "bg-[#E3B23C]/10 border-[#E3B23C]/25"
               : "bg-[#1F6B3B]/5 border-[#1F6B3B]/20"
           )}
         >
@@ -227,18 +233,18 @@ export function AcoesRapidasBalcao({
             <span
               className={cx(
                 "text-[10px] font-bold uppercase tracking-widest",
-                totalPendente > 0 ? "text-rose-600" : "text-[#1F6B3B]/70"
+                totalPendente > 0 ? "text-[#E3B23C]" : "text-[#1F6B3B]/70"
               )}
             >
-              {totalPendente > 0 ? "Em dívida" : "Situação financeira"}
+              {totalPendente > 0 ? "Total pendente" : "Situação financeira"}
             </span>
             <span className="text-[10px] font-semibold text-slate-400">Resumo</span>
           </div>
           <div className="flex items-end justify-between gap-3">
             <div
               className={cx(
-                "text-2xl font-black",
-                totalPendente > 0 ? "text-rose-700" : "text-[#1F6B3B]"
+                "text-2xl font-bold",
+                totalPendente > 0 ? "text-[#E3B23C]" : "text-[#1F6B3B]"
               )}
             >
               {moneyAOA.format(totalPendente)}
@@ -249,8 +255,8 @@ export function AcoesRapidasBalcao({
 
         {pendentes.length > 0 && mensalidadeSugerida ? (
           <div className="rounded-2xl border border-[#E3B23C]/20 bg-[#E3B23C]/10 px-4 py-3 text-xs text-slate-500">
-            Mês em aberto: {" "}
-            <span className="text-sm font-bold text-[#9a7010]">
+            Mês em aberto:{" "}
+            <span className="text-sm font-bold text-[#E3B23C]">
               {mensalidadeSugerida.mes}/{mensalidadeSugerida.ano} — {moneyAOA.format(mensalidadeSugerida.valor)}
             </span>{" "}
             <button

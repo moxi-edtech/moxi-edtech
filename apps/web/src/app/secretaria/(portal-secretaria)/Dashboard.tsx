@@ -1,11 +1,18 @@
 "use client";
 import Link from "next/link";
 import {
-  Users, FileText, Banknote, CalendarX, FileEdit,
+  Users,
+  FileText,
+  Banknote,
+  CalendarX,
+  FileEdit,
   AlertCircle,
-  UserPlus, Building, BarChart3,
-  RefreshCcw, Upload, Crown,
-  Clock, UserCheck, KeyRound
+  UserPlus,
+  Building,
+  RefreshCcw,
+  Upload,
+  UserCheck,
+  KeyRound,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useEscolaId } from "@/hooks/useEscolaId";
@@ -17,17 +24,12 @@ import AdmissaoWizardClient from "@/components/secretaria/AdmissaoWizardClient";
 import { PautaRapidaModal } from "@/components/secretaria/PautaRapidaModal";
 import { JustificarFaltaModal } from "@/components/secretaria/JustificarFaltaModal";
 import { ModalShell } from "@/components/ui/ModalShell";
-import type { PlanTier } from "@/config/plans";
-import {
-  DashboardHeader,
-  KpiCard,
-  ActionCard,
-  SecondaryAction,
-  TaskList,
-  NoticePanel,
-} from "@/components/dashboard";
+import { DashboardHeader, TaskList, NoticePanel } from "@/components/dashboard";
+import StatCard from "@/components/shared/StatCard";
+import SecaoLabel from "@/components/shared/SecaoLabel";
+import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
 import { RadarOperacional, type OperationalAlert } from "@/components/feedback/FeedbackSystem";
-import type { DashboardCounts, DashboardRecentes, Plano } from "./types";
+import type { DashboardCounts, DashboardRecentes } from "./types";
 
 type BalcaoModal =
   | "matricular"
@@ -37,44 +39,44 @@ type BalcaoModal =
   | "notas"
   | null;
 
-function ActionButton({
-  title,
-  sub,
-  icon: Icon,
-  onClick,
-}: {
-  title: string;
-  sub: string;
-  icon: any;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group bg-white p-4 rounded-xl border border-slate-200 hover:border-slate-300 hover:shadow-sm transition text-left"
-    >
-      <div className="h-10 w-10 rounded-xl bg-klasse-green/10 text-klasse-green ring-1 ring-klasse-green/20 flex items-center justify-center mb-3 group-hover:bg-klasse-green/15">
-        <Icon className="h-5 w-5" />
-      </div>
-      <h4 className="text-sm font-semibold text-slate-900">{title}</h4>
-      <p className="text-[11px] text-slate-500 mt-0.5">{sub}</p>
-    </button>
-  );
-}
-
 export function Dashboard({
   counts,
   recentes,
-  plan,
 }: {
   counts: DashboardCounts | null;
   recentes: DashboardRecentes | null;
-  plan: Plano;
 }) {
   const { escolaId, isLoading: escolaLoading } = useEscolaId();
   const [filaOpen, setFilaOpen] = useState(false);
   const [balcaoModal, setBalcaoModal] = useState<BalcaoModal>(null);
+  const avisoFechoTrimestre = useMemo(() => {
+    const fecho = recentes?.fecho_trimestre;
+    if (!fecho?.trava_notas_em) return null;
+    const prazo = new Date(fecho.trava_notas_em);
+    if (Number.isNaN(prazo.getTime())) return null;
+    const diffMs = prazo.getTime() - Date.now();
+    const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    if (days < 0 || days > 5) return null;
+    const suffix = fecho.numero ? ` do ${fecho.numero}º trimestre` : " do trimestre";
+    const diaLabel = days === 1 ? "dia" : "dias";
+    const titulo = `Fecho${suffix}`;
+    const resumo =
+      days === 0
+        ? "O fecho das pautas é hoje. Confirme as notas pendentes."
+        : `Faltam ${days} ${diaLabel} para o fecho das pautas. Verifique os professores com notas em atraso.`;
+    return {
+      id: "fecho-trimestre",
+      titulo,
+      resumo,
+      data: prazo.toISOString(),
+      action_label: "Ver pautas pendentes",
+      action_href: "/secretaria/notas",
+    };
+  }, [recentes?.fecho_trimestre]);
+  const avisos = useMemo(() => {
+    const base = recentes?.avisos_recentes ?? [];
+    return avisoFechoTrimestre ? [avisoFechoTrimestre, ...base] : base;
+  }, [avisoFechoTrimestre, recentes?.avisos_recentes]);
   const alerts = useMemo(() => {
     const items: OperationalAlert[] = [];
     const pendencias = recentes?.pendencias ?? counts?.pendencias ?? 0;
@@ -109,9 +111,9 @@ export function Dashboard({
   }, [counts?.pendencias, recentes?.avisos_recentes?.length, recentes?.pendencias]);
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden">
-      <div className="flex-1 flex overflow-hidden">
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 pb-32 custom-scrollbar">
+    <div className="flex flex-col min-h-full bg-slate-50 font-sans text-slate-900">
+      <div className="flex-1 flex">
+        <main className="flex-1 p-6 lg:p-8 pb-32">
           <div className="max-w-5xl mx-auto space-y-8">
             <DashboardHeader
               title="Secretaria"
@@ -147,119 +149,129 @@ export function Dashboard({
             <RadarOperacional alerts={alerts} role="secretaria" />
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <KpiCard label="Total Alunos" value={counts?.alunos} icon={Users} variant="brand" />
-                <KpiCard label="Matrículas Hoje" value={counts?.matriculas} icon={UserPlus} variant="success" />
-                <KpiCard label="Turmas Ativas" value={counts?.turmas} icon={Building} />
-                <KpiCard label="Pendências" value={recentes?.pendencias ?? counts?.pendencias} icon={AlertCircle} variant="warning" />
+              <StatCard label="Total Alunos" value={counts?.alunos} icon={<Users size={16} />} tone="default" />
+              <StatCard
+                label="Matrículas Hoje"
+                value={counts?.matriculas}
+                icon={<UserPlus size={16} />}
+                tone="default"
+              />
+              <StatCard label="Turmas Ativas" value={counts?.turmas} icon={<Building size={16} />} tone="default" />
+              <StatCard
+                label="Pendências"
+                value={recentes?.pendencias ?? counts?.pendencias}
+                icon={<AlertCircle size={16} />}
+                tone={(recentes?.pendencias ?? counts?.pendencias ?? 0) > 0 ? "warning" : "default"}
+              />
             </div>
 
-            <div className="bg-white rounded-xl border p-4">
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-                <h3 className="text-sm font-semibold text-gray-700">🔍 Busca Rápida para Atendimento</h3>
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+              <SecaoLabel>Busca rápida para atendimento</SecaoLabel>
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <div className="flex-1 min-w-[280px]">
+                  <BuscaBalcaoRapido escolaId={escolaId} />
+                </div>
                 <button
                   type="button"
                   onClick={() => setFilaOpen(true)}
-                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  className="rounded-lg border border-slate-200 px-3 py-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                 >
                   Abrir fila de atendimento
                 </button>
               </div>
-              <BuscaBalcaoRapido escolaId={escolaId} />
-              <p className="text-xs text-gray-500 mt-2">
-                Digite BI, nome completo ou telefone do encarregado
-              </p>
             </div>
 
             <div>
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 ml-1">Balcão de Atendimento</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                    <ActionButton
-                      title="Cobrar Propina"
-                      sub="Pagamento imediato"
-                      icon={Banknote}
-                      onClick={() => setBalcaoModal("cobranca")}
-                    />
-                    <ActionButton
-                      title="Emitir Declaração"
-                      sub="Documento oficial"
-                      icon={FileText}
-                      onClick={() => setBalcaoModal("documentos")}
-                    />
-                    <ActionButton
-                      title="Matricular"
-                      sub="Novo ou confirmação"
-                      icon={UserPlus}
-                      onClick={() => setBalcaoModal("matricular")}
-                    />
-                    <ActionButton
-                      title="Justificar Falta"
-                      sub="Registrar ausência"
-                      icon={CalendarX}
-                      onClick={() => setBalcaoModal("faltas")}
-                    />
-                    <ActionButton
-                      title="Lançar Nota"
-                      sub="Abrir pauta"
-                      icon={FileEdit}
-                      onClick={() => setBalcaoModal("notas")}
-                    />
-                </div>
+              <SecaoLabel>Balcão de Atendimento</SecaoLabel>
+              <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <AcaoRapidaCard
+                  icon={<Banknote className="h-5 w-5" />}
+                  label="Cobrar Propina"
+                  sublabel="Pagamento imediato"
+                  onClick={() => setBalcaoModal("cobranca")}
+                />
+                <AcaoRapidaCard
+                  icon={<FileText className="h-5 w-5" />}
+                  label="Emitir Declaração"
+                  sublabel="Documento oficial"
+                  onClick={() => setBalcaoModal("documentos")}
+                />
+                <AcaoRapidaCard
+                  icon={<UserPlus className="h-5 w-5" />}
+                  label="Matricular"
+                  sublabel="Novo ou confirmação"
+                  onClick={() => setBalcaoModal("matricular")}
+                />
+                <AcaoRapidaCard
+                  icon={<CalendarX className="h-5 w-5" />}
+                  label="Justificar Falta"
+                  sublabel="Registrar ausência"
+                  onClick={() => setBalcaoModal("faltas")}
+                />
+                <AcaoRapidaCard
+                  icon={<FileEdit className="h-5 w-5" />}
+                  label="Lançar Nota"
+                  sublabel="Abrir pauta"
+                  onClick={() => setBalcaoModal("notas")}
+                />
+              </div>
             </div>
 
             <div className="grid lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-6">
-                <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></div>
-                        Atenção Necessária
-                    </h3>
-                    <button className="text-xs font-bold text-teal-600 hover:text-teal-700">Ver tudo</button>
+                <div className="flex items-center justify-between mb-4">
+                  <SecaoLabel>Atenção Necessária</SecaoLabel>
+                  <Link
+                    href="/secretaria/admissoes"
+                    className="text-xs font-semibold text-[#1F6B3B] hover:underline"
+                  >
+                    Ver tudo
+                  </Link>
                 </div>
 
                 <TaskList items={recentes?.novas_matriculas ?? []} />
 
                 <div>
-                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 ml-1">Gestão</h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <SecondaryAction icon={Users} label="Alunos" href="/secretaria/alunos" />
-                        <SecondaryAction icon={UserCheck} label="Professores" href="/secretaria/professores" />
-                        <SecondaryAction icon={Building} label="Turmas" href="/secretaria/turmas" />
-                        <SecondaryAction icon={BarChart3} label="Relatórios" href="/secretaria/relatorios" />
-                        <SecondaryAction icon={RefreshCcw} label="Rematrículas" href="/secretaria/rematricula" />
-                        <SecondaryAction icon={KeyRound} label="Acesso Alunos" href="/secretaria/acesso-alunos" />
-                        <SecondaryAction icon={Upload} label="Migração" href="/migracao/alunos" highlight={true} />
-                        <SecondaryAction icon={Users} label="Usuários Globais" href="/secretaria/usuarios/globais" />
-                    </div>
+                  <SecaoLabel>Gestão</SecaoLabel>
+                  <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <AcaoRapidaCard icon={<Users className="h-5 w-5" />} label="Alunos" href="/secretaria/alunos" />
+                    <AcaoRapidaCard
+                      icon={<UserCheck className="h-5 w-5" />}
+                      label="Professores"
+                      href="/secretaria/professores"
+                    />
+                    <AcaoRapidaCard icon={<Building className="h-5 w-5" />} label="Turmas" href="/secretaria/turmas" />
+                    <AcaoRapidaCard
+                      icon={<RefreshCcw className="h-5 w-5" />}
+                      label="Rematrículas"
+                      href="/secretaria/rematricula"
+                    />
+                    <AcaoRapidaCard
+                      icon={<KeyRound className="h-5 w-5" />}
+                      label="Acesso Alunos"
+                      href="/secretaria/acesso-alunos"
+                    />
+                    <AcaoRapidaCard
+                      icon={<Upload className="h-5 w-5" />}
+                      label="Migração"
+                      href="/secretaria/migracao/alunos"
+                    />
+                    <AcaoRapidaCard
+                      icon={<Users className="h-5 w-5" />}
+                      label="Usuários Globais"
+                      href="/secretaria/usuarios/globais"
+                    />
+                  </div>
                 </div>
               </div>
 
               <div className="space-y-6">
-                <NoticePanel items={recentes?.avisos_recentes ?? []} />
-
-                <div className="bg-slate-900 rounded-2xl p-5 text-white shadow-lg">
-                    <div className="flex items-start gap-3">
-                        <Clock className="w-5 h-5 text-teal-400 mt-0.5" />
-                        <div>
-                            <h3 className="text-sm font-bold">Fecho do Trimestre</h3>
-                            <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                                Faltam <strong>5 dias</strong> para o fecho das pautas. Verifique os professores com notas em atraso.
-                            </p>
-                            <button className="mt-3 text-[10px] font-bold bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition">
-                                Ver Pautas Pendentes
-                             </button>
-                        </div>
-                    </div>
+                <div>
+                  <SecaoLabel>Avisos gerais</SecaoLabel>
+                  <div className="mt-4">
+                    <NoticePanel items={avisos} showHeader={false} />
+                  </div>
                 </div>
-
-                {plan === 'essencial' && (
-                    <div className="border border-dashed border-slate-300 rounded-2xl p-4 text-center hover:bg-slate-50 transition cursor-pointer group">
-                        <div className="w-10 h-10 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition">
-                            <Crown className="w-5 h-5" />
-                        </div>
-                        <p className="text-xs font-bold text-slate-700">Plano Profissional</p>
-                        <p className="text-[10px] text-slate-500 mt-1">Ative para ter relatórios financeiros avançados.</p>
-                    </div>
-                )}
               </div>
             </div>
           </div>

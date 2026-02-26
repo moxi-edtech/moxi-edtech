@@ -4395,6 +4395,62 @@ export type Database = {
           },
         ]
       }
+      import_financeiro_pendencias: {
+        Row: {
+          aluno_id: string | null
+          created_at: string
+          detalhes: Json | null
+          escola_id: string
+          id: string
+          import_id: string
+          matricula_id: string | null
+          mensagem: string
+          motivo: string
+          resolved_at: string | null
+          resolved_by: string | null
+          resolvido: boolean | null
+          turma_id: string | null
+        }
+        Insert: {
+          aluno_id?: string | null
+          created_at?: string
+          detalhes?: Json | null
+          escola_id: string
+          id?: string
+          import_id: string
+          matricula_id?: string | null
+          mensagem: string
+          motivo: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolvido?: boolean | null
+          turma_id?: string | null
+        }
+        Update: {
+          aluno_id?: string | null
+          created_at?: string
+          detalhes?: Json | null
+          escola_id?: string
+          id?: string
+          import_id?: string
+          matricula_id?: string | null
+          mensagem?: string
+          motivo?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolvido?: boolean | null
+          turma_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "import_financeiro_pendencias_import_id_fkey"
+            columns: ["import_id"]
+            isOneToOne: false
+            referencedRelation: "import_migrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       import_migrations: {
         Row: {
           column_map: Json | null
@@ -10763,6 +10819,15 @@ export type Database = {
       }
       get_config_impact: {
         Args: { p_ano_letivo: number; p_changes?: Json; p_escola_id: string }
+        Returns: Json
+      }
+      get_estado_academico: {
+        Args: {
+          p_curriculo_id?: string
+          p_curso_id?: string
+          p_escola_id: string
+          p_turma_id?: string
+        }
         Returns: Json
       }
       get_import_summary: { Args: { p_import_id: string }; Returns: Json }

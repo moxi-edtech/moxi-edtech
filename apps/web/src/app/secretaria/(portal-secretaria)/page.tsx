@@ -61,5 +61,5 @@ export default function SecretariaDashboardPage() {
     );
   }
 
-  return <Dashboard counts={counts} recentes={recentes} plan={plan} />;
+  return <Dashboard counts={counts} recentes={recentes} />;
 }

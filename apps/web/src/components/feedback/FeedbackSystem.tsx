@@ -26,8 +26,8 @@ import {
 const K = {
   green: "#1F6B3B",
   rose: "#e11d48",
-  amber: "#f59e0b",
-  slate9: "#0f172a",
+  amber: "#E3B23C",
+  slate9: "#94a3b8",
 }
 
 export type ToastVariant = "success" | "error" | "warning" | "info" | "offline" | "syncing"
@@ -144,19 +144,19 @@ const TOAST_CONFIG: Record<
     bg: K.slate9,
     border: K.slate9,
     icon: <Info size={16} />,
-    textColor: "text-white",
+    textColor: "text-slate-900",
   },
   offline: {
     bg: K.slate9,
     border: K.slate9,
     icon: <WifiOff size={16} />,
-    textColor: "text-white",
+    textColor: "text-slate-900",
   },
   syncing: {
     bg: K.slate9,
     border: K.slate9,
     icon: <Loader2 size={16} className="animate-spin" />,
-    textColor: "text-white",
+    textColor: "text-slate-900",
   },
 }
 
@@ -259,7 +259,7 @@ export function SyncIndicator({
     },
     offline: {
       icon: <WifiOff size={11} />,
-      color: "text-amber-500",
+      color: "text-[#E3B23C]",
       text: "Offline",
     },
   }[status]
@@ -305,7 +305,7 @@ export function OfflineBanner() {
 
   return (
     <div
-      className="fixed top-0 inset-x-0 z-[300] bg-amber-500 text-white text-xs font-semibold
+      className="fixed top-0 inset-x-0 z-[300] bg-[#E3B23C] text-white text-xs font-semibold
       flex items-center justify-center gap-2 py-2 px-4 animate-in slide-in-from-top duration-200"
     >
       <WifiOff size={13} />
@@ -338,18 +338,18 @@ function AlertCard({ alert }: { alert: OperationalAlert }) {
       count: "text-rose-600",
     },
     warning: {
-      border: "border-amber-200",
-      bg: "bg-amber-50",
-      icon: <AlertTriangle size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />,
-      badge: "bg-amber-100 text-amber-700",
-      count: "text-amber-600",
+      border: "border-[#E3B23C]/25",
+      bg: "bg-[#E3B23C]/10",
+      icon: <AlertTriangle size={16} className="text-[#E3B23C] flex-shrink-0 mt-0.5" />,
+      badge: "bg-[#E3B23C]/20 text-[#E3B23C]",
+      count: "text-[#E3B23C]",
     },
     info: {
-      border: "border-blue-200",
-      bg: "bg-blue-50",
-      icon: <Info size={16} className="text-blue-600 flex-shrink-0 mt-0.5" />,
-      badge: "bg-blue-100 text-blue-700",
-      count: "text-blue-600",
+      border: "border-slate-200",
+      bg: "bg-slate-50",
+      icon: <Info size={16} className="text-slate-400 flex-shrink-0 mt-0.5" />,
+      badge: "bg-slate-100 text-slate-400",
+      count: "text-slate-400",
     },
   }[alert.severity]
 
@@ -443,7 +443,7 @@ export function RadarOperacional({
               </span>
             )}
             {warnings.length > 0 && (
-              <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
+              <span className="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-[#E3B23C]/20 text-[#E3B23C]">
                 {warnings.length} alerta{warnings.length !== 1 ? "s" : ""}
               </span>
             )}
@@ -500,7 +500,7 @@ function FaltasIndicador({ faltas, max }: { faltas: number; max: number }) {
 
   const cfg = {
     ok: { color: "text-[#1F6B3B]", bg: "bg-[#1F6B3B]/10", bar: "bg-[#1F6B3B]" },
-    atencao: { color: "text-amber-600", bg: "bg-amber-50", bar: "bg-amber-400" },
+    atencao: { color: "text-[#E3B23C]", bg: "bg-[#E3B23C]/10", bar: "bg-[#E3B23C]" },
     critico: { color: "text-rose-600", bg: "bg-rose-50", bar: "bg-rose-500" },
   }[risco]
 
@@ -549,7 +549,7 @@ function DisciplinaRow({
       : nota >= 10
         ? "text-[#1F6B3B] font-black"
         : nota >= 8
-          ? "text-amber-600 font-bold"
+          ? "text-[#E3B23C] font-bold"
           : "text-rose-600 font-bold"
 
   return (
@@ -567,7 +567,7 @@ function DisciplinaRow({
           <span className="text-sm text-slate-300 font-medium">—</span>
         )}
         {d.status === "pendente" && (
-          <p className="text-[9px] text-amber-500 font-bold uppercase mt-0.5">Pendente</p>
+          <p className="text-[9px] text-[#E3B23C] font-bold uppercase mt-0.5">Pendente</p>
         )}
         {d.status === "bloqueada" && (
           <p className="text-[9px] text-rose-500 font-bold uppercase mt-0.5">Bloqueada</p>

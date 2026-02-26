@@ -89,7 +89,7 @@ export default function EventsSection({ escolaId, events = [] }: Props) {
 
                   {/* Título */}
                   <div className="min-w-0 flex-1">
-                    {/* 🔥 1 linha só */}
+                    {/* 1 linha só */}
                     <p className="truncate text-sm font-semibold text-slate-900">
                       {ev.titulo}
                     </p>

@@ -1,15 +1,8 @@
 // apps/web/src/components/layout/escola-admin/KpiSection.tsx
 "use client";
 
-import Link from "next/link";
-import {
-  UsersRound,
-  Users,
-  UserCheck,
-  Wallet,
-  ArrowRight,
-  AlertCircle,
-} from "lucide-react";
+import { UsersRound, Users, UserCheck, Wallet, AlertCircle } from "lucide-react";
+import StatCard from "@/components/shared/StatCard";
 import type { SetupStatus } from "./setupStatus";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -51,78 +44,6 @@ function KpiSkeleton() {
   );
 }
 
-// ─── KPI card ─────────────────────────────────────────────────────────────────
-// Disabled cards render as plain <div> — avoids passing href to a <div>
-// via dynamic component, which causes TS warnings and broken semantics.
-
-type KpiCardProps = {
-  title:    string;
-  value:    string | number;
-  icon:     React.ElementType;
-  status:   string;
-  href:     string;
-  disabled: boolean;
-};
-
-function KpiCard({ title, value, icon: Icon, status, href, disabled }: KpiCardProps) {
-  const inner = (
-    <div className={`
-      group relative flex flex-col justify-between overflow-hidden rounded-2xl border
-      bg-white p-5 shadow-sm transition-all duration-200 h-full
-      ${disabled
-        ? "border-slate-200 bg-slate-50/60 opacity-70 cursor-default"
-        : "border-slate-200 hover:border-[#1F6B3B]/30 hover:shadow-md cursor-pointer"
-      }
-    `}>
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            {title}
-          </p>
-          <p className="mt-2 text-2xl font-bold text-slate-900 tracking-tight">
-            {value}
-          </p>
-          <span className={`
-            mt-2 inline-flex items-center rounded-full border px-2 py-0.5
-            text-[10px] font-bold uppercase tracking-wide
-            ${disabled
-              ? "bg-slate-100 text-slate-400 border-slate-200"
-              : "bg-[#1F6B3B]/8 text-[#1F6B3B] border-[#1F6B3B]/15"
-            }
-          `}>
-            {status}
-          </span>
-        </div>
-
-        <div className={`
-          rounded-xl p-2.5 transition-colors flex-shrink-0
-          ${disabled
-            ? "bg-slate-100 text-slate-300"
-            : "bg-slate-50 text-slate-400 group-hover:bg-[#1F6B3B]/10 group-hover:text-[#1F6B3B]"
-          }
-        `}>
-          <Icon size={18} />
-        </div>
-      </div>
-
-      {!disabled && (
-        <div className="mt-4 flex items-center gap-1 text-[10px] font-bold text-slate-400 group-hover:text-[#1F6B3B] transition-colors">
-          Gerenciar
-          <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
-        </div>
-      )}
-    </div>
-  );
-
-  if (disabled) return <div>{inner}</div>;
-
-  return (
-    <Link href={href} className="block h-full">
-      {inner}
-    </Link>
-  );
-}
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function KpiSection({
@@ -157,37 +78,37 @@ export default function KpiSection({
   const adminHref   = (path: string) => `/escola/${escolaId}/admin/${path}`;
   const financeHref = financeiroHref ?? `/escola/${escolaId}/financeiro`;
 
-  const kpis: KpiCardProps[] = [
+  const kpis = [
     {
-      title:    "Turmas",
-      value:    s.turmas,
-      icon:     UsersRound,
-      status:   turmasOk ? "Ativas"       : "Estrutura",
-      href:     adminHref("turmas"),
+      label: "Turmas",
+      value: s.turmas,
+      icon: <UsersRound size={16} />,
+      href: adminHref("turmas"),
+      tone: "default" as const,
       disabled: false,
     },
     {
-      title:    "Alunos",
-      value:    s.alunos,
-      icon:     Users,
-      status:   turmasOk ? "Matriculados" : "Aguardando",
-      href:     adminHref("alunos"),
+      label: "Alunos",
+      value: s.alunos,
+      icon: <Users size={16} />,
+      href: adminHref("alunos"),
+      tone: turmasOk ? ("default" as const) : ("warning" as const),
       disabled: !turmasOk,
     },
     {
-      title:    "Professores",
-      value:    s.professores,
-      icon:     UserCheck,
-      status:   turmasOk ? "Docentes"     : "Pendente",
-      href:     adminHref("professores"),
+      label: "Professores",
+      value: s.professores,
+      icon: <UserCheck size={16} />,
+      href: adminHref("professores"),
+      tone: turmasOk ? ("default" as const) : ("warning" as const),
       disabled: !turmasOk,
     },
     {
-      title:    "Financeiro",
-      value:    `${s.financeiro ?? 0}%`,
-      icon:     Wallet,
-      status:   turmasOk ? "Arrecadação"  : "Configurar",
-      href:     financeHref,
+      label: "Financeiro",
+      value: `${s.financeiro ?? 0}%`,
+      icon: <Wallet size={16} />,
+      href: financeHref,
+      tone: turmasOk ? ("default" as const) : ("warning" as const),
       disabled: !turmasOk,
     },
   ];
@@ -195,7 +116,15 @@ export default function KpiSection({
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {kpis.map((kpi) => (
-        <KpiCard key={kpi.title} {...kpi} />
+        <StatCard
+          key={kpi.label}
+          label={kpi.label}
+          value={kpi.value}
+          icon={kpi.icon}
+          href={kpi.disabled ? undefined : kpi.href}
+          tone={kpi.tone}
+          disabled={kpi.disabled}
+        />
       ))}
     </div>
   );
