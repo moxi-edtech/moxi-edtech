@@ -72,7 +72,8 @@ export function PautaRapidaModal({
   const [loadingDisciplinas, setLoadingDisciplinas] = useState(false);
   const [exportingMiniPauta, setExportingMiniPauta] = useState(false);
   const [exportingTrimestral, setExportingTrimestral] = useState(false);
-  const [pauta, setPauta] = useState<StudentGradeRow[]>([]);
+  const [pautaInitial, setPautaInitial] = useState<StudentGradeRow[]>([]);
+  const [pautaDraft, setPautaDraft] = useState<StudentGradeRow[]>([]);
   const [loadingPauta, setLoadingPauta] = useState(false);
   const { gerarMiniPauta, gerarPautaTrimestral } = useOfficialDocs();
 
@@ -164,7 +165,8 @@ export function PautaRapidaModal({
 
   useEffect(() => {
     if (!turmaId || !disciplinaId || !periodoNumero) {
-      setPauta([]);
+      setPautaInitial([]);
+      setPautaDraft([]);
       return;
     }
 
@@ -183,7 +185,7 @@ export function PautaRapidaModal({
         const json = await res.json().catch(() => ({}));
         if (!active) return;
         if (res.ok && json.ok && Array.isArray(json.items)) {
-          setPauta(
+          const mapped =
             json.items.map((row: any, index: number) => ({
               id: row.aluno_id,
               numero: row.numero_chamada ?? index + 1,
@@ -194,10 +196,12 @@ export function PautaRapidaModal({
               npt1: row.npt ?? null,
               mt1: row.mt ?? null,
               _status: "synced",
-            }))
-          );
+            }));
+          setPautaInitial(mapped);
+          setPautaDraft(mapped);
         } else {
-          setPauta([]);
+          setPautaInitial([]);
+          setPautaDraft([]);
         }
       } finally {
         if (active) setLoadingPauta(false);
@@ -548,16 +552,16 @@ export function PautaRapidaModal({
         <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-500">
           Carregando pauta...
         </div>
-      ) : pauta.length === 0 ? (
+      ) : pautaInitial.length === 0 ? (
         <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-500">
           Selecione turma, disciplina e período para visualizar a pauta.
         </div>
       ) : (
         <GradeEntryGrid
-          initialData={pauta}
+          initialData={pautaInitial}
           subtitle={`${disciplinaSelecionada?.disciplina?.nome ?? "Disciplina"} • Trimestre ${periodoNumero}`}
           onSave={handleSaveBatch}
-          onDataChange={setPauta}
+          onDataChange={setPautaDraft}
         />
       )}
     </div>
