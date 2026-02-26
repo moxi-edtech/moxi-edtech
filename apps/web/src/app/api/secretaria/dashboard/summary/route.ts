@@ -51,12 +51,13 @@ export async function GET() {
       return NextResponse.json({
         ok: true,
         counts: { alunos: 0, matriculas: 0, turmas: 0, pendencias: 0 },
-        recentes: { pendencias: 0, novas_matriculas: [], avisos_recentes: [] },
+        recentes: { pendencias: 0, novas_matriculas: [], avisos_recentes: [], fecho_trimestre: null },
         escola: { nome: null, plano: null, status: null },
       });
     }
 
-    const [countsRes, recentesRes, escolaRes] = await Promise.all([
+    const nowIso = new Date().toISOString();
+    const [countsRes, recentesRes, escolaRes, anoLetivoRes] = await Promise.all([
       supabase
         .from("vw_secretaria_dashboard_counts")
         .select("alunos_ativos, matriculas_total, turmas_total")
@@ -72,6 +73,14 @@ export async function GET() {
         .select("nome, plano_atual, status")
         .eq("escola_id", escolaId)
         .maybeSingle(),
+      supabase
+        .from("anos_letivos")
+        .select("id")
+        .eq("escola_id", escolaId)
+        .eq("ativo", true)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
     ]);
 
     if (countsRes.error) {
@@ -83,6 +92,9 @@ export async function GET() {
     if (escolaRes.error) {
       return NextResponse.json({ ok: false, error: escolaRes.error.message }, { status: 500 });
     }
+    if (anoLetivoRes.error) {
+      return NextResponse.json({ ok: false, error: anoLetivoRes.error.message }, { status: 500 });
+    }
 
     const resumoStatus = Array.isArray(recentesRes.data?.resumo_status)
       ? recentesRes.data?.resumo_status
@@ -92,6 +104,22 @@ export async function GET() {
       .reduce((acc: number, item: any) => acc + Number(item.total ?? 0), 0);
     const pendenciasImportacao = Number(recentesRes.data?.pendencias_importacao ?? 0);
     const pendencias = pendenciasMatriculas + pendenciasImportacao;
+    const anoLetivoId = anoLetivoRes.data?.id ?? null;
+    const { data: periodoFecho, error: periodoError } = anoLetivoId
+      ? await supabase
+          .from("periodos_letivos")
+          .select("numero, trava_notas_em")
+          .eq("escola_id", escolaId)
+          .eq("ano_letivo_id", anoLetivoId)
+          .gte("trava_notas_em", nowIso)
+          .order("trava_notas_em", { ascending: true })
+          .limit(1)
+          .maybeSingle()
+      : { data: null, error: null };
+
+    if (periodoError) {
+      return NextResponse.json({ ok: false, error: periodoError.message }, { status: 500 });
+    }
 
     return NextResponse.json({
       ok: true,
@@ -109,6 +137,12 @@ export async function GET() {
         avisos_recentes: Array.isArray(recentesRes.data?.avisos_recentes)
           ? recentesRes.data?.avisos_recentes
           : [],
+        fecho_trimestre: periodoFecho?.trava_notas_em
+          ? {
+              numero: Number(periodoFecho.numero ?? 0),
+              trava_notas_em: String(periodoFecho.trava_notas_em),
+            }
+          : null,
       },
       escola: {
         nome: escolaRes.data?.nome ?? null,

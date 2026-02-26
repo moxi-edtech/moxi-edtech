@@ -28,14 +28,14 @@ export function DossierTabs({ aluno, slotPerfil, slotFinanceiro, slotHistorico, 
               onClick={() => setActive(tab.id)}
               className={`relative flex items-center gap-2 px-4 py-3 text-sm border-b-2 ${
                 isActive
-                  ? "border-slate-900 text-slate-900 font-bold"
+                  ? "border-slate-900 text-slate-900 font-semibold"
                   : "border-transparent text-slate-400 font-medium hover:text-slate-700"
               }`}
             >
               {tab.icon}
               {tab.label}
               {tab.badge ? (
-                <span className="absolute -top-1 right-2 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[9px] font-black text-white">
+                <span className="absolute -top-1 right-2 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[9px] font-bold text-white">
                   {tab.badge}
                 </span>
               ) : null}

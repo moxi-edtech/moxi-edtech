@@ -13,14 +13,14 @@ export default function AlunoShell({
   vinculo: { escola_id: string } | null;
 }) {
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-moxinexa-light/20 to-white text-moxinexa-dark">
+    <div className="flex min-h-screen bg-slate-50 text-slate-900">
       <AlunoSidebar />
       <div className="flex-1 transition-[padding] duration-300 ease-in-out" style={{ paddingLeft: "var(--sidebar-w, 256px)" }}>
         <main className="p-6 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-sm p-6 border border-moxinexa-light/30">
+          <div className="bg-white rounded-2xl shadow-sm p-6 border border-slate-200">
             {children}
           </div>
-          <footer className="mt-8 text-center text-sm text-moxinexa-gray">Bons estudos! 🎓</footer>
+          <footer className="mt-8 text-center text-sm text-slate-400">Bons estudos!</footer>
         </main>
       </div>
     </div>

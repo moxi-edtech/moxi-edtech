@@ -31,6 +31,31 @@ const KlasseColors = {
   background: "bg-slate-50",
 };
 
+type ImportFinancePendencia = {
+  motivo: string;
+  mensagem: string;
+  aluno_id: string | null;
+  aluno_nome: string | null;
+  matricula_id: string | null;
+  turma_id: string | null;
+  turma_codigo: string | null;
+};
+
+type ImportFinanceSummary = {
+  ok_financeiro?: boolean;
+  mensagem_resumo?: string;
+  alertas?: string[];
+  resumo?: {
+    financeiro_ativo?: number;
+    pendencias_financeiras?: number;
+  };
+  pendencias_financeiras?: {
+    total?: number;
+    por_motivo?: Record<string, number>;
+    itens?: ImportFinancePendencia[];
+  };
+};
+
 const StatCard = ({ label, value, icon: Icon, colorClass, bgClass }: any) => (
   <div className={`flex flex-col items-center justify-center p-4 rounded-xl border ${bgClass} ${colorClass} transition-all hover:shadow-md`}>
     <div className="mb-2 opacity-80"><Icon className="w-5 h-5" /></div>
@@ -118,6 +143,7 @@ function AlunoMigrationWizardContent() {
   const [userId, setUserId] = useState<string | null>(null);
   const [importErrors, setImportErrors] = useState<ErroImportacao[]>([]);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [importFinanceSummary, setImportFinanceSummary] = useState<ImportFinanceSummary | null>(null);
   const [skipMatricula, setSkipMatricula] = useState(false);
   const [startMonth, setStartMonth] = useState<number>(new Date().getMonth() + 1);
   const [modo, setModo] = useState<'migracao' | 'onboarding'>('migracao');
@@ -150,6 +176,16 @@ function AlunoMigrationWizardContent() {
   });
 
   const batchKey = (b: any) => [b?.ano_letivo ?? '', String(b?.turma_codigo || '').toUpperCase(), b?.turma_id ?? ''].join('|');
+
+  const pendenciasResumoTexto = useMemo(() => {
+    const porMotivo = importFinanceSummary?.pendencias_financeiras?.por_motivo;
+    if (!porMotivo) return null;
+    const entries = Object.entries(porMotivo).filter(([, count]) => Number(count) > 0);
+    if (!entries.length) return null;
+    return entries
+      .map(([motivo, count]) => `${count} ${motivo.toLowerCase()}`)
+      .join(", ");
+  }, [importFinanceSummary]);
 
   // --- EFEITOS (Sessão, Persistência, Deep Link) ---
   
@@ -209,6 +245,7 @@ function AlunoMigrationWizardContent() {
     setApiErrors([]);
     setImportErrors([]);
     setImportResult(null);
+    setImportFinanceSummary(null);
     setImportId(null);
     setConfigSummary(null);
     setMatriculaBatches([]);
@@ -280,6 +317,18 @@ function AlunoMigrationWizardContent() {
       if (!res.ok) throw new Error(data.error || result.error);
       
       setImportResult(result);
+      const hasFinanceSummary = data?.pendencias_financeiras || data?.ok_financeiro !== undefined || data?.mensagem_resumo;
+      setImportFinanceSummary(
+        hasFinanceSummary
+          ? {
+              ok_financeiro: Boolean(data?.ok_financeiro),
+              mensagem_resumo: data?.mensagem_resumo,
+              alertas: Array.isArray(data?.alertas) ? data.alertas.filter(Boolean) : [],
+              resumo: data?.resumo ?? undefined,
+              pendencias_financeiras: data?.pendencias_financeiras ?? undefined,
+            }
+          : null
+      );
       if ((result.turmas_created || 0) > 0 || (result.cursos_created || 0) > 0) {
         const summaryRes = await fetch(`/api/migracao/${importId}/summary`);
         setConfigSummary(await summaryRes.json());
@@ -500,7 +549,78 @@ function AlunoMigrationWizardContent() {
       case 7: // Final
          return (
             <WizardShell title="Importação Concluída" subtitle="Resumo da operação e matrículas." icon={CheckCircle}>
-               <div className="space-y-8">
+                  <div className="space-y-8">
+                  {importFinanceSummary && (
+                     <div
+                        className={`border rounded-2xl p-5 ${importFinanceSummary.ok_financeiro ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100'}`}
+                     >
+                        <div className="flex gap-3">
+                           <div className="mt-0.5">
+                              {importFinanceSummary.ok_financeiro ? (
+                                 <CheckCircle className="w-5 h-5 text-emerald-600" />
+                              ) : (
+                                 <AlertTriangle className="w-5 h-5 text-amber-600" />
+                              )}
+                           </div>
+                           <div className="space-y-1">
+                              <p className="text-sm font-bold text-slate-900">Resumo Financeiro</p>
+                              <p className="text-sm text-slate-700">
+                                 {importFinanceSummary.mensagem_resumo ||
+                                    (importFinanceSummary.ok_financeiro
+                                       ? "Financeiro aplicado sem pendências."
+                                       : "Existem pendências financeiras para revisar.")}
+                              </p>
+                              {pendenciasResumoTexto && (
+                                 <p className="text-xs text-slate-600">Pendências: {pendenciasResumoTexto}.</p>
+                              )}
+                              {importFinanceSummary.alertas && importFinanceSummary.alertas.length > 0 && (
+                                 <ul className="text-xs text-slate-600 list-disc pl-4">
+                                    {importFinanceSummary.alertas.map((alerta, index) => (
+                                       <li key={`${alerta}-${index}`}>{alerta}</li>
+                                    ))}
+                                 </ul>
+                              )}
+                           </div>
+                        </div>
+                     </div>
+                  )}
+
+                  {importFinanceSummary?.pendencias_financeiras?.itens && importFinanceSummary.pendencias_financeiras.itens.length > 0 && (
+                     <div className="bg-white border border-slate-200 rounded-2xl p-5">
+                        <div className="flex items-center justify-between mb-3">
+                           <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                              <AlertTriangle className="w-4 h-4 text-amber-500" /> Pendências Financeiras
+                           </h4>
+                           <span className="text-xs font-medium text-slate-500">
+                              {importFinanceSummary.pendencias_financeiras.itens.length} pendências
+                           </span>
+                        </div>
+                        <p className="text-xs text-slate-600 mb-4">
+                           Os alunos foram importados, mas precisam de ajustes do admin financeiro antes de cobrar.
+                        </p>
+                        <div className="divide-y divide-slate-100">
+                           {importFinanceSummary.pendencias_financeiras.itens.slice(0, 10).map((item, index) => (
+                              <div key={`${item.aluno_id ?? index}-${item.turma_codigo ?? ''}`} className="py-3">
+                                 <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-900">
+                                    <span>{item.aluno_nome || "Aluno sem nome"}</span>
+                                    {item.turma_codigo && (
+                                       <span className="text-xs text-slate-600 bg-slate-100 px-2 py-1 rounded-full">
+                                          {item.turma_codigo}
+                                       </span>
+                                    )}
+                                 </div>
+                                 <p className="text-xs text-slate-600">{item.motivo}. {item.mensagem}</p>
+                              </div>
+                           ))}
+                        </div>
+                        {importFinanceSummary.pendencias_financeiras.itens.length > 10 && (
+                           <p className="text-xs text-slate-500 mt-3">
+                              + {importFinanceSummary.pendencias_financeiras.itens.length - 10} pendências no relatório completo.
+                           </p>
+                        )}
+                     </div>
+                  )}
+
                   {/* Stats Grid */}
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                      <StatCard label="Importados" value={importResult?.imported || 0} icon={CheckCircle} colorClass="text-emerald-700" bgClass="bg-emerald-50 border-emerald-100" />

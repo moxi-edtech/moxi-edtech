@@ -72,8 +72,8 @@ function OmniSearchInput({
 }) {
   const sizeStyles =
     size === "lg"
-      ? "text-base md:text-lg py-4"
-      : "text-sm py-2.5";
+      ? "h-12 text-base md:text-lg"
+      : "h-10 text-sm";
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (!open || results.length === 0) return;
@@ -102,7 +102,7 @@ function OmniSearchInput({
           autoFocus={autoFocus}
           placeholder={placeholder}
           className={cx(
-            "w-full rounded-xl border border-slate-200 bg-white pl-12 pr-10 font-medium text-slate-900",
+            "w-full rounded-xl border border-slate-200 bg-white pl-12 pr-10 font-medium text-slate-900 leading-none placeholder:text-slate-400",
             "focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20",
             sizeStyles
           )}
@@ -270,7 +270,7 @@ export function BuscaBalcaoRapido({ escolaId }: { escolaId: string | null }) {
           setOpen={setMostrarResultados}
           activeIndex={activeIndex}
           setActiveIndex={setActiveIndex}
-          placeholder="Digite o nome, nº de processo ou BI do estudante..."
+          placeholder="Digite o nome, processo ou BI do aluno..."
           size="lg"
           autoFocus
           inputRef={idleInputRef}
@@ -313,7 +313,7 @@ export function BuscaBalcaoRapido({ escolaId }: { escolaId: string | null }) {
                     setOpen={setMostrarResultados}
                     activeIndex={activeIndex}
                     setActiveIndex={setActiveIndex}
-                    placeholder="Trocar estudante..."
+                    placeholder="Trocar aluno..."
                     size="md"
                     inputRef={headerInputRef}
                   />

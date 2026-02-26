@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { AlertCircle, ArrowRight, Wallet, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import SecaoLabel from "@/components/shared/SecaoLabel";
 
 import KpiSection      from "./KpiSection";
 import NoticesSection  from "./NoticesSection";
@@ -10,6 +11,7 @@ import EventsSection   from "./EventsSection";
 import AcademicSection from "./AcademicSection";
 import QuickActionsSection from "./QuickActionsSection";
 import ChartsSection   from "./ChartsSection";
+import { RadarOperacional, type OperationalAlert } from "@/components/feedback/FeedbackSystem";
 
 import type {
   KpiStats,
@@ -94,7 +96,7 @@ function AlertBanner({ href, lines, tone }: AlertBannerProps) {
 function SectionHeader({ title, href, linkLabel }: { title: string; href?: string; linkLabel?: string }) {
   return (
     <div className="flex items-center justify-between mb-4">
-      <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest">{title}</h2>
+      <SecaoLabel>{title}</SecaoLabel>
       {href && linkLabel && (
         <Link href={href} className="text-xs font-semibold text-[#1F6B3B] hover:underline">
           {linkLabel}
@@ -196,6 +198,56 @@ export default function EscolaAdminDashboardContent({
     });
   }
 
+  const radarAlerts: OperationalAlert[] = [];
+  if (typeof pendingTurmasCount === "number" && pendingTurmasCount > 0) {
+    radarAlerts.push({
+      id: "turmas-pendentes",
+      severity: pendingTurmasCount >= 5 ? "critical" : "warning",
+      categoria: "academico",
+      titulo: `${pendingTurmasCount} turma${pendingTurmasCount > 1 ? "s" : ""} pendente${pendingTurmasCount > 1 ? "s" : ""} de validação`,
+      descricao: "Revise turmas para liberar matrículas e financeiro.",
+      count: pendingTurmasCount,
+      link: `/escola/${escolaId}/admin/turmas?status=pendente`,
+      link_label: "Ver turmas",
+    });
+  }
+  if ((curriculoPendencias?.horario ?? 0) > 0) {
+    radarAlerts.push({
+      id: "curriculo-horario",
+      severity: "warning",
+      categoria: "academico",
+      titulo: "Horários incompletos",
+      descricao: "Ajuste a carga horária para liberar o quadro automático.",
+      count: curriculoPendencias?.horario ?? 0,
+      link: `/escola/${escolaId}/admin/configuracoes/academico-completo`,
+      link_label: "Ajustar currículo",
+    });
+  }
+  if ((curriculoPendencias?.avaliacao ?? 0) > 0) {
+    radarAlerts.push({
+      id: "curriculo-avaliacao",
+      severity: "warning",
+      categoria: "academico",
+      titulo: "Avaliação incompleta",
+      descricao: "Configure avaliação para liberar lançamento de notas.",
+      count: curriculoPendencias?.avaliacao ?? 0,
+      link: `/escola/${escolaId}/admin/configuracoes/academico-completo`,
+      link_label: "Configurar avaliação",
+    });
+  }
+  if (missingPricingCount > 0) {
+    radarAlerts.push({
+      id: "precos-pendentes",
+      severity: "warning",
+      categoria: "financeiro",
+      titulo: "Tabelas de preço pendentes",
+      descricao: "Defina preços para liberar cobranças automáticas.",
+      count: missingPricingCount,
+      link: `/escola/${escolaId}/admin/configuracoes/financeiro`,
+      link_label: "Configurar preços",
+    });
+  }
+
   return (
     <div className="space-y-8 pb-12">
 
@@ -218,7 +270,10 @@ export default function EscolaAdminDashboardContent({
         )}
       </div>
 
-      {/* ── 2. KPIs ──────────────────────────────────────────────────────────── */}
+      {/* ── 2. RADAR ─────────────────────────────────────────────────────────── */}
+      <RadarOperacional alerts={radarAlerts} role="admin" />
+
+      {/* ── 3. KPIs ──────────────────────────────────────────────────────────── */}
       <KpiSection
         escolaId={escolaId}
         stats={stats}
@@ -228,7 +283,7 @@ export default function EscolaAdminDashboardContent({
         financeiroHref={financeiroHref}
       />
 
-      {/* ── 3. ALERT BANNERS ─────────────────────────────────────────────────── */}
+      {/* ── 4. ALERT BANNERS ─────────────────────────────────────────────────── */}
       {(typeof pendingTurmasCount === "number" && pendingTurmasCount > 0) || curriculoAlerts.length > 0 ? (
         <div className="space-y-2">
           {typeof pendingTurmasCount === "number" && pendingTurmasCount > 0 && (

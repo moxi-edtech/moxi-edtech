@@ -48,6 +48,14 @@ export const sidebarConfig: SidebarConfig = {
     },
     { href: "/escola/[escolaId]/admin/avisos", label: "Avisos", icon: "Megaphone" },
     { href: "/escola/[escolaId]/horarios/quadro", label: "Horários", icon: "CalendarClock" },
+    {
+      href: "/escola/[escolaId]/admin/relatorios",
+      label: "Relatórios",
+      icon: "BarChart",
+      children: [
+        { href: "/escola/[escolaId]/admin/relatorios", label: "Visão geral" },
+      ],
+    },
     { href: "/escola/[escolaId]/admin/documentos-oficiais", label: "Documentos Oficiais", icon: "FileText" },
     {
       href: "/escola/[escolaId]/admin/configuracoes",
@@ -95,15 +103,7 @@ export const sidebarConfig: SidebarConfig = {
       ],
     },
     { href: "/escola/[escolaId]/secretaria/calendario", label: "Calendário", icon: "CalendarDays" },
-    {
-      href: "/escola/[escolaId]/secretaria/relatorios",
-      label: "Relatórios",
-      icon: "BarChart",
-      children: [
-        { href: "/escola/[escolaId]/secretaria/relatorios", label: "Visão geral" },
-        { href: "/escola/[escolaId]/secretaria/exportacoes", label: "Exportações" },
-      ],
-    },
+    { href: "/escola/[escolaId]/secretaria/exportacoes", label: "Exportações", icon: "Archive" },
     { href: "/escola/[escolaId]/secretaria/documentos-oficiais", label: "Documentos Oficiais", icon: "FileText" },
     { href: "/escola/[escolaId]/secretaria/importacoes", label: "Histórico de Importações", icon: "History" },
   ],

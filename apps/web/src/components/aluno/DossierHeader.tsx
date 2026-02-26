@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { BookOpen, CalendarCheck, Users, ChevronRight } from "lucide-react";
 import { DossierAcoes, type DossierRole } from "@/components/aluno/DossierAcoes";
-import { formatDate, initials } from "@/lib/formatters";
+import { formatDate } from "@/lib/formatters";
 import type { AlunoNormalizado } from "@/lib/aluno/types";
 
 export function DossierHeader({
@@ -24,7 +24,7 @@ export function DossierHeader({
       ? "bg-[#1F6B3B]/10 text-[#1F6B3B]"
       : status === "arquivado" || status === "inativo"
       ? "bg-slate-100 text-slate-500"
-      : "bg-[#E3B23C]/10 text-[#9a7010]";
+      : "bg-[#E3B23C]/10 text-[#E3B23C]";
 
   const isInadimplente = ["inadimplente", "em_atraso", "atrasado"].includes(
     (aluno.financeiro.situacao ?? "").toLowerCase()
@@ -33,7 +33,7 @@ export function DossierHeader({
 
   const renderMetaValue = (value?: string | null) =>
     value ? (
-      <span className="font-semibold text-slate-700">{value}</span>
+      <span className="font-medium text-slate-700">{value}</span>
     ) : (
       <span className="text-slate-400 italic text-[11px]">Não preenchido</span>
     );
@@ -88,41 +88,25 @@ export function DossierHeader({
         </nav>
 
         {/* Corpo do header */}
-        <div className="flex flex-col md:flex-row gap-5">
-
-          {/* Avatar */}
-          <div className="h-16 w-16 flex-shrink-0 rounded-2xl bg-[#1F6B3B]/10
-            border border-[#1F6B3B]/20 overflow-hidden flex items-center justify-center shadow-sm">
-            {perfil.foto_url ? (
-              <img
-                src={perfil.foto_url}
-                alt={perfil.nome ?? ""}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <span className="text-xl font-black text-[#1F6B3B]">
-                {initials(perfil.nome)}
-              </span>
-            )}
-          </div>
-
-          {/* Info */}
-          <div className="flex-1 min-w-0 space-y-2.5">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            {/* Info */}
+            <div className="flex-1 min-w-0 space-y-2.5">
 
             {/* Nome + badges — hierarquia clara: nome domina */}
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-2xl font-black text-slate-900 leading-tight">
+              <h1 className="text-2xl font-semibold text-slate-900 leading-tight">
                 {perfil.nome}
               </h1>
               {/* Status (ativo/arquivado) — peso leve */}
               <span className={`inline-flex items-center rounded-full px-2 py-0.5
-                text-[10px] font-bold uppercase tracking-wide ${statusClasses}`}>
+                text-[10px] font-semibold uppercase tracking-wide ${statusClasses}`}>
                 {statusLabel}
               </span>
               {/* Inadimplente — badge secundário, não compete com o nome */}
               {isInadimplente && (
                 <span className="inline-flex items-center gap-1 rounded-full
-                  bg-rose-100 px-2.5 py-0.5 text-[10px] font-bold text-rose-700">
+                  bg-rose-100 px-2.5 py-0.5 text-[10px] font-semibold text-rose-700">
                   <span className="h-1.5 w-1.5 rounded-full bg-rose-500 animate-pulse" />
                   Inadimplente
                 </span>
@@ -152,10 +136,13 @@ export function DossierHeader({
                 ))}
               </div>
             </div>
-          </div>
+            </div>
 
-          {/* Acções */}
-          <DossierAcoes role={role} aluno={aluno} escolaId={escolaId} />
+            {/* Acções */}
+            <div className="lg:flex lg:justify-end">
+              <DossierAcoes role={role} aluno={aluno} escolaId={escolaId} />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -167,7 +154,7 @@ export function DossierHeader({
             Este aluno tem propinas em atraso.
           </p>
           {valorEmDivida > 0 ? (
-            <span className="text-sm font-black text-rose-700 flex-shrink-0">
+            <span className="text-sm font-bold text-rose-700 flex-shrink-0">
               {new Intl.NumberFormat("pt-AO", {
                 style: "currency",
                 currency: "AOA",

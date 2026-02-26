@@ -1,4 +1,6 @@
 import { createClient } from "~/lib/supabase/server";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { importBelongsToEscola } from "../../auth-helpers";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +25,22 @@ export async function PATCH(request: Request, context: any) {
   }
 
   const supabase = await createClient();
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData?.user;
+
+  if (!user) {
+    return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
+  }
+
+  const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
+  if (!escolaId) {
+    return NextResponse.json({ error: "Sem vínculo com a escola" }, { status: 403 });
+  }
+
+  const sameEscola = await importBelongsToEscola(supabase as any, importId, escolaId);
+  if (!sameEscola) {
+    return NextResponse.json({ error: "Importação não pertence à escola" }, { status: 403 });
+  }
 
   try {
     const { data, error } = await supabase

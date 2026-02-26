@@ -10,7 +10,7 @@ export function DossierPerfilSection({ aluno }: { aluno: AlunoNormalizado }) {
 
   const renderValue = (value?: string | null) =>
     value ? (
-      <span className="text-sm font-semibold text-slate-700">{value}</span>
+      <span className="text-sm font-medium text-slate-700">{value}</span>
     ) : (
       <span className="text-xs text-slate-400 italic">Não preenchido</span>
     );
@@ -101,7 +101,7 @@ function MensalidadeRow({ m }: { m: DossierMensalidade }) {
     : null;
 
   return (
-    <div className="grid gap-3 rounded-xl border border-slate-200 p-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto] md:items-center">
+      <div className="grid gap-3 rounded-xl border border-slate-200 p-3 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_auto] md:items-center">
       <div>
         <p className="font-semibold text-slate-900 capitalize">
           {monthName(m.mes)} {m.ano}
@@ -113,7 +113,7 @@ function MensalidadeRow({ m }: { m: DossierMensalidade }) {
       <div className="text-right">
         <p className="font-bold text-slate-900">{formatKwanza(m.valor)}</p>
         {m.saldo > 0 && (
-          <p className="text-xs text-rose-700">Saldo pendente: {formatKwanza(m.saldo)}</p>
+          <p className="text-xs text-rose-600">Saldo pendente: {formatKwanza(m.saldo)}</p>
         )}
       </div>
       <div className="md:justify-self-end text-right">
@@ -140,20 +140,20 @@ export function DossierFinanceiroSection({ aluno }: { aluno: AlunoNormalizado })
         <div className="grid gap-3 md:grid-cols-2">
           <div className={`rounded-2xl border p-4 shadow-sm ${atrasado ? "bg-rose-50 border-rose-100" : "bg-slate-50 border-slate-200"}`}>
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Em atraso</p>
-            <p className={`mt-1 text-2xl font-black ${atrasado ? "text-rose-600" : "text-slate-900"}`}>
+            <p className={`mt-1 text-2xl font-bold ${atrasado ? "text-rose-600" : "text-slate-900"}`}>
               {formatKwanza(f.total_em_atraso)}
             </p>
             <p className="text-xs text-slate-500 mt-1">Valores com cobrança pendente.</p>
           </div>
           <div className="rounded-2xl border border-[#1F6B3B]/20 bg-[#1F6B3B]/5 p-4 shadow-sm">
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total pago</p>
-            <p className="mt-1 text-2xl font-black text-[#1F6B3B]">{formatKwanza(f.total_pago)}</p>
+            <p className="mt-1 text-2xl font-bold text-[#1F6B3B]">{formatKwanza(f.total_pago)}</p>
             <p className="text-xs text-[#1F6B3B]/70 mt-1">Resumo de pagamentos.</p>
           </div>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4">
         {f.situacao === "em_dia" ? (
           <div className="rounded-xl border border-[#1F6B3B]/20 bg-[#1F6B3B]/5 p-3 text-xs text-[#1F6B3B]">
             <CheckCircle2 size={14} className="inline mr-1" /> Situação regular
@@ -209,7 +209,7 @@ export function DossierHistoricoSection({ aluno }: { aluno: AlunoNormalizado }) 
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-black text-slate-900">{mat.ano_letivo}</p>
+                  <p className="text-sm font-bold text-slate-900">{mat.ano_letivo}</p>
                   <p className="text-sm text-slate-700">{mat.turma}</p>
                 </div>
                 <StatusPill status={mat.status} variant="matricula" size="xs" />
@@ -250,7 +250,7 @@ export function DossierDocumentosSection({ alunoId }: { alunoId: string }) {
               <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-100 text-slate-500">
                 <FileText size={18} />
               </div>
-              <p className="text-sm font-bold text-slate-900">{item.title}</p>
+              <p className="text-sm font-semibold text-slate-900">{item.title}</p>
               <p className="text-xs text-slate-500">{item.subtitle}</p>
               <span className="mt-3 inline-block text-xs font-semibold text-[#1F6B3B] underline">
                 Solicitar

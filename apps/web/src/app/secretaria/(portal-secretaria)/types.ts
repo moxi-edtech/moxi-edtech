@@ -16,6 +16,7 @@ export type DashboardRecentes = {
     turma: { nome: string };
   }>;
   avisos_recentes: Array<{ id: string; titulo: string; resumo: string; data: string }>;
+  fecho_trimestre: { numero: number; trava_notas_em: string } | null;
 };
 
 export type Plano = PlanTier | "enterprise";

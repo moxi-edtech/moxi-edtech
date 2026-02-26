@@ -68,7 +68,7 @@ export default function ImportacoesListClient() {
         </div>
         <div className="flex items-center gap-3">
           <Link
-            href="/migracao/alunos"
+            href="/secretaria/migracao/alunos"
             className="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2 text-white hover:bg-teal-700"
           >
             <Upload size={18} />

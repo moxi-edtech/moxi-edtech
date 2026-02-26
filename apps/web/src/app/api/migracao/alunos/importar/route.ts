@@ -9,6 +9,47 @@ import type { ImportResult } from "~types/migracao";
 
 export const dynamic = "force-dynamic";
 
+type FinancePendenciaMotivo =
+  | "turma_nao_encontrada"
+  | "turma_inativa"
+  | "matricula_pendente"
+  | "pricing_ausente";
+
+type FinancePendenciaItem = {
+  codigo: FinancePendenciaMotivo;
+  motivo: string;
+  mensagem: string;
+  aluno_id: string | null;
+  aluno_nome: string | null;
+  matricula_id: string | null;
+  turma_id: string | null;
+  turma_codigo: string | null;
+};
+
+type FinanceContextResult = {
+  activeMatriculas: number;
+  pendencias: FinancePendenciaItem[];
+};
+
+const pendenciaCatalogo: Record<FinancePendenciaMotivo, { motivo: string; mensagem: string }> = {
+  turma_nao_encontrada: {
+    motivo: "Turma não encontrada",
+    mensagem: "A turma indicada não está cadastrada ou não foi reconhecida.",
+  },
+  turma_inativa: {
+    motivo: "Turma não ativa",
+    mensagem: "A turma ainda não está ativa. A coordenação precisa aprovar.",
+  },
+  matricula_pendente: {
+    motivo: "Matrícula pendente",
+    mensagem: "A matrícula ainda não foi confirmada para esta turma.",
+  },
+  pricing_ausente: {
+    motivo: "Preço não configurado",
+    mensagem: "Configure a tabela de preços para gerar o financeiro.",
+  },
+};
+
 interface ImportBody {
   importId: string;
   escolaId: string;
@@ -106,7 +147,8 @@ export async function POST(request: Request) {
     console.error("[import_migrations] update error", { importId, error: updateErr });
   }
 
-  let financeActiveCount = 0;
+  let financeResult: FinanceContextResult = { activeMatriculas: 0, pendencias: [] };
+  let financeErrorMessage: string | null = null;
   try {
     // 1) Pegar ano_letivo do staging, garantindo que é único para o import
     const { data: years, error: stagingYearErr } = await supabase
@@ -132,7 +174,7 @@ export async function POST(request: Request) {
       throw new Error("ano_letivo não encontrado na staging_alunos para este importId");
     }
 
-    financeActiveCount = await aplicarContextoFinanceiro({
+    financeResult = await aplicarContextoFinanceiro({
       supabase,
       escolaId,
       importId,
@@ -142,6 +184,58 @@ export async function POST(request: Request) {
     });
   } catch (financeError) {
     console.error("[migracao/importar] Falha ao aplicar contexto financeiro:", financeError);
+    financeErrorMessage = "Não foi possível aplicar o financeiro automaticamente.";
+  }
+
+  const pendenciasFinanceiras = financeResult.pendencias ?? [];
+  const pendenciasVisiveis = pendenciasFinanceiras.map(({ codigo, ...rest }) => rest);
+  const pendenciasPorMotivo = pendenciasFinanceiras.reduce<Record<string, number>>((acc, item) => {
+    acc[item.motivo] = (acc[item.motivo] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const pendenciasTotal = pendenciasFinanceiras.length;
+  const okFinanceiro = !financeErrorMessage && pendenciasTotal === 0;
+
+  const mensagemResumo = pendenciasTotal > 0
+    ? `Importação concluída: ${result.imported} importados, ${pendenciasTotal} com pendências financeiras.`
+    : `Importação concluída: ${result.imported} importados sem pendências financeiras.`;
+
+  try {
+    const { error: clearPendenciasErr } = await supabase
+      .from("import_financeiro_pendencias")
+      .delete()
+      .eq("import_id", importId);
+
+    if (clearPendenciasErr) {
+      console.error("[import_financeiro_pendencias] clear error", clearPendenciasErr);
+    }
+
+    if (pendenciasFinanceiras.length > 0) {
+      const pendenciasRows = pendenciasFinanceiras.map((item) => ({
+        escola_id: escolaId,
+        import_id: importId,
+        aluno_id: item.aluno_id,
+        matricula_id: item.matricula_id,
+        turma_id: item.turma_id,
+        motivo: item.motivo,
+        mensagem: item.mensagem,
+        detalhes: {
+          codigo: item.codigo,
+          turma_codigo: item.turma_codigo,
+        },
+      }));
+
+      const { error: insertPendenciasErr } = await supabase
+        .from("import_financeiro_pendencias")
+        .insert(pendenciasRows);
+
+      if (insertPendenciasErr) {
+        console.error("[import_financeiro_pendencias] insert error", insertPendenciasErr);
+      }
+    }
+  } catch (pendenciasError) {
+    console.error("[import_financeiro_pendencias] inesperado", pendenciasError);
   }
 
   try {
@@ -150,13 +244,34 @@ export async function POST(request: Request) {
       escolaId,
       importId,
       result,
-      activeMatriculas: financeActiveCount,
+      activeMatriculas: financeResult.activeMatriculas,
+      pendenciasFinanceiras: pendenciasTotal,
     });
   } catch (notifyError) {
     console.error("[migracao/importar] Falha ao notificar:", notifyError);
   }
 
-  return NextResponse.json(result ?? {});
+  return NextResponse.json({
+    ok: result.ok,
+    ok_importacao: result.ok,
+    ok_financeiro: okFinanceiro,
+    mensagem_resumo: mensagemResumo,
+    resumo: {
+      importados: result.imported,
+      erros: result.errors,
+      turmas_criadas: result.turmas_created ?? 0,
+      matriculas_pendentes: result.matriculas_pendentes ?? 0,
+      financeiro_ativo: financeResult.activeMatriculas,
+      pendencias_financeiras: pendenciasTotal,
+    },
+    pendencias_financeiras: {
+      total: pendenciasTotal,
+      por_motivo: pendenciasPorMotivo,
+      itens: pendenciasVisiveis,
+    },
+    alertas: financeErrorMessage ? [financeErrorMessage] : [],
+    result,
+  });
 }
 
 type SupabaseAdmin = SupabaseClient<Database>;
@@ -168,7 +283,7 @@ async function aplicarContextoFinanceiro(params: {
   anoLetivo: number;
   skipMatricula: boolean;
   startMonth: number;
-}): Promise<number> {
+}): Promise<FinanceContextResult> {
   const { supabase, escolaId, importId, anoLetivo, skipMatricula, startMonth } = params;
 
   const clampedMonth = Math.min(Math.max(startMonth || 1, 1), 12);
@@ -180,11 +295,13 @@ async function aplicarContextoFinanceiro(params: {
     .eq("import_id", importId);
 
   const alunoIds = (alunos || []).map((a) => (a as any).id).filter(Boolean);
-  if (!alunoIds.length) return 0;
+  if (!alunoIds.length) return { activeMatriculas: 0, pendencias: [] };
 
   const { data: matriculas } = await supabase
     .from("matriculas")
-    .select("id, aluno_id, turma_id, ano_letivo, turmas(id, curso_id, classe_id, status_validacao)")
+    .select(
+      "id, aluno_id, turma_id, ano_letivo, status, ativo, turmas(id, curso_id, classe_id, status_validacao, turma_codigo, nome), alunos(nome, nome_completo)"
+    )
     .in("aluno_id", alunoIds)
     .eq("ano_letivo", anoLetivo);
 
@@ -210,14 +327,54 @@ async function aplicarContextoFinanceiro(params: {
     return parsed;
   };
 
+  const pendencias: FinancePendenciaItem[] = [];
+
   const matriculasValidas: Array<{ id: string; aluno_id: string; turma_id: string | null; pricing: { valorMatricula: number; valorMensalidade: number; diaVencimento: number | null } }>
     = [];
 
+  const pushPendencia = (
+    m: any,
+    turma: any,
+    motivo: FinancePendenciaMotivo
+  ) => {
+    const catalogo = pendenciaCatalogo[motivo];
+    const alunoNome = (m?.alunos?.nome_completo ?? m?.alunos?.nome ?? null) as string | null;
+    const turmaCodigo = (turma?.turma_codigo ?? turma?.nome ?? null) as string | null;
+    pendencias.push({
+      codigo: motivo,
+      motivo: catalogo.motivo,
+      mensagem: catalogo.mensagem,
+      aluno_id: m?.aluno_id ?? null,
+      aluno_nome: alunoNome,
+      matricula_id: m?.id ?? null,
+      turma_id: m?.turma_id ?? null,
+      turma_codigo: turmaCodigo,
+    });
+  };
+
   for (const m of matriculas || []) {
     const turma = (m as any).turmas as any;
-    if (!turma || turma.status_validacao !== "ativo") continue;
+    if (!turma) {
+      pushPendencia(m, null, "turma_nao_encontrada");
+      continue;
+    }
+    if (turma.status_validacao !== "ativo") {
+      pushPendencia(m, turma, "turma_inativa");
+      continue;
+    }
+    const statusMatricula = String((m as any).status || "").toLowerCase();
+    const matriculaAtiva = (m as any).ativo === true;
+    if (!matriculaAtiva || (statusMatricula && !["ativo", "ativa"].includes(statusMatricula))) {
+      pushPendencia(m, turma, "matricula_pendente");
+      continue;
+    }
+
     const pricing = await resolvePricing(turma.curso_id, turma.classe_id);
-    if (!pricing) continue;
+    if (!pricing) {
+      pushPendencia(m, turma, "pricing_ausente");
+      continue;
+    }
+
     matriculasValidas.push({
       id: (m as any).id,
       aluno_id: (m as any).aluno_id,
@@ -226,11 +383,11 @@ async function aplicarContextoFinanceiro(params: {
     });
   }
 
-  const alunoMensalidade = new Set<string>();
+  const matriculasMensalidade = new Set<string>();
   const matriculasParaAbono = new Set<string>();
 
   for (const m of matriculasValidas) {
-    if (m.pricing.valorMensalidade > 0) alunoMensalidade.add(m.aluno_id);
+    if (m.pricing.valorMensalidade > 0) matriculasMensalidade.add(m.id);
     if (skipMatricula && m.pricing.valorMatricula > 0) matriculasParaAbono.add(m.id);
   }
 
@@ -243,9 +400,9 @@ async function aplicarContextoFinanceiro(params: {
   };
 
   // Limpa ou quita mensalidades anteriores ao marco definido
-  if (clampedMonth > 1 && alunoMensalidade.size > 0) {
-    const alunosChunked = chunk(Array.from(alunoMensalidade), 200);
-    for (const group of alunosChunked) {
+  if (clampedMonth > 1 && matriculasMensalidade.size > 0) {
+    const matriculasChunked = chunk(Array.from(matriculasMensalidade), 200);
+    for (const group of matriculasChunked) {
       await supabase
         .from("mensalidades")
         .update({
@@ -257,7 +414,7 @@ async function aplicarContextoFinanceiro(params: {
         .eq("escola_id", escolaId)
         .eq("ano_referencia", anoLetivo)
         .lt("mes_referencia", clampedMonth)
-        .in("aluno_id", group);
+        .in("matricula_id", group);
 
       await supabase
         .from("financeiro_lancamentos")
@@ -272,7 +429,7 @@ async function aplicarContextoFinanceiro(params: {
         .eq("origem", "mensalidade")
         .eq("ano_referencia", anoLetivo)
         .lt("mes_referencia", clampedMonth)
-        .in("aluno_id", group);
+        .in("matricula_id", group);
     }
   }
 
@@ -295,7 +452,7 @@ async function aplicarContextoFinanceiro(params: {
     }
   }
 
-  return activeMatriculasCount;
+  return { activeMatriculas: activeMatriculasCount, pendencias };
 }
 
 async function notificarRascunhosESucesso(params: {
@@ -304,8 +461,9 @@ async function notificarRascunhosESucesso(params: {
   importId: string;
   result: ImportResult;
   activeMatriculas: number;
+  pendenciasFinanceiras: number;
 }) {
-  const { supabase, escolaId, importId, result, activeMatriculas } = params;
+  const { supabase, escolaId, importId, result, activeMatriculas, pendenciasFinanceiras } = params;
 
   // Notificação para Admin/Pedagógico sobre rascunhos criados
   const { data: turmasRascunho } = await supabase
@@ -336,6 +494,17 @@ async function notificarRascunhosESucesso(params: {
       titulo: `Importação concluída: ${activeMatriculas} alunos em turmas ativas`,
       mensagem: "Clique para auditar cobranças e isenções.",
       link_acao: "/financeiro",
+    });
+  }
+
+  if (pendenciasFinanceiras > 0) {
+    await supabase.from("notifications").insert({
+      escola_id: escolaId,
+      target_role: "admin",
+      tipo: "importacao_pendencias_financeiras",
+      titulo: `Importação com ${pendenciasFinanceiras} pendências financeiras`,
+      mensagem: "Há alunos sem contexto financeiro. Revise preços e turmas ativas.",
+      link_acao: "/financeiro/configuracoes/precos",
     });
   }
 }
