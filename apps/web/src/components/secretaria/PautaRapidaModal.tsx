@@ -557,6 +557,7 @@ export function PautaRapidaModal({
           initialData={pauta}
           subtitle={`${disciplinaSelecionada?.disciplina?.nome ?? "Disciplina"} • Trimestre ${periodoNumero}`}
           onSave={handleSaveBatch}
+          onDataChange={setPauta}
         />
       )}
     </div>
