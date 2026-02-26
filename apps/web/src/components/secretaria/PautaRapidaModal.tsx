@@ -352,7 +352,7 @@ export function PautaRapidaModal({
       }
     }
 
-    setPauta((prev) =>
+    setPautaDraft((prev) =>
       prev.map((row) => {
         const updated = rows.find((candidate) => candidate.id === row.id);
         return updated ? { ...row, ...updated, _status: "synced" } : row;
