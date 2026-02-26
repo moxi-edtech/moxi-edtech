@@ -34,6 +34,22 @@ BEGIN
             curriculum_presets.category, curriculum_presets.description
     INTO id, name, category, description;
 
+  INSERT INTO public.curriculum_presets_audit (
+    preset_id,
+    action,
+    actor_id,
+    details
+  ) VALUES (
+    id,
+    'UPSERT',
+    auth.uid(),
+    jsonb_build_object(
+      'name', name,
+      'category', category,
+      'description', description
+    )
+  );
+
   RETURN NEXT;
 END;
 $$;
@@ -87,6 +103,26 @@ BEGIN
       RAISE EXCEPTION 'DATA: disciplina do preset não encontrada.';
     END IF;
 
+    INSERT INTO public.curriculum_presets_audit (
+      preset_id,
+      subject_id,
+      action,
+      actor_id,
+      details
+    ) VALUES (
+      preset_id,
+      id,
+      'SUBJECT_UPSERT',
+      auth.uid(),
+      jsonb_build_object(
+        'name', name,
+        'grade_level', grade_level,
+        'component', component,
+        'weekly_hours', weekly_hours,
+        'subject_type', subject_type
+      )
+    );
+
     RETURN NEXT;
     RETURN;
   END IF;
@@ -116,6 +152,26 @@ BEGIN
             curriculum_preset_subjects.subject_type
     INTO id, preset_id, name, grade_level, component, weekly_hours, subject_type;
 
+  INSERT INTO public.curriculum_presets_audit (
+    preset_id,
+    subject_id,
+    action,
+    actor_id,
+    details
+  ) VALUES (
+    preset_id,
+    id,
+    'SUBJECT_UPSERT',
+    auth.uid(),
+    jsonb_build_object(
+      'name', name,
+      'grade_level', grade_level,
+      'component', component,
+      'weekly_hours', weekly_hours,
+      'subject_type', subject_type
+    )
+  );
+
   RETURN NEXT;
 END;
 $$;
@@ -135,6 +191,18 @@ BEGIN
   DELETE FROM public.curriculum_preset_subjects
   WHERE id = p_subject_id;
 
+  IF FOUND THEN
+    INSERT INTO public.curriculum_presets_audit (
+      subject_id,
+      action,
+      actor_id
+    ) VALUES (
+      p_subject_id,
+      'SUBJECT_DELETE',
+      auth.uid()
+    );
+  END IF;
+
   RETURN FOUND;
 END;
 $$;
@@ -153,6 +221,18 @@ BEGIN
 
   DELETE FROM public.curriculum_presets
   WHERE id = p_id;
+
+  IF FOUND THEN
+    INSERT INTO public.curriculum_presets_audit (
+      preset_id,
+      action,
+      actor_id
+    ) VALUES (
+      p_id,
+      'PRESET_DELETE',
+      auth.uid()
+    );
+  END IF;
 
   RETURN FOUND;
 END;
