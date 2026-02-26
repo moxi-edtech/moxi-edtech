@@ -206,9 +206,11 @@ if (e || !data) throw new Error(e?.message || "Erro ao carregar dossier.");
   const financeiro = raw.financeiro || {};
   const perfil     = raw.perfil     || {};
   const historico  = Array.isArray(raw.historico) ? raw.historico : [];
-  const atual      = historico.find((h: any) =>
-    ["ativo","ativa"].includes(String(h?.status ?? "").toLowerCase())
-  ) ?? historico[0] ?? null;
+  const matriculaAtiva = raw.matricula_ativa ?? null;
+  const atual      = matriculaAtiva
+    ?? historico.find((h: any) =>
+      ["ativo","ativa","active"].includes(String(h?.status ?? "").toLowerCase())
+    ) ?? historico[0] ?? null;
 
   const divida = Number(financeiro.total_em_atraso ?? 0);
 
