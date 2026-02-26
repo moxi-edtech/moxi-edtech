@@ -156,6 +156,7 @@ export function DisciplinaModal({
 }: Props) {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [autoSavePending, setAutoSavePending] = useState(false);
   const allClassIds = useMemo(() => classOptions.map((item) => item.id), [classOptions]);
   const [form, setForm] = useState<DisciplinaForm>(() => ({
     ...emptyDisciplina,
@@ -315,7 +316,19 @@ export function DisciplinaModal({
 
   const handleAutoFill = () => {
     setForm((prev) => applyDefaults({ ...prev }));
+    setAutoSavePending(true);
   };
+
+  useEffect(() => {
+    if (!autoSavePending) return;
+    if (saving) return;
+    if (!canSave) {
+      setAutoSavePending(false);
+      return;
+    }
+    setAutoSavePending(false);
+    handleSave();
+  }, [autoSavePending, canSave, handleSave, saving]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-10">
@@ -440,14 +453,14 @@ export function DisciplinaModal({
           <section className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-bold text-slate-900">Auto-preencher disciplina</p>
-              <p className="text-xs text-slate-500">Aplica padrões de carga, períodos e avaliação.</p>
+              <p className="text-xs text-slate-500">Aplica padrões e salva automaticamente.</p>
             </div>
             <button
               type="button"
               onClick={handleAutoFill}
               className="rounded-lg bg-klasse-gold px-4 py-2 text-xs font-bold text-white shadow-sm hover:brightness-110"
             >
-              Auto-preencher
+              Auto-preencher e salvar
             </button>
           </section>
           {!appearsInScheduler && (
