@@ -46,7 +46,7 @@ export async function GET(
   try {
     const { data: presetRows, error: presetErr } = await (supabase as any)
       .from("curriculum_preset_subjects")
-      .select("id, preset_id, name, grade_level, component, weekly_hours")
+      .select("id, preset_id, name, grade_level, component, weekly_hours, subject_type, conta_para_media_med, is_avaliavel, avaliacao_mode")
       .eq("preset_id", curriculumKey);
 
     if (presetErr) throw presetErr;
@@ -68,6 +68,10 @@ export async function GET(
       grade_level: row.grade_level,
       component: row.component,
       weekly_hours: row.weekly_hours,
+      subject_type: row.subject_type ?? null,
+      conta_para_media_med: row.conta_para_media_med ?? null,
+      is_avaliavel: row.is_avaliavel ?? null,
+      avaliacao_mode: row.avaliacao_mode ?? null,
       school: schoolMap.get(row.id) ?? null,
     }));
 

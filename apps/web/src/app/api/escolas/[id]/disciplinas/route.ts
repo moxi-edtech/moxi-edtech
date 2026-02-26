@@ -61,6 +61,7 @@ export async function GET(
         .select(
           `id, curso_id, classe_id, disciplina_id, carga_horaria, carga_horaria_semanal, obrigatoria, ordem,
            classificacao, periodos_ativos, entra_no_horario, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id,
+           conta_para_media_med,
            status_completude, curso_curriculo_id,
            disciplina:disciplinas_catalogo!curso_matriz_disciplina_id_fkey(id, nome, sigla, is_avaliavel, area),
            classe:classes(id, nome, turno, ano_letivo_id, carga_horaria_semanal, min_disciplinas_core),
@@ -114,6 +115,7 @@ export async function GET(
       classe_min_disciplinas_core: r.classe?.min_disciplinas_core ?? undefined,
       carga_horaria: r.carga_horaria ?? undefined,
       carga_horaria_semanal: r.carga_horaria_semanal ?? undefined,
+      conta_para_media_med: r.conta_para_media_med ?? undefined,
       ordem: r.ordem ?? undefined,
       disciplina_id: r.disciplina_id,
       classificacao: r.classificacao ?? undefined,
@@ -174,6 +176,7 @@ export async function POST(
       ordem: z.number().int().nullable().optional(),
       sigla: z.string().trim().nullable().optional(),
       is_avaliavel: z.boolean().optional(),
+      conta_para_media_med: z.boolean().nullable().optional(),
       area: z.string().trim().nullable().optional(),
       classificacao: z.enum(['core', 'complementar', 'optativa']).nullable().optional(),
       periodos_ativos: z.array(z.number().int()).nullable().optional(),
@@ -261,6 +264,9 @@ export async function POST(
     if (parsed.data.carga_horaria !== undefined) payload.carga_horaria = parsed.data.carga_horaria;
     if (parsed.data.carga_horaria_semanal !== undefined) {
       payload.carga_horaria_semanal = parsed.data.carga_horaria_semanal;
+    }
+    if (parsed.data.conta_para_media_med !== undefined) {
+      payload.conta_para_media_med = parsed.data.conta_para_media_med;
     }
     if (parsed.data.ordem !== undefined) payload.ordem = parsed.data.ordem;
 

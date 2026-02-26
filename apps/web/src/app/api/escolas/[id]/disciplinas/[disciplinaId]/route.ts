@@ -63,6 +63,7 @@ export async function PUT(
       descricao: z.string().trim().nullable().optional(),
       sigla: z.string().trim().nullable().optional(),
       is_avaliavel: z.boolean().optional(),
+      conta_para_media_med: z.boolean().nullable().optional(),
       area: z.string().trim().nullable().optional(),
       carga_horaria: z.number().int().nullable().optional(),
       ordem: z.number().int().nullable().optional(),
@@ -82,7 +83,7 @@ export async function PUT(
 
     const { data: cmRow } = await (supabase as any)
       .from('curso_matriz')
-      .select('id, disciplina_id, classe_id, curso_id, obrigatoria, carga_horaria, ordem, curso_curriculo_id, curriculo:curso_curriculos(id,status,curso_id,ano_letivo_id,version), carga_horaria_semanal, classificacao, periodos_ativos, entra_no_horario, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id')
+      .select('id, disciplina_id, classe_id, curso_id, obrigatoria, carga_horaria, ordem, curso_curriculo_id, curriculo:curso_curriculos(id,status,curso_id,ano_letivo_id,version), carga_horaria_semanal, classificacao, periodos_ativos, entra_no_horario, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id, conta_para_media_med')
       .eq('escola_id', escolaId)
       .eq('id', disciplinaId)
       .maybeSingle();
@@ -213,6 +214,9 @@ export async function PUT(
       if (parsed.data.carga_horaria_semanal !== undefined) {
         matrizUpdates.carga_horaria_semanal = parsed.data.carga_horaria_semanal;
       }
+      if (parsed.data.conta_para_media_med !== undefined) {
+        matrizUpdates.conta_para_media_med = parsed.data.conta_para_media_med;
+      }
       if (parsed.data.classificacao !== undefined) matrizUpdates.classificacao = parsed.data.classificacao;
       if (parsed.data.periodos_ativos !== undefined) matrizUpdates.periodos_ativos = parsed.data.periodos_ativos;
       if (parsed.data.entra_no_horario !== undefined) matrizUpdates.entra_no_horario = parsed.data.entra_no_horario;
@@ -248,6 +252,9 @@ export async function PUT(
     const turmaUpdates: Record<string, any> = {};
     if (parsed.data.carga_horaria_semanal !== undefined) {
       turmaUpdates.carga_horaria_semanal = parsed.data.carga_horaria_semanal;
+    }
+    if (parsed.data.conta_para_media_med !== undefined) {
+      turmaUpdates.conta_para_media_med = parsed.data.conta_para_media_med;
     }
     if (parsed.data.classificacao !== undefined) turmaUpdates.classificacao = parsed.data.classificacao;
     if (parsed.data.periodos_ativos !== undefined) turmaUpdates.periodos_ativos = parsed.data.periodos_ativos;
