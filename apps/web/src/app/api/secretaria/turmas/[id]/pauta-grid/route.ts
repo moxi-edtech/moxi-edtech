@@ -231,7 +231,14 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       }
     })
 
-    return NextResponse.json({ ok: true, items: payload })
+    return NextResponse.json({
+      ok: true,
+      items: payload,
+      meta: {
+        componentes_ativos: componentesAtivos,
+        peso_por_tipo: Object.fromEntries(pesoPorTipo),
+      },
+    })
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })

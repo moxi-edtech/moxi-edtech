@@ -74,6 +74,8 @@ export function PautaRapidaModal({
   const [exportingTrimestral, setExportingTrimestral] = useState(false);
   const [pautaInitial, setPautaInitial] = useState<StudentGradeRow[]>([]);
   const [pautaDraft, setPautaDraft] = useState<StudentGradeRow[]>([]);
+  const [pautaPesoPorTipo, setPautaPesoPorTipo] = useState<Record<string, number> | null>(null);
+  const [pautaComponentes, setPautaComponentes] = useState<string[]>([]);
   const [loadingPauta, setLoadingPauta] = useState(false);
   const { gerarMiniPauta, gerarPautaTrimestral } = useOfficialDocs();
 
@@ -167,6 +169,8 @@ export function PautaRapidaModal({
     if (!turmaId || !disciplinaId || !periodoNumero) {
       setPautaInitial([]);
       setPautaDraft([]);
+      setPautaPesoPorTipo(null);
+      setPautaComponentes([]);
       return;
     }
 
@@ -199,9 +203,13 @@ export function PautaRapidaModal({
             }));
           setPautaInitial(mapped);
           setPautaDraft(mapped);
+          setPautaPesoPorTipo((json.meta?.peso_por_tipo as Record<string, number>) ?? null);
+          setPautaComponentes(Array.isArray(json.meta?.componentes_ativos) ? json.meta.componentes_ativos : []);
         } else {
           setPautaInitial([]);
           setPautaDraft([]);
+          setPautaPesoPorTipo(null);
+          setPautaComponentes([]);
         }
       } finally {
         if (active) setLoadingPauta(false);
@@ -562,6 +570,8 @@ export function PautaRapidaModal({
           subtitle={`${disciplinaSelecionada?.disciplina?.nome ?? "Disciplina"} • Trimestre ${periodoNumero}`}
           onSave={handleSaveBatch}
           onDataChange={setPautaDraft}
+          pesoPorTipo={pautaPesoPorTipo ?? undefined}
+          componentesAtivos={pautaComponentes}
         />
       )}
     </div>

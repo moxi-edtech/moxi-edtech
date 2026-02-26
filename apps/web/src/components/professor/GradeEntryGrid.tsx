@@ -30,6 +30,8 @@ type GradeEntryGridProps = {
   onSave?: (rows: StudentGradeRow[]) => Promise<void> | void
   highlightId?: string | null
   onDataChange?: (rows: StudentGradeRow[]) => void
+  pesoPorTipo?: Record<string, number>
+  componentesAtivos?: string[]
 }
 
 const INPUT_COLUMNS = ["mac1", "npp1", "npt1"] as const
@@ -42,15 +44,41 @@ const clampNota = (value: string) => {
   return Math.min(20, Math.max(0, parsed))
 }
 
-const calculateMT = (row: StudentGradeRow) => {
-  const { mac1, npp1, npt1 } = row
-  if (mac1 !== null && npp1 !== null && npt1 !== null) {
-    return Number(((mac1 + npp1 + npt1) / 3).toFixed(1))
-  }
-  if (mac1 !== null && npp1 !== null) {
-    return Number(((mac1 + npp1) / 2).toFixed(1))
-  }
+const resolveTipoValue = (row: StudentGradeRow, tipo: string) => {
+  const normalized = tipo.toUpperCase()
+  if (normalized === "MAC") return row.mac1
+  if (normalized === "NPP") return row.npp1
+  if (normalized === "NPT" || normalized === "PT") return row.npt1
   return null
+}
+
+const calculateMT = (
+  row: StudentGradeRow,
+  pesoPorTipo?: Record<string, number>,
+  componentesAtivos?: string[]
+) => {
+  const tipos = componentesAtivos && componentesAtivos.length > 0
+    ? componentesAtivos
+    : ["MAC", "NPP", "NPT"]
+  const valores = tipos
+    .map((tipo) => ({ tipo, valor: resolveTipoValue(row, tipo) }))
+    .filter((entry) => typeof entry.valor === "number") as Array<{ tipo: string; valor: number }>
+
+  if (valores.length === 0) return null
+
+  if (pesoPorTipo && Object.keys(pesoPorTipo).length > 0) {
+    let weightedSum = 0
+    let weightSum = 0
+    for (const entry of valores) {
+      const peso = Number(pesoPorTipo[entry.tipo.toUpperCase()] ?? 1)
+      weightedSum += entry.valor * peso
+      weightSum += peso
+    }
+    if (weightSum > 0) return Number((weightedSum / weightSum).toFixed(1))
+  }
+
+  const avg = valores.reduce((acc, cur) => acc + cur.valor, 0) / valores.length
+  return Number(avg.toFixed(1))
 }
 
 export function GradeEntryGrid({
@@ -61,6 +89,8 @@ export function GradeEntryGrid({
   onSave,
   highlightId,
   onDataChange,
+  pesoPorTipo,
+  componentesAtivos,
 }: GradeEntryGridProps) {
   const [data, setData] = useState<StudentGradeRow[]>(initialData)
   const [isSaving, setIsSaving] = useState(false)
@@ -143,7 +173,7 @@ export function GradeEntryGrid({
             [columnId]: numericValue,
             _status: "pending" as const,
           }
-          updatedRow.mt1 = calculateMT(updatedRow)
+          updatedRow.mt1 = calculateMT(updatedRow, pesoPorTipo, componentesAtivos)
           return updatedRow
         })
       )

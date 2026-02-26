@@ -388,6 +388,8 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
   const [notasInitial, setNotasInitial] = useState<StudentGradeRow[]>([]);
   const [notasError, setNotasError] = useState<string | null>(null);
   const [notasSaving, setNotasSaving] = useState(false);
+  const [notasPesoPorTipo, setNotasPesoPorTipo] = useState<Record<string, number> | null>(null);
+  const [notasComponentes, setNotasComponentes] = useState<string[]>([]);
 
   const alunosScrollRef               = useRef<HTMLDivElement | null>(null);
   const { isEnabled: canQrDocs }      = usePlanFeature("doc_qr_code");
@@ -513,9 +515,13 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
           }));
           setNotasInitial(mapped);
           setNotasPauta(mapped);
+          setNotasPesoPorTipo((json.meta?.peso_por_tipo as Record<string, number>) ?? null);
+          setNotasComponentes(Array.isArray(json.meta?.componentes_ativos) ? json.meta.componentes_ativos : []);
         } else {
           setNotasInitial([]);
           setNotasPauta([]);
+          setNotasPesoPorTipo(null);
+          setNotasComponentes([]);
         }
       } catch (e: any) {
         if (active) setNotasError(e?.message || "Erro ao carregar pauta");
@@ -1233,6 +1239,8 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
                       subtitle={notasSaving ? "Salvando..." : "Atualize as notas do trimestre"}
                       onSave={handleSaveNotas}
                       onDataChange={(next) => setNotasPauta(next)}
+                      pesoPorTipo={notasPesoPorTipo ?? undefined}
+                      componentesAtivos={notasComponentes}
                     />
                   )}
                 </div>
