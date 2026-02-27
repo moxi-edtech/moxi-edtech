@@ -187,6 +187,7 @@ VALUES
   ('esg_puniv_cej','Filosofia','11ª Classe','SOCIO_CULTURAL',2,'core'),
   ('esg_puniv_cej','Empreendedorismo','11ª Classe','SOCIO_CULTURAL',2,'core'),
   ('esg_puniv_cej','Matemática','11ª Classe','CIENTIFICA',4,'core'),
+  ('esg_puniv_cej','Informática','11ª Classe','CIENTIFICA',3,'core'),
   ('esg_puniv_cej','Introdução ao Direito','11ª Classe','ESPECIFICA',3,'core'),
   ('esg_puniv_cej','Introdução à Economia','11ª Classe','ESPECIFICA',2,'core'),
   ('esg_puniv_cej','História','11ª Classe','ESPECIFICA',3,'core'),
