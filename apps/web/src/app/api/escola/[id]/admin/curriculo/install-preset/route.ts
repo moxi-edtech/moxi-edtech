@@ -287,6 +287,40 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       }
     }
 
+    const { count: matrizCount } = await supabase
+      .from('curso_matriz')
+      .select('id', { count: 'estimated', head: true })
+      .eq('escola_id', userEscolaId)
+      .eq('curso_id', cursoId);
+
+    let matrizBackfill: { ok: boolean; inserted: number } | null = null;
+    if (!matrizCount || matrizCount === 0) {
+      const { data: backfillCount, error: backfillError } = await supabase
+        .rpc('curriculo_backfill_matriz_from_preset', {
+          p_escola_id: userEscolaId,
+          p_curso_id: cursoId,
+        });
+
+      if (backfillError) {
+        return NextResponse.json({
+          ok: false,
+          step: 'backfill_matriz',
+          error: backfillError.message,
+          message: 'Falha ao gerar disciplinas do currículo.',
+        }, { status: 409 });
+      }
+
+      matrizBackfill = { ok: true, inserted: Number(backfillCount ?? 0) };
+      if (!matrizBackfill.inserted) {
+        return NextResponse.json({
+          ok: false,
+          step: 'backfill_matriz',
+          error: 'Nenhuma disciplina gerada para o currículo.',
+          message: 'Nenhuma disciplina gerada para o currículo.',
+        }, { status: 409 });
+      }
+    }
+
     let turmasResult: any = null;
     if (options.generateTurmas) {
       const { count: turmasExistentes } = await supabase
@@ -358,6 +392,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       } : { skipped: true, reason: 'already_published' },
       publish: publishResult,
       turmas: turmasResult,
+      matriz: matrizBackfill,
       message: 'Instalação concluída com sucesso.',
     });
   } catch (e) {
