@@ -124,6 +124,7 @@ export default function KpiSection({
           href={kpi.disabled ? undefined : kpi.href}
           tone={kpi.tone}
           disabled={kpi.disabled}
+          animateValue
         />
       ))}
     </div>

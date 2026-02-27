@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
 type Tone = "default" | "warning" | "critical";
@@ -10,6 +11,7 @@ type StatCardProps = {
   href?: string;
   tone?: Tone;
   disabled?: boolean;
+  animateValue?: boolean;
 };
 
 const toneStyles: Record<Tone, { iconBg: string; iconText: string; valueText: string; border: string }> = {
@@ -33,6 +35,31 @@ const toneStyles: Record<Tone, { iconBg: string; iconText: string; valueText: st
   },
 };
 
+function useCountUp(target: number, duration = 1200, delay = 0) {
+  const [val, setVal] = useState(0);
+
+  useEffect(() => {
+    if (!Number.isFinite(target)) return;
+
+    const timer = setTimeout(() => {
+      const start = performance.now();
+
+      const tick = (now: number) => {
+        const p = Math.min((now - start) / duration, 1);
+        const ease = 1 - Math.pow(1 - p, 3);
+        setVal(Math.round(ease * target));
+        if (p < 1) requestAnimationFrame(tick);
+      };
+
+      requestAnimationFrame(tick);
+    }, delay);
+
+    return () => clearTimeout(timer);
+  }, [target, duration, delay]);
+
+  return val;
+}
+
 export default function StatCard({
   label,
   value,
@@ -40,8 +67,12 @@ export default function StatCard({
   href,
   tone = "default",
   disabled = false,
+  animateValue = false,
 }: StatCardProps) {
   const toneStyle = toneStyles[tone];
+  const isNumericValue = typeof value === "number" && Number.isFinite(value);
+  const animatedValue = useCountUp(isNumericValue && animateValue ? value : 0);
+
   return (
     <div
       className={`rounded-2xl border bg-white p-4 shadow-sm transition ${
@@ -66,7 +97,7 @@ export default function StatCard({
         )}
       </div>
       <div className={`mt-3 text-2xl font-black ${toneStyle.valueText}`}>
-        {value ?? "—"}
+        {isNumericValue ? (animateValue ? animatedValue.toLocaleString("pt-AO") : value.toLocaleString("pt-AO")) : (value ?? "—")}
       </div>
     </div>
   );
