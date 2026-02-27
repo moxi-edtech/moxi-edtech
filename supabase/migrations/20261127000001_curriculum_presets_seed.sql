@@ -1046,6 +1046,7 @@ VALUES
   ('tec_saude_nutricao','Estágio Curricular','13ª Classe','TECNICA',20,'projeto'),
   ('tec_saude_nutricao','Língua Portuguesa','13ª Classe','SOCIO_CULTURAL',3,'core'),
   ('tec_saude_nutricao','Língua Inglesa','13ª Classe','SOCIO_CULTURAL',2,'core'),
+  ('tec_saude_nutricao','Form. Atitudes Integradoras','13ª Classe','SOCIO_CULTURAL',3,'core'),
   ('tec_saude_radiologia','Língua Portuguesa','10ª Classe','SOCIO_CULTURAL',3,'core'),
   ('tec_saude_radiologia','Língua Estrangeira','10ª Classe','SOCIO_CULTURAL',3,'core'),
   ('tec_saude_radiologia','Form. Atitudes Integradoras','10ª Classe','SOCIO_CULTURAL',3,'core'),
