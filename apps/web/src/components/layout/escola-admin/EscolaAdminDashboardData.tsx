@@ -256,6 +256,10 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
         financeiroHref={financeiroHref}
         inadimplenciaTop={inadimplenciaTop}
         pagamentosRecentes={pagamentosRecentes}
+        receitaResumo={{
+          previsto,
+          realizado,
+        }}
         curriculoPendencias={curriculoPendencias}
       />
     );
@@ -277,6 +281,10 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
         financeiroHref={financeiroHref}
         inadimplenciaTop={[]}
         pagamentosRecentes={[]}
+        receitaResumo={{
+          previsto: 0,
+          realizado: 0,
+        }}
         curriculoPendencias={{ horario: 0, avaliacao: 0 }}
       />
     );
