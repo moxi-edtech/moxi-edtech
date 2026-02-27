@@ -1076,9 +1076,9 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   // -------- Default view (tabs) --------
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-        <p className="font-semibold">Dica Angola</p>
-        <p className="text-xs text-amber-700 mt-1">
+      <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-700 shadow-sm">
+        <p className="font-semibold text-slate-900">Guia de estrutura</p>
+        <p className="mt-1 text-xs text-slate-500">
           No ensino médio, algumas disciplinas só existem em certas classes (ex.: Filosofia apenas na 12ª).
           Edite por classe e use trimestres para refletir a realidade.
         </p>
@@ -1089,10 +1089,10 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
           type="button"
           onClick={() => setActiveTab("my_courses")}
           className={cx(
-            "rounded-full px-4 py-2 text-xs font-semibold border transition",
+            "rounded-xl px-4 py-2 text-xs font-semibold border transition-colors",
             activeTab === "my_courses"
-              ? "bg-slate-900 text-white border-slate-900"
-              : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+              ? "bg-slate-900 text-klasse-gold border-slate-900 ring-1 ring-klasse-gold/25"
+              : "bg-white text-slate-700 border-slate-200 hover:text-klasse-gold"
           )}
         >
           Cursos ativos
@@ -1101,10 +1101,10 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
           type="button"
           onClick={() => setActiveTab("catalog")}
           className={cx(
-            "rounded-full px-4 py-2 text-xs font-semibold border transition",
+            "rounded-xl px-4 py-2 text-xs font-semibold border transition-colors",
             activeTab === "catalog"
-              ? "bg-klasse-gold text-white border-klasse-gold"
-              : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+              ? "bg-slate-900 text-klasse-gold border-slate-900 ring-1 ring-klasse-gold/25"
+              : "bg-white text-slate-700 border-slate-200 hover:text-klasse-gold"
           )}
         >
           Catálogo
@@ -1125,7 +1125,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
               <button
                 type="button"
                 onClick={() => setActiveTab("catalog")}
-                className="mt-4 inline-flex items-center gap-2 rounded-full bg-klasse-gold px-4 py-2 text-xs font-semibold text-white hover:brightness-95"
+                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-xs font-semibold text-white hover:brightness-95"
               >
                 <Settings className="w-4 h-4" />
                 Ir ao catálogo
@@ -1153,7 +1153,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
             <button
               type="button"
               onClick={openCustomConfig}
-              className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition-colors hover:text-klasse-gold"
             >
               <Plus className="w-4 h-4" />
               Criar do zero
@@ -1189,7 +1189,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                       <div className="flex items-center gap-2">
                         <div
                           className={cx(
-                            "h-10 w-10 rounded-full flex items-center justify-center text-sm font-semibold border",
+                            "h-10 w-10 rounded-xl flex items-center justify-center text-sm font-semibold border",
                             isInstalled ? "bg-slate-100 border-slate-200 text-slate-500" : `${colors.bgLight} ${colors.text} ${colors.border}`
                           )}
                         >
@@ -1205,7 +1205,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                     </div>
 
                     {isInstalled ? (
-                      <span className="inline-flex items-center gap-2 rounded-full bg-white border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-700">
+                      <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700">
                         <Check className="w-4 h-4" />
                         Instalado
                       </span>
@@ -1215,14 +1215,14 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                           type="button"
                           onClick={() => handleQuickInstall(preset.key)}
                           disabled={!!quickInstallingKey}
-                          className="rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                          className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition-colors hover:text-klasse-gold disabled:opacity-60"
                         >
                           {quickInstallingKey === preset.key ? "Instalando..." : "Instalar"}
                         </button>
                         <button
                           type="button"
                           onClick={() => void openPresetConfig(preset.key)}
-                          className="rounded-full bg-klasse-gold px-4 py-2 text-xs font-semibold text-white hover:brightness-95"
+                          className="rounded-xl bg-klasse-gold px-4 py-2 text-xs font-semibold text-white hover:brightness-95"
                         >
                           Configurar
                         </button>
@@ -1307,10 +1307,11 @@ function CourseCard({
             e.stopPropagation();
             onRemove();
           }}
-          className="rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:border-red-200 hover:text-red-600"
           title="Remover"
         >
           <Trash2 className="w-4 h-4 text-red-600" />
+          <span className="hidden sm:inline">Remover</span>
         </button>
       </div>
 
