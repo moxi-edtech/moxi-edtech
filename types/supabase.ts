@@ -1387,30 +1387,48 @@ export type Database = {
       }
       curriculum_preset_subjects: {
         Row: {
+          avaliacao_mode: string | null
           component: Database["public"]["Enums"]["discipline_component"]
+          conta_para_media_med: boolean | null
           grade_level: string
           id: string
+          is_avaliavel: boolean | null
           name: string
           preset_id: string | null
           subject_type: string | null
+          updated_at: string | null
+          updated_by: string | null
+          version: number | null
           weekly_hours: number
         }
         Insert: {
+          avaliacao_mode?: string | null
           component: Database["public"]["Enums"]["discipline_component"]
+          conta_para_media_med?: boolean | null
           grade_level: string
           id?: string
+          is_avaliavel?: boolean | null
           name: string
           preset_id?: string | null
           subject_type?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          version?: number | null
           weekly_hours?: number
         }
         Update: {
+          avaliacao_mode?: string | null
           component?: Database["public"]["Enums"]["discipline_component"]
+          conta_para_media_med?: boolean | null
           grade_level?: string
           id?: string
+          is_avaliavel?: boolean | null
           name?: string
           preset_id?: string | null
           subject_type?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          version?: number | null
           weekly_hours?: number
         }
         Relationships: [
@@ -1425,25 +1443,79 @@ export type Database = {
       }
       curriculum_presets: {
         Row: {
+          badge: string | null
           category: Database["public"]["Enums"]["course_category"]
+          class_max: number | null
+          class_min: number | null
+          course_code: string | null
           created_at: string | null
           description: string | null
           id: string
           name: string
+          recommended: boolean | null
+          updated_at: string | null
+          updated_by: string | null
+          version: number | null
         }
         Insert: {
+          badge?: string | null
           category: Database["public"]["Enums"]["course_category"]
+          class_max?: number | null
+          class_min?: number | null
+          course_code?: string | null
           created_at?: string | null
           description?: string | null
           id: string
           name: string
+          recommended?: boolean | null
+          updated_at?: string | null
+          updated_by?: string | null
+          version?: number | null
         }
         Update: {
+          badge?: string | null
           category?: Database["public"]["Enums"]["course_category"]
+          class_max?: number | null
+          class_min?: number | null
+          course_code?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
           name?: string
+          recommended?: boolean | null
+          updated_at?: string | null
+          updated_by?: string | null
+          version?: number | null
+        }
+        Relationships: []
+      }
+      curriculum_presets_audit: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string | null
+          details: Json | null
+          id: number
+          preset_id: string | null
+          subject_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string | null
+          details?: Json | null
+          id?: number
+          preset_id?: string | null
+          subject_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string | null
+          details?: Json | null
+          id?: number
+          preset_id?: string | null
+          subject_id?: string | null
         }
         Relationships: []
       }
@@ -1547,6 +1619,7 @@ export type Database = {
           obrigatoria: boolean
           ordem: number | null
           periodos_ativos: number[] | null
+          preset_subject_id: string | null
           status_avaliacao: string | null
           status_completude: string | null
           status_horario: string | null
@@ -1571,6 +1644,7 @@ export type Database = {
           obrigatoria?: boolean
           ordem?: number | null
           periodos_ativos?: number[] | null
+          preset_subject_id?: string | null
           status_avaliacao?: string | null
           status_completude?: string | null
           status_horario?: string | null
@@ -1595,6 +1669,7 @@ export type Database = {
           obrigatoria?: boolean
           ordem?: number | null
           periodos_ativos?: number[] | null
+          preset_subject_id?: string | null
           status_avaliacao?: string | null
           status_completude?: string | null
           status_horario?: string | null
@@ -1668,6 +1743,13 @@ export type Database = {
             columns: ["escola_id"]
             isOneToOne: false
             referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_curso_matriz_preset_subject"
+            columns: ["preset_subject_id"]
+            isOneToOne: false
+            referencedRelation: "curriculum_preset_subjects"
             referencedColumns: ["id"]
           },
         ]
@@ -10437,20 +10519,40 @@ export type Database = {
         }[]
       }
       curriculum_presets_delete: { Args: { p_id: string }; Returns: boolean }
-      curriculum_presets_upsert: {
-        Args: {
-          p_category: Database["public"]["Enums"]["course_category"]
-          p_description?: string
-          p_id: string
-          p_name: string
-        }
-        Returns: {
-          category: Database["public"]["Enums"]["course_category"]
-          description: string
-          id: string
-          name: string
-        }[]
-      }
+      curriculum_presets_upsert:
+        | {
+            Args: {
+              p_category: Database["public"]["Enums"]["course_category"]
+              p_description?: string
+              p_id: string
+              p_name: string
+            }
+            Returns: {
+              category: Database["public"]["Enums"]["course_category"]
+              description: string
+              id: string
+              name: string
+            }[]
+          }
+        | {
+            Args: {
+              p_badge?: string
+              p_category: Database["public"]["Enums"]["course_category"]
+              p_class_max?: number
+              p_class_min?: number
+              p_course_code?: string
+              p_description?: string
+              p_id: string
+              p_name: string
+              p_recommended?: boolean
+            }
+            Returns: {
+              category: Database["public"]["Enums"]["course_category"]
+              description: string
+              id: string
+              name: string
+            }[]
+          }
       curriculum_recalc_status: {
         Args: { p_curso_matriz_id?: string; p_escola_id: string }
         Returns: undefined

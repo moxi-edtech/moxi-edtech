@@ -12,6 +12,10 @@ run_scope: verificação (sem alterações de runtime)
 - ✅ Ajuste recente: `modelos_avaliacao.formula` passou a ser a fonte principal dos componentes/pesos.
 - ⚠️ Gap: coexistência de motores de cálculo pode gerar divergência de regra oficial (pauta vs engines legados).
 - ✅ Ajuste recente: `pauta-grid` devolve `componentes_ativos` + `peso_por_tipo`, e a UI usa os pesos do backend para calcular MT.
+- ✅ Ajuste recente (hardening estrutural): UI de presets passou a ler metadados do DB (`curriculum_presets` + `curriculum_preset_subjects`).
+- ✅ Ajuste recente (hardening estrutural): `course_code` e intervalo de classes migrados para `curriculum_presets`.
+- ✅ Ajuste recente (hardening estrutural): `pauta-geral` agora usa pesos do modelo oficial via `resolveModeloAvaliacao`.
+- ✅ Ajuste recente (hardening estrutural): `pauta-anual` calcula aprovação com regras do modelo (`regras`).
 
 ---
 

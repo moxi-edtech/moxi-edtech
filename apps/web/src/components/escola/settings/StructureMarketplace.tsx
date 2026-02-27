@@ -6,6 +6,7 @@ import { BookOpen, Trash2, Check, Settings, Plus } from "lucide-react";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 
 import { CURRICULUM_PRESETS_META, type CurriculumKey } from "@/lib/onboarding";
+import { usePresetsCatalog, usePresetsMeta } from "@/hooks/usePresetSubjects";
 import { createClient } from "@/lib/supabaseClient";
 import {
   PRESET_TO_TYPE,
@@ -530,6 +531,11 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
             if (!res.ok || json?.ok === false) {
               throw new Error(json?.error || "Falha ao gerar turmas.");
             }
+            const nextDetails = await fetchCourseDetails(cursoId);
+            if (selectedCourseId === cursoId) {
+              setDetails(nextDetails);
+            }
+            fetchCourses();
             success("Turmas geradas com sucesso.");
           } catch (e: any) {
             error(e?.message || "Falha ao gerar turmas.");
@@ -537,7 +543,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         },
       });
     },
-    [curriculoAnoLetivo, curriculoStatusByCurso, escolaId]
+    [curriculoAnoLetivo, curriculoStatusByCurso, escolaId, fetchCourseDetails, fetchCourses, selectedCourseId]
   );
 
   // -------- Presets helpers --------
@@ -575,24 +581,36 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     [buildDraftDisciplina, escolaId, supabase]
   );
 
+  const presetKeys = useMemo(
+    () => Object.keys(CURRICULUM_PRESETS_META) as CurriculumKey[],
+    []
+  );
+  const { metaMap: presetMetaMap } = usePresetsMeta(presetKeys);
+  const { catalogMap: presetCatalogMap } = usePresetsCatalog(presetKeys);
+
   const presetsList = useMemo(() => {
     return Object.entries(CURRICULUM_PRESETS_META).map(([k, m]) => {
       const { key: _omit, ...rest } = m as any;
-      return { key: k as CurriculumKey, ...rest };
+      const catalog = presetCatalogMap[k];
+      return {
+        key: k as CurriculumKey,
+        ...rest,
+        label: catalog?.name ?? rest.label,
+        description: catalog?.description ?? rest.description,
+      };
     });
-  }, []);
+  }, [presetCatalogMap]);
 
   const openPresetConfig = useCallback(
     async (presetKey: string) => {
       const meta = CURRICULUM_PRESETS_META[presetKey as CurriculumKey];
+      const presetMeta = presetMetaMap[presetKey];
+      const catalog = presetCatalogMap[presetKey];
       const subjects = await extractSubjectsFromPreset(presetKey as CurriculumKey);
-      const classes =
-        meta?.classes && meta.classes.length > 0
-          ? [...meta.classes]
-          : ["10ª Classe", "11ª Classe", "12ª Classe"];
+      const classes = presetMeta?.classes?.length ? [...presetMeta.classes] : [];
 
       setDraft({
-        label: meta?.label || "Novo Curso",
+        label: catalog?.name ?? (meta?.label || "Novo Curso"),
         classes,
         subjects,
         isCustom: false,
@@ -600,7 +618,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       });
       setShowModal(true);
     },
-    [extractSubjectsFromPreset]
+    [extractSubjectsFromPreset, presetMetaMap, presetCatalogMap]
   );
 
   const openCustomConfig = useCallback(() => {

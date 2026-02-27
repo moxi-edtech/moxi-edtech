@@ -99,6 +99,27 @@ export async function GET(
       }
     }
 
+    const { data: classRows } = await (supabase as any)
+      .from('classes')
+      .select('id, curso_id')
+      .eq('escola_id', escolaId);
+    const { data: turmaRows } = await (supabase as any)
+      .from('turmas')
+      .select('id, curso_id')
+      .eq('escola_id', escolaId);
+
+    const classCounts = new Map<string, number>();
+    (classRows || []).forEach((row: any) => {
+      if (!row?.curso_id) return;
+      classCounts.set(row.curso_id, (classCounts.get(row.curso_id) ?? 0) + 1);
+    });
+
+    const turmaCounts = new Map<string, number>();
+    (turmaRows || []).forEach((row: any) => {
+      if (!row?.curso_id) return;
+      turmaCounts.set(row.curso_id, (turmaCounts.get(row.curso_id) ?? 0) + 1);
+    });
+
     // Mapear para o tipo Course esperado pelo front
     const payload = rows.map((r: any) => ({
       id: r.id,
@@ -111,6 +132,9 @@ export async function GET(
       descricao: r.descricao ?? undefined,
       codigo: r.course_code || r.codigo || undefined,
       curriculum_key: r.curriculum_key ?? undefined,
+      total_classes: classCounts.get(r.id) ?? 0,
+      total_turmas: turmaCounts.get(r.id) ?? 0,
+      total_alunos: 0,
     }));
     const pageLimit = limit ?? 50;
     const last = rows[rows.length - 1];

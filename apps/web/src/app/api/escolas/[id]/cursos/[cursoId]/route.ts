@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { canManageEscolaResources } from "../../permissions";
+import { getSupabaseServerClient } from "@/lib/supabase-server";
 
 // --- AUTH HELPER (Mantido igual) ---
 type AuthResult =
@@ -89,6 +90,8 @@ export async function DELETE(
   const authz = await authorize(escolaId);
   if (!authz.ok) return NextResponse.json({ ok: false, error: authz.error }, { status: authz.status });
   const supabase = authz.supabase!;
+  const adminClient = getSupabaseServerClient();
+  const deleteClient = (adminClient ?? supabase) as any;
 
   try {
     const { count: turmasCount, error: countErr } = await (supabase as any)
@@ -99,24 +102,60 @@ export async function DELETE(
 
     if (countErr) throw countErr;
 
+    const { data: turmas } = await (supabase as any)
+      .from('turmas')
+      .select('id')
+      .eq('escola_id', escolaId)
+      .eq('curso_id', cursoId);
+    const turmaIds = (turmas || []).map((t: any) => t.id).filter(Boolean);
+
     if (!hardDelete && turmasCount && turmasCount > 0) {
-      return NextResponse.json({
-        ok: false,
-        error: `Não é possível remover este curso. Existem ${turmasCount} turmas vinculadas a ele. Remova as turmas primeiro ou use hard delete em dev.`,
-      }, { status: 409 });
+      const { count: matriculasCount, error: matriculasErr } = await (supabase as any)
+        .from('matriculas')
+        .select('id', { count: 'estimated', head: true })
+        .in('turma_id', turmaIds.length > 0 ? turmaIds : ['']);
+      if (matriculasErr) throw matriculasErr;
+
+      if (matriculasCount && matriculasCount > 0) {
+        return NextResponse.json({
+          ok: false,
+          error: `Não é possível remover este curso. Existem ${matriculasCount} matrículas vinculadas às turmas.`,
+        }, { status: 409 });
+      }
     }
 
-    if (hardDelete) {
-      const { data: turmas } = await (supabase as any)
+    if (turmaIds.length > 0) {
+      if (hardDelete) {
+        const { error: matriculasDeleteErr } = await deleteClient
+          .from('matriculas')
+          .delete()
+          .in('turma_id', turmaIds);
+        if (matriculasDeleteErr) throw matriculasDeleteErr;
+      }
+
+      const { error: turmaDisciplinasErr } = await deleteClient
+        .from('turma_disciplinas')
+        .delete()
+        .in('turma_id', turmaIds);
+      if (turmaDisciplinasErr) throw turmaDisciplinasErr;
+
+      const { error: turmasDeleteErr } = await deleteClient
         .from('turmas')
-        .select('id')
+        .delete()
+        .in('id', turmaIds);
+      if (turmasDeleteErr) throw turmasDeleteErr;
+
+      const { count: remainingTurmas, error: remainingErr } = await deleteClient
+        .from('turmas')
+        .select('id', { count: 'estimated', head: true })
         .eq('escola_id', escolaId)
         .eq('curso_id', cursoId);
-      const turmaIds = (turmas || []).map((t: any) => t.id).filter(Boolean);
-
-      if (turmaIds.length > 0) {
-        await (supabase as any).from('matriculas').delete().in('turma_id', turmaIds);
-        await (supabase as any).from('turmas').delete().in('id', turmaIds);
+      if (remainingErr) throw remainingErr;
+      if (remainingTurmas && remainingTurmas > 0) {
+        return NextResponse.json({
+          ok: false,
+          error: `Não foi possível remover as turmas vinculadas (${remainingTurmas}).`,
+        }, { status: 409 });
       }
     }
 
@@ -191,6 +230,12 @@ export async function DELETE(
       .eq('escola_id', escolaId);
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+
+    try {
+      await (supabase as any).rpc('refresh_mv_escola_cursos_stats');
+    } catch (refreshErr) {
+      console.warn('Falha ao atualizar mv_escola_cursos_stats:', refreshErr);
+    }
 
     return NextResponse.json({ ok: true, hard: hardDelete });
 

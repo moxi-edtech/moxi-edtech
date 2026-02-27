@@ -3,7 +3,7 @@ import { z } from "zod";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { canManageEscolaResources } from "../permissions";
-import { CURRICULUM_PRESETS_META, type CurriculumKey } from "@/lib/academico/curriculum-presets";
+import { type CurriculumKey } from "@/lib/academico/curriculum-presets";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 
 const CURRICULUM_CLASS_RANGES: Record<CurriculumKey, { min: number; max: number }> = {
@@ -257,7 +257,7 @@ export async function POST(
       return NextResponse.json({ ok: false, error: "Curso não encontrado para validar classe." }, { status: 404 });
     }
 
-    if (cursoInfo.curriculum_key && (cursoInfo.curriculum_key in CURRICULUM_PRESETS_META)) {
+    if (cursoInfo.curriculum_key) {
       const classNum = parseClasseNumero(parsed.data.nome);
       if (!classNum) {
         return NextResponse.json(
@@ -265,7 +265,18 @@ export async function POST(
           { status: 400 }
         );
       }
-      const range = CURRICULUM_CLASS_RANGES[cursoInfo.curriculum_key as CurriculumKey];
+
+      const { data: presetCatalog } = await (supabase as any)
+        .from("curriculum_presets")
+        .select("class_min, class_max")
+        .eq("id", cursoInfo.curriculum_key)
+        .maybeSingle();
+
+      const range =
+        presetCatalog?.class_min && presetCatalog?.class_max
+          ? { min: presetCatalog.class_min, max: presetCatalog.class_max }
+          : CURRICULUM_CLASS_RANGES[cursoInfo.curriculum_key as CurriculumKey];
+
       if (!range || classNum < range.min || classNum > range.max) {
         return NextResponse.json(
           { ok: false, error: `Classe fora do intervalo permitido (${range?.min}ª–${range?.max}ª).` },

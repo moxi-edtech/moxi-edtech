@@ -77,14 +77,14 @@ ALTER TABLE public.curso_curriculos
 DROP INDEX IF EXISTS public.curso_curriculos_one_published_per_year_ux;
 DROP INDEX IF EXISTS public.curso_curriculos_lookup_idx;
 
-CREATE UNIQUE INDEX curso_curriculos_escola_curso_classe_ano_version_uk
+CREATE UNIQUE INDEX IF NOT EXISTS curso_curriculos_escola_curso_classe_ano_version_uk
   ON public.curso_curriculos (escola_id, curso_id, classe_id, ano_letivo_id, version);
 
-CREATE UNIQUE INDEX curso_curriculos_one_published_per_class_ux
+CREATE UNIQUE INDEX IF NOT EXISTS curso_curriculos_one_published_per_class_ux
   ON public.curso_curriculos (escola_id, curso_id, classe_id, ano_letivo_id)
   WHERE status = 'published'::public.curriculo_status;
 
-CREATE INDEX curso_curriculos_lookup_idx
+CREATE INDEX IF NOT EXISTS curso_curriculos_lookup_idx
   ON public.curso_curriculos (escola_id, curso_id, classe_id, ano_letivo_id, status, version DESC);
 
 CREATE OR REPLACE FUNCTION public.curriculo_rebuild_turma_disciplinas(
@@ -260,6 +260,7 @@ BEGIN
       curso_id,
       classe_id,
       disciplina_id,
+      preset_subject_id,
       carga_horaria,
       obrigatoria,
       ordem,
@@ -281,6 +282,7 @@ BEGIN
       cm.curso_id,
       cm.classe_id,
       cm.disciplina_id,
+      cm.preset_subject_id,
       cm.carga_horaria,
       cm.obrigatoria,
       cm.ordem,

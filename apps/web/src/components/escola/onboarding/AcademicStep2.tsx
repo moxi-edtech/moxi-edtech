@@ -23,6 +23,7 @@ import {
   type CurriculumKey,
 } from "@/lib/onboarding";
 import { createClient } from "@/lib/supabaseClient";
+import { usePresetsCatalog } from "@/hooks/usePresetSubjects";
 import {
   PRESET_TO_TYPE,
   type CourseType,
@@ -249,6 +250,11 @@ export default function AcademicStep2({
   const [selectedCurriculumClass, setSelectedCurriculumClass] = useState<string>("");
   const [managerSeed, setManagerSeed] = useState(0);
   const [presetBlueprints, setPresetBlueprints] = useState<Record<string, any[]>>({});
+  const presetKeys = useMemo(
+    () => Object.keys(CURRICULUM_PRESETS_META) as CurriculumKey[],
+    []
+  );
+  const { catalogMap: presetsCatalog } = usePresetsCatalog(presetKeys);
 
   useEffect(() => {
     const uniqueKeys = Array.from(
@@ -260,25 +266,28 @@ export default function AcademicStep2({
       return uniqueKeys.map((key) =>
         prevMap.get(key) ?? {
           id: key,
-          label: CURRICULUM_PRESETS_META[key]?.label ?? key,
+          label: presetsCatalog[key]?.name ?? CURRICULUM_PRESETS_META[key]?.label ?? key,
           tipo: PRESET_TO_TYPE[key] ?? "geral",
         }
       );
     });
-  }, [matrix]);
+  }, [matrix, presetsCatalog]);
 
   // Filtros
   const filteredPresets: PresetOption[] = useMemo(() => {
     return (Object.entries(CURRICULUM_PRESETS_META) as [CurriculumKey, typeof CURRICULUM_PRESETS_META[CurriculumKey]][])
       .filter(([key]) => PRESET_CATEGORY_MAP[key] === presetCategory)
-      .map(([key, meta]) => ({
-        key,
-        label: meta.label,
-        badge: meta.badge,
-        description: meta.description,
-        tipo: PRESET_TO_TYPE[key] ?? "geral",
-      }));
-  }, [presetCategory]);
+      .map(([key, meta]) => {
+        const catalog = presetsCatalog[key];
+        return {
+          key,
+          label: catalog?.name ?? meta.label,
+          badge: catalog?.badge ?? meta.badge,
+          description: catalog?.description ?? meta.description,
+          tipo: PRESET_TO_TYPE[key] ?? "geral",
+        };
+      });
+  }, [presetCategory, presetsCatalog]);
 
   const totalTurmas = useMemo(() => calculateTotalTurmas(matrix, turnos), [matrix, turnos]);
 
@@ -296,7 +305,7 @@ export default function AcademicStep2({
 
     const { data: presetRows, error: presetErr } = await supabase
       .from("curriculum_preset_subjects")
-      .select("id, name, grade_level, component, weekly_hours, subject_type")
+      .select("id, name, grade_level, component, weekly_hours, subject_type, conta_para_media_med, is_avaliavel, avaliacao_mode")
       .eq("preset_id", presetKey);
 
     if (presetErr) throw presetErr;
@@ -323,6 +332,9 @@ export default function AcademicStep2({
           componente: row.component ?? "GERAL",
           tipo: row.subject_type ?? "core",
           horas: Number(override?.custom_weekly_hours ?? row.weekly_hours ?? 0),
+          conta_para_media_med: row.conta_para_media_med ?? true,
+          is_avaliavel: row.is_avaliavel ?? true,
+          avaliacao_mode: row.avaliacao_mode ?? "inherit_school",
         };
       })
       .filter((row: any) => row && row.nome && row.classe);
@@ -342,6 +354,7 @@ export default function AcademicStep2({
 
     const blueprint = await loadPresetBlueprint(selectedPresetKey);
     const meta = CURRICULUM_PRESETS_META[selectedPresetKey];
+    const catalog = presetsCatalog[selectedPresetKey];
     if (!blueprint || !meta) return;
 
     const tipo = PRESET_TO_TYPE[selectedPresetKey] ?? "geral";
@@ -351,11 +364,11 @@ export default function AcademicStep2({
       nome: row.nome,
       cursoKey: selectedPresetKey,
       cursoTipo: tipo,
-      cursoNome: meta.label,
+      cursoNome: catalog?.name ?? meta.label,
     }));
 
     onMatrixChange([...matrix, ...newRows]);
-    setAddedCourses((prev) => [...prev, { id: selectedPresetKey, label: meta.label, tipo }]);
+    setAddedCourses((prev) => [...prev, { id: selectedPresetKey, label: catalog?.name ?? meta.label, tipo }]);
     setSelectedPresetKey("");
   };
 
@@ -384,7 +397,8 @@ export default function AcademicStep2({
     
     // Simplificado para exemplo visual
     const meta = CURRICULUM_PRESETS_META[primeiraClasse.cursoKey];
-    const sigla = meta?.course_code || cursoNome.substring(0,3).toUpperCase();
+    const catalog = presetsCatalog[primeiraClasse.cursoKey];
+    const sigla = catalog?.courseCode || meta?.course_code || cursoNome.substring(0,3).toUpperCase();
     const ano = anoLetivo ? `(${anoLetivo})` : "";
     const turnoCode = turnoAtivo.toUpperCase().charAt(0);
     const turnoLabel = turnoCode === "M" ? "Manhã" : turnoCode === "T" ? "Tarde" : "Noite";
@@ -397,7 +411,7 @@ export default function AcademicStep2({
       case "abreviado": return `${sigla}-${classeLimpa.replace("ª", "")}-${turnoCode}-${letra}`;
       default: return `${cursoNome} ${classeLimpa}`;
     }
-  }, [matrix, turnos, padraoNomenclatura, anoLetivo]);
+  }, [matrix, turnos, padraoNomenclatura, anoLetivo, presetsCatalog]);
 
   const availableCurriculumCourses = useMemo(() => {
     return addedCourses.map((course) => course.id);
@@ -465,8 +479,9 @@ export default function AcademicStep2({
 
   const selectedCourseLabel = useMemo(() => {
     if (!selectedCurriculumCourse) return "";
-    return CURRICULUM_PRESETS_META[selectedCurriculumCourse]?.label ?? "";
-  }, [selectedCurriculumCourse]);
+    return presetsCatalog[selectedCurriculumCourse]?.name ??
+      CURRICULUM_PRESETS_META[selectedCurriculumCourse]?.label ?? "";
+  }, [presetsCatalog, selectedCurriculumCourse]);
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -660,7 +675,7 @@ export default function AcademicStep2({
                 >
                   {availableCurriculumCourses.map((course) => (
                     <option key={course} value={course}>
-                      {CURRICULUM_PRESETS_META[course]?.label ?? course}
+                      {presetsCatalog[course]?.name ?? CURRICULUM_PRESETS_META[course]?.label ?? course}
                     </option>
                   ))}
                 </select>

@@ -47,6 +47,54 @@ Escopo validado: Next.js App Router + TypeScript (`apps/web/src/**`) e Supabase 
 - **Comentários:**
   - Flag está integrada ao cálculo do boletim/pauta anual.
 
+### 1.4. Metadados do catálogo no frontend (labels/descrições/classes)
+- **Status: 🟡 Em evolução**
+- **Evidências:**
+  - UI de seleção e configuração de presets agora busca `name`/`description` diretamente de `curriculum_presets`.
+    Arquivos:
+    - `apps/web/src/hooks/usePresetSubjects.ts` (`usePresetsCatalog`)
+    - `apps/web/src/components/escola/onboarding/CurriculumPresetSelector.tsx`
+    - `apps/web/src/components/escola/settings/CurriculumBuilder.tsx`
+  - Contagem de disciplinas/classes no UI vem de `curriculum_preset_subjects`.
+    Arquivos:
+    - `apps/web/src/hooks/usePresetSubjects.ts` (`usePresetsMeta`)
+    - `apps/web/src/components/escola/settings/StructureMarketplace.tsx`
+  - Aplicação de currículo prioriza nome do preset vindo do DB quando disponível.
+    Arquivo: `apps/web/src/lib/academico/curriculum-apply.ts`
+  - Metadados operacionais (`course_code`, `badge`, intervalo de classes) passam a viver em `curriculum_presets`.
+    Arquivos:
+    - `supabase/migrations/20260312000000_curriculum_presets_metadata.sql`
+    - `supabase/migrations/20261127000001_curriculum_presets_seed.sql`
+    - `apps/web/src/app/api/escolas/[id]/classes/route.ts`
+  - RPC admin ajustada para persistir metadados do preset quando disponíveis.
+    Arquivo: `supabase/migrations/20260320000005_curriculum_presets_admin_rpc.sql`
+- **Comentários:**
+  - Backend agora prioriza DB, mas mantém `CURRICULUM_PRESETS_META` como fallback de compatibilidade.
+
+### 1.5. Pauta geral alinhada ao modelo oficial
+- **Status: 🟡 Em evolução**
+- **Evidências:**
+  - `pauta-geral` passa a calcular MT com base nos pesos do modelo via `resolveModeloAvaliacao`.
+    Arquivos:
+    - `apps/web/src/lib/pedagogico/pauta-geral.ts`
+    - `apps/web/src/lib/pedagogico/grade-engine.ts`
+- **Comentários:**
+  - `pauta-anual` agora usa regras do modelo para aprovação; o engine legado ainda é usado como fallback.
+
+### 1.6. Regras de transição alinhadas ao modelo
+- **Status: 🟡 Em evolução**
+- **Evidências:**
+  - `transition-engine` resolve regras a partir de `modelos_avaliacao.regras` quando disponível.
+    Arquivo: `apps/web/src/lib/pedagogico/transition-engine.ts`
+  - `pauta-anual` consome essas regras para o resultado final.
+    Arquivo: `apps/web/src/lib/pedagogico/pauta-anual.ts`
+
+### 1.7. Carga horária semanal (match resiliente)
+- **Status: 🟡 Em evolução**
+- **Evidências:**
+  - `curso_matriz` agora resolve `carga_horaria_semanal` com fallback por nome normalizado (preset → catálogo).
+    Arquivo: `apps/web/src/lib/academico/curriculum-apply.ts`
+
 ---
 
 ## 2. O EFEITO DOMINÓ (Pre-flight Check de Publicação)

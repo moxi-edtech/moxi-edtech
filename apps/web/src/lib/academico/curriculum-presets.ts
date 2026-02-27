@@ -1528,12 +1528,12 @@ export const CURRICULUM_PRESETS_META = Object.fromEntries(
     key,
     {
       ...META_INFO[key],
-      classes: Array.from(new Set(CURRICULUM_PRESETS[key]?.map((d) => d.classe) || [])),
-      subjectsCount: new Set(CURRICULUM_PRESETS[key]?.map((d) => d.nome) || []).size,
+      classes: [],
+      subjectsCount: 0,
     },
   ])
-) as Record<CurriculumKey, CurriculumPresetMeta>;
+) as unknown as Record<CurriculumKey, CurriculumPresetMeta>;
 
 export const getPresetMeta = (key: CurriculumKey) => CURRICULUM_PRESETS_META[key];
 export const getAllPresetsMeta = () => Object.values(CURRICULUM_PRESETS_META);
-export const getSubjectsCount = (key: CurriculumKey) => CURRICULUM_PRESETS_META[key]?.subjectsCount ?? 0;
+export const getSubjectsCount = (_key: CurriculumKey) => 0;

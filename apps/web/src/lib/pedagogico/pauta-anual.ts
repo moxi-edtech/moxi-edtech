@@ -3,6 +3,8 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "~types/supabase"
 import { createElement, type ReactElement } from "react"
 import { applyKf2ListInvariants } from "@/lib/kf2"
+import { resolveModeloAvaliacao } from "@/lib/academico/avaliacao-utils"
+import { resolveTransitionRules } from "@/lib/pedagogico/transition-engine"
 import type {
   PautaAnualPayload,
   PautaAnualDisciplinaNotas,
@@ -26,9 +28,6 @@ const calculateAge = (dateValue: string | null | undefined) => {
 }
 
 
-const NOTA_MINIMA_APROVACAO = 10
-const MAX_NEGATIVAS_RECURSO = 2
-
 type BoletimNotaRow = {
   matricula_id: string | null
   disciplina_id: string | null
@@ -36,17 +35,20 @@ type BoletimNotaRow = {
   nota_final: number | null
 }
 
-function avaliarResultadoFinal(mfds: Array<number | "-">): "APROVADO" | "REPROVADO" | "RECURSO" | "PENDENTE" {
+function avaliarResultadoFinal(
+  mfds: Array<number | "-">,
+  rules: { notaMinimaAprovacao: number; maxNegativasParaRecurso: number }
+): "APROVADO" | "REPROVADO" | "RECURSO" | "PENDENTE" {
   if (mfds.length === 0) return "PENDENTE"
   if (mfds.some((mfd) => mfd === "-")) return "PENDENTE"
 
   let negativas = 0
   for (const mfd of mfds) {
-    if (typeof mfd === 'number' && mfd < NOTA_MINIMA_APROVACAO) negativas += 1
+    if (typeof mfd === 'number' && mfd < rules.notaMinimaAprovacao) negativas += 1
   }
 
   if (negativas === 0) return "APROVADO"
-  if (negativas <= MAX_NEGATIVAS_RECURSO) return "RECURSO"
+  if (negativas <= rules.maxNegativasParaRecurso) return "RECURSO"
   return "REPROVADO"
 }
 
@@ -59,11 +61,21 @@ export async function buildPautaAnualPayload({
   escolaId: string
   turmaId: string
 }): Promise<PautaAnualPayload> {
-  const { metadata, disciplinas } = await buildPautaAnualBase({
+  const { metadata, disciplinas, cursoId, classeId, matrizSample } = await buildPautaAnualBase({
     supabase,
     escolaId,
     turmaId,
   })
+  const modelo = await resolveModeloAvaliacao({
+    supabase,
+    escolaId,
+    cursoId,
+    classeId,
+    matriz: matrizSample ?? {},
+  })
+  const transitionRules = resolveTransitionRules(
+    modelo.regras as Record<string, unknown>
+  )
   let matriculasQuery = supabase
     .from("matriculas")
     .select(
@@ -162,7 +174,7 @@ export async function buildPautaAnualPayload({
       idade: info?.idade ?? "-",
       sexo: info?.sexo ?? "M",
       disciplinas: disciplinasNotas,
-      resultado_final: avaliarResultadoFinal(mfds),
+      resultado_final: avaliarResultadoFinal(mfds, transitionRules),
     }
   })
 
@@ -236,8 +248,29 @@ async function buildPautaAnualBase({
     throw new Error("Turma não encontrada")
   }
 
+  if (!turma.curso_id || !turma.classe_id) {
+    throw new Error("Turma sem curso/classe associada")
+  }
+
   const cursoNome = (turma as any)?.cursos?.nome ?? "—"
   const classeNome = (turma as any)?.classes?.nome ?? "—"
+
+  const { data: matrizRows } = await supabase
+    .from("curso_matriz")
+    .select("avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id")
+    .eq("escola_id", escolaId)
+    .eq("curso_id", turma.curso_id)
+    .eq("classe_id", turma.classe_id)
+    .eq("ativo", true)
+    .limit(1)
+
+  const matrizSample = (matrizRows || [])[0] as
+    | {
+        avaliacao_mode?: string | null
+        avaliacao_modelo_id?: string | null
+        avaliacao_disciplina_id?: string | null
+      }
+    | undefined
 
   const { data: escola } = await supabase
     .from("escolas")
@@ -320,5 +353,8 @@ async function buildPautaAnualBase({
     },
     disciplinas,
     turmaDisciplinaToDisciplina,
+    cursoId: turma.curso_id,
+    classeId: turma.classe_id,
+    matrizSample,
   }
 }

@@ -5,7 +5,7 @@ import {
   CURRICULUM_PRESETS_META,
   type CurriculumKey,
 } from "@/lib/onboarding";
-import { usePresetSubjects } from "@/hooks/usePresetSubjects";
+import { usePresetsCatalog, usePresetsMeta, usePresetSubjects } from "@/hooks/usePresetSubjects";
 import { BookOpen, ChevronDown, Check, Info } from "lucide-react";
 import {
   PRESET_TO_TYPE,
@@ -111,7 +111,6 @@ export function CurriculumPresetSelector({
     return acc;
   }, []);
 
-  const selectedMeta = value ? CURRICULUM_PRESETS_META[value] : null;
   const selectedType = value ? PRESET_TO_TYPE[value] : null;
   const SelectedIcon =
     selectedType && TYPE_ICONS[selectedType] ? TYPE_ICONS[selectedType] : BookOpen;
@@ -120,6 +119,11 @@ export function CurriculumPresetSelector({
       ? TYPE_COLORS[selectedType]
       : TYPE_COLORS.geral;
 
+  const presetKeys = useMemo(() => options.map((option) => option.key), [options]);
+  const { metaMap: presetsMeta } = usePresetsMeta(presetKeys);
+  const { catalogMap: presetsCatalog } = usePresetsCatalog(presetKeys);
+  const selectedMeta = value ? CURRICULUM_PRESETS_META[value] : null;
+  const selectedCatalog = value ? presetsCatalog[value] : null;
   const { subjects: subjectsPreview } = usePresetSubjects(value ?? null);
 
   return (
@@ -206,16 +210,21 @@ export function CurriculumPresetSelector({
             const type = PRESET_TO_TYPE[meta.key];
             const typeLabel = type ? getTypeLabel(type) : "Geral";
 
+            const subjectsCount = presetsMeta[meta.key]?.subjectsCount;
+            const catalog = presetsCatalog[meta.key];
+            const label = catalog?.name ?? meta.label;
+            const badge = catalog?.badge ?? meta.badge;
+            const recommended = catalog?.recommended ?? meta.recommended;
             const infoParts = [
-              `${meta.subjectsCount} disciplinas`,
+              typeof subjectsCount === "number" ? `${subjectsCount} disciplinas` : null,
               typeLabel,
-              meta.badge,
-              meta.recommended ? "Recomendado" : null,
+              badge,
+              recommended ? "Recomendado" : null,
             ].filter(Boolean);
 
             return (
               <option key={meta.key} value={meta.key}>
-                {meta.label}
+                {label}
                 {infoParts.length > 0 ? ` • ${infoParts.join(" • ")}` : ""}
               </option>
             );
@@ -239,23 +248,23 @@ export function CurriculumPresetSelector({
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-bold text-emerald-800">
-                    {selectedMeta.label}
+                    {selectedCatalog?.name ?? selectedMeta.label}
                   </h3>
                   <span
                     className={`px-2 py-0.5 ${selectedColors.bgLight} ${selectedColors.text} text-[10px] font-bold rounded-full`}
                   >
                     {selectedType.toUpperCase()}
                   </span>
-                  {selectedMeta.badge && (
+                  {(selectedCatalog?.badge ?? selectedMeta.badge) && (
                     <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-[10px] font-bold rounded-full">
-                      {selectedMeta.badge}
+                      {selectedCatalog?.badge ?? selectedMeta.badge}
                     </span>
                   )}
                 </div>
 
-                {selectedMeta.description && (
+                {(selectedCatalog?.description ?? selectedMeta.description) && (
                   <p className="text-xs text-emerald-600">
-                    {selectedMeta.description}
+                    {selectedCatalog?.description ?? selectedMeta.description}
                   </p>
                 )}
 

@@ -3,7 +3,11 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "~types/supabase"
 import { createElement, type ReactElement } from "react"
 import { applyKf2ListInvariants } from "@/lib/kf2"
-import { GradeEngine, type RawGradeRow } from "@/lib/pedagogico/grade-engine"
+import { GradeEngine, type RawGradeRow, type GradeWeights } from "@/lib/pedagogico/grade-engine"
+import {
+  buildPesoPorTipo,
+  resolveModeloAvaliacao,
+} from "@/lib/academico/avaliacao-utils"
 import type {
   PautaGeralPayload,
   PautaGeralDisciplinaNotas,
@@ -49,7 +53,14 @@ export async function buildPautaGeralPayload({
   turmaId: string
   periodoNumero: number
 }): Promise<PautaGeralPayload> {
-  const { metadata, disciplinas, turmaDisciplinaToDisciplina } = await buildPautaGeralBase({
+  const {
+    metadata,
+    disciplinas,
+    turmaDisciplinaToDisciplina,
+    cursoId,
+    classeId,
+    matrizByDisciplina,
+  } = await buildPautaGeralBase({
     supabase,
     escolaId,
     turmaId,
@@ -157,7 +168,31 @@ export async function buildPautaGeralPayload({
     }
   }
 
-  const pautaMatrix = GradeEngine.generatePautaMatrix(rawGrades)
+  const weightsByDisciplina: Record<string, GradeWeights> = {}
+  const matrizEntries = Array.from(matrizByDisciplina.entries())
+  await Promise.all(
+    matrizEntries.map(async ([disciplinaId, matriz]) => {
+      const modelo = await resolveModeloAvaliacao({
+        supabase,
+        escolaId,
+        cursoId,
+        classeId,
+        matriz,
+      })
+      const pesoPorTipo = buildPesoPorTipo(modelo.componentes)
+      weightsByDisciplina[disciplinaId] = {
+        mac: pesoPorTipo.get("MAC"),
+        npp: pesoPorTipo.get("NPP"),
+        pt: pesoPorTipo.get("PT"),
+      }
+    })
+  )
+
+  const pautaMatrix = GradeEngine.generatePautaMatrix(
+    rawGrades,
+    undefined,
+    weightsByDisciplina
+  )
   const termKey = `t${periodoNumero}` as "t1" | "t2" | "t3"
 
   const alunos = pautaMatrix.map((student) => {
@@ -264,6 +299,13 @@ async function buildPautaGeralBase({
     throw new Error("Turma não encontrada")
   }
 
+  if (!turma.curso_id || !turma.classe_id) {
+    throw new Error("Turma sem curso/classe associada")
+  }
+
+  const cursoId = turma.curso_id as string
+  const classeId = turma.classe_id as string
+
   const cursoNome = (turma as any)?.cursos?.nome ?? "—"
   const classeNome = (turma as any)?.classes?.nome ?? "—"
 
@@ -297,6 +339,29 @@ async function buildPautaGeralBase({
     )
     .eq("escola_id", escolaId)
     .eq("turma_id", turmaId)
+
+  const { data: matrizRows } = await supabase
+    .from("curso_matriz")
+    .select("disciplina_id, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id")
+    .eq("escola_id", escolaId)
+    .eq("curso_id", cursoId)
+    .eq("classe_id", classeId)
+    .eq("ativo", true)
+
+  const matrizByDisciplina = new Map<string, {
+    avaliacao_mode?: string | null
+    avaliacao_modelo_id?: string | null
+    avaliacao_disciplina_id?: string | null
+  }>()
+  for (const row of (matrizRows || []) as any[]) {
+    if (row?.disciplina_id) {
+      matrizByDisciplina.set(row.disciplina_id, {
+        avaliacao_mode: row.avaliacao_mode ?? null,
+        avaliacao_modelo_id: row.avaliacao_modelo_id ?? null,
+        avaliacao_disciplina_id: row.avaliacao_disciplina_id ?? null,
+      })
+    }
+  }
 
   const disciplinaMap = new Map<string, { id: string; nome: string }>()
   const turmaDisciplinaToDisciplina = new Map<string, { id: string; nome: string }>()
@@ -334,5 +399,8 @@ async function buildPautaGeralBase({
     },
     disciplinas,
     turmaDisciplinaToDisciplina,
+    cursoId,
+    classeId,
+    matrizByDisciplina,
   }
 }

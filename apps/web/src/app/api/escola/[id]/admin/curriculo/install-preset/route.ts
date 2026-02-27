@@ -156,8 +156,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ ok: false, error: 'Ano letivo não encontrado.', message: 'Ano letivo não encontrado.' }, { status: 400 });
     }
 
+    const { data: presetCatalog } = await (supabase as any)
+      .from('curriculum_presets')
+      .select('course_code')
+      .eq('id', presetKey)
+      .maybeSingle();
+
     const presetMeta = CURRICULUM_PRESETS_META[presetKey as CurriculumKey];
-    if (!presetMeta?.course_code) {
+    const courseCode = presetCatalog?.course_code ?? presetMeta?.course_code;
+    if (!courseCode) {
       return NextResponse.json({ ok: false, error: 'Preset inválido.', message: 'Preset inválido.' }, { status: 400 });
     }
 
@@ -172,12 +179,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ ok: false, error: 'Falha ao iniciar instalação.', message: 'Falha ao iniciar instalação.' }, { status: 500 });
     }
 
-    const courseCode = presetMeta.course_code.trim().toUpperCase();
+    const normalizedCourseCode = courseCode.trim().toUpperCase();
     const { data: cursoExistente } = await supabase
       .from('cursos')
       .select('id, nome')
       .eq('escola_id', userEscolaId)
-      .or(`codigo.eq.${courseCode},course_code.eq.${courseCode}`)
+      .or(`codigo.eq.${normalizedCourseCode},course_code.eq.${normalizedCourseCode}`)
       .maybeSingle();
 
     let publishedExists = false;
