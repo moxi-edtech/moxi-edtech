@@ -1040,6 +1040,7 @@ VALUES
   ('tec_saude_nutricao','Práticas Nutrição/Dietética','12ª Classe','TECNICA',4,'core'),
   ('tec_saude_nutricao','Língua Portuguesa','12ª Classe','SOCIO_CULTURAL',3,'core'),
   ('tec_saude_nutricao','Língua Inglesa','12ª Classe','SOCIO_CULTURAL',2,'core'),
+  ('tec_saude_nutricao','Form. Atitudes Integradoras','12ª Classe','SOCIO_CULTURAL',3,'core'),
   ('tec_saude_nutricao','Gestão em Nutrição','13ª Classe','TECNICA',4,'core'),
   ('tec_saude_nutricao','Projecto Tecnológico','13ª Classe','TECNICA',4,'projeto'),
   ('tec_saude_nutricao','Estágio Curricular','13ª Classe','TECNICA',20,'projeto'),
