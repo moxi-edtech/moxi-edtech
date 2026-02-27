@@ -488,6 +488,7 @@ VALUES
   ('tec_construcao_civil','Instalações Prediais (Água/Luz)','12ª Classe','TECNICA',3,'core'),
   ('tec_construcao_civil','Higiene e Segurança no Trabalho','12ª Classe','TECNICA',2,'core'),
   ('tec_construcao_civil','Projecto Tecnológico','12ª Classe','TECNICA',4,'projeto'),
+  ('tec_construcao_civil','Língua Portuguesa','12ª Classe','SOCIO_CULTURAL',3,'core'),
   ('tec_construcao_civil','Projecto Tecnológico','13ª Classe','TECNICA',8,'projeto'),
   ('tec_construcao_civil','Estágio Curricular','13ª Classe','TECNICA',20,'projeto'),
   ('tec_energia_eletrica','Língua Portuguesa','10ª Classe','SOCIO_CULTURAL',3,'core'),
