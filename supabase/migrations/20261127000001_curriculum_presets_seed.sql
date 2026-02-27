@@ -200,6 +200,7 @@ VALUES
   ('esg_puniv_cej','Empreendedorismo','12ª Classe','SOCIO_CULTURAL',2,'core'),
   ('esg_puniv_cej','Form. Atitudes Integradoras','12ª Classe','SOCIO_CULTURAL',3,'core'),
   ('esg_puniv_cej','Matemática','12ª Classe','CIENTIFICA',4,'core'),
+  ('esg_puniv_cej','Informática','12ª Classe','CIENTIFICA',3,'core'),
   ('esg_puniv_cej','Introdução ao Direito','12ª Classe','ESPECIFICA',2,'core'),
   ('esg_puniv_cej','Introdução à Economia','12ª Classe','ESPECIFICA',3,'core'),
   ('esg_puniv_cej','História','12ª Classe','ESPECIFICA',3,'core'),
