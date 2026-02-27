@@ -113,3 +113,15 @@ Estado atual é bom em segurança operacional (locks + permissões + auditoria),
 1. **Unificação da fórmula oficial** (garantir execução única end-to-end);
 2. **Reduzir drift entre engines legadas e cálculo em rotas**;
 3. **Observabilidade/performance de constraints de horário** (telemetria de lock/latência).
+
+---
+
+## Backlog mapeado (próximos buracos)
+
+### 🔴 Alto impacto
+1. **Motor único de cálculo oficial**: eliminar divergência entre `grade-engine`/`transition-engine` e rotas de pauta.
+2. **Contrato único de travas**: consolidar lógica de `turmas.status_fecho` + `periodos_letivos.trava_notas_em` com mensagens consistentes.
+
+### 🟡 Médio impacto
+1. **Observabilidade de conflitos de horário**: métricas para colisão por slot e latência dos `EXCLUDE USING gist`.
+2. **Testes de contrato**: garantir regressões zero em locks de notas e publish.

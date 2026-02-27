@@ -300,3 +300,20 @@ O módulo Académico já tem pilares fortes de backend: publish via RPC, control
 - Limpar artefactos de presets hardcoded remanescentes (assets/seed) e formalizar versionamento/auditoria do catálogo global.
 - Revisar integralmente a malha de FKs acadêmicas (curso_matriz ↔ turma_disciplinas ↔ avaliacoes/notas/frequencias) e impor `RESTRICT/NO ACTION` onde a regra de negócio exige.
 - Criar camada única de domínio para “estado acadêmico publicável”, evitando lógica dispersa entre route handlers, server actions e funções SQL.
+
+---
+
+## Backlog mapeado (próximos buracos)
+
+### 🔴 Alto impacto
+1. **SSOT total no `curso_matriz`**: exigir `preset_subject_id` em todos os inserts e bloquear disciplina fora do preset por default.
+2. **Contrato único de publish**: eliminar variações entre publish por classe vs publish geral e manter uma única fonte de pendências.
+
+### 🟡 Médio impacto
+1. **RLS do catálogo global**: documentar governança e elevar controles de escrita/admin.
+2. **Testes de contrato DB+API**: gates de currículo publicado e criação de turmas sem regressão.
+3. **Relatório de divergências**: rotina para listar disciplinas fora do preset por curso/ano.
+
+### 🟢 Baixo impacto
+1. **Padronizar mensagens de pendências**: UX unificada para metadados faltantes e overload de carga.
+2. **Telemetria de publishes**: eventos com métricas de duração/pendências.
