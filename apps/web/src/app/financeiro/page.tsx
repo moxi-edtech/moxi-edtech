@@ -292,7 +292,7 @@ export default async function FinanceiroDashboardPage({
         }
       />
 
-      <RadarOperacional alerts={radarAlerts} role="secretaria" />
+      <RadarOperacional alerts={radarAlerts} role="financeiro" />
 
       {escolaId ? <MissingPricingAlert escolaId={escolaId} anoLetivo={anoLetivo} initialItems={missingPricingItems} /> : null}
       <FinanceiroAlerts notifications={financeNotifications} />
@@ -309,10 +309,10 @@ export default async function FinanceiroDashboardPage({
                 className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-all ${
                   active
                     ? "bg-slate-900 text-klasse-gold ring-1 ring-klasse-gold/25"
-                    : "text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                    : "text-slate-500 hover:bg-slate-100 hover:text-klasse-gold"
                 }`}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-5 w-5" />
                 {tab.label}
                 {tab.badge ? (
                   <span className="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
@@ -391,7 +391,7 @@ export default async function FinanceiroDashboardPage({
                   <h2 className="text-lg font-semibold text-slate-900">Em Atraso</h2>
                   <p className="text-xs text-slate-500">Ação direta por linha: cobrar ou regularizar.</p>
                 </div>
-                <Link href="/financeiro/cobrancas" className="text-xs font-semibold text-[#1F6B3B] hover:underline">
+                <Link href="/financeiro/cobrancas" className="text-xs font-semibold text-klasse-gold transition-colors hover:text-klasse-gold/80">
                   Abrir gestão de cobranças
                 </Link>
               </div>
@@ -410,7 +410,7 @@ export default async function FinanceiroDashboardPage({
                         <Link href={`/financeiro/pagamentos?aluno=${row.aluno_id}`} className="rounded-lg bg-klasse-gold px-3 py-2 text-xs font-semibold text-white hover:brightness-95">
                           Registar
                         </Link>
-                        <Link href={`/financeiro/cobrancas?aluno=${row.aluno_id}`} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-[#1F6B3B] hover:text-[#1F6B3B]">
+                        <Link href={`/financeiro/cobrancas?aluno=${row.aluno_id}`} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition-colors hover:border-klasse-gold/40 hover:text-klasse-gold">
                           Avisar
                         </Link>
                       </div>
@@ -426,11 +426,11 @@ export default async function FinanceiroDashboardPage({
               <h2 className="text-lg font-semibold text-slate-900">Descontos e Isenções</h2>
               <p className="mt-1 text-xs text-slate-500">Ajuste de política e revisão sem sair do fluxo financeiro.</p>
               <div className="mt-4 grid gap-3 md:grid-cols-2">
-                <Link href="/financeiro/tabelas-mensalidade" className="rounded-xl border border-slate-200 p-4 text-sm font-semibold text-slate-800 hover:border-[#1F6B3B] hover:text-[#1F6B3B]">
+                <Link href="/financeiro/tabelas-mensalidade" className="rounded-xl border border-slate-200 p-4 text-sm font-semibold text-slate-800 transition-colors hover:border-klasse-gold/40 hover:text-klasse-gold">
                   Tabelas de mensalidade
                   <p className="mt-1 text-xs font-normal text-slate-500">Configurar preço-base e regras por turma.</p>
                 </Link>
-                <Link href="/financeiro/configuracoes/precos" className="rounded-xl border border-slate-200 p-4 text-sm font-semibold text-slate-800 hover:border-[#1F6B3B] hover:text-[#1F6B3B]">
+                <Link href="/financeiro/configuracoes/precos" className="rounded-xl border border-slate-200 p-4 text-sm font-semibold text-slate-800 transition-colors hover:border-klasse-gold/40 hover:text-klasse-gold">
                   Preços e benefícios
                   <p className="mt-1 text-xs font-normal text-slate-500">Revisar descontos activos e pendências.</p>
                 </Link>
@@ -452,7 +452,7 @@ export default async function FinanceiroDashboardPage({
                 <Link href="/financeiro/fecho" className="rounded-lg bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95">
                   Abrir fecho do mês
                 </Link>
-                <Link href="/financeiro/relatorios/fluxo-caixa" className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-[#1F6B3B] hover:text-[#1F6B3B]">
+                <Link href="/financeiro/relatorios/fluxo-caixa" className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-klasse-gold/40 hover:text-klasse-gold">
                   Relatório de fluxo
                 </Link>
               </div>
@@ -545,7 +545,7 @@ export default async function FinanceiroDashboardPage({
                 <h2 className="text-lg font-semibold text-slate-900">Pagamentos do dia</h2>
                 <p className="text-xs text-slate-500">Total acumulado: {kwanza.format(totalPagamentosHoje)}</p>
               </div>
-              <Link href="/financeiro/pagamentos" className="text-xs font-semibold text-[#1F6B3B] hover:underline">
+              <Link href="/financeiro/pagamentos" className="text-xs font-semibold text-klasse-gold transition-colors hover:text-klasse-gold/80">
                 Ver todos
               </Link>
             </div>
@@ -598,7 +598,7 @@ export default async function FinanceiroDashboardPage({
 function ChecklistItem({ ok, label, detail }: { ok: boolean; label: string; detail: string }) {
   return (
     <div className="flex items-start gap-3 rounded-lg border border-slate-100 p-3">
-      <span className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${ok ? "bg-[#1F6B3B] text-white" : "bg-slate-100 text-slate-500"}`}>
+      <span className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${ok ? "bg-klasse-gold text-white" : "bg-slate-100 text-slate-500"}`}>
         {ok ? "✓" : "•"}
       </span>
       <div className="min-w-0">
