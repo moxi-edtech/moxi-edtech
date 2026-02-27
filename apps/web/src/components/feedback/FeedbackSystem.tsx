@@ -388,7 +388,7 @@ export function RadarOperacional({
 }: {
   alerts: OperationalAlert[]
   loading?: boolean
-  role?: "secretaria" | "admin"
+  role?: "secretaria" | "admin" | "financeiro"
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const critical = alerts.filter((a) => a.severity === "critical")
@@ -434,7 +434,7 @@ export function RadarOperacional({
             )}
           </div>
           <span className="text-sm font-bold text-slate-900">
-            {role === "admin" ? "Saúde do Sistema" : "Radar de Atenção"}
+            {role === "admin" ? "Saúde do Sistema" : role === "financeiro" ? "Radar Financeiro" : "Radar de Atenção"}
           </span>
           <div className="flex items-center gap-1.5">
             {critical.length > 0 && (
