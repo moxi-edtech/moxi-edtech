@@ -1,7 +1,6 @@
 import {
   Wallet,
   TrendingUp,
-  ArrowRight,
   Radar,
   Receipt,
   Scale,
@@ -11,6 +10,10 @@ import {
   AlertCircle,
   Search,
   DollarSign,
+  LayoutDashboard,
+  AlertTriangle,
+  BadgePercent,
+  ClipboardCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { cookies, headers } from "next/headers";
@@ -24,6 +27,8 @@ import type { Database } from "~types/supabase";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { FinanceiroAlerts } from "@/components/financeiro/FinanceiroAlerts";
 import { MissingPricingAlert } from "@/components/financeiro/MissingPricingAlert";
+import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
+import { RadarOperacional, type OperationalAlert } from "@/components/feedback/FeedbackSystem";
 
 export const dynamic = 'force-dynamic';
 
@@ -37,14 +42,22 @@ type Mensalidade = Database["public"]["Tables"]["mensalidades"]["Row"] & {
   turmas?: { nome?: string | null } | null;
   valor?: number | null;
 };
+type PagamentoStatusRow = { status: string | null; total: number | null };
+type MissingItem = {
+  curso_nome: string;
+  classe_nome: string;
+  missing_type: string;
+};
+
 
 export default async function FinanceiroDashboardPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ aluno?: string }>;
+  searchParams?: Promise<{ aluno?: string; view?: string }>;
 }) {
-  const params = (searchParams ? await searchParams : {}) as { aluno?: string };
+  const params = (searchParams ? await searchParams : {}) as { aluno?: string; view?: string };
   const { aluno } = params;
+  const view = params.view === "atrasos" || params.view === "descontos" || params.view === "fecho" ? params.view : "visao";
   const supabase = await supabaseServer();
 
   const { data: userRes } = await supabase.auth.getUser();
@@ -53,7 +66,7 @@ export default async function FinanceiroDashboardPage({
   if (user) {
     const metaEscolaId = (user.app_metadata as { escola_id?: string | null } | null)?.escola_id ?? null;
     escolaId = await resolveEscolaIdForUser(
-      supabase as any,
+      supabase as Parameters<typeof resolveEscolaIdForUser>[0],
       user.id,
       null,
       metaEscolaId ? String(metaEscolaId) : null
@@ -71,7 +84,7 @@ export default async function FinanceiroDashboardPage({
       cache: "no-store",
       headers: cookieHeader ? { cookie: cookieHeader } : undefined,
     });
-    const json = (await res.json().catch(() => null)) as any;
+    const json = (await res.json().catch(() => null)) as { ok?: boolean } & T | null;
     if (!res.ok || !json?.ok) return fallback;
     return json;
   };
@@ -121,7 +134,6 @@ export default async function FinanceiroDashboardPage({
   const realizado = Number(resumo.realizado ?? 0);
   const inadimplenciaTotal = Number(resumo.inadimplencia ?? 0);
   const percentPago = Number(resumo.percent_realizado ?? 0);
-  const percentInadimplencia = previsto ? Math.round((inadimplenciaTotal / previsto) * 100) : 0;
   const alunosInadimplentes = Number(resumo.alunos_inadimplentes ?? 0);
   const alunosEmDia = Number(resumo.alunos_em_dia ?? 0);
 
@@ -141,11 +153,11 @@ export default async function FinanceiroDashboardPage({
     created_at: string | null;
   }>;
 
-  const totalConfirmados = (pagamentosStatus || []).reduce((acc, row: any) => {
+  const totalConfirmados = ((pagamentosStatus as PagamentoStatusRow[] | null) || []).reduce((acc, row) => {
     const status = String(row.status ?? "").toLowerCase();
     return ["settled", "concluido", "pago"].includes(status) ? acc + Number(row.total ?? 0) : acc;
   }, 0);
-  const totalPendentes = (pagamentosStatus || []).reduce((acc, row: any) => {
+  const totalPendentes = ((pagamentosStatus as PagamentoStatusRow[] | null) || []).reduce((acc, row) => {
     const status = String(row.status ?? "").toLowerCase();
     return ["pending", "pendente"].includes(status) ? acc + Number(row.total ?? 0) : acc;
   }, 0);
@@ -155,6 +167,7 @@ export default async function FinanceiroDashboardPage({
   let financeNotifications: Notification[] = [];
   let escolaNome = "Escola";
   let anoLetivo = new Date().getFullYear();
+  let missingPricingItems: MissingItem[] = [];
 
   if (aluno) {
     const { data } = await supabase
@@ -201,14 +214,75 @@ export default async function FinanceiroDashboardPage({
     if (anoAtivoRes.data?.ano) anoLetivo = Number(anoAtivoRes.data.ano);
     escolaNome = escolaRes.data?.nome ?? escolaNome;
     financeNotifications = (notificationsRes.data as Notification[]) || [];
+
+    const missingPricingRes = await fetchJson(
+      `/api/financeiro/missing-pricing?escola_id=${escolaId}&ano_letivo=${anoLetivo}`,
+      { ok: false, items: [] as MissingItem[] }
+    );
+    if (missingPricingRes?.ok) {
+      missingPricingItems = (missingPricingRes.items as MissingItem[]) ?? [];
+    }
   }
 
+  const totalPagamentosHoje = pagamentosRecentes.reduce((acc, p) => acc + Number(p.valor_pago ?? 0), 0);
+  const tabs = [
+    { id: "visao", label: "Visão Geral", icon: LayoutDashboard, badge: null },
+    { id: "atrasos", label: "Em Atraso", icon: AlertTriangle, badge: radarResumo.length || null },
+    { id: "descontos", label: "Descontos", icon: BadgePercent, badge: totalPendentes > 0 ? totalPendentes : null },
+    { id: "fecho", label: "Fecho do Mês", icon: ClipboardCheck, badge: null },
+  ] as const;
+
+  const radarAlerts: OperationalAlert[] = [];
+  if (alunosInadimplentes > 0) {
+    radarAlerts.push({
+      id: "inadimplencia",
+      severity: alunosInadimplentes >= 10 ? "critical" : "warning",
+      categoria: "financeiro",
+      titulo: `${alunosInadimplentes} aluno${alunosInadimplentes !== 1 ? "s" : ""} em atraso`,
+      descricao: "Cobranças pendentes exigem ação imediata da equipa financeira.",
+      count: alunosInadimplentes,
+      link: "/financeiro/radar",
+      link_label: "Abrir radar",
+    });
+  }
+  if (missingPricingItems.length > 0) {
+    radarAlerts.push({
+      id: "missing-pricing",
+      severity: "warning",
+      categoria: "financeiro",
+      titulo: "Configuração de preços incompleta",
+      descricao: "Há cursos activos sem preço definido para o ano lectivo.",
+      count: missingPricingItems.length,
+      link: "/financeiro/configuracoes/precos",
+      link_label: "Configurar preços",
+    });
+  }
+  if (financeNotifications.length > 0) {
+    radarAlerts.push({
+      id: "acoes-pendentes",
+      severity: "info",
+      categoria: "financeiro",
+      titulo: "Ações pendentes no financeiro",
+      descricao: "Reveja as notificações operacionais e conclua os itens pendentes.",
+      count: financeNotifications.length,
+      link: "/financeiro",
+      link_label: "Ver ações",
+    });
+  }
+
+  const hrefForTab = (id: string) => {
+    const qp = new URLSearchParams();
+    if (aluno) qp.set("aluno", aluno);
+    if (id !== "visao") qp.set("view", id);
+    const query = qp.toString();
+    return query ? `/financeiro?${query}` : "/financeiro";
+  };
+
   return (
-    <main className="space-y-8 p-4 md:p-6">
-      {/* Header */}
+    <main className="space-y-6 p-4 md:p-6">
       <DashboardHeader
         title="Financeiro"
-        description="Gestão completa de receita, cobranças e fluxo financeiro da escola."
+        description="Controlo total do mês em um único ecrã operacional."
         actions={
           escolaId ? (
             <GerarMensalidadesDialog />
@@ -218,301 +292,300 @@ export default async function FinanceiroDashboardPage({
         }
       />
 
-      {escolaId ? (
-        <MissingPricingAlert escolaId={escolaId} anoLetivo={anoLetivo} />
-      ) : null}
+      <RadarOperacional alerts={radarAlerts} role="secretaria" />
 
+      {escolaId ? <MissingPricingAlert escolaId={escolaId} anoLetivo={anoLetivo} initialItems={missingPricingItems} /> : null}
       <FinanceiroAlerts notifications={financeNotifications} />
 
-      {/* Cards Principais */}
-      <section className="grid gap-4 md:grid-cols-3">
-        <Card
-          title="Previsto"
-          value={kwanza.format(previsto)}
-          valueClassName="text-slate-600"
-          helper="Total esperado"
-          icon={<Wallet />}
-        />
-        <Card
-          title="Realizado"
-          value={kwanza.format(realizado)}
-          valueClassName="text-emerald-600"
-          helper={`${percentPago}% do previsto`}
-          icon={<TrendingUp />}
-        />
-        <Card
-          title="Inadimplência"
-          value={kwanza.format(inadimplenciaTotal)}
-          valueClassName="text-rose-600"
-          helper={`${percentInadimplencia}% do previsto`}
-          icon={<AlertCircle />}
-        />
-      </section>
-
-      <section className="bg-white rounded-xl border border-slate-200/70 p-5 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">Pagamentos Recentes</h2>
-            <p className="text-xs text-slate-500">Feed do dia</p>
-          </div>
-          <Link href="/financeiro/pagamentos" className="text-xs font-semibold text-klasse-green-500 hover:underline">
-            Ver todos
-          </Link>
-        </div>
-
-        <div className="mt-4 space-y-3">
-          {pagamentosRecentes.length === 0 ? (
-            <div className="text-sm text-slate-500">Nenhum pagamento hoje.</div>
-          ) : (
-            pagamentosRecentes.map((pagamento) => (
-              <div
-                key={pagamento.id}
-                className="flex flex-col gap-2 rounded-lg border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between"
+      <section className="rounded-xl border border-slate-200/70 bg-white p-2 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const active = view === tab.id;
+            return (
+              <Link
+                key={tab.id}
+                href={hrefForTab(tab.id)}
+                className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-all ${
+                  active
+                    ? "bg-slate-900 text-klasse-gold ring-1 ring-klasse-gold/25"
+                    : "text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                }`}
               >
-                <div>
-                  <div className="text-sm font-semibold text-slate-900">
-                    {pagamento.aluno_id ? `Aluno ${pagamento.aluno_id.slice(0, 8)}…` : "Aluno"}
+                <Icon className="h-4 w-4" />
+                {tab.label}
+                {tab.badge ? (
+                  <span className="rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                    {tab.badge}
+                  </span>
+                ) : null}
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="space-y-6">
+          {view === "visao" && (
+            <>
+              <section className="grid gap-4 md:grid-cols-4">
+                <Card title="Cobrado" value={kwanza.format(realizado)} valueClassName="text-[#1F6B3B]" helper={`+${percentPago}% do previsto`} icon={<Wallet className="h-5 w-5" />} />
+                <Card title="Previsto" value={kwanza.format(previsto)} valueClassName="text-slate-700" helper="Meta do mês" icon={<TrendingUp className="h-5 w-5" />} />
+                <Card title="Em Atraso" value={kwanza.format(inadimplenciaTotal)} valueClassName="text-rose-600" helper={`${alunosInadimplentes} alunos`} icon={<AlertCircle className="h-5 w-5" />} />
+                <Card title="Descontos / Pendências" value={kwanza.format(totalPendentes)} valueClassName="text-amber-600" helper="Itens a regularizar" icon={<BadgePercent className="h-5 w-5" />} />
+              </section>
+
+              <section className="rounded-xl border border-slate-200/70 bg-white p-5 shadow-sm">
+                <div className="mb-3 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900">Previsão de receita</h2>
+                    <p className="text-xs text-slate-500">{kwanza.format(realizado)} de {kwanza.format(previsto)}</p>
                   </div>
-                  <div className="text-xs text-slate-500">
-                    {pagamento.metodo ?? "—"} • {pagamento.status ?? "—"}
-                  </div>
+                  <span className="font-mono text-2xl font-bold text-[#1F6B3B]">{percentPago}%</span>
                 </div>
-                <div className="text-right">
-                  <div className="text-sm font-semibold text-slate-900">
-                    {kwanza.format(Number(pagamento.valor_pago ?? 0))}
-                  </div>
-                  <div className="text-xs text-slate-500">
-                    {pagamento.created_at ? new Date(pagamento.created_at).toLocaleTimeString("pt-PT", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    }) : "—"}
-                  </div>
+                <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-[#1F6B3B] to-klasse-gold shadow-[0_0_14px_rgba(227,178,60,0.35)]"
+                    style={{ width: `${Math.max(0, Math.min(100, percentPago))}%` }}
+                  />
                 </div>
-              </div>
-            ))
+              </section>
+
+              <section className="space-y-4">
+                <h2 className="text-lg font-semibold text-slate-900">Acessos rápidos</h2>
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  <AcaoRapidaCard
+                    href="/financeiro/radar"
+                    icon={<Radar className="h-5 w-5" />}
+                    label="Radar"
+                    sublabel="Inadimplência"
+                  />
+                  <AcaoRapidaCard
+                    href="/financeiro/cobrancas"
+                    icon={<Receipt className="h-5 w-5" />}
+                    label="Cobranças"
+                    sublabel="Histórico e ações"
+                  />
+                  <AcaoRapidaCard
+                    href="/financeiro/conciliacao"
+                    icon={<Scale className="h-5 w-5" />}
+                    label="Conciliação"
+                    sublabel="TPA e Multicaixa"
+                  />
+                  <AcaoRapidaCard
+                    href="/financeiro/relatorios"
+                    icon={<BarChart3 className="h-5 w-5" />}
+                    label="Relatórios"
+                    sublabel="Fluxo e métricas"
+                  />
+                </div>
+              </section>
+            </>
           )}
-        </div>
-      </section>
 
-      {/* Radar + Ações rápidas */}
-      <section className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-        <div className="bg-white rounded-xl border border-slate-200/70 p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">Inadimplência Recente</h2>
-              <p className="text-xs text-slate-500">Top 5 por valor em atraso</p>
-            </div>
-            <Link href="/financeiro/radar" className="text-xs font-semibold text-klasse-green-500 hover:underline">
-              Ver lista completa
-            </Link>
-          </div>
-
-          <div className="mt-4 space-y-3">
-            {radarResumo.length === 0 && (
-              <div className="text-sm text-slate-500">Nenhuma pendência encontrada.</div>
-            )}
-            {radarResumo.map((row) => {
-              const nomeAluno = row.aluno_nome || "Aluno";
-              const iniciais = nomeAluno.trim().charAt(0).toUpperCase();
-              const dias = row.dias_em_atraso ? `${row.dias_em_atraso} dias` : "—";
-              const telefone = "";
-              const mensagem = `Olá, referente à mensalidade do aluno ${nomeAluno}. Podemos ajudar?`;
-              const whatsapp = telefone
-                ? `https://wa.me/${telefone}?text=${encodeURIComponent(mensagem)}`
-                : null;
-              return (
-                <div key={row.aluno_id} className="flex flex-col gap-3 rounded-lg border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center text-sm font-semibold">
-                      {iniciais}
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold text-slate-900">{nomeAluno}</div>
-                      <div className="text-xs text-slate-500">Em atraso: {dias}</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 sm:justify-end">
-                    <div className="text-right">
-                      <div className="text-sm font-semibold text-amber-700">{kwanza.format(row.valor_em_atraso ?? 0)}</div>
-                      <div className="text-xs text-slate-500">Total em atraso</div>
-                    </div>
-                    {whatsapp ? (
-                      <a
-                        href={whatsapp}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"
-                      >
-                        WhatsApp
-                      </a>
-                    ) : (
-                      <span className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-400">
-                        Sem contacto
-                      </span>
-                    )}
-                  </div>
+          {view === "atrasos" && (
+            <section className="rounded-xl border border-slate-200/70 bg-white p-5 shadow-sm">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">Em Atraso</h2>
+                  <p className="text-xs text-slate-500">Ação direta por linha: cobrar ou regularizar.</p>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-slate-200/70 p-5 shadow-sm space-y-4">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-900">Ações rápidas</h2>
-            <p className="text-xs text-slate-500">Operações do dia</p>
-          </div>
-          <div className="grid gap-2">
-            <Link
-              href="/financeiro/pagamentos"
-              className="inline-flex items-center justify-center rounded-lg bg-klasse-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-klasse-green-700"
-            >
-              + Novo Pagamento
-            </Link>
-            <Link
-              href="/financeiro/fecho"
-              className="inline-flex items-center justify-center rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-slate-300"
-            >
-              🖨️ Fecho de Caixa
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Acessos Rápidos */}
-      <section className="space-y-4">
-        <h2 className="text-lg font-semibold text-slate-900">Acessos Rápidos</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <QuickLink
-            href="/financeiro/radar"
-            title="Radar de Inadimplência"
-            description="Acompanhe alunos em atraso e envie cobranças automáticas."
-            icon={<Radar className="h-6 w-6" />}
-          />
-          <QuickLink
-            href="/financeiro/cobrancas"
-            title="Histórico de Cobranças"
-            description="Veja respostas, pagamentos e eficiência das mensagens."
-            icon={<Receipt className="h-6 w-6" />}
-          />
-          <QuickLink
-            href="/financeiro/conciliacao"
-            title="Conciliação TPA"
-            description="Confirme pagamentos Multicaixa/TPA com total precisão."
-            icon={<Scale className="h-6 w-6" />}
-          />
-          <QuickLink
-            href="/financeiro/relatorios"
-            title="Relatórios Financeiros"
-            description="Taxas, gráficos, projeções e análise completa."
-            icon={<BarChart3 className="h-6 w-6" />}
-          />
-        </div>
-      </section>
-
-      {/* Extrato do aluno */}
-      <section className="space-y-4">
-        <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-          <DollarSign className="w-5 h-5" /> Extrato por aluno
-        </h2>
-        {!aluno ? (
-          <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-200/70">
-            <Search className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-            <h3 className="text-lg font-medium text-slate-800">Nenhum aluno selecionado</h3>
-            <p className="text-slate-500">
-              Use a Busca Global (Ctrl+K) e vá ao Dossiê para ver o financeiro detalhado.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">Extrato de: {alunoNome}</h3>
-                <p className="text-sm text-slate-500">Histórico completo de cobranças</p>
+                <Link href="/financeiro/cobrancas" className="text-xs font-semibold text-[#1F6B3B] hover:underline">
+                  Abrir gestão de cobranças
+                </Link>
               </div>
-            </div>
+              <div className="space-y-3">
+                {radarResumo.length === 0 ? (
+                  <div className="text-sm text-slate-500">Nenhuma pendência encontrada.</div>
+                ) : (
+                  radarResumo.map((row) => (
+                    <div key={row.aluno_id} className="flex flex-col gap-3 rounded-lg border border-slate-100 p-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <div className="text-sm font-semibold text-slate-900">{row.aluno_nome || "Aluno"}</div>
+                        <div className="text-xs text-slate-500">{row.dias_em_atraso ? `${row.dias_em_atraso} dias em atraso` : "Sem histórico de dias"}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="font-mono text-sm font-bold text-rose-600">{kwanza.format(Number(row.valor_em_atraso ?? 0))}</div>
+                        <Link href={`/financeiro/pagamentos?aluno=${row.aluno_id}`} className="rounded-lg bg-klasse-gold px-3 py-2 text-xs font-semibold text-white hover:brightness-95">
+                          Registar
+                        </Link>
+                        <Link href={`/financeiro/cobrancas?aluno=${row.aluno_id}`} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:border-[#1F6B3B] hover:text-[#1F6B3B]">
+                          Avisar
+                        </Link>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
+          )}
 
-            <div className="bg-white shadow-sm rounded-xl border border-slate-200/70 overflow-hidden">
-              <table className="min-w-full divide-y divide-slate-200/70 text-sm">
-                <thead className="bg-slate-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left font-medium text-slate-500 uppercase">Referência</th>
-                    <th className="px-6 py-3 text-left font-medium text-slate-500 uppercase">Vencimento</th>
-                    <th className="px-6 py-3 text-left font-medium text-slate-500 uppercase">Valor</th>
-                    <th className="px-6 py-3 text-center font-medium text-slate-500 uppercase">Status</th>
-                    <th className="px-6 py-3 text-right font-medium text-slate-500 uppercase">Ação</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-slate-200/70">
-                  {mensalidades.map((mens) => (
-                    <tr key={mens.id} className="hover:bg-slate-50">
-                      <td className="px-6 py-4 font-medium text-slate-800">
-                        {new Date(0, (mens.mes_referencia || 1) - 1).toLocaleString("pt-PT", {
-                          month: "long",
-                        })}{" "}
-                        / {mens.ano_referencia}
-                      </td>
-                      <td className="px-6 py-4 text-slate-500">
-                        {mens.data_vencimento
-                          ? new Date(mens.data_vencimento).toLocaleDateString("pt-PT")
-                          : "—"}
-                      </td>
-                      <td className="px-6 py-4 font-bold text-slate-800">
-                        {kwanza.format(mens.valor_previsto ?? mens.valor ?? 0)}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        {mens.status === "pago" ? (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            <CheckCircle className="w-3 h-3 mr-1" /> Pago
-                          </span>
-                        ) : mens.data_vencimento && new Date(mens.data_vencimento) < new Date() ? (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            <AlertCircle className="w-3 h-3 mr-1" /> Atrasado
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                            <Clock className="w-3 h-3 mr-1" /> Pendente
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        {mens.status !== "pago" ? (
-                          <RegistrarPagamentoButton
-                            mensalidadeId={mens.id}
-                            valor={mens.valor_previsto ?? mens.valor ?? 0}
-                          />
-                        ) : (
-                          <div className="flex flex-wrap items-center justify-end gap-2">
-                            <ReciboPrintButton
-                              mensalidadeId={mens.id}
-                              escolaNome={escolaNome}
-                              alunoNome={alunoNome}
-                              valor={mens.valor_pago_total ?? mens.valor_previsto ?? mens.valor ?? 0}
-                              dataPagamento={mens.data_pagamento_efetiva ?? new Date().toISOString()}
-                            />
-                            <EstornarMensalidadeButton mensalidadeId={mens.id} />
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </section>
+          {view === "descontos" && (
+            <section className="rounded-xl border border-slate-200/70 bg-white p-5 shadow-sm">
+              <h2 className="text-lg font-semibold text-slate-900">Descontos e Isenções</h2>
+              <p className="mt-1 text-xs text-slate-500">Ajuste de política e revisão sem sair do fluxo financeiro.</p>
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <Link href="/financeiro/tabelas-mensalidade" className="rounded-xl border border-slate-200 p-4 text-sm font-semibold text-slate-800 hover:border-[#1F6B3B] hover:text-[#1F6B3B]">
+                  Tabelas de mensalidade
+                  <p className="mt-1 text-xs font-normal text-slate-500">Configurar preço-base e regras por turma.</p>
+                </Link>
+                <Link href="/financeiro/configuracoes/precos" className="rounded-xl border border-slate-200 p-4 text-sm font-semibold text-slate-800 hover:border-[#1F6B3B] hover:text-[#1F6B3B]">
+                  Preços e benefícios
+                  <p className="mt-1 text-xs font-normal text-slate-500">Revisar descontos activos e pendências.</p>
+                </Link>
+              </div>
+            </section>
+          )}
 
-      {/* Resumo do mês */}
-      <section className="space-y-4">
-        <h2 className="text-lg font-semibold text-slate-900">Resumo do Mês</h2>
-        <div className="grid gap-4 md:grid-cols-4">
-          <MiniStat label="Alunos Inadimplentes" value={alunosInadimplentes} />
-          <MiniStat label="Alunos em Dia" value={alunosEmDia} />
-          <MiniStat label="Pagamentos Confirmados" value={totalConfirmados} />
-          <MiniStat label="Conciliações Pendentes" value={totalPendentes} />
+          {view === "fecho" && (
+            <section className="rounded-xl border border-slate-200/70 bg-white p-5 shadow-sm">
+              <h2 className="text-lg font-semibold text-slate-900">Fecho do mês</h2>
+              <p className="mt-1 text-xs text-slate-500">Checklist progressiva para não deixar passos críticos para trás.</p>
+              <div className="mt-4 space-y-3">
+                <ChecklistItem ok={pagamentosRecentes.length > 0} label="Pagamentos do dia sincronizados" detail={`${pagamentosRecentes.length} eventos capturados`} />
+                <ChecklistItem ok={previsto > 0} label="Meta mensal carregada" detail={kwanza.format(previsto)} />
+                <ChecklistItem ok={percentPago >= 60} label="Cobrança dentro do nível esperado" detail={`${percentPago}% do previsto`} />
+                <ChecklistItem ok={totalPendentes === 0} label="Conciliações pendentes resolvidas" detail={`${totalPendentes} pendências`} />
+              </div>
+              <div className="mt-5 flex flex-wrap items-center gap-2">
+                <Link href="/financeiro/fecho" className="rounded-lg bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95">
+                  Abrir fecho do mês
+                </Link>
+                <Link href="/financeiro/relatorios/fluxo-caixa" className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-[#1F6B3B] hover:text-[#1F6B3B]">
+                  Relatório de fluxo
+                </Link>
+              </div>
+            </section>
+          )}
+
+          <section className="space-y-4">
+            <h2 className="flex items-center gap-2 text-lg font-semibold text-slate-900">
+              <DollarSign className="h-4 w-4 text-slate-400" /> Extrato por aluno
+            </h2>
+            {!aluno ? (
+              <div className="rounded-xl border border-dashed border-slate-200/70 bg-slate-50 py-12 text-center">
+                <Search className="mx-auto mb-3 h-12 w-12 text-slate-300" />
+                <h3 className="text-lg font-medium text-slate-800">Nenhum aluno selecionado</h3>
+                <p className="text-slate-500">Use a Busca Global (Ctrl+K) para abrir o dossiê financeiro.</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">Extrato de: {alunoNome}</h3>
+                  <p className="text-sm text-slate-500">Histórico completo de cobranças</p>
+                </div>
+
+                <div className="overflow-hidden rounded-xl border border-slate-200/70 bg-white shadow-sm">
+                  <table className="min-w-full divide-y divide-slate-200/70 text-sm">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left font-medium uppercase text-slate-500">Referência</th>
+                        <th className="px-6 py-3 text-left font-medium uppercase text-slate-500">Vencimento</th>
+                        <th className="px-6 py-3 text-left font-medium uppercase text-slate-500">Valor</th>
+                        <th className="px-6 py-3 text-center font-medium uppercase text-slate-500">Status</th>
+                        <th className="px-6 py-3 text-right font-medium uppercase text-slate-500">Ação</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200/70 bg-white">
+                      {mensalidades.map((mens) => (
+                        <tr key={mens.id} className="hover:bg-slate-50">
+                          <td className="px-6 py-4 font-medium text-slate-800">
+                            {new Date(0, (mens.mes_referencia || 1) - 1).toLocaleString("pt-PT", { month: "long" })} / {mens.ano_referencia}
+                          </td>
+                          <td className="px-6 py-4 text-slate-500">
+                            {mens.data_vencimento ? new Date(mens.data_vencimento).toLocaleDateString("pt-PT") : "—"}
+                          </td>
+                          <td className="px-6 py-4 font-mono font-bold text-slate-800">{kwanza.format(mens.valor_previsto ?? mens.valor ?? 0)}</td>
+                          <td className="px-6 py-4 text-center">
+                            {mens.status === "pago" ? (
+                              <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                                <CheckCircle className="mr-1 h-3 w-3" /> Pago
+                              </span>
+                            ) : mens.data_vencimento && new Date(mens.data_vencimento) < new Date() ? (
+                              <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">
+                                <AlertCircle className="mr-1 h-3 w-3" /> Atrasado
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">
+                                <Clock className="mr-1 h-3 w-3" /> Pendente
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            {mens.status !== "pago" ? (
+                              <RegistrarPagamentoButton mensalidadeId={mens.id} valor={mens.valor_previsto ?? mens.valor ?? 0} />
+                            ) : (
+                              <div className="flex flex-wrap items-center justify-end gap-2">
+                                <ReciboPrintButton
+                                  mensalidadeId={mens.id}
+                                  escolaNome={escolaNome}
+                                  alunoNome={alunoNome}
+                                  valor={mens.valor_pago_total ?? mens.valor_previsto ?? mens.valor ?? 0}
+                                  dataPagamento={mens.data_pagamento_efetiva ?? new Date().toISOString()}
+                                />
+                                <EstornarMensalidadeButton mensalidadeId={mens.id} />
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </section>
         </div>
-      </section>
+
+        <aside className="space-y-4 lg:sticky lg:top-24">
+          <section className="rounded-xl border border-slate-200/70 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">Pagamentos do dia</h2>
+                <p className="text-xs text-slate-500">Total acumulado: {kwanza.format(totalPagamentosHoje)}</p>
+              </div>
+              <Link href="/financeiro/pagamentos" className="text-xs font-semibold text-[#1F6B3B] hover:underline">
+                Ver todos
+              </Link>
+            </div>
+            <div className="space-y-3">
+              {pagamentosRecentes.length === 0 ? (
+                <div className="text-sm text-slate-500">Nenhum pagamento hoje.</div>
+              ) : (
+                pagamentosRecentes.slice(0, 8).map((pagamento) => (
+                  <div key={pagamento.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 p-3">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold text-slate-900">
+                        {pagamento.aluno_id ? `Aluno ${pagamento.aluno_id.slice(0, 8)}…` : "Aluno"}
+                      </div>
+                      <div className="text-xs text-slate-500">{pagamento.metodo ?? "—"}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-mono text-sm font-semibold text-slate-900">{kwanza.format(Number(pagamento.valor_pago ?? 0))}</div>
+                      <div className="text-xs text-slate-500">
+                        {pagamento.created_at
+                          ? new Date(pagamento.created_at).toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" })
+                          : "—"}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+
+          <section className="space-y-4 rounded-xl border border-slate-200/70 bg-white p-5 shadow-sm">
+            <h2 className="text-lg font-semibold text-slate-900">Resumo do mês</h2>
+            <div className="grid gap-3">
+              <MiniStat label="Alunos Inadimplentes" value={alunosInadimplentes} />
+              <MiniStat label="Alunos em Dia" value={alunosEmDia} />
+              <MiniStat label="Pagamentos Confirmados" value={totalConfirmados} />
+              <MiniStat label="Conciliações Pendentes" value={totalPendentes} />
+            </div>
+          </section>
+        </aside>
+      </div>
     </main>
   );
 }
@@ -520,6 +593,21 @@ export default async function FinanceiroDashboardPage({
 //
 // --- COMPONENTES DE APOIO ---
 //
+
+
+function ChecklistItem({ ok, label, detail }: { ok: boolean; label: string; detail: string }) {
+  return (
+    <div className="flex items-start gap-3 rounded-lg border border-slate-100 p-3">
+      <span className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${ok ? "bg-[#1F6B3B] text-white" : "bg-slate-100 text-slate-500"}`}>
+        {ok ? "✓" : "•"}
+      </span>
+      <div className="min-w-0">
+        <p className={`text-sm font-semibold ${ok ? "text-slate-500 line-through" : "text-slate-900"}`}>{label}</p>
+        <p className="text-xs text-slate-500">{detail}</p>
+      </div>
+    </div>
+  );
+}
 
 function Card({
   title,
@@ -542,42 +630,9 @@ function Card({
         <span className="text-sm text-slate-600">{title}</span>
         <div className="text-klasse-gold-400">{icon}</div>
       </div>
-      <div className={`text-2xl font-bold ${valueClassName || "text-slate-900"}`}>{value}</div>
+      <div className={`font-mono text-2xl font-bold ${valueClassName || "text-slate-900"}`}>{value}</div>
       {helper && <div className="text-xs text-slate-500">{helper}</div>}
     </div>
-  );
-}
-
-function QuickLink({
-  href,
-  title,
-  description,
-  icon,
-}: {
-  href: string;
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      className="group bg-white border border-slate-200/70 p-5 rounded-xl shadow-sm hover:shadow-md transition-all flex flex-col gap-3"
-    >
-      <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center text-klasse-gold-500">
-        {icon}
-      </div>
-
-      <div>
-        <h3 className="text-slate-800 font-semibold text-sm">{title}</h3>
-        <p className="text-slate-500 text-xs leading-relaxed">{description}</p>
-      </div>
-
-      <div className="flex items-center gap-1 text-klasse-green-500 text-sm font-medium group-hover:underline mt-auto pt-2">
-        Aceder
-        <ArrowRight className="h-4 w-4" />
-      </div>
-    </Link>
   );
 }
 
@@ -590,7 +645,7 @@ function MiniStat({
 }) {
   return (
     <div className="p-4 rounded-xl border border-slate-200/70 bg-white shadow-sm">
-      <div className="text-2xl font-bold text-slate-900">{value}</div>
+      <div className="font-mono text-2xl font-bold text-slate-900">{value}</div>
       <div className="text-slate-500 text-xs mt-1">{label}</div>
     </div>
   );
