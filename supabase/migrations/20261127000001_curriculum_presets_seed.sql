@@ -231,6 +231,7 @@ VALUES
   ('esg_puniv_cch','Língua Estrangeira II','12ª Classe','ESPECIFICA',4,'core'),
   ('esg_puniv_cch','História','12ª Classe','ESPECIFICA',3,'core'),
   ('esg_puniv_cch','Geografia','12ª Classe','ESPECIFICA',3,'core'),
+  ('esg_puniv_cch','Matemática','12ª Classe','ESPECIFICA',2,'core'),
   ('esg_puniv_cch','Literatura','12ª Classe','ESPECIFICA',2,'core'),
   ('esg_puniv_cch','Opção','12ª Classe','ESPECIFICA',2,'core'),
   ('esg_puniv_artes','Língua Portuguesa','10ª Classe','SOCIO_CULTURAL',4,'core'),
