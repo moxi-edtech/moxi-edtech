@@ -333,7 +333,7 @@ export default async function FinanceiroDashboardPage({
                 <Card title="Cobrado" value={kwanza.format(realizado)} valueClassName="text-[#1F6B3B]" helper={`+${percentPago}% do previsto`} icon={<Wallet className="h-5 w-5" />} />
                 <Card title="Previsto" value={kwanza.format(previsto)} valueClassName="text-slate-700" helper="Meta do mês" icon={<TrendingUp className="h-5 w-5" />} />
                 <Card title="Em Atraso" value={kwanza.format(inadimplenciaTotal)} valueClassName="text-rose-600" helper={`${alunosInadimplentes} alunos`} icon={<AlertCircle className="h-5 w-5" />} />
-                <Card title="Descontos / Pendências" value={kwanza.format(totalPendentes)} valueClassName="text-amber-600" helper="Itens a regularizar" icon={<BadgePercent className="h-5 w-5" />} />
+                <Card title="Descontos / Pendências" value={kwanza.format(totalPendentes)} valueClassName="text-klasse-gold" helper="Itens a regularizar" icon={<BadgePercent className="h-5 w-5" />} />
               </section>
 
               <section className="rounded-xl border border-slate-200/70 bg-white p-5 shadow-sm">
@@ -499,7 +499,7 @@ export default async function FinanceiroDashboardPage({
                           <td className="px-6 py-4 font-mono font-bold text-slate-800">{kwanza.format(mens.valor_previsto ?? mens.valor ?? 0)}</td>
                           <td className="px-6 py-4 text-center">
                             {mens.status === "pago" ? (
-                              <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                              <span className="inline-flex items-center rounded-full bg-[#1F6B3B]/10 px-2.5 py-0.5 text-xs font-medium text-[#1F6B3B]">
                                 <CheckCircle className="mr-1 h-3 w-3" /> Pago
                               </span>
                             ) : mens.data_vencimento && new Date(mens.data_vencimento) < new Date() ? (
@@ -507,7 +507,7 @@ export default async function FinanceiroDashboardPage({
                                 <AlertCircle className="mr-1 h-3 w-3" /> Atrasado
                               </span>
                             ) : (
-                              <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">
+                              <span className="inline-flex items-center rounded-full bg-klasse-gold/15 px-2.5 py-0.5 text-xs font-medium text-klasse-gold">
                                 <Clock className="mr-1 h-3 w-3" /> Pendente
                               </span>
                             )}
@@ -598,7 +598,7 @@ export default async function FinanceiroDashboardPage({
 function ChecklistItem({ ok, label, detail }: { ok: boolean; label: string; detail: string }) {
   return (
     <div className="flex items-start gap-3 rounded-lg border border-slate-100 p-3">
-      <span className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${ok ? "bg-klasse-gold text-white" : "bg-slate-100 text-slate-500"}`}>
+      <span className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${ok ? "bg-[#1F6B3B] text-white" : "bg-slate-100 text-slate-500"}`}>
         {ok ? "✓" : "•"}
       </span>
       <div className="min-w-0">
@@ -628,7 +628,7 @@ function Card({
     >
       <div className="flex items-center justify-between">
         <span className="text-sm text-slate-600">{title}</span>
-        <div className="text-klasse-gold-400">{icon}</div>
+        <div className="text-klasse-gold">{icon}</div>
       </div>
       <div className={`font-mono text-2xl font-bold ${valueClassName || "text-slate-900"}`}>{value}</div>
       {helper && <div className="text-xs text-slate-500">{helper}</div>}
