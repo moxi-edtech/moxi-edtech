@@ -60,7 +60,7 @@ export default function Sidebar({
     <aside
       className={cn(
         "h-screen sticky top-0 z-40 border-r border-slate-800/80 bg-slate-950 text-slate-100",
-        "transition-[width] duration-200 ease-out"
+        "transition-[width] duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)]"
       )}
       style={
         {
