@@ -2,9 +2,8 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { AlertCircle, ArrowRight, Wallet, TrendingUp, TrendingDown, Minus } from "lucide-react";
-import SecaoLabel from "@/components/shared/SecaoLabel";
-
 import KpiSection      from "./KpiSection";
 import NoticesSection  from "./NoticesSection";
 import EventsSection   from "./EventsSection";
@@ -43,6 +42,10 @@ type Props = {
   financeiroHref?:      string;
   inadimplenciaTop?:    InadimplenciaTopRow[];
   pagamentosRecentes?:  PagamentoRecenteRow[];
+  receitaResumo?: {
+    previsto: number;
+    realizado: number;
+  };
 };
 
 // ─── Currency formatter ───────────────────────────────────────────────────────
@@ -87,21 +90,6 @@ function AlertBanner({ href, lines, tone }: AlertBannerProps) {
           <ArrowRight className="h-4 w-4" />
         </div>
       </Link>
-    </div>
-  );
-}
-
-// ─── Section header ───────────────────────────────────────────────────────────
-
-function SectionHeader({ title, href, linkLabel }: { title: string; href?: string; linkLabel?: string }) {
-  return (
-    <div className="flex items-center justify-between mb-4">
-      <SecaoLabel>{title}</SecaoLabel>
-      {href && linkLabel && (
-        <Link href={href} className="text-xs font-semibold text-[#1F6B3B] hover:underline">
-          {linkLabel}
-        </Link>
-      )}
     </div>
   );
 }
@@ -178,8 +166,23 @@ export default function EscolaAdminDashboardContent({
   financeiroHref,
   inadimplenciaTop   = [],
   pagamentosRecentes = [],
+  receitaResumo,
 }: Props) {
   const financeBase = financeiroHref ?? `/escola/${escolaId}/financeiro`;
+  const [progress, setProgress] = useState(0);
+
+  const horaAtual = new Date().getHours();
+  const saudacao = horaAtual < 12 ? "Bom dia" : horaAtual < 19 ? "Boa tarde" : "Boa noite";
+
+  const previstoReceita = Number(receitaResumo?.previsto ?? 0);
+  const realizadoReceita = Number(receitaResumo?.realizado ?? 0);
+  const percentualReceita =
+    previstoReceita > 0 ? Math.min(100, Math.round((realizadoReceita / previstoReceita) * 100)) : 0;
+
+  useEffect(() => {
+    const timer = setTimeout(() => setProgress(percentualReceita), 150);
+    return () => clearTimeout(timer);
+  }, [percentualReceita]);
 
   // Collect currículo alerts into a unified list
   const curriculoAlerts: { bold: string; sub: string }[] = [];
@@ -257,9 +260,14 @@ export default function EscolaAdminDashboardContent({
           <h1 className="text-2xl font-black text-slate-900 tracking-tight leading-none">
             Dashboard
           </h1>
-          {escolaNome && (
-            <p className="text-sm font-medium text-slate-500 mt-1">{escolaNome}</p>
-          )}
+          <div className="mt-1 flex items-center gap-2">
+            <p className="text-sm font-medium text-slate-500">{saudacao}</p>
+            <div className="flex items-center gap-1.5">
+              <div className="h-1.5 w-1.5 rounded-full bg-[#4ade80] shadow-[0_0_8px_#4ade80] animate-pulse" />
+              <span className="text-[10px] uppercase tracking-widest text-slate-500">Live</span>
+            </div>
+            {escolaNome && <p className="text-sm font-medium text-slate-500">· {escolaNome}</p>}
+          </div>
         </div>
 
         {anoLetivo && (
@@ -283,7 +291,36 @@ export default function EscolaAdminDashboardContent({
         financeiroHref={financeiroHref}
       />
 
-      {/* ── 4. ALERT BANNERS ─────────────────────────────────────────────────── */}
+      {/* ── 4. PREVISÃO DE RECEITA ───────────────────────────────────────────── */}
+      {(previstoReceita > 0 || realizadoReceita > 0) && (
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Previsão de receita</p>
+              <p className="mt-2 text-lg font-bold text-slate-900">
+                {moeda.format(realizadoReceita)}
+                <span className="ml-1 text-sm font-medium text-slate-500">de {moeda.format(previstoReceita)}</span>
+              </p>
+            </div>
+            <p className="text-2xl font-black text-[#1F6B3B]">{percentualReceita}%</p>
+          </div>
+
+          <div className="mt-4">
+            <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-[#1F6B3B] to-[#4ade80] shadow-[0_0_16px_#4ade8044]"
+                style={{
+                  width: `${progress}%`,
+                  transition: "width 1.4s cubic-bezier(0.16,1,0.3,1)",
+                }}
+              />
+            </div>
+            <p className="mt-2 text-xs font-semibold text-slate-500">{percentualReceita}% cobrado no período actual</p>
+          </div>
+        </section>
+      )}
+
+      {/* ── 5. ALERT BANNERS ─────────────────────────────────────────────────── */}
       {(typeof pendingTurmasCount === "number" && pendingTurmasCount > 0) || curriculoAlerts.length > 0 ? (
         <div className="space-y-2">
           {typeof pendingTurmasCount === "number" && pendingTurmasCount > 0 && (
@@ -306,7 +343,7 @@ export default function EscolaAdminDashboardContent({
         </div>
       ) : null}
 
-      {/* ── 4. CHARTS ────────────────────────────────────────────────────────── */}
+      {/* ── 6. CHARTS ────────────────────────────────────────────────────────── */}
       <div className="animate-in fade-in duration-500">
         <ChartsSection
           meses={charts?.meses}
@@ -315,7 +352,7 @@ export default function EscolaAdminDashboardContent({
         />
       </div>
 
-      {/* ── 5. FINANCE CARDS ─────────────────────────────────────────────────── */}
+      {/* ── 7. FINANCE CARDS ─────────────────────────────────────────────────── */}
       <section className="grid gap-5 lg:grid-cols-2 animate-in fade-in duration-500">
 
         {/* Pagamentos do dia */}
@@ -398,7 +435,7 @@ export default function EscolaAdminDashboardContent({
         </FinanceCard>
       </section>
 
-      {/* ── 6. BOTTOM GRID ───────────────────────────────────────────────────── */}
+      {/* ── 8. BOTTOM GRID ───────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start animate-in fade-in duration-700">
         <div className="lg:col-span-2 space-y-6">
           <QuickActionsSection escolaId={escolaId} setupStatus={setupStatus} />
