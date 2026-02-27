@@ -29,6 +29,9 @@ DECLARE
   v_modelo_avaliacao_id uuid;
   v_existing_audit bigint;
   v_existing_details jsonb;
+  v_course_code text;
+  v_class_name text;
+  v_class_number text;
   letters text[] := ARRAY['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'];
 BEGIN
   IF p_escola_id IS DISTINCT FROM public.current_tenant_escola_id() THEN
@@ -68,6 +71,18 @@ BEGIN
     RAISE EXCEPTION 'Ano letivo % não encontrado para a escola %.', p_ano_letivo, p_escola_id;
   END IF;
 
+  SELECT
+      regexp_replace(upper(coalesce(course_code, codigo, left(nome, 3))), '[^A-Z0-9]', '', 'g')
+    INTO v_course_code
+    FROM public.cursos
+   WHERE escola_id = p_escola_id
+     AND id = p_curso_id
+   LIMIT 1;
+
+  IF v_course_code IS NULL OR length(trim(v_course_code)) = 0 THEN
+    v_course_code := 'CUR';
+  END IF;
+
   SELECT id
     INTO v_published_curriculo_id
     FROM public.curso_curriculos
@@ -86,7 +101,21 @@ BEGIN
       v_quantidade := COALESCE((v_turma_data->>'quantidade')::int, 1);
       FOR i IN 1..v_quantidade LOOP
         v_turma_letter := letters[i];
-        v_turma_nome_final := (v_turma_data->>'nome')::text || ' ' || v_turma_letter;
+        v_turno := (v_turma_data->>'turno')::text;
+
+        SELECT nome
+          INTO v_class_name
+          FROM public.classes
+         WHERE escola_id = p_escola_id
+           AND id = (v_turma_data->>'classeId')::uuid
+         LIMIT 1;
+
+        v_class_number := regexp_replace(coalesce(v_class_name, ''), '\\D', '', 'g');
+        IF v_class_number IS NULL OR length(trim(v_class_number)) = 0 THEN
+          v_class_number := regexp_replace(upper(coalesce(v_class_name, '')), '\\s+', '', 'g');
+        END IF;
+
+        v_turma_nome_final := v_course_code || '-' || v_class_number || '-' || upper(v_turno) || '-' || v_turma_letter;
 
         INSERT INTO public.turmas (
           escola_id,
@@ -106,7 +135,7 @@ BEGIN
           p_ano_letivo,
           v_ano_letivo_id,
           v_turma_nome_final,
-          (v_turma_data->>'turno')::text,
+          v_turno,
           COALESCE(v_capacidade_maxima, 35),
           'ativo'
         )
@@ -153,8 +182,20 @@ BEGIN
         FOR v_turno IN SELECT jsonb_array_elements_text(p_generation_params->'turnos') LOOP
           v_quantidade := COALESCE((v_turma_data->>'quantidade')::int, 1);
           FOR i IN 1..v_quantidade LOOP
-            v_turma_letter := letters[i];
-            v_turma_nome_final := (v_turma_data->>'nome')::text || ' ' || v_turno || ' - ' || v_turma_letter;
+          v_turma_letter := letters[i];
+          SELECT nome
+            INTO v_class_name
+            FROM public.classes
+           WHERE escola_id = p_escola_id
+             AND id = (v_turma_data->>'classeId')::uuid
+           LIMIT 1;
+
+          v_class_number := regexp_replace(coalesce(v_class_name, ''), '\\D', '', 'g');
+          IF v_class_number IS NULL OR length(trim(v_class_number)) = 0 THEN
+            v_class_number := regexp_replace(upper(coalesce(v_class_name, '')), '\\s+', '', 'g');
+          END IF;
+
+          v_turma_nome_final := v_course_code || '-' || v_class_number || '-' || upper(v_turno) || '-' || v_turma_letter;
 
             INSERT INTO public.turmas (
               escola_id,

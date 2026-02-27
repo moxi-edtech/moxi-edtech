@@ -9,6 +9,7 @@ import {
 import { PRESET_TO_TYPE } from "@/lib/courseTypes";
 import { BookOpen, Briefcase, Layers, Check } from "lucide-react";
 import { usePresetCounts } from "@/hooks/usePresetCounts";
+import { usePresetsCatalog } from "@/hooks/usePresetSubjects";
 
 interface CurriculumPresetSelectorProps {
   value: CurriculumKey | null;
@@ -46,6 +47,11 @@ export function CurriculumPresetSelector({
   onChange,
 }: CurriculumPresetSelectorProps) {
   const { counts, loading: countsLoading } = usePresetCounts();
+  const presetKeys = useMemo(
+    () => Object.keys(CURRICULUM_PRESETS_META) as CurriculumKey[],
+    []
+  );
+  const { catalogMap: presetsCatalog } = usePresetsCatalog(presetKeys);
   const grouped = useMemo(() => {
     const groups: Record<GroupId, PresetCard[]> = {
       basico: [],
@@ -63,17 +69,18 @@ export function CurriculumPresetSelector({
       (typeof CURRICULUM_PRESETS_META)[CurriculumKey]
     ][]).forEach(([key, meta]) => {
       const group = resolveGroup(key);
+      const catalog = presetsCatalog[key];
       groups[group].push({
         key,
-        title: meta.label,
-        badge: meta.badge,
-        desc: meta.description,
+        title: catalog?.name ?? meta.label,
+        badge: catalog?.badge ?? meta.badge,
+        desc: catalog?.description ?? meta.description,
         group,
       });
     });
 
     return groups;
-  }, []);
+  }, [presetsCatalog]);
 
   return (
     <section className="w-full space-y-8">

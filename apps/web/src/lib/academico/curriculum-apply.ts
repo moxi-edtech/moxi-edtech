@@ -266,6 +266,7 @@ async function upsertCursoMatriz(args: {
   matrix: Record<string, boolean>;
   subjects: string[];
   disciplinaIdByNorm: Map<string, string>;
+  presetSubjectIdByKey?: Map<string, string>;
   cursoCurriculoIdByClasse?: Map<string, string> | null;
   cargaByClass?: Record<string, number>;
 }) {
@@ -277,6 +278,7 @@ async function upsertCursoMatriz(args: {
     matrix,
     subjects,
     disciplinaIdByNorm,
+    presetSubjectIdByKey,
     cursoCurriculoIdByClasse,
     cargaByClass,
   } = args;
@@ -303,7 +305,21 @@ async function upsertCursoMatriz(args: {
       if (!ativo) continue;
 
       const cargaKey = `${subject}::${clsNome}`;
-      const cargaSemanal = cargaByClass?.[cargaKey];
+      const cargaSemanal =
+        cargaByClass?.[cargaKey] ??
+        cargaByClass?.[
+          `${normalizeNomeNorm(subject)}::${normalizeNomeNorm(clsNome)}`
+        ];
+      let presetSubjectId: string | null = null;
+      if (presetSubjectIdByKey && presetSubjectIdByKey.size > 0) {
+        const presetKey = `${normalizeNomeNorm(subject)}::${normalizeNomeNorm(clsNome)}`;
+        presetSubjectId = presetSubjectIdByKey.get(presetKey) ?? null;
+        if (!presetSubjectId) {
+          throw new Error(
+            `Disciplina fora do preset: ${subject} (${clsNome}).`
+          );
+        }
+      }
       const curriculoId = cursoCurriculoIdByClasse?.get(cls.id) ?? null;
 
       rows.push({
@@ -312,6 +328,7 @@ async function upsertCursoMatriz(args: {
         curso_curriculo_id: curriculoId,
         classe_id: cls.id,
         disciplina_id: disciplinaId,
+        preset_subject_id: presetSubjectId,
         carga_horaria: null,
         carga_horaria_semanal: Number.isFinite(cargaSemanal)
           ? Number(cargaSemanal)
@@ -572,7 +589,11 @@ function buildCargaByClassFromPreset(
     if (hasClassFilter && !classSet.has(classe)) return;
     if (hasSubjectFilter && !subjectSet.has(nome)) return;
     if (Number.isFinite(disciplina?.weeklyHours)) {
-      cargaByClass[`${nome}::${classe}`] = Number(disciplina.weeklyHours);
+      const value = Number(disciplina.weeklyHours);
+      cargaByClass[`${nome}::${classe}`] = value;
+      cargaByClass[
+        `${normalizeNomeNorm(nome)}::${normalizeNomeNorm(classe)}`
+      ] = value;
     }
   });
 
@@ -612,6 +633,7 @@ async function loadPresetSubjects(args: {
       const override = schoolMap.get(row.id);
       if (override?.is_active === false) return null;
       return {
+        id: row.id,
         name: String(override?.custom_name ?? row.name ?? "").trim(),
         gradeLevel: String(row.grade_level ?? "").trim(),
         weeklyHours: Number(override?.custom_weekly_hours ?? row.weekly_hours ?? 0),
@@ -696,11 +718,26 @@ export async function applyCurriculumPreset(
   } = options;
 
   const presetMeta = CURRICULUM_PRESETS_META[presetKey];
-  if (!presetMeta?.course_code) {
+
+  const { data: presetCatalog } = await (supabase as any)
+    .from("curriculum_presets")
+    .select("name, course_code")
+    .eq("id", presetKey)
+    .maybeSingle();
+
+  const courseCode = presetCatalog?.course_code ?? presetMeta?.course_code;
+  if (!courseCode) {
     throw new Error("Preset sem course_code");
   }
 
   const presetSubjects = await loadPresetSubjects({ supabase, escolaId, presetKey });
+  const presetSubjectIdByKey = new Map<string, string>();
+
+  for (const subject of presetSubjects) {
+    if (!subject?.id) continue;
+    const key = `${normalizeNomeNorm(subject.name)}::${normalizeNomeNorm(subject.gradeLevel)}`;
+    presetSubjectIdByKey.set(key, subject.id);
+  }
 
   const advancedConfig = resolveAdvancedConfig(
     { presetKey, customData, advancedConfig: advancedConfigInput },
@@ -715,13 +752,14 @@ export async function applyCurriculumPreset(
   }
 
   const tipo = PRESET_TO_TYPE[presetKey] || "geral";
-  const labelFinal = customData?.label?.trim() || presetMeta.label;
+  const labelFinal =
+    customData?.label?.trim() || presetCatalog?.name?.trim() || presetMeta.label;
 
   const curso = await findOrCreateCursoEscolaSSOT({
     supabase,
     escolaId,
     presetKey,
-    presetMeta: { label: labelFinal, course_code: presetMeta.course_code },
+    presetMeta: { label: labelFinal, course_code: courseCode },
     tipo,
     isCustom: Boolean(customData),
   });
@@ -768,6 +806,7 @@ export async function applyCurriculumPreset(
     matrix: advancedConfig.matrix ?? {},
     subjects: advancedConfig.subjects ?? [],
     disciplinaIdByNorm: discIdByNorm,
+    presetSubjectIdByKey,
     cursoCurriculoIdByClasse: curriculoByClasse,
     cargaByClass: advancedConfig.cargaByClass ?? undefined,
   });

@@ -78,7 +78,11 @@ export class GradeEngine {
     return Math.round(mediaFinal)
   }
 
-  public static generatePautaMatrix(rawGrades: RawGradeRow[], weights?: GradeWeights) {
+  public static generatePautaMatrix(
+    rawGrades: RawGradeRow[],
+    weights?: GradeWeights,
+    weightsByDisciplina?: Record<string, GradeWeights>
+  ) {
     const pautaMap = new Map<string, StudentPautaRow>()
 
     rawGrades.forEach((row) => {
@@ -107,11 +111,17 @@ export class GradeEngine {
       const subject = student.disciplinas[row.disciplina_id]
       const termKey = `t${row.trimestre}` as "t1" | "t2" | "t3"
 
+      const disciplineWeights = weightsByDisciplina?.[row.disciplina_id]
       subject[termKey] = {
         mac: row.mac ?? "-",
         npp: row.npp ?? "-",
         pt: row.pt ?? "-",
-        mt: this.calculateMT(row.mac, row.npp, row.pt, weights),
+        mt: this.calculateMT(
+          row.mac,
+          row.npp,
+          row.pt,
+          disciplineWeights ?? weights
+        ),
       }
     })
 

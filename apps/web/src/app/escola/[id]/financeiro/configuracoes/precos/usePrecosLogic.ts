@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react"
 
-import { CURRICULUM_PRESETS_META } from "@/lib/academico/curriculum-presets"
 import { useToast } from "@/components/feedback/FeedbackSystem"
+import { usePresetsMeta } from "@/hooks/usePresetSubjects"
 
 export type Catalogo = { id: string; nome: string; codigo?: string; curso_id?: string }
 
@@ -84,6 +84,11 @@ export function usePrecosLogic(escolaId: string) {
 
   const cursoIds = useMemo(() => new Set(cursos.map((c) => c.id)), [cursos])
   const classeIds = useMemo(() => new Set(classes.map((c) => c.id)), [classes])
+  const presetKeys = useMemo(
+    () => cursos.map((curso) => curso.codigo).filter(Boolean) as string[],
+    [cursos]
+  )
+  const { metaMap: presetMetaMap } = usePresetsMeta(presetKeys)
 
   const extrairAnoLetivo = (valor?: string | number | null) => {
     if (valor === null || valor === undefined) return null
@@ -122,17 +127,17 @@ export function usePrecosLogic(escolaId: string) {
     if (vinculadasAoCurso.length > 0) return deduplicarClassesPorNome(vinculadasAoCurso)
 
     const cursoSelecionado = cursos.find((c) => c.id === cursoId)
-    const cursoCodigo = cursoSelecionado?.codigo as keyof typeof CURRICULUM_PRESETS_META | undefined
+    const cursoCodigo = cursoSelecionado?.codigo
+    const classesPreset = cursoCodigo ? presetMetaMap[cursoCodigo]?.classes : null
 
-    if (cursoCodigo && CURRICULUM_PRESETS_META[cursoCodigo]) {
-      const nomesPermitidos = CURRICULUM_PRESETS_META[cursoCodigo].classes || []
-      const filtradas = classes.filter((cls) => nomesPermitidos.includes(cls.nome))
+    if (classesPreset && classesPreset.length > 0) {
+      const filtradas = classes.filter((cls) => classesPreset.includes(cls.nome))
       return deduplicarClassesPorNome(filtradas)
     }
 
     return deduplicarClassesPorNome(classes)
     }
-  }, [classes, cursos, deduplicarClassesPorNome])
+  }, [classes, cursos, deduplicarClassesPorNome, presetMetaMap])
 
   useEffect(() => {
     if (!form.curso_id) {

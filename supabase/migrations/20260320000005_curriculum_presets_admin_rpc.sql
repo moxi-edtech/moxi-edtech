@@ -4,7 +4,12 @@ CREATE OR REPLACE FUNCTION public.curriculum_presets_upsert(
   p_id text,
   p_name text,
   p_category public.course_category,
-  p_description text DEFAULT NULL
+  p_description text DEFAULT NULL,
+  p_course_code text DEFAULT NULL,
+  p_badge text DEFAULT NULL,
+  p_recommended boolean DEFAULT NULL,
+  p_class_min int DEFAULT NULL,
+  p_class_max int DEFAULT NULL
 ) RETURNS TABLE (
   id text,
   name text,
@@ -15,6 +20,8 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  v_weekly_hours int;
 BEGIN
   IF NOT public.is_super_or_global_admin() THEN
     RAISE EXCEPTION 'AUTH: Permissão negada.';
@@ -24,12 +31,37 @@ BEGIN
     RAISE EXCEPTION 'DATA: id obrigatório.';
   END IF;
 
-  INSERT INTO public.curriculum_presets (id, name, category, description)
-  VALUES (p_id, p_name, p_category, p_description)
+  INSERT INTO public.curriculum_presets (
+    id,
+    name,
+    category,
+    description,
+    course_code,
+    badge,
+    recommended,
+    class_min,
+    class_max
+  )
+  VALUES (
+    p_id,
+    p_name,
+    p_category,
+    p_description,
+    p_course_code,
+    p_badge,
+    p_recommended,
+    p_class_min,
+    p_class_max
+  )
   ON CONFLICT (id) DO UPDATE
     SET name = EXCLUDED.name,
         category = EXCLUDED.category,
-        description = EXCLUDED.description
+        description = EXCLUDED.description,
+        course_code = COALESCE(EXCLUDED.course_code, curriculum_presets.course_code),
+        badge = COALESCE(EXCLUDED.badge, curriculum_presets.badge),
+        recommended = COALESCE(EXCLUDED.recommended, curriculum_presets.recommended),
+        class_min = COALESCE(EXCLUDED.class_min, curriculum_presets.class_min),
+        class_max = COALESCE(EXCLUDED.class_max, curriculum_presets.class_max)
   RETURNING curriculum_presets.id, curriculum_presets.name,
             curriculum_presets.category, curriculum_presets.description
     INTO id, name, category, description;
@@ -46,7 +78,12 @@ BEGIN
     jsonb_build_object(
       'name', name,
       'category', category,
-      'description', description
+      'description', description,
+      'course_code', p_course_code,
+      'badge', p_badge,
+      'recommended', p_recommended,
+      'class_min', p_class_min,
+      'class_max', p_class_max
     )
   );
 
@@ -75,6 +112,8 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+DECLARE
+  v_weekly_hours int;
 BEGIN
   IF NOT public.is_super_or_global_admin() THEN
     RAISE EXCEPTION 'AUTH: Permissão negada.';
@@ -84,13 +123,35 @@ BEGIN
     RAISE EXCEPTION 'DATA: preset_id obrigatório.';
   END IF;
 
+  IF p_weekly_hours IS NULL OR p_weekly_hours <= 0 THEN
+    IF p_subject_id IS NOT NULL THEN
+      SELECT weekly_hours
+        INTO v_weekly_hours
+        FROM public.curriculum_preset_subjects
+       WHERE id = p_subject_id;
+    ELSE
+      SELECT weekly_hours
+        INTO v_weekly_hours
+        FROM public.curriculum_preset_subjects
+       WHERE preset_id = p_preset_id
+         AND name = p_name
+         AND grade_level = p_grade_level;
+    END IF;
+
+    IF v_weekly_hours IS NULL OR v_weekly_hours <= 0 THEN
+      RAISE EXCEPTION 'DATA: weekly_hours inválido.';
+    END IF;
+  ELSE
+    v_weekly_hours := p_weekly_hours;
+  END IF;
+
   IF p_subject_id IS NOT NULL THEN
     UPDATE public.curriculum_preset_subjects
     SET preset_id = p_preset_id,
         name = p_name,
         grade_level = p_grade_level,
         component = p_component,
-        weekly_hours = COALESCE(p_weekly_hours, 0),
+        weekly_hours = v_weekly_hours,
         subject_type = COALESCE(p_subject_type, subject_type)
     WHERE id = p_subject_id
     RETURNING curriculum_preset_subjects.id, curriculum_preset_subjects.preset_id,
@@ -139,7 +200,7 @@ BEGIN
     p_name,
     p_grade_level,
     p_component,
-    COALESCE(p_weekly_hours, 0),
+    v_weekly_hours,
     COALESCE(p_subject_type, 'core')
   )
   ON CONFLICT (preset_id, name, grade_level) DO UPDATE
@@ -238,7 +299,7 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.curriculum_presets_upsert(text, text, public.course_category, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.curriculum_presets_upsert(text, text, public.course_category, text, text, text, boolean, int, int) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.curriculum_preset_subjects_upsert(uuid, text, text, text, public.discipline_component, int, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.curriculum_preset_subjects_delete(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.curriculum_presets_delete(text) TO authenticated;

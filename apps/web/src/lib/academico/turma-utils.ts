@@ -3,6 +3,8 @@ import {
   type CurriculumKey,
 } from "@/lib/academico/curriculum-presets";
 
+// TODO: V1.2 - Refatorar para receber um lookup map injetado via DB.
+
 export type ShiftCode = "M" | "T" | "N";
 export type ShiftLabel = "Manhã" | "Tarde" | "Noite";
 

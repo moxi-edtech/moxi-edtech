@@ -12,6 +12,107 @@ export type PresetSubject = {
   subjectType?: string | null;
 };
 
+export type PresetMeta = {
+  classes: string[];
+  subjectsCount: number;
+};
+
+export type PresetCatalog = {
+  id: string;
+  name: string;
+  description?: string | null;
+  category?: string | null;
+  courseCode?: string | null;
+  badge?: string | null;
+  recommended?: boolean | null;
+  classMin?: number | null;
+  classMax?: number | null;
+};
+
+const formatClassLabel = (level: string) => {
+  const trimmed = String(level ?? "").trim();
+  if (!trimmed) return "";
+  const numeric = trimmed.replace(/\D/g, "");
+  return numeric ? `${numeric}ª Classe` : trimmed;
+};
+
+const sortClassLabels = (items: string[]) => {
+  return items.sort((a, b) => {
+    const aNum = parseInt(a, 10);
+    const bNum = parseInt(b, 10);
+    const aVal = Number.isFinite(aNum) ? aNum : Number.MAX_SAFE_INTEGER;
+    const bVal = Number.isFinite(bNum) ? bNum : Number.MAX_SAFE_INTEGER;
+    return aVal - bVal;
+  });
+};
+
+export function usePresetsCatalog(presetKeys?: Array<string | null | undefined>) {
+  const supabase = useMemo(() => createClient(), []);
+  const [catalogMap, setCatalogMap] = useState<Record<string, PresetCatalog>>({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const keysSignature = useMemo(() => {
+    const keys = (presetKeys || []).filter(Boolean) as string[];
+    return Array.from(new Set(keys)).sort().join("|");
+  }, [presetKeys]);
+
+  useEffect(() => {
+    let active = true;
+    const keys = keysSignature ? keysSignature.split("|") : [];
+
+    if (keys.length === 0) {
+      setCatalogMap({});
+      setError(null);
+      return;
+    }
+
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const { data, error: loadError } = await supabase
+          .from("curriculum_presets")
+          .select("id, name, description, category, course_code, badge, recommended, class_min, class_max")
+          .in("id", keys);
+        if (loadError) throw loadError;
+
+        const nextMap: Record<string, PresetCatalog> = {};
+        (data || []).forEach((row: any) => {
+          if (!row?.id) return;
+          nextMap[row.id] = {
+            id: row.id,
+            name: row.name,
+            description: row.description ?? null,
+            category: row.category ?? null,
+            courseCode: row.course_code ?? null,
+            badge: row.badge ?? null,
+            recommended: row.recommended ?? null,
+            classMin: row.class_min ?? null,
+            classMax: row.class_max ?? null,
+          };
+        });
+
+        if (!active) return;
+        setCatalogMap(nextMap);
+      } catch (err: any) {
+        if (!active) return;
+        setCatalogMap({});
+        setError(err?.message || "Erro ao carregar");
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    load();
+    return () => {
+      active = false;
+    };
+  }, [keysSignature, supabase]);
+
+  return { catalogMap, loading, error };
+}
+
 export function usePresetSubjects(presetKey?: string | null, escolaId?: string | null) {
   const supabase = useMemo(() => createClient(), []);
   const [subjects, setSubjects] = useState<PresetSubject[]>([]);
@@ -78,4 +179,84 @@ export function usePresetSubjects(presetKey?: string | null, escolaId?: string |
   }, [escolaId, presetKey, supabase]);
 
   return { subjects, loading };
+}
+
+export function usePresetsMeta(presetKeys?: Array<string | null | undefined>, escolaId?: string | null) {
+  const supabase = useMemo(() => createClient(), []);
+  const [metaMap, setMetaMap] = useState<Record<string, PresetMeta>>({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const keysSignature = useMemo(() => {
+    const keys = (presetKeys || []).filter(Boolean) as string[];
+    return Array.from(new Set(keys)).sort().join("|");
+  }, [presetKeys]);
+
+  useEffect(() => {
+    let active = true;
+    const keys = keysSignature ? keysSignature.split("|") : [];
+
+    if (keys.length === 0) {
+      setMetaMap({});
+      setError(null);
+      return;
+    }
+
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const { data: presetRows, error: presetErr } = await supabase
+          .from("curriculum_preset_subjects")
+          .select("preset_id, grade_level, name")
+          .in("preset_id", keys);
+        if (presetErr) throw presetErr;
+
+        const map = new Map<string, { classes: Set<string>; subjects: Set<string> }>();
+        (presetRows || []).forEach((row: any) => {
+          const presetId = row.preset_id;
+          if (!presetId) return;
+          if (!map.has(presetId)) {
+            map.set(presetId, { classes: new Set(), subjects: new Set() });
+          }
+          const entry = map.get(presetId)!;
+          const classLabel = formatClassLabel(row.grade_level);
+          if (classLabel) entry.classes.add(classLabel);
+          const subjectName = String(row.name ?? "").trim();
+          if (subjectName) entry.subjects.add(subjectName);
+        });
+
+        const nextMap: Record<string, PresetMeta> = {};
+        map.forEach((value, key) => {
+          nextMap[key] = {
+            classes: sortClassLabels(Array.from(value.classes)),
+            subjectsCount: value.subjects.size,
+          };
+        });
+
+        if (!active) return;
+        setMetaMap(nextMap);
+      } catch (err: any) {
+        if (!active) return;
+        setMetaMap({});
+        setError(err?.message || "Erro ao carregar");
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    load();
+    return () => {
+      active = false;
+    };
+  }, [keysSignature, supabase, escolaId]);
+
+  return { metaMap, loading, error };
+}
+
+export function usePresetMeta(presetKey?: string | null, escolaId?: string | null) {
+  const { metaMap, loading, error } = usePresetsMeta(presetKey ? [presetKey] : [], escolaId);
+  const meta = presetKey ? metaMap[presetKey] ?? null : null;
+
+  return { meta, loading, error };
 }

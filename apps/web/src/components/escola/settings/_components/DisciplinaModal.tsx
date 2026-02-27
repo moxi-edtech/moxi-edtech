@@ -84,7 +84,7 @@ type Props = {
 type PresetSubject = {
   id: string;
   name: string;
-  grade_level: number | null;
+  grade_level: string | null;
   weekly_hours: number | null;
   subject_type?: string | null;
   conta_para_media_med?: boolean | null;
@@ -167,6 +167,7 @@ export function DisciplinaModal({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [presetSubjects, setPresetSubjects] = useState<PresetSubject[] | null>(null);
+  const [autoFillMessage, setAutoFillMessage] = useState<string | null>(null);
   const allClassIds = useMemo(() => classOptions.map((item) => item.id), [classOptions]);
   const [form, setForm] = useState<DisciplinaForm>(() => ({
     ...emptyDisciplina,
@@ -184,6 +185,7 @@ export function DisciplinaModal({
     if (!open) return;
     setSaving(false);
     setDeleting(false);
+    setAutoFillMessage(null);
     setForm(
       applyDefaults({
         ...emptyDisciplina,
@@ -326,21 +328,24 @@ export function DisciplinaModal({
 
   const handleAutoFill = () => {
     const run = async () => {
+      setAutoFillMessage(null);
       let nextForm = applyDefaults({ ...form });
-      const shouldFetch = Boolean(escolaId && cursoId && presetSubjects === null);
-      const presetItems = shouldFetch
-        ? await (async () => {
-            const res = await fetch(
-              `/api/escolas/${escolaId}/curriculo/padroes?curso_id=${cursoId}`,
-              { cache: "no-store" }
-            );
-            const json = await res.json().catch(() => null);
-            if (!res.ok || !json?.ok) return [];
-            return Array.isArray(json.items) ? (json.items as PresetSubject[]) : [];
-          })()
-        : presetSubjects ?? [];
+      const presetItems = await (async () => {
+        if (!escolaId || !cursoId) return [];
+        const res = await fetch(
+          `/api/escolas/${escolaId}/curriculo/padroes?curso_id=${cursoId}`,
+          { cache: "no-store" }
+        );
+        const json = await res.json().catch(() => null);
+        if (!res.ok || !json?.ok) return [];
+        return Array.isArray(json.items) ? (json.items as PresetSubject[]) : [];
+      })();
 
-      if (shouldFetch) setPresetSubjects(presetItems);
+      setPresetSubjects(presetItems);
+      if (!presetItems.length) {
+        setAutoFillMessage("Sem currículo oficial para este curso.");
+        return;
+      }
 
       const normalize = (value: string) =>
         value
@@ -353,18 +358,19 @@ export function DisciplinaModal({
       const targetId = disciplineSelector?.value ?? initial?.id ?? null;
       const gradeLevels = (applyScope === "selected" && classIds.length > 0 ? classIds : allClassIds)
         .map((id) => classOptions.find((cls) => cls.id === id)?.nome ?? "")
-        .map((name) => {
-          const match = name.match(/(\d+)/);
-          return match ? Number(match[1]) : null;
-        })
-        .filter((value): value is number => Number.isFinite(value));
+        .map((name) => normalize(name))
+        .filter(Boolean);
 
       const matchById = targetId ? presetItems.find((item) => item.id === targetId) : undefined;
       const matches = presetItems.filter((item) => normalize(item.name) === targetName);
       const matchingByGrade = matches.find((item) =>
-        item.grade_level ? gradeLevels.includes(item.grade_level) : false
+        item.grade_level ? gradeLevels.includes(normalize(String(item.grade_level))) : false
       );
       const chosen = matchById ?? matchingByGrade ?? matches[0];
+      if (!chosen) {
+        setAutoFillMessage("Disciplina não encontrada no currículo oficial.");
+        return;
+      }
       const weeklyHours =
         chosen?.school?.custom_weekly_hours ?? chosen?.weekly_hours ?? null;
 
@@ -398,6 +404,7 @@ export function DisciplinaModal({
       }
 
       setForm(nextForm);
+      setAutoFillMessage("Auto-preencher aplicado com sucesso.");
     };
 
     void run();
@@ -527,6 +534,9 @@ export function DisciplinaModal({
             <div>
               <p className="text-sm font-bold text-slate-900">Auto-preencher disciplina</p>
               <p className="text-xs text-slate-500">Aplica padrões do currículo oficial.</p>
+              {autoFillMessage && (
+                <p className="text-[11px] text-slate-500 mt-2">{autoFillMessage}</p>
+              )}
             </div>
             <button
               type="button"

@@ -83,13 +83,29 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     (classes || []).forEach((row) => classIds.add(row.classeId));
     (turmas || []).forEach((row) => classIds.add(row.classeId));
 
+    let resolvedClasses = classes ?? [];
+    let resolvedTurnos = turnos ?? [];
+
     if (classIds.size === 0) {
       const { data: allClasses } = await supabase
         .from('classes')
-        .select('id')
+        .select('id, turno')
         .eq('escola_id', userEscolaId)
         .eq('curso_id', cursoId);
       (allClasses || []).forEach((row: any) => classIds.add(row.id));
+      resolvedClasses = (allClasses || []).map((row: any) => ({
+        classeId: row.id,
+        quantidade: 1,
+      }));
+
+      if (!resolvedTurnos || resolvedTurnos.length === 0) {
+        const classTurnos = (allClasses || [])
+          .map((row: any) => (row.turno || '').toString().trim().toUpperCase())
+          .filter(Boolean);
+        resolvedTurnos = classTurnos.length > 0
+          ? Array.from(new Set(classTurnos)) as Array<'M' | 'T' | 'N'>
+          : ['M'];
+      }
     }
 
     const classIdsList = Array.from(classIds.values());
@@ -123,7 +139,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       p_escola_id: userEscolaId,
       p_curso_id: cursoId,
       p_ano_letivo: anoLetivo,
-      p_generation_params: JSON.parse(JSON.stringify(parsed.data)), // Pass generation params as JSONB
+      p_generation_params: JSON.parse(JSON.stringify({
+        ...parsed.data,
+        classes: resolvedClasses,
+        turnos: resolvedTurnos,
+      })), // Pass generation params as JSONB
       p_idempotency_key: idempotencyKey,
     });
 

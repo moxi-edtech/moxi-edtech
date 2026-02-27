@@ -23,6 +23,7 @@ import {
   type CurriculumKey,
 } from "@/lib/onboarding";
 import { createClient } from "@/lib/supabaseClient";
+import { usePresetsCatalog, usePresetsMeta } from "@/hooks/usePresetSubjects";
 import {
   TYPE_ICONS,
   TYPE_COLORS,
@@ -190,6 +191,12 @@ export default function CurriculumBuilder({
   const [newSubject, setNewSubject] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [presetSubjectsByKey, setPresetSubjectsByKey] = useState<Record<string, string[]>>({});
+  const presetKeys = useMemo(
+    () => Object.keys(CURRICULUM_PRESETS_META) as CurriculumKey[],
+    []
+  );
+  const { metaMap: presetMetaMap } = usePresetsMeta(presetKeys);
+  const { catalogMap: presetCatalogMap } = usePresetsCatalog(presetKeys);
 
   const loadPresetSubjects = useCallback(async (key: CurriculumKey | null) => {
     if (!key) return [];
@@ -331,7 +338,19 @@ export default function CurriculumBuilder({
         // ensure we don't duplicate the `key` property if the meta already includes it
         const meta = CURRICULUM_PRESETS_META[key] || {};
         const { key: _maybeKey, ...rest } = meta as any;
-        return { key, ...rest, isCustom: false };
+        const presetMeta = presetMetaMap[key];
+        const catalog = presetCatalogMap[key];
+        return {
+          key,
+          ...rest,
+          label: catalog?.name ?? rest.label,
+          description: catalog?.description ?? rest.description,
+          badge: catalog?.badge ?? rest.badge,
+          recommended: catalog?.recommended ?? rest.recommended,
+          classes: presetMeta?.classes ?? [],
+          subjectsCount: presetMeta?.subjectsCount ?? 0,
+          isCustom: false,
+        };
       })
       .filter(Boolean)
       .filter(matchesTrack);
@@ -377,17 +396,20 @@ export default function CurriculumBuilder({
       !isCustom && preset.key
         ? CURRICULUM_PRESETS_META[preset.key as CurriculumKey]
         : null;
+    const presetMeta = presetKey ? presetMetaMap[presetKey] : null;
+    const catalog = presetKey ? presetCatalogMap[presetKey] : null;
 
     const label: string =
       preset.label ||
       preset.nome ||
+      catalog?.name ||
       meta?.label ||
       preset.curso_nome ||
       "";
 
     // classes padrão:
     const defaultClasses: string[] =
-      (preset.classes || meta?.classes || []).map(normalizeClassLabel);
+      (preset.classes || presetMeta?.classes || []).map(normalizeClassLabel);
 
     const subjects: string[] =
       isCustom && preset.subjects
@@ -414,6 +436,8 @@ export default function CurriculumBuilder({
     if (config.presetKey === initialPresetKey) return;
 
     const meta = CURRICULUM_PRESETS_META[initialPresetKey];
+    const presetMeta = presetMetaMap[initialPresetKey];
+    const catalog = presetCatalogMap[initialPresetKey];
 
     handleTrackSelect(getSafeTypeFromPreset(initialPresetKey));
 
@@ -422,15 +446,15 @@ export default function CurriculumBuilder({
         void handleSelectPreset(
           {
             key: initialPresetKey,
-            label: meta?.label,
-            classes: (meta?.classes || []).map(normalizeClassLabel),
+            label: catalog?.name ?? meta?.label,
+            classes: (presetMeta?.classes || []).map(normalizeClassLabel),
             subjects,
           },
           false
         );
       })
       .catch(() => null);
-  }, [initialPresetKey, config.presetKey]);
+  }, [initialPresetKey, config.presetKey, presetMetaMap, presetCatalogMap]);
 
   const toggleClass = (cls: string) => {
     setConfig((prev) => {
@@ -1300,6 +1324,12 @@ function CustomCourseModal({
 
   const [newSub, setNewSub] = useState("");
   const { error } = useToast();
+  const presetKeys = useMemo(
+    () => Object.keys(CURRICULUM_PRESETS_META) as CurriculumKey[],
+    []
+  );
+  const { metaMap: presetMetaMap } = usePresetsMeta(presetKeys);
+  const { catalogMap: presetCatalogMap } = usePresetsCatalog(presetKeys);
 
   const handleAddSub = () => {
     const trimmed = newSub.trim();
@@ -1318,7 +1348,7 @@ function CustomCourseModal({
   const presetOptions = Object.entries(CURRICULUM_PRESETS_META).map(
     ([key, meta]) => ({
       key: key as CurriculumKey,
-      label: meta.label,
+      label: presetCatalogMap[key]?.name ?? meta.label,
       tipo: getSafeTypeFromPreset(key),
     })
   );
@@ -1387,7 +1417,7 @@ function CustomCourseModal({
 
                   onLoadPresetSubjects(nextPreset);
                   const defaultClasses =
-                    (CURRICULUM_PRESETS_META[nextPreset]?.classes || []).map(
+                    (presetMetaMap[nextPreset]?.classes || []).map(
                       normalizeClassLabel
                     );
                   const defaultSubjects = getSubjectsFromPreset(nextPreset, presetSubjectsByKey);
