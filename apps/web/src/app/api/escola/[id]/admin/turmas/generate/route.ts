@@ -149,7 +149,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     if (error) {
       console.error('Error calling gerar_turmas_from_curriculo RPC:', error);
-      return NextResponse.json({ ok: false, error: 'Erro ao gerar turmas.' }, { status: 500 });
+      return NextResponse.json({
+        ok: false,
+        error: error.message || 'Erro ao gerar turmas.',
+        details: (error as any)?.details ?? null,
+        code: (error as any)?.code ?? null,
+      }, { status: 500 });
     }
 
     return NextResponse.json({ ok: true, data, idempotency_key: idempotencyKey });
