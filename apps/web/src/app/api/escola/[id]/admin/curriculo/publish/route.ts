@@ -13,6 +13,7 @@ const bodySchema = z.object({
   anoLetivoId: z.string().uuid(),
   version: z.number().int().min(1),
   rebuildTurmas: z.boolean().optional().default(true),
+  autoGenerateTurmas: z.boolean().optional().default(true),
   classeId: z.string().uuid().optional().nullable(),
   bulk: z.boolean().optional().default(false),
 });
@@ -108,7 +109,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ ok: false, error: 'Dados inválidos.', issues: parsed.error.issues }, { status: 400 });
     }
 
-    const { cursoId, anoLetivoId, version, rebuildTurmas, classeId, bulk } = parsed.data;
+    const { cursoId, anoLetivoId, version, rebuildTurmas, autoGenerateTurmas, classeId, bulk } = parsed.data;
     const idempotencyKey = req.headers.get('Idempotency-Key') ?? randomUUID();
 
     const { data, error } = await supabase.rpc('curriculo_publish', {
@@ -340,7 +341,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       entidade_id: result?.published_curriculo_id ?? null,
     }).catch(() => null);
 
-    if (rebuildTurmas) {
+    const shouldGenerateTurmas = rebuildTurmas || autoGenerateTurmas;
+
+    if (shouldGenerateTurmas) {
       const { count: turmasCount } = await supabase
         .from('turmas')
         .select('id', { count: 'estimated', head: true })
