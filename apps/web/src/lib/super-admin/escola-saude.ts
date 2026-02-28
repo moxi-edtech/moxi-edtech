@@ -1,65 +1,67 @@
-import type { EscolaAlerta } from '@/app/super-admin/health/types';
+// apps/web/src/lib/super-admin/escola-saude.ts
+import { supabaseServer } from "@/lib/supabaseServer"
+import { calcularSaudeEscola } from "./escola-saude-utils";
+export * from "./escola-saude-utils";
 
-const ONE_HOUR_MS = 1000 * 60 * 60;
+export async function getGlobalHealthSummary() {
+  const supabase = await supabaseServer()
+  
+  // RPC que já existe no banco para métricas de saúde
+  const { data: metrics, error } = await (supabase as any).rpc("admin_get_escola_health_metrics")
+  
+  if (error || !metrics) {
+    console.error("Erro ao buscar métricas de saúde:", error)
+    return { escolasEmRisco: 0, scoreMedio: 100 }
+  }
 
-export function calcularHorasDesdeLogin(ultimoAcesso: string | null | undefined) {
-  if (!ultimoAcesso) return null;
-  const ultimo = new Date(ultimoAcesso).getTime();
-  if (Number.isNaN(ultimo)) return null;
-  return (Date.now() - ultimo) / ONE_HOUR_MS;
+  const escolas = metrics as any[]
+  
+  // Lógica de "Risco" e Cálculo de Score Real Individual
+  const cincoDiasAtras = new Date()
+  cincoDiasAtras.setDate(cincoDiasAtras.getDate() - 5)
+  
+  let somaScores = 0
+  let escolasEmRisco = 0
+
+  escolas.forEach(e => {
+    // 1. Verifica risco (inatividade)
+    const inativo = !e.ultimo_acesso || new Date(e.ultimo_acesso) < cincoDiasAtras
+    if (inativo) escolasEmRisco++
+
+    // 2. Calcula score real usando a utilidade (que penaliza falta de dados e inatividade)
+    somaScores += calcularSaudeEscola(e)
+  })
+
+  const scoreMedio = escolas.length > 0 
+    ? Math.round(somaScores / escolas.length)
+    : 100
+
+  return { 
+    escolasEmRisco, 
+    scoreMedio 
+  }
 }
 
-export function calcularSaudeEscola(escola: {
-  alunos_ativos: number;
-  onboarding_pct: number | null;
-  ultimo_acesso: string | null;
-  sync_status: 'synced' | 'pending' | 'error' | string | null;
-}): number {
-  const onboarding = escola.onboarding_pct ?? 0;
-  const horasDesdeLogin = calcularHorasDesdeLogin(escola.ultimo_acesso) ?? 9999;
+export async function getGlobalActivities() {
+  const supabase = await supabaseServer()
+  
+  // Busca logs de auditoria relevantes, ignorando PAGE_VIEW para não poluir
+  const { data: logs, error } = await supabase
+    .from("audit_logs")
+    .select("id, created_at, action, entity, escola_id, escolas(nome)")
+    .neq("action", "PAGE_VIEW")
+    .order("created_at", { ascending: false })
+    .limit(8)
 
-  const pontos = [
-    escola.alunos_ativos > 0 ? 25 : 0,
-    onboarding >= 100 ? 25 : Math.round(onboarding / 4),
-    horasDesdeLogin < 48 ? 25 : horasDesdeLogin < 168 ? 12 : 0,
-    escola.sync_status === 'synced' ? 25 : 0,
-  ];
-
-  return pontos.reduce((a, b) => a + b, 0);
-}
-
-export function gerarAlertasEscola(escola: {
-  saude: number;
-  dias_renovacao: number | null;
-  alunos_ativos: number;
-  ultimo_acesso: string | null;
-  sync_status: string | null;
-}): EscolaAlerta[] {
-  const alertas: EscolaAlerta[] = [];
-  const horasDesdeLogin = calcularHorasDesdeLogin(escola.ultimo_acesso) ?? 0;
-
-  if (escola.sync_status === 'error') {
-    alertas.push({ tipo: 'critico', msg: 'Erro de sincronização' });
+  if (error) {
+    console.error("Erro ao buscar logs de actividade:", error)
+    return []
   }
 
-  if (escola.alunos_ativos === 0) {
-    alertas.push({ tipo: 'critico', msg: 'Sem alunos importados' });
-  }
-
-  if (horasDesdeLogin > 72) {
-    alertas.push({
-      tipo: 'aviso',
-      msg: `Sem actividade há ${Math.round(horasDesdeLogin / 24)}d`,
-    });
-  }
-
-  if (escola.dias_renovacao !== null && escola.dias_renovacao < 15) {
-    alertas.push({ tipo: 'aviso', msg: `Renovação em ${escola.dias_renovacao}d` });
-  }
-
-  if (!alertas.length && escola.saude >= 85) {
-    alertas.push({ tipo: 'info', msg: 'Saúde em dia' });
-  }
-
-  return alertas;
+  return (logs || []).map((l: any) => ({
+    id: l.id,
+    titulo: l.escolas?.nome || "Sistema Central",
+    resumo: `${l.action} em ${l.entity}`,
+    data: l.created_at
+  }))
 }

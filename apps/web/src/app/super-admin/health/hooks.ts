@@ -4,7 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabaseClient';
 import type { SystemHealth, EscolaMetricas, OutboxMetrics, InfraMetrics, Alerta } from './types';
-import { calcularSaudeEscola, gerarAlertasEscola } from '@/lib/super-admin/escola-saude';
+import { calcularSaudeEscola, gerarAlertasEscola } from '@/lib/super-admin/escola-saude-utils';
 import { runOutboxWorker, recalcAllAggregates } from './actions';
 
 export function useHealthData() {

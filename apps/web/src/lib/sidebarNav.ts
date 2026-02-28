@@ -1,8 +1,7 @@
 // apps/web/src/lib/sidebarNav.ts
 import { type UserRole } from "@/hooks/useUserRole";
-import * as Icons from "lucide-react";
 
-export type IconName = keyof typeof Icons;
+export type IconName = string;
 
 export type SubNavItem = {
   href: string;
@@ -29,9 +28,6 @@ export const sidebarConfig: SidebarConfig = {
     { href: "/super-admin/diagnostics", label: "Diagnostics", icon: "Activity" },
     { href: "/super-admin/escolas", label: "Escolas", icon: "Building2" },
     { href: "/super-admin/usuarios", label: "Usuários", icon: "Users" },
-    { href: "/super-admin/planos", label: "Planos", icon: "TrendingUp" },
-    { href: "/super-admin/logs", label: "Logs", icon: "Files" },
-    { href: "/super-admin/configuracoes", label: "Configurações", icon: "Settings" },
   ],
   admin: [
     { href: "/escola/[escolaId]/admin/dashboard", label: "Dashboard", icon: "LayoutDashboard" },

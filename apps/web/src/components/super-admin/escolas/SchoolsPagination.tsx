@@ -1,4 +1,7 @@
-import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
+// apps/web/src/components/super-admin/escolas/SchoolsPagination.tsx
+"use client"
+
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 type SchoolsPaginationProps = {
   currentPage: number;
@@ -9,22 +12,32 @@ type SchoolsPaginationProps = {
 export function SchoolsPagination({ currentPage, totalPages, onPageChange }: SchoolsPaginationProps) {
   if (totalPages <= 1) return null;
 
+  const btnCls = "h-9 w-9 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-slate-400 hover:text-[#1F6B3B] hover:border-[#1F6B3B] transition-all disabled:opacity-30 disabled:cursor-not-allowed shadow-sm";
+
   return (
-    <div className="mt-4 flex items-center justify-center gap-3">
+    <div className="mt-8 flex items-center justify-center gap-6">
       <button 
         onClick={() => onPageChange(currentPage - 1)} 
         disabled={currentPage === 1} 
-        className="px-2 py-1 rounded border disabled:opacity-50"
+        className={btnCls}
       >
-        <ChevronLeftIcon className="w-4 h-4" />
+        <ChevronLeft size={18} />
       </button>
-      <span className="text-sm">Página {currentPage} de {Math.max(1, totalPages)}</span>
+      
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Página</span>
+        <span className="h-9 px-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center text-xs font-black text-slate-900">
+          {currentPage}
+        </span>
+        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">de {Math.max(1, totalPages)}</span>
+      </div>
+
       <button 
         onClick={() => onPageChange(currentPage + 1)} 
         disabled={currentPage === totalPages} 
-        className="px-2 py-1 rounded border disabled:opacity-50"
+        className={btnCls}
       >
-        <ChevronRightIcon className="w-4 h-4" />
+        <ChevronRight size={18} />
       </button>
     </div>
   );

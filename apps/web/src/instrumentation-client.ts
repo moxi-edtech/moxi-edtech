@@ -1,19 +1,4 @@
+// apps/web/src/instrumentation-client.ts
 import * as Sentry from "@sentry/nextjs";
 
-const dsn = process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN;
-
-if (dsn) {
-  Sentry.init({
-    dsn,
-    tracesSampleRate: 1.0,
-    debug: false,
-    replaysOnErrorSampleRate: 1.0,
-    replaysSessionSampleRate: 0.1,
-    integrations: [
-      Sentry.replayIntegration({
-        maskAllText: true,
-        blockAllMedia: true,
-      }),
-    ],
-  });
-}
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;

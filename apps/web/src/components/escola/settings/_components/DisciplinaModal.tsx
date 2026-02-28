@@ -31,8 +31,8 @@ export type DisciplinaForm = {
   carga_horaria_semanal: number;
   classificacao: "core" | "complementar" | "optativa";
   entra_no_horario: boolean;
-  is_avaliavel?: boolean | null;
-  conta_para_media_med?: boolean | null;
+  is_avaliavel: boolean;
+  conta_para_media_med: boolean;
   avaliacao: {
     mode: AvaliacaoMode;
     base_id?: string | null;
@@ -40,13 +40,11 @@ export type DisciplinaForm = {
   programa_texto?: string | null;
   class_ids?: string[];
   apply_scope?: "all" | "selected";
-  carga_by_class?: Record<string, number | null>;
 };
 
 type DisciplineOption = {
   id: string;
   nome: string;
-  label?: string;
 };
 
 type ClassOption = {
@@ -55,8 +53,6 @@ type ClassOption = {
 };
 
 type Props = {
-  escolaId?: string | null;
-  cursoId?: string | null;
   open: boolean;
   mode: "create" | "edit";
   initial?: DisciplinaForm | null;
@@ -65,34 +61,20 @@ type Props = {
   existingDisciplines?: DisciplineOption[];
   pendingDisciplines?: DisciplineOption[];
   onSelectPending?: (id: string) => void;
+  classOptions?: ClassOption[];
   disciplineSelector?: {
-    label?: string;
+    label: string;
     value?: string;
-    options: DisciplineOption[];
+    options: { id: string; nome: string; label: string }[];
     onChange: (id: string) => void;
   };
   standardInfo?: {
     baseHours: number | null;
     isOutOfStandard: boolean;
   };
-  classOptions?: ClassOption[];
   onClose: () => void;
   onSave: (payload: DisciplinaForm) => Promise<void> | void;
   onDelete?: (id: string) => Promise<void> | void;
-};
-
-type PresetSubject = {
-  id: string;
-  name: string;
-  grade_level: string | null;
-  weekly_hours: number | null;
-  subject_type?: string | null;
-  conta_para_media_med?: boolean | null;
-  is_avaliavel?: boolean | null;
-  avaliacao_mode?: AvaliacaoMode | string | null;
-  school?: {
-    custom_weekly_hours?: number | null;
-  } | null;
 };
 
 const emptyDisciplina: DisciplinaForm = {
@@ -101,32 +83,45 @@ const emptyDisciplina: DisciplinaForm = {
   area: null,
   periodos_ativos: [1, 2, 3],
   periodo_mode: "ano",
-  carga_horaria_semanal: 0,
+  carga_horaria_semanal: 4,
   classificacao: "core",
   entra_no_horario: true,
-  avaliacao: { mode: "inherit_school", base_id: null },
-  programa_texto: null,
   is_avaliavel: true,
   conta_para_media_med: true,
+  avaliacao: { mode: "inherit_school", base_id: null },
+  programa_texto: null,
 };
 
-function applyDefaults(payload: DisciplinaForm) {
+function inferCargaFromName(nome: string) {
+  const value = normalizeName(nome).toLowerCase();
+  if (value.includes("portugues") || value.includes("língua") || value.includes("lingua")) return 4;
+  if (value.includes("matem")) return 4;
+  if (value.includes("fisic") || value.includes("quim") || value.includes("biolog")) return 3;
+  if (value.includes("hist") || value.includes("geograf") || value.includes("filos") || value.includes("sociol")) return 3;
+  if (value.includes("educa") && value.includes("fisic")) return 2;
+  if (value.includes("informat") || value.includes("tic") || value.includes("laborat")) return 2;
+  return 3;
+}
+
+function applyDefaults(payload: DisciplinaForm): DisciplinaForm {
   return {
     ...payload,
     classificacao: payload.classificacao ?? "core",
     entra_no_horario: payload.entra_no_horario ?? true,
-    avaliacao: {
-      mode: (payload.avaliacao?.mode as AvaliacaoMode) ?? "inherit_school",
-      base_id: payload.avaliacao?.base_id ?? null,
-    },
+    is_avaliavel: payload.is_avaliavel ?? true,
+    conta_para_media_med: payload.conta_para_media_med ?? true,
+    avaliacao: payload.avaliacao?.mode
+      ? payload.avaliacao
+      : { mode: "inherit_school", base_id: null },
     periodo_mode: payload.periodo_mode ?? "ano",
     periodos_ativos:
       payload.periodos_ativos && payload.periodos_ativos.length > 0
         ? payload.periodos_ativos
         : [1, 2, 3],
-    carga_horaria_semanal: payload.carga_horaria_semanal ?? 0,
-    is_avaliavel: payload.is_avaliavel ?? true,
-    conta_para_media_med: payload.conta_para_media_med ?? true,
+    carga_horaria_semanal:
+      payload.carga_horaria_semanal && payload.carga_horaria_semanal > 0
+        ? payload.carga_horaria_semanal
+        : inferCargaFromName(payload.nome || ""),
   };
 }
 
@@ -147,8 +142,6 @@ function isValidCode(code: string) {
 }
 
 export function DisciplinaModal({
-  escolaId,
-  cursoId,
   open,
   mode,
   initial,
@@ -157,17 +150,15 @@ export function DisciplinaModal({
   existingDisciplines = [],
   pendingDisciplines = [],
   onSelectPending,
+  classOptions = [],
   disciplineSelector,
   standardInfo,
-  classOptions = [],
   onClose,
   onSave,
   onDelete,
 }: Props) {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [presetSubjects, setPresetSubjects] = useState<PresetSubject[] | null>(null);
-  const [autoFillMessage, setAutoFillMessage] = useState<string | null>(null);
   const allClassIds = useMemo(() => classOptions.map((item) => item.id), [classOptions]);
   const [form, setForm] = useState<DisciplinaForm>(() => ({
     ...emptyDisciplina,
@@ -185,7 +176,6 @@ export function DisciplinaModal({
     if (!open) return;
     setSaving(false);
     setDeleting(false);
-    setAutoFillMessage(null);
     setForm(
       applyDefaults({
         ...emptyDisciplina,
@@ -301,12 +291,13 @@ export function DisciplinaModal({
       programa_texto: form.programa_texto?.trim() ? form.programa_texto.trim() : null,
       class_ids: classOptions.length > 0 ? scopedClassIds : undefined,
       apply_scope: classOptions.length > 0 ? applyScope : undefined,
+      is_avaliavel: form.is_avaliavel,
+      conta_para_media_med: form.conta_para_media_med,
     };
 
     setSaving(true);
     try {
       await onSave(payload);
-      setForm((prev) => ({ ...prev, ...payload }));
       onClose();
     } finally {
       setSaving(false);
@@ -327,87 +318,7 @@ export function DisciplinaModal({
   if (!open) return null;
 
   const handleAutoFill = () => {
-    const run = async () => {
-      setAutoFillMessage(null);
-      let nextForm = applyDefaults({ ...form });
-      const presetItems = await (async () => {
-        if (!escolaId || !cursoId) return [];
-        const res = await fetch(
-          `/api/escolas/${escolaId}/curriculo/padroes?curso_id=${cursoId}`,
-          { cache: "no-store" }
-        );
-        const json = await res.json().catch(() => null);
-        if (!res.ok || !json?.ok) return [];
-        return Array.isArray(json.items) ? (json.items as PresetSubject[]) : [];
-      })();
-
-      setPresetSubjects(presetItems);
-      if (!presetItems.length) {
-        setAutoFillMessage("Sem currículo oficial para este curso.");
-        return;
-      }
-
-      const normalize = (value: string) =>
-        value
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .toLowerCase()
-          .trim();
-
-      const targetName = normalize(nextForm.nome);
-      const targetId = disciplineSelector?.value ?? initial?.id ?? null;
-      const gradeLevels = (applyScope === "selected" && classIds.length > 0 ? classIds : allClassIds)
-        .map((id) => classOptions.find((cls) => cls.id === id)?.nome ?? "")
-        .map((name) => normalize(name))
-        .filter(Boolean);
-
-      const matchById = targetId ? presetItems.find((item) => item.id === targetId) : undefined;
-      const matches = presetItems.filter((item) => normalize(item.name) === targetName);
-      const matchingByGrade = matches.find((item) =>
-        item.grade_level ? gradeLevels.includes(normalize(String(item.grade_level))) : false
-      );
-      const chosen = matchById ?? matchingByGrade ?? matches[0];
-      if (!chosen) {
-        setAutoFillMessage("Disciplina não encontrada no currículo oficial.");
-        return;
-      }
-      const weeklyHours =
-        chosen?.school?.custom_weekly_hours ?? chosen?.weekly_hours ?? null;
-
-      if (weeklyHours && weeklyHours > 0) {
-        nextForm = { ...nextForm, carga_horaria_semanal: weeklyHours };
-      }
-
-      if (chosen?.subject_type) {
-        const type = String(chosen.subject_type).toLowerCase();
-        if (type === "core" || type === "complementar" || type === "optativa") {
-          nextForm = { ...nextForm, classificacao: type as DisciplinaForm["classificacao"] };
-        }
-      }
-
-      if (typeof chosen?.conta_para_media_med === "boolean") {
-        nextForm = { ...nextForm, conta_para_media_med: chosen.conta_para_media_med };
-      }
-
-      if (typeof chosen?.is_avaliavel === "boolean") {
-        nextForm = { ...nextForm, is_avaliavel: chosen.is_avaliavel };
-      }
-
-      if (chosen?.avaliacao_mode) {
-        nextForm = {
-          ...nextForm,
-          avaliacao: {
-            ...nextForm.avaliacao,
-            mode: chosen.avaliacao_mode as AvaliacaoMode,
-          },
-        };
-      }
-
-      setForm(nextForm);
-      setAutoFillMessage("Auto-preencher aplicado com sucesso.");
-    };
-
-    void run();
+    setForm((prev) => applyDefaults({ ...prev }));
   };
 
   return (
@@ -476,41 +387,19 @@ export function DisciplinaModal({
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {disciplineSelector && (
-            <section className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-              <h3 className="text-xs font-bold uppercase text-slate-500 mb-3">
-                {disciplineSelector.label ?? "Selecionar disciplina"}
-              </h3>
+            <section className="bg-[#1F6B3B]/5 p-5 rounded-xl border border-[#1F6B3B]/20 shadow-sm">
+              <h3 className="text-xs font-bold uppercase text-[#1F6B3B] mb-3">{disciplineSelector.label}</h3>
               <select
                 value={disciplineSelector.value ?? ""}
                 onChange={(event) => disciplineSelector.onChange(event.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm bg-white"
+                className="w-full rounded-xl border border-[#1F6B3B]/20 px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-[#1F6B3B]/30 outline-none transition-all"
               >
-                {disciplineSelector.options.map((disc) => (
-                  <option key={disc.id} value={disc.id}>
-                    {disc.label ?? disc.nome}
+                {disciplineSelector.options.map((opt) => (
+                  <option key={opt.id} value={opt.id}>
+                    {opt.label}
                   </option>
                 ))}
               </select>
-              {standardInfo?.isOutOfStandard && standardInfo.baseHours ? (
-                <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                  <div className="font-semibold">Fora do padrão MED</div>
-                  <div className="mt-1">
-                    Padrão: {standardInfo.baseHours} tempos/semana
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setForm((prev) => ({
-                        ...prev,
-                        carga_horaria_semanal: standardInfo.baseHours ?? prev.carga_horaria_semanal,
-                      }))
-                    }
-                    className="mt-2 rounded-lg bg-amber-500 px-3 py-1.5 text-[11px] font-bold text-white"
-                  >
-                    Usar padrão MED
-                  </button>
-                </div>
-              ) : null}
             </section>
           )}
           {pendingDisciplines.length > 0 && (
@@ -533,10 +422,7 @@ export function DisciplinaModal({
           <section className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-bold text-slate-900">Auto-preencher disciplina</p>
-              <p className="text-xs text-slate-500">Aplica padrões do currículo oficial.</p>
-              {autoFillMessage && (
-                <p className="text-[11px] text-slate-500 mt-2">{autoFillMessage}</p>
-              )}
+              <p className="text-xs text-slate-500">Aplica padrões de carga, períodos e avaliação.</p>
             </div>
             <button
               type="button"
@@ -551,13 +437,6 @@ export function DisciplinaModal({
               Esta disciplina não aparecerá no quadro porque não entra no horário ou a carga semanal está zerada.
             </section>
           )}
-          <section className="bg-white p-4 rounded-xl border border-slate-200 text-sm text-slate-600">
-            <p className="font-semibold text-slate-800">Dica Angola:</p>
-            <p className="text-xs text-slate-500 mt-1">
-              No ensino médio, algumas disciplinas só existem em certas classes (ex.: Filosofia apenas na 12ª).
-              Use o escopo por classe e os trimestres para refletir a realidade.
-            </p>
-          </section>
           {appearsInScheduler && (
             <section className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs text-slate-600">
               Esta disciplina irá gerar <span className="font-semibold text-slate-900">{totalSlots}</span> tempo(s) semanais no quadro.
@@ -626,9 +505,6 @@ export function DisciplinaModal({
             <h3 className="text-sm font-bold text-slate-900 uppercase flex items-center gap-2 mb-4">
               <CalendarDays className="w-4 h-4 text-[#1F6B3B]" /> Quando acontece?
             </h3>
-            <p className="text-xs text-slate-500 mb-3">
-              Se a disciplina só acontece em um trimestre, selecione apenas ele. Ex.: Filosofia só na 12ª classe.
-            </p>
 
             <div className="flex gap-4 mb-4">
               <button
@@ -725,29 +601,78 @@ export function DisciplinaModal({
               {errors.carga_horaria_semanal && (
                 <p className="mt-2 text-xs text-red-600">{errors.carga_horaria_semanal}</p>
               )}
+              {standardInfo && standardInfo.baseHours !== null && (
+                <div className={`mt-4 p-3 rounded-lg border text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 ${
+                  standardInfo.isOutOfStandard ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                }`}>
+                  <AlertCircle size={14} />
+                  Padrão MED para esta classe: {standardInfo.baseHours}h semanais
+                </div>
+              )}
             </section>
 
-            <section className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <section className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
               <h3 className="text-sm font-bold text-slate-900 uppercase flex items-center gap-2">
-                <LayoutGrid className="w-4 h-4 text-[#1F6B3B]" /> Horário
+                <LayoutGrid className="w-4 h-4 text-[#1F6B3B]" /> Horário e Avaliação
               </h3>
-              <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-100">
-                <span className="text-sm font-medium text-slate-700">Entra na grade?</span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setForm((prev) => ({ ...prev, entra_no_horario: !prev.entra_no_horario }))
-                  }
-                  className={`w-12 h-6 rounded-full p-1 transition-colors ${
-                    form.entra_no_horario ? "bg-[#1F6B3B]" : "bg-slate-300"
-                  }`}
-                >
-                  <div
-                    className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
-                      form.entra_no_horario ? "translate-x-6" : "translate-x-0"
+              
+              <div className="space-y-2">
+                <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-100">
+                  <span className="text-sm font-medium text-slate-700">Entra na grade?</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm((prev) => ({ ...prev, entra_no_horario: !prev.entra_no_horario }))
+                    }
+                    className={`w-12 h-6 rounded-full p-1 transition-colors ${
+                      form.entra_no_horario ? "bg-[#1F6B3B]" : "bg-slate-300"
                     }`}
-                  />
-                </button>
+                  >
+                    <div
+                      className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
+                        form.entra_no_horario ? "translate-x-6" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-100">
+                  <span className="text-sm font-medium text-slate-700">É avaliável?</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm((prev) => ({ ...prev, is_avaliavel: !prev.is_avaliavel }))
+                    }
+                    className={`w-12 h-6 rounded-full p-1 transition-colors ${
+                      form.is_avaliavel ? "bg-[#1F6B3B]" : "bg-slate-300"
+                    }`}
+                  >
+                    <div
+                      className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
+                        form.is_avaliavel ? "translate-x-6" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-100">
+                  <span className="text-sm font-medium text-slate-700">Conta para média MED?</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm((prev) => ({ ...prev, conta_para_media_med: !prev.conta_para_media_med }))
+                    }
+                    className={`w-12 h-6 rounded-full p-1 transition-colors ${
+                      form.conta_para_media_med ? "bg-[#1F6B3B]" : "bg-slate-300"
+                    }`}
+                  >
+                    <div
+                      className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${
+                        form.conta_para_media_med ? "translate-x-6" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
             </section>
           </div>

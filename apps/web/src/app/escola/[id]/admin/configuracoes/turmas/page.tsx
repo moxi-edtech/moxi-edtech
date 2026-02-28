@@ -45,6 +45,7 @@ type DisciplinaItem = {
   is_core: boolean;
   participa_horario: boolean;
   is_avaliavel: boolean;
+  conta_para_media_med: boolean;
   avaliacao_mode: "herdar_escola" | "personalizada";
   area?: string | null;
   classificacao?: "core" | "complementar" | "optativa" | null;
@@ -246,6 +247,7 @@ export default function TurmasConfiguracoesPage() {
           is_core: Boolean(item.is_core ?? (item.classificacao === "core" || item.tipo === "core")),
           participa_horario: item.entra_no_horario ?? true,
           is_avaliavel: item.is_avaliavel ?? true,
+          conta_para_media_med: item.conta_para_media_med ?? true,
           avaliacao_mode: item.avaliacao_mode === "custom" ? "personalizada" : "herdar_escola",
           area: item.area ?? null,
           classificacao: item.classificacao ?? null,
@@ -553,6 +555,8 @@ export default function TurmasConfiguracoesPage() {
       carga_horaria_semanal: disciplina.carga_horaria_semanal,
       classificacao: disciplina.classificacao ?? (disciplina.is_core ? "core" : "complementar"),
       entra_no_horario: disciplina.entra_no_horario ?? disciplina.participa_horario,
+      is_avaliavel: disciplina.is_avaliavel ?? true,
+      conta_para_media_med: disciplina.conta_para_media_med ?? true,
       avaliacao: {
         mode: disciplina.avaliacao_mode_key ?? (disciplina.avaliacao_mode === "personalizada" ? "custom" : "inherit_school"),
         base_id: disciplina.avaliacao_disciplina_id ?? null,
@@ -595,7 +599,8 @@ export default function TurmasConfiguracoesPage() {
                 carga_horaria_semanal: payload.carga_horaria_semanal,
                 carga_horaria: payload.carga_horaria_semanal,
                 classificacao: payload.classificacao,
-                is_avaliavel: true,
+                is_avaliavel: payload.is_avaliavel ?? true,
+                conta_para_media_med: payload.conta_para_media_med ?? true,
                 area: payload.area ?? null,
                 periodos_ativos: payload.periodos_ativos,
                 entra_no_horario: payload.entra_no_horario,
@@ -637,7 +642,8 @@ export default function TurmasConfiguracoesPage() {
                 carga_horaria_semanal: payload.carga_horaria_semanal,
                 carga_horaria: payload.carga_horaria_semanal,
                 classificacao: payload.classificacao,
-                is_avaliavel: true,
+                is_avaliavel: payload.is_avaliavel ?? true,
+                conta_para_media_med: payload.conta_para_media_med ?? true,
                 area: payload.area ?? null,
                 periodos_ativos: payload.periodos_ativos,
                 entra_no_horario: payload.entra_no_horario,

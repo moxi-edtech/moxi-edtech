@@ -11,6 +11,7 @@ import AcademicSection from "./AcademicSection";
 import QuickActionsSection from "./QuickActionsSection";
 import ChartsSection   from "./ChartsSection";
 import { RadarOperacional, type OperationalAlert } from "@/components/feedback/FeedbackSystem";
+import { EstadoVazio } from "@/components/harmonia";
 
 import type {
   KpiStats,
@@ -355,17 +356,19 @@ export default function EscolaAdminDashboardContent({
       {/* ── 7. FINANCE CARDS ─────────────────────────────────────────────────── */}
       <section className="grid gap-5 lg:grid-cols-2 animate-in fade-in duration-500">
 
-        {/* Pagamentos do dia */}
+        {/* Entradas de Hoje */}
         <FinanceCard
-          iconBg="bg-emerald-50 text-emerald-600"
+          iconBg="bg-[#1F6B3B]/10 text-[#1F6B3B]"
           icon={<Wallet className="h-4 w-4" />}
-          title="Pagamentos do dia"
-          subtitle="Feed em tempo real"
+          title="Entradas de Hoje"
+          subtitle="Acompanhamento de caixa ao vivo"
           linkHref={`${financeBase}/pagamentos`}
-          linkLabel="Ver todos"
+          linkLabel="Ver histórico"
         >
           {pagamentosRecentes.length === 0 ? (
-            <p className="py-6 text-sm text-slate-400 text-center">Nenhum pagamento hoje.</p>
+            <div className="py-4">
+              <EstadoVazio tipo="notificacoes.nenhuma" />
+            </div>
           ) : (
             pagamentosRecentes.map((p) => (
               <div key={p.id} className="flex items-center justify-between gap-3 py-3">
@@ -393,17 +396,19 @@ export default function EscolaAdminDashboardContent({
           )}
         </FinanceCard>
 
-        {/* Top inadimplentes */}
+        {/* Atenção Prioritária */}
         <FinanceCard
           iconBg="bg-rose-50 text-rose-600"
           icon={<AlertCircle className="h-4 w-4" />}
-          title="Top inadimplentes"
-          subtitle="5 maiores valores em atraso"
+          title="Atenção Prioritária"
+          subtitle="Casos que requerem acompanhamento"
           linkHref={`${financeBase}/radar`}
-          linkLabel="Ver radar completo"
+          linkLabel="Ver radar financeiro"
         >
           {inadimplenciaTop.length === 0 ? (
-            <p className="py-6 text-sm text-slate-400 text-center">Nenhuma inadimplência registada.</p>
+            <div className="py-4">
+              <EstadoVazio tipo="atrasos.nenhum" />
+            </div>
           ) : (
             inadimplenciaTop.map((row) => {
               const nome    = row.aluno_nome?.trim() || "Aluno";

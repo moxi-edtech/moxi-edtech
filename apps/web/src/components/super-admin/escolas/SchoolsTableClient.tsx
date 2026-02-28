@@ -1,91 +1,158 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { Button } from "@/components/ui/Button";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
+
 import ConfigHealthBanner from "@/components/system/ConfigHealthBanner";
+
 import { SchoolsHeader } from "./SchoolsHeader";
 import { SchoolsFilters } from "./SchoolsFilters";
 import { SchoolsTable } from "./SchoolsTable";
 import { SchoolsPagination } from "./SchoolsPagination";
-import type { SchoolsTableProps, School, OnboardingProgress, EditForm } from "./types";
+
+import type { EditForm, OnboardingProgress, School, SchoolsTableProps } from "./types";
 import { parsePlanTier, PLAN_NAMES, type PlanTier } from "@/config/plans";
-import { useToast } from "@/components/feedback/FeedbackSystem";
 
-const BillingModal = dynamic(() => import("@/components/super-admin/SchoolBillingModal"))
-const ConfirmModal = dynamic(() => import("@/components/super-admin/ConfirmActionModal"))
+const BillingModal = dynamic(() => import("@/components/super-admin/SchoolBillingModal"));
+const ConfirmModal = dynamic(() => import("@/components/super-admin/ConfirmActionModal"));
 
-export default function SchoolsTableClient({ 
-  initialSchools, 
-  initialProgress, 
-  initialErrorMsg, 
-  fallbackSource 
+type StatusFilter = "all" | string;
+type PlanFilter = "all" | string;
+type OnboardingFilter = "all" | "done" | "in_progress" | "step1" | "step2" | "step3";
+
+type ConfirmState = {
+  open: boolean;
+  action: "suspend" | "reactivate" | "delete" | null;
+  escolaId: string | null;
+  escolaNome: string;
+};
+
+function normalizeStr(s: string | null | undefined) {
+  return (s || "").toLowerCase();
+}
+
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n));
+}
+
+function prettyPlan(p?: string | null): string {
+  return PLAN_NAMES[parsePlanTier(p)];
+}
+
+export default function SchoolsTableClient({
+  initialSchools,
+  initialProgress,
+  initialErrorMsg,
+  fallbackSource,
 }: SchoolsTableProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const { success, error } = useToast();
 
-  const [schools, setSchools] = useState<School[]>(initialSchools);
+  // ---------- Data state ----------
+  const [schools, setSchools] = useState<School[]>(() =>
+    (initialSchools ?? []).map((s) => ({ ...s, id: String(s.id) }))
+  );
+  const [progress, setProgress] = useState<Record<string, OnboardingProgress>>(() => {
+    const m: Record<string, OnboardingProgress> = {};
+    for (const [k, v] of Object.entries(initialProgress ?? {})) m[String(k)] = v;
+    return m;
+  });
+
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(initialErrorMsg ?? null);
+
+  // ---------- UI state ----------
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | string>("all");
-  const [planFilter, setPlanFilter] = useState<"all" | string>("all");
-  const [progress, setProgress] = useState<Record<string, OnboardingProgress>>(initialProgress);
-  const [billingOpen, setBillingOpen] = useState(false)
-  const [billingSchoolId, setBillingSchoolId] = useState<string | number | null>(null)
-  const [confirmOpen, setConfirmOpen] = useState(false)
-  const [confirmData, setConfirmData] = useState<{ action: 'suspend' | 'reactivate' | 'delete' | null; escolaId: string | number | null; escolaNome: string }>({ action: null, escolaId: null, escolaNome: '' })
-  const [onboardingFilter, setOnboardingFilter] = useState<'all' | 'done' | 'in_progress' | 'step1' | 'step2' | 'step3'>('all')
-  const [currentPage, setCurrentPage] = useState(1)
-  const [editingId, setEditingId] = useState<string | number | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [planFilter, setPlanFilter] = useState<PlanFilter>("all");
+  const [onboardingFilter, setOnboardingFilter] = useState<OnboardingFilter>("all");
+
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<EditForm>({});
-  const [saving, setSaving] = useState<string | number | null>(null);
+  const [savingId, setSavingId] = useState<string | null>(null);
+
+  const [billingOpen, setBillingOpen] = useState(false);
+  const [billingSchoolId, setBillingSchoolId] = useState<string | null>(null);
+
+  const [confirm, setConfirm] = useState<ConfirmState>({
+    open: false,
+    action: null,
+    escolaId: null,
+    escolaNome: "",
+  });
+
   const itemsPerPage = 10;
 
-  // ... (mantém as funções existentes como runRepair, reload, handleRetry, etc.)
-  // ... (mas agora delegando para os componentes menores)
+  // Read initial page from query
+  const initialPage = useMemo(() => {
+    const raw = searchParams?.get("page");
+    const n = raw ? Number(raw) : 1;
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // only once
 
-  // Helpers
-  const normalizeStr = (s: string | null | undefined) => (s || "").toLowerCase();
+  const [currentPage, setCurrentPage] = useState(initialPage);
 
-  // Reload data from server APIs
+  // Abort controller for reload
+  const acRef = useRef<AbortController | null>(null);
+
   const reload = useCallback(async () => {
+    acRef.current?.abort();
+    const ac = new AbortController();
+    acRef.current = ac;
+
     try {
       setLoading(true);
       setErrorMsg(null);
 
-      // List of schools
-      const listRes = await fetch('/api/super-admin/escolas/list', { cache: 'no-store' });
+      // Admin data should not be force-cached. We want fresh.
+      const listRes = await fetch("/api/super-admin/escolas/list", {
+        cache: "no-store",
+        signal: ac.signal,
+      });
+
       const listJson = await listRes.json().catch(() => ({ ok: false }));
       if (!listRes.ok || !listJson?.ok || !Array.isArray(listJson.items)) {
-        throw new Error((listJson && listJson.error) || 'Falha ao recarregar escolas.');
+        throw new Error(listJson?.error || "Falha ao recarregar escolas.");
       }
 
-      // Normalize like server page.tsx does
-      const prettyPlan = (p?: string | null): string => PLAN_NAMES[parsePlanTier(p)];
+      type RawSchool = {
+        id: string;
+        nome: string | null;
+        status: string | null;
+        plano: string | null;
+        last_access: string | null;
+        total_alunos: number;
+        total_professores: number;
+        cidade: string | null;
+        estado: string | null;
+      };
 
-      type RawSchool = { id: string; nome: string | null; status: string | null; plano: string | null; last_access: string | null; total_alunos: number; total_professores: number; cidade: string | null; estado: string | null };
-      const normalized: School[] = (listJson.items as RawSchool[]).map(d => ({
+      const normalized: School[] = (listJson.items as RawSchool[]).map((d) => ({
         id: String(d.id),
-        name: d.nome ?? 'Sem nome',
-        status: (d.status ?? 'ativa') as string,
+        name: d.nome ?? "Sem nome",
+        status: (d.status ?? "ativa") as string,
         plan: prettyPlan(d.plano),
         lastAccess: d.last_access ?? null,
         students: Number(d.total_alunos ?? 0),
         teachers: Number(d.total_professores ?? 0),
-        city: d.cidade ?? '',
-        state: d.estado ?? '',
-        email: '',
-        telefone: '',
-        responsavel: '',
+        city: d.cidade ?? "",
+        state: d.estado ?? "",
+        email: "",
+        telefone: "",
+        responsavel: "",
       }));
+
       setSchools(normalized);
 
-      // Progress map
-      const progRes = await fetch('/api/super-admin/escolas/onboarding/progress', { cache: 'no-store' });
+      const progRes = await fetch("/api/super-admin/escolas/onboarding/progress", {
+        cache: "no-store",
+        signal: ac.signal,
+      });
+
       const progJson = await progRes.json().catch(() => ({ ok: false }));
       if (progRes.ok && progJson?.ok && Array.isArray(progJson.items)) {
         const map: Record<string, OnboardingProgress> = {};
@@ -93,111 +160,147 @@ export default function SchoolsTableClient({
         setProgress(map);
       }
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       const msg = err instanceof Error ? err.message : String(err);
       setErrorMsg(msg);
-      error('Erro ao recarregar dados');
+      toast.error("Erro ao recarregar dados");
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    const shouldAutoLoad = initialSchools.length === 0 || Boolean(initialErrorMsg);
+    const shouldAutoLoad = (initialSchools?.length ?? 0) === 0 || Boolean(initialErrorMsg);
     if (!shouldAutoLoad) return;
     reload();
-  }, [initialSchools.length, initialErrorMsg, reload]);
 
-  const handleRetry = () => {
-    reload();
-  };
+    return () => {
+      acRef.current?.abort();
+    };
+  }, [initialSchools?.length, initialErrorMsg, reload]);
 
-  // Derived data: filters and pagination
+  const handleRetry = () => reload();
+
+  // Derived: filters
   const filteredSchools = useMemo(() => {
     const term = normalizeStr(searchTerm);
+
     return schools.filter((s) => {
-      const matchesTerm = !term || normalizeStr(s.name).includes(term) || normalizeStr(s.city).includes(term) || normalizeStr(s.responsavel).includes(term);
-      const matchesStatus = statusFilter === 'all' || String(s.status) === statusFilter;
-      const matchesPlan = planFilter === 'all' || String(s.plan) === planFilter;
+      const matchesTerm =
+        !term ||
+        normalizeStr(s.name).includes(term) ||
+        normalizeStr(s.city).includes(term) ||
+        normalizeStr(s.responsavel).includes(term);
+
+      const matchesStatus = statusFilter === "all" || String(s.status) === statusFilter;
+      const matchesPlan = planFilter === "all" || String(s.plan) === planFilter;
+
       const prog = progress[String(s.id)];
-      const matchesOnboarding = onboardingFilter === 'all'
-        ? true
-        : onboardingFilter === 'done'
-          ? Boolean(prog?.onboarding_finalizado)
-          : onboardingFilter === 'in_progress'
-            ? !prog?.onboarding_finalizado
-            : onboardingFilter === 'step1'
-              ? (Number(prog?.last_step ?? 1) === 1)
-              : onboardingFilter === 'step2'
-                ? (Number(prog?.last_step ?? 1) === 2)
-                : (Number(prog?.last_step ?? 1) === 3);
+      const matchesOnboarding =
+        onboardingFilter === "all"
+          ? true
+          : onboardingFilter === "done"
+            ? Boolean(prog?.onboarding_finalizado)
+            : onboardingFilter === "in_progress"
+              ? !prog?.onboarding_finalizado
+              : onboardingFilter === "step1"
+                ? Number(prog?.last_step ?? 1) === 1
+                : onboardingFilter === "step2"
+                  ? Number(prog?.last_step ?? 1) === 2
+                  : Number(prog?.last_step ?? 1) === 3;
+
       return matchesTerm && matchesStatus && matchesPlan && matchesOnboarding;
     });
   }, [schools, searchTerm, statusFilter, planFilter, onboardingFilter, progress]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredSchools.length / itemsPerPage));
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(filteredSchools.length / itemsPerPage)),
+    [filteredSchools.length]
+  );
+
+  // Keep currentPage in range if filters shrink
+  useEffect(() => {
+    setCurrentPage((p) => clamp(p, 1, totalPages));
+  }, [totalPages]);
+
   const paginatedSchools = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
     return filteredSchools.slice(start, start + itemsPerPage);
   }, [filteredSchools, currentPage]);
 
-  const totalStudents = useMemo(() => filteredSchools.reduce((acc, s) => acc + Number(s.students || 0), 0), [filteredSchools]);
-  const totalTeachers = useMemo(() => filteredSchools.reduce((acc, s) => acc + Number(s.teachers || 0), 0), [filteredSchools]);
+  const totalStudents = useMemo(
+    () => filteredSchools.reduce((acc, s) => acc + Number(s.students || 0), 0),
+    [filteredSchools]
+  );
+  const totalTeachers = useMemo(
+    () => filteredSchools.reduce((acc, s) => acc + Number(s.teachers || 0), 0),
+    [filteredSchools]
+  );
+
   const onboardingSummary = useMemo(() => {
-    let done = 0, inProgress = 0;
+    let done = 0;
+    let inProgress = 0;
+
     for (const s of filteredSchools) {
       const p = progress[String(s.id)];
-      if (p?.onboarding_finalizado) done++; else inProgress++;
+      if (p?.onboarding_finalizado) done++;
+      else inProgress++;
     }
     return { done, inProgress };
   }, [filteredSchools, progress]);
 
-  const handlePageChange = (page: number) => {
-    const next = Math.max(1, Math.min(totalPages, page));
-    setCurrentPage(next);
-    // sync URL query param for page
-    try {
-      const sp = new URLSearchParams(searchParams?.toString());
-      if (next === 1) sp.delete('page'); else sp.set('page', String(next));
-      const query = sp.toString();
-      if (pathname) {
-        router.replace(query ? `${pathname}?${query}` : pathname);
+  const syncPageToUrl = useCallback(
+    (page: number) => {
+      try {
+        const sp = new URLSearchParams(searchParams?.toString());
+        if (page === 1) sp.delete("page");
+        else sp.set("page", String(page));
+        const query = sp.toString();
+        const base = pathname ?? "/";
+        router.replace(query ? `${base}?${query}` : base);
+      } catch {
+        // noop
       }
-    } catch {}
+    },
+    [router, pathname, searchParams]
+  );
+
+  const handlePageChange = (page: number) => {
+    const next = clamp(page, 1, totalPages);
+    setCurrentPage(next);
+    syncPageToUrl(next);
   };
 
-  // Navigation handlers
-  const viewSchoolDetails = (schoolId: string | number) => {
-    router.push(`/super-admin/escolas/${schoolId}/edit`);
-  };
+  // Navigation
+  const viewSchoolDetails = (schoolId: string) => router.push(`/super-admin/escolas/${schoolId}/edit`);
+  const enterSchoolPortal = (schoolId: string) => router.push(`/escola/${schoolId}/admin/dashboard`);
 
-  const enterSchoolPortal = (schoolId: string | number) => {
-    router.push(`/escola/${schoolId}/admin/dashboard`);
-  };
-
-  // Admin repair action
+  // Admin repair
   const runRepair = async (dryRun: boolean) => {
     try {
       setLoading(true);
-      const res = await fetch('/api/super-admin/escolas/admins/repair', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/super-admin/escolas/admins/repair", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ dryRun }),
       });
+
       const json = await res.json().catch(() => ({ ok: false }));
-      if (!res.ok || !json?.ok) throw new Error((json && json.error) || 'Falha ao reparar admins');
-      success(dryRun ? 'Dry‑run concluído' : 'Admins reparados com sucesso');
+      if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao reparar admins");
+      toast.success(dryRun ? "Dry-run concluído" : "Admins reparados com sucesso");
       await reload();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setErrorMsg(msg);
-      error('Erro ao reparar admins');
+      toast.error("Erro ao reparar admins");
     } finally {
       setLoading(false);
     }
   };
 
+  // Editing
   const handleEdit = (school: School) => {
-    setEditingId(school.id);
+    setEditingId(String(school.id));
     setEditForm({
       name: school.name,
       email: school.email,
@@ -210,39 +313,6 @@ export default function SchoolsTableClient({
     });
   };
 
-  const handleSave = async (schoolId: string | number) => {
-    try {
-      setSaving(schoolId);
-      setErrorMsg(null);
-
-      const unPrettyPlan = (p?: string | null): PlanTier => parsePlanTier(p);
-
-      const { plan, ...rest } = editForm;
-      const planTier = unPrettyPlan(plan);
-      const updates = { ...rest, plano: planTier };
-
-      const res = await fetch(`/api/super-admin/escolas/${schoolId}/update`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
-      });
-
-      const result = await res.json();
-      if (!res.ok || !result.ok) throw new Error(result.error || 'Falha ao atualizar escola');
-
-      setSchools(prev => prev.map(s => s.id === schoolId ? { ...s, ...editForm } : s));
-      setEditingId(null);
-      setEditForm({});
-      success('Escola atualizada com sucesso.');
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setErrorMsg(msg);
-      error('Erro ao atualizar escola');
-    } finally {
-      setSaving(null);
-    }
-  };
-
   const handleCancel = () => {
     setEditingId(null);
     setEditForm({});
@@ -250,98 +320,179 @@ export default function SchoolsTableClient({
   };
 
   const handleInputChange = (field: keyof School, value: string) => {
-    setEditForm(prev => ({ ...prev, [field]: value === "" ? null : value }));
+    setEditForm((prev) => ({ ...prev, [field]: value === "" ? null : value }));
   };
 
-  // ... (resto das funções e useMemos)
+  const handleSave = async (schoolIdRaw: string) => {
+    const schoolId = String(schoolIdRaw);
+    try {
+      setSavingId(schoolId);
+      setErrorMsg(null);
+
+      const unPrettyPlan = (p?: string | null): PlanTier => parsePlanTier(p);
+      const { plan, ...rest } = editForm;
+
+      const updates = {
+        ...rest,
+        plano: unPrettyPlan(plan),
+      };
+
+      const res = await fetch(`/api/super-admin/escolas/${schoolId}/update`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+
+      const result = await res.json().catch(() => ({ ok: false }));
+      if (!res.ok || !result.ok) throw new Error(result?.error || "Falha ao atualizar escola");
+
+      setSchools((prev) => prev.map((s) => (String(s.id) === schoolId ? { ...s, ...editForm } : s)));
+      setEditingId(null);
+      setEditForm({});
+      toast.success("Escola atualizada com sucesso!");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setErrorMsg(msg);
+      toast.error("Erro ao atualizar escola");
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  // Modals
+  const openBilling = (schoolId: string) => {
+    setBillingSchoolId(String(schoolId));
+    setBillingOpen(true);
+  };
+
+  const openConfirm = (action: ConfirmState["action"], school: School) => {
+    setConfirm({
+      open: true,
+      action,
+      escolaId: String(school.id),
+      escolaNome: school.name,
+    });
+  };
+
+  const closeConfirm = () => setConfirm((c) => ({ ...c, open: false }));
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-950">
       <ConfigHealthBanner />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Error Message Component */}
-        {errorMsg && <ErrorMessage errorMsg={errorMsg} loading={loading} onRetry={handleRetry} />}
+      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        {/* Header + Status */}
+        <div className="rounded-xl bg-slate-900 ring-1 ring-white/10 p-4 sm:p-5">
+          <div className="flex flex-col gap-3">
+            {errorMsg ? (
+              <ErrorBanner errorMsg={errorMsg} loading={loading} onRetry={handleRetry} />
+            ) : null}
 
-        <SchoolsHeader 
-          fallbackSource={fallbackSource}
-          onRepairAdmins={runRepair}
-          loading={loading}
-        />
+            <SchoolsHeader fallbackSource={fallbackSource} onRepairAdmins={runRepair} loading={loading} />
+          </div>
+        </div>
 
-        <SchoolsFilters
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          statusFilter={statusFilter}
-          onStatusFilterChange={setStatusFilter}
-          planFilter={planFilter}
-          onPlanFilterChange={setPlanFilter}
-          totalStudents={totalStudents}
-          totalTeachers={totalTeachers}
-          onboardingSummary={onboardingSummary}
-        />
+        {/* Filters */}
+        <div className="mt-4 rounded-xl bg-slate-900 ring-1 ring-white/10 p-4 sm:p-5">
+          <SchoolsFilters
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              statusFilter={statusFilter}
+              onStatusFilterChange={setStatusFilter}
+              planFilter={planFilter}
+              onPlanFilterChange={setPlanFilter}
+              totalStudents={totalStudents}
+              totalTeachers={totalTeachers}
+              onboardingSummary={onboardingSummary}
+            />
+        </div>
 
-        <SchoolsTable
-          schools={paginatedSchools}
-          progress={progress}
-          loading={loading}
-          editingId={editingId}
-          editForm={editForm}
-          saving={saving}
-          onEdit={handleEdit}
-          onSave={handleSave}
-          onCancel={handleCancel}
-          onInputChange={handleInputChange}
-          onViewDetails={viewSchoolDetails}
-          onEnterPortal={enterSchoolPortal}
-          onSendBilling={(schoolId) => { setBillingSchoolId(schoolId); setBillingOpen(true); }}
-          onSuspend={(school) => { setConfirmData({ action: 'suspend', escolaId: school.id, escolaNome: school.name }); setConfirmOpen(true); }}
-          onDelete={(school) => { setConfirmData({ action: 'delete', escolaId: school.id, escolaNome: school.name }); setConfirmOpen(true); }}
-        />
+        {/* Table */}
+        <div className="mt-4 rounded-xl bg-slate-900 ring-1 ring-white/10 overflow-hidden">
+          <SchoolsTable
+            schools={paginatedSchools}
+            progress={progress}
+            loading={loading}
+            editingId={editingId}
+            editForm={editForm}
+            saving={savingId}
+            onEdit={handleEdit}
+            onSave={(id) => handleSave(String(id))}
+            onCancel={handleCancel}
+            onInputChange={handleInputChange}
+            onViewDetails={(id) => viewSchoolDetails(String(id))}
+            onEnterPortal={(id) => enterSchoolPortal(String(id))}
+            onSendBilling={(id) => openBilling(String(id))}
+            onSuspend={(school) => openConfirm("suspend", school)}
+            onDelete={(school) => openConfirm("delete", school)}
+          />
+        </div>
 
-        <SchoolsPagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={handlePageChange}
-        />
+        {/* Pagination */}
+        <div className="mt-4 rounded-xl bg-slate-900 ring-1 ring-white/10 p-3 sm:p-4">
+          <SchoolsPagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
+        </div>
       </div>
 
-      {/* Modais */}
-      {billingOpen && billingSchoolId != null && (
-        <BillingModal 
-          escolaId={billingSchoolId} 
-          onClose={() => { setBillingOpen(false); setBillingSchoolId(null); }} 
+      {/* Billing modal */}
+      {billingOpen && billingSchoolId ? (
+        <BillingModal
+          escolaId={billingSchoolId}
+          onClose={() => {
+            setBillingOpen(false);
+            setBillingSchoolId(null);
+          }}
         />
-      )}
+      ) : null}
 
-      {confirmOpen && confirmData.action && confirmData.escolaId != null && (
+      {/* Confirm modal */}
+      {confirm.open && confirm.action && confirm.escolaId ? (
         <ConfirmModal
-          action={confirmData.action}
-          escolaId={confirmData.escolaId}
-          escolaNome={confirmData.escolaNome}
-          onClose={() => setConfirmOpen(false)}
-          onChanged={(newStatus, mode) => {
-            if (confirmData.action === 'delete') {
-              setSchools(prev => prev.filter(s => s.id !== confirmData.escolaId));
+          action={confirm.action}
+          escolaId={confirm.escolaId}
+          escolaNome={confirm.escolaNome}
+          onClose={closeConfirm}
+          onChanged={(newStatus) => {
+            const escolaId = confirm.escolaId!;
+            if (confirm.action === "delete") {
+              setSchools((prev) => prev.filter((s) => String(s.id) !== escolaId));
             } else if (newStatus) {
-              setSchools(prev => prev.map(s => s.id === confirmData.escolaId ? { ...s, status: newStatus } : s));
+              setSchools((prev) => prev.map((s) => (String(s.id) === escolaId ? { ...s, status: newStatus } : s)));
             }
           }}
         />
-      )}
+      ) : null}
     </div>
   );
 }
 
-// Componente de erro separado
-function ErrorMessage({ errorMsg, loading, onRetry }: { errorMsg: string; loading: boolean; onRetry: () => void }) {
+function ErrorBanner({
+  errorMsg,
+  loading,
+  onRetry,
+}: {
+  errorMsg: string;
+  loading: boolean;
+  onRetry: () => void;
+}) {
   return (
-    <div className="mb-4 p-4 rounded-md border border-red-200 bg-red-50 text-red-800 flex items-start justify-between gap-3">
-      <div>
+    <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-100 flex items-start justify-between gap-3">
+      <div className="min-w-0">
         <p className="font-semibold">Ocorreu um erro</p>
-        <p className="text-sm mt-1 break-words">{errorMsg}</p>
+        <p className="mt-1 text-sm break-words text-red-100/90">{errorMsg}</p>
       </div>
-      <Button onClick={onRetry} disabled={loading} tone="red" size="sm">Tentar novamente</Button>
+
+      <button
+        type="button"
+        onClick={onRetry}
+        disabled={loading}
+        className="shrink-0 rounded-xl bg-red-600 px-3 py-2 text-sm font-medium text-white hover:brightness-95 disabled:opacity-50"
+      >
+        Tentar novamente
+      </button>
     </div>
   );
 }
+
+
+

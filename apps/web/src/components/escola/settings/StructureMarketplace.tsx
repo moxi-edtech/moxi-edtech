@@ -193,7 +193,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       area: disciplina.area ?? null,
       programa_texto: null,
       class_ids: disciplina.class_ids ?? [],
-    });
+    } as DisciplinaForm);
     setDisciplinaEditingMatrixIds(disciplina.matrix_ids ?? []);
     setDisciplinaEditingMatrixByClass(disciplina.matrix_by_class ?? {});
     setDisciplinaModalOpen(true);
@@ -1047,8 +1047,6 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         />
         {details && (
           <DisciplinaModal
-            escolaId={escolaId}
-            cursoId={selectedCourseId}
             open={disciplinaModalOpen}
             mode={disciplinaModalMode}
             initial={disciplinaEditing}

@@ -1,5 +1,9 @@
+// apps/web/src/components/super-admin/escolas/SchoolsTable.tsx
+"use client"
+
 import { SchoolRow } from "./SchoolRow";
 import type { School, OnboardingProgress, EditForm } from "./types";
+import { Info } from "lucide-react";
 
 type SchoolsTableProps = {
   schools: School[];
@@ -42,20 +46,22 @@ export function SchoolsTable({
 
   if (schools.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
-        <div className="py-8 text-center text-gray-500">
-          Nenhuma escola encontrada
+      <div className="bg-white rounded-[2.5rem] border border-slate-200/60 p-20 text-center shadow-sm">
+        <div className="h-16 w-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300">
+          <Info size={32} />
         </div>
+        <h3 className="text-base font-bold text-slate-900 uppercase tracking-tight">Nenhuma unidade encontrada</h3>
+        <p className="text-sm text-slate-400 mt-1">Tente ajustar os filtros para encontrar o que procura.</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
+    <div className="bg-white rounded-[2.5rem] border border-slate-200/60 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full text-left">
           <TableHeader />
-          <tbody className="divide-y divide-gray-200">
+          <tbody className="divide-y divide-slate-100">
             {schools.map((school) => (
               <SchoolRow
                 key={school.id}
@@ -84,17 +90,15 @@ export function SchoolsTable({
 
 function TableHeader() {
   return (
-    <thead className="bg-gray-50">
+    <thead className="bg-slate-50/50 border-b border-slate-100">
       <tr>
-        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Escola</th>
-        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Responsável</th>
-        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contato</th>
-        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Localização</th>
-        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Onboarding</th>
-        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plano</th>
-        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Último Acesso</th>
-        <th className="py-3 px-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+        <th className="py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Escola</th>
+        <th className="py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Responsável</th>
+        <th className="py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Localização</th>
+        <th className="py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Estado</th>
+        <th className="py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Saúde</th>
+        <th className="py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Plano</th>
+        <th className="py-5 px-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Acções</th>
       </tr>
     </thead>
   );
@@ -102,33 +106,10 @@ function TableHeader() {
 
 function TableSkeleton() {
   return (
-    <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <TableHeader />
-          <tbody className="divide-y divide-gray-200">
-            {[...Array(5)].map((_, i) => (
-              <tr key={`sk-${i}`}>
-                <td className="py-4 px-4"><div className="h-4 bg-gray-200 rounded animate-pulse w-3/4" /></td>
-                <td className="py-4 px-4"><div className="h-4 bg-gray-200 rounded animate-pulse w-1/2" /></td>
-                <td className="py-4 px-4"><div className="h-4 bg-gray-200 rounded animate-pulse w-1/2" /></td>
-                <td className="py-4 px-4"><div className="h-4 bg-gray-200 rounded animate-pulse w-1/2" /></td>
-                <td className="py-4 px-4"><div className="h-6 bg-gray-200 rounded-full animate-pulse w-16" /></td>
-                <td className="py-4 px-4"><div className="h-6 bg-gray-200 rounded-full animate-pulse w-24" /></td>
-                <td className="py-4 px-4"><div className="h-6 bg-gray-200 rounded-full animate-pulse w-20" /></td>
-                <td className="py-4 px-4"><div className="h-4 bg-gray-200 rounded animate-pulse w-24" /></td>
-                <td className="py-4 px-4">
-                  <div className="flex gap-2">
-                    <div className="h-8 w-8 bg-gray-200 rounded animate-pulse" />
-                    <div className="h-8 w-8 bg-gray-200 rounded animate-pulse" />
-                    <div className="h-8 w-8 bg-gray-200 rounded animate-pulse" />
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+    <div className="bg-white rounded-[2.5rem] border border-slate-200/60 p-8 space-y-4 shadow-sm animate-pulse">
+      {[...Array(5)].map((_, i) => (
+        <div key={i} className="h-16 bg-slate-50 rounded-2xl w-full" />
+      ))}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { Check, UserCheck, X } from "lucide-react";
+import { EstadoVazio } from "@/components/harmonia";
 
 export function TaskList({
   items,
@@ -13,7 +14,9 @@ export function TaskList({
   return (
     <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
       {items.length === 0 ? (
-        <EmptyTasks />
+        <div className="p-6">
+          <EstadoVazio tipo="notificacoes.nenhuma" />
+        </div>
       ) : (
         items.map((item) => <TaskItem key={item.id} item={item} />)
       )}
@@ -62,18 +65,6 @@ function TaskItem({
           <X className="h-4 w-4 mx-auto" />
         </button>
       </div>
-    </div>
-  );
-}
-
-function EmptyTasks() {
-  return (
-    <div className="py-10 text-center text-slate-500">
-      <div className="h-10 w-10 mx-auto mb-2 rounded-xl bg-slate-100 flex items-center justify-center">
-        <Check className="h-5 w-5 text-slate-400" />
-      </div>
-      <p className="text-sm font-medium">Tudo em dia</p>
-      <p className="text-xs text-slate-400 mt-0.5">Nenhuma pendência no momento.</p>
     </div>
   );
 }

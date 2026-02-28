@@ -2319,6 +2319,48 @@ export type Database = {
           },
         ]
       }
+      escola_notas_internas: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          escola_id: string
+          nota: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          escola_id: string
+          nota?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          escola_id?: string
+          nota?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escola_notas_internas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: true
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escola_notas_internas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: true
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       escola_users: {
         Row: {
           created_at: string | null
@@ -9320,6 +9362,28 @@ export type Database = {
           },
         ]
       }
+      vw_klasse_network_aprovacao: {
+        Row: {
+          ano_letivo: number | null
+          aprovacao_media_percentagem: number | null
+          classe: string | null
+          curso: string | null
+          provincia: string | null
+          total_alunos_avaliados: number | null
+          total_turmas: number | null
+        }
+        Relationships: []
+      }
+      vw_klasse_network_matriculas: {
+        Row: {
+          ano_letivo: number | null
+          curso: string | null
+          provincia: string | null
+          total_escolas: number | null
+          total_matriculas: number | null
+        }
+        Relationships: []
+      }
       vw_matriculas_secretaria: {
         Row: {
           aluno_id: string | null
@@ -10131,6 +10195,17 @@ export type Database = {
         }[]
       }
       admin_get_escola_health_metrics: { Args: never; Returns: Json[] }
+      admin_get_storage_usage: {
+        Args: { p_bucket_ids?: string[]; p_limit?: number }
+        Returns: {
+          escola_id: string
+          escola_nome: string
+          last_30d_bytes: number
+          projected_30d_bytes: number
+          total_bytes: number
+          total_documentos: number
+        }[]
+      }
       admin_get_system_health: { Args: never; Returns: Json }
       admin_list_profiles: {
         Args: { p_limit?: number; p_roles: string[] }

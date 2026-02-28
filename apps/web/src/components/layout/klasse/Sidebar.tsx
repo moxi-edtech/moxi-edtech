@@ -1,11 +1,63 @@
+// apps/web/src/components/layout/klasse/Sidebar.tsx
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronLeft } from "lucide-react";
-import * as Icons from "lucide-react";
+import { 
+  ChevronDown, 
+  ChevronLeft, 
+  HelpCircle,
+  LayoutDashboard,
+  HeartPulse,
+  Activity,
+  Building2,
+  Users,
+  User,
+  GraduationCap,
+  Megaphone,
+  CalendarClock,
+  BarChart,
+  FileText,
+  Settings2,
+  Lock,
+  KeyRound,
+  BookOpen,
+  CalendarDays,
+  Archive,
+  History,
+  UsersRound,
+  Wallet,
+  Layers,
+  BadgeDollarSign
+} from "lucide-react";
 import type { NavItem } from "@/lib/sidebarNav";
+
+// Mapa estático de ícones para performance máxima e estabilidade de build
+const ICON_MAP: Record<string, any> = {
+  LayoutDashboard,
+  HeartPulse,
+  Activity,
+  Building2,
+  Users,
+  User,
+  GraduationCap,
+  Megaphone,
+  CalendarClock,
+  BarChart,
+  FileText,
+  Settings2,
+  Lock,
+  KeyRound,
+  BookOpen,
+  CalendarDays,
+  Archive,
+  History,
+  UsersRound,
+  Wallet,
+  Layers,
+  BadgeDollarSign
+};
 
 function cn(...c: Array<string | false | null | undefined>) {
   return c.filter(Boolean).join(" ");
@@ -59,12 +111,12 @@ export default function Sidebar({
   return (
     <aside
       className={cn(
-        "h-screen sticky top-0 z-40 border-r border-slate-800/80 bg-slate-950 text-slate-100",
-        "transition-[width] duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)]"
+        "h-screen sticky top-0 z-40 border-r border-slate-800/80 bg-slate-950 text-slate-100 flex flex-col",
+        "transition-[width] duration-300 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] overflow-x-hidden"
       )}
       style={
         {
-          width: collapsed ? "var(--sidebar-collapsed, 80px)" : "var(--sidebar-expanded, 256px)",
+          width: collapsed ? "80px" : "256px",
         } as any
       }
     >
@@ -76,9 +128,9 @@ export default function Sidebar({
           </div>
 
           {!collapsed && (
-            <div className="min-w-0">
+            <div className="min-w-0 animate-in fade-in duration-500">
               <div className="font-semibold tracking-tight leading-5">KLASSE</div>
-              <div className="text-xs text-slate-400">gestão escolar</div>
+              <div className="text-xs text-slate-400 font-medium">gestão escolar</div>
             </div>
           )}
         </Link>
@@ -96,10 +148,10 @@ export default function Sidebar({
       </div>
 
       {/* Nav */}
-      <nav className="px-2 py-3">
+      <nav className="flex-1 overflow-y-auto px-2 py-3">
         <ul className="space-y-1">
           {sidebarItems.map((it) => {
-            const Icon = (Icons as any)[it.icon] ?? Icons.HelpCircle;
+            const Icon = ICON_MAP[it.icon] ?? HelpCircle;
             const hasChildren = it.children.length > 0;
             const isExpanded = expanded[it.href];
 
@@ -110,23 +162,23 @@ export default function Sidebar({
                     href={it.href}
                     className={cn(
                       "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm flex-1",
-                      "transition-colors",
+                      "transition-all duration-200",
                       it.active
-                        ? "bg-slate-900 text-white ring-1 ring-klasse-gold/25"
-                        : "text-slate-200 hover:bg-slate-900/70 hover:text-white"
+                        ? "bg-[#1F6B3B]/10 text-white ring-1 ring-[#1F6B3B]/30"
+                        : "text-slate-300 hover:bg-slate-900/70 hover:text-white"
                     )}
                     title={collapsed ? it.label : undefined}
                   >
                     <Icon
                       className={cn(
-                        "h-5 w-5 shrink-0",
-                        it.active ? "text-klasse-gold" : "text-slate-400 group-hover:text-klasse-gold"
+                        "h-5 w-5 shrink-0 transition-colors",
+                        it.active ? "text-[#E3B23C]" : "text-slate-500 group-hover:text-[#E3B23C]"
                       )}
                     />
-                    {!collapsed && <span className="truncate">{it.label}</span>}
+                    {!collapsed && <span className="truncate font-medium">{it.label}</span>}
 
                     {it.badge && !collapsed && (
-                      <span className="ml-auto rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-400">
+                      <span className="ml-auto rounded bg-rose-500/10 px-1.5 py-0.5 text-[10px] font-bold text-rose-400 ring-1 ring-rose-500/20">
                         {it.badge}
                       </span>
                     )}
@@ -139,20 +191,20 @@ export default function Sidebar({
                         setExpanded((prev) => ({ ...prev, [it.href]: !prev[it.href] }))
                       }
                       className={cn(
-                        "h-8 w-8 rounded-lg flex items-center justify-center",
-                        it.active ? "text-klasse-gold" : "text-slate-400 hover:text-klasse-gold"
+                        "h-8 w-8 rounded-lg flex items-center justify-center transition-colors",
+                        it.active ? "text-[#E3B23C]" : "text-slate-500 hover:text-[#E3B23C] hover:bg-slate-900"
                       )}
                       aria-label={isExpanded ? "Recolher" : "Expandir"}
                     >
                       <ChevronDown
-                        className={cn("h-4 w-4 transition-transform", isExpanded && "rotate-180")}
+                        className={cn("h-4 w-4 transition-transform duration-300", isExpanded && "rotate-180")}
                       />
                     </button>
                   )}
                 </div>
 
                 {!collapsed && hasChildren && isExpanded && (
-                  <ul className="mt-1 space-y-1 pl-11">
+                  <ul className="mt-1 space-y-1 pl-11 animate-in slide-in-from-left-2 duration-300">
                     {it.children.map((child) => {
                       const childActive =
                         pathname === child.href || pathname?.startsWith(child.href + "/");
@@ -161,16 +213,19 @@ export default function Sidebar({
                           <Link
                             href={child.href}
                             className={cn(
-                              "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs",
+                              "flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs transition-colors",
                               childActive
-                                ? "bg-slate-900 text-white"
-                                : "text-slate-300 hover:bg-slate-900/60 hover:text-white"
+                                ? "bg-slate-900 text-white font-bold"
+                                : "text-slate-400 hover:bg-slate-900/60 hover:text-white"
                             )}
                           >
-                            <span className="h-1.5 w-1.5 rounded-full bg-klasse-gold/70" />
+                            <span className={cn(
+                              "h-1 w-1 rounded-full transition-colors",
+                              childActive ? "bg-[#E3B23C]" : "bg-slate-700"
+                            )} />
                             <span className="truncate">{child.label}</span>
                             {child.badge && (
-                              <span className="ml-auto rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-400">
+                              <span className="ml-auto rounded bg-rose-500/10 px-1.5 py-0.5 text-[9px] font-bold text-rose-400">
                                 {child.badge}
                               </span>
                             )}
@@ -187,18 +242,18 @@ export default function Sidebar({
       </nav>
 
       {/* Footer */}
-      <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-slate-800/80">
-        <div className={cn("flex items-center gap-3 rounded-xl px-3 py-2", "bg-slate-900/40")}>
-          <div className="h-9 w-9 rounded-full bg-slate-800 flex items-center justify-center text-xs">
+      <div className="mt-auto p-3 border-t border-slate-800/80">
+        <div className={cn("flex items-center gap-3 rounded-xl px-3 py-2", "bg-slate-900/40 border border-white/5")}>
+          <div className="h-9 w-9 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-[10px] font-black text-slate-400">
             AO
           </div>
           {!collapsed && (
             <div className="min-w-0">
-              <div className="text-sm font-medium truncate">
-                {escolaNome || portalTitle || "Escola"}
+              <div className="text-sm font-bold truncate text-slate-200">
+                {escolaNome || portalTitle || "Klasse Network"}
               </div>
-              <div className="text-xs text-slate-400 truncate">
-                {portalTitle || "Portal"}
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 truncate">
+                {planoNome || portalTitle || "SaaS Hub"}
               </div>
             </div>
           )}

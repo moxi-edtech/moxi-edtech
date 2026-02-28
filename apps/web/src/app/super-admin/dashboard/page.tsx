@@ -1,25 +1,21 @@
-// apps/web/src/app/super-admin/page.tsx
+// apps/web/src/app/super-admin/dashboard/page.tsx
 import { Suspense } from "react"
 import KpiSection from "@/components/super-admin/KpiSection"
 import ChartsSection from "@/components/super-admin/ChartsSection"
 import ActivitiesSection from "@/components/super-admin/ActivitiesSection"
 import QuickActionsSection from "@/components/super-admin/QuickActionsSection"
 import MorningBriefing from "@/components/super-admin/MorningBriefing"
-import SchoolsSection from "@/components/super-admin/SchoolsSection"
 import { getDashboardData, getChartsData } from "@/lib/charts"
 import { getGlobalHealthSummary, getGlobalActivities } from "@/lib/super-admin/escola-saude"
-import { supabaseServer } from "@/lib/supabaseServer"
 
 // ─── Data fetching server-side ────────────────────────────────────────────────
 async function getPageData() {
   try {
-    const supabase = await supabaseServer()
-    const [dashboard, charts, health, activities, schoolsRes] = await Promise.allSettled([
-      getDashboardData(),      
-      getChartsData(),         
-      getGlobalHealthSummary(), 
-      getGlobalActivities(),   
-      (supabase as any).rpc("admin_get_escola_health_metrics")
+    const [dashboard, charts, health, activities] = await Promise.allSettled([
+      getDashboardData(),      // métricas globais
+      getChartsData(),         // dados para gráficos agregados
+      getGlobalHealthSummary(), // resumo de saúde das escolas
+      getGlobalActivities(),   // logs de auditoria globais
     ])
 
     return {
@@ -27,16 +23,15 @@ async function getPageData() {
       charts:    charts.status    === "fulfilled" ? charts.value    : null,
       health:    health.status    === "fulfilled" ? health.value    : undefined,
       activities: activities.status === "fulfilled" ? activities.value : [],
-      schools:   schoolsRes.status === "fulfilled" ? (schoolsRes.value.data || []) : [],
     }
   } catch {
-    return { dashboard: null, charts: null, health: undefined, activities: [], schools: [] }
+    return { dashboard: null, charts: null, health: undefined, activities: [] }
   }
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default async function SuperAdminDashboard() {
-  const { dashboard, charts, health, activities, schools } = await getPageData()
+  const { dashboard, charts, health, activities } = await getPageData()
 
   return (
     <div className="max-w-[1600px] mx-auto space-y-12 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-1000 ease-out">
@@ -61,15 +56,12 @@ export default async function SuperAdminDashboard() {
         </Suspense>
       </div>
 
-      {/* 3. Acompanhamento da Rede (Onboarding) */}
-      <SchoolsSection escolas={schools} />
-
-      {/* 4. Central de Comando (Área Própria / Full Width) */}
+      {/* 3. Central de Comando (Área Própria / Full Width) */}
       <div className="py-4">
         <QuickActionsSection />
       </div>
 
-      {/* 5. Camada de Auditoria e Histórico */}
+      {/* 4. Camada de Auditoria e Histórico */}
       <div className="max-w-5xl">
         <ActivitiesSection activities={activities} />
       </div>
