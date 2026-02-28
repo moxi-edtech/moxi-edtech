@@ -83,11 +83,12 @@ const buildDefaultConfig = async (supabase: any, escolaId: string, presetKey: st
   const matrix: Record<string, boolean> = {};
   const cargaByClass: Record<string, number> = {};
 
-  for (const subject of subjects) {
-    for (const cls of classes) {
-      matrix[`${subject}::${cls}::M`] = true;
-    }
-  }
+  subjectRows.forEach((row) => {
+    const subject = String(row.name ?? '').trim();
+    const cls = String(row.gradeLevel ?? '').trim();
+    if (!subject || !cls) return;
+    matrix[`${subject}::${cls}::M`] = true;
+  });
 
   subjectRows.forEach((row) => {
     if (Number.isFinite(row.weeklyHours)) {
