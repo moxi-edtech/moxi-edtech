@@ -101,7 +101,7 @@ BEGIN
       v_quantidade := COALESCE((v_turma_data->>'quantidade')::int, 1);
       FOR i IN 1..v_quantidade LOOP
         v_turma_letter := letters[i];
-        v_turno := (v_turma_data->>'turno')::text;
+        v_turno := COALESCE((v_turma_data->>'turno')::text, 'M');
 
         SELECT nome
           INTO v_class_name
@@ -115,7 +115,11 @@ BEGIN
           v_class_number := regexp_replace(upper(coalesce(v_class_name, '')), '\\s+', '', 'g');
         END IF;
 
-        v_turma_nome_final := v_course_code || '-' || v_class_number || '-' || upper(v_turno) || '-' || v_turma_letter;
+        v_turma_nome_final :=
+          COALESCE(v_course_code, 'CUR') || '-' ||
+          COALESCE(v_class_number, '') || '-' ||
+          upper(COALESCE(v_turno, 'M')) || '-' ||
+          v_turma_letter;
 
         INSERT INTO public.turmas (
           escola_id,
@@ -195,7 +199,11 @@ BEGIN
             v_class_number := regexp_replace(upper(coalesce(v_class_name, '')), '\\s+', '', 'g');
           END IF;
 
-          v_turma_nome_final := v_course_code || '-' || v_class_number || '-' || upper(v_turno) || '-' || v_turma_letter;
+          v_turma_nome_final :=
+            COALESCE(v_course_code, 'CUR') || '-' ||
+            COALESCE(v_class_number, '') || '-' ||
+            upper(COALESCE(v_turno, 'M')) || '-' ||
+            v_turma_letter;
 
             INSERT INTO public.turmas (
               escola_id,
