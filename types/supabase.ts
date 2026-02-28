@@ -5134,16 +5134,20 @@ export type Database = {
           ano_letivo: number | null
           ativo: boolean | null
           created_at: string | null
+          data_fecho: string | null
           data_inicio_financeiro: string | null
           data_matricula: string | null
           escola_id: string
           id: string
           import_id: string | null
+          motivo_fecho: string | null
           numero_chamada: number | null
           numero_matricula: string | null
+          origem_transicao_matricula_id: string | null
           secao_id: string | null
           session_id: string | null
           status: string
+          status_fecho_origem: string | null
           turma_id: string | null
           updated_at: string | null
         }
@@ -5152,16 +5156,20 @@ export type Database = {
           ano_letivo?: number | null
           ativo?: boolean | null
           created_at?: string | null
+          data_fecho?: string | null
           data_inicio_financeiro?: string | null
           data_matricula?: string | null
           escola_id: string
           id?: string
           import_id?: string | null
+          motivo_fecho?: string | null
           numero_chamada?: number | null
           numero_matricula?: string | null
+          origem_transicao_matricula_id?: string | null
           secao_id?: string | null
           session_id?: string | null
           status?: string
+          status_fecho_origem?: string | null
           turma_id?: string | null
           updated_at?: string | null
         }
@@ -5170,16 +5178,20 @@ export type Database = {
           ano_letivo?: number | null
           ativo?: boolean | null
           created_at?: string | null
+          data_fecho?: string | null
           data_inicio_financeiro?: string | null
           data_matricula?: string | null
           escola_id?: string
           id?: string
           import_id?: string | null
+          motivo_fecho?: string | null
           numero_chamada?: number | null
           numero_matricula?: string | null
+          origem_transicao_matricula_id?: string | null
           secao_id?: string | null
           session_id?: string | null
           status?: string
+          status_fecho_origem?: string | null
           turma_id?: string | null
           updated_at?: string | null
         }
@@ -5238,6 +5250,48 @@ export type Database = {
             columns: ["import_id"]
             isOneToOne: false
             referencedRelation: "import_migrations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_origem_transicao_fk"
+            columns: ["origem_transicao_matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_origem_transicao_fk"
+            columns: ["origem_transicao_matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_boletim_por_matricula_legacy"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "matriculas_origem_transicao_fk"
+            columns: ["origem_transicao_matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_secretaria"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "matriculas_origem_transicao_fk"
+            columns: ["origem_transicao_matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_validas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_origem_transicao_fk"
+            columns: ["origem_transicao_matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_presencas_por_turma"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "matriculas_origem_transicao_fk"
+            columns: ["origem_transicao_matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_matriculas"
             referencedColumns: ["id"]
           },
           {
@@ -5341,6 +5395,82 @@ export type Database = {
           },
           {
             foreignKeyName: "matriculas_cursos_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_matriculas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      matriculas_status_audit: {
+        Row: {
+          alterado_por: string | null
+          created_at: string
+          id: number
+          matricula_id: string
+          motivo: string | null
+          origem: string
+          status_anterior: string
+          status_novo: string
+        }
+        Insert: {
+          alterado_por?: string | null
+          created_at?: string
+          id?: number
+          matricula_id: string
+          motivo?: string | null
+          origem: string
+          status_anterior: string
+          status_novo: string
+        }
+        Update: {
+          alterado_por?: string | null
+          created_at?: string
+          id?: number
+          matricula_id?: string
+          motivo?: string | null
+          origem?: string
+          status_anterior?: string
+          status_novo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "matriculas_status_audit_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_status_audit_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_boletim_por_matricula_legacy"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "matriculas_status_audit_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_secretaria"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "matriculas_status_audit_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_validas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matriculas_status_audit_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_presencas_por_turma"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "matriculas_status_audit_matricula_id_fkey"
             columns: ["matricula_id"]
             isOneToOne: false
             referencedRelation: "vw_search_matriculas"
@@ -10873,6 +11003,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      finalizar_matricula_blindada: {
+        Args: {
+          p_escola_id: string
+          p_is_override_manual?: boolean
+          p_matricula_id: string
+          p_motivo?: string
+          p_status_override?: string
+        }
+        Returns: Json
+      }
       finance_confirm_payment: {
         Args: { p_dedupe_key_override?: string; p_intent_id: string }
         Returns: {
@@ -11082,6 +11222,21 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      fn_transitar_alunos: {
+        Args: {
+          p_aluno_ids: string[]
+          p_ano_letivo_dest: number
+          p_ano_letivo_origem: number
+          p_escola_id: string
+          p_turma_destino_id: string
+          p_turma_origem_id: string
+        }
+        Returns: {
+          aluno_id: string
+          erro: string
+          sucesso: boolean
+        }[]
       }
       frequencia_resumo_periodo: {
         Args: { p_periodo_letivo_id: string; p_turma_id: string }
@@ -11299,6 +11454,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      gradeengine_calcular_situacao: {
+        Args: { p_matricula_id: string }
+        Returns: Json
+      }
       hard_delete_aluno: {
         Args: { p_aluno_id: string; p_reason?: string }
         Returns: undefined
@@ -11476,6 +11635,7 @@ export type Database = {
       normalize_date: { Args: { input_text: string }; Returns: string }
       normalize_text: { Args: { input_text: string }; Returns: string }
       normalize_turma_code: { Args: { p_code: string }; Returns: string }
+      nota_para_extenso_ptao: { Args: { p_nota: number }; Returns: string }
       onboard_academic_structure_from_matrix: {
         Args: { p_escola_id: string; p_matrix: Json; p_session_id: string }
         Returns: Json
