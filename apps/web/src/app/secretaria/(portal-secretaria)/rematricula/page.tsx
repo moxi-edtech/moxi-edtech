@@ -133,8 +133,16 @@ export default function RematriculaPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (selectedAlunos.length === 0) return;
+    if (selectedAlunos.length === 0 || !originTurmaId || !destinationTurmaId) return;
     
+    const origin = turmas.find(t => t.id === originTurmaId);
+    const destination = turmas.find(t => t.id === destinationTurmaId);
+
+    if (!origin?.ano_letivo || !destination?.ano_letivo) {
+      setError("Dados de ano letivo ausentes nas turmas selecionadas.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -143,8 +151,10 @@ export default function RematriculaPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          origin_turma_id: originTurmaId,
-          destination_turma_id: destinationTurmaId,
+          turma_origem_id: originTurmaId,
+          turma_destino_id: destinationTurmaId,
+          ano_letivo_origem: origin.ano_letivo,
+          ano_letivo_destino: destination.ano_letivo,
           aluno_ids: selectedAlunos,
         }),
       });
@@ -152,7 +162,7 @@ export default function RematriculaPage() {
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "A transação falhou num dos Gates do servidor.");
 
-      alert(`Sucesso! ${selectedAlunos.length} alunos transitados.`);
+      alert(`Sucesso! ${json.sucesso} alunos transitados, ${json.falhas} falhas.`);
       router.push("/secretaria/turmas");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
