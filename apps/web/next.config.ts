@@ -1,5 +1,7 @@
 // apps/web/next.config.ts
 import path from 'path';
+import { withSentryConfig } from "@sentry/nextjs";
+import bundleAnalyzer from "@next/bundle-analyzer";
 
 const LUCIDE_SOURCEMAP_STRIPPER = path.join(__dirname, "loaders", "strip-lucide-sourcemap.js");
 
@@ -64,10 +66,19 @@ const nextConfig = {
   },
 };
 
-// Bundle analyzer configuration
-const withBundleAnalyzer = require("@next/bundle-analyzer")({
+const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
-  openAnalyzer: false,
 });
 
-module.exports = withBundleAnalyzer(nextConfig);
+// Export final configuration with bundle analyzer and Sentry
+const finalConfig = withBundleAnalyzer(nextConfig);
+
+export default withSentryConfig(finalConfig, {
+  // Sentry SDK options
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  hideSourceMaps: true,
+  disableLogger: true,
+});
