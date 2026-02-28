@@ -120,7 +120,7 @@ function Spinner({ label = "Carregando..." }: { label?: string }) {
 
 // ---------- API layer (thin wrapper) ----------
 async function apiGet<T>(url: string, signal?: AbortSignal): Promise<T> {
-  const res = await fetch(url, { signal });
+  const res = await fetch(url, { signal, cache: "no-store" });
   const json = await res.json();
   if (!res.ok || !json?.ok) {
     const msg = json?.error || "Falha na requisição.";
