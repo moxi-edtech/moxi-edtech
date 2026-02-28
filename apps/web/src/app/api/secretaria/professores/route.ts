@@ -12,6 +12,7 @@ export async function GET(req: Request) {
     const q = (url.searchParams.get('q') || '').trim()
     const days = (url.searchParams.get('days') || '30').trim()
     const cargo = (url.searchParams.get('cargo') || '').trim()
+    const requestedEscolaId = (url.searchParams.get('escola_id') || '').trim() || null
     const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10) || 1)
     const pageSize = Math.min(50, Math.max(1, parseInt(url.searchParams.get('pageSize') || '20', 10) || 20))
 
@@ -24,11 +25,13 @@ export async function GET(req: Request) {
     const escolaId = await resolveEscolaIdForUser(
       s as any,
       user.id,
-      null,
+      requestedEscolaId,
       metaEscolaId ? String(metaEscolaId) : null
     )
 
-    if (!escolaId) return NextResponse.json({ ok: true, items: [], total: 0 })
+    if (!escolaId || (requestedEscolaId && escolaId !== requestedEscolaId)) {
+      return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
+    }
 
     const since = (() => {
       const d = parseInt(days || '30', 10)

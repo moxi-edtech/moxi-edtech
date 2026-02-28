@@ -1392,6 +1392,7 @@ export type Database = {
           conta_para_media_med: boolean | null
           grade_level: string
           id: string
+          is_active: boolean
           is_avaliavel: boolean | null
           name: string
           preset_id: string | null
@@ -1407,6 +1408,7 @@ export type Database = {
           conta_para_media_med?: boolean | null
           grade_level: string
           id?: string
+          is_active?: boolean
           is_avaliavel?: boolean | null
           name: string
           preset_id?: string | null
@@ -1422,6 +1424,7 @@ export type Database = {
           conta_para_media_med?: boolean | null
           grade_level?: string
           id?: string
+          is_active?: boolean
           is_avaliavel?: boolean | null
           name?: string
           preset_id?: string | null
@@ -1440,6 +1443,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      curriculum_preset_subjects_expected: {
+        Row: {
+          component: Database["public"]["Enums"]["discipline_component"]
+          grade_level: string
+          id: string
+          name: string
+          preset_id: string
+          subject_type: string | null
+          weekly_hours: number
+        }
+        Insert: {
+          component: Database["public"]["Enums"]["discipline_component"]
+          grade_level: string
+          id?: string
+          name: string
+          preset_id: string
+          subject_type?: string | null
+          weekly_hours: number
+        }
+        Update: {
+          component?: Database["public"]["Enums"]["discipline_component"]
+          grade_level?: string
+          id?: string
+          name?: string
+          preset_id?: string
+          subject_type?: string | null
+          weekly_hours?: number
+        }
+        Relationships: []
       }
       curriculum_presets: {
         Row: {
@@ -10396,6 +10429,10 @@ export type Database = {
       current_tenant_escola_id: { Args: never; Returns: string }
       current_user_id: { Args: never; Returns: string }
       current_user_role: { Args: never; Returns: string }
+      curriculo_backfill_matriz_from_preset: {
+        Args: { p_curso_id: string; p_escola_id: string }
+        Returns: number
+      }
       curriculo_create_avaliacoes_for_turmas: {
         Args: {
           p_ano_letivo_id: string
@@ -11666,6 +11703,27 @@ export type Database = {
       user_has_role_in_school: {
         Args: { p_escola_id: string; p_roles: string[] }
         Returns: boolean
+      }
+      validate_curriculum_presets: {
+        Args: { p_escola_id?: string }
+        Returns: {
+          carga_horaria_sugerida: number
+          curso_id: string
+          disciplina_nome: string
+          escola_id: string
+          grade_level: string
+          ocorrencias: number
+          preset_id: string
+        }[]
+      }
+      validate_presets_global: {
+        Args: never
+        Returns: {
+          disciplina_nome: string
+          grade_level: string
+          preset_id: string
+          status: string
+        }[]
       }
       verificar_documento_publico: {
         Args: { p_public_id: string }
