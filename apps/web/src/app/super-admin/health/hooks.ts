@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabaseClient';
 import type { SystemHealth, EscolaMetricas, OutboxMetrics, InfraMetrics, Alerta } from './types';
+import { calcularSaudeEscola, gerarAlertasEscola } from '@/lib/super-admin/escola-saude';
 import { runOutboxWorker, recalcAllAggregates } from './actions';
 
 export function useHealthData() {
@@ -60,18 +61,96 @@ export function useHealthData() {
         console.error('Erro ao carregar métricas por escola:', escolasMetricsError);
       }
 
-      const escolasComMetricas: EscolaMetricas[] = (escolasComMetricasRaw as any[] || []).map(raw => ({
-        id: raw.id,
-        nome: raw.nome,
-        plano: raw.plano,
-        alunos_ativos: raw.alunos_ativos,
-        professores: raw.professores,
-        turmas: raw.turmas,
-        ultimo_acesso: raw.ultimo_acesso,
-        latencia_media: null,
-        sync_status: raw.sync_status,
-        mrr: raw.mrr
-      }));
+      const baseEscolas = (escolasComMetricasRaw as any[] || []) as Array<{
+        id: string;
+        nome: string;
+        plano: 'essencial' | 'profissional';
+        alunos_ativos: number;
+        professores: number;
+        turmas: number;
+        ultimo_acesso: string | null;
+        sync_status: 'synced' | 'pending' | 'error';
+        mrr: number;
+      }>;
+
+      const escolaIds = baseEscolas.map((item) => item.id);
+      const { data: escolaMeta } = escolaIds.length
+        ? await supabase
+            .from('escolas')
+            .select('id, cidade, estado, onboarding_finalizado')
+            .in('id', escolaIds)
+        : { data: [] };
+
+      const { data: notesRows } = escolaIds.length
+        ? await supabase
+            .from('escola_notas_internas')
+            .select('escola_id, nota')
+            .in('escola_id', escolaIds)
+        : { data: [] };
+
+      const { data: onboardingRows } = escolaIds.length
+        ? await supabase
+            .from('onboarding_drafts')
+            .select('escola_id, step, updated_at')
+            .in('escola_id', escolaIds)
+            .order('updated_at', { ascending: false })
+        : { data: [] };
+
+      const metaById = new Map((escolaMeta || []).map((row: any) => [String(row.id), row]));
+      const notesById = new Map((notesRows || []).map((row: any) => [String(row.escola_id), row.nota as string]));
+      const onboardingById = new Map<string, number>();
+      for (const row of onboardingRows || []) {
+        const escolaId = String(row.escola_id);
+        if (!onboardingById.has(escolaId)) {
+          onboardingById.set(escolaId, Number(row.step ?? 0));
+        }
+      }
+
+      const escolasComMetricas: EscolaMetricas[] = baseEscolas.map((raw) => {
+        const meta = metaById.get(String(raw.id));
+        const onboardingStep = onboardingById.get(String(raw.id)) ?? 0;
+        const onboardingPct = meta?.onboarding_finalizado
+          ? 100
+          : onboardingStep > 0
+            ? Math.round((onboardingStep / 3) * 100)
+            : null;
+
+        const saude = calcularSaudeEscola({
+          alunos_ativos: raw.alunos_ativos,
+          onboarding_pct: onboardingPct,
+          ultimo_acesso: raw.ultimo_acesso,
+          sync_status: raw.sync_status,
+        });
+
+        const diasRenovacao = null;
+
+        const alertas = gerarAlertasEscola({
+          saude,
+          dias_renovacao: diasRenovacao,
+          alunos_ativos: raw.alunos_ativos,
+          ultimo_acesso: raw.ultimo_acesso,
+          sync_status: raw.sync_status,
+        });
+
+        return {
+          id: raw.id,
+          nome: raw.nome,
+          plano: raw.plano,
+          alunos_ativos: raw.alunos_ativos,
+          professores: raw.professores,
+          turmas: raw.turmas,
+          ultimo_acesso: raw.ultimo_acesso ?? '',
+          latencia_media: null,
+          sync_status: raw.sync_status,
+          mrr: raw.mrr,
+          saude,
+          dias_renovacao: diasRenovacao,
+          onboarding_pct: onboardingPct,
+          provincia: meta?.estado ?? meta?.cidade ?? null,
+          alertas,
+          nota_interna: notesById.get(String(raw.id)) ?? null,
+        };
+      });
       setEscolas(escolasComMetricas);
 
       const { data: outboxData } = await supabase

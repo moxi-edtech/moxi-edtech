@@ -24,6 +24,17 @@ export interface EscolaMetricas {
   latencia_media: number | null;
   sync_status: 'synced' | 'pending' | 'error';
   mrr: number; // em AOA
+  saude: number;
+  dias_renovacao: number | null;
+  onboarding_pct: number | null;
+  provincia: string | null;
+  alertas: EscolaAlerta[];
+  nota_interna: string | null;
+}
+
+export interface EscolaAlerta {
+  tipo: 'critico' | 'aviso' | 'info';
+  msg: string;
 }
 
 export interface OutboxMetrics {
