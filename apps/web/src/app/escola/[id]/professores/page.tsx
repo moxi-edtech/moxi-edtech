@@ -732,7 +732,7 @@ export default function ProfessoresPage() {
       try {
         setLoading(true)
         const [profRes, turmasRes, cursosRes] = await Promise.all([
-          fetch(`/api/secretaria/professores?cargo=professor&days=36500&pageSize=200`, { cache: "no-store" }),
+          fetch(`/api/secretaria/professores?cargo=professor&days=36500&pageSize=200&escola_id=${escolaId}`, { cache: "no-store" }),
           fetch(`/api/escolas/${escolaId}/turmas`, { cache: "no-store" }),
           fetch(`/api/escolas/${escolaId}/cursos`, { cache: "no-store" }),
         ])
