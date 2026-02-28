@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Check, RefreshCw, Save } from "lucide-react";
+import { FluxoPosAccao, ConfirmacaoContextual, Passo } from "@/components/harmonia";
 
 /**
  * KLASSE Standard:
@@ -1379,61 +1380,64 @@ function Step3Pagamento(props: {
   };
 
   if (result) {
+    if (result.ok) {
+      return (
+        <div className="space-y-6">
+          <ConfirmacaoContextual
+            acaoId="matricula.confirmada"
+            contexto={{
+              nome: initialData?.nome_candidato || "Candidato",
+              turma: initialData?.classes?.nome || "Turma",
+              anoLetivo: anoLetivo || "2025/2026",
+            }}
+            onClose={() => {}}
+          />
+
+          <FluxoPosAccao
+            acaoId="matricula.confirmada"
+            contexto={{
+              nome: initialData?.nome_candidato || "Candidato",
+              turma: initialData?.classes?.nome || "Turma",
+              anoLetivo: anoLetivo || "2025/2026",
+            }}
+            onEscolher={(passo: Passo) => {
+              if (passo.id === "emitir_boletim") {
+                router.push(`/escola/${escolaId}/secretaria/documentos?matriculaId=${candidaturaId}`);
+              } else if (passo.id === "registar_propina") {
+                router.push(`/escola/${escolaId}/secretaria/balcao?alunoId=${candidaturaId}`);
+              } else if (passo.id === "nova_matricula") {
+                window.location.href = `/escola/${escolaId}/secretaria/admissoes/nova`;
+              }
+            }}
+            onDismiss={() => router.push(`/escola/${escolaId}/secretaria/matriculas`)}
+          />
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-4">
         <div>
           <h2 className="text-lg font-semibold text-klasse-green">Resultado</h2>
-          {result.ok ? (
-            <p className="text-sm font-semibold text-klasse-green">
-              {result.message || "Operação concluída com sucesso."}
-            </p>
-          ) : (
-            <p className="text-sm font-semibold text-red-600">Erro: {result.error}</p>
-          )}
+          <p className="text-sm font-semibold text-red-600">Erro: {result.error}</p>
         </div>
 
-        {result.ok ? (
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => router.push(`/escola/${escolaId}/secretaria/matriculas`)}
-              className="rounded-xl bg-klasse-green px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
-            >
-              Ir para matrículas
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push(`/escola/${escolaId}/secretaria/admissoes/nova`)}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-klasse-gold/40"
-            >
-              Nova admissão
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push(`/escola/${escolaId}/secretaria/admissoes`)}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-klasse-gold/40"
-            >
-              Voltar ao radar
-            </button>
-          </div>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setResult(null)}
-              className="rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
-            >
-              Tentar novamente
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push(`/escola/${escolaId}/secretaria/admissoes`)}
-              className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-klasse-gold/40"
-            >
-              Voltar ao radar
-            </button>
-          </div>
-        )}
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setResult(null)}
+            className="rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
+          >
+            Tentar novamente
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push(`/escola/${escolaId}/secretaria/admissoes`)}
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-klasse-gold/40"
+          >
+            Voltar ao radar
+          </button>
+        </div>
 
         {!result.ok && (
           <details className="rounded-xl bg-slate-100 px-4 py-3 text-xs text-slate-600">

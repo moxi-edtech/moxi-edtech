@@ -193,7 +193,7 @@ export default function PortalLayout({
           {/* Sidebar */}
           <aside
             className={clsx(
-              "fixed top-0 left-0 z-40 h-screen border-r border-slate-200 bg-white transition-[width] duration-200 ease-in-out",
+              "fixed top-0 left-0 z-40 h-screen border-r border-slate-200 bg-white transition-[width] duration-200 ease-in-out flex flex-col",
             )}
             style={{ width: "var(--sidebar-w, 256px)" }}
             // Adiciona flex-shrink-0 para garantir que a sidebar não encolha
@@ -222,16 +222,8 @@ export default function PortalLayout({
               </button>
             </div>
     
-            {/* (opcional) busca / nome da escola */}
+            {/* (opcional) busca */}
             <div className={clsx("px-3", collapsed && "hidden")}>
-              {escolaNome && (
-                <div className="px-6 -mt-2 mb-2">
-                  <div className="text-[11px] uppercase tracking-wide text-moxinexa-gray">Escola</div>
-                  <div className="text-sm font-semibold text-moxinexa-dark truncate" title={escolaNome}>
-                    {escolaNome}
-                  </div>
-                </div>
-              )}
               
               <div className="px-4 py-2">
                 <div className="relative mb-4">
@@ -245,37 +237,60 @@ export default function PortalLayout({
               </div>
             </div>
     
-            {/* Navegação */}
-            <nav className="mt-2">
-              <ul className="space-y-1 px-2">
+            {/* Navegação scrollável */}
+            <nav className="flex-1 overflow-y-auto mt-2 px-2">
+              <ul className="space-y-1">
                 {navItems.map((item) => {
                   const Icon = Icons[item.icon as IconName] ?? Icons.HelpCircle;
                   const isActive = !!pathname && (pathname === item.href || pathname.startsWith(item.href + "/"));
-                                        const IconComponent = Icon as React.ElementType;
-                                        return (
-                                          <li key={item.href}>
-                                            <Link
-                                              href={item.href}
-                                              className={clsx(
-                                                "group flex items-center gap-3 rounded-md px-2 py-2 text-sm font-medium w-full",
-                                                isActive
-                                                  ? "bg-moxinexa-teal text-white"
-                                                  : "text-slate-700 hover:bg-slate-100"
-                                              )}
-                                              title={item.label}
-                                            >
-                                              <IconComponent className={clsx("h-5 w-5 shrink-0", isActive ? "text-white" : "text-slate-500 group-hover:text-slate-700")} />
-                                              {!collapsed && <span className="truncate">{item.label}</span>}
-                                              {item.badge && !collapsed && (
-                                                <span className="ml-auto px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                                                  {item.badge}
-                                                </span>
-                                              )}
-                                            </Link>
-                                          </li>
-                                        );                })}
+                  const IconComponent = Icon as React.ElementType;
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        className={clsx(
+                          "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium w-full transition-all duration-200",
+                          isActive
+                            ? "bg-[#1F6B3B]/10 text-[#1F6B3B] ring-1 ring-[#1F6B3B]/20"
+                            : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                        )}
+                        title={item.label}
+                      >
+                        <IconComponent className={clsx("h-5 w-5 shrink-0 transition-colors", isActive ? "text-[#1F6B3B]" : "text-slate-400 group-hover:text-slate-600")} />
+                        {!collapsed && <span className="truncate">{item.label}</span>}
+                        {item.badge && !collapsed && (
+                          <span className="ml-auto px-2 py-0.5 text-[10px] font-bold rounded-full bg-rose-50 text-rose-600 ring-1 ring-rose-100">
+                            {item.badge}
+                          </span>
+                        )}
+                      </Link>
+                    </li>
+                  );
+                })}
               </ul>
             </nav>
+
+            {/* Footer fixo no fundo */}
+            <div className="mt-auto p-4 border-t border-slate-100">
+              <div className={clsx(
+                "flex items-center gap-3 rounded-2xl p-2 transition-colors",
+                !collapsed && "bg-slate-50 border border-slate-100"
+              )}>
+                <div className="h-10 w-10 rounded-xl bg-[#1F6B3B]/10 border border-[#1F6B3B]/20 flex items-center justify-center shrink-0">
+                  <span className="text-xs font-black text-[#1F6B3B]">{userInitials}</span>
+                </div>
+                {!collapsed && (
+                  <div className="min-w-0">
+                    <div className="text-xs font-black text-slate-900 truncate uppercase tracking-tight">
+                      {escolaNome || "Klasse"}
+                    </div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">
+                      {plan ? PLAN_NAMES[plan] : "SaaS"}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </aside>
     
           {/* Wrapper para o conteúdo principal, que agora é scrollável */}

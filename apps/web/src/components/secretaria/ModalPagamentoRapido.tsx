@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/Button";
 import { ReciboImprimivel } from "@/components/financeiro/ReciboImprimivel";
 import { usePlanFeature } from "@/hooks/usePlanFeature";
 import { useToast } from "@/components/feedback/FeedbackSystem";
+import { FluxoPosAccao, ConfirmacaoContextual, Passo } from "@/components/harmonia";
+import { useRouter } from "next/navigation";
 
 // ─── Tokens ──────────────────────────────────────────────────────────────────
 // Fonte de verdade: nunca usar cores avulsas fora deste mapa.
@@ -348,20 +350,50 @@ function ResumoCard({
   );
 }
 
-function EstadoConcluido() {
+function EstadoConcluido({ 
+  aluno, 
+  valor, 
+  mesAno, 
+  escolaId, 
+  onClose 
+}: { 
+  aluno: ModalPagamentoRapidoProps["aluno"]; 
+  valor: number; 
+  mesAno: string; 
+  escolaId: string | null;
+  onClose: () => void;
+}) {
+  const router = useRouter();
   return (
-    <div className="py-10 text-center space-y-4">
-      <div className="mx-auto inline-flex h-16 w-16 items-center justify-center
-        rounded-full bg-[#1F6B3B]/10 ring-1 ring-[#1F6B3B]/20">
-        <CheckCircle className="h-8 w-8 text-[#1F6B3B]" />
-      </div>
-      <div>
-        <h3 className="text-xl font-black text-slate-900">Pagamento registado</h3>
-        <p className="mt-1 text-sm text-slate-500">
-          Recibo emitido automaticamente.
-        </p>
-      </div>
-      <p className="text-xs text-slate-400">A fechar automaticamente…</p>
+    <div className="py-2 space-y-6">
+      <ConfirmacaoContextual
+        acaoId="pagamento.registado"
+        contexto={{
+          valor: moneyAOA.format(valor),
+          nome: aluno.nome,
+          mes: mesAno,
+        }}
+        onClose={() => {}}
+      />
+
+      <FluxoPosAccao
+        acaoId="pagamento.registado"
+        contexto={{
+          valor: moneyAOA.format(valor),
+          nome: aluno.nome,
+          mes: mesAno,
+        }}
+        onEscolher={(passo: Passo) => {
+          if (passo.id === "emitir_recibo") {
+            router.push(`/escola/${escolaId}/financeiro/pagamentos`);
+          } else if (passo.id === "ver_atrasos") {
+            router.push(`/escola/${escolaId}/financeiro/radar`);
+          } else if (passo.id === "novo_pagamento") {
+            onClose();
+          }
+        }}
+        onDismiss={onClose}
+      />
     </div>
   );
 }
@@ -461,7 +493,7 @@ function usePagamentoSubmit({
 
       success("Pagamento registado.", "Recibo disponível para impressão.");
       onConcluido();
-      setTimeout(() => { safeClose(); onSuccess?.(); }, 1200);
+      if (onSuccess) onSuccess();
 
     } catch (err: any) {
       if (err?.name === "AbortError") return;
@@ -653,7 +685,13 @@ export function ModalPagamentoRapido({
           {/* ── Body ────────────────────────────────────────────────────── */}
           <div className="max-h-[70vh] overflow-y-auto px-6 py-5 space-y-5">
             {concluido ? (
-              <EstadoConcluido />
+              <EstadoConcluido 
+                aluno={aluno} 
+                valor={valorNum || valorDevido} 
+                mesAno={mesAno} 
+                escolaId={escolaId ?? null}
+                onClose={safeClose}
+              />
             ) : (
               <>
                 {/* Card da mensalidade */}
@@ -727,11 +765,7 @@ export function ModalPagamentoRapido({
 
           {/* ── Footer ──────────────────────────────────────────────────── */}
           <div className="border-t border-slate-100 bg-white px-6 py-4">
-            {concluido ? (
-              <p className="text-center text-sm text-slate-400">
-                A fechar automaticamente…
-              </p>
-            ) : (
+            {concluido ? null : (
               <div className="flex gap-3">
                 <Button
                   variant="outline"

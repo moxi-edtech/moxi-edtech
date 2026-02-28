@@ -174,12 +174,14 @@ export default function CurriculumBuilder({
   onComplete,
   onCancel,
   initialPresetKey,
+  externalPresetCatalogMap = {},
 }: {
   escolaId: string;
   sessionId?: string | null;
   onComplete?: () => void;
   onCancel?: () => void;
   initialPresetKey?: CurriculumKey | null;
+  externalPresetCatalogMap?: Record<string, any>;
 }) {
   const supabase = useMemo(() => createClient(), []);
   const { success, error } = useToast();
@@ -196,7 +198,12 @@ export default function CurriculumBuilder({
     []
   );
   const { metaMap: presetMetaMap } = usePresetsMeta(presetKeys);
-  const { catalogMap: presetCatalogMap } = usePresetsCatalog(presetKeys);
+  
+  const { catalogMap: fetchedPresetCatalogMap } = usePresetsCatalog(presetKeys);
+
+  const presetCatalogMap = useMemo(() => {
+    return { ...fetchedPresetCatalogMap, ...externalPresetCatalogMap };
+  }, [fetchedPresetCatalogMap, externalPresetCatalogMap]);
 
   const loadPresetSubjects = useCallback(async (key: CurriculumKey | null) => {
     if (!key) return [];
@@ -1284,6 +1291,7 @@ export default function CurriculumBuilder({
           onSave={handleSaveCustomFromModal}
           presetSubjectsByKey={presetSubjectsByKey}
           onLoadPresetSubjects={loadPresetSubjects}
+          presetCatalogMap={presetCatalogMap}
         />
       )}
     </div>
@@ -1299,6 +1307,7 @@ function CustomCourseModal({
   onSave,
   presetSubjectsByKey,
   onLoadPresetSubjects,
+  presetCatalogMap,
 }: {
   onClose: () => void;
   onSave: (data: {
@@ -1309,6 +1318,7 @@ function CustomCourseModal({
   }) => void;
   presetSubjectsByKey: Record<string, string[]>;
   onLoadPresetSubjects: (key: CurriculumKey) => void;
+  presetCatalogMap: Record<string, any>;
 }) {
   const [data, setData] = useState<{
     label: string;
@@ -1329,7 +1339,6 @@ function CustomCourseModal({
     []
   );
   const { metaMap: presetMetaMap } = usePresetsMeta(presetKeys);
-  const { catalogMap: presetCatalogMap } = usePresetsCatalog(presetKeys);
 
   const handleAddSub = () => {
     const trimmed = newSub.trim();

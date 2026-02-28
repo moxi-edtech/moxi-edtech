@@ -1,4 +1,4 @@
-# Session Summary — Curriculum Presets Refactor
+ifiqu# Session Summary — Curriculum Presets Refactor
 
 ## Scope
 - Refatoração completa de `curriculum-presets` com novas keys, componentes e carga horária semanal.
@@ -18,7 +18,7 @@
 - `tec_saude_farmacia` → `FARM`
 - `tec_saude_fisioterapia` → `FISI`
 - `tec_saude_nutricao` → `NUTR`
-- `tec_saude_radiologia` → `RAD`
+  `tec_saude_radiologia` → `RAD`
 - `tec_construcao_civil` → `CC`
 - `tec_energia_eletrica` → `EL`
 - `tec_mecanica_manut` → `MEC`
@@ -50,16 +50,7 @@
 - `apps/web/src/app/api/escola/[id]/admin/curriculo/install-preset/route.ts`
 
 ## Notes
-- API de edição de disciplina sincroniza `turma_disciplinas` quando carga/horário/avaliação mudam, evitando desync.
-- Backfill remoto alinhou `turma_disciplinas` das turmas CFB com o currículo publicado.
-- Publicação de currículo agora é por classe (coluna `classe_id` em `curso_curriculos` + novos índices únicos).
-- RPC `curriculo_publish` aceita `p_classe_id` e permite `bulk publish` por curso (todas as classes na mesma versão).
-- Migration aplicada no Supabase: `20261128000000_curriculo_publish_by_class.sql`.
-- Presets MED migrados para o DB: tabelas `curriculum_presets`, `curriculum_preset_subjects`, `school_subjects` + seed gerado de `CURRICULUM_PRESETS`.
-- Endpoint `GET /api/escolas/[id]/curriculo/padroes` fornece padrão MED (DB com fallback ao preset local).
-- Geração de turmas validada por classe: API e RPC exigem currículo publicado para cada classe.
-- Portal do professor atualizado com agenda semanal, turmas atribuídas e páginas alinhadas ao padrão KLASSE.
-- Perfil do professor disponível em `/professor/perfil` com skills, turnos e carga horária.
+- Nenhuma alteração de schema ou dados reais foi executada.
 - Validação local não foi rodada.
 
 ## Avaliação (Fórmulas no DB)

@@ -3,6 +3,9 @@
 import { useMemo, useState } from "react";
 import { Banknote, CreditCard, Loader2, ReceiptText, Upload, X } from "lucide-react";
 import { useToast } from "@/components/feedback/FeedbackSystem";
+import { FluxoPosAccao, ConfirmacaoContextual, Passo } from "@/components/harmonia";
+import { useRouter } from "next/navigation";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 type Method = "cash" | "tpa" | "transfer" | "mcx" | "kiwk";
 
@@ -10,25 +13,27 @@ type Props = {
   open: boolean;
   onClose: () => void;
   alunoId: string | null;
+  alunoNome?: string | null;
   intentId: string | null;
   totalKz: number;
   pedidoId?: string | null;
 };
 
-const kwanza = new Intl.NumberFormat("pt-AO", {
-  style: "currency",
-  currency: "AOA",
-  maximumFractionDigits: 0,
-});
-
 export function PagamentoModal({
   open,
   onClose,
   alunoId,
+  alunoNome,
   intentId,
   totalKz,
   pedidoId,
 }: Props) {
+  const kwanza = new Intl.NumberFormat("pt-AO", {
+    style: "currency",
+    currency: "AOA",
+    maximumFractionDigits: 0,
+  });
+
   const [method, setMethod] = useState<Method>("cash");
   const [reference, setReference] = useState("");
   const [terminalId, setTerminalId] = useState("");
@@ -36,7 +41,10 @@ export function PagamentoModal({
   const [gatewayRef, setGatewayRef] = useState("");
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ status: "success" | "error"; message: string } | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
   const { success, error } = useToast();
+  const { escolaId } = useEscolaId();
+  const router = useRouter();
 
   const needsRef = useMemo(() => method === "tpa", [method]);
   const needsEvidence = useMemo(() => method === "transfer", [method]);
@@ -48,6 +56,7 @@ export function PagamentoModal({
     setEvidenceUrl("");
     setGatewayRef("");
     setFeedback(null);
+    setShowSuccess(false);
     onClose();
   };
 
@@ -120,9 +129,7 @@ export function PagamentoModal({
           : "Pagamento registrado como pendente.",
     });
     setLoading(false);
-    window.setTimeout(() => {
-      handleClose();
-    }, 1200);
+    setShowSuccess(true);
   }
 
   if (!open) return null;
@@ -138,148 +145,185 @@ export function PagamentoModal({
         </div>
 
         <div className="space-y-4 p-5">
-          {feedback ? (
-            <div
-              className={`rounded-xl border px-4 py-3 text-sm font-semibold ${
-                feedback.status === "success"
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-                  : "border-rose-200 bg-rose-50 text-rose-900"
-              }`}
-            >
-              {feedback.message}
-            </div>
-          ) : null}
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setMethod("cash")}
-              className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
-                method === "cash"
-                  ? "border-klasse-gold ring-4 ring-klasse-gold/20"
-                  : "border-slate-200"
-              }`}
-            >
-              <Banknote className="h-4 w-4 text-slate-500" /> Cash
-            </button>
-            <button
-              type="button"
-              onClick={() => setMethod("tpa")}
-              className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
-                method === "tpa"
-                  ? "border-klasse-gold ring-4 ring-klasse-gold/20"
-                  : "border-slate-200"
-              }`}
-            >
-              <CreditCard className="h-4 w-4 text-slate-500" /> TPA
-            </button>
-            <button
-              type="button"
-              onClick={() => setMethod("transfer")}
-              className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
-                method === "transfer"
-                  ? "border-klasse-gold ring-4 ring-klasse-gold/20"
-                  : "border-slate-200"
-              }`}
-            >
-              <Upload className="h-4 w-4 text-slate-500" /> Transferência
-            </button>
-            <button
-              type="button"
-              onClick={() => setMethod("mcx")}
-              className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
-                method === "mcx"
-                  ? "border-klasse-gold ring-4 ring-klasse-gold/20"
-                  : "border-slate-200"
-              }`}
-            >
-              <ReceiptText className="h-4 w-4 text-slate-500" /> Multicaixa
-            </button>
-            <button
-              type="button"
-              onClick={() => setMethod("kiwk")}
-              className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
-                method === "kiwk"
-                  ? "border-klasse-gold ring-4 ring-klasse-gold/20"
-                  : "border-slate-200"
-              }`}
-            >
-              <ReceiptText className="h-4 w-4 text-slate-500" /> KIWK
-            </button>
-          </div>
+          {showSuccess ? (
+            <div className="space-y-6">
+              <ConfirmacaoContextual
+                acaoId="pagamento.registado"
+                contexto={{
+                  valor: kwanza.format(totalKz),
+                  nome: alunoNome || "Aluno",
+                  mes: new Date().toLocaleDateString("pt-PT", { month: "long", year: "numeric" }),
+                }}
+                onClose={() => {}}
+              />
 
-          {needsRef || needsGatewayRef ? (
-            <div className="space-y-2">
-              {needsRef ? (
-                <>
-                  <label className="text-xs font-bold uppercase text-slate-500">Referência (obrigatório)</label>
-                  <input
-                    value={reference}
-                    onChange={(event) => setReference(event.target.value)}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
-                    placeholder="Ex: TPA-2026-000882"
-                  />
-                </>
-              ) : null}
-              {method === "tpa" ? (
-                <input
-                  value={terminalId}
-                  onChange={(event) => setTerminalId(event.target.value)}
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
-                  placeholder="Terminal ID (opcional)"
-                />
-              ) : null}
-              {needsGatewayRef ? (
-                <>
-                  <label className="text-xs font-bold uppercase text-slate-500">
-                    {method === "kiwk" ? "KIWK ref (opcional)" : "Gateway ref (opcional)"}
-                  </label>
-                  <input
-                    value={gatewayRef}
-                    onChange={(event) => setGatewayRef(event.target.value)}
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
-                    placeholder="MCX-..."
-                  />
-                </>
-              ) : null}
-            </div>
-          ) : null}
-
-          {needsEvidence ? (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <div className="text-sm font-bold text-slate-900">Comprovativo (obrigatório)</div>
-              <div className="text-xs text-slate-500">
-                Faça upload e cole a URL do comprovativo.
-              </div>
-              <input
-                value={evidenceUrl}
-                onChange={(event) => setEvidenceUrl(event.target.value)}
-                className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
-                placeholder="https://..."
+              <FluxoPosAccao
+                acaoId="pagamento.registado"
+                contexto={{
+                  valor: kwanza.format(totalKz),
+                  nome: alunoNome || "Aluno",
+                  mes: new Date().toLocaleDateString("pt-PT", { month: "long", year: "numeric" }),
+                }}
+                onEscolher={(passo: Passo) => {
+                  if (passo.id === "emitir_recibo") {
+                    router.push(`/escola/${escolaId}/financeiro/pagamentos`);
+                  } else if (passo.id === "ver_atrasos") {
+                    router.push(`/escola/${escolaId}/financeiro/radar`);
+                  } else if (passo.id === "novo_pagamento") {
+                    handleClose();
+                  }
+                }}
+                onDismiss={handleClose}
               />
             </div>
-          ) : null}
+          ) : (
+            <>
+              {feedback ? (
+                <div
+                  className={`rounded-xl border px-4 py-3 text-sm font-semibold ${
+                    feedback.status === "success"
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                      : "border-rose-200 bg-rose-50 text-rose-900"
+                  }`}
+                >
+                  {feedback.message}
+                </div>
+              ) : null}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMethod("cash")}
+                  className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
+                    method === "cash"
+                      ? "border-klasse-gold ring-4 ring-klasse-gold/20"
+                      : "border-slate-200"
+                  }`}
+                >
+                  <Banknote className="h-4 w-4 text-slate-500" /> Cash
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMethod("tpa")}
+                  className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
+                    method === "tpa"
+                      ? "border-klasse-gold ring-4 ring-klasse-gold/20"
+                      : "border-slate-200"
+                  }`}
+                >
+                  <CreditCard className="h-4 w-4 text-slate-500" /> TPA
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMethod("transfer")}
+                  className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
+                    method === "transfer"
+                      ? "border-klasse-gold ring-4 ring-klasse-gold/20"
+                      : "border-slate-200"
+                  }`}
+                >
+                  <Upload className="h-4 w-4 text-slate-500" /> Transferência
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMethod("mcx")}
+                  className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
+                    method === "mcx"
+                      ? "border-klasse-gold ring-4 ring-klasse-gold/20"
+                      : "border-slate-200"
+                  }`}
+                >
+                  <ReceiptText className="h-4 w-4 text-slate-500" /> Multicaixa
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMethod("kiwk")}
+                  className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold ${
+                    method === "kiwk"
+                      ? "border-klasse-gold ring-4 ring-klasse-gold/20"
+                      : "border-slate-200"
+                  }`}
+                >
+                  <ReceiptText className="h-4 w-4 text-slate-500" /> KIWK
+                </button>
+              </div>
 
-          <div className="text-xs text-slate-500">
-            * TPA/Transfer/MCX/KIWK entram como pendente até conciliação.
+              {needsRef || needsGatewayRef ? (
+                <div className="space-y-2">
+                  {needsRef ? (
+                    <>
+                      <label className="text-xs font-bold uppercase text-slate-500">Referência (obrigatório)</label>
+                      <input
+                        value={reference}
+                        onChange={(event) => setReference(event.target.value)}
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                        placeholder="Ex: TPA-2026-000882"
+                      />
+                    </>
+                  ) : null}
+                  {method === "tpa" ? (
+                    <input
+                      value={terminalId}
+                      onChange={(event) => setTerminalId(event.target.value)}
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                      placeholder="Terminal ID (opcional)"
+                    />
+                  ) : null}
+                  {needsGatewayRef ? (
+                    <>
+                      <label className="text-xs font-bold uppercase text-slate-500">
+                        {method === "kiwk" ? "KIWK ref (opcional)" : "Gateway ref (opcional)"}
+                      </label>
+                      <input
+                        value={gatewayRef}
+                        onChange={(event) => setGatewayRef(event.target.value)}
+                        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                        placeholder="MCX-..."
+                      />
+                    </>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {needsEvidence ? (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <div className="text-sm font-bold text-slate-900">Comprovativo (obrigatório)</div>
+                  <div className="text-xs text-slate-500">
+                    Faça upload e cole a URL do comprovativo.
+                  </div>
+                  <input
+                    value={evidenceUrl}
+                    onChange={(event) => setEvidenceUrl(event.target.value)}
+                    className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-900 outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                    placeholder="https://..."
+                  />
+                </div>
+              ) : null}
+
+              <div className="text-xs text-slate-500">
+                * TPA/Transfer/MCX/KIWK entram como pendente até conciliação.
+              </div>
+            </>
+          )}
+        </div>
+
+        {!showSuccess && (
+          <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4">
+            <button
+              onClick={handleClose}
+              className="rounded-xl px-4 py-2 text-sm font-bold text-slate-600 hover:text-slate-900"
+            >
+              Voltar
+            </button>
+            <button
+              onClick={handleConfirmar}
+              disabled={loading || !intentId}
+              className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-5 py-2 text-sm font-bold text-white hover:brightness-95 disabled:opacity-70"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+              Confirmar
+            </button>
           </div>
-        </div>
-
-        <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4">
-          <button
-            onClick={handleClose}
-            className="rounded-xl px-4 py-2 text-sm font-bold text-slate-600 hover:text-slate-900"
-          >
-            Voltar
-          </button>
-          <button
-            onClick={handleConfirmar}
-            disabled={loading || !intentId}
-            className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-5 py-2 text-sm font-bold text-white hover:brightness-95 disabled:opacity-70"
-          >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
-            Confirmar
-          </button>
-        </div>
+        )}
       </div>
     </div>
   );

@@ -51,6 +51,8 @@ export default function QuadroHorariosPage() {
       classificacao?: "core" | "complementar" | "optativa" | null;
       periodos_ativos?: number[] | null;
       entra_no_horario?: boolean | null;
+      is_avaliavel?: boolean | null;
+      conta_para_media_med?: boolean | null;
       avaliacao_mode_key?: "inherit_school" | "custom" | "inherit_disciplina" | null;
       avaliacao_disciplina_id?: string | null;
       area?: string | null;
@@ -1291,6 +1293,8 @@ export default function QuadroHorariosPage() {
               carga_horaria_semanal: disciplina.carga_horaria_semanal,
               classificacao: disciplina.classificacao ?? (disciplina.is_core ? "core" : "complementar"),
               entra_no_horario: disciplina.entra_no_horario ?? true,
+              is_avaliavel: disciplina.is_avaliavel ?? true,
+              conta_para_media_med: disciplina.conta_para_media_med ?? true,
               avaliacao: {
                 mode: disciplina.avaliacao_mode_key ?? "inherit_school",
                 base_id: disciplina.avaliacao_disciplina_id ?? null,

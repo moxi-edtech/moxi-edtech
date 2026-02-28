@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Megaphone } from "lucide-react";
+import { EstadoVazio } from "@/components/harmonia";
 
 type NoticeItemData = {
   id: string;
@@ -32,7 +33,9 @@ export function NoticePanel({
 
       <div className={`divide-y divide-slate-100 ${showHeader ? "" : "pt-2"}`}>
         {items.length === 0 ? (
-          <EmptyNotices />
+          <div className="p-6">
+            <EstadoVazio tipo="notificacoes.nenhuma" />
+          </div>
         ) : (
           items.map((item) => <NoticeItem key={item.id} item={item} />)
         )}
@@ -59,18 +62,6 @@ function NoticeItem({ item }: { item: NoticeItemData }) {
           {item.action_label}
         </Link>
       ) : null}
-    </div>
-  );
-}
-
-function EmptyNotices() {
-  return (
-    <div className="py-10 text-center text-slate-500">
-      <div className="h-10 w-10 mx-auto mb-2 rounded-xl bg-slate-100 flex items-center justify-center">
-        <Megaphone className="h-5 w-5 text-slate-400" />
-      </div>
-      <p className="text-sm font-medium">Sem avisos no momento</p>
-      <p className="text-xs text-slate-400 mt-0.5">Nenhuma comunicação recente.</p>
     </div>
   );
 }

@@ -1,56 +1,73 @@
-import { createServerClient } from '@supabase/ssr'
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+// apps/web/src/middleware.ts
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-export async function middleware(req: NextRequest) {
-  const res = NextResponse.next()
-  const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim()
-  const supabaseAnonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '').trim()
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return req.cookies.getAll()
-      },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          res.cookies.set(name, value, options)
-        })
-      },
-    },
-  })
+// Simulação de Rate Limiting simples em memória (Edge Runtime)
+// Nota: Em produção real, o Edge Runtime pode resetar a memória entre instâncias.
+// Para 100 escolas, o ideal é usar Upstash Redis ou similar.
+const rateLimitMap = new Map<string, { count: number, lastReset: number }>();
 
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+const LIMITS = {
+  STRICT: { count: 5, windowMs: 60 * 1000 }, // 5 reqs por minuto
+  PUBLIC: { count: 30, windowMs: 60 * 1000 }, // 30 reqs por minuto
+};
 
-  // Allow guest onboarding links without auth
-  const allowGuestOnboarding = /^\/escola\/[^/]+\/onboarding\/?$/.test(req.nextUrl.pathname);
-  if (allowGuestOnboarding) {
-    return res;
+function isRateLimited(ip: string, limitKey: keyof typeof LIMITS) {
+  const now = Date.now();
+  const limit = LIMITS[limitKey];
+  const record = rateLimitMap.get(`${ip}:${limitKey}`) || { count: 0, lastReset: now };
+
+  if (now - record.lastReset > limit.windowMs) {
+    record.count = 1;
+    record.lastReset = now;
+  } else {
+    record.count++;
   }
 
-  if (req.nextUrl.pathname.startsWith('/api/inngest')) {
-    return res;
-  }
-
-  // if user is not signed in and the current path is not /login, redirect the user to /login
-  if (!session && req.nextUrl.pathname !== '/login') {
-    return NextResponse.redirect(new URL('/login', req.url))
-  }
-
-  return res
+  rateLimitMap.set(`${ip}:${limitKey}`, record);
+  return record.count > limit.count;
 }
 
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  
+  // Obtém o IP de forma segura para o TypeScript e compatível com Edge/Vercel
+  const forwardedFor = request.headers.get('x-forwarded-for');
+  const ip = forwardedFor ? forwardedFor.split(',')[0] : '127.0.0.1';
+
+  // 1. Rate Limiting para Endpoints Críticos (STRICT)
+  if (
+    pathname.startsWith('/api/escolas/create') || 
+    pathname.startsWith('/api/auth/login') ||
+    pathname.startsWith('/api/alunos/ativar-acesso')
+  ) {
+    if (isRateLimited(ip, 'STRICT')) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Too many requests. Please try again later.' }),
+        { status: 429, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+  }
+
+  // 2. Rate Limiting para Acesso Público (PUBLIC)
+  if (pathname.startsWith('/api/public/documentos')) {
+    if (isRateLimited(ip, 'PUBLIC')) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Too many requests. Please try again later.' }),
+        { status: 429, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+  }
+
+  return NextResponse.next();
+}
+
+// Configuração para aplicar o middleware apenas em rotas de API sensíveis
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     *
-     * This also covers all API routes.
-     */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/api/escolas/create/:path*',
+    '/api/auth/login/:path*',
+    '/api/alunos/ativar-acesso/:path*',
+    '/api/public/documentos/:path*',
   ],
-}
+};

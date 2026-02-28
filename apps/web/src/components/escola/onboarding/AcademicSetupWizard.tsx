@@ -19,6 +19,7 @@ import AcademicStep1 from "./AcademicStep1";
 import AcademicStep2 from "./AcademicStep2";
 import AcademicStep2Config from "./AcademicStep2Config";
 import { useToast } from "@/components/feedback/FeedbackSystem";
+import { ConfirmacaoContextual } from "@/components/harmonia";
 
 import {
   type TurnosState,
@@ -163,6 +164,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   const [appliedCursos, setAppliedCursos] = useState<Record<string, { cursoId: string; classes: string[]; version?: number | null }>>({});
   const [curriculumOverrides, setCurriculumOverrides] = useState<Record<string, number>>({});
   const [estruturaCounts, setEstruturaCounts] = useState<{ cursos_total?: number; classes_total?: number; disciplinas_total?: number; } | null>(null);
+  const [showFinalSuccess, setShowFinalSuccess] = useState(false);
 
   const supabase = useMemo(() => createClient(), []);
   const presetCacheRef = useRef<Record<string, Array<{ nome: string; classe: string; horas: number }>>>({});
@@ -610,8 +612,15 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
       }
       dismiss(tid);
       success("Configuração concluída.");
-      if (onComplete) onComplete();
-      else window.location.href = `/escola/${escolaId}/admin/dashboard`;
+      
+      setShowFinalSuccess(true);
+      
+      // Pequeno delay para o utilizador ver a confirmação contextual (Harmonia UX)
+      setTimeout(() => {
+        if (onComplete) onComplete();
+        else window.location.href = `/escola/${escolaId}/admin/dashboard`;
+      }, 2000);
+
     } catch (e: any) {
       dismiss(tid);
       error(e.message);
@@ -767,6 +776,17 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
         </div>
 
       </div>
+
+      {showFinalSuccess && (
+        <ConfirmacaoContextual
+          acaoId="matricula.confirmada.lote"
+          contexto={{
+            total: matrix.length,
+            tempo: "2s", // Simulado
+          }}
+          onClose={() => {}}
+        />
+      )}
     </div>
   );
 }
