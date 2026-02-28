@@ -656,10 +656,11 @@ function buildDefaultAdvancedConfig(presetSubjects: Array<{ name: string; gradeL
   const defaultTurnos: BuilderTurnos = { manha: true, tarde: false, noite: false };
   const defaultMatrix: Record<string, boolean> = {};
 
-  for (const subject of presetSubjectsUnique) {
-    for (const cls of presetClasses) {
-      defaultMatrix[`${subject}::${cls}::M`] = true;
-    }
+  for (const row of presetSubjects) {
+    const subject = String(row.name ?? "").trim();
+    const cls = String(row.gradeLevel ?? "").trim();
+    if (!subject || !cls) continue;
+    defaultMatrix[`${subject}::${cls}::M`] = true;
   }
 
   return {
