@@ -5,6 +5,9 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { canManageEscolaResources } from "../../permissions";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 // --- HELPERS PARA GERAR CÓDIGO (Consistência com outras rotas) ---
 const normalizeNome = (nome: string): string =>
   nome
