@@ -37,7 +37,7 @@ export async function GET(req: Request) {
     headers.set('Link', `</api/escolas/${escolaId}/turmas>; rel="successor-version"`);
 
     // 3. Parâmetros
-    const sessionId = url.searchParams.get('session_id');
+    let sessionId = url.searchParams.get('session_id');
     const turno = url.searchParams.get('turno');
     const alunoId = url.searchParams.get('aluno_id');
     const anoParam = url.searchParams.get('ano') || url.searchParams.get('ano_letivo');
@@ -60,6 +60,21 @@ export async function GET(req: Request) {
         }
       } catch (err) {
         console.warn('Falha ao resolver ano letivo pela sessão', err);
+      }
+    }
+
+    if (!sessionId && !anoLetivo) {
+      // 3.1 Tentar buscar o ano letivo ativo se nada for providenciado
+      const { data: activeSession } = await supabase
+        .from('anos_letivos')
+        .select('id, ano')
+        .eq('escola_id', escolaId)
+        .eq('ativo', true)
+        .maybeSingle();
+
+      if (activeSession) {
+        sessionId = activeSession.id;
+        anoLetivo = typeof activeSession.ano === 'string' ? Number(activeSession.ano) : activeSession.ano;
       }
     }
 
