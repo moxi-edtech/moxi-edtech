@@ -270,6 +270,20 @@ BEGIN
   END IF;
 
   IF v_new_turmas_count = 0 THEN
+    IF EXISTS (
+      SELECT 1
+      FROM public.turmas t
+      WHERE t.escola_id = p_escola_id
+        AND t.curso_id = p_curso_id
+        AND t.ano_letivo = p_ano_letivo
+    ) THEN
+      RETURN jsonb_build_object(
+        'ok', true,
+        'turmas_criadas', 0,
+        'turma_disciplinas_criadas', 0,
+        'message', 'Turmas já existentes.'
+      );
+    END IF;
     RAISE EXCEPTION 'Nenhuma turma foi gerada. Verifique os parâmetros de entrada.';
   END IF;
 
