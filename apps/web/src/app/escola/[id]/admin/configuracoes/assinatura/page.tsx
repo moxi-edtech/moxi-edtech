@@ -4,8 +4,8 @@ import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 
 export const dynamic = 'force-dynamic'
 
-export default async function Page({ params }: { params: Promise<{ escolaId: string }> }) {
-  const { escolaId } = await params;
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  const { id: escolaId } = await params;
   
   return (
     <div className="space-y-6">

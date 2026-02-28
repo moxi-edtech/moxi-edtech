@@ -17,17 +17,19 @@ contexto: Inventário de gaps para o fluxo "Caminho Feliz" (Fases 1–5)
 - **impacto:** secretaria perde precisão operacional para reemissões e lotes parciais.
 - **ação proposta:** habilitar seleção de alunos (1–40) e encaminhar `alunos_ids` no submit.
 
-### BL-003 — GradeEngine de fecho sem filtro oficial completo
+### [RESOLVIDO] BL-003 — GradeEngine de fecho sem filtro oficial completo
 - **fase:** 4
 - **problema:** cálculo de transição final pode considerar disciplinas fora do filtro oficial (`conta_para_media_med`).
 - **impacto:** risco de decisão de aprovação/reprovação inconsistente com regra oficial.
 - **ação proposta:** aplicar filtro oficial no cálculo final do GradeEngine/SQL de decisão.
+- **status:** Resolvido via migração `20261201110000_gradeengine_filtro_oficial_mensalidades_matricula_unique.sql`.
 
-### BL-004 — Vínculo matrícula-financeiro com risco em rematrícula
+### [RESOLVIDO] BL-004 — Vínculo matrícula-financeiro com risco em rematrícula
 - **fase:** 2
 - **problema:** regra de conflito financeiro ainda pode colidir por aluno/mês/ano sem garantir vínculo por matrícula.
 - **impacto:** nova matrícula pode ficar sem títulos financeiros dedicados.
 - **ação proposta:** revisar chave de unicidade/conflito para incluir `matricula_id` (ou política equivalente explícita).
+- **status:** Resolvido alterando o índice único `ux_mensalidades_aluno_mes` para `ux_mensalidades_matricula_mes` via migração `20261201110000_gradeengine_filtro_oficial_mensalidades_matricula_unique.sql`.
 
 ## Prioridade P1 (alto impacto)
 
@@ -37,11 +39,12 @@ contexto: Inventário de gaps para o fluxo "Caminho Feliz" (Fases 1–5)
 - **impacto:** duplicidade documental e reconciliação operacional mais difícil.
 - **ação proposta:** definir chave idempotente por aluno/tipo/ano/lote com política de reemissão.
 
-### BL-006 — UX textual ainda centrada em pautas
+### [RESOLVIDO] BL-006 — UX textual ainda centrada em pautas
 - **fase:** 5
 - **problema:** mensagens da UI não estão totalmente contextualizadas para boletim/certificado.
 - **impacto:** ruído operacional para secretaria.
 - **ação proposta:** tornar labels/toasts dinâmicos por tipo de documento.
+- **status:** Resolvido no componente `DocumentosOficiaisBatchClient.tsx` introduzindo o helper `getLabels` para contextualização dinâmica.
 
 ## Prioridade P2 (governança e consistência)
 
