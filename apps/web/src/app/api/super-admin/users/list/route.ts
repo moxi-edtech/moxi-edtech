@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
 import type { Database } from '~types/supabase'
+import { isSuperAdminRole } from '@/lib/auth/requireSuperAdminAccess'
 
 type UsuarioItem = {
   id: string
@@ -28,8 +29,7 @@ export async function GET() {
       .order('created_at', { ascending: false })
       .limit(1)
     const role = (rows?.[0] as any)?.role as string | undefined
-    const allowed = ['super_admin', 'global_admin']
-    if (!allowed.includes(role || '')) {
+    if (!isSuperAdminRole(role)) {
       return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
     }
 

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabaseClient";
+import { isSuperAdminRole } from "@/lib/auth/requireSuperAdminAccess";
 
 export default function RequireSuperAdmin({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -32,8 +33,7 @@ export default function RequireSuperAdmin({ children }: { children: React.ReactN
         return;
       }
 
-      const allowed = ["super_admin", "global_admin"];
-      if (allowed.includes(profile.role)) {
+      if (isSuperAdminRole(profile.role)) {
         if (active) setStatus("authed");
       } else {
         if (active) setStatus("denied");

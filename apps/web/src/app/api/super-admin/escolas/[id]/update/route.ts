@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { recordAuditServer } from '@/lib/audit'
+import { isSuperAdminRole } from '@/lib/auth/requireSuperAdminAccess'
 
 const BodySchema = z.object({
   aluno_portal_enabled: z.boolean().optional(),
@@ -24,7 +25,9 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     // super_admin only
     const { data: rows } = await s.from('profiles').select('role').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1)
     const role = (rows?.[0] as any)?.role as string | undefined
-    if (role !== 'super_admin') return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
+    if (!isSuperAdminRole(role)) {
+      return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
+    }
 
     const patch: Record<string, any> = {}
     if (typeof updates.aluno_portal_enabled === 'boolean') patch.aluno_portal_enabled = updates.aluno_portal_enabled

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
 import type { Database } from '~types/supabase'
 import { recordAuditServer } from '@/lib/audit'
+import { isSuperAdminRole } from '@/lib/auth/requireSuperAdminAccess'
 
 export async function POST(request: Request) {
   try {
@@ -26,7 +27,9 @@ export async function POST(request: Request) {
     if (!current) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
     const { data: rows } = await s.from('profiles').select('role').eq('user_id', current.id).order('created_at', { ascending: false }).limit(1)
     const role = (rows?.[0] as any)?.role as string | undefined
-    if (role !== 'super_admin') return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
+    if (!isSuperAdminRole(role)) {
+      return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
+    }
 
     // Campos do profile que podemos atualizar diretamente
     const profilePatch: Record<string, any> = {}
