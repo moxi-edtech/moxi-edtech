@@ -1,123 +1,145 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from 'next/navigation';
+import { useRouter } from "next/navigation";
+import { 
+  UsersRound, 
+  ArrowRight, 
+  Search, 
+  Filter, 
+  CheckCircle2, 
+  XCircle, 
+  AlertCircle, 
+  Save 
+} from "lucide-react";
 
+// 1. Tipagens atualizadas para o Payload Enriquecido (UX Defensiva)
 interface Turma {
   id: string;
   nome: string;
+  curso_id?: string;
+  classe_id?: string;
+  ano_letivo?: number;
 }
 
-interface Aluno {
+interface AlunoTriagem {
   id: string;
   nome: string;
-  status?: string | null;
+  pode_transitar: boolean;
+  pedagogico: {
+    status: "CONCLUIDA" | "REPROVADA" | "INCOMPLETA" | string;
+  };
+  financeiro: {
+    em_dia: boolean;
+    saldo_pendente: number;
+  };
 }
-
-type SugestaoRematricula = {
-  origem: Turma;
-  destino?: Turma | null;
-  regra?: string | null;
-  total_alunos?: number | null;
-};
 
 export default function RematriculaPage() {
   const router = useRouter();
+  
+  // States de Seleção
   const [originTurmaId, setOriginTurmaId] = useState("");
   const [destinationTurmaId, setDestinationTurmaId] = useState("");
   const [turmas, setTurmas] = useState<Turma[]>([]);
-  const [sugestoes, setSugestoes] = useState<SugestaoRematricula[]>([]);
-  const [loadingSugestoes, setLoadingSugestoes] = useState(false);
-  const [alunos, setAlunos] = useState<Aluno[]>([]);
+  
+  // Limpa o destino se a origem mudar
+  useEffect(() => {
+    setDestinationTurmaId("");
+  }, [originTurmaId]);
+  
+  // Memo para filtrar turmas de destino baseadas na origem
+  const destinationOptions = React.useMemo(() => {
+    if (!originTurmaId) return [];
+    const origin = turmas.find(t => t.id === originTurmaId);
+    if (!origin) return [];
+    
+    // Filtra pelo mesmo curso e exclui a própria turma de origem
+    return turmas.filter(t => t.curso_id === origin.curso_id && t.id !== origin.id);
+  }, [originTurmaId, turmas]);
+  
+  // States de Dados
+  const [alunos, setAlunos] = useState<AlunoTriagem[]>([]);
   const [selectedAlunos, setSelectedAlunos] = useState<string[]>([]);
+  
+  // States de UI
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [rpcResult, setRpcResult] = useState<{ inserted: number; skipped: number } | null>(null);
-  const [gerarMensalidades, setGerarMensalidades] = useState(false);
-  const [gerarTodas, setGerarTodas] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
 
+  // Load Inicial de Turmas
   useEffect(() => {
     const fetchTurmas = async () => {
       try {
         const res = await fetch("/api/secretaria/turmas-simples");
         const json = await res.json();
-        if (json.ok) {
-          setTurmas(json.items);
-        }
+        if (json.ok) setTurmas(json.items);
       } catch {
-        setError("Falha ao carregar turmas.");
+        setError("Falha ao carregar o catálogo de turmas.");
       }
     };
     fetchTurmas();
   }, []);
 
+  // 2. O Cérebro: Carregar Alunos e Fazer Auto-Select
   useEffect(() => {
     const fetchAlunos = async () => {
-      if (originTurmaId) {
-        try {
-          const res = await fetch(`/api/secretaria/turmas/${originTurmaId}/alunos`, { cache: "no-store" });
-          const json = await res.json();
-          if (json.ok) {
-            const rows = (json.alunos || json.items || []) as any[];
-            setAlunos(
-              rows.map((row) => ({
-                id: row.aluno_id || row.id,
-                nome: row.aluno_nome || row.nome,
-                status: row.status_matricula || row.status || null,
-              }))
-            );
-            setSelectedAlunos([]);
-          }
-        } catch {
-          setError("Falha ao carregar alunos.");
-        }
-      } else {
+      if (!originTurmaId) {
         setAlunos([]);
+        setSelectedAlunos([]);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/secretaria/turmas/${originTurmaId}/alunos`, { cache: "no-store" });
+        const json = await res.json();
+        
+        if (json.ok) {
+          // Mapeamento defensivo garantindo a estrutura nova (ou fazendo fallback seguro)
+          const rows = (json.alunos || json.items || []).map((row: any) => ({
+            id: row.aluno_id || row.id,
+            nome: row.aluno_nome || row.nome,
+            // Simulando os Gates caso a API ainda não os envie perfeitamente
+            pode_transitar: row.pode_transitar ?? (row.status === 'ativo' || row.status === 'CONCLUIDA'),
+            pedagogico: row.pedagogico || { status: row.status_matricula || row.status || 'INCOMPLETA' },
+            financeiro: row.financeiro || { em_dia: true, saldo_pendente: 0 }
+          }));
+          
+          setAlunos(rows);
+          
+          // O AUTO-SELECT MÁGICO: Marca apenas quem tem luz verde nos Gates
+          const aptosIds = rows.filter((a: AlunoTriagem) => a.pode_transitar).map((a: AlunoTriagem) => a.id);
+          setSelectedAlunos(aptosIds);
+        }
+      } catch {
+        setError("Falha ao carregar a triagem de alunos.");
+      } finally {
+        setLoading(false);
       }
     };
     fetchAlunos();
   }, [originTurmaId]);
 
-  const loadSugestoes = async () => {
-    setLoadingSugestoes(true);
-    try {
-      const res = await fetch("/api/secretaria/rematricula/sugestoes");
-      const json = await res.json();
-      if (json.ok) {
-        setSugestoes(json.sugestoes);
-      }
-    } catch {
-      setError("Falha ao carregar sugestões.");
-    } finally {
-      setLoadingSugestoes(false);
-    }
-  };
-
+  // Filtros Visuais
   const filteredAlunos = alunos.filter((aluno) => {
     const matchesSearch = !searchTerm.trim() || aluno.nome.toLowerCase().includes(searchTerm.toLowerCase());
     if (statusFilter === "todos") return matchesSearch;
-    if (statusFilter === "ativos") return matchesSearch && ["ativo", "ativa", "active"].includes(aluno.status || "");
-    return matchesSearch && aluno.status === statusFilter;
+    if (statusFilter === "aptos") return matchesSearch && aluno.pode_transitar;
+    if (statusFilter === "pendentes") return matchesSearch && !aluno.pode_transitar;
+    return matchesSearch;
   });
-
-  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) {
-      setSelectedAlunos(filteredAlunos.map((a) => a.id));
-    } else {
-      setSelectedAlunos([]);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (selectedAlunos.length === 0) return;
+    
     setLoading(true);
     setError(null);
-    setRpcResult(null);
 
     try {
-      const res = await fetch("/api/secretaria/rematricula", {
+      const res = await fetch("/api/secretaria/matriculas/transitar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -128,38 +150,10 @@ export default function RematriculaPage() {
       });
 
       const json = await res.json();
-      if (!res.ok || !json.ok) {
-        throw new Error(json.error || "Falha ao realizar rematrícula em massa");
-      }
+      if (!res.ok || !json.ok) throw new Error(json.error || "A transação falhou num dos Gates do servidor.");
 
-      alert("Promoção em massa realizada com sucesso!");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRpcAll = async () => {
-    setLoading(true);
-    setError(null);
-    setRpcResult(null);
-    try {
-      const res = await fetch('/api/secretaria/rematricula', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          origin_turma_id: originTurmaId,
-          destination_turma_id: destinationTurmaId,
-          aluno_ids: filteredAlunos.map((aluno) => aluno.id),
-          use_rpc: true,
-          gerar_mensalidades: gerarMensalidades,
-          gerar_todas: gerarTodas,
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.ok) throw new Error(json.error || 'Falha ao rematricular via RPC');
-      setRpcResult({ inserted: json.inserted ?? 0, skipped: json.skipped ?? 0 });
+      alert(`Sucesso! ${selectedAlunos.length} alunos transitados.`);
+      router.push("/secretaria/turmas");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -168,205 +162,194 @@ export default function RematriculaPage() {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow border p-5">
-      <h1 className="text-lg font-semibold mb-4">Promoção em Massa</h1>
-      <div className="mb-4 flex items-center gap-3">
-        <button onClick={loadSugestoes} className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
-          {loadingSugestoes ? "Carregando..." : "Carregar Sugestões"}
-        </button>
-        <button
-          onClick={handleRpcAll}
-          disabled={loading || !originTurmaId || !destinationTurmaId || filteredAlunos.length === 0}
-          className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 disabled:opacity-50"
-        >
-          {loading ? 'Processando...' : 'Promover todos'}
-        </button>
-      </div>
-      <div className="mb-4 flex items-center gap-4">
-        <label className="flex items-center gap-2 text-sm text-slate-700">
-          <input type="checkbox" checked={gerarMensalidades} onChange={(e)=>setGerarMensalidades(e.target.checked)} />
-          Gerar mensalidades
-        </label>
-        <label className="flex items-center gap-2 text-sm text-slate-700">
-          <input type="checkbox" checked={gerarTodas} onChange={(e)=>setGerarTodas(e.target.checked)} disabled={!gerarMensalidades} />
-          Para todo o ano letivo
-        </label>
-      </div>
-      {rpcResult && (
-        <div className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-          Promoção concluída: {rpcResult.inserted} inseridos, {rpcResult.skipped} ignorados (já ativos na sessão).
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 max-w-5xl mx-auto font-sans">
+      
+      {/* HEADER DA PÁGINA */}
+      <div className="flex items-center gap-3 mb-8 border-b border-slate-100 pb-4">
+        <div className="bg-[#1F6B3B]/10 p-3 rounded-xl">
+          <UsersRound className="w-6 h-6 text-[#1F6B3B]" />
         </div>
-      )}
-        {sugestoes.length > 0 && (
-            <div className="mb-4">
-                <h2 className="text-md font-semibold mb-2">Sugestões de Rematrícula</h2>
-                <div className="border rounded-md p-4 max-h-64 overflow-y-auto">
-                    <table className="min-w-full text-sm">
-                        <thead>
-                            <tr>
-                                <th className="py-2 pr-4 text-left">Origem</th>
-                                <th className="py-2 pr-4 text-left">Destino</th>
-                                <th className="py-2 pr-4 text-left">Regra</th>
-                                <th className="py-2 pr-4 text-left">Alunos</th>
-                                <th className="py-2 pr-4 text-left">Ação</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {sugestoes.map((sugestao, index) => (
-                                <tr key={index}>
-                                    <td className="py-2 pr-4">{sugestao.origem.nome}</td>
-                                    <td className="py-2 pr-4">{sugestao.destino?.nome ?? "N/A"}</td>
-                                    <td className="py-2 pr-4">{sugestao.regra}</td>
-                                    <td className="py-2 pr-4">{sugestao.total_alunos}</td>
-                                    <td className="py-2 pr-4">
-                                        <button
-                                            onClick={() => {
-                                                setOriginTurmaId(sugestao.origem.id);
-                                                setDestinationTurmaId(sugestao.destino?.id ?? "");
-                                            }}
-                                            className="text-blue-600 hover:underline"
-                                        >
-                                            Aplicar
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-                <div className="mt-4">
-                    <button onClick={() => router.push('/secretaria/rematricula/confirmar')} className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">
-                        Confirmar Rematrícula em Massa
-                    </button>
-                </div>
-            </div>
-        )}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-slate-950 font-sora">Promoção em Massa</h1>
+          <p className="text-sm text-slate-500">Transfira alunos aprovados para o próximo ano letivo.</p>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-8">
+        {/* ZONA 1: ORIGEM E DESTINO */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-xl border border-slate-100">
           <div>
-            <label htmlFor="originTurma" className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-semibold text-slate-950 mb-2">
               Turma de Origem
             </label>
             <select
-              id="originTurma"
               value={originTurmaId}
               onChange={(e) => setOriginTurmaId(e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+              className="w-full rounded-xl border-slate-200 text-sm focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20 transition-all"
               required
             >
-              <option value="">Selecione uma turma</option>
-              {turmas.map((turma) => (
-                <option key={turma.id} value={turma.id}>
-                  {turma.nome}
-                </option>
+              <option value="">Selecione a turma atual...</option>
+              {turmas.map((t) => (
+                <option key={t.id} value={t.id}>{t.nome}</option>
               ))}
             </select>
           </div>
-          <div>
-            <label htmlFor="destinationTurma" className="block text-sm font-medium text-gray-700">
+
+          <div className="relative">
+            {/* Ícone decorativo apontando a direção no Desktop */}
+            <div className="absolute -left-6 top-9 hidden md:block text-slate-300">
+              <ArrowRight className="w-5 h-5" />
+            </div>
+            
+            <label className="block text-sm font-semibold text-slate-950 mb-2">
               Turma de Destino
             </label>
             <select
-              id="destinationTurma"
               value={destinationTurmaId}
               onChange={(e) => setDestinationTurmaId(e.target.value)}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+              disabled={!originTurmaId}
+              className="w-full rounded-xl border-slate-200 text-sm focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20 disabled:bg-slate-100 disabled:text-slate-400 transition-all"
               required
             >
-              <option value="">Selecione uma turma</option>
-              {turmas.map((turma) => (
-                <option key={turma.id} value={turma.id}>
-                  {turma.nome}
-                </option>
+              <option value="">Selecione a nova turma...</option>
+              {destinationOptions.map((t) => (
+                <option key={t.id} value={t.id}>{t.nome}</option>
               ))}
             </select>
           </div>
         </div>
 
-        {alunos.length > 0 && (
-          <div>
-            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-              <div>
-                <h2 className="text-md font-semibold">Prévia da Promoção</h2>
-                <p className="text-xs text-slate-500">Selecione quem vai seguir para a turma destino.</p>
-              </div>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <input
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Filtrar por nome"
-                  className="border rounded-md px-3 py-2 text-sm"
-                />
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="border rounded-md px-3 py-2 text-sm"
-                >
-                  <option value="todos">Todos os status</option>
-                  <option value="ativos">Aprovados/Ativos</option>
-                  <option value="concluido">Concluídos</option>
-                  <option value="transferido">Transferidos</option>
-                  <option value="desistente">Desistentes</option>
-                </select>
+        {/* ZONA 2: GRELHA DE TRIAGEM */}
+        {originTurmaId && alunos.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <h2 className="text-lg font-bold text-slate-950 font-sora">Triagem de Alunos</h2>
+              
+              {/* Filtros */}
+              <div className="flex gap-2">
+                <div className="relative">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Buscar aluno..."
+                    className="pl-9 w-48 rounded-xl border-slate-200 text-sm focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20"
+                  />
+                </div>
+                <div className="relative">
+                  <Filter className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="pl-9 rounded-xl border-slate-200 text-sm focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20"
+                  >
+                    <option value="todos">Todos</option>
+                    <option value="aptos">Aptos a Transitar</option>
+                    <option value="pendentes">Com Pendências</option>
+                  </select>
+                </div>
               </div>
             </div>
-            <div className="border rounded-md p-4 max-h-64 overflow-y-auto">
+
+            <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
               <table className="min-w-full text-sm">
-                <thead>
+                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold">
                   <tr>
-                    <th className="py-2 pr-4 text-left">
-                      <input type="checkbox" onChange={handleSelectAll} />
+                    <th className="py-3 px-4 text-left w-12">
+                      <input 
+                        type="checkbox" 
+                        className="rounded text-[#1F6B3B] focus:ring-[#E3B23C]"
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedAlunos(filteredAlunos.filter(a => a.pode_transitar).map(a => a.id));
+                          } else {
+                            setSelectedAlunos([]);
+                          }
+                        }}
+                      />
                     </th>
-                    <th className="py-2 pr-4 text-left">Nome</th>
-                    <th className="py-2 pr-4 text-left">Status</th>
+                    <th className="py-3 px-4 text-left">Nome do Aluno</th>
+                    <th className="py-3 px-4 text-center">Status Pedagógico</th>
+                    <th className="py-3 px-4 text-center">Status Financeiro</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {filteredAlunos.map((aluno) => (
-                    <tr key={aluno.id}>
-                      <td>
-                        <input
-                          type="checkbox"
-                          value={aluno.id}
-                          checked={selectedAlunos.includes(aluno.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedAlunos([...selectedAlunos, aluno.id]);
-                            } else {
-                              setSelectedAlunos(selectedAlunos.filter((id) => id !== aluno.id));
-                            }
-                          }}
-                        />
-                      </td>
-                      <td className="py-2 pr-4">{aluno.nome}</td>
-                      <td className="py-2 pr-4 text-xs text-slate-500">{aluno.status || "—"}</td>
-                    </tr>
-                  ))}
-                  {filteredAlunos.length === 0 && (
-                    <tr>
-                      <td colSpan={3} className="py-4 text-sm text-slate-500">
-                        Nenhum aluno encontrado com o filtro atual.
-                      </td>
-                    </tr>
-                  )}
+                <tbody className="divide-y divide-slate-100">
+                  {filteredAlunos.map((aluno) => {
+                    const isSelected = selectedAlunos.includes(aluno.id);
+                    return (
+                      <tr key={aluno.id} className={`hover:bg-slate-50 transition-colors ${!aluno.pode_transitar ? 'opacity-75 bg-slate-50/50' : ''}`}>
+                        <td className="py-3 px-4">
+                          <input
+                            type="checkbox"
+                            disabled={!aluno.pode_transitar}
+                            checked={isSelected}
+                            className="rounded text-[#1F6B3B] focus:ring-[#E3B23C] disabled:opacity-50"
+                            onChange={(e) => {
+                              if (e.target.checked) setSelectedAlunos([...selectedAlunos, aluno.id]);
+                              else setSelectedAlunos(selectedAlunos.filter((id) => id !== aluno.id));
+                            }}
+                          />
+                        </td>
+                        <td className="py-3 px-4 font-medium text-slate-900">{aluno.nome}</td>
+                        
+                        {/* BADGE PEDAGÓGICA */}
+                        <td className="py-3 px-4 text-center">
+                          {aluno.pedagogico.status === 'CONCLUIDA' ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Aprovado
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                              <XCircle className="w-3.5 h-3.5" /> {aluno.pedagogico.status}
+                            </span>
+                          )}
+                        </td>
+
+                        {/* BADGE FINANCEIRA */}
+                        <td className="py-3 px-4 text-center">
+                          {aluno.financeiro.em_dia ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                              <CheckCircle2 className="w-3.5 h-3.5" /> Em Dia
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800" title={`Dívida: ${aluno.financeiro.saldo_pendente} Kz`}>
+                              <AlertCircle className="w-3.5 h-3.5" /> Dívida Pendente
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
-            </div>
-            <div className="mt-3 text-xs text-slate-500">
-              Selecionados: {selectedAlunos.length} de {filteredAlunos.length}
+              {filteredAlunos.length === 0 && (
+                <div className="py-8 text-center text-slate-500">
+                  Nenhum aluno encontrado.
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 flex items-center gap-3">
+            <AlertCircle className="w-5 h-5" />
+            <span className="text-sm font-medium">{error}</span>
+          </div>
+        )}
 
-        <div className="flex justify-end">
+        {/* ZONA 3: BARRA DE AÇÃO FLUTUANTE / FIXA */}
+        <div className="flex items-center justify-between pt-6 border-t border-slate-200">
+          <div className="text-sm text-slate-500">
+            <span className="font-bold text-slate-950">{selectedAlunos.length}</span> alunos prontos para transitar
+          </div>
           <button
             type="submit"
-            disabled={loading || selectedAlunos.length === 0}
-            className="inline-flex justify-center rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50"
+            disabled={loading || selectedAlunos.length === 0 || !destinationTurmaId}
+            className="inline-flex items-center gap-2 rounded-xl bg-[#1F6B3B] px-6 py-3 text-sm font-semibold text-white shadow-sm hover:brightness-110 focus:outline-none focus:ring-4 focus:ring-[#E3B23C]/20 disabled:opacity-50 transition-all"
           >
-            {loading ? "Promovendo..." : "Promover Selecionados"}
+            {loading ? "A Processar..." : "Confirmar Rematrícula"}
+            {!loading && <Save className="w-4 h-4" />}
           </button>
         </div>
       </form>
