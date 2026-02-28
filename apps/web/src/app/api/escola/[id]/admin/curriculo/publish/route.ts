@@ -375,7 +375,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             ? Array.from(new Set(classTurnos))
             : ['M'];
 
-          await supabase.rpc('gerar_turmas_from_curriculo', {
+          const { error: genError } = await supabase.rpc('gerar_turmas_from_curriculo', {
             p_escola_id: userEscolaId,
             p_curso_id: cursoId,
             p_ano_letivo: anoLetivoRow.ano,
@@ -387,6 +387,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             },
             p_idempotency_key: idempotencyKey,
           });
+
+          if (!genError) {
+            try {
+              await (supabase as any).rpc('refresh_mv_turmas_para_matricula');
+            } catch (refreshErr) {
+              console.warn('Falha ao atualizar mv_turmas_para_matricula:', refreshErr);
+            }
+          }
         }
       }
     }
