@@ -9,6 +9,7 @@ import { SchoolsTab } from '@/components/super-admin/health/SchoolsTab';
 import { WorkersTab } from '@/components/super-admin/health/WorkersTab';
 import { InfraTab } from '@/components/super-admin/health/InfraTab';
 import { SystemStatus } from '@/components/super-admin/health/SystemStatus';
+import AuditPageView from '@/components/audit/AuditPageView';
 import { 
   AlertTriangle, 
   School, 
@@ -52,6 +53,7 @@ export default function AdminHealthDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+      <AuditPageView portal="super_admin" acao="PAGE_VIEW" entity="health_dashboard" />
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">

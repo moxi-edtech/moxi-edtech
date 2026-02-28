@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import RequireSuperAdmin from "@/app/(guards)/RequireSuperAdmin";
 import { Button } from "@/components/ui/Button";
+import AuditPageView from "@/components/audit/AuditPageView";
 import {
   BuildingLibraryIcon,
   UserPlusIcon,
@@ -17,6 +18,7 @@ import {
 export default function NovaEscolaPage() {
   return (
     <RequireSuperAdmin>
+      <AuditPageView portal="super_admin" acao="PAGE_VIEW" entity="escola_create" />
       <CriarEscolaForm />
     </RequireSuperAdmin>
   );
