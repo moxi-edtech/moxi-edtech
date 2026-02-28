@@ -28,8 +28,7 @@ const formatCurrency = (value: number) => {
   }).format(value);
 };
 
-export function SystemStatus({ systemHealth, escolas }: SystemStatusProps) {
-  const avgLatency = escolas.length > 0 ? Math.round(escolas.reduce((sum, e) => sum + e.latencia_media, 0) / escolas.length) : 0;
+export function SystemStatus({ systemHealth }: SystemStatusProps) {
 
   return (
     <Card>
@@ -80,7 +79,7 @@ export function SystemStatus({ systemHealth, escolas }: SystemStatusProps) {
               <Clock className="h-4 w-4 text-gray-500" />
               <span className="text-sm text-gray-600">Latência Média</span>
             </div>
-            <div className="text-2xl font-bold">{avgLatency}ms</div>
+            <div className="text-2xl font-bold text-gray-500">Em construção</div>
           </div>
         </div>
       </CardContent>

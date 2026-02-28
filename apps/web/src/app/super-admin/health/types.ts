@@ -21,7 +21,7 @@ export interface EscolaMetricas {
   professores: number;
   turmas: number;
   ultimo_acesso: string;
-  latencia_media: number;
+  latencia_media: number | null;
   sync_status: 'synced' | 'pending' | 'error';
   mrr: number; // em AOA
 }

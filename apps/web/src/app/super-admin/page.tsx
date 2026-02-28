@@ -1,4 +1,3 @@
-import { getDashboardData } from "@/lib/dashboard"
 import { getChartsData } from "@/lib/charts"
 import { supabaseServer } from "@/lib/supabaseServer"
 import { isSuperAdminRole } from "@/lib/auth/requireSuperAdminAccess"
@@ -37,10 +36,10 @@ export default async function Page() {
     const role = (roleRows?.[0] as any)?.role as string | undefined
     const hasAccess = isSuperAdminRole(role)
 
-    const [data, charts, healthMetrics, cronRuns, storageUsage] = await Promise.all([
-      getDashboardData(),
+    const [charts, healthMetrics, systemHealth, cronRuns, storageUsage] = await Promise.all([
       getChartsData(),
       hasAccess ? (supabase as any).rpc("admin_get_escola_health_metrics") : { data: [] },
+      hasAccess ? (supabase as any).rpc("admin_get_system_health") : { data: null },
       hasAccess ? (supabase as any).rpc("get_recent_cron_runs", { p_limit: 1 }) : { data: [] },
       hasAccess
         ? (supabase as any).rpc("admin_get_storage_usage", {
@@ -100,13 +99,20 @@ export default async function Page() {
       return `${mb.toFixed(mb >= 100 ? 0 : 1)} MB`
     }
 
+    const systemSnapshot = (systemHealth as any)?.data as {
+      escolas_ativas?: number
+      alunos_totais?: number
+      professores_totais?: number
+      mrr_total?: number
+    } | null
+
     const kpis: KpiItem[] = [
-      { title: "Alunos ativos", value: data.alunos, icon: UsersIcon },
-      { title: "Turmas", value: data.turmas, icon: BuildingLibraryIcon },
-      { title: "Professores", value: data.professores, icon: AcademicCapIcon },
+      { title: "Escolas activas", value: systemSnapshot?.escolas_ativas ?? 0, icon: BuildingLibraryIcon },
+      { title: "Alunos totais", value: systemSnapshot?.alunos_totais ?? 0, icon: UsersIcon },
+      { title: "Professores", value: systemSnapshot?.professores_totais ?? 0, icon: AcademicCapIcon },
       {
-        title: "Financeiro",
-        value: `${data.pagamentosPercent.toFixed(1)}% pago`,
+        title: "MRR",
+        value: systemSnapshot?.mrr_total ? `${(systemSnapshot.mrr_total / 1000).toFixed(0)}K` : "Em construção",
         icon: BanknotesIcon,
       },
     ]
