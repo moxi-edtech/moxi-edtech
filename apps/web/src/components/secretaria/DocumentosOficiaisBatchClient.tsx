@@ -17,6 +17,7 @@ import {
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { PautaRapidaModal } from "@/components/secretaria/PautaRapidaModal";
+import { useOfficialDocs } from "@/hooks/useOfficialDocs";
 
 type TurmaItem = {
   id: string;
@@ -80,7 +81,7 @@ export default function DocumentosOficiaisBatchClient() {
   const [turmas, setTurmas] = useState<TurmaItem[]>([]);
   const [periodos, setPeriodos] = useState<PeriodoItem[]>([]);
   const [periodoId, setPeriodoId] = useState<string>("");
-  const [tipo, setTipo] = useState<"trimestral" | "anual">("trimestral");
+  const [tipo, setTipo] = useState<"trimestral" | "anual" | "boletim" | "certificado">("trimestral");
   const [hidePendencias, setHidePendencias] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -103,6 +104,8 @@ export default function DocumentosOficiaisBatchClient() {
   const [pendenciasLoading, setPendenciasLoading] = useState(false);
   const [pendencias, setPendencias] = useState<PendenciaItem[]>([]);
   const [selectedPendencia, setSelectedPendencia] = useState<PendenciaItem | null>(null);
+
+  const { gerarBoletimBatch, gerarCertificadoBatch } = useOfficialDocs();
 
   const pendingPeriodoNumeros = useMemo(() => {
     const numeros = new Set<number>();
@@ -253,13 +256,24 @@ export default function DocumentosOficiaisBatchClient() {
       setToast({ message: "Selecione o trimestre.", type: "error" });
       return;
     }
-    if (tipo !== "trimestral" && tipo !== "anual") {
-      setToast({ message: "Tipo ainda não disponível.", type: "error" });
-      return;
-    }
+
     setSubmitting(true);
     setOptimisticJob("RUNNING");
     try {
+      if (tipo === "certificado" || tipo === "boletim") {
+        for (const turmaId of Array.from(selected)) {
+          if (tipo === "certificado") {
+            await gerarCertificadoBatch(turmaId, []);
+          } else {
+            await gerarBoletimBatch(turmaId, []);
+          }
+        }
+        setToast({ message: `PDFs de ${tipo} gerados com sucesso.`, type: "success" });
+        setSelected(new Set());
+        setOptimisticJob(null);
+        return;
+      }
+
       const res = await fetch("/api/secretaria/documentos-oficiais/lote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -407,13 +421,13 @@ export default function DocumentosOficiaisBatchClient() {
         <div className="flex items-center gap-3">
           <select
             value={tipo}
-            onChange={(e) => setTipo(e.target.value as "trimestral" | "anual")}
+            onChange={(e) => setTipo(e.target.value as "trimestral" | "anual" | "boletim" | "certificado")}
             className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-[#1F6B3B]/20"
           >
             <option value="trimestral">Pauta Trimestral</option>
             <option value="anual">Pauta Anual</option>
-            <option value="boletim" disabled>Boletins (em breve)</option>
-            <option value="certificado" disabled>Certificados (em breve)</option>
+            <option value="boletim">Boletim</option>
+            <option value="certificado">Certificado</option>
           </select>
           <button
             className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
@@ -509,7 +523,7 @@ export default function DocumentosOficiaisBatchClient() {
             <option key={p.id} value={p.id}>{`Trimestre ${p.numero}`}</option>
           ))}
         </select>
-        <span className="text-[11px] text-slate-400">Boletins e certificados: em breve.</span>
+        <span className="text-[11px] text-slate-400">Boletins e certificados disponíveis em lote.</span>
         <button
           type="button"
           onClick={() => setManualRefresh(true)}
