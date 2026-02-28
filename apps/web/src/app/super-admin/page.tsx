@@ -36,7 +36,7 @@ export default async function Page() {
     const role = (roleRows?.[0] as any)?.role as string | undefined
     const hasAccess = isSuperAdminRole(role)
 
-    const [charts, healthMetrics, systemHealth, cronRuns, storageUsage] = await Promise.all([
+    const [charts, healthMetrics, systemHealth, cronRuns, storageUsage, activityLogs] = await Promise.all([
       getChartsData(),
       hasAccess ? (supabase as any).rpc("admin_get_escola_health_metrics") : { data: [] },
       hasAccess ? (supabase as any).rpc("admin_get_system_health") : { data: null },
@@ -54,6 +54,13 @@ export default async function Page() {
               "pautas_zip",
             ],
           })
+        : { data: [] },
+      hasAccess
+        ? (supabase as any)
+            .from("audit_logs")
+            .select("id, created_at, mensagem, acao, escola_id, escolas(nome)")
+            .order("created_at", { ascending: false })
+            .limit(8)
         : { data: [] },
     ])
 
@@ -116,6 +123,13 @@ export default async function Page() {
         icon: BanknotesIcon,
       },
     ]
+
+    const activities = ((activityLogs as any)?.data || []).map((row: any) => ({
+      id: row.id,
+      titulo: row.escolas?.nome ?? "Escola",
+      resumo: row.mensagem ?? row.acao ?? "Actividade",
+      data: row.created_at,
+    }))
 
     return (
       <>
@@ -216,7 +230,7 @@ export default async function Page() {
         {/* Activities e QuickActions Sections */}
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <ActivitiesSection activities={[]} />
+            <ActivitiesSection activities={activities} />
           </div>
           <div className="lg:col-span-1">
             <QuickActionsSection />
