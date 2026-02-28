@@ -1,7 +1,16 @@
 // Centralized role-permission mapping and helpers
 // Source: roles and permissions provided by product spec
 
-export type Papel = 'admin' | 'staff_admin' | 'financeiro' | 'secretaria' | 'aluno' | 'professor' | 'admin_escola'
+export type Papel =
+  | 'admin'
+  | 'staff_admin'
+  | 'financeiro'
+  | 'secretaria'
+  | 'secretaria_financeiro'
+  | 'admin_financeiro'
+  | 'aluno'
+  | 'professor'
+  | 'admin_escola'
 
 // Enumerate known permissions to get type-safety across the app
 export type Permission =
@@ -39,7 +48,17 @@ export type Permission =
   | 'enviar_mensagem'
 
 // Global role enum as used in profiles/app_metadata
-export type GlobalRole = 'super_admin' | 'admin' | 'professor' | 'aluno' | 'secretaria' | 'financeiro' | 'global_admin' | 'guest'
+export type GlobalRole =
+  | 'super_admin'
+  | 'admin'
+  | 'professor'
+  | 'aluno'
+  | 'secretaria'
+  | 'financeiro'
+  | 'secretaria_financeiro'
+  | 'admin_financeiro'
+  | 'global_admin'
+  | 'guest'
 
 export function normalizePapel(papel: Papel | string | null | undefined): Papel | null {
   if (!papel || typeof papel !== 'string') return null
@@ -54,6 +73,8 @@ export function normalizePapel(papel: Papel | string | null | undefined): Papel 
     secretaria: 'secretaria',
     secretario: 'secretaria',
     financeiro: 'financeiro',
+    secretaria_financeiro: 'secretaria_financeiro',
+    admin_financeiro: 'admin_financeiro',
     professor: 'professor',
     aluno: 'aluno',
   }
@@ -106,6 +127,46 @@ const ROLE_PERMISSIONS: Record<Papel, ReadonlySet<Permission>> = {
     'visualizar_relatorios_academicos',
   ]),
 
+  secretaria_financeiro: new Set<Permission>([
+    'criar_cobranca',
+    'editar_cobranca',
+    'registrar_pagamento',
+    'emitir_recibo',
+    'emitir_nota_fiscal',
+    'gerenciar_despesas',
+    'visualizar_fluxo_caixa',
+    'exportar_relatorios_contabeis',
+    'criar_matricula',
+    'editar_matricula',
+    'gerenciar_transferencias',
+    'gerenciar_turmas',
+    'lançar_notas',
+    'registrar_frequencia',
+    'emitir_documentos',
+    'enviar_comunicado',
+    'visualizar_relatorios_academicos',
+  ]),
+
+  admin_financeiro: new Set<Permission>([
+    'criar_usuario',
+    'editar_usuario',
+    'remover_usuario',
+    'configurar_escola',
+    'gerenciar_disciplinas',
+    'visualizar_relatorios_globais',
+    'visualizar_financeiro',
+    'visualizar_academico',
+    'registrar_pagamento',
+    'criar_matricula',
+    'criar_cobranca',
+    'editar_cobranca',
+    'emitir_recibo',
+    'emitir_nota_fiscal',
+    'gerenciar_despesas',
+    'visualizar_fluxo_caixa',
+    'exportar_relatorios_contabeis',
+  ]),
+
   professor: new Set<Permission>([
     'lançar_notas',
     'registrar_frequencia',
@@ -146,6 +207,29 @@ export function hasAnyPermission(papel: Papel | string | null | undefined, perms
   return false
 }
 
+
+export function temAcessoFinanceiro(role: GlobalRole | string | null | undefined): boolean {
+  return [
+    'financeiro',
+    'secretaria_financeiro',
+    'admin_financeiro',
+    'admin',
+    'super_admin',
+    'global_admin',
+  ].includes(String(role ?? ''))
+}
+
+export function temAcessoSecretaria(role: GlobalRole | string | null | undefined): boolean {
+  return [
+    'secretaria',
+    'secretaria_financeiro',
+    'admin_financeiro',
+    'admin',
+    'super_admin',
+    'global_admin',
+  ].includes(String(role ?? ''))
+}
+
 // Map papel (vínculo na escola) to global role to keep middleware/portals consistent
 export function mapPapelToGlobalRole(papel: Papel | string | null | undefined): GlobalRole {
   const normalized = normalizePapel(papel)
@@ -158,6 +242,10 @@ export function mapPapelToGlobalRole(papel: Papel | string | null | undefined): 
       return 'secretaria'
     case 'financeiro':
       return 'financeiro'
+    case 'secretaria_financeiro':
+      return 'secretaria_financeiro'
+    case 'admin_financeiro':
+      return 'admin_financeiro'
     case 'professor':
       return 'professor'
     case 'aluno':

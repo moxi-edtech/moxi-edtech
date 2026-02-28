@@ -3,15 +3,17 @@ import { z } from 'zod'
 import { createRouteClient } from '@/lib/supabase/route-client'
 import { recordAuditServer } from '@/lib/audit'
 import { mapPapelToGlobalRole } from '@/lib/permissions'
+import { papelEscolaSchema } from '@/lib/roles'
 import { hasPermission } from '@/lib/permissions'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { callAuthAdminJob } from '@/lib/auth-admin-job'
 
 const BodySchema = z.object({
   email: z.string().email(),
-  papel: z.enum(['admin','staff_admin','secretaria','financeiro','professor','aluno']).optional(),
-  roleEnum: z.enum(['super_admin','admin','professor','aluno','secretaria','financeiro','global_admin','guest']).optional(),
+  papel: papelEscolaSchema.optional(),
+  roleEnum: z.enum(['super_admin','admin','professor','aluno','secretaria','financeiro','secretaria_financeiro','admin_financeiro','global_admin','guest']).optional(),
 })
+
 
 export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id: escolaId } = await context.params

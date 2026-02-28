@@ -11881,6 +11881,8 @@ export type Database = {
         | "aluno"
         | "secretaria"
         | "financeiro"
+        | "secretaria_financeiro"
+        | "admin_financeiro"
         | "encarregado"
     }
     CompositeTypes: {
@@ -12124,6 +12126,8 @@ export const Constants = {
         "aluno",
         "secretaria",
         "financeiro",
+        "secretaria_financeiro",
+        "admin_financeiro",
         "encarregado",
       ],
     },

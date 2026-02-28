@@ -12,7 +12,7 @@ import {
   ClipboardDocumentCheckIcon,
 } from "@heroicons/react/24/outline";
 
-type Papel = "admin" | "staff_admin" | "secretaria" | "financeiro";
+type Papel = "admin" | "staff_admin" | "secretaria" | "financeiro" | "secretaria_financeiro" | "admin_financeiro";
 
 export default function NovoFuncionarioPage({ embedded = false }: { embedded?: boolean } = {}) {
   const router = useRouter();
@@ -181,6 +181,8 @@ export default function NovoFuncionarioPage({ embedded = false }: { embedded?: b
               >
                 <option value="secretaria">Secretaria</option>
                 <option value="financeiro">Financeiro</option>
+                <option value="secretaria_financeiro">Secretaria + Financeiro</option>
+                <option value="admin_financeiro">Admin + Financeiro</option>
                 <option value="staff_admin">Staff Admin</option>
                 <option value="admin">Administrador</option>
               </select>
