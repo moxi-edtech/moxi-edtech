@@ -3,6 +3,7 @@ import { getChartsData } from "@/lib/charts"
 import { supabaseServer } from "@/lib/supabaseServer"
 import { isSuperAdminRole } from "@/lib/auth/requireSuperAdminAccess"
 import AuditPageView from "@/components/audit/AuditPageView"
+import { DashboardHeader } from "@/components/dashboard/DashboardHeader"
 import ChartsStaticSection from "@/components/super-admin/ChartsStaticSection"
 import ActivitiesSection from '@/components/super-admin/ActivitiesSection'
 import nextDynamic from 'next/dynamic'
@@ -113,7 +114,10 @@ export default async function Page() {
     return (
       <>
         <AuditPageView portal="super_admin" acao="PAGE_VIEW" entity="morning_briefing" />
-        <h1 className="text-2xl font-bold">Morning Briefing</h1>
+        <DashboardHeader
+          title="Morning Briefing"
+          description="30 segundos para saber o que precisa da tua atenção."
+        />
 
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -229,7 +233,10 @@ export default async function Page() {
     return (
       <>
         <AuditPageView portal="super_admin" acao="PAGE_VIEW" entity="morning_briefing" />
-        <h1 className="text-2xl font-bold">Morning Briefing</h1>
+        <DashboardHeader
+          title="Morning Briefing"
+          description="30 segundos para saber o que precisa da tua atenção."
+        />
         <div className="text-red-500">Erro ao carregar dados</div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
