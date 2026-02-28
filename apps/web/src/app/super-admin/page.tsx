@@ -59,6 +59,9 @@ export default async function Page() {
         ? (supabase as any)
             .from("audit_logs")
             .select("id, created_at, mensagem, acao, escola_id, escolas(nome)")
+            .neq("acao", "PAGE_VIEW")
+            .neq("acao", "LOGIN")
+            .neq("acao", "LOGOUT")
             .order("created_at", { ascending: false })
             .limit(8)
         : { data: [] },
