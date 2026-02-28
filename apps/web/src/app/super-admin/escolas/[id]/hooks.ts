@@ -113,13 +113,13 @@ async function loadPerformance(supabase: any, id: string): Promise<PerformanceMe
   const { data: syncStatus } = await supabase.from('aggregates_financeiro').select('sync_status, sync_updated_at').eq('escola_id', id).is('aluno_id', null).order('sync_updated_at', { ascending: false }).limit(1).single();
 
   return {
-    latencia_media: 180, // Simulado
+    latencia_media: null,
     ultimo_acesso: auditMetrics?.ultimo_acesso || new Date().toISOString(),
     accessos_24h: auditMetrics?.accessos_24h || 0,
     sync_status: syncStatus?.sync_status || 'synced',
     sync_updated_at: syncStatus?.sync_updated_at || new Date().toISOString(),
-    api_calls_24h: 0, // Simulado
-    storage_usage_mb: 0, // Simulado
+    api_calls_24h: null,
+    storage_usage_mb: null,
     last_error: auditMetrics?.last_error || null,
     error_count_24h: auditMetrics?.error_count_24h || 0
   };

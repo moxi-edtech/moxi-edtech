@@ -68,7 +68,7 @@ export function useHealthData() {
         professores: raw.professores,
         turmas: raw.turmas,
         ultimo_acesso: raw.ultimo_acesso,
-        latencia_media: raw.latencia_media, // Still simulated for now
+        latencia_media: null,
         sync_status: raw.sync_status,
         mrr: raw.mrr
       }));
@@ -118,19 +118,6 @@ export function useHealthData() {
 
 
       const novosAlertas: Alerta[] = [];
-      escolasComMetricas.forEach(escola => {
-        if (escola.latencia_media > 500) {
-          novosAlertas.push({
-            id: `latencia-${escola.id}`,
-            nivel: escola.latencia_media > 1000 ? 'critico' : 'alto',
-            titulo: `Latência elevada: ${escola.nome}`,
-            descricao: `Latência média de ${escola.latencia_media}ms`,
-            escola_id: escola.id,
-            escola_nome: escola.nome,
-            criado_em: new Date().toISOString()
-          });
-        }
-      });
       if (oldestPendingMinutes > 30) {
         novosAlertas.push({
           id: 'outbox-stuck',

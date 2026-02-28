@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import type { EscolaMetricas } from '@/app/super-admin/health/types';
-import { Wifi, WifiOff } from 'lucide-react';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('pt-AO', {
@@ -58,18 +57,7 @@ export function SchoolsTab({ escolas }: SchoolsTabProps) {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Latência:</span>
-                <div className="flex items-center gap-1">
-                  {escola.latencia_media > 500 ? (
-                    <WifiOff className="h-3 w-3 text-red-500" />
-                  ) : (
-                    <Wifi className="h-3 w-3 text-green-500" />
-                  )}
-                  <span className={`font-medium ${
-                    escola.latencia_media > 500 ? 'text-red-600' : 'text-green-600'
-                  }`}>
-                    {escola.latencia_media}ms
-                  </span>
-                </div>
+                <span className="font-medium text-gray-500">Em construção</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Último acesso:</span>

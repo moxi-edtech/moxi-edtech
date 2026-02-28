@@ -35,13 +35,13 @@ export interface EscolaMetricas {
 }
 
 export interface PerformanceMetrics {
-  latencia_media: number;
+  latencia_media: number | null;
   ultimo_acesso: string;
   accessos_24h: number;
   sync_status: 'synced' | 'pending' | 'error';
   sync_updated_at: string;
-  api_calls_24h: number;
-  storage_usage_mb: number;
+  api_calls_24h: number | null;
+  storage_usage_mb: number | null;
   last_error: string | null;
   error_count_24h: number;
 }

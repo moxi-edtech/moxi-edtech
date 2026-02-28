@@ -87,7 +87,7 @@ export function EscolaMetricCards({ metricas, performance }: MetricCardsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {performance.latencia_media}ms
+            {performance.latencia_media === null ? "Em construção" : `${performance.latencia_media}ms`}
           </div>
           <div className="text-sm text-gray-600 mt-1">
             {performance.accessos_24h} acessos 24h • Sync: 
