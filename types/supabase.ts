@@ -560,6 +560,75 @@ export type Database = {
           },
         ]
       }
+      assinaturas: {
+        Row: {
+          ciclo: string
+          created_at: string | null
+          data_inicio: string
+          data_renovacao: string
+          escola_id: string
+          id: string
+          metodo_pagamento: string
+          multicaixa_referencia: string | null
+          notas_internas: string | null
+          plano: Database["public"]["Enums"]["app_plan_tier"]
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string | null
+          valor_kz: number
+        }
+        Insert: {
+          ciclo: string
+          created_at?: string | null
+          data_inicio?: string
+          data_renovacao: string
+          escola_id: string
+          id?: string
+          metodo_pagamento: string
+          multicaixa_referencia?: string | null
+          notas_internas?: string | null
+          plano?: Database["public"]["Enums"]["app_plan_tier"]
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string | null
+          valor_kz: number
+        }
+        Update: {
+          ciclo?: string
+          created_at?: string | null
+          data_inicio?: string
+          data_renovacao?: string
+          escola_id?: string
+          id?: string
+          metodo_pagamento?: string
+          multicaixa_referencia?: string | null
+          notas_internas?: string | null
+          plano?: Database["public"]["Enums"]["app_plan_tier"]
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string | null
+          valor_kz?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assinaturas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assinaturas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       atendimentos_balcao: {
         Row: {
           aluno_id: string | null
@@ -6214,6 +6283,76 @@ export type Database = {
             columns: ["mensalidade_id"]
             isOneToOne: false
             referencedRelation: "vw_search_mensalidades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pagamentos_saas: {
+        Row: {
+          assinatura_id: string
+          comprovativo_url: string | null
+          confirmado_em: string | null
+          confirmado_por: string | null
+          created_at: string | null
+          escola_id: string
+          id: string
+          metodo: string
+          periodo_fim: string
+          periodo_inicio: string
+          referencia_ext: string | null
+          status: string
+          valor_kz: number
+        }
+        Insert: {
+          assinatura_id: string
+          comprovativo_url?: string | null
+          confirmado_em?: string | null
+          confirmado_por?: string | null
+          created_at?: string | null
+          escola_id: string
+          id?: string
+          metodo: string
+          periodo_fim: string
+          periodo_inicio: string
+          referencia_ext?: string | null
+          status: string
+          valor_kz: number
+        }
+        Update: {
+          assinatura_id?: string
+          comprovativo_url?: string | null
+          confirmado_em?: string | null
+          confirmado_por?: string | null
+          created_at?: string | null
+          escola_id?: string
+          id?: string
+          metodo?: string
+          periodo_fim?: string
+          periodo_inicio?: string
+          referencia_ext?: string | null
+          status?: string
+          valor_kz?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pagamentos_saas_assinatura_id_fkey"
+            columns: ["assinatura_id"]
+            isOneToOne: false
+            referencedRelation: "assinaturas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pagamentos_saas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pagamentos_saas_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
             referencedColumns: ["id"]
           },
         ]

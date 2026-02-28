@@ -6,6 +6,7 @@ import { render } from '@react-email/render'
 import { Resend } from 'resend'
 import { getBranding } from './branding'
 import { KlasseWelcomeEmail } from '@/emails/KlasseWelcomeEmail'
+import { BillingRenewalEmail } from '@/emails/BillingRenewalEmail'
 
 type SendArgs = {
   to: string
@@ -45,6 +46,26 @@ export function buildOnboardingEmail(args: { escolaNome: string; onboardingUrl: 
     nomeUsuario: adminNome || 'Gestor',
     linkAcesso: onboardingUrl,
   })
+  const html = render(element)
+  const text = render(element, { plainText: true })
+  return { subject, html, text }
+}
+
+export function buildBillingRenewalEmail(args: { 
+  escolaNome: string; 
+  plano: string; 
+  valor: string; 
+  dataRenovacao: string; 
+  diasRestantes: number; 
+  referencia: string; 
+  linkPagamento: string;
+}) {
+  const brand = getBranding()
+  const subject = diasRestantes === 1 
+    ? `⚠️ Último dia de subscrição ${brand.name} • ${args.escolaNome}` 
+    : `Aviso de renovação ${brand.name} • ${args.diasRestantes} dias restantes`;
+
+  const element = createElement(BillingRenewalEmail, args)
   const html = render(element)
   const text = render(element, { plainText: true })
   return { subject, html, text }
@@ -132,12 +153,14 @@ let resendClient: Resend | null = null
 function getResendConfig(): ResendConfig | null {
   const apiKey = process.env.RESEND_API_KEY
   if (!apiKey) return null
-  const from = process.env.RESEND_FROM_EMAIL || 'Klasse <no-reply@klasse.ao>'
+  const from = process.env.RESEND_FROM_EMAIL || 'Klasse <suporte@klasse.ao>'
   return { apiKey, from }
 }
 
 function getResendClient(apiKey: string) {
-  if (!resendClient) resendClient = new Resend(apiKey)
+  if (!resendClient) {
+    resendClient = new Resend(apiKey)
+  }
   return resendClient
 }
 
