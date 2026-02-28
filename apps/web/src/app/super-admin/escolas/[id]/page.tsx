@@ -11,6 +11,7 @@ import { EscolaMonitorHeader } from '@/components/super-admin/escola-monitor/Esc
 import { EscolaMetricCards } from '@/components/super-admin/escola-monitor/EscolaMetricCards';
 import { AtividadesTab } from '@/components/super-admin/escola-monitor/AtividadesTab';
 import { ConfigTab } from '@/components/super-admin/escola-monitor/ConfigTab';
+import AuditPageView from '@/components/audit/AuditPageView';
 
 export default function EscolaMonitoramentoPage() {
   const params = useParams() ?? {};
@@ -74,6 +75,7 @@ export default function EscolaMonitoramentoPage() {
   
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+      <AuditPageView portal="super_admin" acao="PAGE_VIEW" entity="escola_monitor" entityId={escolaId} />
       <div className="max-w-7xl mx-auto">
         <EscolaMonitorHeader escola={escola} refreshing={refreshing} onRefresh={loadEscolaData} />
         
