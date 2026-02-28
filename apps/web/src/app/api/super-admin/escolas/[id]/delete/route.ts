@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { recordAuditServer } from '@/lib/audit'
+import { isSuperAdminRole } from '@/lib/auth/requireSuperAdminAccess'
 
 export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id: escolaId } = await ctx.params
@@ -13,7 +14,9 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
     // Somente super_admin
     const { data: rows } = await s.from('profiles').select('role').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1)
     const role = (rows?.[0] as any)?.role as string | undefined
-    if (role !== 'super_admin') return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
+    if (!isSuperAdminRole(role)) {
+      return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
+    }
 
     // Tenta exclusão definitiva
     const delRes = await (s as any).from('escolas').delete().eq('id', escolaId)

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { supabaseServer } from "@/lib/supabaseServer"
 import { applyKf2ListInvariants } from "@/lib/kf2"
+import { isSuperAdminRole } from "@/lib/auth/requireSuperAdminAccess"
 
 // Returns onboarding progress per school for Super Admin view
 // Shape: [{ escola_id, nome, onboarding_finalizado, last_step, last_updated_at }]
@@ -17,7 +18,9 @@ export async function GET() {
       .order('created_at', { ascending: false })
       .limit(1)
     const role = (rows?.[0] as any)?.role as string | undefined
-    if (role !== 'super_admin') return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
+    if (!isSuperAdminRole(role)) {
+      return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
+    }
 
     // Fetch basic schools
     let escolas: any[] | null = null
@@ -28,7 +31,7 @@ export async function GET() {
         .select(sel)
         .order('nome', { ascending: true })
 
-      escolasQuery = applyKf2ListInvariants(escolasQuery, { defaultLimit: 50 })
+      escolasQuery = applyKf2ListInvariants(escolasQuery, { defaultLimit: 1000 })
 
       const { data, error } = await escolasQuery
       if (error) {
@@ -39,7 +42,7 @@ export async function GET() {
             .select('id, nome, onboarding_finalizado')
             .order('nome', { ascending: true })
 
-          fallbackQuery = applyKf2ListInvariants(fallbackQuery, { defaultLimit: 50 })
+          fallbackQuery = applyKf2ListInvariants(fallbackQuery, { defaultLimit: 1000 })
 
           const { data: data2, error: err2 } = await fallbackQuery
           if (err2) {
@@ -60,7 +63,7 @@ export async function GET() {
       .select('escola_id, step, updated_at')
       .order('updated_at', { ascending: false })
 
-    draftsQuery = applyKf2ListInvariants(draftsQuery, { defaultLimit: 50 })
+    draftsQuery = applyKf2ListInvariants(draftsQuery, { defaultLimit: 1000 })
 
     const { data: drafts } = await draftsQuery
 

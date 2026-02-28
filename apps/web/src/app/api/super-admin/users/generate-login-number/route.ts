@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 
 import { supabaseServer } from "@/lib/supabaseServer";
 import type { Database } from "~types/supabase";
+import { isSuperAdminRole } from "@/lib/auth/requireSuperAdminAccess";
 
 type UserRole = Database["public"]["Enums"]["user_role"];
 
@@ -37,7 +38,7 @@ export async function GET(req: Request) {
     .order('created_at', { ascending: false })
     .limit(1);
   const role = (rows?.[0] as any)?.role as string | undefined;
-  if (role !== 'super_admin') {
+  if (!isSuperAdminRole(role)) {
     return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 });
   }
 

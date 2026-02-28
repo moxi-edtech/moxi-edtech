@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { parsePlanTier, type PlanTier } from '@/config/plans'
 import { applyKf2ListInvariants } from '@/lib/kf2'
+import { isSuperAdminRole } from '@/lib/auth/requireSuperAdminAccess'
 
 type EscolaItem = {
   id: string
@@ -26,8 +27,7 @@ export async function GET() {
     }
     const { data: rows } = await s.from('profiles').select('role').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1)
     const role = (rows?.[0] as any)?.role as string | undefined
-    const allowed = ['super_admin', 'global_admin']
-    if (!allowed.includes(role || '')) {
+    if (!isSuperAdminRole(role)) {
       return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
     }
 

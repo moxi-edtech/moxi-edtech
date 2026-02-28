@@ -2,6 +2,7 @@ import { revalidatePath } from 'next/cache'
 import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { recordAuditServer } from '@/lib/audit'
+import { isSuperAdminRole } from '@/lib/auth/requireSuperAdminAccess'
 
 export async function POST(request: Request) {
   try {
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: 'Perfil não encontrado' }, { status: 403 })
     }
 
-    if (profile.role !== 'super_admin') {
+    if (!isSuperAdminRole(profile.role)) {
       return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
     }
 

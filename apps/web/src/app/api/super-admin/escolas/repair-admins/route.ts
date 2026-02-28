@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import type { Database, TablesInsert } from '~types/supabase'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { recordAuditServer } from '@/lib/audit'
+import { isSuperAdminRole } from '@/lib/auth/requireSuperAdminAccess'
 // ❌ REMOVIDO: import { generateNumeroLogin } from '@/lib/generateNumeroLogin'
 
 type RepairResult = {
@@ -26,7 +27,9 @@ export async function POST(req: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(1)
     const role = (rows?.[0] as any)?.role as string | undefined
-    if (role !== 'super_admin') return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
+    if (!isSuperAdminRole(role)) {
+      return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
+    }
 
     let targetEscolaId: string | null = null
     let dryRun = false

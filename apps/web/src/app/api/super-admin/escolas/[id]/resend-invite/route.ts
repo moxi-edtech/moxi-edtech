@@ -3,6 +3,7 @@ import { supabaseServer } from "@/lib/supabaseServer"
 import { buildOnboardingEmail, sendMail } from "@/lib/mailer"
 import { recordAuditServer } from "@/lib/audit"
 import { parsePlanTier } from "@/config/plans"
+import { isSuperAdminRole } from "@/lib/auth/requireSuperAdminAccess"
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id: escolaId } = await ctx.params
@@ -13,7 +14,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 })
     const { data: prof } = await s.from('profiles').select('role').eq('user_id', user.id).order('created_at', { ascending: false }).limit(1)
     const role = (prof?.[0] as any)?.role || null
-    if (role !== 'super_admin') return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 })
+    if (!isSuperAdminRole(role)) {
+      return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 })
+    }
 
     const url = new URL(req.url)
     const origin = url.origin

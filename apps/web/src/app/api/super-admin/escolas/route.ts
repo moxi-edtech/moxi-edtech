@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
+import { isSuperAdminRole } from '@/lib/auth/requireSuperAdminAccess'
 
 export async function GET() {
   try {
@@ -15,7 +16,9 @@ export async function GET() {
       .order('created_at', { ascending: false })
       .limit(1)
     const role = (rows?.[0] as any)?.role as string | undefined
-    if (role !== 'super_admin') return NextResponse.json({ error: 'Somente Super Admin' }, { status: 403 })
+    if (!isSuperAdminRole(role)) {
+      return NextResponse.json({ error: 'Somente Super Admin' }, { status: 403 })
+    }
 
     const { data: escolas, error } = await s
       .from('escolas' as any)
@@ -32,4 +35,3 @@ export async function GET() {
     )
   }
 }
-
