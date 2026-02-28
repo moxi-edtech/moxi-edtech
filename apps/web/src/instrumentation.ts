@@ -1,6 +1,8 @@
 // apps/web/src/instrumentation.ts
 // Runs once on server start. Verifies Supabase auth health and logs a concise status.
 
+import * as Sentry from "@sentry/nextjs";
+
 function getSupabaseEnv() {
   const url = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
   const anonKey = (
@@ -21,6 +23,17 @@ function parseAnonKeyInfo(key: string | undefined) {
     return { ref: json?.ref as string | undefined, role: json?.role as string | undefined };
   } catch {
     return null;
+  }
+}
+
+async function checkPoolingHealth() {
+  const dbUrl = process.env.DB_URL || "";
+  const isProd = process.env.NODE_ENV === "production";
+  
+  if (isProd && dbUrl && !dbUrl.includes(":6543")) {
+    console.warn(
+      "[startup] DB_URL WARNING: Transaction Pooler (port 6543) not detected. Using port 5432 in production can lead to connection exhaustion under load (100+ schools)."
+    );
   }
 }
 
@@ -55,11 +68,21 @@ async function checkSupabaseAuthHealth() {
 }
 
 export function register() {
+  const dsn = process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN;
+  if (dsn) {
+    Sentry.init({
+      dsn,
+      tracesSampleRate: 1.0,
+      debug: false,
+    });
+  }
+
   // Disable by setting AUTH_HEALTH_ON_START=0
   if (process.env.AUTH_HEALTH_ON_START === "0") return;
 
   // Defer so we don't block server boot
   setTimeout(() => {
     void checkSupabaseAuthHealth();
+    void checkPoolingHealth();
   }, 0);
 }
