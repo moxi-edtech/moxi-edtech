@@ -3,6 +3,7 @@ import { supabaseServer } from '@/lib/supabaseServer'
 import type { Database } from '~types/supabase'
 import { recordAuditServer } from '@/lib/audit'
 import { isSuperAdminRole } from '@/lib/auth/requireSuperAdminAccess'
+import { allowedPapeisSet } from '@/lib/roles'
 
 export async function POST(request: Request) {
   try {
@@ -60,7 +61,7 @@ export async function POST(request: Request) {
       }
       return (legacyMap[p] || p)
     }
-    const allowedPapeis = new Set(['admin','staff_admin','financeiro','secretaria','aluno','professor','admin_escola'])
+    const allowedPapeis = allowedPapeisSet
 
     if (updates.escola_id !== undefined) {
       const escolaId = updates.escola_id

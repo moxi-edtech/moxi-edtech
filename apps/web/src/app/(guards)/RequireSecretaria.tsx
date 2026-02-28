@@ -35,7 +35,7 @@ export default function RequireSecretaria({
       const { data: vinculos, error } = await vinculoQuery.limit(10);
       const hasSecretaria = (vinculos || []).some((v: Tables<'escola_users'>) => {
         const papel = v.papel ?? v.role ?? null;
-        return papel === "secretaria" || papel === "admin";
+        return papel === "secretaria" || papel === "admin" || papel === "secretaria_financeiro" || papel === "admin_financeiro" || papel === "financeiro";
       });
       if (error || !hasSecretaria) { router.replace("/"); return; }
 

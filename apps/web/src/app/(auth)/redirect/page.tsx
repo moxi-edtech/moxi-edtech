@@ -128,6 +128,26 @@ export default function RedirectPage() {
             case "financeiro":
               router.replace("/financeiro");
               break;
+            case "secretaria_financeiro": {
+              if (resolvedEscolaId) {
+                let modo = 'balcao'
+                try {
+                  const saved = localStorage.getItem('klasse_modo_secretaria')
+                  if (saved === 'balcao' || saved === 'financeiro') modo = saved
+                } catch {}
+                router.replace(`/escola/${resolvedEscolaId}/secretaria?modo=${modo}`)
+              } else {
+                router.replace('/secretaria')
+              }
+              break;
+            }
+            case "admin_financeiro":
+              if (resolvedEscolaId) {
+                router.replace(`/escola/${resolvedEscolaId}/admin/dashboard?tab=financeiro`)
+              } else {
+                router.replace('/admin')
+              }
+              break;
             default:
               router.replace("/");
               break;
