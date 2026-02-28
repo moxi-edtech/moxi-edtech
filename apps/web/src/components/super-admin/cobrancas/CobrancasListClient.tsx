@@ -2,9 +2,8 @@
 
 /**
  * CobrancasListClient — Super Admin Billing Portal
- * Design: Dark cockpit — autoridade, precisão, controlo total.
- * Tokens KLASSE: #1F6B3B (green), #E3B23C (gold), rose para crítico.
- * Fundo: slate-950. Acentos: green para acções seguras, gold para atenção.
+ * Design: Light Management — clareza, profissionalismo, consistência.
+ * Tokens KLASSE: #1F6B3B (green), #E3B23C (gold).
  */
 
 import { useEffect, useState } from "react";
@@ -35,9 +34,9 @@ type AssinaturaPendente = {
 // ─── Helpers visuais ──────────────────────────────────────────────────────────
 
 const PLAN_META: Record<PlanTier, { pill: string; dot: string }> = {
-  essencial:    { pill: "bg-slate-800 border border-slate-700 text-slate-400",  dot: "bg-slate-600"   },
-  profissional: { pill: "bg-[#E3B23C]/10 border border-[#E3B23C]/30 text-[#E3B23C]", dot: "bg-[#E3B23C]" },
-  premium:      { pill: "bg-[#1F6B3B]/20 border border-[#1F6B3B]/40 text-[#4ade80]", dot: "bg-[#1F6B3B]" },
+  essencial:    { pill: "bg-slate-100 border border-slate-200 text-slate-600",  dot: "bg-slate-400"   },
+  profissional: { pill: "bg-[#E3B23C]/10 border border-[#E3B23C]/20 text-[#B48924]", dot: "bg-[#E3B23C]" },
+  premium:      { pill: "bg-[#1F6B3B]/10 border border-[#1F6B3B]/20 text-[#1F6B3B]", dot: "bg-[#1F6B3B]" },
 };
 
 function PlanBadge({ plano }: { plano: PlanTier }) {
@@ -56,9 +55,9 @@ function StatusBadge({ status }: { status: string }) {
   
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide
-      ${isActiva ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
-        isPendente ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 
-        'bg-slate-800 text-slate-400 border border-slate-700'}`}>
+      ${isActiva ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 
+        isPendente ? 'bg-amber-100 text-amber-700 border border-amber-200' : 
+        'bg-slate-100 text-slate-600 border border-slate-200'}`}>
       {status}
     </span>
   );
@@ -69,7 +68,7 @@ function SkeletonRow() {
     <tr>
       {Array.from({ length: 7 }).map((_, j) => (
         <td key={j} className="py-4 px-4">
-          <div className="h-3 rounded bg-slate-800 animate-pulse" style={{ width: `${35 + (j * 17) % 45}%` }} />
+          <div className="h-3 rounded bg-slate-100 animate-pulse" style={{ width: `${35 + (j * 17) % 45}%` }} />
         </td>
       ))}
     </tr>
@@ -81,10 +80,10 @@ function SkeletonRow() {
 export default function CobrancasListClient() {
   const [items, setItems] = useState<AssinaturaPendente[]>([]);
   const [loading, setLoading] = useState(true);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [erro, setErro] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
-  const [viewingProof, setViewingProof] = useState<string | null>(null);
 
   const supabase = createClient();
 
@@ -108,7 +107,6 @@ export default function CobrancasListClient() {
       setLoading(true);
       setErro(null);
 
-      // Query para buscar assinaturas e o último pagamento pendente (se houver)
       const { data, error } = await supabase
         .from('assinaturas')
         .select(`
@@ -127,7 +125,6 @@ export default function CobrancasListClient() {
       if (error) throw error;
 
       const normalized: AssinaturaPendente[] = (data || []).map(row => {
-        // Pega o pagamento mais recente
         const ultimoPg = row.pagamentos?.sort((a: any, b: any) => 
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         )[0];
@@ -168,7 +165,6 @@ export default function CobrancasListClient() {
     try {
       setConfirmingId(item.id);
       
-      // 1. Atualizar status da assinatura para activa e mover data de renovação
       const novaDataRenovacao = new Date(item.data_renovacao);
       if (item.ciclo === 'mensal') novaDataRenovacao.setMonth(novaDataRenovacao.getMonth() + 1);
       else novaDataRenovacao.setFullYear(novaDataRenovacao.getFullYear() + 1);
@@ -183,7 +179,6 @@ export default function CobrancasListClient() {
 
       if (assError) throw assError;
 
-      // 2. Se houver um pagamento_id, marcá-lo como confirmado
       if (item.pagamento_id) {
         const { error: pgError } = await supabase
           .from('pagamentos_saas')
@@ -209,54 +204,54 @@ export default function CobrancasListClient() {
   const cols = ["Escola", "Plano / Ciclo", "Valor", "Status", "Pagamento", "Renovação", "Acções"];
 
   return (
-    <div className="bg-slate-950 min-h-screen text-slate-200">
+    <div className="bg-slate-50/30 min-h-screen text-slate-900">
       
       {/* ── Dashboard Stats ── */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-slate-900 ring-1 ring-slate-800 p-4 rounded-2xl">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">MRR Estático</p>
-          <p className="text-2xl font-bold text-white">
+        <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">MRR Estático</p>
+          <p className="text-2xl font-bold text-slate-900">
             Kz {items.filter(i => i.status === 'activa' && i.ciclo === 'mensal').reduce((acc, i) => acc + i.valor_kz, 0).toLocaleString()}
           </p>
         </div>
-        <div className="bg-slate-900 ring-1 ring-slate-800 p-4 rounded-2xl">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Pendentes</p>
-          <p className="text-2xl font-bold text-[#E3B23C]">
+        <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Pendentes</p>
+          <p className="text-2xl font-bold text-amber-600">
             {items.filter(i => i.status === 'pendente').length}
           </p>
         </div>
-        <div className="bg-slate-900 ring-1 ring-slate-800 p-4 rounded-2xl">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Escolas Activas</p>
-          <p className="text-2xl font-bold text-[#4ade80]">
+        <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Escolas Activas</p>
+          <p className="text-2xl font-bold text-emerald-600">
             {items.filter(i => i.status === 'activa').length}
           </p>
         </div>
-        <div className="bg-slate-900 ring-1 ring-slate-800 p-4 rounded-2xl">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Total Kz (Global)</p>
-          <p className="text-2xl font-bold text-slate-400">
+        <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Total Kz (Global)</p>
+          <p className="text-2xl font-bold text-slate-500">
             Kz {items.reduce((acc, i) => acc + i.valor_kz, 0).toLocaleString()}
           </p>
         </div>
       </div>
 
       {/* ── Tabela Principal ── */}
-      <div className="rounded-2xl bg-slate-900 ring-1 ring-slate-800 overflow-hidden">
-        <div className="border-b border-slate-800 px-6 py-4 flex items-center justify-between">
+      <div className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+        <div className="border-b border-slate-100 px-6 py-4 flex items-center justify-between bg-slate-50/50">
           <div className="flex flex-col gap-0.5">
             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Controlo de Subscrições</p>
-            <p className="text-[10px] text-slate-600">Gestão global de contratos e planos ativos</p>
+            <p className="text-[10px] text-slate-400">Gestão global de contratos e planos ativos</p>
           </div>
           <div className="flex gap-3">
             <button 
               onClick={handleSync} 
               disabled={syncing}
-              className="px-3 py-1.5 rounded-lg bg-[#E3B23C]/10 border border-[#E3B23C]/20 text-[#E3B23C] text-[10px] font-bold uppercase hover:bg-[#E3B23C]/20 transition-all disabled:opacity-50"
+              className="px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-bold uppercase hover:bg-amber-100 transition-all disabled:opacity-50"
             >
               {syncing ? 'Sincronizando...' : 'Inicializar Assinaturas'}
             </button>
             <button 
               onClick={loadData} 
-              className="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-400 text-[10px] font-bold uppercase hover:bg-slate-700 transition-all"
+              className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-500 text-[10px] font-bold uppercase hover:bg-slate-50 transition-all"
             >
               Actualizar
             </button>
@@ -266,30 +261,30 @@ export default function CobrancasListClient() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-800/80 bg-slate-900/50">
+              <tr className="border-b border-slate-100 bg-slate-50/30">
                 {cols.map(h => (
-                  <th key={h} className="py-3 px-6 text-left text-[10px] font-bold text-slate-500 uppercase tracking-widest whitespace-nowrap">
+                  <th key={h} className="py-3 px-6 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/50">
+            <tbody className="divide-y divide-slate-100">
               {loading && Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)}
               
               {!loading && items.length === 0 && (
                 <tr>
                   <td colSpan={7} className="py-20 text-center">
-                    <p className="text-slate-500 text-sm italic">Nenhuma subscrição registada no sistema.</p>
+                    <p className="text-slate-400 text-sm italic">Nenhuma subscrição registada no sistema.</p>
                   </td>
                 </tr>
               )}
 
               {!loading && items.map((item) => (
-                <tr key={item.id} className="hover:bg-slate-800/30 transition-colors">
+                <tr key={item.id} className="hover:bg-slate-50 transition-colors">
                   <td className="py-4 px-6">
-                    <p className="font-bold text-white">{item.escola_nome}</p>
-                    <p className="text-[10px] text-slate-500 font-mono mt-0.5">{item.id.slice(0,8)}</p>
+                    <p className="font-bold text-slate-900">{item.escola_nome}</p>
+                    <p className="text-[10px] text-slate-400 font-mono mt-0.5">{item.id.slice(0,8)}</p>
                   </td>
                   <td className="py-4 px-6">
                     <div className="flex flex-col gap-1.5 items-start">
@@ -300,7 +295,7 @@ export default function CobrancasListClient() {
                     </div>
                   </td>
                   <td className="py-4 px-6">
-                    <p className="text-slate-200 font-mono font-semibold">Kz {item.valor_kz.toLocaleString()}</p>
+                    <p className="text-slate-700 font-mono font-semibold">Kz {item.valor_kz.toLocaleString()}</p>
                   </td>
                   <td className="py-4 px-6">
                     <StatusBadge status={item.status} />
@@ -309,19 +304,19 @@ export default function CobrancasListClient() {
                     {item.comprovativo_url ? (
                       <button 
                         onClick={() => window.open(item.comprovativo_url, '_blank')}
-                        className="flex items-center gap-2 text-[10px] font-bold text-[#E3B23C] uppercase hover:text-[#E3B23C]/80"
+                        className="flex items-center gap-2 text-[10px] font-bold text-amber-600 uppercase hover:text-amber-700"
                       >
                         📄 Ver Comprovativo
                       </button>
                     ) : (
-                      <span className="text-[10px] text-slate-600 uppercase italic">Sem prova</span>
+                      <span className="text-[10px] text-slate-300 uppercase italic">Sem prova</span>
                     )}
                     {item.referencia_ext && (
-                      <p className="text-[10px] text-slate-500 mt-1 font-mono">Ref: {item.referencia_ext}</p>
+                      <p className="text-[10px] text-slate-400 mt-1 font-mono">Ref: {item.referencia_ext}</p>
                     )}
                   </td>
                   <td className="py-4 px-6">
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-slate-500">
                       {format(new Date(item.data_renovacao), "dd 'de' MMM, yyyy", { locale: pt })}
                     </p>
                   </td>
@@ -331,12 +326,12 @@ export default function CobrancasListClient() {
                         <button
                           disabled={confirmingId === item.id}
                           onClick={() => handleConfirmar(item)}
-                          className="px-3 py-1.5 rounded-lg bg-[#1F6B3B] hover:bg-[#1F6B3B]/80 text-white text-[10px] font-bold uppercase transition-colors disabled:opacity-50"
+                          className="px-3 py-1.5 rounded-lg bg-[#1F6B3B] hover:bg-[#1F6B3B]/90 text-white text-[10px] font-bold uppercase transition-colors disabled:opacity-50 shadow-sm"
                         >
                           {confirmingId === item.id ? '...' : 'Activar'}
                         </button>
                       )}
-                      <button className="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 text-[10px] font-bold uppercase transition-colors">
+                      <button className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-[10px] font-bold uppercase transition-colors">
                         Detalhes
                       </button>
                     </div>

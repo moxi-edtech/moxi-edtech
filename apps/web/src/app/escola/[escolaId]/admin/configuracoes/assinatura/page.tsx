@@ -9,7 +9,7 @@ export default async function Page({ params }: { params: Promise<{ escolaId: str
   
   return (
     <div className="space-y-6">
-      <AuditPageView portal="admin" acao="PAGE_VIEW" entity="billing_settings" />
+      <AuditPageView portal="admin_escola" acao="PAGE_VIEW" entity="billing_settings" />
       <DashboardHeader
         title="Assinatura Klasse"
         description="Faça a gestão da subscrição do seu portal, consulte faturas e envie comprovativos de pagamento."
