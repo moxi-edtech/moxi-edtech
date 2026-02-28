@@ -51,7 +51,7 @@ export function buildOnboardingEmail(args: { escolaNome: string; onboardingUrl: 
   return { subject, html, text }
 }
 
-export function buildBillingRenewalEmail(args: { 
+export async function buildBillingRenewalEmail(args: { 
   escolaNome: string; 
   plano: string; 
   valor: string; 
@@ -61,13 +61,13 @@ export function buildBillingRenewalEmail(args: {
   linkPagamento: string;
 }) {
   const brand = getBranding()
-  const subject = diasRestantes === 1 
+  const subject = args.diasRestantes === 1 
     ? `⚠️ Último dia de subscrição ${brand.name} • ${args.escolaNome}` 
     : `Aviso de renovação ${brand.name} • ${args.diasRestantes} dias restantes`;
 
   const element = createElement(BillingRenewalEmail, args)
-  const html = render(element)
-  const text = render(element, { plainText: true })
+  const html = await render(element)
+  const text = await render(element, { plainText: true })
   return { subject, html, text }
 }
 

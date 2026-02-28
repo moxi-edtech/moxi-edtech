@@ -143,10 +143,10 @@ export default function CobrancasListClient() {
           metodo_pagamento: row.metodo_pagamento,
           status: row.status,
           pagamento_id: ultimoPg?.id,
-          comprovativo_url: ultimoPg?.comprovativo_url,
+          comprovativo_url: ultimoPg?.comprovativo_url || undefined,
           referencia_ext: ultimoPg?.referencia_ext,
           created_at: row.created_at
-        };
+        } as AssinaturaPendente;
       });
 
       setItems(normalized);

@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
         const dataFormatada = dataRenovacao.toLocaleDateString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric' });
         const referencia = `KLASSE-${ass.escola_id.slice(0, 4)}-${ass.id.slice(0, 4)}`.toUpperCase();
         
-        const { subject, html, text } = buildBillingRenewalEmail({
+        const { subject, html, text } = await buildBillingRenewalEmail({
           escolaNome: (ass.escolas as any)?.nome || 'Director(a)',
           plano: planoNome,
           valor: valorFormatado,

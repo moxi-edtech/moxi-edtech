@@ -28,6 +28,7 @@ type Assinatura = {
 type Pagamento = {
   id: string;
   status: 'pendente' | 'confirmado' | 'falhado';
+  valor_kz: number;
   created_at: string;
   comprovativo_url?: string;
 };
@@ -53,7 +54,14 @@ export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseCli
         .maybeSingle();
 
       if (assError) throw assError;
-      setAssinatura(assData);
+      
+      const normalizedAss = assData ? {
+        ...assData,
+        status: assData.status as 'pendente' | 'activa' | 'suspensa' | 'cancelada',
+        ciclo: assData.ciclo as 'mensal' | 'anual'
+      } as Assinatura : null;
+
+      setAssinatura(normalizedAss as Assinatura | null);
 
       // Busca histórico de pagamentos SaaS
       const { data: pgData, error: pgError } = await supabase
@@ -63,7 +71,16 @@ export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseCli
         .order('created_at', { ascending: false });
 
       if (pgError) throw pgError;
-      setPagamentos(pgData || []);
+      
+      const normalizedPgs: Pagamento[] = (pgData || []).map(p => ({
+        id: p.id,
+        status: p.status as Pagamento['status'],
+        valor_kz: p.valor_kz || 0,
+        created_at: p.created_at || new Date().toISOString(),
+        comprovativo_url: p.comprovativo_url || undefined
+      }));
+
+      setPagamentos(normalizedPgs);
 
     } catch (err: any) {
       toast.error("Erro ao carregar dados de assinatura: " + err.message);
@@ -110,7 +127,7 @@ export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseCli
           escola_id: escolaId,
           valor_kz: assinatura.valor_kz,
           metodo: assinatura.metodo_pagamento,
-          status: 'pendente',
+          status: 'pendente' as 'pendente',
           comprovativo_url: publicUrl,
           periodo_inicio: new Date().toISOString().split('T')[0],
           periodo_fim: assinatura.data_renovacao.split('T')[0]
@@ -130,7 +147,7 @@ export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseCli
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
-        <Spinner size="lg" />
+        <Spinner size={32} />
         <p className="text-sm text-slate-500 mt-4 font-medium uppercase tracking-widest">Carregando dados da assinatura...</p>
       </div>
     );
@@ -172,9 +189,9 @@ export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseCli
               Ciclo de Facturação: {assinatura.ciclo}
             </CardDescription>
           </div>
-          <Badge className={assinatura.status === 'activa' ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100' : 'bg-amber-100 text-amber-700 hover:bg-amber-100'}>
+          <div className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors ${assinatura.status === 'activa' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>
             {assinatura.status.toUpperCase()}
-          </Badge>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-4">
