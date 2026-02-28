@@ -1,7 +1,14 @@
 type Activity = {
-  descricao: string
-  status: "Ativo" | "Aplicado" | "Pendente"
-  cor: string
+  id: string
+  titulo: string
+  resumo: string
+  data: string
+}
+
+const formatTime = (value: string) => {
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return ""
+  return d.toLocaleTimeString("pt-AO", { hour: "2-digit", minute: "2-digit" })
 }
 
 export default function ActivitiesSection({ activities }: { activities: Activity[] }) {
@@ -13,9 +20,12 @@ export default function ActivitiesSection({ activities }: { activities: Activity
           <p className="text-moxinexa-gray text-sm">Nenhuma atividade encontrada</p>
         ) : (
           activities.map((act, i) => (
-            <li key={i} className="flex justify-between">
-              <span className="text-moxinexa-dark">{act.descricao}</span>
-              <span className={`${act.cor} font-medium`}>{act.status}</span>
+            <li key={act.id} className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-moxinexa-dark">{act.titulo}</p>
+                <p className="text-xs text-slate-500">{act.resumo}</p>
+              </div>
+              <span className="text-xs text-slate-400 whitespace-nowrap">{formatTime(act.data)}</span>
             </li>
           ))
         )}
