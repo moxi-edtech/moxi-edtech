@@ -1078,7 +1078,7 @@ export default function TurmasConfiguracoesPage() {
       {modal === "generate" && (
         <ModalShell
           title="Gerar turmas"
-          subtitle="Configure quantidades por classe e turno."
+          subtitle="Configure quantidades por classe."
           onClose={closeModal}
           footer={
             <div className="flex items-center justify-between">
@@ -1121,23 +1121,9 @@ export default function TurmasConfiguracoesPage() {
                     />
                     {row.nome}
                   </label>
-                  <select
-                    value={row.turno}
-                    onChange={(e) =>
-                      setGenerateRows((prev) =>
-                        prev.map((item) =>
-                          item.classId === row.classId
-                            ? { ...item, turno: e.target.value as "M" | "T" | "N" }
-                            : item
-                        )
-                      )
-                    }
-                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
-                  >
-                    <option value="M">Manhã</option>
-                    <option value="T">Tarde</option>
-                    <option value="N">Noite</option>
-                  </select>
+                  <span className="rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-600">
+                    {row.turno === "T" ? "Tarde" : row.turno === "N" ? "Noite" : "Manhã"}
+                  </span>
                   <input
                     type="number"
                     min={1}
