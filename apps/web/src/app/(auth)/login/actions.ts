@@ -75,6 +75,18 @@ export async function loginAction(_: unknown, formData: FormData) {
         }
       } else if (papelNormalizado === "financeiro") {
         redirect("/financeiro");
+      } else if (papelNormalizado === "secretaria_financeiro") {
+        if (escola_id) {
+          redirect(`/escola/${escola_id}/secretaria?modo=balcao`);
+        } else {
+          redirect("/secretaria");
+        }
+      } else if (papelNormalizado === "admin_financeiro") {
+        if (escola_id) {
+          redirect(`/escola/${escola_id}/admin/dashboard?tab=financeiro`);
+        } else {
+          redirect("/admin");
+        }
       } else if (papelNormalizado === "professor") {
         redirect("/professor");
       } else if (papelNormalizado === "aluno") {

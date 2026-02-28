@@ -5,13 +5,14 @@ import { createRouteClient } from '@/lib/supabase/route-client'
 import { recordAuditServer } from '@/lib/audit'
 import { mapPapelToGlobalRole } from '@/lib/permissions'
 import { hasPermission } from '@/lib/permissions'
+import { papelEscolaSchema } from '@/lib/roles'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { callAuthAdminJob } from '@/lib/auth-admin-job'
 
 const BodySchema = z.object({
   email: z.string().email(),
   ativo: z.boolean(),
-  papel: z.enum(['admin','staff_admin','secretaria','financeiro','professor','aluno']).optional(),
+  papel: papelEscolaSchema.optional(),
 })
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {

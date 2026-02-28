@@ -45,6 +45,7 @@ const PAPEL_LABEL: Record<string, string> = {
   financeiro:             "Financeiro",
   secretaria:             "Secretário(a)",
   secretaria_financeiro:  "Sec. + Financeiro",
+  admin_financeiro:       "Admin + Financeiro",
   professor:              "Professor(a)",
 };
 
@@ -459,6 +460,7 @@ function ListaUsuarios() {
                             <option value="financeiro">Financeiro</option>
                             <option value="secretaria">Secretário(a)</option>
                             <option value="secretaria_financeiro">Sec. + Financeiro</option>
+                            <option value="admin_financeiro">Admin + Financeiro</option>
                             <option value="professor">Professor(a)</option>
                           </select>
                         ) : (
