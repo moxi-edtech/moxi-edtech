@@ -110,9 +110,10 @@ BEGIN
            AND id = (v_turma_data->>'classeId')::uuid
          LIMIT 1;
 
-        v_class_number := regexp_replace(coalesce(v_class_name, ''), '\\D', '', 'g');
+        v_class_number := regexp_replace(coalesce(v_class_name, ''), '[^0-9]', '', 'g');
         IF v_class_number IS NULL OR length(trim(v_class_number)) = 0 THEN
           v_class_number := regexp_replace(upper(coalesce(v_class_name, '')), '\\s+', '', 'g');
+          v_class_number := regexp_replace(v_class_number, 'CLASSE', '', 'g');
         END IF;
 
         v_turma_nome_final :=
@@ -194,9 +195,10 @@ BEGIN
              AND id = (v_turma_data->>'classeId')::uuid
            LIMIT 1;
 
-          v_class_number := regexp_replace(coalesce(v_class_name, ''), '\\D', '', 'g');
+          v_class_number := regexp_replace(coalesce(v_class_name, ''), '[^0-9]', '', 'g');
           IF v_class_number IS NULL OR length(trim(v_class_number)) = 0 THEN
             v_class_number := regexp_replace(upper(coalesce(v_class_name, '')), '\\s+', '', 'g');
+            v_class_number := regexp_replace(v_class_number, 'CLASSE', '', 'g');
           END IF;
 
           v_turma_nome_final :=
