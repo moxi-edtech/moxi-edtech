@@ -157,6 +157,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       }, { status: 500 });
     }
 
+    try {
+      await (supabase as any).rpc('refresh_mv_turmas_para_matricula');
+    } catch (refreshErr) {
+      console.warn('Falha ao atualizar mv_turmas_para_matricula:', refreshErr);
+    }
+
     return NextResponse.json({ ok: true, data, idempotency_key: idempotencyKey });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
