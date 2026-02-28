@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 import { PLAN_NAMES, type PlanTier } from "@/config/plans";
+import AssinaturaDetailsSlideover from "./AssinaturaDetailsSlideover";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -84,6 +85,7 @@ export default function CobrancasListClient() {
   const [erro, setErro] = useState<string | null>(null);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const supabase = createClient();
 
@@ -204,7 +206,7 @@ export default function CobrancasListClient() {
   const cols = ["Escola", "Plano / Ciclo", "Valor", "Status", "Pagamento", "Renovação", "Acções"];
 
   return (
-    <div className="bg-slate-50/30 min-h-screen text-slate-900">
+    <div className="text-slate-900">
       
       {/* ── Dashboard Stats ── */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -331,7 +333,10 @@ export default function CobrancasListClient() {
                           {confirmingId === item.id ? '...' : 'Activar'}
                         </button>
                       )}
-                      <button className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-[10px] font-bold uppercase transition-colors">
+                      <button 
+                        onClick={() => setSelectedId(item.id)}
+                        className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 text-[10px] font-bold uppercase transition-colors"
+                      >
                         Detalhes
                       </button>
                     </div>
@@ -342,6 +347,15 @@ export default function CobrancasListClient() {
           </table>
         </div>
       </div>
+
+      {/* ── Slideover de Detalhes ── */}
+      {selectedId && (
+        <AssinaturaDetailsSlideover 
+          assinaturaId={selectedId} 
+          onClose={() => setSelectedId(null)} 
+          onUpdated={loadData}
+        />
+      )}
     </div>
   );
 }
