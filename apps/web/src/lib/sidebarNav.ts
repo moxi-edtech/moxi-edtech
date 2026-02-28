@@ -27,6 +27,7 @@ export const sidebarConfig: SidebarConfig = {
     { href: "/super-admin/health", label: "Saúde", icon: "HeartPulse" },
     { href: "/super-admin/diagnostics", label: "Diagnostics", icon: "Activity" },
     { href: "/super-admin/escolas", label: "Escolas", icon: "Building2" },
+    { href: "/super-admin/cobrancas", label: "Cobranças", icon: "BadgeDollarSign" },
     { href: "/super-admin/usuarios", label: "Usuários", icon: "Users" },
   ],
   admin: [
@@ -59,6 +60,7 @@ export const sidebarConfig: SidebarConfig = {
       icon: "Settings2",
       children: [
         { href: "/escola/[escolaId]/admin/configuracoes", label: "Visão geral" },
+        { href: "/escola/[escolaId]/admin/configuracoes/assinatura", label: "Assinatura Klasse" },
         { href: "/escola/[escolaId]/admin/configuracoes/financeiro", label: "Financeiro" },
         { href: "/escola/[escolaId]/admin/configuracoes/calendario", label: "Calendário" },
         { href: "/escola/[escolaId]/admin/configuracoes/seguranca", label: "Segurança" },
