@@ -21,7 +21,7 @@ export default function KlasseSecretariaUnificada({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const modeFromQuery = normalizeModo(searchParams.get("modo"));
+  const modeFromQuery = normalizeModo(searchParams?.get("modo"));
   const [activeMode, setActiveMode] = useState<ModoSecretaria>(modeFromQuery ?? "balcao");
 
   useEffect(() => {
@@ -35,7 +35,7 @@ export default function KlasseSecretariaUnificada({
 
     try {
       const saved = normalizeModo(localStorage.getItem("klasse_modo_secretaria"));
-      if (saved) {
+      if (saved && searchParams) {
         setActiveMode(saved);
         const next = new URLSearchParams(searchParams.toString());
         next.set("modo", saved);
@@ -49,7 +49,7 @@ export default function KlasseSecretariaUnificada({
     try {
       localStorage.setItem("klasse_modo_secretaria", mode);
     } catch {}
-    const next = new URLSearchParams(searchParams.toString());
+    const next = new URLSearchParams(searchParams?.toString() || "");
     next.set("modo", mode);
     router.replace(`${pathname}?${next.toString()}`);
   };
