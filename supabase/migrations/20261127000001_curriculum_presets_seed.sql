@@ -1394,7 +1394,7 @@ VALUES
   ('tec_secretariado','Documentação e Legislação Comercial, Laboral e Fiscal','11ª Classe','TECNICA',3,'core'),
   ('tec_secretariado','Formação de Atitudes Integradoras','11ª Classe','SOCIO_CULTURAL',2,'core'),
   ('tec_secretariado','Documentação e Legislação Comercial, Laboral e Fiscal','12ª Classe','TECNICA',3,'core'),
-  ('tec_secretariado','Técnica de Cálculo e Estatística','12ª Classe','TECNICA',3,'core'),
+  ('tec_secretariado','Técnica de Cálculo e Estatística','12ª Classe','TECNICA',3,'core')
 ON CONFLICT (preset_id, name, grade_level) DO UPDATE SET
   component = EXCLUDED.component,
   weekly_hours = EXCLUDED.weekly_hours,
