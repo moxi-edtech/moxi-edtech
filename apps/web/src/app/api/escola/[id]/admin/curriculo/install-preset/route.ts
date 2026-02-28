@@ -231,6 +231,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ ok: false, error: 'Curso não resolvido.', message: 'Curso não resolvido.' }, { status: 500 });
     }
 
+    try {
+      await (supabase as any).rpc('refresh_mv_escola_cursos_stats');
+    } catch (refreshError) {
+      console.warn('[curriculo.install-preset] falha ao atualizar mv_escola_cursos_stats:', refreshError);
+    }
+
     let publishResult: any = null;
     if (options.autoPublish && applyResult?.curriculo) {
       const { data: publishData, error: publishError } = await supabase

@@ -197,6 +197,12 @@ export async function POST(
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
 
     try {
+      await (supabase as any).rpc('refresh_mv_escola_cursos_stats');
+    } catch (refreshError) {
+      console.warn('Falha ao atualizar mv_escola_cursos_stats:', refreshError);
+    }
+
+    try {
       await (supabase as any).from("notifications").insert({
         escola_id: escolaId,
         target_role: "financeiro",
