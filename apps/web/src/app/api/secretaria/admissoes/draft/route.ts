@@ -104,6 +104,9 @@ const draftPayloadSchema = z
 
     mesmo_que_encarregado: z.boolean().optional(),
 
+    percentagem_desconto: z.number().min(0).max(100).optional(),
+    motivo_desconto: z.string().trim().max(200).optional(),
+
     curso_id: uuid.optional(),
     classe_id: uuid.optional(),
     turma_preferencial_id: uuid.optional(),

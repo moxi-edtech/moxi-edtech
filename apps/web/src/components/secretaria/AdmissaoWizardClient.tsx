@@ -52,7 +52,13 @@ type LocalDraftCache = {
   updatedAt: number;
   candidaturaId?: string | null;
   identificacao?: DraftIdentificacao;
-  fit?: { cursoId?: string; classeId?: string; turmaId?: string };
+  fit?: { 
+    cursoId?: string; 
+    classeId?: string; 
+    turmaId?: string;
+    percentagemDesconto?: number;
+    motivoDesconto?: string;
+  };
 };
 
 const LOCAL_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
@@ -109,6 +115,8 @@ type CandidaturaDraft = {
   curso_id?: string | null;
   classe_id?: string | null;
   turma_preferencial_id?: string | null;
+  percentagem_desconto?: number | null;
+  motivo_desconto?: string | null;
   ano_letivo?: number | null;
   status?: string | null;
   cursos?: { nome?: string | null } | null;
@@ -811,6 +819,8 @@ function Step2FitAcademico(props: {
     cursoId: "",
     classeId: "",
     turmaId: "",
+    percentagemDesconto: 0,
+    motivoDesconto: "",
   });
 
   const [loadingCfg, setLoadingCfg] = useState(false);
@@ -826,6 +836,8 @@ function Step2FitAcademico(props: {
       cursoId: initialData.curso_id ?? "",
       classeId: initialData.classe_id ?? "",
       turmaId: initialData.turma_preferencial_id ?? "",
+      percentagemDesconto: initialData.percentagem_desconto ?? 0,
+      motivoDesconto: initialData.motivo_desconto ?? "",
     });
     setCursoId(initialData.curso_id ?? null);
     setClasseId(initialData.classe_id ?? null);
@@ -843,6 +855,8 @@ function Step2FitAcademico(props: {
         cursoId: cached.fit?.cursoId ?? prev.cursoId,
         classeId: cached.fit?.classeId ?? prev.classeId,
         turmaId: cached.fit?.turmaId ?? prev.turmaId,
+        percentagemDesconto: cached.fit?.percentagemDesconto ?? prev.percentagemDesconto,
+        motivoDesconto: cached.fit?.motivoDesconto ?? prev.motivoDesconto,
       }));
       const hasAny = Boolean(cached.fit?.cursoId || cached.fit?.classeId || cached.fit?.turmaId);
       if (hasAny) setLocalRestored(true);
@@ -923,7 +937,13 @@ function Step2FitAcademico(props: {
   }, [escolaId, initialData?.ano_letivo, initialData?.turma_preferencial_id, sel.cursoId, sel.classeId, setClasseId, setCursoId]);
 
   const updateDraft = useCallback(
-    async (patch: { curso_id?: string; classe_id?: string; turma_preferencial_id?: string }) => {
+    async (patch: { 
+      curso_id?: string; 
+      classe_id?: string; 
+      turma_preferencial_id?: string;
+      percentagem_desconto?: number;
+      motivo_desconto?: string;
+    }) => {
       if (!isUuid(escolaId)) {
         setError("Contexto inválido: escolaId não é UUID.");
         return;
@@ -944,6 +964,8 @@ function Step2FitAcademico(props: {
         curso_id: safeUuid(patch.curso_id),
         classe_id: safeUuid(patch.classe_id),
         turma_preferencial_id: safeUuid(patch.turma_preferencial_id),
+        percentagem_desconto: patch.percentagem_desconto,
+        motivo_desconto: patch.motivo_desconto,
       });
 
       setSaving(true);
@@ -977,7 +999,25 @@ function Step2FitAcademico(props: {
     const classeId = turma?.classe_id || null;
     setCursoId(cursoId);
     setClasseId(classeId);
-    await updateDraft({ curso_id: cursoId ?? undefined, classe_id: classeId ?? undefined, turma_preferencial_id: turmaId });
+    await updateDraft({ 
+      curso_id: cursoId ?? undefined, 
+      classe_id: classeId ?? undefined, 
+      turma_preferencial_id: turmaId,
+      percentagem_desconto: sel.percentagemDesconto,
+      motivo_desconto: sel.motivoDesconto,
+    });
+  };
+
+  const onUpdateFinanceiro = async (patch: { percentagemDesconto?: number; motivoDesconto?: string }) => {
+    const next = { ...sel, ...patch };
+    setSel(next);
+    await updateDraft({
+      curso_id: next.cursoId || undefined,
+      classe_id: next.classeId || undefined,
+      turma_preferencial_id: next.turmaId || undefined,
+      percentagem_desconto: next.percentagemDesconto,
+      motivo_desconto: next.motivoDesconto,
+    });
   };
 
   const canAdvance = safeUuid(sel.turmaId) && safeUuid(candidaturaId);
@@ -990,9 +1030,11 @@ function Step2FitAcademico(props: {
         cursoId: sel.cursoId,
         classeId: sel.classeId,
         turmaId: sel.turmaId,
+        percentagemDesconto: sel.percentagemDesconto,
+        motivoDesconto: sel.motivoDesconto,
       },
     });
-  }, [hydrated, escolaId, candidaturaId, sel.cursoId, sel.classeId, sel.turmaId]);
+  }, [hydrated, escolaId, candidaturaId, sel.cursoId, sel.classeId, sel.turmaId, sel.percentagemDesconto, sel.motivoDesconto]);
 
   const classesFromTurmas = useMemo(() => {
     const map = new Map<string, RefItem>();
@@ -1147,6 +1189,57 @@ function Step2FitAcademico(props: {
         </p>
       ) : null}
         </div>
+      </div>
+
+      {/* ACORDO FINANCEIRO (Novo) */}
+      <div className="bg-amber-50/50 border border-amber-100 rounded-2xl p-5 space-y-4">
+        <h3 className="text-sm font-bold text-amber-900 flex items-center gap-2">
+          <Save className="w-4 h-4" />
+          Acordo Financeiro Especial
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">
+              Desconto (%)
+            </label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              value={sel.percentagemDesconto}
+              onChange={(e) => {
+                const val = Math.min(100, Math.max(0, Number(e.target.value)));
+                onUpdateFinanceiro({ percentagemDesconto: val });
+              }}
+              disabled={!canEditDraft}
+              className="w-full rounded-xl border-amber-200 bg-white px-3 py-2 text-sm focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 disabled:opacity-60"
+              placeholder="Ex: 15"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">
+              Motivo do Desconto
+            </label>
+            <select
+              value={sel.motivoDesconto}
+              onChange={(e) => {
+                onUpdateFinanceiro({ motivoDesconto: e.target.value });
+              }}
+              disabled={!canEditDraft}
+              className="w-full rounded-xl border-amber-200 bg-white px-3 py-2 text-sm focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 disabled:opacity-60"
+            >
+              <option value="">Sem desconto</option>
+              <option value="Irmãos">Irmãos na Instituição</option>
+              <option value="Bolsa Mérito">Bolsa de Mérito</option>
+              <option value="Bolsa Social">Bolsa Social</option>
+              <option value="Protocolo">Protocolo / Empresa</option>
+              <option value="Outro">Outro motivo</option>
+            </select>
+          </div>
+        </div>
+        <p className="text-[10px] text-amber-700 italic">
+          * Este desconto será aplicado automaticamente a todas as propinas geradas para esta matrícula.
+        </p>
       </div>
 
       <div className="flex items-center justify-between gap-3">
