@@ -40,6 +40,7 @@ interface OnboardingRequest {
   escola_email: string;
   director_nome: string;
   ano_letivo: string;
+  faixa_propina: string | null;
   classes: any;
   turnos: any;
   turmas: any;
@@ -55,6 +56,25 @@ const STATUS_META = {
   em_configuracao: { label: "Configuração",  color: "bg-blue-100 text-blue-700 border-blue-200",    dot: "bg-blue-500" },
   activo:         { label: "Activo",        color: "bg-emerald-100 text-emerald-700 border-emerald-200", dot: "bg-emerald-500" },
   cancelado:      { label: "Cancelado",     color: "bg-slate-100 text-slate-600 border-slate-200",  dot: "bg-slate-400" },
+};
+
+// ─── Lead Scoring Helper ──────────────────────────────────────────────────────
+const calcEstimativa = (faixa: string | null, totalAlunos: any) => {
+  const alunos = parseInt(String(totalAlunos || 0));
+  if (!faixa || !alunos) return 0;
+  
+  const medias = {
+    'ate_5k': 2500,
+    '5k_15k': 10000,
+    '15k_40k': 27500,
+    'acima_40k': 50000
+  };
+  
+  return (medias[faixa as keyof typeof medias] || 0) * alunos;
+};
+
+const fmtKz = (v: number) => {
+  return new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(v).replace('AOA', 'Kz');
 };
 
 export default function SuperAdminOnboardingPage() {
@@ -188,7 +208,7 @@ export default function SuperAdminOnboardingPage() {
                             <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
                               <span className="flex items-center gap-1"><Clock size={12} /> {format(new Date(req.created_at), "dd MMM, HH:mm", { locale: pt })}</span>
                               <span className="text-slate-200">•</span>
-                              <span>{req.escola_provincia}</span>
+                              <span className="font-bold text-klasse-green">{fmtKz(calcEstimativa(req.faixa_propina, req.financeiro?.total_alunos))} /mês est.</span>
                             </div>
                           </div>
                         </div>
@@ -253,15 +273,15 @@ export default function SuperAdminOnboardingPage() {
 
                   {/* Resumo Académico */}
                   <div className="bg-slate-50 rounded-2xl p-4 space-y-3 border border-slate-100">
-                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Perfil Académico</h4>
+                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Perfil Académico & Potencial</h4>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <p className="text-[9px] font-bold text-slate-400 uppercase">Classes</p>
-                        <p className="text-sm font-bold text-slate-700">{selectedRequest.classes?.length || 0} Activas</p>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">Estimativa Alunos</p>
+                        <p className="text-sm font-bold text-slate-700">{selectedRequest.financeiro?.total_alunos || 0}</p>
                       </div>
                       <div>
-                        <p className="text-[9px] font-bold text-slate-400 uppercase">Turnos</p>
-                        <p className="text-sm font-bold text-slate-700">{selectedRequest.turnos?.join(', ') || '—'}</p>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">Faturação Est.</p>
+                        <p className="text-sm font-black text-[#1F6B3B]">{fmtKz(calcEstimativa(selectedRequest.faixa_propina, selectedRequest.financeiro?.total_alunos))}</p>
                       </div>
                     </div>
                   </div>
