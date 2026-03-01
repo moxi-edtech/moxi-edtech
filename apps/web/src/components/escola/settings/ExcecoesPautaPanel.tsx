@@ -12,7 +12,8 @@ import {
   Calendar,
   CheckCircle2,
   XCircle,
-  Loader2
+  Loader2,
+  ShieldCheck
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -79,6 +80,7 @@ export default function ExcecoesPautaPanel({ params }: { params: Promise<{ id: s
   }, [escolaId]);
 
   async function loadData() {
+    if (!escolaId) return;
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -102,35 +104,38 @@ export default function ExcecoesPautaPanel({ params }: { params: Promise<{ id: s
   }
 
   async function loadFormOptions() {
+    if (!escolaId) return;
     try {
       // 1. Carregar Professores e Admins da escola
       const { data: profiles } = await supabase
         .from("profiles")
         .select("user_id, nome, role")
         .eq("escola_id", escolaId)
-        .in("role", ["professor", "admin", "secretaria", "gestor"]);
+        .in("role", ["professor", "admin", "secretaria", "financeiro"]);
       setUsers(profiles || []);
 
       // 2. Carregar Turmas
-      const { data: t } = await supabase
-        .from("turmas")
-        .select("id, nome")
-        .eq("escola_id", escolaId);
-      setTurmas(t || []);
+      if (escolaId) {
+        const { data: t } = await supabase
+          .from("turmas")
+          .select("id, nome")
+          .eq("escola_id", escolaId);
+        setTurmas(t || []);
 
-      // 3. Carregar Catálogo de Disciplinas
-      const { data: d } = await supabase
-        .from("disciplinas_catalogo")
-        .select("id, nome")
-        .eq("escola_id", escolaId);
-      setDisciplinas(d || []);
+        // 3. Carregar Catálogo de Disciplinas
+        const { data: d } = await supabase
+          .from("disciplinas_catalogo")
+          .select("id, nome")
+          .eq("escola_id", escolaId);
+        setDisciplinas(d || []);
+      }
     } catch (err) {
       console.error(err);
     }
   }
 
   async function handleAdd() {
-    if (!selectedUser || !selectedTurma || !motivo) {
+    if (!escolaId || !selectedUser || !selectedTurma || !motivo) {
       toast.error("Preencha os campos obrigatórios (Usuário, Turma e Motivo)");
       return;
     }

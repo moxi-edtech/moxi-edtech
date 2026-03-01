@@ -993,7 +993,9 @@ export type Database = {
           id: string
           matricula_id: string | null
           matriculado_em: string | null
+          motivo_desconto: string | null
           nome_candidato: string | null
+          percentagem_desconto: number | null
           source: string | null
           status: string | null
           turma_preferencial_id: string | null
@@ -1011,7 +1013,9 @@ export type Database = {
           id?: string
           matricula_id?: string | null
           matriculado_em?: string | null
+          motivo_desconto?: string | null
           nome_candidato?: string | null
+          percentagem_desconto?: number | null
           source?: string | null
           status?: string | null
           turma_preferencial_id?: string | null
@@ -1029,7 +1033,9 @@ export type Database = {
           id?: string
           matricula_id?: string | null
           matriculado_em?: string | null
+          motivo_desconto?: string | null
           nome_candidato?: string | null
+          percentagem_desconto?: number | null
           source?: string | null
           status?: string | null
           turma_preferencial_id?: string | null
@@ -2612,6 +2618,88 @@ export type Database = {
             columns: ["escola_id"]
             isOneToOne: false
             referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      excecoes_pauta: {
+        Row: {
+          created_at: string | null
+          criado_por: string
+          disciplina_id: string | null
+          escola_id: string
+          expira_em: string
+          id: string
+          motivo: string
+          trimestre: number | null
+          turma_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          criado_por: string
+          disciplina_id?: string | null
+          escola_id: string
+          expira_em: string
+          id?: string
+          motivo: string
+          trimestre?: number | null
+          turma_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          criado_por?: string
+          disciplina_id?: string | null
+          escola_id?: string
+          expira_em?: string
+          id?: string
+          motivo?: string
+          trimestre?: number | null
+          turma_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "excecoes_pauta_disciplina_id_fkey"
+            columns: ["disciplina_id"]
+            isOneToOne: false
+            referencedRelation: "disciplinas_catalogo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "excecoes_pauta_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "excecoes_pauta_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "excecoes_pauta_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "excecoes_pauta_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_secretaria"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "excecoes_pauta_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_turmas"
             referencedColumns: ["id"]
           },
         ]
@@ -4301,6 +4389,45 @@ export type Database = {
         }
         Relationships: []
       }
+      frequencias_2026_04: {
+        Row: {
+          aula_id: string | null
+          curso_oferta_id: string | null
+          data: string
+          escola_id: string
+          id: string
+          matricula_id: string
+          observacao: string | null
+          periodo_letivo_id: string | null
+          routine_id: string | null
+          status: string
+        }
+        Insert: {
+          aula_id?: string | null
+          curso_oferta_id?: string | null
+          data: string
+          escola_id: string
+          id: string
+          matricula_id: string
+          observacao?: string | null
+          periodo_letivo_id?: string | null
+          routine_id?: string | null
+          status: string
+        }
+        Update: {
+          aula_id?: string | null
+          curso_oferta_id?: string | null
+          data?: string
+          escola_id?: string
+          id?: string
+          matricula_id?: string
+          observacao?: string | null
+          periodo_letivo_id?: string | null
+          routine_id?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       frequencias_default: {
         Row: {
           aula_id: string | null
@@ -5019,6 +5146,39 @@ export type Database = {
         }
         Relationships: []
       }
+      lancamentos_2026_04: {
+        Row: {
+          avaliacao_id: string
+          criado_em: string
+          escola_id: string
+          final: boolean
+          id: string
+          matricula_id: string
+          tenant_id: string | null
+          valor: number
+        }
+        Insert: {
+          avaliacao_id: string
+          criado_em: string
+          escola_id: string
+          final: boolean
+          id: string
+          matricula_id: string
+          tenant_id?: string | null
+          valor: number
+        }
+        Update: {
+          avaliacao_id?: string
+          criado_em?: string
+          escola_id?: string
+          final?: boolean
+          id?: string
+          matricula_id?: string
+          tenant_id?: string | null
+          valor?: number
+        }
+        Relationships: []
+      }
       lancamentos_default: {
         Row: {
           avaliacao_id: string
@@ -5140,10 +5300,12 @@ export type Database = {
           escola_id: string
           id: string
           import_id: string | null
+          motivo_desconto: string | null
           motivo_fecho: string | null
           numero_chamada: number | null
           numero_matricula: string | null
           origem_transicao_matricula_id: string | null
+          percentagem_desconto: number | null
           secao_id: string | null
           session_id: string | null
           status: string
@@ -5162,10 +5324,12 @@ export type Database = {
           escola_id: string
           id?: string
           import_id?: string | null
+          motivo_desconto?: string | null
           motivo_fecho?: string | null
           numero_chamada?: number | null
           numero_matricula?: string | null
           origem_transicao_matricula_id?: string | null
+          percentagem_desconto?: number | null
           secao_id?: string | null
           session_id?: string | null
           status?: string
@@ -5184,10 +5348,12 @@ export type Database = {
           escola_id?: string
           id?: string
           import_id?: string | null
+          motivo_desconto?: string | null
           motivo_fecho?: string | null
           numero_chamada?: number | null
           numero_matricula?: string | null
           origem_transicao_matricula_id?: string | null
+          percentagem_desconto?: number | null
           secao_id?: string | null
           session_id?: string | null
           status?: string
@@ -5486,6 +5652,7 @@ export type Database = {
           created_at: string
           data_pagamento_efetiva: string | null
           data_vencimento: string
+          desconto_aplicado: number | null
           escola_id: string | null
           id: string
           matricula_id: string | null
@@ -5498,6 +5665,7 @@ export type Database = {
           updated_at: string
           updated_by: string | null
           valor: number
+          valor_original: number | null
           valor_pago_total: number | null
           valor_previsto: number | null
         }
@@ -5508,6 +5676,7 @@ export type Database = {
           created_at?: string
           data_pagamento_efetiva?: string | null
           data_vencimento: string
+          desconto_aplicado?: number | null
           escola_id?: string | null
           id?: string
           matricula_id?: string | null
@@ -5520,6 +5689,7 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           valor: number
+          valor_original?: number | null
           valor_pago_total?: number | null
           valor_previsto?: number | null
         }
@@ -5530,6 +5700,7 @@ export type Database = {
           created_at?: string
           data_pagamento_efetiva?: string | null
           data_vencimento?: string
+          desconto_aplicado?: number | null
           escola_id?: string | null
           id?: string
           matricula_id?: string | null
@@ -5542,6 +5713,7 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           valor?: number
+          valor_original?: number | null
           valor_pago_total?: number | null
           valor_previsto?: number | null
         }
@@ -5670,7 +5842,9 @@ export type Database = {
           created_at: string
           escola_id: string
           id: string
+          is_isento: boolean | null
           matricula_id: string
+          metadata: Json | null
           updated_at: string
           valor: number
         }
@@ -5679,7 +5853,9 @@ export type Database = {
           created_at?: string
           escola_id: string
           id?: string
+          is_isento?: boolean | null
           matricula_id: string
+          metadata?: Json | null
           updated_at?: string
           valor: number
         }
@@ -5688,7 +5864,9 @@ export type Database = {
           created_at?: string
           escola_id?: string
           id?: string
+          is_isento?: boolean | null
           matricula_id?: string
+          metadata?: Json | null
           updated_at?: string
           valor?: number
         }
@@ -10610,6 +10788,15 @@ export type Database = {
         Returns: Json
       }
       can_access: { Args: { eid: string }; Returns: boolean }
+      can_bypass_pauta_lock: {
+        Args: {
+          p_avaliacao_id: string
+          p_escola_id: string
+          p_turma_id: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
       can_manage_school: { Args: { p_escola_id: string }; Returns: boolean }
       can_professor_school: { Args: { p_escola_id: string }; Returns: boolean }
       canonicalize_matricula_status_text: {
@@ -11543,18 +11730,32 @@ export type Database = {
       is_staff_escola: { Args: { escola_uuid: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
       is_super_or_global_admin: { Args: never; Returns: boolean }
-      lancar_notas_batch: {
-        Args: {
-          p_disciplina_id: string
-          p_escola_id: string
-          p_notas: Json
-          p_tipo_avaliacao: string
-          p_trimestre: number
-          p_turma_disciplina_id: string
-          p_turma_id: string
-        }
-        Returns: Json
-      }
+      lancar_notas_batch:
+        | {
+            Args: {
+              p_disciplina_id: string
+              p_escola_id: string
+              p_notas: Json
+              p_tipo_avaliacao: string
+              p_trimestre: number
+              p_turma_disciplina_id: string
+              p_turma_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_disciplina_id: string
+              p_escola_id: string
+              p_is_isento?: boolean
+              p_notas: Json
+              p_tipo_avaliacao: string
+              p_trimestre: number
+              p_turma_disciplina_id: string
+              p_turma_id: string
+            }
+            Returns: Json
+          }
       liberar_acesso_alunos_v2: {
         Args: { p_aluno_ids: string[]; p_canal?: string; p_escola_id: string }
         Returns: {
