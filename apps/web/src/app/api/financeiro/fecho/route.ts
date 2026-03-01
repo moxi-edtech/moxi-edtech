@@ -4,6 +4,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { z } from "zod";
 import type { Database } from "~types/supabase";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -69,15 +70,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Payload inválido", issues: parsed.error.issues }, { status: 400 });
     }
 
-    const { data: existingIdempotency } = await supabaseAny
+    let idempotencyQuery = supabaseAny
       .from("idempotency_keys")
       .select("result")
       .eq("escola_id", escolaId)
       .eq("scope", "financeiro_fecho_declarar")
       .eq("key", idempotencyKey)
-      .order("key")
-      .limit(1)
-      .maybeSingle();
+
+    idempotencyQuery = applyKf2ListInvariants(idempotencyQuery, {
+      defaultLimit: 1,
+      order: [{ column: 'created_at', ascending: false }],
+    })
+
+    const { data: existingIdempotency } = await idempotencyQuery.maybeSingle();
 
     if (existingIdempotency?.result) {
       return NextResponse.json(existingIdempotency.result, { status: 200 });

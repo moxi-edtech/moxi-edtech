@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { supabaseServerTyped } from "@/lib/supabaseServer"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas"
+import { applyKf2ListInvariants } from "@/lib/kf2"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -22,12 +23,15 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 })
     }
 
-    const { data: anoLetivo } = await supabase
+    let anoLetivoQuery = supabase
       .from("anos_letivos")
       .select("ano")
       .eq("escola_id", escolaId)
       .eq("ativo", true)
-      .maybeSingle()
+
+    anoLetivoQuery = applyKf2ListInvariants(anoLetivoQuery, { defaultLimit: 1, order: [{ column: 'created_at', ascending: false }] })
+
+    const { data: anoLetivo } = await anoLetivoQuery.maybeSingle()
 
     let turmasQuery = supabase
       .from("turmas")
@@ -37,6 +41,11 @@ export async function GET() {
     if (anoLetivo?.ano) {
       turmasQuery = turmasQuery.eq("ano_letivo", anoLetivo.ano)
     }
+
+    turmasQuery = applyKf2ListInvariants(turmasQuery, {
+      defaultLimit: 50,
+      order: [{ column: 'nome', ascending: true }],
+    })
 
     const { data: turmas, error: turmasError } = await turmasQuery
     if (turmasError) {
@@ -48,20 +57,32 @@ export async function GET() {
     const alunosMap = new Map<string, number>()
 
     if (turmaIds.length > 0) {
-      const [pendenciasRes, alunosRes] = await Promise.all([
+      const pendenciasQuery = applyKf2ListInvariants(
         supabase
           .from("vw_professor_pendencias")
           .select("turma_id, total_alunos, pendentes, avaliacao_id")
           .eq("escola_id", escolaId)
-          .in("turma_id", turmaIds)
-          .limit(500),
+          .in("turma_id", turmaIds),
+        {
+          defaultLimit: 50,
+          order: [{ column: 'turma_id', ascending: true }],
+          tieBreakerColumn: 'turma_id',
+        }
+      )
+      const alunosQuery = applyKf2ListInvariants(
         supabase
           .from("matriculas")
           .select("turma_id")
           .eq("escola_id", escolaId)
           .in("turma_id", turmaIds)
           .in("status", ["ativo", "ativa", "active"]),
-      ])
+        {
+          defaultLimit: 50,
+          order: [{ column: 'turma_id', ascending: true }],
+        }
+      )
+
+      const [pendenciasRes, alunosRes] = await Promise.all([pendenciasQuery, alunosQuery])
 
       if (pendenciasRes.error) {
         return NextResponse.json({ ok: false, error: pendenciasRes.error.message }, { status: 500 })

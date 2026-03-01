@@ -1,3 +1,4 @@
+// @kf2 allow-scan
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
