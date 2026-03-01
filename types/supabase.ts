@@ -6288,6 +6288,96 @@ export type Database = {
           },
         ]
       }
+      onboarding_requests: {
+        Row: {
+          ano_letivo: string | null
+          classes: Json | null
+          created_at: string | null
+          director_nome: string | null
+          director_tel: string | null
+          escola_abrev: string | null
+          escola_codigo: string | null
+          escola_email: string | null
+          escola_id: string | null
+          escola_morada: string | null
+          escola_municipio: string | null
+          escola_nome: string
+          escola_provincia: string | null
+          escola_tel: string | null
+          financeiro: Json | null
+          id: string
+          notas_admin: string | null
+          status: string
+          turmas: Json | null
+          turnos: Json | null
+          updated_at: string | null
+          utilizadores: Json | null
+        }
+        Insert: {
+          ano_letivo?: string | null
+          classes?: Json | null
+          created_at?: string | null
+          director_nome?: string | null
+          director_tel?: string | null
+          escola_abrev?: string | null
+          escola_codigo?: string | null
+          escola_email?: string | null
+          escola_id?: string | null
+          escola_morada?: string | null
+          escola_municipio?: string | null
+          escola_nome: string
+          escola_provincia?: string | null
+          escola_tel?: string | null
+          financeiro?: Json | null
+          id?: string
+          notas_admin?: string | null
+          status?: string
+          turmas?: Json | null
+          turnos?: Json | null
+          updated_at?: string | null
+          utilizadores?: Json | null
+        }
+        Update: {
+          ano_letivo?: string | null
+          classes?: Json | null
+          created_at?: string | null
+          director_nome?: string | null
+          director_tel?: string | null
+          escola_abrev?: string | null
+          escola_codigo?: string | null
+          escola_email?: string | null
+          escola_id?: string | null
+          escola_morada?: string | null
+          escola_municipio?: string | null
+          escola_nome?: string
+          escola_provincia?: string | null
+          escola_tel?: string | null
+          financeiro?: Json | null
+          id?: string
+          notas_admin?: string | null
+          status?: string
+          turmas?: Json | null
+          turnos?: Json | null
+          updated_at?: string | null
+          utilizadores?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_requests_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_requests_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       outbox_events: {
         Row: {
           attempts: number
