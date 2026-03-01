@@ -313,7 +313,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
 
   const handleCreateSession = async () => {
     setCreatingSession(true);
-    let tid = toast({ variant: "syncing", title: "Salvando sessão...", duration: 0 });
+    const tid = toast({ variant: "syncing", title: "Salvando sessão...", duration: 0 });
     try {
       const r1 = await fetch(`/api/escola/${escolaId}/admin/ano-letivo/upsert`, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -349,7 +349,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   };
 
   const handleSavePreferences = async () => {
-    let tid = toast({ variant: "syncing", title: "Salvando regras...", duration: 0 });
+    const tid = toast({ variant: "syncing", title: "Salvando regras...", duration: 0 });
     try {
       const r = await fetch(`/api/escola/${escolaId}/admin/configuracoes/avaliacao-frequencia`, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -505,7 +505,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
 
   const handleGenerateTurmas = async () => {
     if (!anoLetivoId) return error("Sem ano letivo.");
-    let tid = toast({ variant: "syncing", title: "Gerando turmas...", duration: 0 });
+    const tid = toast({ variant: "syncing", title: "Gerando turmas...", duration: 0 });
     try {
       const slotsRes = await fetch(`/api/escolas/${escolaId}/horarios/slots`, { cache: "no-store" });
       const slotsJson = await slotsRes.json().catch(() => null);
