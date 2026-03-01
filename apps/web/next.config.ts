@@ -32,8 +32,6 @@ ensureSupabaseEnv();
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Configuração para standalone output (Docker)
-  output: 'standalone',
   typedRoutes: false,
   
   // Suas configurações existentes
