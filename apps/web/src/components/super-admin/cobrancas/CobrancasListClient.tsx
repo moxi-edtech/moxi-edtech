@@ -27,8 +27,8 @@ type AssinaturaPendente = {
   data_renovacao: string;
   metodo_pagamento: string;
   status: string;
-  origem_registo?: string | null;
-  motivo_origem?: string | null;
+  origem_registo: string | null;
+  motivo_origem: string | null;
   pagamento_id?: string;
   comprovativo_url?: string;
   referencia_ext?: string;

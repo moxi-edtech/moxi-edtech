@@ -569,8 +569,10 @@ export type Database = {
           escola_id: string
           id: string
           metodo_pagamento: string
+          motivo_origem: string | null
           multicaixa_referencia: string | null
           notas_internas: string | null
+          origem_registo: string | null
           plano: Database["public"]["Enums"]["app_plan_tier"]
           status: string
           stripe_customer_id: string | null
@@ -586,8 +588,10 @@ export type Database = {
           escola_id: string
           id?: string
           metodo_pagamento: string
+          motivo_origem?: string | null
           multicaixa_referencia?: string | null
           notas_internas?: string | null
+          origem_registo?: string | null
           plano?: Database["public"]["Enums"]["app_plan_tier"]
           status?: string
           stripe_customer_id?: string | null
@@ -603,8 +607,10 @@ export type Database = {
           escola_id?: string
           id?: string
           metodo_pagamento?: string
+          motivo_origem?: string | null
           multicaixa_referencia?: string | null
           notas_internas?: string | null
+          origem_registo?: string | null
           plano?: Database["public"]["Enums"]["app_plan_tier"]
           status?: string
           stripe_customer_id?: string | null
