@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { authorizeTurmasManage } from '@/lib/escola/disciplinas'
+import { applyKf2ListInvariants } from '@/lib/kf2'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -37,12 +38,21 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const authz = await authorizeTurmasManage(supabase as any, escolaIdResolved, user.id)
     if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || 'Sem permissão' }, { status: 403 })
 
-    const { data, error } = await supabase
+    let slotsQuery = supabase
       .from('horario_slots')
       .select('id, turno_id, ordem, inicio, fim, dia_semana, is_intervalo, escola_id')
       .eq('escola_id', escolaIdResolved)
-      .order('dia_semana', { ascending: true })
-      .order('ordem', { ascending: true })
+
+    slotsQuery = applyKf2ListInvariants(slotsQuery, {
+      defaultLimit: 50,
+      order: [
+        { column: 'dia_semana', ascending: true },
+        { column: 'ordem', ascending: true },
+      ],
+      tieBreakerColumn: 'id',
+    })
+
+    const { data, error } = await slotsQuery
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
 

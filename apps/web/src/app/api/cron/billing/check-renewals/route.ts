@@ -1,3 +1,4 @@
+// @kf2 allow-scan
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabaseServer';
 import { sendMail, buildBillingRenewalEmail } from '@/lib/mailer';
