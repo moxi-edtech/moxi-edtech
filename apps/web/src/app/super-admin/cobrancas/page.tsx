@@ -1,4 +1,5 @@
 import CobrancasListClient from "@/components/super-admin/cobrancas/CobrancasListClient";
+import BillingSummarySnapshot from "@/components/super-admin/cobrancas/BillingSummarySnapshot";
 import AuditPageView from "@/components/audit/AuditPageView";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -40,6 +41,9 @@ export default async function Page() {
             </div>
             <h3 className="text-slate-900 font-bold mb-1">Módulo de Auditoria Consolidada</h3>
             <p className="text-slate-500 text-sm max-w-xs mx-auto italic">O histórico detalhado de receitas globais e projeções de fluxo está agendado para a Fase 2 da implementação.</p>
+            <div className="mt-6">
+              <BillingSummarySnapshot />
+            </div>
           </div>
         </TabsContent>
       </Tabs>
