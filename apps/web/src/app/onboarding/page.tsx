@@ -1,3 +1,5 @@
+// apps/web/src/app/onboarding/page.tsx
+// Build trigger: synchronizing with remote environment
 "use client";
 
 import { useState } from "react";
