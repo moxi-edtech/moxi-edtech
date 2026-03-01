@@ -22,6 +22,14 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     const body = await req.json();
     const { action, ...updates } = body;
 
+    const { data: assBefore } = await s
+      .from('assinaturas')
+      .select('id, escola_id, status, ciclo, data_renovacao, notas_internas')
+      .eq('id', id)
+      .single();
+
+    if (!assBefore) return NextResponse.json({ ok: false, error: 'Assinatura não encontrada' }, { status: 404 });
+
     // 1. Acção Especial: Reenviar Instruções por Email
     if (action === 'resend_instructions') {
       const { data: ass } = await s
@@ -47,7 +55,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
 
       await sendMail({ to: admin.email, subject, html, text });
       
-      recordAuditServer({ 
+      await recordAuditServer({ 
         escolaId: ass.escola_id, 
         portal: 'super_admin', 
         acao: 'BILLING_INSTRUCTIONS_RESENT', 
@@ -58,15 +66,131 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       return NextResponse.json({ ok: true, message: 'Instruções enviadas com sucesso' });
     }
 
+    // 1.1 Acção Especial: Confirmar pagamento pendente
+    if (action === 'confirm_payment') {
+      const { data: latestPayment, error: latestPaymentError } = await s
+        .from('pagamentos_saas')
+        .select('id, status, created_at')
+        .eq('assinatura_id', id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (latestPaymentError) throw latestPaymentError;
+      if (!latestPayment) {
+        return NextResponse.json({ ok: false, error: 'Pagamento não encontrado para esta assinatura' }, { status: 404 });
+      }
+
+      const novaDataRenovacao = new Date(assBefore.data_renovacao);
+      if (assBefore.ciclo === 'mensal') novaDataRenovacao.setMonth(novaDataRenovacao.getMonth() + 1);
+      else novaDataRenovacao.setFullYear(novaDataRenovacao.getFullYear() + 1);
+
+      const { error: assError } = await s
+        .from('assinaturas')
+        .update({
+          status: 'activa',
+          data_renovacao: novaDataRenovacao.toISOString(),
+        })
+        .eq('id', id);
+
+      if (assError) throw assError;
+
+      const { error: paymentError } = await s
+        .from('pagamentos_saas')
+        .update({
+          status: 'confirmado',
+          confirmado_por: sess.user.id,
+          confirmado_em: new Date().toISOString(),
+        })
+        .eq('id', latestPayment.id);
+
+      if (paymentError) throw paymentError;
+
+      await recordAuditServer({
+        escolaId: assBefore.escola_id,
+        portal: 'super_admin',
+        acao: 'BILLING_PAYMENT_CONFIRMED',
+        entity: 'assinaturas',
+        entityId: id,
+        details: {
+          previous_status: assBefore.status,
+          new_status: 'activa',
+          payment_id: latestPayment.id,
+          payment_previous_status: latestPayment.status,
+          payment_new_status: 'confirmado',
+        },
+      });
+
+      return NextResponse.json({ ok: true, message: 'Pagamento confirmado e assinatura activada' });
+    }
+
+    // 1.2 Acção Especial: Rejeitar pagamento pendente (motivo obrigatório)
+    if (action === 'reject_payment') {
+      const motivo = String(body.motivo ?? '').trim();
+      if (!motivo) {
+        return NextResponse.json({ ok: false, error: 'Motivo de rejeição é obrigatório' }, { status: 400 });
+      }
+
+      const { data: latestPayment, error: latestPaymentError } = await s
+        .from('pagamentos_saas')
+        .select('id, status, created_at')
+        .eq('assinatura_id', id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (latestPaymentError) throw latestPaymentError;
+      if (!latestPayment) {
+        return NextResponse.json({ ok: false, error: 'Pagamento não encontrado para esta assinatura' }, { status: 404 });
+      }
+
+      const rejectedAt = new Date().toISOString();
+      const notaRejeicao = `[${new Date(rejectedAt).toLocaleString('pt-PT')}] Rejeição de pagamento: ${motivo}`;
+      const notasInternas = assBefore.notas_internas
+        ? `${assBefore.notas_internas}\n${notaRejeicao}`
+        : notaRejeicao;
+
+      const { error: assError } = await s
+        .from('assinaturas')
+        .update({
+          status: 'suspensa',
+          notas_internas: notasInternas,
+        })
+        .eq('id', id);
+
+      if (assError) throw assError;
+
+      const { error: paymentError } = await s
+        .from('pagamentos_saas')
+        .update({
+          status: 'falhado',
+          confirmado_por: sess.user.id,
+          confirmado_em: rejectedAt,
+        })
+        .eq('id', latestPayment.id);
+
+      if (paymentError) throw paymentError;
+
+      await recordAuditServer({
+        escolaId: assBefore.escola_id,
+        portal: 'super_admin',
+        acao: 'BILLING_PAYMENT_REJECTED',
+        entity: 'assinaturas',
+        entityId: id,
+        details: {
+          motivo,
+          previous_status: assBefore.status,
+          new_status: 'suspensa',
+          payment_id: latestPayment.id,
+          payment_previous_status: latestPayment.status,
+          payment_new_status: 'falhado',
+        },
+      });
+
+      return NextResponse.json({ ok: true, message: 'Pagamento rejeitado' });
+    }
+
     // 2. Actualizações Genéricas (Plano, Ciclo, Notas, Status)
-    const { data: assBefore } = await s
-      .from('assinaturas')
-      .select('escola_id')
-      .eq('id', id)
-      .single();
-
-    if (!assBefore) return NextResponse.json({ ok: false, error: 'Assinatura não encontrada' }, { status: 404 });
-
     // Iniciar transação lógica (updates em paralelo ou sequência)
     const { error: errorAss } = await s
       .from('assinaturas')
@@ -85,12 +209,16 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       if (errorEsc) throw errorEsc;
     }
 
-    recordAuditServer({ 
+    await recordAuditServer({ 
+      escolaId: assBefore.escola_id,
       portal: 'super_admin', 
       acao: 'BILLING_SUBSCRIPTION_UPDATED', 
       entity: 'assinaturas', 
       entityId: id, 
-      details: updates 
+      details: {
+        previous_status: assBefore.status,
+        ...updates,
+      },
     });
 
     return NextResponse.json({ ok: true });
