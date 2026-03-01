@@ -97,7 +97,7 @@ export default function AssinaturaDetailsSlideover({ assinaturaId, onClose, onUp
       const res = await fetch(`/api/super-admin/billing/assinaturas/${assinaturaId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ action: data.status === 'activa' ? 'suspend_subscription' : 'reactivate_subscription' }),
       });
       const json = await res.json();
       if (!res.ok || !json.ok) throw new Error(json.error || "Falha ao alterar status");

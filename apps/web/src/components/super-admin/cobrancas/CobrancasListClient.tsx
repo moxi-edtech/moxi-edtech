@@ -6,13 +6,14 @@
  * Tokens KLASSE: #1F6B3B (green), #E3B23C (gold).
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 import { PLAN_NAMES, type PlanTier } from "@/config/plans";
 import AssinaturaDetailsSlideover from "./AssinaturaDetailsSlideover";
+import { AlertTriangle } from "lucide-react";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -26,6 +27,8 @@ type AssinaturaPendente = {
   data_renovacao: string;
   metodo_pagamento: string;
   status: string;
+  origem_registo?: string | null;
+  motivo_origem?: string | null;
   pagamento_id?: string;
   comprovativo_url?: string;
   referencia_ext?: string;
@@ -167,6 +170,8 @@ export default function CobrancasListClient() {
           data_renovacao: row.data_renovacao,
           metodo_pagamento: row.metodo_pagamento,
           status: row.status,
+          origem_registo: row.origem_registo,
+          motivo_origem: row.motivo_origem,
           pagamento_id: ultimoPg?.id,
           comprovativo_url: ultimoPg?.comprovativo_url || undefined,
           referencia_ext: ultimoPg?.referencia_ext,
