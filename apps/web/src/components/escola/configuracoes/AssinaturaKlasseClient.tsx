@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
+import { differenceInCalendarDays } from "date-fns";
 import { PLAN_NAMES, type PlanTier } from "@/config/plans";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -38,6 +39,7 @@ export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseCli
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [actionLoading, setActionLoading] = useState<null | "upgrade" | "annual" | "portal">(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const supabase = createClient();
@@ -92,6 +94,41 @@ export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseCli
   useEffect(() => {
     if (escolaId) loadData();
   }, [escolaId]);
+
+  const handleBillingAction = async (
+    action: "upgrade" | "annual" | "portal",
+    payload?: Record<string, unknown>
+  ) => {
+    try {
+      setActionLoading(action);
+      const endpoint = action === "portal"
+        ? `/api/escola/${escolaId}/billing/stripe-portal`
+        : `/api/escola/${escolaId}/billing/upgrade`;
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload ?? {}),
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result?.error ?? "Não foi possível processar a acção.");
+      }
+
+      if (result?.url) {
+        window.location.href = result.url as string;
+        return;
+      }
+
+      toast.success(result?.message ?? "Acção iniciada com sucesso.");
+      await loadData();
+    } catch (err: any) {
+      toast.error(err?.message ?? "Falha ao executar a acção de billing.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
@@ -173,6 +210,13 @@ export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseCli
 
   const isPendente = assinatura.status === 'pendente';
   const hasPagamentoPendente = pagamentos.some(p => p.status === 'pendente');
+  const renovacaoDate = new Date(assinatura.data_renovacao);
+  const diasRestantes = Math.max(0, differenceInCalendarDays(renovacaoDate, new Date()));
+  const isStripe = assinatura.metodo_pagamento === 'stripe' || assinatura.metodo_pagamento === 'cartao';
+  const planOrder: PlanTier[] = ["essencial", "profissional", "premium"];
+  const currentPlanIndex = planOrder.indexOf(assinatura.plano);
+  const canUpgradePlan = currentPlanIndex >= 0 && currentPlanIndex < planOrder.length - 1;
+  const nextPlan = canUpgradePlan ? planOrder[currentPlanIndex + 1] : null;
 
   return (
     <div className="space-y-6">
@@ -205,6 +249,12 @@ export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseCli
                 </span>
               </div>
               <div className="flex justify-between items-center py-2 border-b border-slate-100">
+                <span className="text-sm text-slate-500">Próxima Cobrança</span>
+                <span className="text-sm font-bold text-slate-900">
+                  {diasRestantes} dia(s) · Kz {assinatura.valor_kz.toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-2 border-b border-slate-100">
                 <span className="text-sm text-slate-500">Valor da Mensalidade</span>
                 <span className="text-sm font-bold text-slate-900">Kz {assinatura.valor_kz.toLocaleString()}</span>
               </div>
@@ -233,6 +283,47 @@ export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseCli
                   </div>
                 </div>
               </div>
+            )}
+          </div>
+
+          <div className="mt-8 pt-6 border-t border-slate-100">
+            <div className="flex flex-wrap gap-3">
+              <Button
+                onClick={() => handleBillingAction("upgrade", { targetPlan: nextPlan })}
+                disabled={!canUpgradePlan || actionLoading !== null}
+                loading={actionLoading === "upgrade"}
+              >
+                Fazer upgrade
+              </Button>
+              <Button
+                tone="slate"
+                onClick={() => handleBillingAction("annual", { targetCycle: "anual" })}
+                disabled={assinatura.ciclo === "anual" || actionLoading !== null}
+                loading={actionLoading === "annual"}
+              >
+                Mudar para anual
+              </Button>
+              <Button
+                tone="green"
+                onClick={() => handleBillingAction("portal")}
+                disabled={!isStripe || actionLoading !== null}
+                loading={actionLoading === "portal"}
+              >
+                Gerir cartão (Stripe)
+              </Button>
+              <Button
+                tone="gray"
+                onClick={() => {
+                  document.getElementById("billing-history")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+              >
+                Ver histórico completo
+              </Button>
+            </div>
+            {isStripe && (
+              <p className="mt-3 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg p-3">
+                Pagamentos via Stripe são tratados automaticamente. Use os botões de upgrade e gestão de cartão para acelerar mudanças no seu plano.
+              </p>
             )}
           </div>
 
@@ -274,7 +365,7 @@ export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseCli
       </Card>
 
       {/* ── Histórico de Pagamentos ── */}
-      <Card className="border-slate-200">
+      <Card className="border-slate-200" id="billing-history">
         <CardHeader>
           <CardTitle className="text-lg">Histórico de Pagamentos Klasse</CardTitle>
           <CardDescription>Consulte os seus pagamentos anteriores e o estado das facturas.</CardDescription>
