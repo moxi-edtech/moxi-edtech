@@ -48,15 +48,21 @@ export default function AlunoLayout({ children }: { children: React.ReactNode })
 
       const escolaId = vincAluno?.escola_id;
 
-      // Gate por plano/feature
+      // Gate por plano/feature e STATUS
       let ok = true;
       if (escolaId) {
-      const { data: esc } = await s
-        .from("escolas")
-        .select("plano_atual, aluno_portal_enabled")
-        .eq("id", escolaId)
-        .maybeSingle();
-      const planoRaw = esc?.plano_atual ?? null;
+        const { data: esc } = await s
+          .from("escolas")
+          .select("plano_atual, aluno_portal_enabled, status")
+          .eq("id", escolaId)
+          .maybeSingle();
+
+        if (esc?.status === 'suspensa') {
+          router.replace('/escola/suspensa');
+          return;
+        }
+
+        const planoRaw = esc?.plano_atual ?? null;
         const plano: PlanTier = parsePlanTier(planoRaw);
         const enabled = Boolean(esc?.aluno_portal_enabled);
         ok = Boolean(plano && (plano === 'profissional' || plano === 'premium') && enabled);
