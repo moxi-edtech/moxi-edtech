@@ -27,6 +27,7 @@ export const sidebarConfig: SidebarConfig = {
     { href: "/super-admin/health", label: "Saúde", icon: "HeartPulse" },
     { href: "/super-admin/diagnostics", label: "Diagnostics", icon: "Activity" },
     { href: "/super-admin/escolas", label: "Escolas", icon: "Building2" },
+    { href: "/super-admin/onboarding", label: "Onboarding", icon: "UserPlus", badge: "Novo" },
     { href: "/super-admin/cobrancas", label: "Cobranças", icon: "BadgeDollarSign" },
     { href: "/super-admin/usuarios", label: "Usuários", icon: "Users" },
   ],
