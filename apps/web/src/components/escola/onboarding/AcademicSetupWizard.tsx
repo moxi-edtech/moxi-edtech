@@ -134,6 +134,8 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
 
   // --- STATES (STEP 1) ---
   const [schoolDisplayName, setSchoolDisplayName] = useState<string>(initialSchoolName || "");
+  const [schoolNif, setSchoolNif] = useState<string | null>(null);
+  const [schoolPlan, setSchoolPlan] = useState<string | null>(null);
   const [anoLetivo, setAnoLetivo] = useState<number>(new Date().getFullYear());
   const [anoLetivoId, setAnoLetivoId] = useState<string | null>(null);
   const [dataInicio, setDataInicio] = useState<string>(`${new Date().getFullYear()}-01-01`);
@@ -221,7 +223,12 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
         const res = await fetch(`/api/escolas/${escolaId}/nome`, { cache: "no-store" });
         const j = await res.json();
         const n = j?.nome ?? j?.data?.nome;
+        const nif = j?.nif ?? j?.data?.nif;
+        const plano = j?.plano ?? j?.data?.plano;
+        
         if (n) setSchoolDisplayName(prev => prev === n ? prev : n);
+        if (nif) setSchoolNif(nif);
+        if (plano) setSchoolPlan(plano);
       } catch (e) { console.error(e); }
     }
     if (escolaId) fn();
@@ -662,6 +669,8 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
           {step === 1 && (
             <AcademicStep1
               schoolDisplayName={schoolDisplayName}
+              schoolNif={schoolNif}
+              schoolPlan={schoolPlan}
               setSchoolDisplayName={setSchoolDisplayName}
               anoLetivo={anoLetivo} setAnoLetivo={setAnoLetivo}
               dataInicio={dataInicio} setDataInicio={setDataInicio}

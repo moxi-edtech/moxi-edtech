@@ -33,6 +33,8 @@ export interface TurnosState {
 // Props do Step 1 (Identidade & Sessão)
 export interface AcademicStep1Props {
   schoolDisplayName: string;
+  schoolNif?: string | null;
+  schoolPlan?: string | null;
   setSchoolDisplayName: (val: string) => void;
   anoLetivo: number;
   setAnoLetivo: (val: number) => void;
