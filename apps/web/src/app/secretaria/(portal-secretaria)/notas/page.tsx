@@ -140,7 +140,7 @@ export default function SecretariaNotasPage() {
         if (!active) return
         if (res.ok && json.ok && Array.isArray(json.items)) {
           setPauta(
-            (json.items as PautaDetalhadaRow[]).map((row, index) => ({
+            (json.items as any[]).map((row, index) => ({
               id: row.aluno_id,
               numero: row.numero_chamada ?? index + 1,
               nome: row.nome,
@@ -149,6 +149,7 @@ export default function SecretariaNotasPage() {
               npp1: row.npp ?? null,
               npt1: row.npt ?? null,
               mt1: row.mt ?? null,
+              is_isento: !!row.is_isento,
               _status: "synced",
             }))
           )
@@ -168,6 +169,27 @@ export default function SecretariaNotasPage() {
 
   const handleSaveBatch = async (rows: StudentGradeRow[]) => {
     if (!turmaId || !disciplinaId) return
+
+    // 1. Tratar Isenções
+    const isentos = rows.filter(r => r.is_isento);
+    if (isentos.length > 0) {
+      const res = await fetch(`/api/secretaria/notas`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "idempotency-key": `isento-${Date.now()}` },
+        body: JSON.stringify({
+          turma_id: turmaId,
+          disciplina_id: disciplinaId,
+          turma_disciplina_id: turmaDisciplinaId || undefined,
+          trimestre: periodoNumero,
+          is_isento: true,
+          notas: isentos.map(r => ({ aluno_id: r.id, valor: null }))
+        }),
+      });
+      if (!res.ok) throw new Error("Falha ao salvar isenções");
+    }
+
+    // 2. Tratar Notas normais
+    const activeRows = rows.filter(r => !r.is_isento);
     const payloads = [
       { tipo: "MAC", campo: "mac1" as const },
       { tipo: "NPP", campo: "npp1" as const },
@@ -175,9 +197,10 @@ export default function SecretariaNotasPage() {
     ]
 
     for (const { tipo, campo } of payloads) {
-      const notas = rows
+      const notas = activeRows
         .map((row) => ({ aluno_id: row.id, valor: row[campo] }))
         .filter((entry) => typeof entry.valor === "number")
+      
       if (notas.length === 0) continue
 
       const idempotencyKey =
@@ -197,6 +220,7 @@ export default function SecretariaNotasPage() {
           turma_disciplina_id: turmaDisciplinaId || undefined,
           trimestre: periodoNumero,
           tipo_avaliacao: tipo,
+          is_isento: false,
           notas,
         }),
       })
@@ -298,6 +322,7 @@ export default function SecretariaNotasPage() {
           initialData={pauta}
           subtitle={`${disciplinaNome ?? "Disciplina"} • Trimestre ${periodoNumero}`}
           onSave={handleSaveBatch}
+          showIsento={true}
         />
       )}
     </div>
