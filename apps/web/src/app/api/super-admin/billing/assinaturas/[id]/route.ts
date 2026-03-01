@@ -59,12 +59,31 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     }
 
     // 2. Actualizações Genéricas (Plano, Ciclo, Notas, Status)
-    const { error } = await s
+    const { data: assBefore } = await s
+      .from('assinaturas')
+      .select('escola_id')
+      .eq('id', id)
+      .single();
+
+    if (!assBefore) return NextResponse.json({ ok: false, error: 'Assinatura não encontrada' }, { status: 404 });
+
+    // Iniciar transação lógica (updates em paralelo ou sequência)
+    const { error: errorAss } = await s
       .from('assinaturas')
       .update(updates)
       .eq('id', id);
 
-    if (error) throw error;
+    if (errorAss) throw errorAss;
+
+    // Se o status da assinatura mudou, reflectir na escola
+    if (updates.status) {
+      const { error: errorEsc } = await s
+        .from('escolas')
+        .update({ status: updates.status })
+        .eq('id', assBefore.escola_id);
+      
+      if (errorEsc) throw errorEsc;
+    }
 
     recordAuditServer({ 
       portal: 'super_admin', 

@@ -96,9 +96,12 @@ export default function AssinaturaDetailsSlideover({ assinaturaId, onClose, onUp
       setSaving(true);
       const res = await fetch(`/api/super-admin/billing/assinaturas/${assinaturaId}`, {
         method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
-      if (!res.ok) throw new Error("Falha ao alterar status");
+      const json = await res.json();
+      if (!res.ok || !json.ok) throw new Error(json.error || "Falha ao alterar status");
+      
       toast.success(`Status alterado para ${newStatus}`);
       onUpdated();
       onClose();
