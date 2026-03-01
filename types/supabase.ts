@@ -6305,6 +6305,7 @@ export type Database = {
           escola_nome: string
           escola_provincia: string | null
           escola_tel: string | null
+          faixa_propina: string | null
           financeiro: Json | null
           id: string
           notas_admin: string | null
@@ -6330,6 +6331,7 @@ export type Database = {
           escola_nome: string
           escola_provincia?: string | null
           escola_tel?: string | null
+          faixa_propina?: string | null
           financeiro?: Json | null
           id?: string
           notas_admin?: string | null
@@ -6355,6 +6357,7 @@ export type Database = {
           escola_nome?: string
           escola_provincia?: string | null
           escola_tel?: string | null
+          faixa_propina?: string | null
           financeiro?: Json | null
           id?: string
           notas_admin?: string | null

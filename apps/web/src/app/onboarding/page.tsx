@@ -9,7 +9,16 @@ import {
   CreditCard, 
   Users, 
   XCircle, 
-  RefreshCw 
+  RefreshCw,
+  ChevronRight,
+  Clock,
+  Mail,
+  Phone,
+  Calendar,
+  Save,
+  Building2,
+  TrendingUp,
+  Layout
 } from "lucide-react";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -18,14 +27,6 @@ interface ClasseConfig {
   nome: string;
   nivel: "EP" | "ESG";
   activa: boolean;
-  propina: number;
-}
-
-interface UtilizadorExtra {
-  id: number;
-  nome: string;
-  email: string;
-  papel: string;
 }
 
 interface FormData {
@@ -44,15 +45,13 @@ interface FormData {
   ano_letivo: string;
   // Passo 2 — Classes
   classes: ClasseConfig[];
-  // Passo 3 — Turnos & Turmas
+  // Passo 3 — Estrutura & Dimensão
   turnos: string[];
-  turmas: Record<string, Record<string, number>>;
   total_alunos: string;
-  media_turma: string;
+  faixa_propina: string;
   // Passo 4 — Utilizadores
   utilizadores: {
     principal: { nome: string; tel: string; nivel_exp: string };
-    outros: UtilizadorExtra[];
   };
   // Passo 5 — Financeiro
   financeiro: {
@@ -60,24 +59,22 @@ interface FormData {
     dia_vencimento: string;
     mes_inicio: string;
     mes_fim: string;
-    metodos: string[];
     dados_bancarios: string;
-    observacoes: string;
   };
 }
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const CLASSES_INICIAL: ClasseConfig[] = [
-  { id: "ini", nome: "Iniciação", nivel: "EP", activa: true, propina: 0 },
-  { id: "1",   nome: "1ª Classe", nivel: "EP", activa: true, propina: 0 },
-  { id: "2",   nome: "2ª Classe", nivel: "EP", activa: true, propina: 0 },
-  { id: "3",   nome: "3ª Classe", nivel: "EP", activa: true, propina: 0 },
-  { id: "4",   nome: "4ª Classe", nivel: "EP", activa: true, propina: 0 },
-  { id: "5",   nome: "5ª Classe", nivel: "EP", activa: true, propina: 0 },
-  { id: "6",   nome: "6ª Classe", nivel: "EP", activa: true, propina: 0 },
-  { id: "7",   nome: "7ª Classe", nivel: "ESG", activa: true, propina: 0 },
-  { id: "8",   nome: "8ª Classe", nivel: "ESG", activa: true, propina: 0 },
-  { id: "9",   nome: "9ª Classe", nivel: "ESG", activa: true, propina: 0 },
+  { id: "ini", nome: "Iniciação", nivel: "EP", activa: true },
+  { id: "1",   nome: "1ª Classe", nivel: "EP", activa: true },
+  { id: "2",   nome: "2ª Classe", nivel: "EP", activa: true },
+  { id: "3",   nome: "3ª Classe", nivel: "EP", activa: true },
+  { id: "4",   nome: "4ª Classe", nivel: "EP", activa: true },
+  { id: "5",   nome: "5ª Classe", nivel: "EP", activa: true },
+  { id: "6",   nome: "6ª Classe", nivel: "EP", activa: true },
+  { id: "7",   nome: "7ª Classe", nivel: "ESG", activa: true },
+  { id: "8",   nome: "8ª Classe", nivel: "ESG", activa: true },
+  { id: "9",   nome: "9ª Classe", nivel: "ESG", activa: true },
 ];
 
 const MUNICIPIOS = [
@@ -85,18 +82,11 @@ const MUNICIPIOS = [
   "Maianga","Mumbwa","Quissama","Rangel","Talatona","Viana","Outro",
 ];
 
-const METODOS = [
-  { id: "cash",     label: "Dinheiro / Cash",      icon: "💵" },
-  { id: "tpa",      label: "TPA / Cartão",          icon: "💳" },
-  { id: "transfer", label: "Transferência Bancária", icon: "🏦" },
-  { id: "mcx",      label: "Multicaixa Express",    icon: "📱" },
-];
-
-const PAPEIS = [
-  { value: "secretaria", label: "Secretária(o)" },
-  { value: "financeiro", label: "Financeiro" },
-  { value: "professor",  label: "Professor(a)" },
-  { value: "admin",      label: "Administrador(a)" },
+const FAIXAS_PROPINA = [
+  { value: "ate_5k", label: "Até 5.000 Kz / mês" },
+  { value: "5k_15k", label: "5.000 a 15.000 Kz / mês" },
+  { value: "15k_40k", label: "15.000 a 40.000 Kz / mês" },
+  { value: "acima_40k", label: "Acima de 40.000 Kz / mês" },
 ];
 
 const FORM_INICIAL: FormData = {
@@ -107,16 +97,15 @@ const FORM_INICIAL: FormData = {
   ano_letivo: "2026",
   classes: CLASSES_INICIAL,
   turnos: ["M"],
-  turmas: { M: {} },
-  total_alunos: "", media_turma: "",
+  total_alunos: "",
+  faixa_propina: "",
   utilizadores: {
     principal: { nome: "", tel: "", nivel_exp: "" },
-    outros: [],
   },
   financeiro: {
-    data_inicio: "", dia_vencimento: "", mes_inicio: "",
-    mes_fim: "", metodos: ["cash", "transfer"],
-    dados_bancarios: "", observacoes: "",
+    data_inicio: "", dia_vencimento: "", mes_inicio: "2",
+    mes_fim: "12",
+    dados_bancarios: "",
   },
 };
 
@@ -127,7 +116,7 @@ function Label({ children, required, optional }: {
   children: React.ReactNode; required?: boolean; optional?: boolean;
 }) {
   return (
-    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
+    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">
       {children}
       {required && <span className="text-red-500 ml-1">*</span>}
       {optional && <span className="text-slate-400 font-normal normal-case tracking-normal ml-1">(opcional)</span>}
@@ -138,9 +127,9 @@ function Label({ children, required, optional }: {
 function Input({ className = "", ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
-      className={`w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 
+      className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-800 
         bg-white outline-none transition-all
-        focus:border-[#1F6B3B] focus:ring-2 focus:ring-[#1F6B3B]/10
+        focus:border-[#1F6B3B] focus:ring-4 focus:ring-[#1F6B3B]/10
         placeholder:text-slate-300 ${className}`}
       {...props}
     />
@@ -150,9 +139,9 @@ function Input({ className = "", ...props }: React.InputHTMLAttributes<HTMLInput
 function Select({ className = "", children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
-      className={`w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 
+      className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-800 
         bg-white outline-none transition-all cursor-pointer appearance-none
-        focus:border-[#1F6B3B] focus:ring-2 focus:ring-[#1F6B3B]/10 ${className}`}
+        focus:border-[#1F6B3B] focus:ring-4 focus:ring-[#1F6B3B]/10 ${className}`}
       {...props}
     >
       {children}
@@ -163,9 +152,9 @@ function Select({ className = "", children, ...props }: React.SelectHTMLAttribut
 function Textarea({ className = "", ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return (
     <textarea
-      className={`w-full px-3.5 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 
+      className={`w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-800 
         bg-white outline-none transition-all resize-y min-h-[80px] leading-relaxed
-        focus:border-[#1F6B3B] focus:ring-2 focus:ring-[#1F6B3B]/10
+        focus:border-[#1F6B3B] focus:ring-4 focus:ring-[#1F6B3B]/10
         placeholder:text-slate-300 ${className}`}
       {...props}
     />
@@ -173,7 +162,7 @@ function Textarea({ className = "", ...props }: React.TextareaHTMLAttributes<HTM
 }
 
 function Hint({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <p className={`text-xs text-slate-400 mt-1.5 leading-relaxed ${className}`}>{children}</p>;
+  return <p className={`text-[10px] text-slate-400 mt-1.5 leading-relaxed ${className}`}>{children}</p>;
 }
 
 function InfoBox({ children, variant = "gold" }: { children: React.ReactNode; variant?: "gold" | "green" }) {
@@ -182,7 +171,7 @@ function InfoBox({ children, variant = "gold" }: { children: React.ReactNode; va
     green: "bg-emerald-50 border-emerald-200 text-emerald-800",
   };
   return (
-    <div className={`flex gap-3 p-4 rounded-xl border text-sm leading-relaxed mb-6 ${styles[variant]}`}>
+    <div className={`flex gap-3 p-4 rounded-2xl border text-sm leading-relaxed mb-6 ${styles[variant]}`}>
       <span className="text-base flex-shrink-0 mt-0.5">{variant === "gold" ? "💡" : "✓"}</span>
       <span>{children}</span>
     </div>
@@ -192,7 +181,7 @@ function InfoBox({ children, variant = "gold" }: { children: React.ReactNode; va
 function SectionSep({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3 my-8">
-      <span className="text-xs font-bold uppercase tracking-widest text-slate-400">{children}</span>
+      <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400 whitespace-nowrap">{children}</span>
       <div className="flex-1 h-px bg-slate-100" />
     </div>
   );
@@ -235,72 +224,13 @@ export default function OnboardingPage() {
     }));
   }
 
-  function updatePropina(id: string, valor: number) {
-    setForm(f => ({
-      ...f,
-      classes: f.classes.map(c => c.id === id ? { ...c, propina: valor } : c),
-    }));
-  }
-
   // ── Turnos ───────────────────────────────────────────────────────────────
   function toggleTurno(code: string) {
     setForm(f => {
       const jaActivo = f.turnos.includes(code);
       const novos    = jaActivo ? f.turnos.filter(t => t !== code) : [...f.turnos, code];
-      const novasTurmas = { ...f.turmas };
-      if (jaActivo) delete novasTurmas[code];
-      else novasTurmas[code] = {};
-      return { ...f, turnos: novos, turmas: novasTurmas };
+      return { ...f, turnos: novos };
     });
-  }
-
-  function updateTurmasCount(turno: string, classeId: string, count: number) {
-    setForm(f => ({
-      ...f,
-      turmas: {
-        ...f.turmas,
-        [turno]: { ...f.turmas[turno], [classeId]: count },
-      },
-    }));
-  }
-
-  // ── Utilizadores extras ──────────────────────────────────────────────────
-  function addUser() {
-    const novoId = Date.now();
-    setForm(f => ({
-      ...f,
-      utilizadores: {
-        ...f.utilizadores,
-        outros: [...f.utilizadores.outros, { id: novoId, nome: "", email: "", papel: "" }],
-      },
-    }));
-  }
-
-  function removeUser(id: number) {
-    setForm(f => ({
-      ...f,
-      utilizadores: {
-        ...f.utilizadores,
-        outros: f.utilizadores.outros.filter(u => u.id !== id),
-      },
-    }));
-  }
-
-  function updateUser(id: number, field: keyof UtilizadorExtra, value: string) {
-    setForm(f => ({
-      ...f,
-      utilizadores: {
-        ...f.utilizadores,
-        outros: f.utilizadores.outros.map(u => u.id === id ? { ...u, [field]: value } : u),
-      },
-    }));
-  }
-
-  // ── Métodos de pagamento ─────────────────────────────────────────────────
-  function toggleMetodo(id: string) {
-    const actuais = form.financeiro.metodos;
-    const novos   = actuais.includes(id) ? actuais.filter(m => m !== id) : [...actuais, id];
-    updateFin("metodos", novos);
   }
 
   // ── Navegação ────────────────────────────────────────────────────────────
@@ -328,11 +258,10 @@ export default function OnboardingPage() {
       ano_letivo:       form.ano_letivo,
       classes:          form.classes as any,
       turnos:           form.turnos as any,
-      turmas:           form.turmas as any,
+      faixa_propina:    form.faixa_propina,
       financeiro: {
         ...form.financeiro,
         total_alunos: form.total_alunos,
-        media_turma:  form.media_turma,
       } as any,
       utilizadores: form.utilizadores as any,
       status: "pendente",
@@ -353,20 +282,22 @@ export default function OnboardingPage() {
   if (done) {
     return (
       <div className="min-h-screen bg-[#F8FAF9] flex items-center justify-center p-6">
-        <div className="max-w-md w-full text-center">
+        <div className="max-w-md w-full text-center animate-klasse-fade-up">
           <div className="w-20 h-20 rounded-full bg-[#E8F5EE] flex items-center justify-center mx-auto mb-6">
             <span className="text-4xl text-[#1F6B3B]">✓</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-800 mb-3">
+          <h1 className="text-2xl font-bold text-slate-800 mb-3 font-sora">
             Pedido recebido!
           </h1>
           <p className="text-slate-500 leading-relaxed mb-8">
             Recebemos os dados de <strong className="text-slate-700">{form.escola_nome}</strong>.
             A equipa KLASSE vai entrar em contacto em breve para confirmar a configuração.
           </p>
-          <div className="bg-white border border-slate-100 rounded-xl p-5 text-left text-sm text-slate-600 leading-relaxed">
-            <p className="font-semibold text-slate-700 mb-2">Próximos passos</p>
-            <ol className="list-decimal list-inside space-y-1.5">
+          <div className="bg-white border border-slate-100 rounded-3xl p-6 text-left text-sm text-slate-600 leading-relaxed shadow-sm">
+            <p className="font-bold text-slate-700 mb-3 flex items-center gap-2">
+              <Clock size={16} className="text-klasse-gold" /> Próximos passos
+            </p>
+            <ol className="list-decimal list-inside space-y-2">
               <li>A equipa KLASSE revê os dados submetidos</li>
               <li>Contactamos o director(a) para confirmar</li>
               <li>Configuramos a escola no sistema</li>
@@ -380,23 +311,23 @@ export default function OnboardingPage() {
 
   // ── Render principal ──────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#F8FAF9] flex flex-col">
+    <div className="min-h-screen bg-[#F8FAF9] flex flex-col font-sans">
 
       {/* Header */}
       <header className="bg-white border-b border-slate-100 sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-6 py-4 flex items-center justify-between">
           <div>
-            <span className="font-bold text-[#1F6B3B] text-lg">KLASSE.</span>
-            <span className="text-slate-400 text-sm ml-2">Configuração de Escola</span>
+            <span className="font-black text-[#1F6B3B] text-xl tracking-tighter">KLASSE.</span>
+            <span className="text-slate-400 text-[10px] font-bold uppercase tracking-widest ml-3 border-l pl-3 border-slate-100">Candidatura</span>
           </div>
           <div className="flex items-center gap-3">
-            <div className="w-32 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
               <div
                 className="h-full bg-[#1F6B3B] rounded-full transition-all duration-500"
                 style={{ width: `${progresso}%` }}
               />
             </div>
-            <span className="text-xs text-slate-400 whitespace-nowrap">
+            <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap">
               {passo} / {TOTAL_PASSOS}
             </span>
           </div>
@@ -404,11 +335,11 @@ export default function OnboardingPage() {
       </header>
 
       {/* Stepper */}
-      <div className="bg-white border-b border-slate-100">
-        <div className="max-w-2xl mx-auto px-6 py-3">
+      <div className="bg-white border-b border-slate-100 overflow-x-auto scrollbar-hide">
+        <div className="max-w-2xl mx-auto px-6 py-3 min-w-[500px]">
           <div className="flex gap-1">
             {[
-              "Escola", "Classes", "Turnos", "Utilizadores", "Financeiro", "Resumo"
+              "Escola", "Classes", "Estrutura", "Contacto", "Financeiro", "Resumo"
             ].map((label, i) => {
               const n = i + 1;
               const estado = n < passo ? "done" : n === passo ? "active" : "idle";
@@ -416,7 +347,7 @@ export default function OnboardingPage() {
                 <button
                   key={n}
                   onClick={() => n < passo && setPasso(n)}
-                  className={`flex-1 text-center py-1.5 text-xs font-semibold rounded-md transition-all
+                  className={`flex-1 text-center py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all
                     ${estado === "active" ? "bg-[#E8F5EE] text-[#1F6B3B]" : ""}
                     ${estado === "done"   ? "text-[#1F6B3B] cursor-pointer hover:bg-[#E8F5EE]" : ""}
                     ${estado === "idle"   ? "text-slate-300 cursor-default" : ""}
@@ -437,16 +368,16 @@ export default function OnboardingPage() {
         {passo === 1 && (
           <div className="animate-klasse-fade-up">
             <div className="mb-8">
-              <p className="text-xs font-bold uppercase tracking-widest text-[#1F6B3B] mb-2">Passo 1</p>
-              <h1 className="text-3xl font-bold text-slate-800 tracking-tight mb-2">Dados da Escola</h1>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#1F6B3B] mb-2">Passo 1</p>
+              <h1 className="text-3xl font-black text-slate-800 tracking-tight mb-2 font-sora">Dados da Escola</h1>
               <p className="text-slate-500 text-sm leading-relaxed">
-                Informações institucionais básicas. Estes dados aparecem nos documentos oficiais emitidos.
+                Informações institucionais básicas para o registo da sua unidade.
               </p>
             </div>
 
             <div className="space-y-5">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-2">
                   <Label required>Nome Oficial da Escola</Label>
                   <Input
                     value={form.escola_nome}
@@ -455,11 +386,11 @@ export default function OnboardingPage() {
                   />
                 </div>
                 <div>
-                  <Label required>NIF da Instituição</Label>
+                  <Label required>NIF</Label>
                   <Input
                     value={form.escola_nif}
                     onChange={e => update("escola_nif", e.target.value.replace(/\D/g, '').slice(0, 9))}
-                    placeholder="9 dígitos obrigatórios"
+                    placeholder="9 dígitos"
                     maxLength={9}
                   />
                 </div>
@@ -476,11 +407,11 @@ export default function OnboardingPage() {
                   />
                 </div>
                 <div>
-                  <Label optional>Código Interno</Label>
+                  <Label optional>Código da Escola</Label>
                   <Input
                     value={form.escola_codigo}
                     onChange={e => update("escola_codigo", e.target.value)}
-                    placeholder="Ex: CNSP-LDA"
+                    placeholder="Ex: 456/2024"
                   />
                 </div>
               </div>
@@ -516,27 +447,6 @@ export default function OnboardingPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label required>Telefone Principal</Label>
-                  <Input
-                    value={form.escola_tel}
-                    onChange={e => update("escola_tel", e.target.value)}
-                    placeholder="923 456 789"
-                    type="tel"
-                  />
-                </div>
-                <div>
-                  <Label optional>Email Institucional</Label>
-                  <Input
-                    value={form.escola_email}
-                    onChange={e => update("escola_email", e.target.value)}
-                    placeholder="escola@email.com"
-                    type="email"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
                   <Label required>Nome do Director(a)</Label>
                   <Input
                     value={form.director_nome}
@@ -545,103 +455,65 @@ export default function OnboardingPage() {
                   />
                 </div>
                 <div>
-                  <Label optional>Contacto do Director(a)</Label>
+                  <Label optional>Contacto Directo</Label>
                   <Input
                     value={form.director_tel}
                     onChange={e => update("director_tel", e.target.value)}
-                    placeholder="923 000 000"
+                    placeholder="9XXXXXXXX"
                     type="tel"
                   />
                 </div>
-              </div>
-
-              <div>
-                <Label required>Ano Lectivo</Label>
-                <Select value={form.ano_letivo} onChange={e => update("ano_letivo", e.target.value)}>
-                  <option value="2026">2026</option>
-                  <option value="2025">2025</option>
-                </Select>
               </div>
             </div>
           </div>
         )}
 
-        {/* ═══ PASSO 2 — CLASSES & PROPINAS ════════════════════════════════ */}
+        {/* ═══ PASSO 2 — CLASSES ═══════════════════════════════════════════ */}
         {passo === 2 && (
           <div className="animate-klasse-fade-up">
             <div className="mb-8">
-              <p className="text-xs font-bold uppercase tracking-widest text-[#1F6B3B] mb-2">Passo 2</p>
-              <h1 className="text-3xl font-bold text-slate-800 tracking-tight mb-2">Classes & Propinas</h1>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#1F6B3B] mb-2">Passo 2</p>
+              <h1 className="text-3xl font-black text-slate-800 tracking-tight mb-2 font-sora">Classes Disponíveis</h1>
               <p className="text-slate-500 text-sm leading-relaxed">
-                Active as classes que a escola tem e defina o valor mensal de propina para cada uma.
+                Seleccione as classes que a sua escola lecciona actualmente.
               </p>
             </div>
 
-            <InfoBox>
-              Active só as classes que esta escola tem. O valor de propina é o que cada aluno paga{" "}
-              <strong>por mês</strong>. Isenções e casos especiais gerem-se individualmente no sistema depois.
-            </InfoBox>
-
-            <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
-              {/* Header */}
-              <div className="grid grid-cols-[1fr_auto_130px_56px] bg-slate-50 px-4 py-2.5 border-b border-slate-200">
-                {["Classe", "Nível", "Propina/mês (Kz)", "Activa"].map(h => (
-                  <span key={h} className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{h}</span>
-                ))}
-              </div>
-
-              {form.classes.map((cls, i) => (
-                <div
+            <div className="grid grid-cols-1 gap-2">
+              {form.classes.map((cls) => (
+                <button
                   key={cls.id}
-                  className={`grid grid-cols-[1fr_auto_130px_56px] items-center px-4 py-3 gap-3
-                    ${i < form.classes.length - 1 ? "border-b border-slate-100" : ""}
-                    ${!cls.activa ? "opacity-40" : ""}
-                    transition-opacity`}
+                  onClick={() => toggleClasse(cls.id)}
+                  className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all text-left
+                    ${cls.activa 
+                      ? "border-[#1F6B3B] bg-white shadow-sm" 
+                      : "border-slate-100 bg-slate-50/50 opacity-60"}`}
                 >
-                  <span className="text-sm font-semibold text-slate-700">{cls.nome}</span>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full
-                    ${cls.nivel === "EP"
-                      ? "bg-blue-50 text-blue-600"
-                      : "bg-green-50 text-green-700"}`}>
-                    {cls.nivel}
-                  </span>
-                  <input
-                    type="number"
-                    min={0}
-                    step={500}
-                    disabled={!cls.activa}
-                    value={cls.propina || ""}
-                    onChange={e => updatePropina(cls.id, Number(e.target.value))}
-                    placeholder="0"
-                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-sm text-right font-mono
-                      outline-none focus:border-[#1F6B3B] focus:ring-2 focus:ring-[#1F6B3B]/10
-                      disabled:bg-slate-50 disabled:cursor-not-allowed"
-                  />
-                  <div className="flex justify-center">
-                    <button
-                      type="button"
-                      onClick={() => toggleClasse(cls.id)}
-                      className={`w-10 h-6 rounded-full transition-all relative
-                        ${cls.activa ? "bg-[#1F6B3B]" : "bg-slate-200"}`}
-                    >
-                      <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all
-                        ${cls.activa ? "left-[18px]" : "left-0.5"}`} />
-                    </button>
+                  <div className="flex items-center gap-4">
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all
+                      ${cls.activa ? "border-[#1F6B3B] bg-[#1F6B3B]" : "border-slate-300 bg-white"}`}>
+                      {cls.activa && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    </div>
+                    <div>
+                      <span className="text-sm font-bold text-slate-700">{cls.nome}</span>
+                      <span className="text-[9px] font-black uppercase text-slate-400 ml-3 tracking-widest">{cls.nivel === "EP" ? "Primário" : "Secundário"}</span>
+                    </div>
                   </div>
-                </div>
+                  {cls.activa && <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-tighter">Activada</span>}
+                </button>
               ))}
             </div>
           </div>
         )}
 
-        {/* ═══ PASSO 3 — TURNOS & TURMAS ═══════════════════════════════════ */}
+        {/* ═══ PASSO 3 — ESTRUTURA & DIMENSÃO ══════════════════════════════ */}
         {passo === 3 && (
           <div className="animate-klasse-fade-up">
             <div className="mb-8">
-              <p className="text-xs font-bold uppercase tracking-widest text-[#1F6B3B] mb-2">Passo 3</p>
-              <h1 className="text-3xl font-bold text-slate-800 tracking-tight mb-2">Turnos & Turmas</h1>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#1F6B3B] mb-2">Passo 3</p>
+              <h1 className="text-3xl font-black text-slate-800 tracking-tight mb-2 font-sora">Estrutura & Dimensão</h1>
               <p className="text-slate-500 text-sm leading-relaxed">
-                Em que turnos funciona a escola e quantas turmas existem por classe?
+                Estimativa de volume operacional para dimensionamento do sistema.
               </p>
             </div>
 
@@ -659,198 +531,96 @@ export default function OnboardingPage() {
                     key={t.code}
                     type="button"
                     onClick={() => toggleTurno(t.code)}
-                    className={`p-4 rounded-xl border-2 text-center transition-all
+                    className={`p-4 rounded-2xl border-2 text-center transition-all
                       ${activo
                         ? "border-[#1F6B3B] bg-[#E8F5EE]"
                         : "border-slate-200 bg-white hover:border-slate-300"}`}
                   >
                     <div className="text-2xl mb-1">{t.icon}</div>
-                    <div className={`text-xl font-bold ${activo ? "text-[#1F6B3B]" : "text-slate-700"}`}>
+                    <div className={`text-xl font-black ${activo ? "text-[#1F6B3B]" : "text-slate-700"}`}>
                       {t.code}
                     </div>
-                    <div className="text-xs text-slate-400 mt-0.5">{t.label}</div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{t.label}</div>
                   </button>
                 );
               })}
             </div>
 
-            <SectionSep>Turmas por classe</SectionSep>
+            <SectionSep>Dados de Faturação (Lead Scoring)</SectionSep>
 
-            <InfoBox>
-              Indique quantas turmas existem por classe em cada turno activo. O sistema gera os
-              códigos automaticamente — ex: <code className="bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded text-xs font-mono">EP-1-M-A</code>,{" "}
-              <code className="bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded text-xs font-mono">EP-1-M-B</code>, etc.
-            </InfoBox>
-
-            {form.turnos.length === 0 && (
-              <p className="text-sm text-slate-400 text-center py-8">
-                Seleccione pelo menos um turno acima.
-              </p>
-            )}
-
-            {form.turnos.map(turno => {
-              const nomes: Record<string, string> = { M: "Manhã", T: "Tarde", N: "Noite" };
-              return (
-                <div key={turno} className="mb-6">
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
-                    Turno {nomes[turno]} ({turno})
-                  </p>
-                  <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm">
-                    {classesActivas.map((cls, i) => (
-                      <div
-                        key={cls.id}
-                        className={`flex items-center justify-between px-4 py-3
-                          ${i < classesActivas.length - 1 ? "border-b border-slate-100" : ""}`}
-                      >
-                        <span className="text-sm font-medium text-slate-700">{cls.nome}</span>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            min={0}
-                            max={10}
-                            value={form.turmas[turno]?.[cls.id] ?? 1}
-                            onChange={e =>
-                              updateTurmasCount(turno, cls.id, Number(e.target.value))
-                            }
-                            className="w-16 px-2 py-1.5 border border-slate-200 rounded-lg text-sm
-                              text-center outline-none focus:border-[#1F6B3B] focus:ring-2 focus:ring-[#1F6B3B]/10"
-                          />
-                          <span className="text-xs text-slate-400">turma(s)</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-
-            <div className="grid grid-cols-2 gap-4 mt-6">
+            <div className="space-y-6">
               <div>
-                <Label optional>Total estimado de alunos</Label>
+                <Label required>Faixa média de propina por aluno</Label>
+                <Select
+                  value={form.faixa_propina}
+                  onChange={e => update("faixa_propina", e.target.value)}
+                >
+                  <option value="">Seleccionar faixa...</option>
+                  {FAIXAS_PROPINA.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                </Select>
+                <Hint>O valor médio mensal pago pelos alunos nesta instituição.</Hint>
+              </div>
+
+              <div>
+                <Label required>Total estimado de alunos</Label>
                 <Input
                   type="number"
                   value={form.total_alunos}
                   onChange={e => update("total_alunos", e.target.value)}
-                  placeholder="Ex: 580"
+                  placeholder="Ex: 500"
                 />
-              </div>
-              <div>
-                <Label optional>Média de alunos por turma</Label>
-                <Input
-                  type="number"
-                  value={form.media_turma}
-                  onChange={e => update("media_turma", e.target.value)}
-                  placeholder="Ex: 35"
-                />
+                <Hint>Número total de alunos em todos os turnos.</Hint>
               </div>
             </div>
           </div>
         )}
 
-        {/* ═══ PASSO 4 — UTILIZADORES ══════════════════════════════════════ */}
+        {/* ═══ PASSO 4 — CONTACTO OPERACIONAL ══════════════════════════════ */}
         {passo === 4 && (
           <div className="animate-klasse-fade-up">
             <div className="mb-8">
-              <p className="text-xs font-bold uppercase tracking-widest text-[#1F6B3B] mb-2">Passo 4</p>
-              <h1 className="text-3xl font-bold text-slate-800 tracking-tight mb-2">Utilizadores</h1>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#1F6B3B] mb-2">Passo 4</p>
+              <h1 className="text-3xl font-black text-slate-800 tracking-tight mb-2 font-sora">Contacto Operacional</h1>
               <p className="text-slate-500 text-sm leading-relaxed">
-                Quem vai ter acesso ao KLASSE? Cada pessoa tem o seu próprio login e portal.
+                Dados da pessoa que será o ponto de contacto para a formação técnica.
               </p>
             </div>
 
             <InfoBox variant="green">
-              O director já tem acesso garantido. Adicione aqui a secretaria e outros funcionários
-              que vão usar o sistema no dia-a-dia.
-            </InfoBox>
-
-            {/* Outros utilizadores */}
-            <div className="space-y-3 mb-4">
-              {form.utilizadores.outros.map(u => (
-                <div key={u.id} className="grid grid-cols-[1fr_1fr_160px_36px] gap-3 items-center
-                  p-4 border border-slate-200 rounded-xl bg-white shadow-sm">
-                  <Input
-                    value={u.nome}
-                    onChange={e => updateUser(u.id, "nome", e.target.value)}
-                    placeholder="Nome completo"
-                  />
-                  <Input
-                    value={u.email}
-                    onChange={e => updateUser(u.id, "email", e.target.value)}
-                    placeholder="email@escola.com"
-                    type="email"
-                  />
-                  <Select
-                    value={u.papel}
-                    onChange={e => updateUser(u.id, "papel", e.target.value)}
-                  >
-                    <option value="">Papel...</option>
-                    {PAPEIS.map(p => (
-                      <option key={p.value} value={p.value}>{p.label}</option>
-                    ))}
-                  </Select>
-                  <button
-                    type="button"
-                    onClick={() => removeUser(u.id)}
-                    className="w-9 h-9 flex items-center justify-center border border-slate-200
-                      rounded-lg text-slate-400 hover:border-red-300 hover:text-red-500
-                      hover:bg-red-50 transition-all text-lg"
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              onClick={addUser}
-              className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-slate-200
-                rounded-xl text-sm font-medium text-slate-500 hover:border-[#1F6B3B]
-                hover:text-[#1F6B3B] hover:bg-[#E8F5EE] transition-all"
-            >
-              <span className="text-lg leading-none">+</span> Adicionar utilizador
-            </button>
-
-            <SectionSep>Utilizador principal (secretaria)</SectionSep>
-
-            <InfoBox>
-              Quem vai usar o sistema <strong>todos os dias</strong>? Esta é a pessoa que vamos
-              treinar primeiro e será o nosso contacto principal.
+              Geralmente é o responsável pela Secretaria ou o Administrador de TI.
             </InfoBox>
 
             <div className="space-y-5">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label required>Nome do utilizador principal</Label>
-                  <Input
-                    value={form.utilizadores.principal.nome}
-                    onChange={e => updateUtil("nome", e.target.value)}
-                    placeholder="Nome completo"
-                  />
-                </div>
-                <div>
-                  <Label required>Telefone / WhatsApp</Label>
-                  <Input
-                    value={form.utilizadores.principal.tel}
-                    onChange={e => updateUtil("tel", e.target.value)}
-                    placeholder="923 000 000"
-                    type="tel"
-                  />
-                </div>
+              <div>
+                <Label required>Nome do Responsável Operacional</Label>
+                <Input
+                  value={form.utilizadores.principal.nome}
+                  onChange={e => updateUtil("nome", e.target.value)}
+                  placeholder="Nome completo"
+                />
+              </div>
+              
+              <div>
+                <Label required>Telefone / WhatsApp</Label>
+                <Input
+                  value={form.utilizadores.principal.tel}
+                  onChange={e => updateUtil("tel", e.target.value)}
+                  placeholder="9XXXXXXXX"
+                  type="tel"
+                />
               </div>
 
               <div>
-                <Label>Experiência com computador</Label>
+                <Label required>Experiência com Informática</Label>
                 <Select
                   value={form.utilizadores.principal.nivel_exp}
                   onChange={e => updateUtil("nivel_exp", e.target.value)}
                 >
-                  <option value="">Seleccionar...</option>
-                  <option value="basico">Básica — usa o telefone, pouco computador</option>
-                  <option value="medio">Médio — usa Word, Excel, WhatsApp Web</option>
-                  <option value="avancado">Avançado — confortável com sistemas digitais</option>
+                  <option value="">Seleccionar nível...</option>
+                  <option value="basico">Básica — Usa o telefone, pouco computador</option>
+                  <option value="medio">Média — Word, Excel, Redes Sociais</option>
+                  <option value="avancado">Avançada — Confortável com softwares de gestão</option>
                 </Select>
-                <Hint>Ajuda-nos a preparar o treino adequado.</Hint>
               </div>
             </div>
           </div>
@@ -860,26 +630,24 @@ export default function OnboardingPage() {
         {passo === 5 && (
           <div className="animate-klasse-fade-up">
             <div className="mb-8">
-              <p className="text-xs font-bold uppercase tracking-widest text-[#1F6B3B] mb-2">Passo 5</p>
-              <h1 className="text-3xl font-bold text-slate-800 tracking-tight mb-2">Configuração Financeira</h1>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#1F6B3B] mb-2">Passo 5</p>
+              <h1 className="text-3xl font-black text-slate-800 tracking-tight mb-2 font-sora">Configuração Financeira</h1>
               <p className="text-slate-500 text-sm leading-relaxed">
-                Define quando o sistema começa a gerar cobranças e como está estruturado o ano lectivo.
+                Dados necessários para a configuração do calendário de cobranças.
               </p>
             </div>
 
             <div className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label required>Data de início financeiro</Label>
-                  <Input
-                    value={form.financeiro.data_inicio}
-                    onChange={e => updateFin("data_inicio", e.target.value)}
-                    placeholder="Ex: 01/04/2026"
-                  />
-                  <Hint>A partir desta data o sistema começa a gerar mensalidades.</Hint>
+                  <Label required>Ano Lectivo</Label>
+                  <Select value={form.ano_letivo} onChange={e => update("ano_letivo", e.target.value)}>
+                    <option value="2026">2026 (Próximo)</option>
+                    <option value="2025">2025 (Corrente)</option>
+                  </Select>
                 </div>
                 <div>
-                  <Label required>Dia de vencimento das propinas</Label>
+                  <Label required>Dia de Vencimento</Label>
                   <Select
                     value={form.financeiro.dia_vencimento}
                     onChange={e => updateFin("dia_vencimento", e.target.value)}
@@ -890,32 +658,28 @@ export default function OnboardingPage() {
                     ))}
                     <option value="ultimo">Último dia do mês</option>
                   </Select>
-                  <Hint>Dia a partir do qual a propina é considerada em atraso.</Hint>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Mês de início do ano lectivo</Label>
+                  <Label>Início das Aulas</Label>
                   <Select
                     value={form.financeiro.mes_inicio}
                     onChange={e => updateFin("mes_inicio", e.target.value)}
                   >
-                    <option value="">Seleccionar...</option>
                     <option value="1">Janeiro</option>
                     <option value="2">Fevereiro</option>
                     <option value="3">Março</option>
-                    <option value="4">Abril</option>
                     <option value="9">Setembro</option>
                   </Select>
                 </div>
                 <div>
-                  <Label>Mês de fim do ano lectivo</Label>
+                  <Label>Fim das Aulas</Label>
                   <Select
                     value={form.financeiro.mes_fim}
                     onChange={e => updateFin("mes_fim", e.target.value)}
                   >
-                    <option value="">Seleccionar...</option>
                     <option value="10">Outubro</option>
                     <option value="11">Novembro</option>
                     <option value="12">Dezembro</option>
@@ -924,49 +688,13 @@ export default function OnboardingPage() {
               </div>
 
               <div>
-                <Label>Métodos de pagamento aceites</Label>
-                <div className="grid grid-cols-2 gap-3">
-                  {METODOS.map(m => {
-                    const activo = form.financeiro.metodos.includes(m.id);
-                    return (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => toggleMetodo(m.id)}
-                        className={`flex items-center gap-3 p-3.5 rounded-xl border-2 text-left transition-all
-                          ${activo
-                            ? "border-[#1F6B3B] bg-[#E8F5EE]"
-                            : "border-slate-200 bg-white hover:border-slate-300"}`}
-                      >
-                        <span className="text-xl">{m.icon}</span>
-                        <span className={`text-sm font-medium ${activo ? "text-[#1F6B3B]" : "text-slate-600"}`}>
-                          {m.label}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <Label optional>Dados bancários para transferência</Label>
+                <Label optional>IBAN para Transferências</Label>
                 <Textarea
                   value={form.financeiro.dados_bancarios}
                   onChange={e => updateFin("dados_bancarios", e.target.value)}
-                  placeholder={`Banco BFA
-IBAN: AO06 0040 0000 1234 5678 1016 2
-Titular: Nome da Escola`}
+                  placeholder={`IBAN: AO06 0000 ...\nTitular: ...`}
                 />
-                <Hint>Aparece nas guias de pagamento enviadas aos encarregados.</Hint>
-              </div>
-
-              <div>
-                <Label optional>Casos especiais ou observações</Label>
-                <Textarea
-                  value={form.financeiro.observacoes}
-                  onChange={e => updateFin("observacoes", e.target.value)}
-                  placeholder="Ex: Alunos bolseiros têm desconto de 50%. Irmãos têm desconto de 10% a partir do 2º filho..."
-                />
+                <Hint>Estes dados aparecerão nas notas de cobrança para os pais.</Hint>
               </div>
             </div>
           </div>
@@ -976,121 +704,67 @@ Titular: Nome da Escola`}
         {passo === 6 && (
           <div className="animate-klasse-fade-up">
             <div className="mb-8">
-              <p className="text-xs font-bold uppercase tracking-widest text-[#1F6B3B] mb-2">Passo 6</p>
-              <h1 className="text-3xl font-bold text-slate-800 tracking-tight mb-2">Resumo</h1>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-[#1F6B3B] mb-2">Passo 6</p>
+              <h1 className="text-3xl font-black text-slate-800 tracking-tight mb-2 font-sora">Resumo Final</h1>
               <p className="text-slate-500 text-sm leading-relaxed">
-                Verifique os dados antes de submeter. Pode voltar a qualquer passo para corrigir.
+                Revise os seus dados antes de submeter a candidatura.
               </p>
             </div>
 
-            <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden mb-6">
-              <CardContent className="p-0">
-                {/* Escola */}
-                <div className="p-6 border-b border-slate-100">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-2">
-                    <School size={14} className="text-klasse-green" /> Escola
-                  </p>
-                  <div className="grid grid-cols-2 gap-6">
-                    {[
-                      ["Nome", form.escola_nome],
-                      ["NIF", form.escola_nif],
-                      ["Morada", form.escola_morada],
-                      ["Município", form.escola_municipio],
-                      ["Telefone", form.escola_tel],
-                      ["Director(a)", form.director_nome],
-                      ["Ano Lectivo", form.ano_letivo],
-                    ].map(([label, value]) => (
-                      <div key={label}>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">{label}</p>
-                        <p className={`text-sm font-bold ${value ? "text-slate-700" : "text-slate-300 italic font-normal"}`}>
-                          {value || "Não preenchido"}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
+            <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm space-y-px">
+              {/* Escola */}
+              <div className="p-6 bg-white border-b border-slate-50">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-emerald-50 rounded-xl text-[#1F6B3B]"><Building2 size={16} /></div>
+                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-800">Instituição</h3>
                 </div>
+                <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm">
+                  <div><p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Nome</p><p className="font-bold text-slate-700">{form.escola_nome}</p></div>
+                  <div><p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">NIF</p><p className="font-mono text-slate-700">{form.escola_nif}</p></div>
+                  <div><p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Município</p><p className="font-bold text-slate-700">{form.escola_municipio}</p></div>
+                  <div><p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Director</p><p className="font-bold text-slate-700">{form.director_nome}</p></div>
+                </div>
+              </div>
 
-                {/* Académico */}
-                <div className="p-6 border-b border-slate-100">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-2">
-                    <GraduationCap size={14} className="text-klasse-gold" /> Estrutura Académica
-                  </p>
-                  <div className="grid grid-cols-2 gap-6 mb-4">
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Classes activas</p>
-                      <p className="text-sm font-bold text-slate-700">
-                        {classesActivas.length > 0 ? classesActivas.map(c => c.nome).join(", ") : "Nenhuma"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Turnos</p>
-                      <p className="text-sm font-bold text-slate-700">
-                        {form.turnos.length > 0 ? form.turnos.join(", ") : "Nenhum"}
-                      </p>
+              {/* Topologia */}
+              <div className="p-6 bg-white border-b border-slate-50">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-blue-50 rounded-xl text-blue-600"><Layout size={16} /></div>
+                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-800">Dimensão</h3>
+                </div>
+                <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm">
+                  <div><p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Estimativa Alunos</p><p className="font-bold text-slate-700">{form.total_alunos} Alunos</p></div>
+                  <div><p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Faixa de Propina</p><p className="font-bold text-[#1F6B3B]">{FAIXAS_PROPINA.find(f => f.value === form.faixa_propina)?.label}</p></div>
+                  <div className="col-span-2">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-1.5">Classes Activas</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {classesActivas.map(c => (
+                        <span key={c.id} className="bg-slate-100 px-2.5 py-1 rounded-lg text-[10px] font-bold text-slate-600">{c.nome}</span>
+                      ))}
                     </div>
                   </div>
-                  <div className="bg-slate-50 rounded-2xl p-4 flex flex-wrap gap-4 border border-slate-100">
-                    {classesActivas.map(c => (
-                      <div key={c.id} className="text-xs font-medium">
-                        <span className="text-slate-400">{c.nome}:</span> <strong className="text-slate-700">
-                          {c.propina ? `Kz ${c.propina.toLocaleString()}` : "—"}
-                        </strong>
-                      </div>
-                    ))}
-                  </div>
                 </div>
+              </div>
 
-                {/* Financeiro */}
-                <div className="p-6 border-b border-slate-100">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-2">
-                    <CreditCard size={14} className="text-blue-500" /> Financeiro
-                  </p>
-                  <div className="grid grid-cols-2 gap-6">
-                    {[
-                      ["Início financeiro", form.financeiro.data_inicio],
-                      ["Dia de vencimento", form.financeiro.dia_vencimento],
-                      ["Métodos aceites", form.financeiro.metodos.join(", ")],
-                      ["Observações", form.financeiro.observacoes || "—"],
-                    ].map(([label, value]) => (
-                      <div key={label}>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">{label}</p>
-                        <p className="text-sm font-bold text-slate-700">{value || "—"}</p>
-                      </div>
-                    ))}
-                  </div>
+              {/* Contacto */}
+              <div className="p-6 bg-white border-b border-slate-50">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-purple-50 rounded-xl text-purple-600"><Users size={16} /></div>
+                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-800">Operacional</h3>
                 </div>
-
-                {/* Utilizadores */}
-                <div className="p-6">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-2">
-                    <Users size={14} className="text-purple-500" /> Utilizadores
-                  </p>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center py-3 px-4 bg-slate-50 rounded-xl">
-                      <div>
-                        <p className="text-sm font-bold text-slate-700">{form.utilizadores.principal.nome || "—"}</p>
-                        <p className="text-[10px] text-slate-400 uppercase font-bold">Utilizador principal</p>
-                      </div>
-                      <Badge className="bg-klasse-green text-white border-0 text-[9px] font-bold uppercase px-2 py-0.5">Secretaria</Badge>
-                    </div>
-                    {form.utilizadores.outros.map(u => (
-                      <div key={u.id} className="flex justify-between items-center py-3 px-4 bg-white border border-slate-100 rounded-xl">
-                        <div>
-                          <p className="text-sm font-bold text-slate-700">{u.nome || "—"}</p>
-                          <p className="text-[10px] text-slate-400 font-mono">{u.email}</p>
-                        </div>
-                        <Badge variant="outline" className="text-slate-500 border-slate-200 text-[9px] font-bold uppercase px-2 py-0.5">{u.papel || "—"}</Badge>
-                      </div>
-                    ))}
+                <div className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl">
+                  <div>
+                    <p className="text-sm font-bold text-slate-700">{form.utilizadores.principal.nome}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">{form.utilizadores.principal.tel}</p>
                   </div>
+                  <div className="text-[10px] font-black uppercase bg-white px-3 py-1 rounded-lg border border-slate-100 shadow-sm">Ponto Focal</div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             {erro && (
-              <div className="bg-red-50 border-2 border-red-100 text-red-700 rounded-2xl p-4 text-sm mb-6 flex items-center gap-3">
-                <XCircle size={18} />
-                <span className="font-bold">{erro}</span>
+              <div className="bg-rose-50 border border-rose-100 text-rose-700 rounded-2xl p-4 text-xs font-bold mt-6 flex items-center gap-3">
+                <XCircle size={16} /> {erro}
               </div>
             )}
           </div>
@@ -1105,8 +779,8 @@ Titular: Nome da Escola`}
             onClick={recuar}
             disabled={passo === 1}
             className="flex items-center gap-2 px-5 py-2.5 border border-slate-200 rounded-xl
-              text-sm font-bold text-slate-500 hover:border-slate-300 hover:text-slate-700
-              disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              text-xs font-bold text-slate-500 hover:border-slate-300 hover:text-slate-700
+              disabled:opacity-30 disabled:cursor-not-allowed transition-all uppercase tracking-widest"
           >
             ← Anterior
           </button>
@@ -1115,10 +789,10 @@ Titular: Nome da Escola`}
             <button
               type="button"
               onClick={avancar}
-              disabled={passo === 1 && !form.escola_nome}
+              disabled={passo === 1 && (!form.escola_nome || !form.escola_nif)}
               className="flex items-center gap-2 px-8 py-2.5 bg-klasse-green text-white
-                rounded-xl text-sm font-bold hover:brightness-110 transition-all
-                disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-klasse-green/10"
+                rounded-xl text-xs font-bold hover:brightness-110 transition-all
+                disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-klasse-green/10 uppercase tracking-widest"
             >
               Continuar →
             </button>
@@ -1126,10 +800,10 @@ Titular: Nome da Escola`}
             <button
               type="button"
               onClick={submeter}
-              disabled={submitting}
+              disabled={submitting || !form.faixa_propina || !form.total_alunos}
               className="flex items-center gap-2 px-8 py-2.5 bg-klasse-green text-white
-                rounded-xl text-sm font-bold hover:brightness-110 transition-all
-                disabled:opacity-60 disabled:cursor-not-allowed shadow-lg shadow-klasse-green/10"
+                rounded-xl text-xs font-bold hover:brightness-110 transition-all
+                disabled:opacity-60 disabled:cursor-not-allowed shadow-lg shadow-klasse-green/10 uppercase tracking-widest"
             >
               {submitting ? (
                 <>
@@ -1156,11 +830,7 @@ function CardContent({ className = "", children }: { className?: string; childre
   return <div className={className}>{children}</div>;
 }
 
-function Badge({ className = "", variant = "default", children }: { className?: string; variant?: "default" | "outline"; children: React.ReactNode }) {
-  const base = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2";
-  const variants = {
-    default: "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
-    outline: "text-foreground",
-  };
-  return <div className={`${base} ${variants[variant]} ${className}`}>{children}</div>;
+function Badge({ className = "", children }: { className?: string; children: React.ReactNode }) {
+  const base = "inline-flex items-center rounded-full px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider transition-colors";
+  return <div className={`${base} ${className}`}>{children}</div>;
 }
