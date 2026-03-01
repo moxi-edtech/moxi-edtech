@@ -596,6 +596,7 @@ export function PautaRapidaModal({
           onDataChange={setPautaDraft}
           pesoPorTipo={pautaPesoPorTipo ?? undefined}
           componentesAtivos={pautaComponentes}
+          showIsento={true}
         />
       )}
     </div>

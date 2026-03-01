@@ -33,6 +33,7 @@ type GradeEntryGridProps = {
   onDataChange?: (rows: StudentGradeRow[]) => void
   pesoPorTipo?: Record<string, number>
   componentesAtivos?: string[]
+  showIsento?: boolean
 }
 
 const INPUT_COLUMNS = ["mac1", "npp1", "npt1"] as const
@@ -92,6 +93,7 @@ export function GradeEntryGrid({
   onDataChange,
   pesoPorTipo,
   componentesAtivos,
+  showIsento = false,
 }: GradeEntryGridProps) {
   const [data, setData] = useState<StudentGradeRow[]>(initialData)
   const [isSaving, setIsSaving] = useState(false)
@@ -230,21 +232,23 @@ export function GradeEntryGrid({
           </div>
         ),
       }),
-      columnHelper.accessor("is_isento", {
-        header: "Isento?",
-        size: 60,
-        cell: (info) => (
-          <div className="flex justify-center">
-            <input
-              type="checkbox"
-              checked={!!info.getValue()}
-              onChange={(e) => updateIsento(info.row.index, e.target.checked)}
-              className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-              title="Marcar como isento neste trimestre (ex: transferência)"
-            />
-          </div>
-        ),
-      }),
+      ...(showIsento ? [
+        columnHelper.accessor("is_isento", {
+          header: "Isento?",
+          size: 60,
+          cell: (info: any) => (
+            <div className="flex justify-center">
+              <input
+                type="checkbox"
+                checked={!!info.getValue()}
+                onChange={(e) => updateIsento(info.row.index, e.target.checked)}
+                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                title="Marcar como isento neste trimestre (ex: transferência)"
+              />
+            </div>
+          ),
+        })
+      ] : []),
       columnHelper.accessor("_status", {
         header: "Status",
         size: 80,
