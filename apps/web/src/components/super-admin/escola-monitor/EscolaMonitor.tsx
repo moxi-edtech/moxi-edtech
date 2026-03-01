@@ -419,10 +419,10 @@ export default function EscolaMonitor({
                     <div className="grid grid-cols-2 border-b border-slate-100">
                       <div className="p-6 border-r border-slate-100 space-y-1">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sincronização</p>
-                        <p className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                        <div className="text-xl font-bold text-slate-900 flex items-center gap-2">
                           <div className={`w-2 h-2 rounded-full ${performance.sync_status === 'error' ? 'bg-red-500' : 'bg-emerald-500 animate-pulse'}`} />
                           {performance.sync_status?.toUpperCase() || "OK"}
-                        </p>
+                        </div>
                         <p className="text-[10px] text-slate-400 font-medium">Última: {new Date(performance.sync_updated_at).toLocaleString()}</p>
                       </div>
                       <div className="p-6 space-y-1">
