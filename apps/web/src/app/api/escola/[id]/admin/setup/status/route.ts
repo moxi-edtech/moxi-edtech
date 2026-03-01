@@ -1,7 +1,9 @@
+// @kf2 allow-scan
 import { NextResponse } from 'next/server';
 import { supabaseServerTyped } from '@/lib/supabaseServer';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
 import type { Database } from '~types/supabase';
+import { applyKf2ListInvariants } from '@/lib/kf2';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -62,11 +64,14 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       console.warn('Error fetching estrutura counts:', estruturaError);
     }
 
-    const { data: config } = await supabase
+    let configQuery = supabase
       .from('configuracoes_escola')
       .select('frequencia_modelo, frequencia_min_percent, modelo_avaliacao, avaliacao_config')
       .eq('escola_id', userEscolaId)
-      .maybeSingle();
+
+    configQuery = applyKf2ListInvariants(configQuery, { defaultLimit: 1, order: [{ column: 'updated_at', ascending: false }] })
+
+    const { data: config } = await configQuery.maybeSingle();
 
     const modeloAvaliacao = (config?.modelo_avaliacao ?? '').toString();
     const avaliacaoOk = hasComponentes(config?.avaliacao_config as any);

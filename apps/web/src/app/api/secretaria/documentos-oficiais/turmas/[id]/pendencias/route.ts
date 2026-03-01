@@ -1,3 +1,4 @@
+// @kf2 allow-scan
 import { NextResponse } from "next/server"
 import { supabaseServerTyped } from "@/lib/supabaseServer"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"

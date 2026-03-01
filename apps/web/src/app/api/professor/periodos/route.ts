@@ -83,6 +83,8 @@ export async function GET(req: Request) {
       .eq('ano_letivo_id', anoLetivo.id)
       .eq('tipo', 'TRIMESTRE')
       .order('numero', { ascending: true })
+      .order('id', { ascending: true })
+      .limit(12)
 
     if (periodosError) {
       return NextResponse.json({ ok: false, error: periodosError.message }, { status: 400 })

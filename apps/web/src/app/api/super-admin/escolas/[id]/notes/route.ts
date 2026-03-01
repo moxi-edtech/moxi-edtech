@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { isSuperAdminRole } from "@/lib/auth/requireSuperAdminAccess";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id: escolaId } = await ctx.params;
@@ -12,12 +13,14 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     }
 
-    const { data: rows } = await s
+    let roleQuery = s
       .from("profiles")
       .select("role")
       .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(1);
+
+    roleQuery = applyKf2ListInvariants(roleQuery, { defaultLimit: 1, order: [{ column: 'created_at', ascending: false }] })
+
+    const { data: rows } = await roleQuery;
     const role = (rows?.[0] as any)?.role as string | undefined;
     if (!isSuperAdminRole(role)) {
       return NextResponse.json({ ok: false, error: "Somente Super Admin" }, { status: 403 });
@@ -53,22 +56,27 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     }
 
-    const { data: rows } = await s
+    let roleQuery = s
       .from("profiles")
       .select("role")
       .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(1);
+
+    roleQuery = applyKf2ListInvariants(roleQuery, { defaultLimit: 1, order: [{ column: 'created_at', ascending: false }] })
+
+    const { data: rows } = await roleQuery;
     const role = (rows?.[0] as any)?.role as string | undefined;
     if (!isSuperAdminRole(role)) {
       return NextResponse.json({ ok: false, error: "Somente Super Admin" }, { status: 403 });
     }
 
-    const { data: existing, error: fetchError } = await (s as any)
+    let existingQuery = (s as any)
       .from("escola_notas_internas")
       .select("escola_id")
       .eq("escola_id", escolaId)
-      .maybeSingle();
+
+    existingQuery = applyKf2ListInvariants(existingQuery, { defaultLimit: 1, order: [{ column: 'updated_at', ascending: false }] })
+
+    const { data: existing, error: fetchError } = await existingQuery.maybeSingle();
     if (fetchError) {
       return NextResponse.json({ ok: false, error: fetchError.message }, { status: 400 });
     }

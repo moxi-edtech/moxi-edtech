@@ -3,6 +3,7 @@ import { supabaseServer } from "@/lib/supabaseServer"
 import { hasPermission } from "@/lib/permissions"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 import { recordAuditServer } from "@/lib/audit"
+import { applyKf2ListInvariants } from "@/lib/kf2"
 
 // Server-side draft persistence for onboarding (per user + escola)
 // Expects a table `onboarding_drafts` with columns:
@@ -33,12 +34,18 @@ export async function GET(
     // Authorization: user must be linked with configurar_escola permission
     let authorized = false
     try {
-      const { data: vinc } = await sserver
+      let vincQuery = sserver
         .from("escola_users")
         .select("papel")
         .eq("escola_id", escolaId)
         .eq("user_id", user.id)
-        .limit(1)
+
+      vincQuery = applyKf2ListInvariants(vincQuery, {
+        defaultLimit: 1,
+        order: [{ column: "created_at", ascending: false }],
+      })
+
+      const { data: vinc } = await vincQuery
       if (vinc && vinc.length > 0) {
         const papel = (vinc[0] as any).papel as any
         authorized = hasPermission(papel, 'configurar_escola')
@@ -47,26 +54,29 @@ export async function GET(
 
     if (!authorized) {
       try {
-        const { data: adminLink } = await sserver
+        let adminQuery = sserver
           .from("escola_administradores")
           .select("user_id")
           .eq("escola_id", escolaId)
           .eq("user_id", user.id)
-          .limit(1)
+
+        adminQuery = applyKf2ListInvariants(adminQuery, { defaultLimit: 1, order: [{ column: "created_at", ascending: false }] })
+        const { data: adminLink } = await adminQuery
         authorized = Boolean(adminLink && adminLink.length > 0)
       } catch (_) {}
     }
 
     if (!authorized) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 })
 
-    const { data, error } = await (sserver as any)
+    let draftQuery = (sserver as any)
       .from("onboarding_drafts")
       .select("data, step, updated_at")
       .eq("escola_id", escolaId)
       .eq("user_id", user.id)
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .single()
+
+    draftQuery = applyKf2ListInvariants(draftQuery, { defaultLimit: 1, order: [{ column: "updated_at", ascending: false }] })
+
+    const { data, error } = await draftQuery.single()
 
     if (error && error.code !== 'PGRST116') { // ignore no rows
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
@@ -101,12 +111,18 @@ export async function PUT(
     // Lightweight auth: ensure user is linked to escola with configurar_escola (same as GET)
     let authorized = false
     try {
-      const { data: vinc } = await sserver
+      let vincQuery = sserver
         .from("escola_users")
         .select("papel")
         .eq("escola_id", escolaId)
         .eq("user_id", user.id)
-        .limit(1)
+
+      vincQuery = applyKf2ListInvariants(vincQuery, {
+        defaultLimit: 1,
+        order: [{ column: "created_at", ascending: false }],
+      })
+
+      const { data: vinc } = await vincQuery
       if (vinc && vinc.length > 0) {
         const papel = (vinc[0] as any).papel as any
         authorized = hasPermission(papel, 'configurar_escola')
@@ -114,12 +130,14 @@ export async function PUT(
     } catch (_) {}
     if (!authorized) {
       try {
-        const { data: adminLink } = await sserver
+        let adminQuery = sserver
           .from("escola_administradores")
           .select("user_id")
           .eq("escola_id", escolaId)
           .eq("user_id", user.id)
-          .limit(1)
+
+        adminQuery = applyKf2ListInvariants(adminQuery, { defaultLimit: 1, order: [{ column: "created_at", ascending: false }] })
+        const { data: adminLink } = await adminQuery
         authorized = Boolean(adminLink && adminLink.length > 0)
       } catch (_) {}
     }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { normalizeTurmaCode } from '@/lib/turma'
+import { applyKf2ListInvariants } from '@/lib/kf2'
 
 type Batch = {
   turma_nome: string
@@ -27,19 +28,24 @@ export async function GET(
     const url = new URL(req.url)
     escolaId = url.searchParams.get('escola_id') || undefined
     if (!escolaId) {
-      const { data: prof } = await supabase
+      let profQuery = supabase
         .from('profiles')
         .select('current_escola_id, escola_id')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
+
+      profQuery = applyKf2ListInvariants(profQuery, { defaultLimit: 1, order: [{ column: 'created_at', ascending: false }] })
+
+      const { data: prof } = await profQuery
       escolaId = ((prof?.[0] as any)?.current_escola_id || (prof?.[0] as any)?.escola_id) as string | undefined
       if (!escolaId) {
-        const { data: vinc } = await supabase
+        let vincQuery = supabase
           .from('escola_users')
           .select('escola_id')
           .eq('user_id', user.id)
-          .limit(1)
+
+        vincQuery = applyKf2ListInvariants(vincQuery, { defaultLimit: 1, order: [{ column: 'created_at', ascending: false }] })
+
+        const { data: vinc } = await vincQuery
         escolaId = (vinc?.[0] as any)?.escola_id as string | undefined
       }
     }
@@ -63,11 +69,19 @@ export async function GET(
 
     let turmas: any[] | null = []
     if (codeSet.size > 0) {
-      const { data } = await supabase
+      let turmasQuery = supabase
         .from('vw_migracao_turmas_lookup')
         .select('id, nome, ano_letivo, turma_code')
         .eq('escola_id', escolaId)
         .in('turma_code', Array.from(codeSet))
+
+      turmasQuery = applyKf2ListInvariants(turmasQuery, {
+        defaultLimit: 50,
+        order: [{ column: 'turma_code', ascending: true }],
+        tieBreakerColumn: 'turma_code',
+      })
+
+      const { data } = await turmasQuery
       turmas = data as any[] | null
     }
 
