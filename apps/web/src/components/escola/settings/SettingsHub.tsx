@@ -70,6 +70,10 @@ const AvancadoPanel = dynamic(
   () => import("@/app/escola/[id]/admin/configuracoes/avancado/page"),
   { ssr: false, loading: () => <PanelLoading /> }
 );
+const ExcecoesPanel = dynamic(
+  () => import("@/components/escola/settings/ExcecoesPautaPanel"),
+  { ssr: false, loading: () => <PanelLoading /> }
+);
 const HorariosPanel = ({ escolaId }: { escolaId: string }) => (
   <div className="space-y-3">
     <p className="text-sm text-slate-500">Configure os tempos de aula e monte o quadro automático.</p>
@@ -206,6 +210,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
     { id: "horarios",    label: "Horários",    icon: CalendarCheck,  Component: () => <HorariosPanel escolaId={escolaId} /> },
     { id: "financeiro",  label: "Financeiro",  icon: Wallet,         Component: FinanceiroPanel },
     { id: "fluxos",      label: "Fluxos",      icon: Layers,         Component: FluxosPanel },
+    { id: "excecoes",    label: "Exceções",    icon: AlertTriangle,  Component: ExcecoesPanel },
     { id: "avancado",    label: "Avançado",    icon: ShieldCheck,    Component: AvancadoPanel },
   ];
 

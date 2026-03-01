@@ -199,6 +199,7 @@ export function PautaRapidaModal({
               npp1: row.npp ?? null,
               npt1: row.npt ?? null,
               mt1: row.mt ?? null,
+              is_isento: !!row.is_isento,
               _status: "synced",
             }));
           setPautaInitial(mapped);
@@ -322,6 +323,27 @@ export function PautaRapidaModal({
     if (!turmaDisciplinaId) {
       throw new Error("Disciplina inválida para lançamento.");
     }
+
+    // 1. Tratar Isenções (Prioridade)
+    const isentos = rows.filter(r => r.is_isento);
+    if (isentos.length > 0) {
+      const res = await fetch(`/api/secretaria/notas`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          turma_id: turmaId,
+          disciplina_id: disciplinaCanonicalId,
+          turma_disciplina_id: turmaDisciplinaId,
+          trimestre: periodoNumero,
+          is_isento: true,
+          notas: isentos.map(r => ({ aluno_id: r.id, valor: null }))
+        }),
+      });
+      if (!res.ok) throw new Error("Falha ao salvar isenções");
+    }
+
+    // 2. Tratar Notas normais (apenas para quem NÃO é isento)
+    const activeRows = rows.filter(r => !r.is_isento);
     const payloads = [
       { tipo: "MAC", campo: "mac1" as const },
       { tipo: "NPP", campo: "npp1" as const },
@@ -329,9 +351,10 @@ export function PautaRapidaModal({
     ];
 
     for (const { tipo, campo } of payloads) {
-      const notas = rows
+      const notas = activeRows
         .map((row) => ({ aluno_id: row.id, valor: row[campo] }))
         .filter((entry) => typeof entry.valor === "number");
+      
       if (notas.length === 0) continue;
 
       const idempotencyKey =
@@ -351,6 +374,7 @@ export function PautaRapidaModal({
           turma_disciplina_id: turmaDisciplinaId,
           trimestre: periodoNumero,
           tipo_avaliacao: tipo,
+          is_isento: false,
           notas,
         }),
       });
