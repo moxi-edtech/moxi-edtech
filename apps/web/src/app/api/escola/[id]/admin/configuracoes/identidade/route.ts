@@ -59,7 +59,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
     const { data, error } = await supabase
       .from("escolas")
-      .select("id, nome, nif, endereco, logo_url, cor_primaria")
+      .select("id, nome, nif, endereco, logo_url, cor_primaria, plano_atual, created_at, status, aluno_portal_enabled")
       .eq("id", effectiveEscolaId)
       .maybeSingle();
 
