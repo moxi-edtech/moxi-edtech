@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 
 import { requireRoleInSchool } from '@/lib/authz';
+import { applyKf2ListInvariants } from '@/lib/kf2';
 
 const searchParamsSchema = z.object({
   escolaId: z.string().uuid(),
@@ -28,10 +29,16 @@ export async function GET(request: Request) {
   if (authError) return authError;
 
   try {
-    const [cursos, classes] = await Promise.all([
+    const cursosQuery = applyKf2ListInvariants(
       supabase.from('cursos').select('id, nome').eq('escola_id', escolaId),
+      { defaultLimit: 50, order: [{ column: 'nome', ascending: true }] }
+    )
+    const classesQuery = applyKf2ListInvariants(
       supabase.from('classes').select('id, nome, curso_id').eq('escola_id', escolaId),
-    ])
+      { defaultLimit: 50, order: [{ column: 'nome', ascending: true }] }
+    )
+
+    const [cursos, classes] = await Promise.all([cursosQuery, classesQuery])
 
     return NextResponse.json({
       cursos: cursos.data,

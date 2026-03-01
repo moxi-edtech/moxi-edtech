@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { supabaseServerTyped } from '@/lib/supabaseServer';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
 import { emitirEvento } from '@/lib/eventos/emitirEvento';
+import { applyKf2ListInvariants } from '@/lib/kf2';
 import type { Database } from '~types/supabase';
 
 export const dynamic = 'force-dynamic';
@@ -59,12 +60,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       }
     }
 
-    const { data, error } = await supabase
+    let turmaQuery = supabase
       .from('turmas')
       .select('id, status_fecho')
       .eq('escola_id', effectiveEscolaId)
       .eq('id', turmaId)
-      .maybeSingle();
+
+    turmaQuery = applyKf2ListInvariants(turmaQuery, { defaultLimit: 1, order: [{ column: 'created_at', ascending: false }] })
+
+    const { data, error } = await turmaQuery.maybeSingle();
 
     if (error) {
       console.error('Error fetching turma status_fecho:', error);

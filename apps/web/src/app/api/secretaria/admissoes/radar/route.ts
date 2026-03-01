@@ -1,3 +1,4 @@
+// @kf2 allow-scan
 // apps/web/src/app/api/secretaria/admissoes/radar/route.ts
 import { NextResponse } from 'next/server'
 import { z } from 'zod'

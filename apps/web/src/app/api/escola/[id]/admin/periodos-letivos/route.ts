@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import type { Database } from "~types/supabase";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export async function GET(
   req: NextRequest,
@@ -30,25 +31,35 @@ export async function GET(
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
-    const { data: anoLetivo } = await supabase
+    let anoLetivoQuery = supabase
       .from('anos_letivos')
       .select('id, ano, data_inicio, data_fim, ativo')
       .eq('escola_id', userEscolaId)
       .eq('ativo', true)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+
+    anoLetivoQuery = applyKf2ListInvariants(anoLetivoQuery, {
+      defaultLimit: 1,
+      order: [{ column: 'created_at', ascending: false }],
+    })
+
+    const { data: anoLetivo } = await anoLetivoQuery.maybeSingle();
 
     if (!anoLetivo) {
       return NextResponse.json({ ok: false, error: "Ano letivo ativo não encontrado" }, { status: 400 });
     }
 
-    const { data: periodos, error } = await supabase
+    let periodosQuery = supabase
       .from('periodos_letivos')
       .select('id, tipo, numero, data_inicio, data_fim, trava_notas_em, peso')
       .eq('escola_id', userEscolaId)
       .eq('ano_letivo_id', anoLetivo.id)
-      .order('numero', { ascending: true });
+
+    periodosQuery = applyKf2ListInvariants(periodosQuery, {
+      defaultLimit: 50,
+      order: [{ column: 'numero', ascending: true }],
+    })
+
+    const { data: periodos, error } = await periodosQuery
 
     if (error) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 });

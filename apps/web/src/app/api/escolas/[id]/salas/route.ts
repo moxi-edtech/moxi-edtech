@@ -33,6 +33,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       .select('id, nome, tipo, capacidade')
       .eq('escola_id', escolaIdResolved)
       .order('nome', { ascending: true })
+      .order('id', { ascending: true })
+      .limit(50)
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export async function GET(
   _req: NextRequest,
@@ -29,25 +30,32 @@ export async function GET(
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
-    const { data: anoLetivo } = await (supabase as any)
+    let anoLetivoQuery = (supabase as any)
       .from('anos_letivos')
       .select('id, ano')
       .eq('escola_id', userEscolaId)
       .eq('ativo', true)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+
+    anoLetivoQuery = applyKf2ListInvariants(anoLetivoQuery, { defaultLimit: 1, order: [{ column: 'created_at', ascending: false }] })
+
+    const { data: anoLetivo } = await anoLetivoQuery.maybeSingle();
 
     if (!anoLetivo) {
       return NextResponse.json({ ok: false, error: "Ano letivo ativo não encontrado" }, { status: 400 });
     }
 
-    const { data: curriculos, error } = await (supabase as any)
+    let curriculosQuery = (supabase as any)
       .from('curso_curriculos')
       .select('id, curso_id, classe_id, status, version, ano_letivo_id')
       .eq('escola_id', userEscolaId)
       .eq('ano_letivo_id', anoLetivo.id)
-      .order('version', { ascending: false });
+
+    curriculosQuery = applyKf2ListInvariants(curriculosQuery, {
+      defaultLimit: 50,
+      order: [{ column: 'version', ascending: false }],
+    })
+
+    const { data: curriculos, error } = await curriculosQuery;
 
     if (error) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
