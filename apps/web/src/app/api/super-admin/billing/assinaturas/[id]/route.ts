@@ -9,6 +9,31 @@ import { PLAN_NAMES, type PlanTier } from '@/config/plans';
  * API para Gestão Individual de Assinaturas (Cockpit Super Admin)
  */
 
+
+function getExpectedValorKz(plano: PlanTier, ciclo: 'mensal' | 'anual'): number | null {
+  const tabela: Record<PlanTier, Record<'mensal' | 'anual', number | null>> = {
+    essencial: { mensal: 60000, anual: 720000 },
+    profissional: { mensal: 120000, anual: 1440000 },
+    premium: { mensal: null, anual: null },
+  };
+
+  return tabela[plano]?.[ciclo] ?? null;
+}
+
+function isValorKzValido({ plano, ciclo, valorKz }: { plano: PlanTier; ciclo: 'mensal' | 'anual'; valorKz: unknown }) {
+  if (typeof valorKz !== 'number' || !Number.isFinite(valorKz) || valorKz <= 0) {
+    return false;
+  }
+
+  const esperado = getExpectedValorKz(plano, ciclo);
+
+  if (plano === 'premium') {
+    return esperado === null;
+  }
+
+  return valorKz === esperado;
+}
+
 export async function PATCH(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
   
@@ -21,6 +46,22 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
 
     const body = await req.json();
     const { action, ...updates } = body;
+
+    if ('plano' in updates || 'ciclo' in updates || 'valor_kz' in updates) {
+      const plano = (updates.plano ?? body.plano) as PlanTier | undefined;
+      const ciclo = (updates.ciclo ?? body.ciclo) as 'mensal' | 'anual' | undefined;
+      const valorKz = updates.valor_kz;
+
+      if (!plano || !ciclo || !isValorKzValido({ plano, ciclo, valorKz: valorKz as unknown })) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: 'Não é permitido salvar assinatura sem valor_kz válido para o plano/ciclo seleccionado.',
+          },
+          { status: 400 },
+        );
+      }
+    }
 
     // 1. Acção Especial: Reenviar Instruções por Email
     if (action === 'resend_instructions') {

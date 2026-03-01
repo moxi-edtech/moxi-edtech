@@ -6,13 +6,14 @@
  * Tokens KLASSE: #1F6B3B (green), #E3B23C (gold).
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { pt } from "date-fns/locale";
 import { PLAN_NAMES, type PlanTier } from "@/config/plans";
 import AssinaturaDetailsSlideover from "./AssinaturaDetailsSlideover";
+import { AlertTriangle } from "lucide-react";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -26,6 +27,8 @@ type AssinaturaPendente = {
   data_renovacao: string;
   metodo_pagamento: string;
   status: string;
+  origem_registo?: string | null;
+  motivo_origem?: string | null;
   pagamento_id?: string;
   comprovativo_url?: string;
   referencia_ext?: string;
@@ -86,6 +89,7 @@ export default function CobrancasListClient() {
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [syncReport, setSyncReport] = useState<{ total_escolas_sync: number; assinaturas_criadas: number; escolas_criadas: Array<{ escola_id: string; escola_nome: string; plano: PlanTier; ciclo: "mensal" | "anual"; valor_kz: number; }>; pendentes_parametrizacao: number; escolas_pendentes_parametrizacao: Array<{ escola_id: string; escola_nome: string; plano: PlanTier; ciclo: "mensal" | "anual"; motivo: string; }>; } | null>(null);
 
   const supabase = createClient();
 
@@ -95,6 +99,7 @@ export default function CobrancasListClient() {
       const res = await fetch('/api/super-admin/billing/sync-assinaturas', { method: 'POST' });
       const json = await res.json();
       if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao sincronizar');
+      setSyncReport(json.report_super_admin ?? null);
       toast.success(json.message || 'Sincronização concluída');
       loadData();
     } catch (err: any) {
@@ -141,6 +146,8 @@ export default function CobrancasListClient() {
           data_renovacao: row.data_renovacao,
           metodo_pagamento: row.metodo_pagamento,
           status: row.status,
+          origem_registo: row.origem_registo,
+          motivo_origem: row.motivo_origem,
           pagamento_id: ultimoPg?.id,
           comprovativo_url: ultimoPg?.comprovativo_url || undefined,
           referencia_ext: ultimoPg?.referencia_ext,
@@ -205,9 +212,59 @@ export default function CobrancasListClient() {
 
   const cols = ["Escola", "Plano / Ciclo", "Valor", "Status", "Pagamento", "Renovação", "Acções"];
 
+  const pendentesParametrizacao = useMemo(
+    () => items.filter((item) => item.status === "pendente" && item.valor_kz <= 0),
+    [items],
+  );
+
   return (
     <div className="text-slate-900">
       
+      {syncReport && (
+        <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-amber-700">Relatório de bootstrap para revisão Super Admin</p>
+          <p className="mt-1 text-xs text-amber-800">
+            {syncReport.total_escolas_sync} escola(s) no sync; {syncReport.assinaturas_criadas} assinatura(s) criada(s); {syncReport.pendentes_parametrizacao} pendente(s) de parametrização.
+          </p>
+          {syncReport.escolas_criadas.length > 0 && (
+            <div className="mt-2">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-amber-700">Escolas com assinatura criada</p>
+              <ul className="mt-1 space-y-1 text-xs text-amber-900">
+                {syncReport.escolas_criadas.map((escola) => (
+                  <li key={escola.escola_id}>
+                    • {escola.escola_nome} ({PLAN_NAMES[escola.plano]} / {escola.ciclo}) — Kz {escola.valor_kz.toLocaleString()}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {syncReport.escolas_pendentes_parametrizacao.length > 0 && (
+            <div className="mt-2">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-red-700">Escolas pendentes de parametrização</p>
+              <ul className="mt-1 space-y-1 text-xs text-red-800">
+                {syncReport.escolas_pendentes_parametrizacao.map((escola) => (
+                  <li key={escola.escola_id}>
+                    • {escola.escola_nome} ({PLAN_NAMES[escola.plano]} / {escola.ciclo}) — {escola.motivo}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+
+      {pendentesParametrizacao.length > 0 && (
+        <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 flex items-start gap-3">
+          <AlertTriangle className="h-4 w-4 mt-0.5 text-red-600" />
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-widest text-red-700">Assinaturas pendentes de parametrização</p>
+            <p className="mt-1 text-xs text-red-800">
+              {pendentesParametrizacao.length} assinatura(s) com valor_kz inválido ou pendência de configuração inicial. Rever e parametrizar antes da activação.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ── Dashboard Stats ── */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm">
@@ -298,6 +355,9 @@ export default function CobrancasListClient() {
                   </td>
                   <td className="py-4 px-6">
                     <p className="text-slate-700 font-mono font-semibold">Kz {item.valor_kz.toLocaleString()}</p>
+                    {item.status === 'pendente' && item.valor_kz <= 0 && (
+                      <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-red-600">Parametrização obrigatória</p>
+                    )}
                   </td>
                   <td className="py-4 px-6">
                     <StatusBadge status={item.status} />
