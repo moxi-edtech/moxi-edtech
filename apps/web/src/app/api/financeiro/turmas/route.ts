@@ -31,7 +31,9 @@ export async function GET(request: Request) {
         alunos:matriculas(count)
       `)
       .eq('escola_id', escolaId)
-      .eq('status_validacao', 'ativo');
+      .eq('status_validacao', 'ativo')
+      .order('nome')
+      .limit(50);
 
     if (error) {
       console.error('Erro ao buscar turmas para financeiro:', error);

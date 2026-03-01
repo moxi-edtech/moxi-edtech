@@ -34,7 +34,7 @@ export async function GET(req: Request) {
       const rpcQuery = (supabase as any).rpc("get_classes_sem_preco", {
         p_escola_id: escolaId,
         p_ano_letivo: anoLetivo,
-      });
+      }).order("id").limit(50);
 
       const { data, error } = await rpcQuery;
 

@@ -18,6 +18,8 @@ export async function GET(
       "id, escola_id, file_name, status, total_rows, imported_rows, error_rows, processed_at, created_at"
     )
     .eq("id", importId)
+    .order("id")
+    .limit(1)
     .maybeSingle();
   const escolaId = (im as any)?.escola_id as string | undefined;
   if (!escolaId || !im) {
@@ -50,6 +52,8 @@ export async function PATCH(
     .from("import_migrations")
     .select("escola_id")
     .eq("id", importId)
+    .order("id")
+    .limit(1)
     .maybeSingle();
   const escolaId = (im as any)?.escola_id as string | undefined;
   if (!escolaId) return NextResponse.json({ error: "Importação não encontrada" }, { status: 404 });
@@ -80,6 +84,8 @@ export async function DELETE(
     .from("import_migrations")
     .select("escola_id, storage_path")
     .eq("id", importId)
+    .order("id")
+    .limit(1)
     .maybeSingle();
   const escolaId = (im as any)?.escola_id as string | undefined;
   const storagePath = (im as any)?.storage_path as string | undefined;

@@ -75,6 +75,8 @@ export async function POST(req: Request) {
       .eq("escola_id", escolaId)
       .eq("scope", "financeiro_fecho_declarar")
       .eq("key", idempotencyKey)
+      .order("key")
+      .limit(1)
       .maybeSingle();
 
     if (existingIdempotency?.result) {
