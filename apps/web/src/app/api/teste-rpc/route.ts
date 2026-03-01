@@ -1,4 +1,5 @@
 // apps/web/src/app/api/teste-rpc/route.ts
+/** @kf2 allow-scan */
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 

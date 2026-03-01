@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { findClassesSemPreco } from "@/lib/financeiro/missing-pricing";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export async function GET(req: NextRequest) {
   const s = await supabaseServer();
@@ -16,6 +17,8 @@ export async function GET(req: NextRequest) {
   if (escolaId) {
     kpiQuery = kpiQuery.eq("escola_id", escolaId);
   }
+
+  kpiQuery = applyKf2ListInvariants(kpiQuery, { defaultLimit: 1 });
 
   const { data: kpiData, error: kpiError } = await kpiQuery.maybeSingle();
   if (kpiError) {
