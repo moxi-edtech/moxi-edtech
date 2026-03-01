@@ -6301,6 +6301,7 @@ export type Database = {
           escola_id: string | null
           escola_morada: string | null
           escola_municipio: string | null
+          escola_nif: string | null
           escola_nome: string
           escola_provincia: string | null
           escola_tel: string | null
@@ -6325,6 +6326,7 @@ export type Database = {
           escola_id?: string | null
           escola_morada?: string | null
           escola_municipio?: string | null
+          escola_nif?: string | null
           escola_nome: string
           escola_provincia?: string | null
           escola_tel?: string | null
@@ -6349,6 +6351,7 @@ export type Database = {
           escola_id?: string | null
           escola_morada?: string | null
           escola_municipio?: string | null
+          escola_nif?: string | null
           escola_nome?: string
           escola_provincia?: string | null
           escola_tel?: string | null
@@ -12007,6 +12010,10 @@ export type Database = {
           status: string
           turma_id: string
         }[]
+      }
+      provisionar_escola_from_onboarding: {
+        Args: { p_escola_id: string; p_request_id: string }
+        Returns: Json
       }
       public_get_documento_by_token: {
         Args: { p_hash: string; p_public_id: string }

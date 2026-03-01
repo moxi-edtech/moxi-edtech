@@ -31,6 +31,7 @@ interface UtilizadorExtra {
 interface FormData {
   // Passo 1 — Escola
   escola_nome: string;
+  escola_nif: string;
   escola_abrev: string;
   escola_codigo: string;
   escola_morada: string;
@@ -99,7 +100,7 @@ const PAPEIS = [
 ];
 
 const FORM_INICIAL: FormData = {
-  escola_nome: "", escola_abrev: "", escola_codigo: "",
+  escola_nome: "", escola_nif: "", escola_abrev: "", escola_codigo: "",
   escola_morada: "", escola_municipio: "", escola_provincia: "Luanda",
   escola_tel: "", escola_email: "",
   director_nome: "", director_tel: "",
@@ -171,8 +172,8 @@ function Textarea({ className = "", ...props }: React.TextareaHTMLAttributes<HTM
   );
 }
 
-function Hint({ children }: { children: React.ReactNode }) {
-  return <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">{children}</p>;
+function Hint({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <p className={`text-xs text-slate-400 mt-1.5 leading-relaxed ${className}`}>{children}</p>;
 }
 
 function InfoBox({ children, variant = "gold" }: { children: React.ReactNode; variant?: "gold" | "green" }) {
@@ -314,6 +315,7 @@ export default function OnboardingPage() {
 
     const { error } = await supabase.from("onboarding_requests").insert({
       escola_nome:      form.escola_nome,
+      escola_nif:       form.escola_nif,
       escola_abrev:     form.escola_abrev,
       escola_codigo:    form.escola_codigo,
       escola_morada:    form.escola_morada,
@@ -443,15 +445,26 @@ export default function OnboardingPage() {
             </div>
 
             <div className="space-y-5">
-              <div>
-                <Label required>Nome Oficial da Escola</Label>
-                <Input
-                  value={form.escola_nome}
-                  onChange={e => update("escola_nome", e.target.value)}
-                  placeholder="Ex: Colégio Nossa Senhora da Paz"
-                />
-                <Hint>Exactamente como aparece no alvará ou carimbo oficial.</Hint>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label required>Nome Oficial da Escola</Label>
+                  <Input
+                    value={form.escola_nome}
+                    onChange={e => update("escola_nome", e.target.value)}
+                    placeholder="Ex: Colégio Nossa Senhora da Paz"
+                  />
+                </div>
+                <div>
+                  <Label required>NIF da Instituição</Label>
+                  <Input
+                    value={form.escola_nif}
+                    onChange={e => update("escola_nif", e.target.value.replace(/\D/g, '').slice(0, 9))}
+                    placeholder="9 dígitos obrigatórios"
+                    maxLength={9}
+                  />
+                </div>
               </div>
+              <Hint className="-mt-3">Nomes e NIF devem corresponder ao alvará oficial.</Hint>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -980,6 +993,7 @@ Titular: Nome da Escola`}
                   <div className="grid grid-cols-2 gap-6">
                     {[
                       ["Nome", form.escola_nome],
+                      ["NIF", form.escola_nif],
                       ["Morada", form.escola_morada],
                       ["Município", form.escola_municipio],
                       ["Telefone", form.escola_tel],

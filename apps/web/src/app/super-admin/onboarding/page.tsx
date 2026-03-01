@@ -34,6 +34,7 @@ interface OnboardingRequest {
   created_at: string;
   status: 'pendente' | 'em_configuracao' | 'activo' | 'cancelado';
   escola_nome: string;
+  escola_nif: string | null;
   escola_provincia: string;
   escola_tel: string;
   escola_email: string;
@@ -157,7 +158,7 @@ export default function SuperAdminOnboardingPage() {
           
           {/* Lista de Pedidos */}
           <div className="lg:col-span-2 space-y-4">
-            {loading ? (
+            {loading && !requests.length ? (
               <div className="flex flex-col items-center justify-center p-20 bg-white border border-slate-200 rounded-3xl space-y-4">
                 <Loader2 className="w-8 h-8 animate-spin text-klasse-green" />
                 <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Carregando pedidos...</p>
@@ -216,6 +217,21 @@ export default function SuperAdminOnboardingPage() {
                 </CardHeader>
                 <CardContent className="p-6 space-y-6">
                   
+                  {/* Info Escola */}
+                  <div className="space-y-3">
+                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Informações Fiscais</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">NIF</p>
+                        <p className="text-sm font-bold text-slate-700 font-mono">{selectedRequest.escola_nif || 'Não informado'}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase">Província</p>
+                        <p className="text-sm font-bold text-slate-700">{selectedRequest.escola_provincia}</p>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Info Director */}
                   <div className="space-y-3">
                     <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Contacto do Director</h4>
