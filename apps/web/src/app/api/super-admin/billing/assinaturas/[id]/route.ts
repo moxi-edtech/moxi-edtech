@@ -47,6 +47,11 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     const body = await req.json();
     const { action, ...rawUpdates } = body;
 
+    // 3. Actualizações (plano/ciclo/notas/status) + ações semânticas (suspender/reativar)
+    const updates = { ...rawUpdates };
+    if (action === 'suspend_subscription') updates.status = 'suspensa';
+    if (action === 'reactivate_subscription') updates.status = 'activa';
+
     if ('plano' in updates || 'ciclo' in updates || 'valor_kz' in updates) {
       const plano = (updates.plano ?? body.plano) as PlanTier | undefined;
       const ciclo = (updates.ciclo ?? body.ciclo) as 'mensal' | 'anual' | undefined;
@@ -185,11 +190,6 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
 
       return NextResponse.json({ ok: true, diff, changed_fields: changedFields });
     }
-
-    // 3. Actualizações (plano/ciclo/notas/status) + ações semânticas (suspender/reativar)
-    const updates = { ...rawUpdates };
-    if (action === 'suspend_subscription') updates.status = 'suspensa';
-    if (action === 'reactivate_subscription') updates.status = 'activa';
 
     const { error: errorAss } = await s
       .from('assinaturas')

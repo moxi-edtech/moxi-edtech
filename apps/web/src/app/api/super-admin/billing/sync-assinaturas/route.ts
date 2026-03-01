@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabaseServer';
 import { isSuperAdminRole } from '@/lib/auth/requireSuperAdminAccess';
 import { parsePlanTier, type PlanTier } from '@/config/plans';
+import type { Database } from '~types/supabase';
 
 export async function POST(_req: NextRequest) {
   try {
@@ -61,7 +62,7 @@ export async function POST(_req: NextRequest) {
     dataRenovacao.setDate(dataRenovacao.getDate() + 30); // 30 dias a partir de hoje
 
     const agoraIso = new Date().toISOString();
-    const inserts: Array<Record<string, unknown>> = [];
+    const inserts: Database['public']['Tables']['assinaturas']['Insert'][] = [];
     const escolasCriadasViaSync: Array<Record<string, unknown>> = [];
     const escolasPendentesParametrizacao: Array<Record<string, unknown>> = [];
 
