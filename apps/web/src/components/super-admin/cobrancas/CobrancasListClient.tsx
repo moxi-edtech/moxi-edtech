@@ -6,7 +6,7 @@
  * Tokens KLASSE: #1F6B3B (green), #E3B23C (gold).
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabaseClient";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -83,7 +83,9 @@ export default function CobrancasListClient() {
   const [loading, setLoading] = useState(true);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [erro, setErro] = useState<string | null>(null);
-  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [rejectingItem, setRejectingItem] = useState<AssinaturaPendente | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
   const [syncing, setSyncing] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -163,45 +165,59 @@ export default function CobrancasListClient() {
 
   const handleConfirmar = async (item: AssinaturaPendente) => {
     if (!confirm('Deseja confirmar o pagamento desta subscrição?')) return;
-    
+
     try {
-      setConfirmingId(item.id);
-      
-      const novaDataRenovacao = new Date(item.data_renovacao);
-      if (item.ciclo === 'mensal') novaDataRenovacao.setMonth(novaDataRenovacao.getMonth() + 1);
-      else novaDataRenovacao.setFullYear(novaDataRenovacao.getFullYear() + 1);
+      setProcessingId(item.id);
+      const res = await fetch(`/api/super-admin/billing/assinaturas/${item.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'confirm_payment', ciclo: item.ciclo }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json?.ok) throw new Error(json?.error || 'Erro ao confirmar pagamento');
 
-      const { error: assError } = await supabase
-        .from('assinaturas')
-        .update({
-          status: 'activa',
-          data_renovacao: novaDataRenovacao.toISOString()
-        })
-        .eq('id', item.id);
-
-      if (assError) throw assError;
-
-      if (item.pagamento_id) {
-        const { error: pgError } = await supabase
-          .from('pagamentos_saas')
-          .update({
-            status: 'confirmado',
-            confirmado_por: (await supabase.auth.getUser()).data.user?.id,
-            confirmado_em: new Date().toISOString()
-          })
-          .eq('id', item.pagamento_id);
-        
-        if (pgError) throw pgError;
-      }
-
-      toast.success(`Subscrição de ${item.escola_nome} activada!`);
-      loadData();
+      toast.success(json?.message || `Subscrição de ${item.escola_nome} activada!`);
+      await loadData();
     } catch (err: any) {
       toast.error('Erro ao confirmar: ' + err.message);
     } finally {
-      setConfirmingId(null);
+      setProcessingId(null);
     }
   };
+
+  const handleRejeitar = async () => {
+    if (!rejectingItem) return;
+    const motivo = rejectReason.trim();
+    if (!motivo) {
+      toast.error('Informe o motivo da rejeição.');
+      return;
+    }
+
+    try {
+      setProcessingId(rejectingItem.id);
+      const res = await fetch(`/api/super-admin/billing/assinaturas/${rejectingItem.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reject_payment', motivo }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json?.ok) throw new Error(json?.error || 'Erro ao rejeitar pagamento');
+
+      toast.success(`Pagamento de ${rejectingItem.escola_nome} rejeitado.`);
+      setRejectingItem(null);
+      setRejectReason('');
+      await loadData();
+    } catch (err: any) {
+      toast.error('Erro ao rejeitar: ' + err.message);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const rejectingPreview = useMemo(() => {
+    if (!rejectingItem) return null;
+    return `${rejectingItem.escola_nome} · ${PLAN_NAMES[rejectingItem.plano]} (${rejectingItem.ciclo})`;
+  }, [rejectingItem]);
 
   const cols = ["Escola", "Plano / Ciclo", "Valor", "Status", "Pagamento", "Renovação", "Acções"];
 
@@ -325,13 +341,25 @@ export default function CobrancasListClient() {
                   <td className="py-4 px-6">
                     <div className="flex gap-2">
                       {item.status === 'pendente' && (
-                        <button
-                          disabled={confirmingId === item.id}
-                          onClick={() => handleConfirmar(item)}
-                          className="px-3 py-1.5 rounded-lg bg-[#1F6B3B] hover:bg-[#1F6B3B]/90 text-white text-[10px] font-bold uppercase transition-colors disabled:opacity-50 shadow-sm"
-                        >
-                          {confirmingId === item.id ? '...' : 'Activar'}
-                        </button>
+                        <>
+                          <button
+                            disabled={processingId === item.id}
+                            onClick={() => handleConfirmar(item)}
+                            className="px-3 py-1.5 rounded-lg bg-[#1F6B3B] hover:bg-[#1F6B3B]/90 text-white text-[10px] font-bold uppercase transition-colors disabled:opacity-50 shadow-sm"
+                          >
+                            {processingId === item.id ? '...' : 'Activar'}
+                          </button>
+                          <button
+                            disabled={processingId === item.id}
+                            onClick={() => {
+                              setRejectingItem(item);
+                              setRejectReason('');
+                            }}
+                            className="px-3 py-1.5 rounded-lg bg-red-50 border border-red-200 hover:bg-red-100 text-red-700 text-[10px] font-bold uppercase transition-colors disabled:opacity-50"
+                          >
+                            Rejeitar
+                          </button>
+                        </>
                       )}
                       <button 
                         onClick={() => setSelectedId(item.id)}
@@ -347,6 +375,44 @@ export default function CobrancasListClient() {
           </table>
         </div>
       </div>
+
+
+      {rejectingItem && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setRejectingItem(null)} />
+          <div className="relative w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Rejeitar pagamento</h3>
+            <p className="mt-2 text-xs text-slate-500">{rejectingPreview}</p>
+            <label className="mt-4 block text-[10px] font-bold uppercase tracking-widest text-slate-500">
+              Motivo obrigatório
+            </label>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              rows={4}
+              placeholder="Ex.: comprovativo ilegível ou valor divergente."
+              className="mt-2 w-full rounded-xl border border-slate-200 p-3 text-sm text-slate-700 focus:border-red-300 focus:outline-none"
+            />
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setRejectingItem(null)}
+                className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 text-[10px] font-bold uppercase"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={processingId === rejectingItem.id}
+                onClick={handleRejeitar}
+                className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold uppercase disabled:opacity-50"
+              >
+                {processingId === rejectingItem.id ? 'A rejeitar...' : 'Confirmar rejeição'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Slideover de Detalhes ── */}
       {selectedId && (
