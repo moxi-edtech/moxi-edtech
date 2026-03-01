@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 
 import { requireRoleInSchool } from '@/lib/authz';
+import { applyKf2ListInvariants } from '@/lib/kf2';
 
 const searchParamsSchema = z.object({
   escolaId: z.string().uuid(),
@@ -40,7 +41,10 @@ export async function GET(request: Request) {
     if (classeId) query = query.eq('classe_id', classeId)
     if (ano) query = query.eq('ano_letivo', ano)
 
-    query = query.order('turma_nome', { ascending: true }).order('id', { ascending: true }).limit(50)
+    query = applyKf2ListInvariants(query, {
+      defaultLimit: 50,
+      order: [{ column: 'turma_nome', ascending: true }, { column: 'id', ascending: true }],
+    })
 
     const { data: turmas, error } = await query
 
@@ -54,12 +58,20 @@ export async function GET(request: Request) {
     const classeIds = Array.from(new Set(turmaRows.map((row) => row.classe_id).filter(Boolean))) as string[];
 
     const { data: tabelas } = cursoIds.length
-      ? await supabase
-          .from('financeiro_tabelas')
-          .select('curso_id, classe_id, valor_matricula, ano_letivo')
-          .eq('escola_id', escolaId)
-          .in('curso_id', cursoIds)
-          .order('ano_letivo', { ascending: false })
+      ? await (() => {
+          let tabelasQuery = supabase
+            .from('financeiro_tabelas')
+            .select('curso_id, classe_id, valor_matricula, ano_letivo')
+            .eq('escola_id', escolaId)
+            .in('curso_id', cursoIds)
+
+          tabelasQuery = applyKf2ListInvariants(tabelasQuery, {
+            defaultLimit: 50,
+            order: [{ column: 'ano_letivo', ascending: false }],
+          })
+
+          return tabelasQuery
+        })()
       : { data: [] };
 
     const tabelaRows = (tabelas || []) as Array<{

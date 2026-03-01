@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabaseServerTyped } from '@/lib/supabaseServer';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
 import type { Database } from '~types/supabase';
+import { applyKf2ListInvariants } from '@/lib/kf2';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -44,14 +45,18 @@ const normalizeComponentes = (config: unknown): AvaliacaoConfig | null => {
 };
 
 const resolveDefaultConfig = async (supabase: SupabaseClient<Database>, escolaId: string) => {
-  const { data } = await supabase
+  let defaultConfigQuery = supabase
     .from('modelos_avaliacao')
     .select('componentes')
     .eq('escola_id', escolaId)
     .eq('is_default', true)
-    .order('updated_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+
+  defaultConfigQuery = applyKf2ListInvariants(defaultConfigQuery, {
+    defaultLimit: 1,
+    order: [{ column: 'updated_at', ascending: false }],
+  })
+
+  const { data } = await defaultConfigQuery.maybeSingle();
 
   if (!data) return null;
   return normalizeComponentes(data.componentes);
