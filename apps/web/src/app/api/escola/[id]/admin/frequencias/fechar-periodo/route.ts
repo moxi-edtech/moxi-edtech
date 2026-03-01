@@ -6,6 +6,7 @@ import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
 import type { Database } from '~types/supabase';
 import { buildPautaGeralPayload, renderPautaGeralStream } from '@/lib/pedagogico/pauta-geral';
 import { enqueueOutboxEvent, markOutboxEventFailed, markOutboxEventProcessed } from '@/lib/outbox';
+import { applyKf2ListInvariants } from '@/lib/kf2';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -90,14 +91,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       }
     }
 
-    const { data: statusRow, error } = await supabase
+    let statusQuery = supabase
       .from('frequencia_status_periodo')
       .select('id')
       .eq('escola_id', effectiveEscolaId)
       .eq('turma_id', turmaId)
       .eq('periodo_letivo_id', periodoLetivoId)
-      .limit(1)
-      .maybeSingle();
+
+    statusQuery = applyKf2ListInvariants(statusQuery, {
+      defaultLimit: 1,
+      order: [{ column: 'created_at', ascending: false }],
+    })
+
+    const { data: statusRow, error } = await statusQuery.maybeSingle();
 
     if (error) {
       console.error('Error checking fechamento status:', error);

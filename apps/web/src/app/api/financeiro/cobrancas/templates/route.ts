@@ -18,7 +18,9 @@ export async function GET(request: Request) {
       .from("financeiro_templates_cobranca")
       .select("id, escola_id, nome, canal, corpo, criado_por, created_at")
       .eq("escola_id", escolaId)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(50);
 
     if (error) {
       console.error("[GET /templates] supabase error:", error);

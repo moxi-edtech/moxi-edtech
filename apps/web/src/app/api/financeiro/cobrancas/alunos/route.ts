@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
+import { applyKf2ListInvariants } from '@/lib/kf2';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,11 +35,18 @@ export async function GET(request: Request) {
 
     // A better implementation would be a dedicated VIEW or RPC in the database
     // For now, fetching and aggregating in JS
-    const { data: mensalidadesAtrasadas, error } = await supabase
+    let mensalidadesQuery = supabase
       .from('mensalidades')
       .select('*, aluno:alunos(*, matriculas!inner(turma:turmas(nome)))')
       .eq('escola_id', escolaId)
-      .in('status', ['pendente', 'atrasada']);
+      .in('status', ['pendente', 'atrasada'])
+
+    mensalidadesQuery = applyKf2ListInvariants(mensalidadesQuery, {
+      defaultLimit: 50,
+      order: [{ column: 'data_vencimento', ascending: false }],
+    })
+
+    const { data: mensalidadesAtrasadas, error } = await mensalidadesQuery;
 
     if (error) throw error;
 

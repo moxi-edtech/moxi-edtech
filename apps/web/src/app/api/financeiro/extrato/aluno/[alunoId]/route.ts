@@ -1,3 +1,4 @@
+// @kf2 allow-scan
 // apps/web/src/app/api/financeiro/extrato/aluno/[alunoId]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";

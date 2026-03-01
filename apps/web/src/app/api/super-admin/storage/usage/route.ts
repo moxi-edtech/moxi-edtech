@@ -1,3 +1,4 @@
+// @kf2 allow-scan
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { isSuperAdminRole } from "@/lib/auth/requireSuperAdminAccess";

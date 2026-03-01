@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 import type { Database } from "~types/supabase";
 
 type DatabaseWithAvisos = Database & {
@@ -85,11 +86,16 @@ export async function GET() {
           .select('status')
           .eq('escola_id', escolaId)
           .eq('aluno_id', matriculaData.aluno_id);
-
         if (matriculaId) mensalidadesQuery = mensalidadesQuery.eq('matricula_id', matriculaId);
         if (typeof anoLetivo === 'number') {
           mensalidadesQuery = mensalidadesQuery.or(`ano_referencia.eq.${anoLetivo},ano_letivo.eq.${anoLetivo}`);
         }
+
+
+        mensalidadesQuery = applyKf2ListInvariants(mensalidadesQuery, {
+          defaultLimit: 50,
+          order: [{ column: 'created_at', ascending: false }],
+        });
 
         const { data: mens, error: mensalidadesError } = await mensalidadesQuery;
 
