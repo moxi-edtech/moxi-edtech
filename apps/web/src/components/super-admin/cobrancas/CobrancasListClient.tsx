@@ -163,36 +163,18 @@ export default function CobrancasListClient() {
 
   const handleConfirmar = async (item: AssinaturaPendente) => {
     if (!confirm('Deseja confirmar o pagamento desta subscrição?')) return;
-    
+
     try {
       setConfirmingId(item.id);
-      
-      const novaDataRenovacao = new Date(item.data_renovacao);
-      if (item.ciclo === 'mensal') novaDataRenovacao.setMonth(novaDataRenovacao.getMonth() + 1);
-      else novaDataRenovacao.setFullYear(novaDataRenovacao.getFullYear() + 1);
 
-      const { error: assError } = await supabase
-        .from('assinaturas')
-        .update({
-          status: 'activa',
-          data_renovacao: novaDataRenovacao.toISOString()
-        })
-        .eq('id', item.id);
+      const res = await fetch(`/api/super-admin/billing/assinaturas/${item.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'confirm_receipt', pagamento_id: item.pagamento_id ?? null }),
+      });
 
-      if (assError) throw assError;
-
-      if (item.pagamento_id) {
-        const { error: pgError } = await supabase
-          .from('pagamentos_saas')
-          .update({
-            status: 'confirmado',
-            confirmado_por: (await supabase.auth.getUser()).data.user?.id,
-            confirmado_em: new Date().toISOString()
-          })
-          .eq('id', item.pagamento_id);
-        
-        if (pgError) throw pgError;
-      }
+      const json = await res.json();
+      if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao confirmar comprovativo');
 
       toast.success(`Subscrição de ${item.escola_nome} activada!`);
       loadData();

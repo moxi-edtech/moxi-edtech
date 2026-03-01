@@ -20,7 +20,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     }
 
     const body = await req.json();
-    const { action, ...updates } = body;
+    const { action, ...rawUpdates } = body;
 
     // 1. Acção Especial: Reenviar Instruções por Email
     if (action === 'resend_instructions') {
@@ -58,16 +58,98 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       return NextResponse.json({ ok: true, message: 'Instruções enviadas com sucesso' });
     }
 
-    // 2. Actualizações Genéricas (Plano, Ciclo, Notas, Status)
     const { data: assBefore } = await s
       .from('assinaturas')
-      .select('escola_id')
+      .select('*')
       .eq('id', id)
       .single();
 
     if (!assBefore) return NextResponse.json({ ok: false, error: 'Assinatura não encontrada' }, { status: 404 });
 
-    // Iniciar transação lógica (updates em paralelo ou sequência)
+    // 2. Acções de comprovativo (confirmar/rejeitar)
+    if (action === 'confirm_receipt' || action === 'reject_receipt') {
+      const pagamentoId = body.pagamento_id;
+      let pagamentoQuery = s
+        .from('pagamentos_saas')
+        .select('*')
+        .eq('assinatura_id', id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (pagamentoId) {
+        pagamentoQuery = s.from('pagamentos_saas').select('*').eq('id', pagamentoId).limit(1);
+      }
+
+      const { data: pagamentos, error: pagamentoError } = await pagamentoQuery;
+      if (pagamentoError) throw pagamentoError;
+
+      const pagamentoBefore = pagamentos?.[0];
+      if (!pagamentoBefore) {
+        return NextResponse.json({ ok: false, error: 'Pagamento não encontrado para esta assinatura' }, { status: 404 });
+      }
+
+      const nowIso = new Date().toISOString();
+      const paymentStatus = action === 'confirm_receipt' ? 'confirmado' : 'falhado';
+      const assinaturaStatus = action === 'confirm_receipt' ? 'activa' : 'pendente';
+
+      const { error: pgUpdateError } = await s
+        .from('pagamentos_saas')
+        .update({
+          status: paymentStatus,
+          confirmado_por: sess.user.id,
+          confirmado_em: nowIso,
+        })
+        .eq('id', pagamentoBefore.id);
+
+      if (pgUpdateError) throw pgUpdateError;
+
+      const { error: assUpdateError } = await s
+        .from('assinaturas')
+        .update({ status: assinaturaStatus })
+        .eq('id', id);
+
+      if (assUpdateError) throw assUpdateError;
+
+      const { data: assAfter, error: assAfterError } = await s
+        .from('assinaturas')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (assAfterError) throw assAfterError;
+
+      const diff = buildSubscriptionDiff(assBefore, assAfter);
+      const changedFields = diff.filter((field) => field.changed).map((field) => field.field);
+
+      await s.from('escolas').update({ status: assAfter.status }).eq('id', assBefore.escola_id);
+
+      await recordAuditServer({
+        escolaId: assBefore.escola_id,
+        portal: 'super_admin',
+        acao: action === 'confirm_receipt' ? 'BILLING_RECEIPT_CONFIRMED' : 'BILLING_RECEIPT_REJECTED',
+        entity: 'assinaturas',
+        entityId: id,
+        details: {
+          before: pickTrackedFields(assBefore),
+          after: pickTrackedFields(assAfter),
+          changed_fields: changedFields,
+          diff,
+          actor_id: sess.user.id,
+          timestamp: nowIso,
+          pagamento_id: pagamentoBefore.id,
+          pagamento_before_status: pagamentoBefore.status,
+          pagamento_after_status: paymentStatus,
+        },
+      });
+
+      return NextResponse.json({ ok: true, diff, changed_fields: changedFields });
+    }
+
+    // 3. Actualizações (plano/ciclo/notas/status) + ações semânticas (suspender/reativar)
+    const updates = { ...rawUpdates };
+    if (action === 'suspend_subscription') updates.status = 'suspensa';
+    if (action === 'reactivate_subscription') updates.status = 'activa';
+
     const { error: errorAss } = await s
       .from('assinaturas')
       .update(updates)
@@ -75,7 +157,6 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
 
     if (errorAss) throw errorAss;
 
-    // Se o status da assinatura mudou, reflectir na escola
     if (updates.status) {
       const { error: errorEsc } = await s
         .from('escolas')
@@ -85,20 +166,81 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       if (errorEsc) throw errorEsc;
     }
 
-    recordAuditServer({ 
-      portal: 'super_admin', 
-      acao: 'BILLING_SUBSCRIPTION_UPDATED', 
-      entity: 'assinaturas', 
-      entityId: id, 
-      details: updates 
+    const { data: assAfter, error: assAfterError } = await s
+      .from('assinaturas')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (assAfterError) throw assAfterError;
+
+    const nowIso = new Date().toISOString();
+    const diff = buildSubscriptionDiff(assBefore, assAfter);
+    const changedFields = diff.filter((field) => field.changed).map((field) => field.field);
+
+    await recordAuditServer({
+      escolaId: assBefore.escola_id,
+      portal: 'super_admin',
+      acao:
+        action === 'suspend_subscription'
+          ? 'BILLING_SUBSCRIPTION_SUSPENDED'
+          : action === 'reactivate_subscription'
+            ? 'BILLING_SUBSCRIPTION_REACTIVATED'
+            : 'BILLING_SUBSCRIPTION_UPDATED',
+      entity: 'assinaturas',
+      entityId: id,
+      details: {
+        before: pickTrackedFields(assBefore),
+        after: pickTrackedFields(assAfter),
+        changed_fields: changedFields,
+        diff,
+        actor_id: sess.user.id,
+        timestamp: nowIso,
+      },
     });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, diff, changed_fields: changedFields });
 
   } catch (err: any) {
     const message = err.message || String(err);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
+}
+
+type AssinaturaAuditShape = {
+  plano: string | null;
+  ciclo: string | null;
+  status: string | null;
+  valor_kz: number | null;
+  notas_internas: string | null;
+};
+
+function pickTrackedFields(record: any): AssinaturaAuditShape {
+  return {
+    plano: record?.plano ?? null,
+    ciclo: record?.ciclo ?? null,
+    status: record?.status ?? null,
+    valor_kz: record?.valor_kz ?? null,
+    notas_internas: record?.notas_internas ?? null,
+  };
+}
+
+function buildSubscriptionDiff(beforeRecord: any, afterRecord: any) {
+  const before = pickTrackedFields(beforeRecord);
+  const after = pickTrackedFields(afterRecord);
+
+  return [
+    { field: 'plano', before: before.plano, after: after.plano, changed: before.plano !== after.plano },
+    { field: 'ciclo', before: before.ciclo, after: after.ciclo, changed: before.ciclo !== after.ciclo },
+    { field: 'status', before: before.status, after: after.status, changed: before.status !== after.status },
+    { field: 'valor_kz', before: before.valor_kz, after: after.valor_kz, changed: before.valor_kz !== after.valor_kz },
+    {
+      field: 'notas_internas',
+      before: before.notas_internas,
+      after: after.notas_internas,
+      changed: before.notas_internas !== after.notas_internas,
+    },
+  ];
 }
 
 async function checkIsAdmin(supabase: any, userId: string) {
