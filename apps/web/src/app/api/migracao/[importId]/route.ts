@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createRouteClient } from "@/lib/supabase/route-client";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 import { userHasAccessToEscola } from "../auth-helpers";
 
 export async function GET(
@@ -12,13 +13,16 @@ export async function GET(
   const authUser = userRes?.user;
   if (!authUser) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
 
-  const { data: im } = await routeClient
+  let importQuery = routeClient
     .from("import_migrations")
     .select(
       "id, escola_id, file_name, status, total_rows, imported_rows, error_rows, processed_at, created_at"
     )
     .eq("id", importId)
-    .maybeSingle();
+
+  importQuery = applyKf2ListInvariants(importQuery, { defaultLimit: 1, order: [{ column: "id", ascending: true }] })
+
+  const { data: im } = await importQuery.maybeSingle();
   const escolaId = (im as any)?.escola_id as string | undefined;
   if (!escolaId || !im) {
     return NextResponse.json({ error: "Importação não encontrada" }, { status: 404 });
@@ -50,6 +54,8 @@ export async function PATCH(
     .from("import_migrations")
     .select("escola_id")
     .eq("id", importId)
+    .order("id")
+    .limit(1)
     .maybeSingle();
   const escolaId = (im as any)?.escola_id as string | undefined;
   if (!escolaId) return NextResponse.json({ error: "Importação não encontrada" }, { status: 404 });
@@ -80,6 +86,8 @@ export async function DELETE(
     .from("import_migrations")
     .select("escola_id, storage_path")
     .eq("id", importId)
+    .order("id")
+    .limit(1)
     .maybeSingle();
   const escolaId = (im as any)?.escola_id as string | undefined;
   const storagePath = (im as any)?.storage_path as string | undefined;

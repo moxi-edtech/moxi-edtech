@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
+import { applyKf2ListInvariants } from '@/lib/kf2';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,6 +57,8 @@ export async function GET(request: Request) {
       // For now, let's assume we can filter if needed. The query below will not work directly.
       // We will filter on the client side for now.
     }
+    
+    query = applyKf2ListInvariants(query, { defaultLimit: 50 });
     
     const { data: mensalidades, error } = await query;
 

@@ -3,6 +3,7 @@ import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { canManageEscolaResources } from "../../permissions";
 import { type CurriculumKey } from "@/lib/academico/curriculum-presets";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -31,12 +32,15 @@ export async function GET(
   const allowed = await canManageEscolaResources(supabase as any, escolaId, user.id);
   if (!allowed) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
 
-  const { data: cursoRow } = await (supabase as any)
+  let cursoQuery = (supabase as any)
     .from("cursos")
     .select("id, curriculum_key")
     .eq("escola_id", escolaId)
     .eq("id", cursoId)
-    .maybeSingle();
+
+  cursoQuery = applyKf2ListInvariants(cursoQuery, { defaultLimit: 1, order: [{ column: 'created_at', ascending: false }] })
+
+  const { data: cursoRow } = await cursoQuery.maybeSingle();
 
   const curriculumKey = cursoRow?.curriculum_key as CurriculumKey | null;
   if (!curriculumKey) {
@@ -44,10 +48,17 @@ export async function GET(
   }
 
   try {
-    const { data: presetRows, error: presetErr } = await (supabase as any)
+    let presetQuery = (supabase as any)
       .from("curriculum_preset_subjects")
       .select("id, preset_id, name, grade_level, component, weekly_hours, subject_type, conta_para_media_med, is_avaliavel, avaliacao_mode")
-      .eq("preset_id", curriculumKey);
+      .eq("preset_id", curriculumKey)
+
+    presetQuery = applyKf2ListInvariants(presetQuery, {
+      defaultLimit: 50,
+      order: [{ column: 'grade_level', ascending: true }, { column: 'name', ascending: true }],
+    })
+
+    const { data: presetRows, error: presetErr } = await presetQuery;
 
     if (presetErr) throw presetErr;
 

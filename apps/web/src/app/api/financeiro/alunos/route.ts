@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
+import { applyKf2ListInvariants } from '@/lib/kf2';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,6 +40,8 @@ export async function GET(request: Request) {
     if (turmaId && turmaId !== 'todas') {
       query = query.eq('matriculas.turma_id', turmaId);
     }
+    
+    query = applyKf2ListInvariants(query, { defaultLimit: 50 });
     
     const { data: alunos, error } = await query;
 

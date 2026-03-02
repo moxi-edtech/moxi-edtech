@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { canManageEscolaResources } from "../../../permissions";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export const dynamic = "force-dynamic";
 
@@ -44,25 +45,37 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       )
     ).slice(0, 50);
 
-    const { data: anoLetivo } = await (supabase as any)
+    let anoLetivoQuery = (supabase as any)
       .from("anos_letivos")
       .select("ano")
       .eq("escola_id", userEscolaId)
       .eq("ativo", true)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+
+    anoLetivoQuery = applyKf2ListInvariants(anoLetivoQuery, {
+      defaultLimit: 1,
+      order: [{ column: 'created_at', ascending: false }],
+    })
+
+    const { data: anoLetivo } = await anoLetivoQuery.maybeSingle();
 
     if (!anoLetivo?.ano || turmaIds.length === 0) {
       return NextResponse.json({ ok: true, ano_letivo: anoLetivo?.ano ?? null, items: [] });
     }
 
-    const { data: rows, error } = await (supabase as any)
+    let financeiroQuery = (supabase as any)
       .from("vw_financeiro_propinas_por_turma")
       .select("turma_id, qtd_mensalidades, qtd_em_atraso, inadimplencia_pct")
       .eq("escola_id", userEscolaId)
       .eq("ano_letivo", anoLetivo.ano)
-      .in("turma_id", turmaIds);
+      .in("turma_id", turmaIds)
+
+    financeiroQuery = applyKf2ListInvariants(financeiroQuery, {
+      defaultLimit: 50,
+      order: [{ column: 'turma_id', ascending: true }],
+      tieBreakerColumn: 'turma_id',
+    })
+
+    const { data: rows, error } = await financeiroQuery;
 
     if (error) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 });

@@ -123,7 +123,6 @@ export function useHorarioBaseData(escolaId?: string, refreshToken?: number) {
     const requestId = ++requestRef.current;
     const anoAtual = new Date().getFullYear();
 
-    setState((prev) => ({ ...prev, loading: true, error: null }));
 
     Promise.all([
       fetchJson(`/api/escolas/${escolaId}/horarios/slots`, controller.signal),
@@ -204,31 +203,35 @@ export function useHorarioTurmaData({
 
   const slotLookupReady = useMemo(() => Object.keys(slotLookup).length > 0, [slotLookup]);
 
+  const canLoadTurmaData = Boolean(escolaId && turmaId && versaoId && slotLookupReady);
+
   useEffect(() => {
-    if (!escolaId || !turmaId || !versaoId || !slotLookupReady) {
-      setState((prev) => ({
-        ...prev,
-        aulas: [],
-        grid: {},
-        existingAssignments: [],
-        loading: false,
-        error: null,
-      }));
+    if (!canLoadTurmaData) {
+      return;
+    }
+
+    const currentEscolaId = escolaId;
+    const currentTurmaId = turmaId;
+    const currentVersaoId = versaoId;
+
+    if (!currentEscolaId || !currentTurmaId || !currentVersaoId) {
       return;
     }
 
     const controller = new AbortController();
     const requestId = ++requestRef.current;
     const params = new URLSearchParams({
-      versao_id: versaoId,
-      turma_id: turmaId,
+      versao_id: currentVersaoId,
+      turma_id: currentTurmaId,
     });
 
-    setState((prev) => ({ ...prev, loading: true, error: null }));
 
     Promise.all([
-      fetchJson(`/api/secretaria/turmas/${turmaId}/disciplinas?escola_id=${encodeURIComponent(escolaId)}`, controller.signal),
-      fetchJson(`/api/escolas/${escolaId}/horarios/quadro?${params.toString()}`, controller.signal),
+      fetchJson(
+        `/api/secretaria/turmas/${currentTurmaId}/disciplinas?escola_id=${encodeURIComponent(currentEscolaId)}`,
+        controller.signal,
+      ),
+      fetchJson(`/api/escolas/${currentEscolaId}/horarios/quadro?${params.toString()}`, controller.signal),
     ])
       .then(([disciplinasRes, quadroRes]) => {
         if (controller.signal.aborted || requestId !== requestRef.current) return;
@@ -275,7 +278,7 @@ export function useHorarioTurmaData({
       });
 
     return () => controller.abort();
-  }, [escolaId, turmaId, versaoId, slotLookupReady, slotLookup, refreshToken]);
+  }, [canLoadTurmaData, escolaId, turmaId, versaoId, slotLookup, refreshToken]);
 
   const setAulas = (updater: (prev: SchedulerAula[]) => SchedulerAula[]) => {
     setState((prev) => ({ ...prev, aulas: updater(prev.aulas) }));
@@ -298,5 +301,16 @@ export function useHorarioTurmaData({
     setState((prev) => ({ ...prev, existingAssignments: updater(prev.existingAssignments) }));
   };
 
-  return { ...state, setAulas, setGrid, setExistingAssignments };
+  const effectiveState = canLoadTurmaData
+    ? state
+    : {
+        ...state,
+        aulas: [],
+        grid: {},
+        existingAssignments: [],
+        loading: false,
+        error: null,
+      };
+
+  return { ...effectiveState, setAulas, setGrid, setExistingAssignments };
 }

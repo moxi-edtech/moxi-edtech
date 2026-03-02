@@ -71,7 +71,17 @@ export function useEscolaMonitorData(escolaId: string) {
     loadEscolaData();
   }, [loadEscolaData]);
 
-  return { loading, refreshing, escola, metricas, performance, atividades, alertas, loadEscolaData };
+  const saude = (() => {
+    if (!metricas || !performance) return 100;
+    let s = 100;
+    if (metricas.alunos_ativos > 0 && metricas.inadimplentes > metricas.alunos_ativos * 0.3) s -= 20;
+    if (performance.error_count_24h > 10) s -= 15;
+    if (performance.sync_status === 'error') s -= 30;
+    if (performance.sync_status === 'pending') s -= 10;
+    return Math.max(0, s);
+  })();
+
+  return { loading, refreshing, escola, metricas, performance, atividades, alertas, loadEscolaData, saude };
 }
 
 // Sub-fetching functions

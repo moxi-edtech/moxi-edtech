@@ -6,7 +6,7 @@ import { useUserRole, type UserRole } from "@/hooks/useUserRole";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { sidebarConfig, type NavItem } from "@/lib/sidebarNav";
 import { useMemo, useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { PLAN_NAMES, type PlanTier } from "@/config/plans";
 import { createClient } from "@/lib/supabaseClient";
 
@@ -21,6 +21,7 @@ const TOPBAR_LABELS: Record<UserRole, { title: string; subtitle: string }> = {
 };
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const pathname = usePathname();
   const { userRole, isLoading: isLoadingRole } = useUserRole();
   const { escolaId: escolaIdFromSession } = useEscolaId();
@@ -28,6 +29,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [escolaNome, setEscolaNome] = useState<string | null>(null);
   const [planoNome, setPlanoNome] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
 
   // Extract escolaId from the pathname if available
   const safePathname = pathname ?? "";
@@ -148,9 +150,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           }
           const cached = sessionStorage.getItem(cacheKey);
           if (cached) {
-            const parsed = JSON.parse(cached) as { nome?: string | null; plano?: PlanTier | null };
+            const parsed = JSON.parse(cached) as { 
+              nome?: string | null; 
+              plano?: PlanTier | null;
+              status?: string | null;
+            };
             setEscolaNome(parsed.nome ?? null);
             setPlanoNome(parsed.plano ? PLAN_NAMES[parsed.plano] : null);
+            setStatus(parsed.status ?? null);
+            
+            if (parsed.status === 'suspensa' && userRole !== 'superadmin' && pathname !== '/escola/suspensa') {
+              router.push('/escola/suspensa');
+              return;
+            }
             return;
           }
         }
@@ -162,15 +174,28 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         if (!res.ok || !json?.ok) {
           setEscolaNome(null);
           setPlanoNome(null);
+          setStatus(null);
           return;
         }
 
+        const escolaStatus = json.status || null;
         setEscolaNome(json.nome || null);
         setPlanoNome(json.plano ? PLAN_NAMES[json.plano as PlanTier] : null);
+        setStatus(escolaStatus);
+
+        // Redirecionar se suspensa (e não for superadmin)
+        if (escolaStatus === 'suspensa' && userRole !== 'superadmin' && pathname !== '/escola/suspensa') {
+          router.push('/escola/suspensa');
+        }
+
         if (typeof sessionStorage !== "undefined") {
           sessionStorage.setItem(
             cacheKey,
-            JSON.stringify({ nome: json.nome ?? null, plano: json.plano ?? null })
+            JSON.stringify({ 
+              nome: json.nome ?? null, 
+              plano: json.plano ?? null,
+              status: escolaStatus 
+            })
           );
         }
       } catch {
