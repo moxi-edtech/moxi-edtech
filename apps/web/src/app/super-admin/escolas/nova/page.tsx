@@ -35,6 +35,7 @@ function CriarEscolaForm() {
     adminEmail: "",
     adminTelefone: "",
     adminNome: "",
+    adminPapel: "admin",
   });
 
   const [loading, setLoading] = useState(false);
@@ -76,6 +77,7 @@ function CriarEscolaForm() {
             email: formData.adminEmail.trim(),
             telefone: formData.adminTelefone || null,
             nome: formData.adminNome.trim(),
+            papel: formData.adminPapel,
           },
         }),
       });
@@ -267,7 +269,7 @@ function CriarEscolaForm() {
                     disabled={loading}
                   >
                     <option value="essencial">Essencial</option>
-                    <option value="standard">Standard</option>
+                    <option value="profissional">Profissional</option>
                     <option value="premium">Premium</option>
                   </select>
                 </div>
@@ -309,6 +311,22 @@ function CriarEscolaForm() {
                     required
                     disabled={loading}
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-moxinexa-dark">
+                    Papel Inicial
+                  </label>
+                  <select
+                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
+                    value={formData.adminPapel}
+                    onChange={(e) => handleInputChange('adminPapel', e.target.value)}
+                    disabled={loading}
+                  >
+                    <option value="admin">Administrador</option>
+                    <option value="admin_financeiro">Administrador + Financeiro</option>
+                    <option value="secretaria_financeiro">Secretaria + Financeiro</option>
+                  </select>
                 </div>
 
                 <div className="space-y-2">

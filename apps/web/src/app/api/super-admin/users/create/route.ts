@@ -4,6 +4,7 @@ import type { Database } from "~types/supabase";
 import { recordAuditServer } from "@/lib/audit";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { callAuthAdminJob } from "@/lib/auth-admin-job";
+import { allowedPapeisSet } from "@/lib/roles";
 // ❌ REMOVIDO: import { generateNumeroLogin } from "@/lib/generateNumeroLogin";
 
 // top-level não deve criar client
@@ -50,15 +51,7 @@ export async function POST(request: Request) {
       return mapped as any;
     };
 
-    const allowedPapeis = new Set([
-      "admin",
-      "staff_admin",
-      "financeiro",
-      "secretaria",
-      "aluno",
-      "professor",
-      "admin_escola",
-    ]);
+    const allowedPapeis = allowedPapeisSet;
     const papelDb = normalizePapel(String(papel || "").trim());
     if (!allowedPapeis.has(papelDb)) {
       return NextResponse.json(
