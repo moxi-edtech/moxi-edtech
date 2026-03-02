@@ -9705,6 +9705,8 @@ export type Database = {
           pagos_valor: number | null
           pendentes_total: number | null
           pendentes_valor: number | null
+          receita_mes_paga: number | null
+          receita_mes_total: number | null
           risco_total: number | null
         }
         Relationships: []
