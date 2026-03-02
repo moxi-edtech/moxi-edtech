@@ -17,6 +17,8 @@ import {
 
 export default function AcademicStep1({
   schoolDisplayName,
+  schoolNif,
+  schoolPlan,
   setSchoolDisplayName,
   anoLetivo,
   setAnoLetivo,
@@ -39,19 +41,26 @@ export default function AcademicStep1({
   const labelClass = "mb-2 block text-[10px] font-bold uppercase tracking-wider text-slate-500";
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 font-sans">
       
       {/* 1. STATUS DA ENTIDADE */}
       <div className="flex items-start gap-4 rounded-xl border border-[#1F6B3B]/20 bg-[#1F6B3B]/5 p-5">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1F6B3B]/10 text-[#1F6B3B]">
           <ShieldCheck className="h-5 w-5" />
         </div>
-        <div>
-          <h3 className="text-sm font-bold text-[#1F6B3B]">
-            Entidade Verificada
-          </h3>
+        <div className="flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-sm font-bold text-[#1F6B3B]">
+              Entidade Verificada
+            </h3>
+            {schoolPlan && (
+              <span className="inline-flex items-center rounded-full bg-klasse-green px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-white">
+                Plano {schoolPlan}
+              </span>
+            )}
+          </div>
           <p className="mt-1 text-xs leading-relaxed text-slate-600">
-            A entidade <strong className="text-slate-900">{schoolDisplayName || "Escola"}</strong> está validada no sistema. <br />
+            A entidade <strong className="text-slate-900">{schoolDisplayName || "Escola"}</strong> {schoolNif && <span>(NIF: <code className="font-mono text-[10px] bg-white px-1 rounded border border-slate-100">{schoolNif}</code>)</span>} está validada no sistema. <br />
             Esta configuração definirá a base do calendário acadêmico e financeiro.
           </p>
         </div>

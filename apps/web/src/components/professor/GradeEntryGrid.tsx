@@ -19,6 +19,7 @@ export type StudentGradeRow = {
   npp1: number | null
   npt1: number | null
   mt1: number | null
+  is_isento?: boolean
   _status: "synced" | "pending" | "error"
 }
 
@@ -32,6 +33,7 @@ type GradeEntryGridProps = {
   onDataChange?: (rows: StudentGradeRow[]) => void
   pesoPorTipo?: Record<string, number>
   componentesAtivos?: string[]
+  showIsento?: boolean
 }
 
 const INPUT_COLUMNS = ["mac1", "npp1", "npt1"] as const
@@ -91,6 +93,7 @@ export function GradeEntryGrid({
   onDataChange,
   pesoPorTipo,
   componentesAtivos,
+  showIsento = false,
 }: GradeEntryGridProps) {
   const [data, setData] = useState<StudentGradeRow[]>(initialData)
   const [isSaving, setIsSaving] = useState(false)
@@ -185,6 +188,29 @@ export function GradeEntryGrid({
     [data, scheduleSave]
   )
 
+  const updateIsento = useCallback(
+    (rowIndex: number, checked: boolean) => {
+      setData((old) =>
+        old.map((row, index) => {
+          if (index !== rowIndex) return row
+          return {
+            ...row,
+            is_isento: checked,
+            mac1: checked ? null : row.mac1,
+            npp1: checked ? null : row.npp1,
+            npt1: checked ? null : row.npt1,
+            mt1: checked ? null : row.mt1,
+            _status: "pending" as const,
+          }
+        })
+      )
+      const target = data[rowIndex]
+      if (target) pendingIdsRef.current.add(target.id)
+      scheduleSave()
+    },
+    [data, scheduleSave]
+  )
+
   const columnHelper = createColumnHelper<StudentGradeRow>()
 
   const columns = useMemo(
@@ -206,6 +232,23 @@ export function GradeEntryGrid({
           </div>
         ),
       }),
+      ...(showIsento ? [
+        columnHelper.accessor("is_isento", {
+          header: "Isento?",
+          size: 60,
+          cell: (info: any) => (
+            <div className="flex justify-center">
+              <input
+                type="checkbox"
+                checked={!!info.getValue()}
+                onChange={(e) => updateIsento(info.row.index, e.target.checked)}
+                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                title="Marcar como isento neste trimestre (ex: transferência)"
+              />
+            </div>
+          ),
+        })
+      ] : []),
       columnHelper.accessor("_status", {
         header: "Status",
         size: 80,
@@ -226,6 +269,7 @@ export function GradeEntryGrid({
                 inputRef={(el) => {
                   inputRefs.current[`${row.index}-0`] = el
                 }}
+                disabled={!!row.original.is_isento}
                 value={getValue()}
                 onChange={(val) => updateGrade(row.index, "mac1", val)}
                 onNavigate={(deltaRow, deltaCol) => {
@@ -246,6 +290,7 @@ export function GradeEntryGrid({
                 inputRef={(el) => {
                   inputRefs.current[`${row.index}-1`] = el
                 }}
+                disabled={!!row.original.is_isento}
                 value={getValue()}
                 onChange={(val) => updateGrade(row.index, "npp1", val)}
                 onNavigate={(deltaRow, deltaCol) => {
@@ -266,6 +311,7 @@ export function GradeEntryGrid({
                 inputRef={(el) => {
                   inputRefs.current[`${row.index}-2`] = el
                 }}
+                disabled={!!row.original.is_isento}
                 value={getValue()}
                 onChange={(val) => updateGrade(row.index, "npt1", val)}
                 onNavigate={(deltaRow, deltaCol) => {
@@ -365,11 +411,13 @@ const GradeInput = ({
   onChange,
   inputRef,
   onNavigate,
+  disabled = false,
 }: {
   value: number | null
   onChange: (v: string) => void
   inputRef: (el: HTMLInputElement | null) => void
   onNavigate: (deltaRow: number, deltaCol: number) => void
+  disabled?: boolean
 }) => {
   const [draft, setDraft] = useState(value === null ? "" : String(value))
   const isFocusedRef = useRef(false)
@@ -389,42 +437,48 @@ const GradeInput = ({
       ref={inputRef}
       type="text"
       inputMode="decimal"
-      value={draft}
+      value={disabled ? "ISENTO" : draft}
+      disabled={disabled}
       onFocus={() => {
         isFocusedRef.current = true
       }}
       onBlur={(e) => {
         isFocusedRef.current = false
+        if (disabled) return
         const raw = e.currentTarget.value
         setDraft(raw)
         commitValue(raw)
       }}
-      onChange={(e) => setDraft(e.target.value)}
+      onChange={(e) => {
+        if (disabled) return
+        setDraft(e.target.value)
+      }}
       onKeyDown={(e) => {
         if (["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Enter"].includes(e.key)) {
           e.preventDefault()
         }
         if (e.key === "ArrowDown" || e.key === "Enter") {
-          commitValue((e.currentTarget as HTMLInputElement).value)
+          if (!disabled) commitValue((e.currentTarget as HTMLInputElement).value)
           onNavigate(1, 0)
         }
         if (e.key === "ArrowUp") {
-          commitValue((e.currentTarget as HTMLInputElement).value)
+          if (!disabled) commitValue((e.currentTarget as HTMLInputElement).value)
           onNavigate(-1, 0)
         }
         if (e.key === "ArrowLeft") {
-          commitValue((e.currentTarget as HTMLInputElement).value)
+          if (!disabled) commitValue((e.currentTarget as HTMLInputElement).value)
           onNavigate(0, -1)
         }
         if (e.key === "ArrowRight") {
-          commitValue((e.currentTarget as HTMLInputElement).value)
+          if (!disabled) commitValue((e.currentTarget as HTMLInputElement).value)
           onNavigate(0, 1)
         }
       }}
       className={`w-full h-8 text-center rounded border border-slate-200 font-bold outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all ${
+        disabled ? "bg-slate-100 text-slate-400 border-dashed text-[10px]" :
         value !== null && value < 10 ? "text-rose-600 bg-rose-50" : "text-slate-900"
-      } ${value === null ? "bg-slate-50" : "bg-white"}`}
-      placeholder="-"
+      } ${value === null && !disabled ? "bg-slate-50" : "bg-white"}`}
+      placeholder={disabled ? "" : "-"}
     />
   )
 }

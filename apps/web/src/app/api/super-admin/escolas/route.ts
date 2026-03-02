@@ -23,7 +23,9 @@ export async function GET() {
     const { data: escolas, error } = await s
       .from('escolas' as any)
       .select('id, nome')
-      .order('nome')
+      .order('nome', { ascending: true })
+      .order('id', { ascending: true })
+      .limit(50)
 
     if (error) throw error
 

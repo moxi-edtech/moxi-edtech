@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import { applyKf2ListInvariants } from '@/lib/kf2'
 import type { Database } from '~types/supabase'
 
 type QuadroRow = { slot_id: string | null; turma_id: string | null; disciplina_id: string | null; sala_id: string | null }
@@ -19,64 +20,76 @@ export async function GET() {
     const escolaId = await resolveEscolaIdForUser(supabase, user.id)
     if (!escolaId) return NextResponse.json({ ok: true, items: [] })
 
-    const { data: prof } = await supabase
-      .from('professores')
-      .select('id')
-      .eq('profile_id', user.id)
-      .eq('escola_id', escolaId)
-      .maybeSingle()
+    const { data: prof } = await applyKf2ListInvariants(
+      supabase
+        .from('professores')
+        .select('id')
+        .eq('profile_id', user.id)
+        .eq('escola_id', escolaId),
+      { defaultLimit: 1 }
+    ).maybeSingle()
 
     if (!prof?.id) return NextResponse.json({ ok: true, items: [] })
 
-    const { data: quadroRows, error: quadroErr } = await supabase
-      .from('quadro_horarios')
-      .select('slot_id, turma_id, disciplina_id, sala_id')
-      .eq('escola_id', escolaId)
-      .eq('professor_id', prof.id)
+    const { data: quadroRows, error: quadroErr } = await applyKf2ListInvariants(
+      supabase
+        .from('quadro_horarios')
+        .select('slot_id, turma_id, disciplina_id, sala_id')
+        .eq('escola_id', escolaId)
+        .eq('professor_id', prof.id)
+    )
 
     if (quadroErr) return NextResponse.json({ ok: false, error: quadroErr.message }, { status: 400 })
 
-    const slotIds = Array.from(
+    const slotIds: string[] = Array.from(
       new Set((quadroRows || []).map((r: QuadroRow) => r.slot_id).filter((id): id is string => Boolean(id)))
     )
-    const turmaIds = Array.from(
+    const turmaIds: string[] = Array.from(
       new Set((quadroRows || []).map((r: QuadroRow) => r.turma_id).filter((id): id is string => Boolean(id)))
     )
-    const disciplinaIds = Array.from(
+    const disciplinaIds: string[] = Array.from(
       new Set((quadroRows || []).map((r: QuadroRow) => r.disciplina_id).filter((id): id is string => Boolean(id)))
     )
-    const salaIds = Array.from(
+    const salaIds: string[] = Array.from(
       new Set((quadroRows || []).map((r: QuadroRow) => r.sala_id).filter((id): id is string => Boolean(id)))
     )
 
     const [slotsRes, turmasRes, discRes, salasRes] = await Promise.all([
       slotIds.length
-        ? supabase
-            .from('horario_slots')
-            .select('id, turno_id, ordem, inicio, fim, dia_semana, is_intervalo')
-            .eq('escola_id', escolaId)
-            .in('id', slotIds)
+        ? applyKf2ListInvariants(
+            supabase
+              .from('horario_slots')
+              .select('id, turno_id, ordem, inicio, fim, dia_semana, is_intervalo')
+              .eq('escola_id', escolaId)
+              .in('id', slotIds)
+          )
         : Promise.resolve({ data: [] as SlotRow[] }),
       turmaIds.length
-        ? supabase
-            .from('turmas')
-            .select('id, nome, sala')
-            .eq('escola_id', escolaId)
-            .in('id', turmaIds)
+        ? applyKf2ListInvariants(
+            supabase
+              .from('turmas')
+              .select('id, nome, sala')
+              .eq('escola_id', escolaId)
+              .in('id', turmaIds)
+          )
         : Promise.resolve({ data: [] as TurmaRow[] }),
       disciplinaIds.length
-        ? supabase
-            .from('disciplinas_catalogo')
-            .select('id, nome')
-            .eq('escola_id', escolaId)
-            .in('id', disciplinaIds)
+        ? applyKf2ListInvariants(
+            supabase
+              .from('disciplinas_catalogo')
+              .select('id, nome')
+              .eq('escola_id', escolaId)
+              .in('id', disciplinaIds)
+          )
         : Promise.resolve({ data: [] as DisciplinaRow[] }),
       salaIds.length
-        ? supabase
-            .from('salas')
-            .select('id, nome')
-            .eq('escola_id', escolaId)
-            .in('id', salaIds)
+        ? applyKf2ListInvariants(
+            supabase
+              .from('salas')
+              .select('id, nome')
+              .eq('escola_id', escolaId)
+              .in('id', salaIds)
+          )
         : Promise.resolve({ data: [] as SalaRow[] }),
     ])
 

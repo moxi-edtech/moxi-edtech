@@ -1,31 +1,59 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import RequireSuperAdmin from "@/app/(guards)/RequireSuperAdmin";
 import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import AuditPageView from "@/components/audit/AuditPageView";
+import { createClient } from "@/lib/supabase/client";
 import {
-  BuildingLibraryIcon,
-  UserPlusIcon,
-  ExclamationTriangleIcon,
-  CheckCircleIcon,
-  ArrowLeftIcon,
-  SparklesIcon,
-  InformationCircleIcon,
-} from "@heroicons/react/24/outline";
+  Building2,
+  UserPlus,
+  AlertTriangle,
+  CheckCircle2,
+  ArrowLeft,
+  ArrowRight,
+  Sparkles,
+  Info,
+  ChevronRight,
+  Database,
+  Mail,
+  Phone,
+  Layout,
+  RefreshCw,
+  Loader2
+} from "lucide-react";
+import { toast } from "sonner";
+
+// ─── Tipos ────────────────────────────────────────────────────────────────────
+interface OnboardingRequest {
+  id: string;
+  escola_nome: string;
+  escola_nif: string | null;
+  escola_morada: string | null;
+  escola_email: string | null;
+  escola_tel: string | null;
+  director_nome: string | null;
+  status: string;
+}
 
 export default function NovaEscolaPage() {
   return (
     <RequireSuperAdmin>
       <AuditPageView portal="super_admin" acao="PAGE_VIEW" entity="escola_create" />
-      <CriarEscolaForm />
+      <div className="min-h-screen bg-slate-50 p-6">
+        <CriarEscolaForm />
+      </div>
     </RequireSuperAdmin>
   );
 }
 
 function CriarEscolaForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const supabase = createClient();
 
   const [formData, setFormData] = useState({
     nome: "",
@@ -39,19 +67,47 @@ function CriarEscolaForm() {
   });
 
   const [loading, setLoading] = useState(false);
+  const [loadingOnboarding, setLoadingOnboarding] = useState(false);
+  const [onboardingRequests, setOnboardingRequests] = useState<OnboardingRequest[]>([]);
+  const [selectedOnboardingId, setSelectedOnboardingId] = useState("");
+  
   const [msg, setMsg] = useState<null | { type: "ok" | "err"; text: string }>(null);
-  const [creationResult, setCreationResult] = useState<
-    | {
-        escolaId: string | null;
-        adminEmail?: string | null;
-        adminPassword?: string | null;
-        adminUserCreated?: boolean | null;
-        adminNumero?: number | null;
-        mensagemAdmin?: string | null;
-      }
-    | null
-  >(null);
+  const [creationResult, setCreationResult] = useState<any>(null);
   const [currentStep, setCurrentStep] = useState(1);
+
+  // Carregar pedidos de onboarding pendentes para o Pre-fill
+  useEffect(() => {
+    const fetchRequests = async () => {
+      setLoadingOnboarding(true);
+      const { data } = await supabase
+        .from('onboarding_requests')
+        .select('id, escola_nome, escola_nif, escola_morada, escola_email, escola_tel, director_nome, status')
+        .in('status', ['pendente', 'em_configuracao'])
+        .order('created_at', { ascending: false });
+      
+      if (data) setOnboardingRequests(data);
+      setLoadingOnboarding(false);
+    };
+    fetchRequests();
+  }, [supabase]);
+
+  // Aplicar Pre-fill se selecionado
+  const handlePreFill = (id: string) => {
+    const req = onboardingRequests.find(r => r.id === id);
+    if (!req) return;
+
+    setFormData({
+      nome: req.escola_nome,
+      nif: req.escola_nif || "",
+      endereco: req.escola_morada || "",
+      plano: "essencial",
+      adminEmail: req.escola_email || "",
+      adminTelefone: req.escola_tel || "",
+      adminNome: req.director_nome || "",
+    });
+    setSelectedOnboardingId(id);
+    toast.success("Dados preenchidos a partir do pedido de onboarding!");
+  };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -73,6 +129,7 @@ function CriarEscolaForm() {
           nif: formData.nif || null,
           endereco: formData.endereco || null,
           plano: formData.plano,
+          onboarding_id: selectedOnboardingId || null,
           admin: {
             email: formData.adminEmail.trim(),
             telefone: formData.adminTelefone || null,
@@ -88,228 +145,185 @@ function CriarEscolaForm() {
         throw new Error(data.error || "Erro desconhecido ao criar escola.");
       }
 
-      const escolaId = data.escolaId || data.escola_id || null;
-      const adminEmail = data.adminEmail || formData.adminEmail.trim();
-
-      setCreationResult({
-        escolaId,
-        adminEmail,
-        adminPassword: data.adminPassword ?? null,
-        adminUserCreated: data.adminUserCreated ?? null,
-        adminNumero: data.adminNumero ?? null,
-        mensagemAdmin: data.mensagemAdmin ?? null,
-      });
-
-      const adminNumero = data.adminNumero ? ` Admin nº ${data.adminNumero}.` : "";
-      const extra = data.mensagemAdmin ? ` ${data.mensagemAdmin}` : "";
-      const senhaInfo = data.adminPassword ? " Anote as credenciais abaixo." : "";
+      setCreationResult(data);
       setMsg({
         type: "ok",
-        text: `Escola "${formData.nome}" criada com sucesso!${adminNumero}${extra}${senhaInfo}`,
+        text: `Escola "${formData.nome}" criada com sucesso!`,
       });
+      setCurrentStep(3);
     } catch (err: any) {
       setMsg({ type: "err", text: err.message || String(err) });
+      toast.error(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const nextStep = () => {
-    if (currentStep === 1 && formData.nome && formData.nif) {
-      setCurrentStep(2);
-    } else if (currentStep === 2 && formData.adminNome && formData.adminEmail) {
-      setCurrentStep(3);
-    }
-  };
-
-  const prevStep = () => {
-    setCurrentStep(prev => Math.max(1, prev - 1));
-  };
-
-  const canProceedToNextStep = () => {
-    if (currentStep === 1) return formData.nome.trim() && formData.nif.trim();
-    if (currentStep === 2) return formData.adminNome.trim() && formData.adminEmail.trim();
-    return true;
-  };
-
   const isNifValid = formData.nif.length === 0 || formData.nif.length === 9;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-moxinexa-light to-blue-50 py-8">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-moxinexa-teal rounded-full mb-4">
-            <BuildingLibraryIcon className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-bold text-moxinexa-dark mb-2">
-            Criar Nova Escola
-          </h1>
-          <p className="text-moxinexa-gray text-lg">
-            Adicione uma nova escola ao sistema e configure o administrador
-          </p>
+    <div className="max-w-3xl mx-auto space-y-8 animate-klasse-fade-up">
+      
+      {/* Header */}
+      <div className="text-center space-y-3">
+        <div className="inline-flex items-center justify-center w-16 h-16 bg-klasse-green rounded-3xl shadow-xl shadow-klasse-green/20 mb-2">
+          <Building2 className="w-8 h-8 text-white" />
         </div>
+        <h1 className="text-3xl font-black text-slate-900 tracking-tight font-sora">
+          Criar Nova Escola
+        </h1>
+        <p className="text-slate-500 font-medium max-w-md mx-auto">
+          Configure uma nova instância dedicada para a instituição e seu administrador principal.
+        </p>
+      </div>
 
-        {/* Progress Steps */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between max-w-md mx-auto">
-            {[1, 2, 3].map((step) => (
-              <div key={step} className="flex flex-col items-center">
-                <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center border-2 font-semibold ${
-                    step === currentStep
-                      ? "bg-moxinexa-teal text-white border-moxinexa-teal"
-                      : step < currentStep
-                      ? "bg-green-500 text-white border-green-500"
-                      : "bg-white text-gray-400 border-gray-300"
-                  }`}
-                >
-                  {step < currentStep ? <CheckCircleIcon className="w-5 h-5" /> : step}
-                </div>
-                <span
-                  className={`text-xs mt-2 font-medium ${
-                    step === currentStep ? "text-moxinexa-teal" : "text-gray-500"
-                  }`}
-                >
-                  {step === 1 && "Escola"}
-                  {step === 2 && "Administrador"}
-                  {step === 3 && "Confirmação"}
-                </span>
-              </div>
-            ))}
-          </div>
-          <div className="relative max-w-md mx-auto -mt-5">
-            <div className="absolute top-1/2 left-0 right-0 h-0.5 bg-gray-200 -z-10">
-              <div
-                className="h-full bg-moxinexa-teal transition-all duration-300"
-                style={{ width: `${((currentStep - 1) / 2) * 100}%` }}
-              />
+      {/* Progress Steps */}
+      <div className="relative flex items-center justify-between max-w-md mx-auto mb-12">
+        {[1, 2, 3].map((step) => (
+          <div key={step} className="flex flex-col items-center z-10">
+            <div
+              className={`w-10 h-10 rounded-2xl flex items-center justify-center border-2 font-bold transition-all ${
+                step === currentStep
+                  ? "bg-klasse-green text-white border-klasse-green shadow-lg shadow-klasse-green/20"
+                  : step < currentStep
+                  ? "bg-emerald-500 text-white border-emerald-500"
+                  : "bg-white text-slate-300 border-slate-100"
+              }`}
+            >
+              {step < currentStep ? <CheckCircle2 size={20} /> : step}
             </div>
+            <span className={`text-[10px] mt-2 font-black uppercase tracking-widest ${step === currentStep ? "text-klasse-green" : "text-slate-400"}`}>
+              {step === 1 && "Instituição"}
+              {step === 2 && "Administrador"}
+              {step === 3 && "Sucesso"}
+            </span>
           </div>
-        </div>
+        ))}
+        <div className="absolute top-5 left-0 right-0 h-0.5 bg-slate-100 -z-0" />
+      </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white rounded-2xl shadow-xl p-8 space-y-6 border border-gray-100"
-        >
-          {/* Step 1: School Information */}
-          {currentStep === 1 && (
-            <div className="space-y-6 animate-fadeIn">
-              <div>
-                <h2 className="text-xl font-semibold text-moxinexa-dark mb-2">
-                  Informações da Escola
-                </h2>
-                <p className="text-moxinexa-gray text-sm">
-                  Insira os dados básicos da nova escola
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-moxinexa-dark">
-                    Nome da Escola *
-                  </label>
-                  <input
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
-                    placeholder="Ex: Colégio Horizonte"
-                    value={formData.nome}
-                    onChange={(e) => handleInputChange('nome', e.target.value)}
-                    required
-                    disabled={loading}
-                  />
+      <form onSubmit={handleSubmit} className="space-y-6">
+        
+        {/* Step 1: School Information */}
+        {currentStep === 1 && (
+          <div className="space-y-6 animate-klasse-fade-up">
+            
+            {/* Pre-fill Selector */}
+            <div className="bg-amber-50 border border-amber-100 rounded-3xl p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-100 rounded-xl text-amber-700">
+                  <Sparkles size={18} />
                 </div>
+                <div>
+                  <h3 className="text-sm font-bold text-amber-900">Preencher via Onboarding</h3>
+                  <p className="text-xs text-amber-700/70 font-medium">Use dados já submetidos por uma escola.</p>
+                </div>
+              </div>
+              <select 
+                value={selectedOnboardingId}
+                onChange={(e) => handlePreFill(e.target.value)}
+                disabled={loadingOnboarding}
+                className="w-full bg-white border-amber-200 rounded-xl text-sm font-bold text-slate-700 focus:ring-amber-500 focus:border-amber-500"
+              >
+                <option value="">Seleccionar pedido pendente...</option>
+                {onboardingRequests.map(r => (
+                  <option key={r.id} value={r.id}>{r.escola_nome} ({r.escola_nif || 'Sem NIF'})</option>
+                ))}
+              </select>
+            </div>
 
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-moxinexa-dark">
-                    NIF *
-                  </label>
-                  <input
-                    className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all ${
-                      !isNifValid ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                    placeholder="9 dígitos (apenas números)"
-                    value={formData.nif}
-                    onChange={(e) => handleInputChange('nif', e.target.value.replace(/\D/g, ''))}
-                    maxLength={9}
-                    disabled={loading}
-                  />
-                  <div className="flex items-center gap-2">
-                    {formData.nif && (
-                      <div className={`text-xs ${isNifValid ? 'text-green-600' : 'text-red-600'}`}>
-                        {isNifValid ? '✓ Formato válido' : '⚠️ Deve ter 9 dígitos'}
-                      </div>
-                    )}
-                    <div className="text-xs text-gray-500">
-                      {formData.nif.length}/9 caracteres
-                    </div>
+            <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden">
+              <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <Layout size={18} className="text-klasse-green" /> Informações da Escola
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Nome da Escola *</label>
+                    <input
+                      className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-klasse-green/5 focus:border-klasse-green outline-none transition-all"
+                      placeholder="Ex: Colégio Horizonte"
+                      value={formData.nome}
+                      onChange={(e) => handleInputChange('nome', e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">NIF *</label>
+                    <input
+                      className={`w-full border rounded-xl p-3 text-sm focus:ring-4 focus:ring-klasse-green/5 outline-none transition-all ${!isNifValid ? 'border-rose-300' : 'border-slate-200 focus:border-klasse-green'}`}
+                      placeholder="9 dígitos"
+                      value={formData.nif}
+                      onChange={(e) => handleInputChange('nif', e.target.value.replace(/\D/g, '').slice(0, 9))}
+                      maxLength={9}
+                      required
+                    />
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-moxinexa-dark">
-                    Endereço Completo
-                  </label>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Endereço</label>
                   <input
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
-                    placeholder="Rua, número, bairro, cidade"
+                    className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-klasse-green/5 focus:border-klasse-green outline-none transition-all"
+                    placeholder="Ex: Luanda, Viana..."
                     value={formData.endereco}
                     onChange={(e) => handleInputChange('endereco', e.target.value)}
-                    disabled={loading}
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-moxinexa-dark">
-                    Plano
-                  </label>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Plano Base</label>
                   <select
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
+                    className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-klasse-green/5 focus:border-klasse-green outline-none transition-all appearance-none bg-white"
                     value={formData.plano}
                     onChange={(e) => handleInputChange("plano", e.target.value)}
-                    disabled={loading}
                   >
                     <option value="essencial">Essencial</option>
                     <option value="profissional">Profissional</option>
                     <option value="premium">Premium</option>
                   </select>
                 </div>
-              </div>
+              </CardContent>
+            </Card>
+
+            <div className="flex justify-end">
+              <Button 
+                type="button" 
+                onClick={() => setCurrentStep(2)}
+                disabled={!formData.nome || !isNifValid || formData.nif.length < 9}
+                className="bg-klasse-green text-white px-8 rounded-xl font-bold gap-2"
+              >
+                Próximo Passo <ChevronRight size={16} />
+              </Button>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Step 2: Administrator Information */}
-          {currentStep === 2 && (
-            <div className="space-y-6 animate-fadeIn">
-              <div>
-                <h2 className="text-xl font-semibold text-moxinexa-dark mb-2">
-                  Administrador da Escola
-                </h2>
-                <p className="text-moxinexa-gray text-sm">
-                  Configure o usuário administrador responsável pela escola
-                </p>
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                <div className="flex items-center gap-2">
-                  <InformationCircleIcon className="w-5 h-5 text-blue-600" />
-                  <span className="text-blue-800 text-sm font-medium">
-                    O administrador terá acesso total à escola e receberá credenciais de acesso
-                  </span>
+        {/* Step 2: Administrator Information */}
+        {currentStep === 2 && (
+          <div className="space-y-6 animate-klasse-fade-up">
+            <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden">
+              <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <UserPlus size={18} className="text-klasse-gold" /> Administrador Principal
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex gap-3 text-blue-800 text-xs font-medium leading-relaxed">
+                  <Info size={16} className="shrink-0" />
+                  Este utilizador terá acesso total e será responsável por configurar a escola.
                 </div>
-              </div>
 
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-moxinexa-dark">
-                    Nome do Administrador *
-                  </label>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Nome Completo *</label>
                   <input
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
-                    placeholder="Nome completo do administrador"
+                    className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-klasse-green/5 focus:border-klasse-green outline-none transition-all"
+                    placeholder="Nome do gestor principal"
                     value={formData.adminNome}
                     onChange={(e) => handleInputChange('adminNome', e.target.value)}
                     required
-                    disabled={loading}
                   />
                 </div>
 
@@ -387,181 +401,86 @@ function CriarEscolaForm() {
                     <span className="text-gray-600">Nome:</span>
                     <p className="font-medium">{formData.nome}</p>
                   </div>
-                  <div>
-                    <span className="text-gray-600">NIF:</span>
-                    <p className="font-medium font-mono">{formData.nif || "Não informado"}</p>
-                  </div>
-                  <div className="md:col-span-2">
-                    <span className="text-gray-600">Endereço:</span>
-                    <p className="font-medium">{formData.endereco || "Não informado"}</p>
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Telefone</label>
+                    <input
+                      className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-klasse-green/5 focus:border-klasse-green outline-none transition-all"
+                      placeholder="9XXXXXXXX"
+                      value={formData.adminTelefone}
+                      onChange={(e) => handleInputChange('adminTelefone', e.target.value.replace(/\D/g, ''))}
+                      maxLength={9}
+                    />
                   </div>
                 </div>
-              </div>
+              </CardContent>
+            </Card>
 
-              {/* Admin Summary */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                <h3 className="font-semibold text-blue-900 mb-4 flex items-center gap-2">
-                  <UserPlusIcon className="w-5 h-5" />
-                  Administrador
-                </h3>
-                <div className="grid md:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-blue-700">Nome:</span>
-                    <p className="font-medium text-blue-900">{formData.adminNome}</p>
-                  </div>
-                  <div>
-                    <span className="text-blue-700">Email:</span>
-                    <p className="font-medium text-blue-900">{formData.adminEmail}</p>
-                  </div>
-                  <div>
-                    <span className="text-blue-700">Telefone:</span>
-                    <p className="font-medium text-blue-900">{formData.adminTelefone || "Não informado"}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Auto-generation Info */}
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="flex items-center gap-2">
-                  <SparklesIcon className="w-5 h-5 text-green-600" />
-                  <span className="font-medium text-green-900">Será gerado automaticamente:</span>
-                </div>
-                <ul className="text-green-800 text-sm mt-2 space-y-1">
-                  <li>• Número de login único para o administrador</li>
-                  <li>• Senha temporária de acesso</li>
-                  <li>• Ambiente dedicado para a escola</li>
-                  <li>• Processo de onboarding personalizado</li>
-                </ul>
-              </div>
+            <div className="flex items-center justify-between">
+              <Button variant="outline" onClick={() => setCurrentStep(1)} className="rounded-xl font-bold border-slate-200">
+                <ArrowLeft size={16} className="mr-2" /> Voltar
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={loading || !formData.adminNome || !formData.adminEmail}
+                className="bg-klasse-green text-white px-10 rounded-xl font-bold gap-2 shadow-lg shadow-klasse-green/10"
+              >
+                {loading ? <RefreshCw size={16} className="animate-spin" /> : <Database size={16} />}
+                Criar Instância
+              </Button>
             </div>
-          )}
-
-          {/* Navigation Buttons */}
-          <div className="flex justify-between pt-6 border-t border-gray-200">
-            <Button
-              type="button"
-              onClick={prevStep}
-              disabled={currentStep === 1 || loading}
-              variant="outline"
-              tone="gray"
-              className="flex items-center gap-2"
-            >
-              <ArrowLeftIcon className="w-4 h-4" />
-              Voltar
-            </Button>
-
-            {currentStep < 3 ? (
-              <Button
-                type="button"
-                onClick={nextStep}
-                disabled={!canProceedToNextStep() || loading}
-                tone="teal"
-              >
-                Continuar
-              </Button>
-            ) : (
-              <Button
-                type="submit"
-                disabled={loading}
-                tone="green"
-                size="lg"
-                className="px-8 flex items-center gap-2"
-              >
-                {loading ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Criando Escola...
-                  </>
-                ) : (
-                  <>
-                    <BuildingLibraryIcon className="w-5 h-5" />
-                    Criar Escola
-                  </>
-                )}
-              </Button>
-            )}
           </div>
+        )}
 
-          {/* Status Message */}
-          {msg && (
-            <div
-              className={`p-4 rounded-lg border ${
-                msg.type === "ok"
-                  ? "bg-green-50 text-green-800 border-green-200"
-                  : "bg-red-50 text-red-800 border-red-200"
-              }`}
-              >
-                <div className="flex items-center gap-2">
-                  {msg.type === "ok" ? (
-                    <CheckCircleIcon className="w-5 h-5" />
-                  ) : (
-                    <ExclamationTriangleIcon className="w-5 h-5" />
-                  )}
-                  <span>{msg.text}</span>
-                </div>
+        {/* Step 3: Confirmation */}
+        {currentStep === 3 && creationResult && (
+          <div className="space-y-6 animate-klasse-fade-up">
+            <div className="bg-emerald-50 border-2 border-emerald-100 rounded-[2rem] p-8 text-center space-y-4">
+              <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center mx-auto shadow-xl shadow-emerald-200">
+                <CheckCircle2 size={40} className="text-white" />
               </div>
-          )}
-
-          {creationResult && (
-            <div className="mt-4 space-y-3">
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <h4 className="font-semibold text-moxinexa-dark mb-3">Credenciais do administrador</h4>
-                <div className="grid md:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <p className="text-gray-600">Email de login</p>
-                    <p className="font-semibold text-moxinexa-dark break-all">{creationResult.adminEmail || "Não informado"}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600">Senha temporária</p>
-                    <p className="font-semibold text-moxinexa-dark break-all">
-                      {creationResult.adminPassword || "Usuário já existia; nenhuma senha nova foi gerada."}
-                    </p>
-                    {creationResult.adminUserCreated === false && (
-                      <p className="text-xs text-gray-600 mt-1">
-                        Solicite redefinição de senha caso o administrador não lembre a atual.
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {creationResult.escolaId && (
-                  <div className="flex flex-wrap gap-3 mt-4">
-                    <Button
-                      type="button"
-                      tone="teal"
-                      onClick={() => router.push(`/escola/${creationResult.escolaId}/admin`)}
-                    >
-                      Ir para painel da escola
-                    </Button>
-                    <Button
-                      type="button"
-                      tone="blue"
-                      variant="outline"
-                      onClick={() => router.push(`/escola/${creationResult.escolaId}/onboarding`)}
-                    >
-                      Abrir onboarding
-                    </Button>
-                  </div>
-                )}
-              </div>
+              <h2 className="text-2xl font-black text-emerald-900 font-sora">Escola Criada!</h2>
+              <p className="text-emerald-700 font-medium">O ambiente para <strong className="text-emerald-900">{formData.nome}</strong> está pronto.</p>
             </div>
-          )}
-        </form>
 
-        {/* Quick Tips */}
-        <div className="mt-8 bg-amber-50 border border-amber-200 rounded-2xl p-6">
-          <h3 className="font-semibold text-amber-900 mb-3 flex items-center gap-2">
-            <InformationCircleIcon className="w-5 h-5" />
-            Informações Importantes
-          </h3>
-          <ul className="text-amber-800 text-sm space-y-2">
-            <li>• O NIF é obrigatório e deve ser único no sistema</li>
-            <li>• O administrador receberá credenciais de acesso por email e nesta tela</li>
-            <li>• Após a criação, copie as credenciais e acesse o onboarding quando preferir</li>
-            <li>• Você pode configurar planos e recursos adicionais posteriormente</li>
-          </ul>
-        </div>
-      </div>
+            <Card className="rounded-3xl border-slate-200 shadow-xl overflow-hidden bg-white">
+              <CardContent className="p-8 space-y-6">
+                <div>
+                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Credenciais do Administrador</h4>
+                  <div className="grid md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">Utilizador / Email</p>
+                      <p className="font-bold text-slate-900 break-all">{creationResult.adminEmail}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">Senha Temporária</p>
+                      <p className="font-mono font-black text-klasse-green text-lg tracking-wider">
+                        {creationResult.adminPassword || "Já existente"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col md:flex-row gap-3">
+                  <Button
+                    className="flex-1 bg-klasse-green text-white rounded-xl font-bold py-6 shadow-lg shadow-klasse-green/10"
+                    onClick={() => router.push(`/escola/${creationResult.escolaId}/admin`)}
+                  >
+                    Abrir Painel da Escola <ArrowRight size={18} className="ml-2" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1 border-slate-200 rounded-xl font-bold text-slate-600 py-6"
+                    onClick={() => router.push('/super-admin/escolas')}
+                  >
+                    Voltar p/ Lista
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+      </form>
     </div>
   );
 }

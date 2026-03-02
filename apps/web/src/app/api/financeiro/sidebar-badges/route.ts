@@ -17,6 +17,8 @@ export async function GET() {
       .from("vw_financeiro_sidebar_badges")
       .select("candidaturas_pendentes, cobrancas_pendentes")
       .eq("escola_id", escolaId)
+      .order("escola_id")
+      .limit(1)
       .maybeSingle();
 
     const { data: badges, error: badgesError } = await badgesQuery;

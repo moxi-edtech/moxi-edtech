@@ -5,7 +5,7 @@
 | :--- | :--- |
 | **Modelo** | Misto |
 | **Ciclo** | Mensal ou Anual |
-| **Planos** | 3 (Basic · Pro · Enterprise) |
+| **Planos** | 3 (Essencial · Profissional · Premium) |
 | **Métodos** | 4 (Transferência, Multicaixa, Cartão, Stripe) |
 | **Meta Year 1** | 100 Escolas |
 | **Data** | Fevereiro 2026 · Uso interno |
@@ -17,10 +17,10 @@ Três planos calibrados para a realidade do mercado angolano — do colégio pri
 
 ### 1.1 Tabela de Planos
 
-| Benefício | BASIC | PRO | ENTERPRISE |
+| Benefício | ESSENCIAL | PROFISSIONAL | PREMIUM |
 | :--- | :--- | :--- | :--- |
-| **Preço mensal** | Kz 80.000/mês | Kz 140.000/mês | Negociado |
-| **Preço anual** | Kz 800.000/ano (2 meses grátis) | Kz 1.400.000/ano (2 meses grátis) | Negociado |
+| **Preço mensal** | Kz 60.000/mês | Kz 120.000/mês | Negociado |
+| **Preço anual** | Kz 600.000/ano (2 meses grátis) | Kz 1.200.000/ano (2 meses grátis) | Negociado |
 | **Alunos** | até 300 | até 800 | Ilimitado |
 | **Utilizadores** | até 10 | até 30 | Ilimitado |
 | **Turmas** | até 20 | até 60 | Ilimitado |
@@ -31,7 +31,7 @@ Três planos calibrados para a realidade do mercado angolano — do colégio pri
 | **Suporte** | Email 48h | Email 24h + chat | Dedicado |
 | **SLA uptime** | 99% | 99.5% | 99.9% |
 
-> **→ Princípio de pricing:** Nenhuma funcionalidade core é bloqueada por plano. Os limites são de capacidade (alunos, storage, utilizadores), não de features. Uma escola Basic tem acesso completo ao Balcão Inteligente, ao portal do director, e aos documentos MED — só não consegue registar 500 alunos.
+> **→ Princípio de pricing:** Nenhuma funcionalidade core é bloqueada por plano. Os limites são de capacidade (alunos, storage, utilizadores), não de features. Uma escola Essencial tem acesso completo ao Balcão Inteligente, ao portal do director, e aos documentos MED — só não consegue registar 500 alunos.
 
 ### 1.2 Limites e Enforcement
 Quando uma escola atinge o limite do plano, o sistema não bloqueia abruptamente. Avisa com antecedência e oferece upgrade.
@@ -127,7 +127,7 @@ Quatro métodos com graus de automação completamente diferentes. A arquitectur
 CREATE TABLE assinaturas (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   escola_id       UUID NOT NULL REFERENCES escolas(id),
-  plano           TEXT NOT NULL CHECK (plano IN ('basic','pro','enterprise')),
+  plano           app_plan_tier NOT NULL DEFAULT 'essencial',
   ciclo           TEXT NOT NULL CHECK (ciclo IN ('mensal','anual')),
   status          TEXT NOT NULL DEFAULT 'pendente'
                   CHECK (status IN ('pendente','activa','suspensa','cancelada')),
@@ -201,9 +201,9 @@ A superfície mais importante para o controlo financeiro do negócio.
 
 | ESCOLA | PLANO | VALOR | AGUARDA | ACÇÃO |
 | :--- | :--- | :--- | :--- | :--- |
-| Colégio Horizonte | Pro · Mensal | Kz 140.000 | 2 dias | [Ver] [Confirmar] [Rejeitar] |
-| Escola Nova Vida | Basic · Mensal | Kz 80.000 | 5 dias | [Ver] [Confirmar] [Rejeitar] |
-| Instituto São Paulo | Pro · Anual | Kz 1.400.000 | 1 dia | [Ver] [Confirmar] [Rejeitar] |
+| Colégio Horizonte | Profissional · Mensal | Kz 120.000 | 2 dias | [Ver] [Confirmar] [Rejeitar] |
+| Escola Nova Vida | Essencial · Mensal | Kz 60.000 | 5 dias | [Ver] [Confirmar] [Rejeitar] |
+| Instituto São Paulo | Profissional · Anual | Kz 1.200.000 | 1 dia | [Ver] [Confirmar] [Rejeitar] |
 
 ---
 
@@ -211,8 +211,8 @@ A superfície mais importante para o controlo financeiro do negócio.
 O director vê o estado da sua assinatura, o histórico de pagamentos, e submete comprovativos sem fricção.
 
 ### Vista do Director
-- **Estado da Assinatura:** PRO · Mensal · ● Activa
-- **Próxima Renovação:** 15 de Abril (Kz 140.000)
+- **Estado da Assinatura:** PROFISSIONAL · Mensal · ● Activa
+- **Próxima Renovação:** 15 de Abril (Kz 120.000)
 - **Método:** Transferência Bancária (NIB: 0040.0000.1234567.89 | Ref: KLASSE-2026-0042)
 
 **Acções Disponíveis:**

@@ -17,6 +17,7 @@ import {
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { PautaRapidaModal } from "@/components/secretaria/PautaRapidaModal";
+import { useOfficialDocs } from "@/hooks/useOfficialDocs";
 
 type TurmaItem = {
   id: string;
@@ -80,7 +81,7 @@ export default function DocumentosOficiaisBatchClient() {
   const [turmas, setTurmas] = useState<TurmaItem[]>([]);
   const [periodos, setPeriodos] = useState<PeriodoItem[]>([]);
   const [periodoId, setPeriodoId] = useState<string>("");
-  const [tipo, setTipo] = useState<"trimestral" | "anual">("trimestral");
+  const [tipo, setTipo] = useState<"trimestral" | "anual" | "boletim" | "certificado">("trimestral");
   const [hidePendencias, setHidePendencias] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -103,6 +104,8 @@ export default function DocumentosOficiaisBatchClient() {
   const [pendenciasLoading, setPendenciasLoading] = useState(false);
   const [pendencias, setPendencias] = useState<PendenciaItem[]>([]);
   const [selectedPendencia, setSelectedPendencia] = useState<PendenciaItem | null>(null);
+
+  const { gerarBoletimBatch, gerarCertificadoBatch } = useOfficialDocs();
 
   const pendingPeriodoNumeros = useMemo(() => {
     const numeros = new Set<number>();
@@ -247,19 +250,67 @@ export default function DocumentosOficiaisBatchClient() {
     }
   }, [latestJob?.status]);
 
+  const getLabels = useCallback(() => {
+    switch (tipo) {
+      case "boletim":
+        return {
+          title: "Emissão de Boletins",
+          subtitle: "Gere os boletins de notas para entrega aos encarregados.",
+          action: "Gerar Boletins",
+          processing: "A gerar boletins...",
+          success: "Boletins gerados com sucesso!",
+          zipName: "Boletins.zip",
+          history: "Histórico de Boletins",
+        };
+      case "certificado":
+        return {
+          title: "Emissão de Certificados",
+          subtitle: "Gere os certificados de conclusão para os alunos aprovados.",
+          action: "Gerar Certificados",
+          processing: "A gerar certificados...",
+          success: "Certificados gerados com sucesso!",
+          zipName: "Certificados.zip",
+          history: "Histórico de Certificados",
+        };
+      default:
+        return {
+          title: "Emissão em Lote (Oficial)",
+          subtitle: "Gere as pautas de classificação em massa para arquivo físico e envio ao MED.",
+          action: "Gerar Lote Oficial (ZIP)",
+          processing: "A processar lote de pautas...",
+          success: "Lote processado com sucesso!",
+          zipName: "Pautas.zip",
+          history: "Histórico de Lotes",
+        };
+    }
+  }, [tipo]);
+
+  const labels = getLabels();
+
   const handleGenerate = async () => {
     if (selected.size === 0) return;
     if (tipo === "trimestral" && !periodoId) {
       setToast({ message: "Selecione o trimestre.", type: "error" });
       return;
     }
-    if (tipo !== "trimestral" && tipo !== "anual") {
-      setToast({ message: "Tipo ainda não disponível.", type: "error" });
-      return;
-    }
+
     setSubmitting(true);
     setOptimisticJob("RUNNING");
     try {
+      if (tipo === "certificado" || tipo === "boletim") {
+        for (const turmaId of Array.from(selected)) {
+          if (tipo === "certificado") {
+            await gerarCertificadoBatch(turmaId, []);
+          } else {
+            await gerarBoletimBatch(turmaId, []);
+          }
+        }
+        setToast({ message: `${labels.success}`, type: "success" });
+        setSelected(new Set());
+        setOptimisticJob(null);
+        return;
+      }
+
       const res = await fetch("/api/secretaria/documentos-oficiais/lote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -271,13 +322,13 @@ export default function DocumentosOficiaisBatchClient() {
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) {
-        throw new Error(json?.error || "Falha ao gerar lote");
+        throw new Error(json?.error || `Falha ao gerar ${tipo}`);
       }
       setToast({ message: "Lote iniciado. Acompanhe o progresso abaixo.", type: "success" });
       setSelected(new Set());
       loadJobs();
     } catch (e: any) {
-      setToast({ message: e?.message || "Falha ao gerar lote", type: "error" });
+      setToast({ message: e?.message || `Falha ao gerar ${tipo}`, type: "error" });
       setOptimisticJob(null);
     } finally {
       setSubmitting(false);
@@ -397,23 +448,23 @@ export default function DocumentosOficiaisBatchClient() {
         <div>
           <h1 className="text-2xl font-bold text-slate-950 flex items-center gap-2">
             <Archive className="text-[#1F6B3B] w-6 h-6" />
-            Emissão em Lote (Oficial)
+            {labels.title}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Gere as pautas de classificação em massa para arquivo físico e envio ao MED.
+            {labels.subtitle}
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           <select
             value={tipo}
-            onChange={(e) => setTipo(e.target.value as "trimestral" | "anual")}
+            onChange={(e) => setTipo(e.target.value as "trimestral" | "anual" | "boletim" | "certificado")}
             className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-[#1F6B3B]/20"
           >
             <option value="trimestral">Pauta Trimestral</option>
             <option value="anual">Pauta Anual</option>
-            <option value="boletim" disabled>Boletins (em breve)</option>
-            <option value="certificado" disabled>Certificados (em breve)</option>
+            <option value="boletim">Boletim</option>
+            <option value="certificado">Certificado</option>
           </select>
           <button
             className="flex items-center gap-2 bg-white border border-slate-200 px-4 py-2 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
@@ -455,16 +506,16 @@ export default function DocumentosOficiaisBatchClient() {
                 }`}
               >
                 {effectiveStatus === "RUNNING"
-                  ? "A processar lote de pautas..."
+                  ? labels.processing
                   : effectiveStatus === "DONE"
-                  ? "Lote processado com sucesso!"
-                  : "Falha ao processar lote."}
+                  ? labels.success
+                  : `Falha ao gerar ${tipo}.`}
               </h3>
               <p className="text-xs mt-0.5 opacity-80">
                 {effectiveStatus === "RUNNING"
-                  ? "Pode navegar noutras abas. O sistema avisará quando o ZIP estiver pronto."
+                  ? "Pode navegar noutras abas. O sistema avisará quando o ficheiro estiver pronto."
                   : effectiveStatus === "DONE"
-                  ? "O ficheiro ZIP com todos os PDFs está pronto para download."
+                  ? "O ficheiro com todos os PDFs está pronto para download."
                   : latestJob?.error_message ?? "Reprocesse o lote para tentar novamente."}
               </p>
             </div>
@@ -474,7 +525,7 @@ export default function DocumentosOficiaisBatchClient() {
               href={latestJob.download_url}
               className="flex items-center gap-2 bg-[#1F6B3B] text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-[#1F6B3B]/90"
             >
-              <Download className="w-4 h-4" /> Baixar Pautas.zip
+              <Download className="w-4 h-4" /> Baixar {labels.zipName}
             </a>
           )}
           {effectiveStatus === "RUNNING" && latestJob?.id && (
@@ -509,7 +560,7 @@ export default function DocumentosOficiaisBatchClient() {
             <option key={p.id} value={p.id}>{`Trimestre ${p.numero}`}</option>
           ))}
         </select>
-        <span className="text-[11px] text-slate-400">Boletins e certificados: em breve.</span>
+        <span className="text-[11px] text-slate-400">Boletins e certificados disponíveis em lote.</span>
         <button
           type="button"
           onClick={() => setManualRefresh(true)}
@@ -633,7 +684,7 @@ export default function DocumentosOficiaisBatchClient() {
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-sm font-bold text-slate-900 mb-3">Histórico de Lotes</h2>
+        <h2 className="text-sm font-bold text-slate-900 mb-3">{labels.history}</h2>
         <div className="space-y-2">
           {jobs.map((job) => (
             <div key={job.id} className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 text-xs">
@@ -835,7 +886,7 @@ export default function DocumentosOficiaisBatchClient() {
             {submitting ? (
               <><RefreshCw className="w-4 h-4 animate-spin" /> A iniciar...</>
             ) : (
-              <><FileText className="w-4 h-4" /> Gerar Lote Oficial (ZIP)</>
+              <><FileText className="w-4 h-4" /> {labels.action}</>
             )}
           </button>
         </div>

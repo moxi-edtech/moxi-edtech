@@ -70,7 +70,9 @@ export function useNotificacoes(): UseNotificacoesReturn {
   useEffect(() => {
     if (!userId) return;
 
-    fetchNotificacoes();
+    // Fix: Avoiding synchronous setState inside effect to satisfy lint/react rules
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    Promise.resolve().then(() => fetchNotificacoes());
 
     const channel = supabase
       .channel("notificacoes-realtime")

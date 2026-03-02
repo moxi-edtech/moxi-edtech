@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { findClassesSemPreco } from "@/lib/financeiro/missing-pricing";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export async function GET(req: NextRequest) {
   const s = await supabaseServer();
@@ -11,11 +12,13 @@ export async function GET(req: NextRequest) {
   let kpiQuery = s
     .from("vw_financeiro_kpis_geral")
     .select(
-      "matriculados_total, inadimplentes_total, risco_total, pagos_total, pagos_valor, pendentes_total, pendentes_valor"
+      "matriculados_total, inadimplentes_total, risco_total, pagos_total, pagos_valor, pendentes_total, pendentes_valor, receita_mes_total, receita_mes_paga"
     );
   if (escolaId) {
     kpiQuery = kpiQuery.eq("escola_id", escolaId);
   }
+
+  kpiQuery = applyKf2ListInvariants(kpiQuery, { defaultLimit: 1 });
 
   const { data: kpiData, error: kpiError } = await kpiQuery.maybeSingle();
   if (kpiError) {
@@ -33,6 +36,8 @@ export async function GET(req: NextRequest) {
   const valorPendente = Number(kpiData?.pendentes_valor ?? 0);
   const confirmadosTotal = Number(kpiData?.pagos_total ?? 0);
   const pendentesTotal = Number(kpiData?.pendentes_total ?? 0);
+  const receitaMesTotal = Number(kpiData?.receita_mes_total ?? 0);
+  const receitaMesPaga = Number(kpiData?.receita_mes_paga ?? 0);
 
   const percentualInadimplencia =
     totalMatriculados > 0 ? (totalInadimplentes / totalMatriculados) * 100 : 0;
@@ -66,6 +71,7 @@ export async function GET(req: NextRequest) {
     risco: { total: totalEmRisco },
     confirmados: { total: confirmadosTotal, valor: valorConfirmado },
     pendentes: { total: pendentesTotal, valor: valorPendente },
+    mensal: { previsto: receitaMesTotal, pago: receitaMesPaga },
     cursosPendentes,
   });
 }

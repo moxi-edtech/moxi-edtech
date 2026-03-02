@@ -10,8 +10,12 @@ const Body = z.object({
   disciplina_id: z.string().uuid().optional(),
   turma_disciplina_id: z.string().uuid().optional(),
   trimestre: z.number().int().min(1).max(3),
-  tipo_avaliacao: z.string().trim().min(2).max(40),
-  notas: z.array(z.object({ aluno_id: z.string().uuid(), valor: z.number().min(0).max(100) })),
+  tipo_avaliacao: z.string().trim().min(2).max(40).optional(),
+  is_isento: z.boolean().optional().default(false),
+  notas: z.array(z.object({ 
+    aluno_id: z.string().uuid(), 
+    valor: z.number().min(0).max(100).nullable() 
+  })),
 })
 
 export async function POST(req: Request) {
@@ -47,8 +51,9 @@ export async function POST(req: Request) {
       p_disciplina_id: body.disciplina_id,
       p_turma_disciplina_id: body.turma_disciplina_id,
       p_trimestre: body.trimestre,
-      p_tipo_avaliacao: body.tipo_avaliacao,
+      p_tipo_avaliacao: body.tipo_avaliacao || 'MAC',
       p_notas: body.notas,
+      p_is_isento: body.is_isento,
     })
 
     if (error) {

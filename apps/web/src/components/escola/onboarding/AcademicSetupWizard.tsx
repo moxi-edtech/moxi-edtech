@@ -134,6 +134,8 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
 
   // --- STATES (STEP 1) ---
   const [schoolDisplayName, setSchoolDisplayName] = useState<string>(initialSchoolName || "");
+  const [schoolNif, setSchoolNif] = useState<string | null>(null);
+  const [schoolPlan, setSchoolPlan] = useState<string | null>(null);
   const [anoLetivo, setAnoLetivo] = useState<number>(new Date().getFullYear());
   const [anoLetivoId, setAnoLetivoId] = useState<string | null>(null);
   const [dataInicio, setDataInicio] = useState<string>(`${new Date().getFullYear()}-01-01`);
@@ -221,7 +223,12 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
         const res = await fetch(`/api/escolas/${escolaId}/nome`, { cache: "no-store" });
         const j = await res.json();
         const n = j?.nome ?? j?.data?.nome;
+        const nif = j?.nif ?? j?.data?.nif;
+        const plano = j?.plano ?? j?.data?.plano;
+        
         if (n) setSchoolDisplayName(prev => prev === n ? prev : n);
+        if (nif) setSchoolNif(nif);
+        if (plano) setSchoolPlan(plano);
       } catch (e) { console.error(e); }
     }
     if (escolaId) fn();
@@ -306,7 +313,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
 
   const handleCreateSession = async () => {
     setCreatingSession(true);
-    let tid = toast({ variant: "syncing", title: "Salvando sessão...", duration: 0 });
+    const tid = toast({ variant: "syncing", title: "Salvando sessão...", duration: 0 });
     try {
       const r1 = await fetch(`/api/escola/${escolaId}/admin/ano-letivo/upsert`, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -342,7 +349,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   };
 
   const handleSavePreferences = async () => {
-    let tid = toast({ variant: "syncing", title: "Salvando regras...", duration: 0 });
+    const tid = toast({ variant: "syncing", title: "Salvando regras...", duration: 0 });
     try {
       const r = await fetch(`/api/escola/${escolaId}/admin/configuracoes/avaliacao-frequencia`, {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -498,7 +505,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
 
   const handleGenerateTurmas = async () => {
     if (!anoLetivoId) return error("Sem ano letivo.");
-    let tid = toast({ variant: "syncing", title: "Gerando turmas...", duration: 0 });
+    const tid = toast({ variant: "syncing", title: "Gerando turmas...", duration: 0 });
     try {
       const slotsRes = await fetch(`/api/escolas/${escolaId}/horarios/slots`, { cache: "no-store" });
       const slotsJson = await slotsRes.json().catch(() => null);
@@ -662,6 +669,8 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
           {step === 1 && (
             <AcademicStep1
               schoolDisplayName={schoolDisplayName}
+              schoolNif={schoolNif}
+              schoolPlan={schoolPlan}
               setSchoolDisplayName={setSchoolDisplayName}
               anoLetivo={anoLetivo} setAnoLetivo={setAnoLetivo}
               dataInicio={dataInicio} setDataInicio={setDataInicio}
