@@ -23,6 +23,19 @@ export async function POST(req: Request) {
     const escolaId = await resolveEscolaIdForUser(s as any, user.id, escolaIdRequest);
     if (!escolaId) return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 400 });
 
+    const { data: escolaCfg, error: escolaCfgErr } = await s
+      .from("escolas")
+      .select("aluno_portal_enabled")
+      .eq("id", escolaId)
+      .maybeSingle();
+    if (escolaCfgErr) return NextResponse.json({ ok: false, error: escolaCfgErr.message }, { status: 400 });
+    if (!escolaCfg?.aluno_portal_enabled) {
+      return NextResponse.json(
+        { ok: false, error: "Portal do aluno não concedido para esta escola" },
+        { status: 409 }
+      );
+    }
+
     const authz = await authorizeEscolaAction(s as any, escolaId, user.id, []);
     if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 });
 
