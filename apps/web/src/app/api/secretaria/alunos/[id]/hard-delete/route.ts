@@ -32,7 +32,7 @@ export async function POST(
     const escolaFromProfile = (prof as any)?.current_escola_id || (prof as any)?.escola_id || null;
 
     // Permissões: Admin da escola e superiores
-    const allowedRoles = ["super_admin", "global_admin", "admin", "staff_admin"];
+    const allowedRoles = ["super_admin", "global_admin", "admin", "staff_admin", "admin_financeiro"];
     if (!role || !allowedRoles.includes(role)) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }

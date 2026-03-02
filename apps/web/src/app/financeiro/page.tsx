@@ -197,7 +197,7 @@ export default async function FinanceiroDashboardPage({
         .from("notifications")
         .select("id, titulo, mensagem, link_acao, lida, created_at, tipo, target_role")
         .eq("escola_id", escolaId)
-        .eq("target_role", "financeiro")
+        .in("target_role", ["financeiro", "secretaria_financeiro", "admin_financeiro"])
         .eq("lida", false)
         .order("created_at", { ascending: false })
         .limit(5),

@@ -27,7 +27,7 @@ export async function canManageEscolaResources(
 
     // Perfis vinculados à escola com funções operacionais
     if (
-      (role === "admin" || role === "financeiro" || role === "secretaria" || role === "gestor") &&
+      (role === "admin" || role === "financeiro" || role === "secretaria" || role === "secretaria_financeiro" || role === "admin_financeiro" || role === "gestor") &&
       escolaFromProfile === escolaId
     )
       return true;

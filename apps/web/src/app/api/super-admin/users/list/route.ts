@@ -34,7 +34,7 @@ export async function GET() {
     }
 
     // Papéis globais que podem aparecer na lista (sem alunos/professores)
-    const allowedRoles = new Set(['super_admin', 'global_admin', 'admin', 'financeiro', 'secretaria'])
+    const allowedRoles = new Set(['super_admin', 'global_admin', 'admin', 'financeiro', 'secretaria', 'secretaria_financeiro', 'admin_financeiro'])
 
     const isMissingColumn = (err: any) => {
       const msg = err?.message as string | undefined

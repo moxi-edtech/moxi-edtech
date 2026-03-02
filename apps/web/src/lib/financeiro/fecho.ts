@@ -83,7 +83,7 @@ export async function getFechoCaixaData({
     .maybeSingle();
 
   const papel = String((vinc as any)?.papel ?? "").toLowerCase();
-  const allowedRoles = ["secretaria", "financeiro", "admin", "admin_escola", "staff_admin"];
+  const allowedRoles = ["secretaria", "financeiro", "secretaria_financeiro", "admin_financeiro", "admin", "admin_escola", "staff_admin"];
   if (!allowedRoles.includes(papel)) {
     return { ok: false, error: "Sem permissão" };
   }
