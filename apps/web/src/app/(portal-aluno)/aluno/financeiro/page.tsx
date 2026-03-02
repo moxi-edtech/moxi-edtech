@@ -1,14 +1,11 @@
 import AuditPageView from "@/components/audit/AuditPageView";
-import { FinanceiroResumo } from "@/components/aluno/financeiro/FinanceiroResumo";
-import { MensalidadesTable } from "@/components/aluno/financeiro/MensalidadesTable";
+import { FinanceiroPortalPage } from "@/components/aluno/financeiro-portal/FinanceiroPortalPage";
 
 export default function Page() {
   return (
-    <div className="space-y-6">
-      <AuditPageView portal="aluno" acao="PAGE_VIEW" entity="financeiro" />
-      <FinanceiroResumo />
-      <MensalidadesTable />
+    <div className="space-y-4 bg-slate-50">
+      <AuditPageView portal="aluno" acao="PAGE_VIEW" entity="financeiro_portal" />
+      <FinanceiroPortalPage />
     </div>
   );
 }
-
