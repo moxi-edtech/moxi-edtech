@@ -63,6 +63,7 @@ function CriarEscolaForm() {
     adminEmail: "",
     adminTelefone: "",
     adminNome: "",
+    adminPapel: "admin",
   });
 
   const [loading, setLoading] = useState(false);
@@ -133,6 +134,7 @@ function CriarEscolaForm() {
             email: formData.adminEmail.trim(),
             telefone: formData.adminTelefone || null,
             nome: formData.adminNome.trim(),
+            papel: formData.adminPapel,
           },
         }),
       });
@@ -279,7 +281,7 @@ function CriarEscolaForm() {
                     onChange={(e) => handleInputChange("plano", e.target.value)}
                   >
                     <option value="essencial">Essencial</option>
-                    <option value="standard">Standard</option>
+                    <option value="profissional">Profissional</option>
                     <option value="premium">Premium</option>
                   </select>
                 </div>
@@ -325,17 +327,79 @@ function CriarEscolaForm() {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Email *</label>
-                    <input
-                      type="email"
-                      className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-klasse-green/5 focus:border-klasse-green outline-none transition-all"
-                      placeholder="admin@escola.com"
-                      value={formData.adminEmail}
-                      onChange={(e) => handleInputChange('adminEmail', e.target.value)}
-                      required
-                    />
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-moxinexa-dark">
+                    Papel Inicial
+                  </label>
+                  <select
+                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
+                    value={formData.adminPapel}
+                    onChange={(e) => handleInputChange('adminPapel', e.target.value)}
+                    disabled={loading}
+                  >
+                    <option value="admin">Administrador</option>
+                    <option value="admin_financeiro">Administrador + Financeiro</option>
+                    <option value="secretaria_financeiro">Secretaria + Financeiro</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-moxinexa-dark">
+                    Email do Administrador *
+                  </label>
+                  <input
+                    type="email"
+                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
+                    placeholder="email@escola.com"
+                    value={formData.adminEmail}
+                    onChange={(e) => handleInputChange('adminEmail', e.target.value)}
+                    required
+                    disabled={loading}
+                  />
+                  <p className="text-xs text-gray-500">
+                    Será usado para login e recuperação de senha
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-moxinexa-dark">
+                    Telefone do Administrador
+                  </label>
+                  <input
+                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
+                    placeholder="9XXXXXXXX (ex: 923456789)"
+                    value={formData.adminTelefone}
+                    onChange={(e) => handleInputChange('adminTelefone', e.target.value.replace(/\D/g, ''))}
+                    maxLength={9}
+                    disabled={loading}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Review and Confirm */}
+          {currentStep === 3 && (
+            <div className="space-y-6 animate-fadeIn">
+              <div>
+                <h2 className="text-xl font-semibold text-moxinexa-dark mb-2">
+                  Confirmação
+                </h2>
+                <p className="text-moxinexa-gray text-sm">
+                  Revise os dados antes de criar a escola
+                </p>
+              </div>
+
+              {/* School Summary */}
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+                <h3 className="font-semibold text-moxinexa-dark mb-4 flex items-center gap-2">
+                  <BuildingLibraryIcon className="w-5 h-5" />
+                  Resumo da Escola
+                </h3>
+                <div className="grid md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-600">Nome:</span>
+                    <p className="font-medium">{formData.nome}</p>
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Telefone</label>

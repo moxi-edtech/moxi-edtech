@@ -5,6 +5,8 @@ import type { DBWithRPC } from '@/types/supabase-augment'
 import { buildOnboardingEmail, sendMail } from '@/lib/mailer'
 import { parsePlanTier } from '@/config/plans'
 import { callAuthAdminJob } from '@/lib/auth-admin-job'
+import { mapPapelToGlobalRole } from '@/lib/permissions'
+import { papelEscolaSchema, type PapelEscola } from '@/lib/roles'
 
 type CreateEscolaPayload = {
   ok?: boolean
@@ -33,6 +35,7 @@ const BodySchema = z.object({
       email: z.string().email('Email do administrador inválido').optional().nullable(),
       telefone: z.string().trim().optional().nullable(),
       nome: z.string().trim().optional().nullable(),
+      papel: papelEscolaSchema.optional().nullable(),
     })
     .optional()
     .nullable(),
@@ -67,6 +70,7 @@ export async function POST(request: Request) {
     const adminEmail = body.admin?.email ? body.admin.email.trim().toLowerCase() : null
     const adminTelefone = body.admin?.telefone ? body.admin.telefone.replace(/\D/g, '') : null
     const adminNome = body.admin?.nome ? body.admin.nome.trim() : null
+    const adminPapel = (body.admin?.papel ?? 'admin') as PapelEscola
 
     const { data, error } = await supabase.rpc('create_escola_with_admin', {
       p_nome: body.nome,
@@ -116,6 +120,7 @@ export async function POST(request: Request) {
           nome: adminNome,
           telefone: adminTelefone,
           escolaId,
+          papel: adminPapel,
         })
         adminPassword = provision.password
         adminUserCreated = provision.createdNew
@@ -164,10 +169,11 @@ function generateStrongPassword(len = 12) {
 async function ensureAdminUser(
   req: Request,
   supabase: Awaited<ReturnType<typeof supabaseServerTyped<DBWithRPC>>>,
-  params: { email: string; nome?: string | null; telefone?: string | null; escolaId: string }
+  params: { email: string; nome?: string | null; telefone?: string | null; escolaId: string; papel: PapelEscola }
 ) {
   const email = params.email.toLowerCase()
   const telefone = params.telefone ? params.telefone.replace(/\D/g, '') : null
+  const role = mapPapelToGlobalRole(params.papel)
 
   const existing = await callAuthAdminJob(req, 'findUserByEmail', { email })
   const existingUser = existing as { user?: { id?: string } } | null
@@ -181,8 +187,8 @@ async function ensureAdminUser(
       email,
       password,
       email_confirm: true,
-      user_metadata: { role: 'admin', must_change_password: true, nome: params.nome ?? undefined },
-      app_metadata: { role: 'admin' },
+      user_metadata: { role, must_change_password: true, nome: params.nome ?? undefined },
+      app_metadata: { role, escola_id: params.escolaId },
     })
     const createdUser = created as { user?: { id?: string } } | null
     userId = createdUser?.user?.id ?? null
@@ -192,27 +198,43 @@ async function ensureAdminUser(
   if (!userId) throw new Error('Não foi possível obter user_id para o admin')
   const ensuredUserId: string = userId
 
+  await callAuthAdminJob(req, 'updateUserById', {
+    userId: ensuredUserId,
+    attributes: { app_metadata: { role, escola_id: params.escolaId } },
+  }).catch(() => null)
+
   await supabase.from('profiles').upsert(
     {
       user_id: ensuredUserId,
       email,
       nome: params.nome ?? email,
       telefone,
-      role: 'admin',
+      role,
       escola_id: params.escolaId,
       current_escola_id: params.escolaId,
     },
     { onConflict: 'user_id' }
   )
 
-  await supabase.from('escola_administradores').upsert(
+  await supabase.from('escola_users').upsert(
     {
       escola_id: params.escolaId,
       user_id: ensuredUserId,
-      cargo: 'administrador_principal',
+      papel: params.papel,
     },
     { onConflict: 'escola_id,user_id' }
   )
+
+  if (params.papel === 'admin' || params.papel === 'admin_escola' || params.papel === 'staff_admin' || params.papel === 'admin_financeiro') {
+    await supabase.from('escola_administradores').upsert(
+      {
+        escola_id: params.escolaId,
+        user_id: ensuredUserId,
+        cargo: 'administrador_principal',
+      },
+      { onConflict: 'escola_id,user_id' }
+    )
+  }
 
   return { userId: ensuredUserId, createdNew, password }
 }
