@@ -1,7 +1,9 @@
+import { createHash, randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { recordAuditServer } from "@/lib/audit";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import type { Database } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -10,11 +12,11 @@ const SUNSET_DATE = "2027-03-31";
 const REPLACEMENT_ENDPOINT = "/api/secretaria/documentos/emitir";
 
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ matriculaId: string }> }
 ) {
   const { matriculaId } = await params;
-  const supabase = await supabaseServerTyped<any>();
+  const supabase = await supabaseServerTyped<Database>();
 
   const {
     data: { user },
@@ -31,7 +33,11 @@ export async function GET(
 
   const { data: matricula, error: matriculaError } = await supabase
     .from("matriculas")
-    .select("id, escola_id, aluno_id")
+    .select(
+      `id, aluno_id, turma_id, ano_letivo, status,
+       alunos ( id, nome, nome_completo, bi_numero ),
+       turmas ( id, nome, turno, classes ( nome ), cursos ( nome ) )`
+    )
     .eq("escola_id", escolaId)
     .eq("id", matriculaId)
     .single();
@@ -46,25 +52,48 @@ export async function GET(
     replacement_endpoint: REPLACEMENT_ENDPOINT,
   } as const;
 
-  const proto = request.headers.get("x-forwarded-proto") ?? "http";
-  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
-  const baseUrl = host ? `${proto}://${host}` : process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const aluno = (matricula as any).alunos || {};
+  const turma = (matricula as any).turmas || {};
 
-  const canonicalRes = await fetch(`${baseUrl}${REPLACEMENT_ENDPOINT}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      cookie: request.headers.get("cookie") ?? "",
-    },
-    body: JSON.stringify({
-      alunoId: matricula.aluno_id,
-      escolaId,
-      tipoDocumento: "declaracao_frequencia",
-    }),
-    cache: "no-store",
-  });
+  const hashBase = `${randomUUID()}-${matricula.id}-${Date.now()}`;
+  const hashValidacao = createHash("sha256").update(hashBase).digest("hex");
 
-  const canonicalJson = await canonicalRes.json().catch(() => ({}));
+  const { data: numeroSequencial, error: numeroError } = await supabase
+    .rpc("next_documento_numero", { p_escola_id: escolaId });
+
+  if (numeroError) {
+    return NextResponse.json({ ok: false, error: numeroError.message, ...deprecationPayload }, { status: 400 });
+  }
+
+  const snapshot = {
+    aluno_id: matricula.aluno_id,
+    aluno_nome: aluno.nome_completo || aluno.nome || "",
+    aluno_bi: aluno.bi_numero || null,
+    matricula_id: matricula.id,
+    turma_id: turma.id || null,
+    turma_nome: turma.nome || null,
+    turma_turno: turma.turno || null,
+    classe_nome: turma.classes?.nome || null,
+    curso_nome: turma.cursos?.nome || null,
+    ano_letivo: matricula.ano_letivo || null,
+    tipo_documento: "declaracao_frequencia",
+    numero_sequencial: numeroSequencial ?? null,
+    hash_validacao: hashValidacao,
+  };
+
+  const { data: doc, error: docError } = await supabase
+    .from("documentos_emitidos")
+    .insert({
+      escola_id: escolaId,
+      aluno_id: matricula.aluno_id,
+      numero_sequencial: numeroSequencial ?? null,
+      tipo: "declaracao_frequencia",
+      dados_snapshot: snapshot,
+      created_by: user.id,
+      hash_validacao: hashValidacao,
+    })
+    .select("id, public_id")
+    .single();
 
   recordAuditServer({
     escolaId,
@@ -77,22 +106,25 @@ export async function GET(
       replacement_endpoint: REPLACEMENT_ENDPOINT,
       matricula_id: matriculaId,
       aluno_id: matricula.aluno_id,
-      canonical_status: canonicalRes.status,
+      canonical_status: docError ? 400 : 200,
       deprecated: true,
       sunset_date: SUNSET_DATE,
     },
   }).catch(() => null);
 
-  const responsePayload = {
-    ok: canonicalRes.ok && Boolean((canonicalJson as any)?.ok),
-    ...(canonicalJson as Record<string, unknown>),
-    ...(canonicalJson && (canonicalJson as any).docId
-      ? { print_url: `/secretaria/documentos/${(canonicalJson as any).docId}/frequencia/print` }
-      : {}),
-    ...deprecationPayload,
-  };
+  const responsePayload = docError || !doc
+    ? { ok: false, error: docError?.message || "Falha ao emitir", ...deprecationPayload }
+    : {
+        ok: true,
+        docId: doc.id,
+        publicId: doc.public_id,
+        hash: hashValidacao,
+        tipo: "declaracao_frequencia",
+        print_url: `/secretaria/documentos/${doc.id}/frequencia/print`,
+        ...deprecationPayload,
+      };
 
-  const response = NextResponse.json(responsePayload, { status: canonicalRes.ok ? 200 : canonicalRes.status || 502 });
+  const response = NextResponse.json(responsePayload, { status: docError || !doc ? 400 : 200 });
   response.headers.set("Deprecation", "true");
   response.headers.set("Sunset", `${SUNSET_DATE}T23:59:59Z`);
   response.headers.set("Link", `<${REPLACEMENT_ENDPOINT}>; rel=\"successor-version\"`);
