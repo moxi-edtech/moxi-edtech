@@ -2,6 +2,29 @@
 
 Todas as mudanças notáveis neste repositório serão documentadas aqui.
 
+## 2026-03-03
+
+- Secretaria / Compatibilidade de API:
+
+- Documentos oficiais (decisão de produto):
+  - **Substituição oficial**: `declaracao_notas` passa a ser `boletim_trimestral` no catálogo público (não coexistência como tipo ativo para novas emissões).
+  - Mapeamento revisado de rotas/templates:
+    - emissão central: `POST /api/secretaria/documentos/emitir` aceita `boletim_trimestral`
+    - impressão: `/secretaria/documentos/[docId]/boletim-trimestral/print` (rota `/notas/print` mantida apenas como compat proxy)
+    - batch: `tipo=boletim_trimestral` no ciclo de vida de lote oficial
+  - Padronização de labels/metadados: UI e payloads passam a usar “Boletim Trimestral” de forma explícita.
+  - Compatibilidade histórica: migration converte documentos antigos `declaracao_notas` para `boletim_trimestral` com marcação `legacy_tipo_documento`.
+  - `GET /api/secretaria/matriculas/[matriculaId]/declaracao` deixou de responder `501` e passou a operar em **compat layer temporária** com proxy interno para o endpoint canônico `POST /api/secretaria/documentos/emitir` (tipo `declaracao_frequencia`).
+  - O endpoint legado agora retorna payload e cabeçalhos de depreciação (`deprecated`, `sunset_date`, `replacement_endpoint`, `Deprecation`, `Sunset`, `Link`, `Warning`) para orientar a migração de clientes.
+  - Uso do endpoint legado passa a ser auditado por escola via `audit_logs` (ação `LEGACY_ENDPOINT_USED`) para apoiar o plano de desligamento.
+
+### Cronograma técnico de remoção (endpoint legado de declaração por matrícula)
+
+- **Fase 1 — Atual (iniciada em 2026-03-03):** endpoint legado ativo com compat layer e aviso de depreciação.
+- **Fase 2 — Comunicação e migração (até 2026-09-30):** todos os consumidores devem migrar para `POST /api/secretaria/documentos/emitir`.
+- **Fase 3 — Congelamento (2026-10-01 a 2027-03-30):** sem novas integrações no endpoint legado; monitoramento via auditoria.
+- **Fase 4 — Sunset/remoção (a partir de 2027-03-31):** endpoint legado elegível para remoção definitiva.
+
 ## 2025-11-23
 
 Principais alterações já mescladas no branch `main`:
