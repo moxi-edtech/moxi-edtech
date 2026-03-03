@@ -12,7 +12,7 @@ export const fetchCache = "force-no-store"
 
 const Body = z.object({
   turma_ids: z.array(z.string().uuid()).min(1),
-  tipo: z.enum(["trimestral", "anual"]),
+  tipo: z.enum(["trimestral", "anual", "boletim_trimestral", "certificado"]),
   periodo_letivo_id: z.string().uuid().optional(),
 })
 
@@ -33,7 +33,7 @@ export async function GET() {
 
     const { data: jobs, error } = await supabase
       .from("pautas_lote_jobs")
-      .select("id, tipo, periodo_letivo_id, status, total_turmas, processed, success_count, failed_count, zip_path, error_message, created_at")
+      .select("id, tipo, documento_tipo, periodo_letivo_id, status, total_turmas, processed, success_count, failed_count, zip_path, manifest_path, zip_checksum_sha256, signed_url_expires_at, error_message, created_at")
       .eq("escola_id", escolaId)
       .order("created_at", { ascending: false })
       .limit(20)
@@ -81,6 +81,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Período letivo obrigatório" }, { status: 400 })
     }
 
+
+    const sortedTurmas = [...parsed.data.turma_ids].sort()
+    const documentoTipo =
+      parsed.data.tipo === "trimestral"
+        ? "pauta_trimestral"
+        : parsed.data.tipo === "anual"
+          ? "pauta_anual"
+          : parsed.data.tipo
+    const idempotencyKey = `${documentoTipo}:${parsed.data.periodo_letivo_id ?? "none"}:${sortedTurmas.join(",")}`
+
+    const { data: existingByKey } = await supabase
+      .from("pautas_lote_jobs")
+      .select("id,status")
+      .eq("escola_id", escolaId)
+      .eq("documento_tipo", documentoTipo)
+      .eq("idempotency_key", idempotencyKey)
+      .maybeSingle()
+
+    if (existingByKey?.id) {
+      return NextResponse.json({ ok: true, job_id: existingByKey.id, reused: true }, { status: 202 })
+    }
     const { data: activeJob } = await supabase
       .from("pautas_lote_jobs")
       .select("id")
@@ -99,12 +120,14 @@ export async function POST(req: Request) {
         escola_id: escolaId,
         created_by: user.id,
         tipo: parsed.data.tipo,
+        documento_tipo: documentoTipo,
         periodo_letivo_id: parsed.data.periodo_letivo_id ?? null,
         status: "PROCESSING",
         total_turmas: parsed.data.turma_ids.length,
         processed: 0,
         success_count: 0,
         failed_count: 0,
+        idempotency_key: idempotencyKey,
       })
       .select("id")
       .maybeSingle()
@@ -134,6 +157,7 @@ export async function POST(req: Request) {
         escola_id: escolaId,
         turma_ids: parsed.data.turma_ids,
         tipo: parsed.data.tipo,
+        documento_tipo: documentoTipo,
         periodo_letivo_id: parsed.data.periodo_letivo_id ?? null,
       },
     })

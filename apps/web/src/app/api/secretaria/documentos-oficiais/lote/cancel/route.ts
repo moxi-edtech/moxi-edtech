@@ -49,15 +49,13 @@ export async function POST(req: Request) {
 
     await supabase
       .from("pautas_lote_jobs")
-      .update({ status: "FAILED", error_message: "Cancelado pelo usuário" })
+      .update({
+        cancel_requested_at: new Date().toISOString(),
+        error_message: "Cancelamento solicitado pelo usuário",
+      })
       .eq("id", job.id)
 
-    await supabase
-      .from("pautas_lote_itens")
-      .update({ status: "FAILED", error_message: "Cancelado pelo usuário" })
-      .eq("job_id", job.id)
-
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true, status: "CANCEL_REQUESTED" })
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
