@@ -1074,9 +1074,9 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   // -------- Default view (tabs) --------
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+      <div className="rounded-2xl border border-klasse-gold-200 bg-klasse-gold-50 p-4 text-sm text-klasse-gold-800">
         <p className="font-semibold">Dica Angola</p>
-        <p className="text-xs text-amber-700 mt-1">
+        <p className="text-xs text-klasse-gold-700 mt-1">
           No ensino médio, algumas disciplinas só existem em certas classes (ex.: Filosofia apenas na 12ª).
           Edite por classe e use trimestres para refletir a realidade.
         </p>

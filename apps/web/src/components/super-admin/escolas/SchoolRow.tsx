@@ -129,7 +129,7 @@ export function SchoolRow({
           <button 
             title={String(school.status).toLowerCase() === 'suspensa' ? 'Reactivar' : 'Suspender'} 
             onClick={() => onSuspend(school)} 
-            className="h-9 w-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-all"
+            className="h-9 w-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-klasse-gold-600 hover:bg-klasse-gold-50 transition-all"
           >
             <Power size={16} />
           </button>

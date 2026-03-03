@@ -130,9 +130,9 @@ export function CurriculumPresetSelector({
                     onClick={() => onChange(preset.key)}
                     className={[
                       "relative flex flex-col items-start text-left p-4 md:p-5 rounded-2xl border transition-all duration-200",
-                      "hover:shadow-md hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60",
+                      "hover:shadow-md hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500/60",
                       isSelected
-                        ? "border-blue-500 bg-blue-50/60 shadow-sm"
+                        ? "border-slate-500 bg-slate-50/60 shadow-sm"
                         : "border-slate-200 bg-white",
                     ].join(" ")}
                   >
@@ -141,7 +141,7 @@ export function CurriculumPresetSelector({
                       className={[
                         "absolute top-3 right-3 inline-flex items-center justify-center rounded-full border w-6 h-6 text-xs",
                         isSelected
-                          ? "bg-blue-500 border-blue-500 text-white"
+                          ? "bg-slate-500 border-slate-500 text-white"
                           : "bg-white border-slate-300 text-transparent",
                       ].join(" ")}
                     >

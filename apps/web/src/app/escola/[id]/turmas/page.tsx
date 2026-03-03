@@ -118,7 +118,7 @@ export default function TurmasPage() {
       </div>
 
       {/* ✅ Aviso atualizado */}
-      <div className="mb-6 rounded-md border border-blue-200 bg-blue-50 p-4 text-blue-800">
+      <div className="mb-6 rounded-md border border-slate-200 bg-slate-50 p-4 text-slate-800">
         <p className="text-sm">
           <strong>Turmas = Agrupamentos Físicos/Horários</strong><br/>
           Cada turma é um container onde alunos de diferentes classes e cursos podem compartilhar o mesmo espaço/tempo.
@@ -185,7 +185,7 @@ export default function TurmasPage() {
                         <p className="text-sm font-medium text-gray-900">
                           {turma.sala || 'Sem local'}
                         </p>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-800">
                           {getTurnoLabel(turma.turno)}
                         </span>
                       </div>

@@ -202,7 +202,7 @@ export default function DocumentosEmissaoHub({ escolaId }: { escolaId: string })
         )}
 
         {selectedAluno && (
-          <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-800">
+          <div className="mt-3 rounded-xl border border-klasse-green-200 bg-klasse-green-50 px-4 py-2 text-sm text-klasse-green-800">
             Selecionado: <span className="font-semibold">{selectedAluno.label}</span>
           </div>
         )}
@@ -219,7 +219,7 @@ export default function DocumentosEmissaoHub({ escolaId }: { escolaId: string })
               onClick={() => setTipo(doc.id)}
               className={`rounded-2xl border px-5 py-6 text-left transition-all ${
                 isActive
-                  ? "border-klasse-gold bg-amber-50 shadow-sm"
+                  ? "border-klasse-gold bg-klasse-gold-50 shadow-sm"
                   : "border-slate-200 bg-white hover:border-klasse-gold/60"
               }`}
             >

@@ -163,7 +163,7 @@ export default function CalendarioConfigPage({ params }: Props) {
               {anoLetivo ? (
                 <span className="font-semibold text-slate-900">{anoLetivo.ano}</span>
               ) : (
-                <span className="text-amber-600 font-mono text-xs">-- Carregando --</span>
+                <span className="text-klasse-gold-600 font-mono text-xs">-- Carregando --</span>
               )}
             </p>
           </div>
@@ -212,8 +212,8 @@ export default function CalendarioConfigPage({ params }: Props) {
                 {/* VALIDATOR BADGE */}
                 <div className={`flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium border ${
                   isPesoValido 
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-700" 
-                    : "border-amber-200 bg-amber-50 text-amber-700"
+                    ? "border-klasse-green-200 bg-klasse-green-50 text-klasse-green-700" 
+                    : "border-klasse-gold-200 bg-klasse-gold-50 text-klasse-gold-700"
                 }`}>
                   {isPesoValido ? <CheckCircle2 className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />}
                   <span>Total: {pesoTotal}%</span>

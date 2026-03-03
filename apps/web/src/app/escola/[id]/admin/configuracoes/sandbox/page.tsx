@@ -232,7 +232,7 @@ export default function SandboxConfiguracoesPage() {
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs">
               {canPublish ? (
-                <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 font-semibold text-emerald-700">
+                <span className="inline-flex items-center gap-2 rounded-full bg-klasse-green-50 px-3 py-1 font-semibold text-klasse-green-700">
                   <CheckCircle2 className="h-4 w-4" />
                   Configuração pronta para publicar.
                 </span>
@@ -294,7 +294,7 @@ export default function SandboxConfiguracoesPage() {
                 <div className="divide-y divide-slate-100">
                   {result.validations.length === 0 ? (
                     <div className="flex flex-col items-center justify-center p-8 text-center">
-                      <div className="rounded-full bg-emerald-100 p-3 text-emerald-600 mb-3">
+                      <div className="rounded-full bg-klasse-green-100 p-3 text-klasse-green-600 mb-3">
                         <CheckCircle2 className="h-6 w-6" />
                       </div>
                       <p className="font-semibold text-slate-900">Nenhuma validação encontrada.</p>
@@ -308,7 +308,7 @@ export default function SandboxConfiguracoesPage() {
                           {isBlocker ? (
                             <AlertOctagon className="h-5 w-5 shrink-0 text-red-500" />
                           ) : (
-                            <AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" />
+                            <AlertTriangle className="h-5 w-5 shrink-0 text-klasse-gold-500" />
                           )}
                           <div>
                             <p className={`text-sm font-medium ${isBlocker ? "text-red-700" : "text-slate-700"}`}>

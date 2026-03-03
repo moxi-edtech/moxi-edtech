@@ -22,10 +22,10 @@ export default async function Page() {
 
       <Tabs defaultValue="assinaturas" className="w-full">
         <TabsList className="bg-slate-100 border border-slate-200">
-          <TabsTrigger value="assinaturas" className="data-[state=active]:bg-white data-[state=active]:text-[#1F6B3B] font-bold">
+          <TabsTrigger value="assinaturas" className="data-[state=active]:bg-white data-[state=active]:text-klasse-green font-bold">
             Gestão de Subscrições
           </TabsTrigger>
-          <TabsTrigger value="historico" className="data-[state=active]:bg-white data-[state=active]:text-[#1F6B3B] font-bold">
+          <TabsTrigger value="historico" className="data-[state=active]:bg-white data-[state=active]:text-klasse-green font-bold">
             Histórico de Receitas
           </TabsTrigger>
         </TabsList>

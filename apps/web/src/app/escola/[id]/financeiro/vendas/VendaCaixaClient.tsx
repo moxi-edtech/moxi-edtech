@@ -279,7 +279,7 @@ export default function VendaCaixaClient({ escolaId }: VendaProps) {
                             ativo: item.ativo,
                           })
                         }}
-                        className="text-blue-600"
+                        className="text-slate-600"
                       >
                         Editar
                       </button>

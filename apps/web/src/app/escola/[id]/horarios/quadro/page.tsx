@@ -1057,7 +1057,7 @@ export default function QuadroHorariosPage() {
               </div>
             ) : null}
             {showOfflineStatus ? (
-              <div className="flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+              <div className="flex items-center gap-2 rounded-full bg-klasse-gold-100 px-3 py-1 text-xs font-semibold text-klasse-gold-800">
                 <WifiOff className="h-3 w-3" />
                 Modo offline
               </div>
@@ -1139,7 +1139,7 @@ export default function QuadroHorariosPage() {
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <p className="text-xs font-semibold text-slate-500 uppercase">Pendências de carga</p>
-              <p className="text-2xl font-bold text-amber-600 mt-2">{missingLoadCount}</p>
+              <p className="text-2xl font-bold text-klasse-gold-600 mt-2">{missingLoadCount}</p>
               <p className="text-xs text-slate-500 mt-1">Sem carga definida</p>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -1163,7 +1163,7 @@ export default function QuadroHorariosPage() {
               {disciplinasPendentes.slice(0, 6).map((disc) => (
                 <span
                   key={disc.id}
-                  className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700"
+                  className="rounded-full border border-klasse-gold-200 bg-klasse-gold-50 px-3 py-1 text-xs font-semibold text-klasse-gold-700"
                 >
                   {disc.disciplina} {disc.temposAlocados}/{disc.temposTotal || "?"}
                 </span>
@@ -1198,7 +1198,7 @@ export default function QuadroHorariosPage() {
           </div>
         )}
         {missingLoadCount > 0 && (
-          <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          <div className="mb-4 rounded-2xl border border-klasse-gold-200 bg-klasse-gold-50 p-4 text-sm text-klasse-gold-800">
             <div className="font-semibold">{missingLoadCount} disciplina(s) sem carga horária.</div>
             <div className="mt-1">Defina as cargas para publicar o quadro.</div>
           </div>

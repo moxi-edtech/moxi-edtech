@@ -88,7 +88,6 @@ export function DashboardSkeleton() {
                     <SecondaryAction icon={RefreshCcw} label="Rematrículas" href="/secretaria/rematricula" />
                     <SecondaryAction icon={KeyRound} label="Acesso Alunos" href="/secretaria/acesso-alunos" />
                     <SecondaryAction icon={Upload} label="Migração" href="/secretaria/migracao/alunos" highlight={true} />
-                    <SecondaryAction icon={Users} label="Usuários Globais" href="/secretaria/usuarios/globais" />
                   </div>
                 </div>
               </div>

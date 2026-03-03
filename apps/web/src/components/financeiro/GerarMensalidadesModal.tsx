@@ -160,7 +160,7 @@ export function GerarMensalidadesModal({ escolaId }: { escolaId: string }) {
             ))}
           </select>
           {!selectedSession && (
-            <p className="mt-1 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-2">
+            <p className="mt-1 text-xs text-klasse-gold-700 bg-klasse-gold-50 border border-klasse-gold-100 rounded-lg p-2">
               Escolha o ano letivo para filtrar as turmas e gerar cobranças corretamente.
             </p>
           )}

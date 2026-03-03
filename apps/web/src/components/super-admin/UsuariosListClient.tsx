@@ -103,7 +103,7 @@ function generateStrongPassword(len = 14) {
 
 // ─── Export ───────────────────────────────────────────────────────────────────
 
-export default function UsuariosListClient() {
+export function SuperAdminUsuariosListClient() {
   return (
     <RequireSuperAdmin>
       <ListaUsuarios />

@@ -16,7 +16,7 @@ const getAlertColor = (nivel: string) => {
     case 'critico': return 'border-red-500 bg-red-50';
     case 'alto': return 'border-orange-500 bg-orange-50';
     case 'medio': return 'border-yellow-500 bg-yellow-50';
-    case 'baixo': return 'border-blue-500 bg-blue-50';
+    case 'baixo': return 'border-slate-500 bg-slate-50';
     default: return 'border-gray-500 bg-gray-50';
   }
 };
@@ -40,7 +40,7 @@ export function AlertsTab({ alertas }: AlertsTabProps) {
             <AlertTriangle className={`h-4 w-4 ${
               alerta.nivel === 'critico' ? 'text-red-600' :
               alerta.nivel === 'alto' ? 'text-orange-600' :
-              alerta.nivel === 'medio' ? 'text-yellow-600' : 'text-blue-600'
+              alerta.nivel === 'medio' ? 'text-yellow-600' : 'text-slate-600'
             }`} />
             <AlertTitle className="flex items-center justify-between">
               <span>{alerta.titulo}</span>
@@ -48,7 +48,7 @@ export function AlertsTab({ alertas }: AlertsTabProps) {
                 alerta.nivel === 'critico' ? 'border-red-600 text-red-600' :
                 alerta.nivel === 'alto' ? 'border-orange-600 text-orange-600' :
                 alerta.nivel === 'medio' ? 'border-yellow-600 text-yellow-600' : 
-                'border-blue-600 text-blue-600'
+                'border-slate-600 text-slate-600'
               }>
                 {alerta.nivel.toUpperCase()}
               </Badge>

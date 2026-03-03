@@ -233,7 +233,7 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
               <div className="group rounded-xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-klasse-gold/50">
                 <div className="mb-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="rounded-lg bg-emerald-100 p-2 text-emerald-700">
+                    <div className="rounded-lg bg-klasse-green-100 p-2 text-klasse-green-700">
                       <Calculator className="h-5 w-5" />
                     </div>
                     <div>
@@ -241,7 +241,7 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
                       <p className="text-xs text-slate-500">{selectedModelo?.nome ?? (modeloAvaliacao || 'Sem modelo')}</p>
                     </div>
                   </div>
-                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
+                  <span className="rounded-full bg-klasse-green-50 px-3 py-1 text-xs font-medium text-klasse-green-700">
                     Ativo
                   </span>
                 </div>
@@ -252,7 +252,7 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-blue-100 p-2 text-blue-700">
+                    <div className="rounded-lg bg-slate-100 p-2 text-slate-700">
                       <GraduationCap className="h-5 w-5" />
                     </div>
                     <div>
@@ -264,7 +264,7 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
 
                 <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-purple-100 p-2 text-purple-700">
+                    <div className="rounded-lg bg-slate-100 p-2 text-slate-700">
                       <CalendarClock className="h-5 w-5" />
                     </div>
                     <div>
@@ -293,8 +293,8 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
                   avaliacaoConfig={avaliacaoConfig}
                 />
               
-              <div className="mt-6 flex items-start gap-3 rounded-lg bg-amber-50 p-4 text-amber-800">
-                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+              <div className="mt-6 flex items-start gap-3 rounded-lg bg-klasse-gold-50 p-4 text-klasse-gold-800">
+                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-klasse-gold-600" />
                 <div className="text-xs">
                   <p className="font-semibold">Cuidado ao alterar regras</p>
                   <p className="mt-1 opacity-90">

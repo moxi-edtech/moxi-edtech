@@ -46,9 +46,9 @@ export function MetricasAcessoAlunos({ escolaId }: Props) {
 
   const cards = [
     { label: 'Total alunos', value: data?.total_alunos ?? 0, icon: Users, color: 'text-slate-700' },
-    { label: 'Acesso liberado', value: data?.acesso_liberado ?? 0, icon: UserCheck, color: 'text-emerald-600' },
+    { label: 'Acesso liberado', value: data?.acesso_liberado ?? 0, icon: UserCheck, color: 'text-klasse-green-600' },
     { label: 'Sem acesso', value: data?.sem_acesso ?? 0, icon: UserX, color: 'text-orange-600' },
-    { label: 'Enviados (WhatsApp)', value: data?.enviados_whatsapp ?? 0, icon: Smartphone, color: 'text-blue-600' },
+    { label: 'Enviados (WhatsApp)', value: data?.enviados_whatsapp ?? 0, icon: Smartphone, color: 'text-slate-600' },
   ];
 
   return (

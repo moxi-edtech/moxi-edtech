@@ -26,8 +26,8 @@ const formatRelative = (value: string) => {
 };
 
 const healthColor = (score: number) => {
-  if (score >= 80) return 'bg-emerald-500';
-  if (score >= 60) return 'bg-amber-400';
+  if (score >= 80) return 'bg-klasse-green-500';
+  if (score >= 60) return 'bg-klasse-gold-400';
   return 'bg-rose-500';
 };
 
@@ -60,9 +60,9 @@ export function SchoolsTab({ escolas }: SchoolsTabProps) {
                 <Badge
                   className={
                     escola.sync_status === 'synced'
-                      ? 'bg-emerald-100 text-emerald-700'
+                      ? 'bg-klasse-green-100 text-klasse-green-700'
                       : escola.sync_status === 'pending'
-                        ? 'bg-amber-100 text-amber-700'
+                        ? 'bg-klasse-gold-100 text-klasse-gold-700'
                         : 'bg-rose-100 text-rose-700'
                   }
                 >
@@ -100,8 +100,8 @@ export function SchoolsTab({ escolas }: SchoolsTabProps) {
                         alerta.tipo === 'critico'
                           ? 'bg-rose-100 text-rose-700'
                           : alerta.tipo === 'aviso'
-                            ? 'bg-amber-100 text-amber-700'
-                            : 'bg-emerald-100 text-emerald-700'
+                            ? 'bg-klasse-gold-100 text-klasse-gold-700'
+                            : 'bg-klasse-green-100 text-klasse-green-700'
                       }`}
                     >
                       {alerta.msg}

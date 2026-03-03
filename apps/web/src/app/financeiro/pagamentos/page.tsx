@@ -33,8 +33,8 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
                   href={`/financeiro/pagamentos?days=${encodeURIComponent(d)}&q=${encodeURIComponent(q)}`}
                   className={`rounded-full border px-3 py-1.5 font-semibold transition ${
                     days === d
-                      ? "border-emerald-600 bg-emerald-600 text-white"
-                      : "border-slate-200 bg-white text-slate-700 hover:border-emerald-200 hover:text-emerald-700"
+                      ? "border-klasse-green-600 bg-klasse-green-600 text-white"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-klasse-green-200 hover:text-klasse-green-700"
                   }`}
                 >
                   {d === "1" ? "1 dia" : `${d} dias`}
@@ -43,7 +43,7 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
               <span className="mx-2 h-4 w-px bg-slate-200" />
               <Link
                 href={`/financeiro/pagamentos/export?format=csv&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}`}
-                className="rounded-full border border-slate-200 bg-white px-3 py-1.5 font-semibold text-slate-700 hover:border-emerald-200 hover:text-emerald-700"
+                className="rounded-full border border-slate-200 bg-white px-3 py-1.5 font-semibold text-slate-700 hover:border-klasse-green-200 hover:text-klasse-green-700"
                 target="_blank"
                 rel="noreferrer"
               >
@@ -51,7 +51,7 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
               </Link>
               <Link
                 href={`/financeiro/pagamentos/export?format=json&days=${encodeURIComponent(days)}&q=${encodeURIComponent(q)}`}
-                className="rounded-full border border-slate-200 bg-white px-3 py-1.5 font-semibold text-slate-700 hover:border-emerald-200 hover:text-emerald-700"
+                className="rounded-full border border-slate-200 bg-white px-3 py-1.5 font-semibold text-slate-700 hover:border-klasse-green-200 hover:text-klasse-green-700"
                 target="_blank"
                 rel="noreferrer"
               >
@@ -69,7 +69,7 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
               className="min-w-[220px] rounded-lg border border-slate-200 px-3 py-2"
             />
             <input type="hidden" name="days" value={days} />
-            <button className="rounded-lg bg-emerald-600 px-4 py-2 text-white">Filtrar</button>
+            <button className="rounded-lg bg-klasse-green-600 px-4 py-2 text-white">Filtrar</button>
           </form>
         </div>
 

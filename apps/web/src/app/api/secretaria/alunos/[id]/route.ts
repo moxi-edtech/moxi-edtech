@@ -44,7 +44,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     if (!escolaFromProfile) {
       escolaFromProfile = await resolveEscolaIdForUser(s as any, user.id)
     }
-    const allowedRoles = ['super_admin','global_admin','admin','secretaria','financeiro']
+    const allowedRoles = ['super_admin','global_admin','admin','secretaria','financeiro','secretaria_financeiro','admin_financeiro']
     if (!role || !allowedRoles.includes(role)) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     if (!escolaFromProfile) return NextResponse.json({ ok: false, error: 'Perfil não está vinculado a uma escola' }, { status: 403 })
 
@@ -157,7 +157,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     const role = (prof as any)?.role as string | undefined
     const escolaFromProfile = (prof as any)?.current_escola_id || (prof as any)?.escola_id || null
-    const allowedRoles = ['super_admin','global_admin','admin','secretaria','financeiro']
+    const allowedRoles = ['super_admin','global_admin','admin','secretaria','financeiro','secretaria_financeiro','admin_financeiro']
     if (!role || !allowedRoles.includes(role)) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     if (!escolaFromProfile) return NextResponse.json({ ok: false, error: 'Perfil não está vinculado a uma escola' }, { status: 403 })
 

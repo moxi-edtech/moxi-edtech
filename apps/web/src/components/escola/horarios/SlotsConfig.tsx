@@ -21,7 +21,7 @@ export type HorarioSlot = {
 
 // --- CONSTANTS ---
 const TURNOS = [
-    { id: "matinal", label: "Matinal", icon: Sun, color: "text-amber-500 bg-amber-50" },
+    { id: "matinal", label: "Matinal", icon: Sun, color: "text-klasse-gold-500 bg-klasse-gold-50" },
     { id: "tarde", label: "Vespertino", icon: Sunset, color: "text-orange-500 bg-orange-50" },
     { id: "noite", label: "Noturno", icon: Moon, color: "text-indigo-500 bg-indigo-50" },
 ];
@@ -196,20 +196,20 @@ export function SlotsConfig({ value, onChange, onSave }: any) {
                                  {/* Timeline Dot */}
                                  <div className={`
                                     absolute -left-[31px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-[3px] border-white shadow-sm z-10
-                                    ${slot.is_intervalo ? "bg-amber-400" : "bg-klasse-gold"}
+                                    ${slot.is_intervalo ? "bg-klasse-gold-400" : "bg-klasse-gold"}
                                  `} />
 
                                  <div className={`
                                     flex items-center justify-between p-4 rounded-xl border transition-all hover:shadow-md hover:scale-[1.01]
                                     ${slot.is_intervalo 
-                                       ? "bg-amber-50/50 border-amber-100" 
+                                       ? "bg-klasse-gold-50/50 border-klasse-gold-100" 
                                        : "bg-white border-slate-100"
                                     }
                                  `}>
                                     <div className="flex items-center gap-5">
                                        <div className={`
                                           flex flex-col items-center justify-center w-12 h-12 rounded-lg border
-                                          ${slot.is_intervalo ? "bg-white border-amber-200 text-amber-600" : "bg-slate-50 border-slate-200 text-slate-900"}
+                                          ${slot.is_intervalo ? "bg-white border-klasse-gold-200 text-klasse-gold-600" : "bg-slate-50 border-slate-200 text-slate-900"}
                                        `}>
                                           {slot.is_intervalo ? (
                                              <Coffee className="w-5 h-5" />
@@ -235,7 +235,7 @@ export function SlotsConfig({ value, onChange, onSave }: any) {
                                     </div>
 
                                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button className="p-2 text-slate-400 hover:text-klasse-gold hover:bg-amber-50 rounded-lg">
+                                        <button className="p-2 text-slate-400 hover:text-klasse-gold hover:bg-klasse-gold-50 rounded-lg">
                                             <Settings2 className="w-4 h-4" />
                                         </button>
                                         <button 

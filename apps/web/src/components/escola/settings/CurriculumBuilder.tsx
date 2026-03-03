@@ -733,9 +733,9 @@ export default function CurriculumBuilder({
                 <div className="flex items-center gap-2 mb-2">
                   <div
                     className={`w-6 h-6 rounded-lg ${
-                      tipoColors?.bgLight || "bg-blue-50"
+                      tipoColors?.bgLight || "bg-slate-50"
                     } border ${
-                      tipoColors?.border || "border-blue-200"
+                      tipoColors?.border || "border-slate-200"
                     } flex items-center justify-center`}
                   >
                     {(() => {
@@ -746,7 +746,7 @@ export default function CurriculumBuilder({
                       return (
                         <Icon
                           size={12}
-                          className={tipoColors?.text || "text-blue-600"}
+                          className={tipoColors?.text || "text-slate-600"}
                         />
                       );
                     })()}
@@ -972,7 +972,7 @@ export default function CurriculumBuilder({
                                 </span>
                               )}
                               {!p.isCustom && p.recommended && (
-                                <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded">
+                                <span className="px-1.5 py-0.5 bg-klasse-green-100 text-klasse-green-700 text-[10px] font-bold rounded">
                                   RECOMENDADO
                                 </span>
                               )}
@@ -1030,7 +1030,7 @@ export default function CurriculumBuilder({
                     ))}
                   </div>
                   {config.classes.length > 0 && (
-                    <div className="p-4 bg-blue-50 text-blue-700 text-sm rounded-xl border border-blue-100">
+                    <div className="p-4 bg-slate-50 text-slate-700 text-sm rounded-xl border border-slate-100">
                       <span className="font-bold">✓ Selecionadas: </span>
                       {config.classes.join(", ")}
                     </div>

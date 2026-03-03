@@ -10,7 +10,7 @@ export function ExtratoActions({ alunoId }: { alunoId: string }) {
     <div className="whitespace-nowrap">
       <Link
         href={`/api/financeiro/extrato/aluno/${alunoId}`}
-        className="text-blue-600 hover:underline mr-3"
+        className="text-slate-600 hover:underline mr-3"
         target="_blank"
       >
         Extrato (JSON)
@@ -18,7 +18,7 @@ export function ExtratoActions({ alunoId }: { alunoId: string }) {
       {isEnabled ? (
         <Link
           href={`/api/financeiro/extrato/aluno/${alunoId}/pdf`}
-          className="text-blue-600 hover:underline"
+          className="text-slate-600 hover:underline"
           target="_blank"
         >
           PDF

@@ -210,17 +210,28 @@ export function useHorarioTurmaData({
       return;
     }
 
+    const currentEscolaId = escolaId;
+    const currentTurmaId = turmaId;
+    const currentVersaoId = versaoId;
+
+    if (!currentEscolaId || !currentTurmaId || !currentVersaoId) {
+      return;
+    }
+
     const controller = new AbortController();
     const requestId = ++requestRef.current;
     const params = new URLSearchParams({
-      versao_id: versaoId,
-      turma_id: turmaId,
+      versao_id: currentVersaoId,
+      turma_id: currentTurmaId,
     });
 
 
     Promise.all([
-      fetchJson(`/api/secretaria/turmas/${turmaId}/disciplinas?escola_id=${encodeURIComponent(escolaId)}`, controller.signal),
-      fetchJson(`/api/escolas/${escolaId}/horarios/quadro?${params.toString()}`, controller.signal),
+      fetchJson(
+        `/api/secretaria/turmas/${currentTurmaId}/disciplinas?escola_id=${encodeURIComponent(currentEscolaId)}`,
+        controller.signal,
+      ),
+      fetchJson(`/api/escolas/${currentEscolaId}/horarios/quadro?${params.toString()}`, controller.signal),
     ])
       .then(([disciplinasRes, quadroRes]) => {
         if (controller.signal.aborted || requestId !== requestRef.current) return;

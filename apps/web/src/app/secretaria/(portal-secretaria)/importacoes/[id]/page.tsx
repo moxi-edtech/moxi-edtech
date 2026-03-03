@@ -100,8 +100,8 @@ export default async function ImportacaoDetailPage({ params }: { params: Promise
           <div className="flex items-center gap-2 text-slate-700"><List size={18} /> Status</div>
           <div className="mt-1">
             <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-              item?.status === 'imported' ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' :
-              item?.status === 'pending' ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-200' :
+              item?.status === 'imported' ? 'bg-klasse-green-50 text-klasse-green-700 ring-1 ring-klasse-green-200' :
+              item?.status === 'pending' ? 'bg-klasse-gold-50 text-klasse-gold-700 ring-1 ring-klasse-gold-200' :
               item?.status === 'failed' ? 'bg-red-50 text-red-700 ring-1 ring-red-200' :
               'bg-slate-100 text-slate-700 ring-1 ring-slate-200'
             }`}>
@@ -117,7 +117,7 @@ export default async function ImportacaoDetailPage({ params }: { params: Promise
       <div>
         <h2 className="text-base font-semibold text-slate-900 mb-3">Erros da importação</h2>
         {erros.length === 0 ? (
-          <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+          <div className="flex items-center gap-2 text-klasse-green-700 bg-klasse-green-50 border border-klasse-green-200 rounded-lg px-3 py-2">
             Nenhum erro registrado para esta importação.
           </div>
         ) : (

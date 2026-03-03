@@ -364,7 +364,7 @@ function resolveActionColor(action?: string | null) {
     return { bg: "bg-[#E3B23C]/8", text: "text-[#9a7010]", border: "border-[#E3B23C]/30" };
   }
   if (a.includes("pay") || a.includes("pagamento") || a.includes("checkout")) {
-    return { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" };
+    return { bg: "bg-klasse-green-50", text: "text-klasse-green-700", border: "border-klasse-green-200" };
   }
   return { bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200" };
 }

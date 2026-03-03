@@ -263,13 +263,13 @@ const TurmasAlunosFinanceiro: React.FC = () => {
                     <div className="w-full max-w-sm">
                       <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider mb-1.5">
                         <span className="text-slate-400">Arrecadação</span>
-                        <span className={stats.arrecadacao < 80 ? 'text-amber-600' : 'text-[#1F6B3B]'}>
+                        <span className={stats.arrecadacao < 80 ? 'text-klasse-gold-600' : 'text-[#1F6B3B]'}>
                           {stats.arrecadacao.toFixed(0)}%
                         </span>
                       </div>
                       <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                         <div 
-                          className={`h-full transition-all duration-1000 ease-out ${stats.arrecadacao < 50 ? 'bg-rose-500' : stats.arrecadacao < 80 ? 'bg-amber-400' : 'bg-[#1F6B3B]'}`}
+                          className={`h-full transition-all duration-1000 ease-out ${stats.arrecadacao < 50 ? 'bg-rose-500' : stats.arrecadacao < 80 ? 'bg-klasse-gold-400' : 'bg-[#1F6B3B]'}`}
                           style={{ width: `${stats.arrecadacao}%` }}
                         />
                       </div>

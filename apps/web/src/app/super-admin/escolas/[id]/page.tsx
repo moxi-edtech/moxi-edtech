@@ -27,10 +27,10 @@ export default function EscolaMonitoramentoPage() {
   
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#060d08] flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center space-y-4">
-          <Loader2 className="w-10 h-10 animate-spin text-[#4ade80] mx-auto" />
-          <p className="text-[#4ade80] font-medium animate-pulse">A carregar monitor central...</p>
+          <Loader2 className="w-10 h-10 animate-spin text-klasse-green mx-auto" />
+          <p className="text-slate-500 font-medium animate-pulse">A carregar monitor central...</p>
         </div>
       </div>
     );
@@ -38,7 +38,7 @@ export default function EscolaMonitoramentoPage() {
   
   if (!escola || !metricas || !performance) {
     return (
-      <div className="min-h-screen bg-[#060d08] p-6 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 p-6 flex items-center justify-center">
         <div className="text-center">
           <Alert variant="destructive" className="max-w-md mx-auto bg-red-900/20 border-red-900 text-red-200">
             <XCircle className="h-4 w-4" />
@@ -48,7 +48,7 @@ export default function EscolaMonitoramentoPage() {
             </AlertDescription>
           </Alert>
           <Button 
-            className="mt-4 bg-[#4ade80] hover:bg-[#4ade80]/90 text-black font-bold" 
+            className="mt-4 bg-klasse-green hover:bg-klasse-green/90 text-white font-bold" 
             onClick={() => router.push('/super-admin/escolas')}
           >
             Voltar para lista de escolas
@@ -59,7 +59,7 @@ export default function EscolaMonitoramentoPage() {
   }
   
   return (
-    <div className="min-h-screen bg-[#060d08] p-4 md:p-6">
+    <div className="min-h-screen bg-slate-50 p-4 md:p-6">
       <AuditPageView portal="super_admin" acao="PAGE_VIEW" entity="escola_monitor" entityId={escolaId} />
       
       <div className="max-w-7xl mx-auto">

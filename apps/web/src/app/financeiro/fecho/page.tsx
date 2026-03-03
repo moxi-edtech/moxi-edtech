@@ -423,7 +423,7 @@ export default function FechoCaixaPage() {
                     <span className={`
                       inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide border
                       ${row.metodo === 'CASH' || row.metodo === 'Numerário' 
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
+                        ? 'bg-klasse-green-50 text-klasse-green-700 border-klasse-green-100' 
                         : 'bg-slate-50 text-slate-600 border-slate-200'}
                     `}>
                       {row.metodo}
@@ -452,7 +452,7 @@ export default function FechoCaixaPage() {
           rows={3}
         />
         <div className="mt-2 flex justify-end">
-          <button className="text-xs font-bold text-[#E3B23C] hover:text-amber-600 transition-colors">
+          <button className="text-xs font-bold text-[#E3B23C] hover:text-klasse-gold-600 transition-colors">
             Salvar Nota
           </button>
         </div>

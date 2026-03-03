@@ -120,13 +120,13 @@ function StatusBadge({ status }: { status?: string | null }) {
 
   // Ajusta conforme teus status reais do backend
   const styles: Record<string, string> = {
-    ativo: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    matriculado: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    pendente: "bg-amber-50 text-amber-800 border-amber-200",
-    submetida: "bg-amber-50 text-amber-800 border-amber-200",
+    ativo: "bg-klasse-green-50 text-klasse-green-700 border-klasse-green-200",
+    matriculado: "bg-klasse-green-50 text-klasse-green-700 border-klasse-green-200",
+    pendente: "bg-klasse-gold-50 text-klasse-gold-800 border-klasse-gold-200",
+    submetida: "bg-klasse-gold-50 text-klasse-gold-800 border-klasse-gold-200",
     em_analise: "bg-sky-50 text-sky-700 border-sky-200",
     aprovada: "bg-indigo-50 text-indigo-700 border-indigo-200",
-    suspenso: "bg-amber-50 text-amber-800 border-amber-200",
+    suspenso: "bg-klasse-gold-50 text-klasse-gold-800 border-klasse-gold-200",
     inativo: "bg-rose-50 text-rose-700 border-rose-200",
     arquivado: "bg-slate-100 text-slate-600 border-slate-200",
     todos: "bg-slate-100 text-slate-600 border-slate-200",
@@ -497,7 +497,7 @@ export default function AlunosListClient() {
                               </p>
 
                               {isLead ? (
-                                <span className="inline-flex mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold border bg-amber-50 text-amber-800 border-amber-200 uppercase">
+                                <span className="inline-flex mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold border bg-klasse-gold-50 text-klasse-gold-800 border-klasse-gold-200 uppercase">
                                   Lead
                                 </span>
                               ) : null}
@@ -542,7 +542,7 @@ export default function AlunosListClient() {
                             {matriculaHref && (aluno.status || "").toLowerCase() !== "ativo" ? (
                               <Link
                                 href={matriculaHref}
-                                className="p-2 rounded-xl text-slate-400 hover:text-klasse-gold hover:bg-amber-50 transition"
+                                className="p-2 rounded-xl text-slate-400 hover:text-klasse-gold hover:bg-klasse-gold-50 transition"
                                 title="Abrir matrícula"
                               >
                                 <Plus className="w-4 h-4" />
@@ -562,7 +562,7 @@ export default function AlunosListClient() {
 
                                 <Link
                                   href={`/secretaria/alunos/${aluno.id}/editar`}
-                                  className="p-2 rounded-xl text-slate-400 hover:text-klasse-gold hover:bg-amber-50 transition"
+                                  className="p-2 rounded-xl text-slate-400 hover:text-klasse-gold hover:bg-klasse-gold-50 transition"
                                   title="Editar"
                                 >
                                   <Pencil className="w-4 h-4" />
