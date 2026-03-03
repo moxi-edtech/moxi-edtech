@@ -241,15 +241,17 @@ export default function EscolaMonitor({
     if (!confirm(`Deseja ${newStatus ? 'ATIVAR' : 'DESATIVAR'} o Portal do Aluno para ${escola.nome}?`)) return;
 
     try {
-      const { error } = await supabase
-        .from('escolas')
-        .update({
-          aluno_portal_enabled: newStatus,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', escola.id);
+      const res = await fetch(`/api/super-admin/escolas/${escola.id}/update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          updates: { aluno_portal_enabled: newStatus }
+        }),
+      });
 
-      if (error) throw error;
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao actualizar escola');
+
       toast.success(`Portal do aluno ${newStatus ? 'ativado' : 'desativado'}!`);
       onUpdate();
     } catch (error: any) {
