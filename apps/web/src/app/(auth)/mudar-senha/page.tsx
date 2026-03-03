@@ -41,7 +41,7 @@ export default function Page() {
     const score = rules.filter(r => r.ok).length // 0..5
     let label = 'Muito fraca'
     let color = 'bg-red-500'
-    if (score === 2) { label = 'Fraca'; color = 'bg-amber-500' }
+    if (score === 2) { label = 'Fraca'; color = 'bg-klasse-gold-500' }
     if (score === 3) { label = 'Média'; color = 'bg-yellow-500' }
     if (score === 4) { label = 'Forte'; color = 'bg-green-600' }
     if (score >= 5) { label = 'Excelente'; color = 'bg-moxinexa-teal' }
@@ -149,7 +149,7 @@ function PasswordStrength({ pwd }: { pwd: string }) {
     const score = rules.filter(r => r.ok).length
     let label = 'Muito fraca'
     let color = 'bg-red-500'
-    if (score === 2) { label = 'Fraca'; color = 'bg-amber-500' }
+    if (score === 2) { label = 'Fraca'; color = 'bg-klasse-gold-500' }
     if (score === 3) { label = 'Média'; color = 'bg-yellow-500' }
     if (score === 4) { label = 'Forte'; color = 'bg-green-600' }
     if (score >= 5) { label = 'Excelente'; color = 'bg-moxinexa-teal' }

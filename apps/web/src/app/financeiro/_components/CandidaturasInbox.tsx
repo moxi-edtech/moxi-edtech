@@ -169,7 +169,7 @@ export function FinanceiroCandidaturasInbox({
               <div
                 key={item.id}
                 className={`flex items-center justify-between gap-4 p-4 rounded-lg border ${
-                  selected?.id === item.id ? 'border-emerald-500 bg-emerald-50' : 'border-gray-200'
+                  selected?.id === item.id ? 'border-klasse-green-500 bg-klasse-green-50' : 'border-gray-200'
                 }`}
               >
                 <div className="space-y-1">
@@ -185,7 +185,7 @@ export function FinanceiroCandidaturasInbox({
                   {pagamento.comprovativo_url ? (
                     <button
                       onClick={() => setSelected(item)}
-                      className="inline-flex items-center gap-1 text-emerald-700 text-sm hover:underline"
+                      className="inline-flex items-center gap-1 text-klasse-green-700 text-sm hover:underline"
                     >
                       <Paperclip className="w-4 h-4" /> Ver comprovativo
                     </button>
@@ -236,7 +236,7 @@ export function FinanceiroCandidaturasInbox({
                   href={selected.pagamento.comprovativo_url as string}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-sm text-emerald-700 hover:underline flex items-center gap-2"
+                  className="text-sm text-klasse-green-700 hover:underline flex items-center gap-2"
                 >
                   <Paperclip className="w-4 h-4" /> Ver comprovativo
                 </a>
@@ -248,7 +248,7 @@ export function FinanceiroCandidaturasInbox({
               {selected.pagamento?.referencia ? <div><strong>Ref:</strong> {selected.pagamento?.referencia}</div> : null}
             </div>
 
-            <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm p-3 rounded-lg">
+            <div className="bg-klasse-gold-50 border border-klasse-gold-200 text-klasse-gold-800 text-sm p-3 rounded-lg">
               ⚠️ Confirme no extrato bancário antes de compensar.
             </div>
 

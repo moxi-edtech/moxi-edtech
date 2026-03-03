@@ -66,9 +66,9 @@ export function FinanceiroPortalPage() {
                   <p className="text-xs text-slate-500">{money.format(item.valor)}</p>
                 </div>
                 {item.status === "pago" ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700"><Check className="h-4 w-4" /> Pago</span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-klasse-green-50 px-3 py-1 text-xs font-medium text-klasse-green-700"><Check className="h-4 w-4" /> Pago</span>
                 ) : item.status === "em_verificacao" ? (
-                  <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700">Em Verificação</span>
+                  <span className="rounded-full bg-klasse-gold-100 px-3 py-1 text-xs font-medium text-klasse-gold-700">Em Verificação</span>
                 ) : (
                   <Button tone="gold" className="min-h-11" size="sm" onClick={() => setSelected(item)}><Wallet className="h-4 w-4" /> Pagar</Button>
                 )}

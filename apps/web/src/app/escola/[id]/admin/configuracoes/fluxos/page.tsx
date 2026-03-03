@@ -178,7 +178,7 @@ export default function FluxosConfiguracaoPage() {
                       {/* Controles (Badge Horas + Toggle) */}
                       <div className="flex items-center gap-4">
                         {step.sla_hours && step.sla_hours > 0 && step.active && (
-                          <div className="flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-100 px-2 py-1 rounded-full">
+                          <div className="flex items-center gap-1 text-[10px] font-semibold text-klasse-gold-700 bg-klasse-gold-50 border border-klasse-gold-100 px-2 py-1 rounded-full">
                             <Clock className="h-3 w-3" />
                             {step.sla_hours}h
                           </div>
@@ -244,8 +244,8 @@ export default function FluxosConfiguracaoPage() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
-              <p className="text-xs text-amber-900 leading-relaxed">
+            <div className="rounded-xl border border-klasse-gold-100 bg-klasse-gold-50 p-4">
+              <p className="text-xs text-klasse-gold-900 leading-relaxed">
                 <strong>Nota:</strong> Alterações no fluxo só valem para novos lançamentos. Notas em processo seguem o fluxo antigo.
               </p>
             </div>

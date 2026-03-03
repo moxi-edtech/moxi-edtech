@@ -403,12 +403,12 @@ export function DisciplinaModal({
             </section>
           )}
           {pendingDisciplines.length > 0 && (
-            <section className="bg-white p-5 rounded-xl border border-amber-200 shadow-sm">
-              <h3 className="text-xs font-bold uppercase text-amber-700 mb-3">Resolver pendências</h3>
+            <section className="bg-white p-5 rounded-xl border border-klasse-gold-200 shadow-sm">
+              <h3 className="text-xs font-bold uppercase text-klasse-gold-700 mb-3">Resolver pendências</h3>
               <select
                 value={pendingDisciplines.some((d) => d.id === initial?.id) ? initial?.id ?? "" : ""}
                 onChange={(event) => onSelectPending?.(event.target.value)}
-                className="w-full rounded-xl border border-amber-200 px-3 py-2 text-sm bg-amber-50"
+                className="w-full rounded-xl border border-klasse-gold-200 px-3 py-2 text-sm bg-klasse-gold-50"
               >
                 <option value="">Selecione uma disciplina pendente</option>
                 {pendingDisciplines.map((disc) => (
@@ -433,7 +433,7 @@ export function DisciplinaModal({
             </button>
           </section>
           {!appearsInScheduler && (
-            <section className="bg-amber-50 p-4 rounded-xl border border-amber-200 text-amber-800 text-sm">
+            <section className="bg-klasse-gold-50 p-4 rounded-xl border border-klasse-gold-200 text-klasse-gold-800 text-sm">
               Esta disciplina não aparecerá no quadro porque não entra no horário ou a carga semanal está zerada.
             </section>
           )}
@@ -603,7 +603,7 @@ export function DisciplinaModal({
               )}
               {standardInfo && standardInfo.baseHours !== null && (
                 <div className={`mt-4 p-3 rounded-lg border text-[10px] font-bold uppercase tracking-wider flex items-center gap-2 ${
-                  standardInfo.isOutOfStandard ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                  standardInfo.isOutOfStandard ? 'bg-klasse-gold-50 border-klasse-gold-200 text-klasse-gold-700' : 'bg-klasse-green-50 border-klasse-green-200 text-klasse-green-700'
                 }`}>
                   <AlertCircle size={14} />
                   Padrão MED para esta classe: {standardInfo.baseHours}h semanais
@@ -828,8 +828,8 @@ export function DisciplinaModal({
           </div>
 
           {!canSave && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-amber-700" />
+            <div className="rounded-lg border border-klasse-gold-200 bg-klasse-gold-50 px-3 py-2 text-xs text-klasse-gold-800 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-klasse-gold-700" />
               Corrija os campos destacados para salvar.
             </div>
           )}

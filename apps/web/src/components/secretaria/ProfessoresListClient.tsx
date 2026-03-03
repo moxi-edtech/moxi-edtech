@@ -98,8 +98,8 @@ export default function ProfessoresListClient() {
 
   const getCargoColor = (cargo: string | null) => {
     switch (cargo) {
-      case 'diretor': return 'bg-purple-100 text-purple-700';
-      case 'coordenador': return 'bg-blue-100 text-blue-700';
+      case 'diretor': return 'bg-slate-100 text-slate-700';
+      case 'coordenador': return 'bg-slate-100 text-slate-700';
       case 'assistente': return 'bg-green-100 text-green-700';
       default: return 'bg-slate-100 text-slate-700';
     }
@@ -169,7 +169,7 @@ export default function ProfessoresListClient() {
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
         <div>
           <h1 className="text-2xl font-bold text-moxinexa-navy flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-blue-500" />
+            <div className="w-3 h-3 rounded-full bg-slate-500" />
             Gestão de Professores
           </h1>
           <p className="text-sm text-slate-500 mt-1">
@@ -394,7 +394,7 @@ export default function ProfessoresListClient() {
                         <div className="flex justify-center gap-1">
                           <Link
                             href={`/secretaria/professores/${professor.user_id || professor.id}`}
-                            className="text-blue-600 hover:text-white hover:bg-blue-600 p-2 rounded-lg transition-all"
+                            className="text-slate-600 hover:text-white hover:bg-slate-600 p-2 rounded-lg transition-all"
                             title="Ver detalhes"
                           >
                             <Eye className="w-4 h-4" />

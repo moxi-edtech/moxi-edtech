@@ -30,7 +30,7 @@ export default async function Page() {
     return (
       <>
         <AuditPageView portal="financeiro" acao="PAGE_VIEW" entity="financeiro_precos" />
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded text-amber-800 text-sm">
+        <div className="p-4 bg-klasse-gold-50 border border-klasse-gold-200 rounded text-klasse-gold-800 text-sm">
           Vincule seu perfil a uma escola para configurar tabelas de preço.
         </div>
       </>

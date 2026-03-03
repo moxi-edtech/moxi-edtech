@@ -184,7 +184,7 @@ export default function ConfigurationStep({
 
   return (
     <div className="space-y-6">
-      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-3 text-sm text-blue-800">
+      <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg flex items-start gap-3 text-sm text-slate-800">
         <Info className="h-5 w-5 flex-shrink-0" />
         <div>
           <h3 className="font-bold">Ajuste os itens criados durante a importação.</h3>
@@ -207,7 +207,7 @@ export default function ConfigurationStep({
                   </span>
                 )}
                 {curso.status_aprovacao === 'aprovado' && (
-                  <span className="px-2 py-0.5 text-xs font-semibold text-emerald-700 bg-emerald-50 rounded-full border border-emerald-200">
+                  <span className="px-2 py-0.5 text-xs font-semibold text-klasse-green-700 bg-klasse-green-50 rounded-full border border-klasse-green-200">
                     Aprovado
                   </span>
                 )}
@@ -252,10 +252,10 @@ export default function ConfigurationStep({
                 className={`
                   inline-flex items-center justify-center gap-2
                   rounded-lg px-4 py-2.5 text-sm font-medium
-                  bg-blue-600 text-white
-                  hover:bg-blue-700
+                  bg-slate-600 text-white
+                  hover:bg-slate-700
                   disabled:opacity-50 disabled:cursor-not-allowed
-                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                  focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2
                   transition-colors
                 `}
               >
@@ -274,7 +274,7 @@ export default function ConfigurationStep({
                   </span>
                 )}
                 {turma.status_validacao === 'ativo' && (
-                  <span className="px-2 py-0.5 text-xs font-semibold text-emerald-700 bg-emerald-50 rounded-full border border-emerald-200">
+                  <span className="px-2 py-0.5 text-xs font-semibold text-klasse-green-700 bg-klasse-green-50 rounded-full border border-klasse-green-200">
                     Ativo
                   </span>
                 )}
@@ -340,7 +340,7 @@ export default function ConfigurationStep({
               {turma.status_validacao === 'rascunho' && (
                 <button
                   onClick={() => handleTurmaChange(turma.id, 'status_validacao', 'ativo')}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 mt-2"
+                  className="px-4 py-2 text-sm font-medium text-white bg-slate-600 rounded-md hover:bg-slate-700 mt-2"
                 >
                   <CheckCircle className="inline-block w-4 h-4 mr-2" /> Ativar Turma
                 </button>
@@ -369,10 +369,10 @@ export default function ConfigurationStep({
           className={`
             inline-flex items-center justify-center gap-2
             rounded-lg px-4 py-2.5 text-sm font-medium
-            bg-blue-600 text-white
-            hover:bg-blue-700
+            bg-slate-600 text-white
+            hover:bg-slate-700
             disabled:opacity-50 disabled:cursor-not-allowed
-            focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+            focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2
             transition-colors
           `}
         >

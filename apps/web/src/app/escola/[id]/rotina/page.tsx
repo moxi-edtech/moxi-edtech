@@ -192,7 +192,7 @@ export default function RotinasPage() {
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 text-white">
+          <div className="p-2 rounded-xl bg-gradient-to-br from-sky-500 to-slate-600 text-white">
             <SvgIcons.calendar />
           </div>
           <div>
@@ -331,7 +331,7 @@ export default function RotinasPage() {
               <button
                 type="submit"
                 disabled={isSubmitting || !curso.trim()}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 text-white font-medium disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-sky-600 to-slate-600 hover:from-sky-700 hover:to-slate-700 text-white font-medium disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
               >
                 {isSubmitting ? (
                   <>
@@ -382,7 +382,7 @@ export default function RotinasPage() {
                     (store[classeFiltro]?.[d] || []).map((slot) => (
                       <div
                         key={slot.id}
-                        className="group relative bg-gradient-to-r from-sky-50 to-blue-50 rounded-lg border border-sky-200 p-3 hover:from-sky-100 hover:to-blue-100 transition-all duration-200"
+                        className="group relative bg-gradient-to-r from-sky-50 to-slate-50 rounded-lg border border-sky-200 p-3 hover:from-sky-100 hover:to-slate-100 transition-all duration-200"
                       >
                         <button
                           onClick={() => handleDeleteSlot(d, slot.id)}

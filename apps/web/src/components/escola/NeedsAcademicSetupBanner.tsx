@@ -14,7 +14,7 @@ export default function NeedsAcademicSetupBanner({ escolaId, message, className 
   const text = useMemo(() => message || "Algumas configurações acadêmicas precisam de atenção.", [message]);
 
   return (
-    <div className={`rounded-md border border-amber-200 bg-amber-50 p-4 text-amber-900 ${className || ''}`}>
+    <div className={`rounded-md border border-klasse-gold-200 bg-klasse-gold-50 p-4 text-klasse-gold-900 ${className || ''}`}>
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="font-semibold">Ação necessária</div>
@@ -23,7 +23,7 @@ export default function NeedsAcademicSetupBanner({ escolaId, message, className 
         <button
           type="button"
           onClick={() => router.push(`/escola/${escolaId}/admin/configuracoes`)}
-          className="inline-flex items-center rounded-md bg-amber-600 px-3 py-2 text-sm font-medium text-white hover:bg-amber-700"
+          className="inline-flex items-center rounded-md bg-klasse-gold-600 px-3 py-2 text-sm font-medium text-white hover:bg-klasse-gold-700"
         >
           Abrir Configurações
         </button>
@@ -31,4 +31,3 @@ export default function NeedsAcademicSetupBanner({ escolaId, message, className 
     </div>
   );
 }
-

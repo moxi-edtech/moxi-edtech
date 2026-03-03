@@ -7,7 +7,7 @@ export default async function CredenciaisPage() {
   if (!user) {
     return (
       <main className="max-w-xl mx-auto p-6">
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded text-amber-800 text-sm">Faça login para ver suas credenciais.</div>
+        <div className="p-4 bg-klasse-gold-50 border border-klasse-gold-200 rounded text-klasse-gold-800 text-sm">Faça login para ver suas credenciais.</div>
       </main>
     );
   }

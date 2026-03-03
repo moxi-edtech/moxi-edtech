@@ -65,7 +65,7 @@ export function MatrixTable({ turnos, matrix, setMatrix }: Props) {
                 </th>
               )}
               {turnos.Tarde && (
-                <th className="px-6 py-3 font-semibold text-center w-32 bg-amber-50/50 text-amber-600 border-l border-slate-100">
+                <th className="px-6 py-3 font-semibold text-center w-32 bg-klasse-gold-50/50 text-klasse-gold-600 border-l border-slate-100">
                   Tarde
                 </th>
               )}
@@ -97,7 +97,7 @@ export function MatrixTable({ turnos, matrix, setMatrix }: Props) {
                 )}
 
                 {turnos.Tarde && (
-                  <td className="px-6 py-2 text-center bg-amber-50/10 border-l border-slate-100">
+                  <td className="px-6 py-2 text-center bg-klasse-gold-50/10 border-l border-slate-100">
                     <input
                       type="number"
                       min={0}

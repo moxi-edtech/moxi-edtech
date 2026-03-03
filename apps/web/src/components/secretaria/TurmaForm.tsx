@@ -471,16 +471,16 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
         <div
           className={[
             "p-4 rounded-xl border flex gap-3 transition-colors",
-            autoFilled ? "bg-emerald-50 border-emerald-200" : "bg-amber-50 border-amber-200",
+            autoFilled ? "bg-klasse-green-50 border-klasse-green-200" : "bg-klasse-gold-50 border-klasse-gold-200",
           ].join(" ")}
         >
           {autoFilled ? (
-            <Wand2 className="w-5 h-5 text-emerald-700 mt-1" />
+            <Wand2 className="w-5 h-5 text-klasse-green-700 mt-1" />
           ) : (
-            <AlertCircle className="w-5 h-5 text-amber-700 mt-1" />
+            <AlertCircle className="w-5 h-5 text-klasse-gold-700 mt-1" />
           )}
           <div className="flex-1">
-            <h4 className={["text-sm font-bold", autoFilled ? "text-emerald-900" : "text-amber-900"].join(" ")}>
+            <h4 className={["text-sm font-bold", autoFilled ? "text-klasse-green-900" : "text-klasse-gold-900"].join(" ")}>
               {autoFilled ? "Dados sugeridos" : "Validação necessária"}
             </h4>
             <p className="text-xs mt-1 opacity-80 leading-relaxed">
@@ -608,7 +608,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
             ))}
           </select>
           {!classeId && isDraft && (
-            <p className="text-[10px] text-amber-700 mt-1">
+            <p className="text-[10px] text-klasse-gold-700 mt-1">
               ⚠️ Se deixar vazio, o sistema criará a classe automaticamente baseada no código (ex: &quot;10&quot;).
             </p>
           )}
@@ -647,7 +647,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
             onChange={(e) => setCursoId(e.target.value)}
             className={[
               "w-full px-3 py-2 border rounded-xl text-sm transition-colors bg-white focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold outline-none",
-              autoFilled && cursoId ? "border-klasse-gold/60 bg-amber-50 text-slate-900 font-medium" : "border-slate-300",
+              autoFilled && cursoId ? "border-klasse-gold/60 bg-klasse-gold-50 text-slate-900 font-medium" : "border-slate-300",
             ].join(" ")}
           >
             <option value="">Selecione o curso...</option>
@@ -658,7 +658,7 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
             ))}
           </select>
           {autoFilled && cursoId && (
-            <p className="text-[10px] text-emerald-700 mt-1 flex items-center gap-1">
+            <p className="text-[10px] text-klasse-green-700 mt-1 flex items-center gap-1">
               <Check className="w-3 h-3" /> Curso detectado via código: {normalizeCodigo(turmaCodigo).split("-")[0] || ""}.
             </p>
           )}
@@ -673,29 +673,29 @@ export default function TurmaForm({ escolaId, onSuccess, initialData }: TurmaFor
       )}
 
       {isDraft && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+        <div className="rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 p-4 space-y-3">
           <div>
-            <h3 className="text-sm font-semibold text-amber-900">Definição Financeira</h3>
-            <p className="text-xs text-amber-800">Proteja alunos migrados de cobranças indevidas.</p>
+            <h3 className="text-sm font-semibold text-klasse-gold-900">Definição Financeira</h3>
+            <p className="text-xs text-klasse-gold-800">Proteja alunos migrados de cobranças indevidas.</p>
           </div>
 
-          <label className="flex items-start gap-2 text-sm text-amber-900">
+          <label className="flex items-start gap-2 text-sm text-klasse-gold-900">
             <input
               type="checkbox"
-              className="mt-1 h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+              className="mt-1 h-4 w-4 rounded border-klasse-gold-300 text-klasse-gold-600 focus:ring-klasse-gold-500"
               checked={skipMatricula}
               onChange={(e) => setSkipMatricula(e.target.checked)}
             />
             <span className="leading-tight">
               Considerar matrícula já paga (migração)
-              <span className="block text-xs text-amber-700">Abona/zera a taxa de matrícula para alunos existentes.</span>
+              <span className="block text-xs text-klasse-gold-700">Abona/zera a taxa de matrícula para alunos existentes.</span>
             </span>
           </label>
 
           <div className="space-y-1">
-            <label className="text-sm font-semibold text-amber-900 block">Mês de início da mensalidade</label>
+            <label className="text-sm font-semibold text-klasse-gold-900 block">Mês de início da mensalidade</label>
             <select
-              className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full rounded-lg border border-klasse-gold-200 bg-white px-3 py-2 text-sm text-klasse-gold-900 focus:outline-none focus:ring-2 focus:ring-klasse-gold-500"
               value={startMonth}
               onChange={(e) => setStartMonth(Number(e.target.value) || new Date().getMonth() + 1)}
             >

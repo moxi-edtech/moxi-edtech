@@ -27,7 +27,7 @@ export function SchoolsHeader({ fallbackSource, onRepairAdmins, loading }: Schoo
           {fallbackSource && (
             <span
               title="A usar base de dados de contingência"
-              className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-amber-50 text-[#E3B23C] border border-amber-100"
+              className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-klasse-gold-50 text-[#E3B23C] border border-klasse-gold-100"
             >
               Modo Contingência
             </span>

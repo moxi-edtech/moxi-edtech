@@ -108,7 +108,7 @@ export default function Header() {
               )}
               <a
                 href={`/super-admin/escolas/${ctxEscola.id}/edit`}
-                className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100"
+                className="text-xs px-2 py-1 rounded bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100"
                 title="Editar escola"
               >
                 Editar Escola
@@ -118,7 +118,7 @@ export default function Header() {
           {process.env.NODE_ENV !== "production" && (
             <a
               href="/super-admin/debug"
-              className="text-xs px-2 py-1 rounded bg-emerald-100 text-emerald-700 border border-emerald-200 hover:bg-emerald-200"
+              className="text-xs px-2 py-1 rounded bg-klasse-green-100 text-klasse-green-700 border border-klasse-green-200 hover:bg-klasse-green-200"
               title="Página de debug (apenas desenvolvimento)"
             >
               Debug
@@ -133,7 +133,7 @@ export default function Header() {
 
         <button
           onClick={handleLogout}
-          className="px-4 py-2 text-sm bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors flex items-center space-x-2"
+          className="px-4 py-2 text-sm bg-slate-500 text-white rounded-md hover:bg-slate-600 transition-colors flex items-center space-x-2"
         >
           <span>Sair</span>
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

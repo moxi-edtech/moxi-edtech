@@ -182,7 +182,7 @@ export function PagamentoModal({
                 <div
                   className={`rounded-xl border px-4 py-3 text-sm font-semibold ${
                     feedback.status === "success"
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                      ? "border-klasse-green-200 bg-klasse-green-50 text-klasse-green-900"
                       : "border-rose-200 bg-rose-50 text-rose-900"
                   }`}
                 >

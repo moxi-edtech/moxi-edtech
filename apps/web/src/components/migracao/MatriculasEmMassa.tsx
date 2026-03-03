@@ -165,7 +165,7 @@ export function MatriculasEmMassa({
 
   if (!importId || !escolaId) {
     return (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+      <div className="rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 px-4 py-3 text-sm text-klasse-gold-800">
         Importação ou escola não identificadas. Volte ao início do wizard.
       </div>
     );
@@ -196,7 +196,7 @@ export function MatriculasEmMassa({
     <div className="space-y-5">
       {/* Header explicativo */}
       <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 flex items-start gap-3 shadow-sm">
-        <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+        <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-slate-50 text-slate-600">
           <School className="h-5 w-5" />
         </div>
         <div className="space-y-1">
@@ -213,7 +213,7 @@ export function MatriculasEmMassa({
       </div>
 
       {info && (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+        <div className="rounded-lg border border-klasse-green-200 bg-klasse-green-50 px-3 py-2 text-xs text-klasse-green-800">
           {info}
         </div>
       )}
@@ -258,7 +258,7 @@ export function MatriculasEmMassa({
                 </label>
                 <div className="flex items-center gap-2">
                   <select
-                    className="w-full sm:w-56 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full sm:w-56 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
                     disabled={!hasTurmas || disabled}
                     onChange={(e) => {
                       const turmaId = e.target.value;
@@ -296,11 +296,11 @@ export function MatriculasEmMassa({
                   ) : hasTurmas ? (
                     <ArrowRight className="h-4 w-4 text-slate-400" />
                   ) : (
-                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+                    <AlertTriangle className="h-4 w-4 text-klasse-gold-500" />
                   )}
                 </div>
                 {!hasTurmas && (
-                  <p className="text-[11px] text-amber-700">
+                  <p className="text-[11px] text-klasse-gold-700">
                     Crie / ajuste as turmas desta escola (curso, classe, turno,
                     ano letivo) para habilitar a matrícula em massa deste grupo.
                   </p>
@@ -339,7 +339,7 @@ export function MatriculasEmMassa({
       {/* Hint final */}
       {grupos.length > 0 && (
         <p className="text-[11px] text-slate-500 flex items-center gap-1">
-          <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+          <CheckCircle2 className="h-3 w-3 text-klasse-green-500" />
           Dica: você pode repetir o processo quantas vezes quiser para o mesmo
           ficheiro de importação. Matrículas existentes serão atualizadas.
         </p>

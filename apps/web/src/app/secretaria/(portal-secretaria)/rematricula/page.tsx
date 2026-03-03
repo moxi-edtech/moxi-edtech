@@ -305,7 +305,7 @@ export default function RematriculaPage() {
                         {/* BADGE PEDAGÓGICA */}
                         <td className="py-3 px-4 text-center">
                           {aluno.pedagogico.status === 'CONCLUIDA' ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-klasse-green-100 text-klasse-green-800">
                               <CheckCircle2 className="w-3.5 h-3.5" /> Aprovado
                             </span>
                           ) : (
@@ -318,7 +318,7 @@ export default function RematriculaPage() {
                         {/* BADGE FINANCEIRA */}
                         <td className="py-3 px-4 text-center">
                           {aluno.financeiro.em_dia ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-klasse-green-100 text-klasse-green-800">
                               <CheckCircle2 className="w-3.5 h-3.5" /> Em Dia
                             </span>
                           ) : (

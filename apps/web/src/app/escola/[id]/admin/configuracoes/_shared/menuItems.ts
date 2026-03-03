@@ -8,6 +8,7 @@ export const buildConfigMenuItems = (base: string): ConfigMenuItem[] => [
   { label: "Avaliação & Notas", href: `${base}/avaliacao` },
   { label: "Turmas & Currículo", href: `${base}/turmas` },
   { label: "Financeiro", href: `${base}/financeiro` },
+  { label: "Mensalidades & Emolumentos", href: `${base}/mensalidades` },
   { label: "Fluxos de Aprovação", href: `${base}/fluxos` },
   { label: "Avançado", href: `${base}/avancado` },
 ];

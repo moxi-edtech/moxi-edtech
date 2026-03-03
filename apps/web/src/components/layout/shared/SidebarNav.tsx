@@ -40,13 +40,13 @@ export function SidebarNav({ items }: { items: NavItem[] }) {
             </span>
 
             {item.badge && !collapsed && (
-              <span className="ml-auto rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-400">
+              <span className="ml-auto rounded bg-klasse-gold-500/10 px-1.5 py-0.5 text-[10px] font-bold text-klasse-gold-400">
                 {item.badge}
               </span>
             )}
 
             {item.badge && collapsed && (
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-amber-500" />
+              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-klasse-gold-500" />
             )}
           </Link>
         );

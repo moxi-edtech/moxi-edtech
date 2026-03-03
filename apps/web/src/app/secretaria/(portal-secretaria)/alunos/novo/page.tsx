@@ -527,7 +527,7 @@ export default function AlunosPage() {
                                 `/secretaria/admissoes/nova?candidaturaId=${encodeURIComponent(createdCandidaturaId!)}`
                               )
                             }
-                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 text-sm"
+                            className="inline-flex items-center gap-2 px-3 py-1.5 rounded bg-klasse-green-600 text-white hover:bg-klasse-green-700 text-sm"
                           >
                             Abrir fluxo de matrícula
                           </button>
@@ -537,8 +537,8 @@ export default function AlunosPage() {
                   </div>
                 )}
 
-                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg">
-                  <p className="text-sm text-blue-700 flex items-center gap-2">
+                <div className="bg-slate-50 border-l-4 border-slate-500 p-4 rounded-lg">
+                  <p className="text-sm text-slate-700 flex items-center gap-2">
                     <InformationCircleIcon className="w-5 h-5" />
                     <span>
                       <strong>Fluxo:</strong> Cadastro rápido cria a candidatura com número de processo. A matrícula e o login só nascem após a confirmação financeira.
@@ -738,7 +738,7 @@ export default function AlunosPage() {
                           Escolha Curso → Classe → Turno para sugerir uma turma preferencial do ano letivo.
                         </p>
                       </div>
-                      <BanknotesIcon className="w-8 h-8 text-amber-500" />
+                      <BanknotesIcon className="w-8 h-8 text-klasse-gold-500" />
                     </div>
 
                     <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -807,9 +807,9 @@ export default function AlunosPage() {
                       </div>
                     </div>
 
-                    <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg flex gap-3">
-                      <BanknotesIcon className="w-6 h-6 text-amber-600" />
-                      <div className="text-sm text-amber-800">
+                    <div className="bg-klasse-gold-50 border border-klasse-gold-200 p-4 rounded-lg flex gap-3">
+                      <BanknotesIcon className="w-6 h-6 text-klasse-gold-600" />
+                      <div className="text-sm text-klasse-gold-800">
                         <strong>Atenção:</strong> Este fluxo cria somente a candidatura e o número de processo. A matrícula e o login nascem na confirmação financeira.
                       </div>
                     </div>
@@ -822,7 +822,7 @@ export default function AlunosPage() {
 
                       {loadingTurmas ? (
                         <div className="flex items-center gap-3 text-sm text-gray-500 border border-dashed border-gray-300 rounded-lg p-4">
-                          <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                          <div className="w-4 h-4 border-2 border-klasse-green-500 border-t-transparent rounded-full animate-spin" />
                           A carregar turmas compatíveis...
                         </div>
                       ) : turmasDisponiveis.length === 0 ? (
@@ -839,8 +839,8 @@ export default function AlunosPage() {
                               className={`
                                 flex items-center justify-between p-4 rounded-lg border cursor-pointer transition-all
                                 ${formData.turmaPreferencialId === turma.id
-                                  ? "border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500"
-                                  : "border-gray-200 hover:border-emerald-200 hover:bg-gray-50"}
+                                  ? "border-klasse-green-500 bg-klasse-green-50 ring-1 ring-klasse-green-500"
+                                  : "border-gray-200 hover:border-klasse-green-200 hover:bg-gray-50"}
                               `}
                             >
                               <div className="flex items-center gap-3">
@@ -850,7 +850,7 @@ export default function AlunosPage() {
                                   value={turma.id}
                                   checked={formData.turmaPreferencialId === turma.id}
                                   onChange={() => handleInputChange("turmaPreferencialId", turma.id)}
-                                  className="text-emerald-600 focus:ring-emerald-500"
+                                  className="text-klasse-green-600 focus:ring-klasse-green-500"
                                 />
                                 <div>
                                   <p className="font-bold text-gray-900">
@@ -901,7 +901,7 @@ export default function AlunosPage() {
                           <select
                             value={formData.paymentMethod}
                             onChange={(e) => handleInputChange("paymentMethod", e.target.value)}
-                            className="w-full rounded-lg border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
+                            className="w-full rounded-lg border-gray-200 focus:border-klasse-green-500 focus:ring-klasse-green-500"
                           >
                             <option value="">Selecione (financeiro)</option>
                             <option value="cartao_multicaixa">Cartão Multicaixa</option>
@@ -918,7 +918,7 @@ export default function AlunosPage() {
                             value={formData.paymentReference}
                             onChange={(e) => handleInputChange("paymentReference", e.target.value)}
                             placeholder="Ex: comprovativo #123, operação, terminal"
-                            className="w-full rounded-lg border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
+                            className="w-full rounded-lg border-gray-200 focus:border-klasse-green-500 focus:ring-klasse-green-500"
                           />
                         </div>
                       </div>
@@ -929,7 +929,7 @@ export default function AlunosPage() {
                           value={formData.paymentReceiptUrl}
                           onChange={(e) => handleInputChange("paymentReceiptUrl", e.target.value)}
                           placeholder="Link para comprovativo / upload"
-                          className="w-full rounded-lg border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
+                          className="w-full rounded-lg border-gray-200 focus:border-klasse-green-500 focus:ring-klasse-green-500"
                         />
                         <p className="text-xs text-gray-500">Essas informações ficam registradas na candidatura para o Financeiro compensar.</p>
                       </div>
@@ -982,12 +982,12 @@ export default function AlunosPage() {
               </form>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
-              <h3 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6">
+              <h3 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
                 <InformationCircleIcon className="w-5 h-5" />
                 Dicas Rápidas
               </h3>
-              <ul className="text-blue-800 text-sm space-y-2">
+              <ul className="text-slate-800 text-sm space-y-2">
                 <li>• Cadastro gera número de processo automático.</li>
                 <li>• Matrícula oficial e login só após confirmação financeira.</li>
                 <li>• Preencha curso pretendido para direcionar a candidatura.</li>
@@ -1016,7 +1016,7 @@ export default function AlunosPage() {
                   onClick={() => setListStatus("pendente")}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${
                     listStatus === "pendente"
-                      ? "bg-amber-50 text-amber-700 border-amber-200"
+                      ? "bg-klasse-gold-50 text-klasse-gold-700 border-klasse-gold-200"
                       : "bg-white text-gray-500 border-gray-200"
                   }`}
                 >
@@ -1027,7 +1027,7 @@ export default function AlunosPage() {
                   onClick={() => setListStatus("ativo")}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${
                     listStatus === "ativo"
-                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      ? "bg-klasse-green-50 text-klasse-green-700 border-klasse-green-200"
                       : "bg-white text-gray-500 border-gray-200"
                   }`}
                 >
@@ -1095,14 +1095,14 @@ export default function AlunosPage() {
                               {pendencias.map((p) => (
                                 <span
                                   key={p}
-                                  className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200"
+                                  className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-klasse-gold-50 text-klasse-gold-700 border border-klasse-gold-200"
                                 >
                                   {p}
                                 </span>
                               ))}
                             </div>
                           ) : (
-                            <span className="text-xs text-emerald-600 font-semibold">Completo</span>
+                            <span className="text-xs text-klasse-green-600 font-semibold">Completo</span>
                           )}
                         </td>
                         <td className="px-4 py-3">

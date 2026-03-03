@@ -29,7 +29,7 @@ export function StudentSwitcher({ educandos, selectedId }: { educandos: Educando
       <label className="sr-only" htmlFor="student-switcher">Selecionar educando</label>
       <select
         id="student-switcher"
-        className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 shadow-sm outline-none ring-emerald-500 focus:ring-2"
+        className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 shadow-sm outline-none ring-klasse-green-500 focus:ring-2"
         value={selectedId ?? educandos[0]?.id}
         onChange={(e) => onChange(e.target.value)}
       >
