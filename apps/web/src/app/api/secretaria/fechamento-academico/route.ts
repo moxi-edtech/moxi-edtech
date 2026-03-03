@@ -34,6 +34,14 @@ const StartSchema = z.object({
   excecao_justificativa: z.string().max(1000).optional(),
   excecao_pendencia_ids: z.array(z.string()).optional(),
   permitir_reaberto_override: z.boolean().default(false),
+}).superRefine((data, ctx) => {
+  if (data.acao === "fechar_trimestre" && !data.periodo_letivo_id) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["periodo_letivo_id"],
+      message: "periodo_letivo_id é obrigatório quando acao=fechar_trimestre.",
+    });
+  }
 });
 
 const RetrySchema = z.object({
