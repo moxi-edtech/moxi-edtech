@@ -792,7 +792,7 @@ export type Database = {
           details: Json | null
           entity: string | null
           entity_id: string | null
-          escola_id: string
+          escola_id: string | null
           id: number
           ip: string | null
           meta: Json | null
@@ -813,7 +813,7 @@ export type Database = {
           details?: Json | null
           entity?: string | null
           entity_id?: string | null
-          escola_id: string
+          escola_id?: string | null
           id?: number
           ip?: string | null
           meta?: Json | null
@@ -834,7 +834,7 @@ export type Database = {
           details?: Json | null
           entity?: string | null
           entity_id?: string | null
-          escola_id?: string
+          escola_id?: string | null
           id?: number
           ip?: string | null
           meta?: Json | null
@@ -12489,9 +12489,11 @@ export type Database = {
         | "aluno"
         | "secretaria"
         | "financeiro"
+        | "encarregado"
         | "secretaria_financeiro"
         | "admin_financeiro"
-        | "encarregado"
+        | "admin_escola"
+        | "staff_admin"
     }
     CompositeTypes: {
       curso_update: {
@@ -12734,9 +12736,11 @@ export const Constants = {
         "aluno",
         "secretaria",
         "financeiro",
+        "encarregado",
         "secretaria_financeiro",
         "admin_financeiro",
-        "encarregado",
+        "admin_escola",
+        "staff_admin",
       ],
     },
   },

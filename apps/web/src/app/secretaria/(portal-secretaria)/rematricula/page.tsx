@@ -355,7 +355,7 @@ export default function RematriculaPage() {
           </div>
           <button
             type="submit"
-            disabled={loading || selectedAlunos.length === 0 || !destinationTurmaId}
+             disabled={loading || selectedAlunos.length === 0 || !destinationTurmaId}
             className="inline-flex items-center gap-2 rounded-xl bg-[#1F6B3B] px-6 py-3 text-sm font-semibold text-white shadow-sm hover:brightness-110 focus:outline-none focus:ring-4 focus:ring-[#E3B23C]/20 disabled:opacity-50 transition-all"
           >
             {loading ? "A Processar..." : "Confirmar Rematrícula"}

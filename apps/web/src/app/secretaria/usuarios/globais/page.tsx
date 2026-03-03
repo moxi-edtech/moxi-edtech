@@ -1,7 +1,7 @@
-import UsuariosListClient from "./UsuariosListClient";
+import { SecretariaUsuariosListClient } from "./UsuariosListClient";
 
 export default function UsuariosGlobaisPage() {
   return (
-    <UsuariosListClient />
+    <SecretariaUsuariosListClient />
   );
 }

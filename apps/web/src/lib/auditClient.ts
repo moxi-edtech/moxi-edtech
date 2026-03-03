@@ -1,7 +1,5 @@
 "use client";
 
-import { createClient } from "@/lib/supabaseClient";
-
 export type AuditEvent = {
   escolaId?: string | null;
   portal:
@@ -25,21 +23,15 @@ export async function recordAuditClient(evt: AuditEvent) {
       return;
     }
 
-    const s = createClient() as any;
+    const res = await fetch("/api/audit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(evt),
+    });
 
-    const payload = {
-      escola_id: evt.escolaId ?? null,
-      portal: evt.portal,
-      acao: evt.acao,
-      tabela: evt.entity, // 👈 obrigatório pra satisfazer NOT NULL
-      entity: evt.entity,
-      entity_id: evt.entityId ?? null,
-      details: evt.details ?? {},
-    };
-
-    const { error } = await s.from("audit_logs").insert(payload);
-    if (error) {
-      console.warn("recordAuditClient error:", error.message);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      console.warn("recordAuditClient error:", err.error || res.statusText);
     }
   } catch (err: any) {
     console.warn("recordAuditClient exception:", err?.message || err);
