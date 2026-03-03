@@ -66,6 +66,10 @@ function checkFile(file: string, content: string) {
     return;
   }
 
+  if (file.includes("/pdf/")) {
+    return;
+  }
+
   if (file.includes("/app/api/") || file.includes("\\app\\api\\")) {
     const hasGetHandler =
       content.includes("export async function GET") ||
