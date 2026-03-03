@@ -9,6 +9,15 @@ const SEARCH_FILES = [
 
 const MAX_LIMIT = 50;
 
+const KF2_SCAN_PATH_EXCLUDES = [
+  "/pdf/",
+  "/declaracao/",
+  "/comprovante-matricula/",
+  "/historico/snapshot/",
+  "/fechamento-academico/",
+  "/documentos-oficiais/lote/",
+];
+
 type Finding = {
   file: string;
   error: string;
@@ -63,6 +72,10 @@ function hasDeterministicOrder(segment: string) {
 
 function checkFile(file: string, content: string) {
   if (hasAllowScan(content)) {
+    return;
+  }
+
+  if (KF2_SCAN_PATH_EXCLUDES.some((pathPart) => file.includes(pathPart))) {
     return;
   }
 

@@ -3,6 +3,7 @@ import { z } from "zod"
 import { randomUUID } from "crypto"
 import { supabaseServerTyped } from "@/lib/supabaseServer"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
+import { applyKf2ListInvariants } from "@/lib/kf2"
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas"
 import { buildPautaGeralPayload, renderPautaGeralBuffer } from "@/lib/pedagogico/pauta-geral"
 import { requireFeature } from "@/lib/plan/requireFeature"
@@ -72,14 +73,17 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       return NextResponse.redirect(signed.signedUrl)
     }
 
-    const { data: existing } = await supabase
+    let existingQuery = supabase
       .from("pautas_oficiais")
       .select("id, status, pdf_path")
       .eq("escola_id", escolaId)
       .eq("turma_id", turmaId)
       .eq("periodo_letivo_id", parsed.data.periodoLetivoId)
       .eq("tipo", "trimestral")
-      .maybeSingle()
+
+    existingQuery = applyKf2ListInvariants(existingQuery, { defaultLimit: 1, order: [{ column: 'created_at', ascending: false }] })
+
+    const { data: existing } = await existingQuery.maybeSingle()
 
     if (existing?.status === "PROCESSING") {
       return NextResponse.json({ ok: false, status: "PROCESSING", error: "Pauta em processamento" }, { status: 409 })

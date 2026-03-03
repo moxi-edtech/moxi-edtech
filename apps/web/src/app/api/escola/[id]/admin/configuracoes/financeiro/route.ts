@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -74,16 +75,20 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       );
     }
 
-    const { data } = await supabase
+    let tabelaPadraoQuery = supabase
       .from("financeiro_tabelas")
       .select("dia_vencimento, multa_atraso_percentual, multa_diaria")
       .eq("escola_id", userEscolaId)
       .eq("ano_letivo", anoLetivo.ano)
       .is("curso_id", null)
       .is("classe_id", null)
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+
+    tabelaPadraoQuery = applyKf2ListInvariants(tabelaPadraoQuery, {
+      defaultLimit: 1,
+      order: [{ column: 'updated_at', ascending: false }],
+    })
+
+    const { data } = await tabelaPadraoQuery.maybeSingle();
 
     return withNoStore(NextResponse.json({
       ok: true,

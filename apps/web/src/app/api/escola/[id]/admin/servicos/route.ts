@@ -22,7 +22,9 @@ export async function GET(_req: Request, context: { params: { id?: string } }) {
       .from("servicos_escola")
       .select("id, codigo, nome, descricao, valor_base, ativo")
       .eq("escola_id", escolaId)
-      .order("nome", { ascending: true });
+      .order("nome", { ascending: true })
+      .order("id", { ascending: true })
+      .limit(50);
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true, items: data ?? [] });

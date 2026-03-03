@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import { applyKf2ListInvariants } from '@/lib/kf2'
 
 export const dynamic = 'force-dynamic'
 
@@ -55,12 +56,20 @@ export async function GET(req: Request) {
     }
     const papels = cargoToPapels[cargo as keyof typeof cargoToPapels] ?? ['professor']
 
-    const { data: vinc, error: vincErr } = await queryClient
+    let vincQuery = queryClient
       .from('escola_users')
       .select('id, user_id, created_at, papel')
       .eq('escola_id', escolaId)
       .in('papel', papels)
       .gte('created_at', since)
+
+    vincQuery = applyKf2ListInvariants(vincQuery, {
+      limit: pageSize,
+      offset: (page - 1) * pageSize,
+      order: [{ column: 'created_at', ascending: false }],
+    })
+
+    const { data: vinc, error: vincErr } = await vincQuery
     if (vincErr) return NextResponse.json({ ok: false, error: vincErr.message }, { status: 500 })
 
     const vincList = (vinc || []) as Array<{ id: string; user_id: string; created_at: string; papel: string }>

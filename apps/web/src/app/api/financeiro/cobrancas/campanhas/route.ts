@@ -16,9 +16,11 @@ export async function GET(request: Request) {
 
     const { data, error } = await supabase
       .from("financeiro_campanhas_cobranca")
-      .select("*")
+      .select("id, nome, descricao, status, created_at, updated_at, escola_id")
       .eq("escola_id", escolaId)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(50);
 
     if (error) {
       console.error("[GET /campanhas] supabase error:", error);
