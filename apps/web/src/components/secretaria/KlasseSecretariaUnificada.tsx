@@ -66,7 +66,7 @@ export default function KlasseSecretariaUnificada({
           onClick={() => setMode("balcao")}
           className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
             activeMode === "balcao"
-              ? "bg-emerald-600 text-white"
+              ? "bg-klasse-green-600 text-white"
               : "bg-slate-100 text-slate-700 hover:bg-slate-200"
           }`}
         >
@@ -77,7 +77,7 @@ export default function KlasseSecretariaUnificada({
           onClick={() => setMode("financeiro")}
           className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
             activeMode === "financeiro"
-              ? "bg-emerald-600 text-white"
+              ? "bg-klasse-green-600 text-white"
               : "bg-slate-100 text-slate-700 hover:bg-slate-200"
           }`}
         >

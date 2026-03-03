@@ -124,7 +124,7 @@ export default function EditarAlunoPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-moxinexa-light to-blue-50 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-moxinexa-light to-slate-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-4">
           <button
@@ -157,13 +157,13 @@ export default function EditarAlunoPage() {
             <form onSubmit={handleSubmit} className="space-y-6">
               {success && (
                 <div className={`rounded-xl p-4 flex items-center gap-3 ${
-                  queued ? "bg-amber-50 border border-amber-200" : "bg-green-50 border border-green-200"
+                  queued ? "bg-klasse-gold-50 border border-klasse-gold-200" : "bg-green-50 border border-green-200"
                 }`}>
                   <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                    <CheckCircleIcon className={`w-5 h-5 ${queued ? "text-amber-600" : "text-green-600"}`} />
+                    <CheckCircleIcon className={`w-5 h-5 ${queued ? "text-klasse-gold-600" : "text-green-600"}`} />
                   </div>
                   <div>
-                    <p className={`font-medium ${queued ? "text-amber-800" : "text-green-800"}`}>
+                    <p className={`font-medium ${queued ? "text-klasse-gold-800" : "text-green-800"}`}>
                       {queued
                         ? "Sem internet. Atualização salva para sincronizar depois."
                         : "Cadastro atualizado com sucesso!"}

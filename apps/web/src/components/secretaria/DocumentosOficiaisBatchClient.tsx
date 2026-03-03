@@ -484,14 +484,14 @@ export default function DocumentosOficiaisBatchClient() {
       {effectiveStatus !== "IDLE" && !(effectiveStatus === "FAILED" && latestJob?.error_message?.toLowerCase().includes("cancelado")) && (
         <div
           className={`p-5 rounded-xl border flex items-center justify-between shadow-sm transition-all ${
-            effectiveStatus === "RUNNING" ? "bg-blue-50 border-blue-100" :
+            effectiveStatus === "RUNNING" ? "bg-slate-50 border-slate-100" :
             effectiveStatus === "DONE" ? "bg-[#1F6B3B]/10 border-[#1F6B3B]/20" :
             "bg-rose-50 border-rose-100"
           }`}
         >
           <div className="flex items-center gap-4">
             {effectiveStatus === "RUNNING" ? (
-              <RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
+              <RefreshCw className="w-6 h-6 animate-spin text-slate-600" />
             ) : effectiveStatus === "DONE" ? (
               <CheckCircle2 className="w-6 h-6 text-[#1F6B3B]" />
             ) : (
@@ -500,7 +500,7 @@ export default function DocumentosOficiaisBatchClient() {
             <div>
               <h3
                 className={`font-bold text-sm ${
-                  effectiveStatus === "RUNNING" ? "text-blue-900" :
+                  effectiveStatus === "RUNNING" ? "text-slate-900" :
                   effectiveStatus === "DONE" ? "text-[#1F6B3B]" :
                   "text-rose-700"
                 }`}
@@ -698,9 +698,9 @@ export default function DocumentosOficiaisBatchClient() {
               </div>
               <div className="flex items-center gap-3">
                 <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${
-                  job.status === "SUCCESS" ? "bg-emerald-50 text-emerald-700" :
+                  job.status === "SUCCESS" ? "bg-klasse-green-50 text-klasse-green-700" :
                   job.status === "FAILED" ? "bg-rose-50 text-rose-700" :
-                  "bg-amber-50 text-amber-700"
+                  "bg-klasse-gold-50 text-klasse-gold-700"
                 }`}>
                   {job.status}
                 </span>
@@ -731,7 +731,7 @@ export default function DocumentosOficiaisBatchClient() {
                   </button>
                 )}
                 {!job.download_url && job.status === "PROCESSING" && (
-                  <span className="inline-flex items-center gap-1 text-amber-600">
+                  <span className="inline-flex items-center gap-1 text-klasse-gold-600">
                     <RefreshCw className="h-3 w-3 animate-spin" /> A processar…
                   </span>
                 )}
@@ -835,7 +835,7 @@ export default function DocumentosOficiaisBatchClient() {
                                 Sem avaliação
                               </span>
                             ) : (
-                              <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+                              <span className="inline-flex items-center rounded-full bg-klasse-gold-50 px-2.5 py-1 text-[11px] font-semibold text-klasse-gold-700">
                                 {pendenciaTipo.pendentes} nota(s) pendentes
                               </span>
                             )}

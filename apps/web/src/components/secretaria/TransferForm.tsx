@@ -113,7 +113,7 @@ export default function TransferForm({ matriculaId, anoLetivo, onSuccess }: Tran
           id="turma"
           value={turmaId}
           onChange={(e) => setTurmaId(e.target.value)}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-klasse-green-500 focus:ring-klasse-green-500 sm:text-sm"
           required
           disabled={!anoLetivo}
         >
@@ -137,7 +137,7 @@ export default function TransferForm({ matriculaId, anoLetivo, onSuccess }: Tran
       )}
 
       {!anoLetivo && (
-        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-3">
+        <p className="text-sm text-klasse-gold-700 bg-klasse-gold-50 border border-klasse-gold-100 rounded-lg p-3">
           Selecione um ano letivo para listar as turmas disponíveis.
         </p>
       )}
@@ -154,14 +154,14 @@ export default function TransferForm({ matriculaId, anoLetivo, onSuccess }: Tran
           <div className="flex flex-wrap gap-2 text-xs text-slate-700">
             <span className="rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">Vagas restantes: {impacto.vagas_restantes ?? 0}</span>
             {impacto.mudanca_turno && (
-              <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-800 ring-1 ring-amber-200">Mudança de turno</span>
+              <span className="rounded-full bg-klasse-gold-100 px-3 py-1 text-klasse-gold-800 ring-1 ring-klasse-gold-200">Mudança de turno</span>
             )}
           </div>
 
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <div className="rounded-lg border border-klasse-gold-200 bg-klasse-gold-50 p-3 text-sm text-klasse-gold-900">
             <div className="font-semibold mb-1">Impacto financeiro</div>
-            <div className="text-xs text-amber-800">{impacto.financeiro.mensagem}</div>
-            <div className="mt-2 text-xs text-amber-900">
+            <div className="text-xs text-klasse-gold-800">{impacto.financeiro.mensagem}</div>
+            <div className="mt-2 text-xs text-klasse-gold-900">
               Atual: {impacto.financeiro.valor_antigo.toLocaleString('pt-AO')} Kz → Novo: {impacto.financeiro.valor_novo.toLocaleString('pt-AO')} Kz ({impacto.financeiro.diferenca >= 0 ? '+' : ''}{impacto.financeiro.diferenca.toLocaleString('pt-AO')} Kz)
             </div>
           </div>
@@ -174,14 +174,14 @@ export default function TransferForm({ matriculaId, anoLetivo, onSuccess }: Tran
         <button
           type="button"
           onClick={onSuccess}
-          className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+          className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-klasse-green-500 focus:ring-offset-2"
         >
           Cancelar
         </button>
         <button
           type="submit"
           disabled={!!disableConfirm}
-          className="inline-flex justify-center rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50"
+          className="inline-flex justify-center rounded-md border border-transparent bg-klasse-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-klasse-green-700 focus:outline-none focus:ring-2 focus:ring-klasse-green-500 focus:ring-offset-2 disabled:opacity-50"
         >
           {loading ? "Transferindo..." : "Confirmar transferência"}
         </button>

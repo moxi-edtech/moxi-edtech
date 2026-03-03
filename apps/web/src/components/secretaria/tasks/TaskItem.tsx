@@ -56,9 +56,9 @@ export function TaskItem({
           className="
             h-9 w-9 rounded-lg
             border border-slate-200 bg-white
-            text-emerald-600
-            hover:bg-emerald-50 hover:border-emerald-200
-            focus:outline-none focus:ring-4 focus:ring-emerald-200/40
+            text-klasse-green-600
+            hover:bg-klasse-green-50 hover:border-klasse-green-200
+            focus:outline-none focus:ring-4 focus:ring-klasse-green-200/40
           "
           aria-label="Aprovar"
         >

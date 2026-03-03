@@ -197,7 +197,7 @@ function CriarEscolaForm() {
                 step === currentStep
                   ? "bg-klasse-green text-white border-klasse-green shadow-lg shadow-klasse-green/20"
                   : step < currentStep
-                  ? "bg-emerald-500 text-white border-emerald-500"
+                  ? "bg-klasse-green-500 text-white border-klasse-green-500"
                   : "bg-white text-slate-300 border-slate-100"
               }`}
             >
@@ -220,21 +220,21 @@ function CriarEscolaForm() {
           <div className="space-y-6 animate-klasse-fade-up">
             
             {/* Pre-fill Selector */}
-            <div className="bg-amber-50 border border-amber-100 rounded-3xl p-6 space-y-4">
+            <div className="bg-klasse-gold-50 border border-klasse-gold-100 rounded-3xl p-6 space-y-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-amber-100 rounded-xl text-amber-700">
+                <div className="p-2 bg-klasse-gold-100 rounded-xl text-klasse-gold-700">
                   <Sparkles size={18} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-amber-900">Preencher via Onboarding</h3>
-                  <p className="text-xs text-amber-700/70 font-medium">Use dados já submetidos por uma escola.</p>
+                  <h3 className="text-sm font-bold text-klasse-gold-900">Preencher via Onboarding</h3>
+                  <p className="text-xs text-klasse-gold-700/70 font-medium">Use dados já submetidos por uma escola.</p>
                 </div>
               </div>
               <select 
                 value={selectedOnboardingId}
                 onChange={(e) => handlePreFill(e.target.value)}
                 disabled={loadingOnboarding}
-                className="w-full bg-white border-amber-200 rounded-xl text-sm font-bold text-slate-700 focus:ring-amber-500 focus:border-amber-500"
+                className="w-full bg-white border-klasse-gold-200 rounded-xl text-sm font-bold text-slate-700 focus:ring-klasse-gold-500 focus:border-klasse-gold-500"
               >
                 <option value="">Seleccionar pedido pendente...</option>
                 {onboardingRequests.map(r => (
@@ -322,7 +322,7 @@ function CriarEscolaForm() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6 space-y-4">
-                <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex gap-3 text-blue-800 text-xs font-medium leading-relaxed">
+                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex gap-3 text-slate-800 text-xs font-medium leading-relaxed">
                   <Info size={16} className="shrink-0" />
                   Este utilizador terá acesso total e será responsável por configurar a escola.
                 </div>
@@ -396,12 +396,12 @@ function CriarEscolaForm() {
         {/* Step 3: Success Confirmation */}
         {currentStep === 3 && creationResult && (
           <div className="space-y-6 animate-klasse-fade-up">
-            <div className="bg-emerald-50 border-2 border-emerald-100 rounded-[2rem] p-8 text-center space-y-4">
-              <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center mx-auto shadow-xl shadow-emerald-200">
+            <div className="bg-klasse-green-50 border-2 border-klasse-green-100 rounded-[2rem] p-8 text-center space-y-4">
+              <div className="w-20 h-20 bg-klasse-green-500 rounded-full flex items-center justify-center mx-auto shadow-xl shadow-klasse-green-200">
                 <CheckCircle2 size={40} className="text-white" />
               </div>
-              <h2 className="text-2xl font-black text-emerald-900 font-sora">Escola Criada!</h2>
-              <p className="text-emerald-700 font-medium">O ambiente para <strong className="text-emerald-900">{formData.nome}</strong> está pronto.</p>
+              <h2 className="text-2xl font-black text-klasse-green-900 font-sora">Escola Criada!</h2>
+              <p className="text-klasse-green-700 font-medium">O ambiente para <strong className="text-klasse-green-900">{formData.nome}</strong> está pronto.</p>
             </div>
 
             <Card className="rounded-3xl border-slate-200 shadow-xl overflow-hidden bg-white">

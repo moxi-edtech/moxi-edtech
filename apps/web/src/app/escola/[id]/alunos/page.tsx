@@ -251,8 +251,8 @@ export default function AlunosPage() {
                                         <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-bold border border-slate-200">10ª Classe A</span>
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full text-xs font-bold border border-emerald-100">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"/> Ativo
+                                        <span className="inline-flex items-center gap-1.5 bg-klasse-green-50 text-klasse-green-700 px-2.5 py-1 rounded-full text-xs font-bold border border-klasse-green-100">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-klasse-green-500"/> Ativo
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-right">
@@ -328,7 +328,7 @@ export default function AlunosPage() {
                     {/* PASSO 3: ENCARREGADO */}
                     {step === 3 && (
                         <div className="space-y-6 animate-in fade-in duration-300">
-                            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-xs text-blue-700 mb-4">
+                            <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 text-xs text-slate-700 mb-4">
                                 💡 Estes dados são usados para comunicações financeiras e emergências.
                             </div>
                             <InputGroup label="Nome Completo" name="encarregado_nome" value={formData.encarregado_nome} onChange={handleInputChange} icon={Users} placeholder="Nome do Pai/Mãe/Tutor" required />

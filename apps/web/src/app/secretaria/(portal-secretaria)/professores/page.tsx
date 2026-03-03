@@ -23,7 +23,7 @@ export default async function Page() {
     return (
       <>
         <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="professores_list" />
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded text-amber-800 text-sm">
+        <div className="p-4 bg-klasse-gold-50 border border-klasse-gold-200 rounded text-klasse-gold-800 text-sm">
           Vincule seu perfil a uma escola para ver professores.
         </div>
       </>
@@ -37,4 +37,3 @@ export default async function Page() {
     </>
   );
 }
-

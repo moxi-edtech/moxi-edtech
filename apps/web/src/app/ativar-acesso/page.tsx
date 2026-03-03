@@ -39,7 +39,7 @@ export default function AtivarAcessoPage() {
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-xl font-bold text-slate-900">
-            <CheckCircle className="w-5 h-5 text-emerald-600" /> Ativar acesso ao portal
+            <CheckCircle className="w-5 h-5 text-klasse-green-600" /> Ativar acesso ao portal
           </CardTitle>
           <CardDescription>Informe o código recebido e o número do BI.</CardDescription>
         </CardHeader>
@@ -68,7 +68,7 @@ export default function AtivarAcessoPage() {
             <div
               className={`mt-4 p-3 rounded-lg border text-sm flex items-center gap-2 ${
                 result.ok
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                  ? 'bg-klasse-green-50 border-klasse-green-200 text-klasse-green-700'
                   : 'bg-red-50 border-red-200 text-red-700'
               }`}
             >

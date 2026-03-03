@@ -100,7 +100,7 @@ export default function StudentPortalLayout({ children }: { children: React.Reac
           </div>
           <div className="flex items-center gap-4">
             <button className="relative p-2 rounded-full bg-moxinexa-light/30"><BellIcon className="w-5 h-5" /></button>
-            <SignOutButton label="Sair" className="px-3 py-1.5 text-xs bg-blue-500 text-white rounded-md" />
+            <SignOutButton label="Sair" className="px-3 py-1.5 text-xs bg-slate-500 text-white rounded-md" />
           </div>
         </div>
         <div className="bg-white rounded-2xl shadow-sm p-6 border border-moxinexa-light/30">

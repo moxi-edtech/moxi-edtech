@@ -160,8 +160,8 @@ export function SchoolCurriculumManager({
         </div>
       </div>
 
-      <div className="mb-6 flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800">
-        <Info className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
+      <div className="mb-6 flex items-start gap-3 rounded-xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-800">
+        <Info className="mt-0.5 h-5 w-5 shrink-0 text-slate-600" />
         <p>
           Ajuste a carga horária de acordo com o regime da escola. Valores abaixo do padrão do Ministério da
           Educação (MED) gerarão alertas críticos na emissão de certificados, mas podem ser salvos se houver

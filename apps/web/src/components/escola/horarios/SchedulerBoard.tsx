@@ -27,7 +27,7 @@ export type SchedulerAula = {
   professor: string;
   professorId?: string | null;
   salaId?: string | null;
-  cor: string; // Ex: "bg-blue-50 border-blue-200 text-blue-700" (Cores funcionais suaves)
+  cor: string; // Ex: "bg-slate-50 border-slate-200 text-slate-700" (Cores funcionais suaves)
   temposTotal: number;
   temposAlocados: number;
   conflito?: boolean;
@@ -221,7 +221,7 @@ export function SchedulerBoard({
           </div>
 
           {missingLoadCount > 0 && (
-            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+            <div className="mb-4 rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 p-3 text-xs text-klasse-gold-800">
               <div className="font-semibold">{missingLoadCount} disciplina(s) sem carga horária.</div>
               <div className="mt-1">Defina a carga para publicar o quadro.</div>
               {onAutoConfigurarCargas && (
@@ -229,7 +229,7 @@ export function SchedulerBoard({
                   type="button"
                   onClick={onAutoConfigurarCargas}
                   disabled={autoConfiguring}
-                  className="mt-2 w-full rounded-lg bg-amber-500 px-3 py-2 text-xs font-bold text-white shadow-sm hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
+                  className="mt-2 w-full rounded-lg bg-klasse-gold-500 px-3 py-2 text-xs font-bold text-white shadow-sm hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {autoConfiguring ? "Configurando..." : "Auto-Configurar cargas"}
                 </button>
@@ -317,7 +317,7 @@ export function SchedulerBoard({
                   <span className="font-bold text-slate-900 mb-1">{tempo.label.split(" - ")[0]}</span>
                   <span className="text-slate-400 text-[10px]">{tempo.label.split(" - ")[1]}</span>
                   {tempo.tipo === "intervalo" && (
-                    <span className="mt-2 px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full font-bold text-[9px] uppercase tracking-wide">
+                    <span className="mt-2 px-2 py-0.5 bg-klasse-gold-100 text-klasse-gold-700 rounded-full font-bold text-[9px] uppercase tracking-wide">
                       Intervalo
                     </span>
                   )}
@@ -345,7 +345,7 @@ export function SchedulerBoard({
                             <div className={`
                               group h-full w-full rounded-lg p-2.5 border border-transparent shadow-sm 
                               flex flex-col justify-between cursor-grab active:cursor-grabbing hover:brightness-95 transition-all
-                              ${aula.cor} /* Usa classes funcionais tipo bg-blue-50 */
+                              ${aula.cor} /* Usa classes funcionais tipo bg-slate-50 */
                             `}>
                               <div className="flex justify-between items-start">
                                 <span className="font-bold text-xs uppercase tracking-tight">{aula.sigla}</span>
@@ -459,7 +459,7 @@ const DraggableSource = ({ aula }: any) => {
           </span>
         </div>
         {isComplete ? (
-          <Check className="w-3.5 h-3.5 text-emerald-500" />
+          <Check className="w-3.5 h-3.5 text-klasse-green-500" />
         ) : (
           <GripVertical className="w-4 h-4 text-slate-300 group-hover:text-klasse-gold transition-colors" />
         )}
@@ -472,13 +472,13 @@ const DraggableSource = ({ aula }: any) => {
          {/* Barra de Progresso Micro */}
          <div className="h-1.5 w-16 bg-slate-100 rounded-full overflow-hidden">
             <div
-              className={`h-full ${isComplete ? "bg-emerald-500" : "bg-klasse-gold"}`}
+              className={`h-full ${isComplete ? "bg-klasse-green-500" : "bg-klasse-gold"}`}
               style={{ width: `${allocation.progress}%` }}
             />
          </div>
       </div>
       {aula.missingLoad && (
-        <div className="mt-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-bold uppercase text-amber-700">
+        <div className="mt-2 inline-flex items-center rounded-full bg-klasse-gold-100 px-2 py-0.5 text-[9px] font-bold uppercase text-klasse-gold-700">
           Definir carga
         </div>
       )}

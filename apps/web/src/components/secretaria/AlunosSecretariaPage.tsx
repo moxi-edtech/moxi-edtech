@@ -128,7 +128,7 @@ type TabDef = {
 };
 
 const TABS: TabDef[] = [
-  { id: "leads", label: "Leads", icon: <Clock size={13} />, color: "bg-amber-100 text-amber-800" },
+  { id: "leads", label: "Leads", icon: <Clock size={13} />, color: "bg-klasse-gold-100 text-klasse-gold-800" },
   {
     id: "ativos",
     label: "Activos",
@@ -197,11 +197,11 @@ function StatusBadge({ status }: { status?: string | null }) {
   const map: Record<string, string> = {
     ativo: "bg-[#1F6B3B]/10 text-[#1F6B3B] border-[#1F6B3B]/20",
     matriculado: "bg-[#1F6B3B]/10 text-[#1F6B3B] border-[#1F6B3B]/20",
-    pendente: "bg-amber-50 text-amber-800 border-amber-200",
-    submetida: "bg-amber-50 text-amber-800 border-amber-200",
+    pendente: "bg-klasse-gold-50 text-klasse-gold-800 border-klasse-gold-200",
+    submetida: "bg-klasse-gold-50 text-klasse-gold-800 border-klasse-gold-200",
     em_analise: "bg-sky-50 text-sky-700 border-sky-200",
     aprovada: "bg-[#1F6B3B]/10 text-[#1F6B3B] border-[#1F6B3B]/20",
-    suspenso: "bg-amber-50 text-amber-800 border-amber-200",
+    suspenso: "bg-klasse-gold-50 text-klasse-gold-800 border-klasse-gold-200",
     inativo: "bg-rose-50 text-rose-700 border-rose-200",
     arquivado: "bg-slate-100 text-slate-500 border-slate-200",
   };
@@ -1001,10 +1001,10 @@ function Toast({ toast, onDismiss }: { toast: ToastState; onDismiss: () => void 
 function OfflineBanner({ fromCache, updatedAt }: { fromCache: boolean; updatedAt: string | null }) {
   if (!fromCache) return null;
   return (
-    <div className="flex items-center gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
-      <AlertCircle size={14} className="flex-shrink-0 text-amber-500" />
+    <div className="flex items-center gap-2.5 rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 px-4 py-2.5 text-sm text-klasse-gold-800">
+      <AlertCircle size={14} className="flex-shrink-0 text-klasse-gold-500" />
       <span className="font-semibold">Sem ligação</span>
-      <span className="text-amber-600">
+      <span className="text-klasse-gold-600">
         — a mostrar dados em cache
         {updatedAt ? ` de ${new Date(updatedAt).toLocaleTimeString("pt-AO")}` : "."}
       </span>
@@ -1604,7 +1604,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
                               <div className="flex items-center gap-2 mt-0.5">
                                 {id && <span className="font-mono text-[10px] text-slate-400">{id}</span>}
                                 {isLead && (
-                                  <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-black bg-amber-100 text-amber-800 uppercase tracking-wide">
+                                  <span className="inline-flex px-1.5 py-0.5 rounded-full text-[9px] font-black bg-klasse-gold-100 text-klasse-gold-800 uppercase tracking-wide">
                                     Lead
                                   </span>
                                 )}

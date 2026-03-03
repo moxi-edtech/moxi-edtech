@@ -79,7 +79,7 @@ export function LiberarAcessoAlunos({ escolaId }: Props) {
         )}
 
         {message && (
-          <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm">
+          <div className="flex items-center gap-2 text-klasse-green-700 bg-klasse-green-50 border border-klasse-green-200 rounded-lg p-3 text-sm">
             <CheckCircle className="w-4 h-4" />
             {message}
           </div>

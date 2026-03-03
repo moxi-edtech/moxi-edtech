@@ -20,7 +20,7 @@ export default function DocumentosPage() {
     return (
       <>
         <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="documentos" />
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm">
+        <div className="p-4 bg-klasse-gold-50 border border-klasse-gold-200 rounded-xl text-klasse-gold-800 text-sm">
           {error || "Vincule seu perfil a uma escola para emitir documentos."}
         </div>
       </>

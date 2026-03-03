@@ -43,12 +43,12 @@ const fmtHora = (ts: string) => {
 };
 
 const TIPO_CONFIG: Record<string, { icon: any, colorClass: string, bgClass: string, label: string }> = {
-  pagamento: { icon: CreditCard,    colorClass: "text-emerald-600", bgClass: "bg-emerald-50", label: "Pagamento"  },
-  matricula: { icon: UserPlus,      colorClass: "text-blue-600",    bgClass: "bg-blue-50",    label: "Matrícula"  },
-  nota:      { icon: GraduationCap, colorClass: "text-purple-600",  bgClass: "bg-purple-50",  label: "Notas"      },
-  presenca:  { icon: Presentation,  colorClass: "text-amber-600",   bgClass: "bg-amber-50",   label: "Presença"   },
-  config:    { icon: Wrench,        colorClass: "text-slate-600",   bgClass: "bg-slate-50",   label: "Config"     },
-  outro:     { icon: Activity,      colorClass: "text-slate-600",   bgClass: "bg-slate-50",   label: "Outro"      },
+  pagamento: { icon: CreditCard,    colorClass: "text-klasse-green", bgClass: "bg-klasse-green/10", label: "Pagamento"  },
+  matricula: { icon: UserPlus,      colorClass: "text-klasse-gold",  bgClass: "bg-klasse-gold/10",  label: "Matrícula"  },
+  nota:      { icon: GraduationCap, colorClass: "text-slate-600",    bgClass: "bg-slate-100",       label: "Notas"      },
+  presenca:  { icon: Presentation,  colorClass: "text-slate-600",    bgClass: "bg-slate-100",       label: "Presença"   },
+  config:    { icon: Wrench,        colorClass: "text-slate-600",    bgClass: "bg-slate-50",        label: "Config"     },
+  outro:     { icon: Activity,      colorClass: "text-slate-600",    bgClass: "bg-slate-50",        label: "Outro"      },
 };
 
 // ─── Subcomponentes ───────────────────────────────────────────────────────────
@@ -56,42 +56,39 @@ const TIPO_CONFIG: Record<string, { icon: any, colorClass: string, bgClass: stri
 function SaudeRing({ valor }: { valor: number }) {
   const [v, setV] = useState(0);
   useEffect(() => { const t = setTimeout(() => setV(valor), 400); return () => clearTimeout(t); }, [valor]);
-  const r = 32, circ = 2 * Math.PI * r;
-  const offset = circ - (v / 100) * circ;
-  const color = v >= 80 ? "#1F6B3B" : v >= 60 ? "#E3B23C" : "#EF4444";
-  
+  const barColor = v >= 80 ? "bg-klasse-green" : v >= 60 ? "bg-klasse-gold" : "bg-slate-400";
+
   return (
-    <div className="relative w-20 h-20">
-      <svg width="80" height="80" className="-rotate-90">
-        <circle cx="40" cy="40" r={r} fill="none" stroke="#E2E8F0" strokeWidth="6" />
-        <circle 
-          cx="40" cy="40" r={r} fill="none" stroke={color} strokeWidth="6"
-          strokeDasharray={circ} strokeDashoffset={offset}
-          strokeLinecap="round"
-          className="transition-all duration-1000 ease-in-out"
+    <div className="min-w-[140px]">
+      <div className="flex items-center justify-between text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
+        <span>Saúde</span>
+        <span className="text-slate-700">{v}%</span>
+      </div>
+      <div className="mt-2 h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+        <div
+          className={`h-full ${barColor} transition-all duration-700 ease-out`}
+          style={{ width: `${v}%` }}
+          role="progressbar"
+          aria-valuenow={v}
+          aria-valuemin={0}
+          aria-valuemax={100}
         />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-lg font-extrabold leading-none" style={{ color }}>{v}%</span>
-        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">Saúde</span>
       </div>
     </div>
   );
 }
 
-function MetricCard({ icon: Icon, label, main, sub, variant = "default", delay = 0 }: { icon: any, label: string, main: React.ReactNode, sub: string, variant?: "default" | "green" | "gold" | "purple", delay?: number }) {
+function MetricCard({ icon: Icon, label, main, sub, variant = "default", delay = 0 }: { icon: any, label: string, main: React.ReactNode, sub: string, variant?: "default" | "green" | "gold", delay?: number }) {
   const variants = {
     default: "border-slate-200 bg-white",
     green: "border-klasse-green/20 bg-klasse-green/5",
     gold: "border-klasse-gold/20 bg-klasse-gold/5",
-    purple: "border-purple-200 bg-purple-50/30",
   };
 
   const accents = {
     default: "bg-slate-100 text-slate-600",
     green: "bg-klasse-green/10 text-klasse-green",
     gold: "bg-klasse-gold/10 text-klasse-gold",
-    purple: "bg-purple-100 text-purple-600",
   };
 
   return (
@@ -191,7 +188,7 @@ function NotasInternas({ escolaId }: { escolaId: string }) {
         {loading ? (
           <RefreshCw size={12} className="animate-spin text-slate-300" />
         ) : (
-          <span className={`text-[10px] font-bold uppercase ${saved ? "text-klasse-green" : "text-amber-500"}`}>
+          <span className={`text-[10px] font-bold uppercase ${saved ? "text-klasse-green" : "text-klasse-gold"}`}>
             {saved ? "✓ sincronizado" : "a guardar…"}
           </span>
         )}
@@ -235,6 +232,14 @@ export default function EscolaMonitor({
 }: EscolaMonitorProps) {
   const [activeTab, setActiveTab] = useState("overview");
   const supabase = createClient();
+  const dominioRaw = escola.dominio || escola.subdominio || null;
+  const dominio = dominioRaw
+    ? dominioRaw.includes('.')
+      ? dominioRaw
+      : `${dominioRaw}.klasse.ao`
+    : null;
+  const sslStatus = escola.ssl_status || null;
+  const dbRegion = escola.db_region || null;
 
   const togglePortalAluno = async () => {
     const newStatus = !escola.aluno_portal_enabled;
@@ -260,101 +265,94 @@ export default function EscolaMonitor({
   };
 
   return (
-    <div className="bg-slate-50 min-h-screen font-sans text-slate-900">
+    <div className="bg-slate-50 font-sans text-slate-900">
       
       {/* ── HEADER SUPERIOR ── */}
-      <div className="bg-white border-b border-slate-200 px-6 py-8">
-        <div className="max-w-6xl mx-auto space-y-6">
-          
-          {/* Breadcrumb */}
-          <nav className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-            <span>Super Admin</span>
-            <ChevronRight size={10} />
-            <span className="text-slate-300">Escolas</span>
-            <ChevronRight size={10} />
-            <span className="text-klasse-green">{escola.nome}</span>
-          </nav>
-
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+      <div className="bg-slate-50 px-6 py-10">
+        <div className="max-w-6xl mx-auto">
+          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200/60 shadow-[0_8px_30px_rgba(0,0,0,0.04)] space-y-6">
             
-            {/* Identidade */}
-            <div className="flex items-start gap-6">
-              <div className="w-20 h-20 rounded-3xl bg-klasse-green flex items-center justify-center text-3xl font-black text-white shadow-xl shadow-klasse-green/20 relative group overflow-hidden">
-                {escola.logo_url ? (
-                  <img src={escola.logo_url} alt="Logo" className="w-full h-full object-cover" />
-                ) : (
-                  escola.nome.charAt(0)
-                )}
-                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <Wrench size={24} className="text-white" />
-                </div>
-              </div>
+            {/* Breadcrumb */}
+            <nav className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              <span>Super Admin</span>
+              <ChevronRight size={10} />
+              <span className="text-slate-300">Escolas</span>
+              <ChevronRight size={10} />
+              <span className="text-slate-500">{escola.nome}</span>
+            </nav>
 
-              <div className="space-y-3">
-                <div>
-                  <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight font-sans">
-                    {escola.nome}
-                  </h1>
-                  <p className="text-sm text-slate-500 font-medium">Escola ID: <span className="font-mono text-[10px]">{escola.id}</span></p>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline" className="bg-klasse-green/5 text-klasse-green border-klasse-green/20 font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full">
-                    Plano {escola.plano_atual}
-                  </Badge>
-                  <Badge className={`${escola.status === 'ativa' ? 'bg-emerald-500' : 'bg-slate-400'} text-white font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full border-0`}>
-                    {escola.status}
-                  </Badge>
-                  {escola.aluno_portal_enabled && (
-                    <Badge className="bg-blue-500 text-white font-bold uppercase text-[9px] px-2.5 py-0.5 rounded-full border-0">
-                      Portal Ativo
-                    </Badge>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Ações Rápidas */}
-            <div className="flex items-center gap-4">
-              <SaudeRing valor={saude} />
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
               
-              <div className="flex flex-col gap-2">
-                <Button 
-                  onClick={onRefresh} 
-                  disabled={refreshing}
-                  variant="outline" 
-                  size="sm" 
-                  className="rounded-xl font-bold text-xs gap-2 border-slate-200"
-                >
-                  <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
-                  Actualizar Dados
-                </Button>
-                <Button 
-                  onClick={() => window.open(`/escola/${escola.id}/admin`, '_blank')}
-                  variant="default" 
-                  size="sm" 
-                  className="bg-klasse-green hover:bg-klasse-green/90 text-white rounded-xl font-bold text-xs gap-2 shadow-lg shadow-klasse-green/10"
-                >
-                  <Eye size={14} />
-                  Entrar como Escola
-                </Button>
+              {/* Identidade */}
+              <div className="flex items-start gap-6">
+                <div className="space-y-3">
+                  <div>
+                    <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight font-sans">
+                      {escola.nome}
+                    </h1>
+                    <p className="text-sm text-slate-500 font-medium">Escola ID: <span className="font-mono text-[11px] text-slate-400">{escola.id}</span></p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="outline" className="bg-klasse-green/5 text-klasse-green border-klasse-green/20 font-semibold uppercase text-[9px] px-2.5 py-0.5 rounded-full">
+                      Plano {escola.plano_atual}
+                    </Badge>
+                    <Badge className={`${escola.status === 'ativa' ? 'bg-klasse-green/10 text-klasse-green border-klasse-green/20' : 'bg-slate-100 text-slate-600 border-slate-200'} font-semibold uppercase text-[9px] px-2.5 py-0.5 rounded-full border`}>
+                      {escola.status}
+                    </Badge>
+                    {escola.aluno_portal_enabled && (
+                      <Badge className="bg-klasse-green text-white font-semibold uppercase text-[9px] px-2.5 py-0.5 rounded-full border-0">
+                        Portal Ativo
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Ações Rápidas */}
+              <div className="flex flex-col items-stretch md:items-end gap-3">
+                <div className="w-full md:w-52">
+                  <SaudeRing valor={saude} />
+                </div>
+                
+                <div className="flex flex-col gap-2 w-full md:w-auto md:items-end">
+                  <Button 
+                    onClick={onRefresh} 
+                    disabled={refreshing}
+                    variant="outline" 
+                    size="sm" 
+                    className="rounded-xl font-semibold text-xs gap-2 border-slate-200"
+                  >
+                    <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+                    Actualizar Dados
+                  </Button>
+                  <Button 
+                    onClick={() => window.open(`/escola/${escola.id}/admin`, '_blank')}
+                    variant="default" 
+                    size="sm" 
+                    className="bg-klasse-green hover:bg-klasse-green/90 text-white rounded-xl font-semibold text-xs gap-2 shadow-sm"
+                  >
+                    <Eye size={14} />
+                    Entrar como Escola
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Contactos */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-slate-100">
-            <div className="flex items-center gap-3 text-slate-500">
-              <div className="p-2 rounded-lg bg-slate-50"><Mail size={14} /></div>
-              <span className="text-sm font-medium">{escola.email || "Sem email registado"}</span>
-            </div>
-            <div className="flex items-center gap-3 text-slate-500">
-              <div className="p-2 rounded-lg bg-slate-50"><Phone size={14} /></div>
-              <span className="text-sm font-medium">{escola.telefone || "Sem telefone registado"}</span>
-            </div>
-            <div className="flex items-center gap-3 text-slate-500">
-              <div className="p-2 rounded-lg bg-slate-50"><Calendar size={14} /></div>
-              <span className="text-sm font-medium tracking-tight">Membro desde {new Date(escola.created_at).toLocaleDateString("pt-AO", { month: 'long', year: 'numeric' })}</span>
+            {/* Contactos */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-slate-100">
+              <div className="flex items-center gap-3 text-slate-500">
+                <div className="p-2 rounded-lg bg-slate-50"><Mail size={14} /></div>
+                <span className="text-sm font-medium">{escola.email || "Sem email registado"}</span>
+              </div>
+              <div className="flex items-center gap-3 text-slate-500">
+                <div className="p-2 rounded-lg bg-slate-50"><Phone size={14} /></div>
+                <span className="text-sm font-medium">{escola.telefone || "Sem telefone registado"}</span>
+              </div>
+              <div className="flex items-center gap-3 text-slate-500">
+                <div className="p-2 rounded-lg bg-slate-50"><Calendar size={14} /></div>
+                <span className="text-sm font-medium tracking-tight">Membro desde {new Date(escola.created_at).toLocaleDateString("pt-AO", { month: 'long', year: 'numeric' })}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -387,7 +385,7 @@ export default function EscolaMonitor({
             icon={Zap} label="Performance Global" delay={300}
             main={`${performance.latencia_media || 0}ms`}
             sub={`${performance.accessos_24h} acessos em 24h`}
-            variant="purple"
+            variant="gold"
           />
         </div>
 
@@ -412,7 +410,7 @@ export default function EscolaMonitor({
                         <CardTitle className="text-lg">Diagnóstico do Sistema</CardTitle>
                         <CardDescription>Métricas de saúde técnica e sincronização</CardDescription>
                       </div>
-                      <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200 uppercase font-bold text-[10px]">
+                      <Badge className="bg-klasse-green/10 text-klasse-green hover:bg-klasse-green/10 border-klasse-green/20 uppercase font-bold text-[10px]">
                         Sistema Saudável
                       </Badge>
                     </div>
@@ -422,7 +420,7 @@ export default function EscolaMonitor({
                       <div className="p-6 border-r border-slate-100 space-y-1">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sincronização</p>
                         <div className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${performance.sync_status === 'error' ? 'bg-red-500' : 'bg-emerald-500 animate-pulse'}`} />
+                          <div className={`w-2 h-2 rounded-full ${performance.sync_status === 'error' ? 'bg-klasse-gold' : 'bg-klasse-green animate-pulse'}`} />
                           {performance.sync_status?.toUpperCase() || "OK"}
                         </div>
                         <p className="text-[10px] text-slate-400 font-medium">Última: {new Date(performance.sync_updated_at).toLocaleString()}</p>
@@ -430,7 +428,7 @@ export default function EscolaMonitor({
                       <div className="p-6 space-y-1">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Uptime Médio</p>
                         <p className="text-xl font-bold text-slate-900">99.98%</p>
-                        <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-tight">SLA Profissional</p>
+                        <p className="text-[10px] text-klasse-green font-bold uppercase tracking-tight">SLA Profissional</p>
                       </div>
                     </div>
                     <div className="p-6">
@@ -477,7 +475,7 @@ export default function EscolaMonitor({
                     <CardDescription>Activar ou desactivar módulos centrais da escola</CardDescription>
                   </CardHeader>
                   <CardContent className="p-6 space-y-6">
-                    <div className="flex items-center justify-between p-5 bg-white border border-slate-200 rounded-2xl hover:border-blue-200 transition-colors">
+                    <div className="flex items-center justify-between p-5 bg-white border border-slate-200 rounded-2xl hover:border-klasse-green/30 transition-colors">
                       <div className="space-y-1">
                         <Label className="text-sm font-bold text-slate-900">Portal do Aluno</Label>
                         <p className="text-xs text-slate-500 font-medium">Permite que alunos consultem notas e paguem propinas online.</p>
@@ -492,17 +490,17 @@ export default function EscolaMonitor({
                     <div className="flex items-center justify-between p-5 bg-white border border-slate-200 rounded-2xl opacity-60 grayscale cursor-not-allowed">
                       <div className="space-y-1">
                         <Label className="text-sm font-bold text-slate-900">Módulo de Mensagens SMS</Label>
-                        <p className="text-xs text-slate-500 font-medium text-amber-600 font-bold uppercase tracking-tighter">Upgrade Necessário</p>
+                        <p className="text-xs text-slate-500 font-medium text-klasse-gold font-bold uppercase tracking-tighter">Upgrade Necessário</p>
                       </div>
                       <Switch disabled checked={false} />
                     </div>
 
                     <div className="pt-6 border-t border-slate-100">
-                      <h4 className="text-[10px] font-bold text-rose-500 uppercase tracking-[0.2em] mb-4">Zona de Perigo</h4>
-                      <div className="p-5 bg-rose-50 border border-rose-100 rounded-2xl flex items-center justify-between">
+                      <h4 className="text-[10px] font-bold text-klasse-gold uppercase tracking-[0.2em] mb-4">Zona de Perigo</h4>
+                      <div className="p-5 bg-klasse-gold/10 border border-klasse-gold/20 rounded-2xl flex items-center justify-between">
                         <div className="space-y-1">
-                          <p className="text-sm font-bold text-rose-900">Resetar Escola</p>
-                          <p className="text-xs text-rose-700/70 font-medium">Esta acção apaga todos os dados e não pode ser desfeita.</p>
+                          <p className="text-sm font-bold text-slate-900">Resetar Escola</p>
+                          <p className="text-xs text-slate-600 font-medium">Esta acção apaga todos os dados e não pode ser desfeita.</p>
                         </div>
                         <Button variant="destructive" size="sm" className="rounded-xl font-bold text-xs" onClick={() => toast.error("Protegido por MFA de Supervisor")}>
                           Resetar Dados
@@ -530,17 +528,25 @@ export default function EscolaMonitor({
               <div className="space-y-3">
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-slate-500 font-medium">Domínio</span>
-                  <span className="text-slate-900 font-bold tracking-tight">{escola.nome.toLowerCase().replace(/\s/g, '-')}.klasse.ao</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-slate-500 font-medium">SSL Status</span>
-                  <span className="text-emerald-600 font-bold flex items-center gap-1">
-                    <ShieldCheck size={14} /> Protegido
+                  <span className={dominio ? "text-slate-900 font-bold tracking-tight" : "text-slate-400 font-semibold"}>
+                    {dominio || "Não configurado"}
                   </span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
+                  <span className="text-slate-500 font-medium">SSL Status</span>
+                  {sslStatus ? (
+                    <span className="text-klasse-green font-bold flex items-center gap-1">
+                      <ShieldCheck size={14} /> {sslStatus}
+                    </span>
+                  ) : (
+                    <span className="text-slate-400 font-semibold">Não informado</span>
+                  )}
+                </div>
+                <div className="flex justify-between items-center text-sm">
                   <span className="text-slate-500 font-medium">DB Region</span>
-                  <span className="text-slate-900 font-bold">AWS Cape Town (af-south-1)</span>
+                  <span className={dbRegion ? "text-slate-900 font-bold" : "text-slate-400 font-semibold"}>
+                    {dbRegion || "Não informado"}
+                  </span>
                 </div>
               </div>
               <Button variant="outline" fullWidth className="rounded-xl font-bold text-xs border-slate-200 hover:bg-slate-50">

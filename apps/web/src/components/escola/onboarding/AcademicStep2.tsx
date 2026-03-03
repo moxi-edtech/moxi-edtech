@@ -130,7 +130,7 @@ function CourseMatrixTable({
             <tr>
               <th className="px-6 py-3 font-semibold text-slate-500 text-xs uppercase tracking-wider">Classe / Curso</th>
               {turnos["Manhã"] && <th className={`${headerClass} bg-orange-50/40 text-orange-700`}>Manhã</th>}
-              {turnos["Tarde"] && <th className={`${headerClass} bg-amber-50/40 text-amber-700`}>Tarde</th>}
+              {turnos["Tarde"] && <th className={`${headerClass} bg-klasse-gold-50/40 text-klasse-gold-700`}>Tarde</th>}
               {turnos["Noite"] && <th className={`${headerClass} bg-indigo-50/40 text-indigo-700`}>Noite</th>}
             </tr>
           </thead>
@@ -194,7 +194,7 @@ function CourseMatrixTable({
                     )}
 
                     {turnos["Tarde"] && (
-                      <td className="px-6 py-2 text-center align-middle border-l border-slate-50 bg-amber-50/5">
+                      <td className="px-6 py-2 text-center align-middle border-l border-slate-50 bg-klasse-gold-50/5">
                         <input
                           type="number" min={0} placeholder="0"
                           className={inputClass}
@@ -294,8 +294,8 @@ export default function AcademicStep2({
   // Visual
   const getCourseVisual = (tipo: CourseType) => {
     switch (tipo) {
-      case "tecnico": return { Icon: Briefcase, bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-100" };
-      case "tecnico_saude": return { Icon: GraduationCap, bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-100" };
+      case "tecnico": return { Icon: Briefcase, bg: "bg-slate-50", text: "text-slate-600", border: "border-slate-100" };
+      case "tecnico_saude": return { Icon: GraduationCap, bg: "bg-klasse-green-50", text: "text-klasse-green-600", border: "border-klasse-green-100" };
       default: return { Icon: BookOpen, bg: "bg-slate-100", text: "text-slate-600", border: "border-slate-200" };
     }
   };
@@ -632,10 +632,10 @@ export default function AcademicStep2({
                 </div>
               )}
               {turnos["Tarde"] && (
-                <div className="flex items-center gap-1 rounded-md border border-amber-100 bg-amber-50 px-2 py-1">
-                  <Sunset size={10} className="text-amber-500 mr-1" />
+                <div className="flex items-center gap-1 rounded-md border border-klasse-gold-100 bg-klasse-gold-50 px-2 py-1">
+                  <Sunset size={10} className="text-klasse-gold-500 mr-1" />
                   {[1, 2, 3].map((n) => (
-                    <button key={n} onClick={() => handleBulkApply("tarde", n)} className="flex h-5 w-5 items-center justify-center rounded bg-white text-[10px] font-bold text-amber-700 shadow-sm border border-amber-200 hover:bg-amber-100">{n}</button>
+                    <button key={n} onClick={() => handleBulkApply("tarde", n)} className="flex h-5 w-5 items-center justify-center rounded bg-white text-[10px] font-bold text-klasse-gold-700 shadow-sm border border-klasse-gold-200 hover:bg-klasse-gold-100">{n}</button>
                   ))}
                 </div>
               )}

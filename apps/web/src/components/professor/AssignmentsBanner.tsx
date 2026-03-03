@@ -23,7 +23,7 @@ export default function AssignmentsBanner() {
   if (loading || has) return null
 
   return (
-    <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-900">
+    <div className="mb-4 rounded-lg border border-klasse-gold-300 bg-klasse-gold-50 p-4 text-klasse-gold-900">
       <div className="font-semibold mb-1">Sem atribuições ativas</div>
       <p className="text-sm">
         Você ainda não possui turmas/disciplinas atribuídas. Solicite à Secretaria/Coordenação a atribuição de disciplina na sua turma.

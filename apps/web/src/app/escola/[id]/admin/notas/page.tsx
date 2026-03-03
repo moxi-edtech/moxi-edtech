@@ -250,7 +250,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
         <div>
           <h1 className="text-2xl font-bold text-moxinexa-navy flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-blue-500" />
+            <div className="w-3 h-3 rounded-full bg-slate-500" />
             Gestão de Notas
           </h1>
           <p className="text-sm text-slate-500 mt-1">
@@ -361,7 +361,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
                       </td>
                       <td className="px-4 py-3">
                         {nota.turma ? (
-                          <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-700">
+                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-700">
                             <Users className="w-3 h-3 mr-1" />
                             {nota.turma}
                           </span>
@@ -374,7 +374,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
                       </td>
                       <td className="px-4 py-3">
                         {nota.disciplina ? (
-                          <span className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-bold text-purple-700">
+                          <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-700">
                             <BookOpen className="w-3 h-3 mr-1" />
                             {nota.disciplina}
                           </span>
@@ -386,7 +386,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
                         {notaValue !== null ? (
                           <div className={`font-mono font-bold text-lg ${
                             notaValue >= 10 ? 'text-green-600' : 
-                            notaValue >= 5 ? 'text-amber-600' : 'text-red-600'
+                            notaValue >= 5 ? 'text-klasse-gold-600' : 'text-red-600'
                           }`}>
                             {notaValue.toFixed(1)}
                           </div>
@@ -396,12 +396,12 @@ export default async function Page({ params, searchParams }: { params: Promise<{
                       </td>
                       <td className="px-4 py-3 text-center">
                         {status === 'approved' && (
-                          <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-700">
+                          <span className="inline-flex items-center rounded-full bg-klasse-green-100 px-2.5 py-0.5 text-xs font-bold text-klasse-green-700">
                             ✓ Aprovado
                           </span>
                         )}
                         {status === 'recovery' && (
-                          <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-700">
+                          <span className="inline-flex items-center rounded-full bg-klasse-gold-100 px-2.5 py-0.5 text-xs font-bold text-klasse-gold-700">
                             ⚠ Recuperação
                           </span>
                         )}

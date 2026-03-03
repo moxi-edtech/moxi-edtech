@@ -26,7 +26,7 @@ function fmtNota(v?: number | null) {
 function finalStatus(nota?: number | null) {
   if (typeof nota !== "number") return { label: "Pendente", cls: "bg-slate-100 text-slate-700" };
   return nota >= 10
-    ? { label: "Aprovado", cls: "bg-emerald-100 text-emerald-700" }
+    ? { label: "Aprovado", cls: "bg-klasse-green-100 text-klasse-green-700" }
     : { label: "Reprovado", cls: "bg-red-100 text-red-700" };
 }
 

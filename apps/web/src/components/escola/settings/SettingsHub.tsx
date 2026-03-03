@@ -124,7 +124,7 @@ function StatusBadge({ ok, loading }: { ok?: boolean; loading: boolean }) {
       className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full border ${
         ok
           ? "bg-[#1F6B3B]/10 text-[#1F6B3B] border-[#1F6B3B]/20"
-          : "bg-amber-50 text-amber-700 border-amber-200"
+          : "bg-klasse-gold-50 text-klasse-gold-700 border-klasse-gold-200"
       }`}
     >
       {ok ? "OK" : "Pendente"}

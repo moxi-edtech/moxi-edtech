@@ -107,66 +107,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
     const load = async () => {
       try {
-        const cacheKey = `escolas:nome:${navEscolaId}`;
-        if (typeof sessionStorage !== "undefined") {
-          if (inferredRole === "secretaria") {
-            const summaryCache = sessionStorage.getItem("secretaria:dashboard:summary");
-            if (summaryCache) {
-              const parsed = JSON.parse(summaryCache) as {
-                escola?: { nome?: string | null; plano?: PlanTier | null };
-              };
-              if (parsed.escola?.nome) {
-                setEscolaNome(parsed.escola.nome);
-                setPlanoNome(parsed.escola.plano ? PLAN_NAMES[parsed.escola.plano] : null);
-                return;
-              }
-            }
-          }
-          if (inferredRole === "admin") {
-            const summaryCache = sessionStorage.getItem("admin:dashboard:summary");
-            if (summaryCache) {
-              const parsed = JSON.parse(summaryCache) as {
-                escola?: { nome?: string | null; plano?: PlanTier | null };
-              };
-              if (parsed.escola?.nome) {
-                setEscolaNome(parsed.escola.nome);
-                setPlanoNome(parsed.escola.plano ? PLAN_NAMES[parsed.escola.plano] : null);
-                return;
-              }
-            }
-          }
-          if (inferredRole === "financeiro") {
-            const summaryCache = sessionStorage.getItem("financeiro:dashboard:summary");
-            if (summaryCache) {
-              const parsed = JSON.parse(summaryCache) as {
-                escola?: { nome?: string | null; plano?: PlanTier | null };
-              };
-              if (parsed.escola?.nome) {
-                setEscolaNome(parsed.escola.nome);
-                setPlanoNome(parsed.escola.plano ? PLAN_NAMES[parsed.escola.plano] : null);
-                return;
-              }
-            }
-          }
-          const cached = sessionStorage.getItem(cacheKey);
-          if (cached) {
-            const parsed = JSON.parse(cached) as { 
-              nome?: string | null; 
-              plano?: PlanTier | null;
-              status?: string | null;
-            };
-            setEscolaNome(parsed.nome ?? null);
-            setPlanoNome(parsed.plano ? PLAN_NAMES[parsed.plano] : null);
-            setStatus(parsed.status ?? null);
-            
-            if (parsed.status === 'suspensa' && userRole !== 'superadmin' && pathname !== '/escola/suspensa') {
-              router.push('/escola/suspensa');
-              return;
-            }
-            return;
-          }
-        }
-
         const res = await fetch(`/api/escolas/${navEscolaId}/nome`, { cache: "no-store" });
         const json = await res.json().catch(() => null);
         if (cancelled) return;
@@ -187,17 +127,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         if (escolaStatus === 'suspensa' && userRole !== 'superadmin' && pathname !== '/escola/suspensa') {
           router.push('/escola/suspensa');
         }
-
-        if (typeof sessionStorage !== "undefined") {
-          sessionStorage.setItem(
-            cacheKey,
-            JSON.stringify({ 
-              nome: json.nome ?? null, 
-              plano: json.plano ?? null,
-              status: escolaStatus 
-            })
-          );
-        }
       } catch {
         if (!cancelled) {
           setEscolaNome(null);
@@ -210,7 +139,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [navEscolaId, inferredRole]);
+  }, [navEscolaId, inferredRole, userRole, pathname, router]);
 
   useEffect(() => {
     let cancelled = false;

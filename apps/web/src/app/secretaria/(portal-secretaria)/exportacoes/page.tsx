@@ -21,7 +21,7 @@ export default async function Page() {
     return (
       <>
         <AuditPageView portal="secretaria" acao="PAGE_VIEW" entity="exportacoes" />
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded text-amber-800 text-sm">
+        <div className="p-4 bg-klasse-gold-50 border border-klasse-gold-200 rounded text-klasse-gold-800 text-sm">
           Vincule seu perfil a uma escola para acessar exportações.
         </div>
       </>
@@ -42,10 +42,10 @@ export default async function Page() {
       <div className="bg-white rounded-xl shadow border p-5">
         <h1 className="text-lg font-semibold mb-2">Exportações (Secretaria)</h1>
         {!allowed ? (
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded text-amber-800 text-sm">
+          <div className="p-4 bg-klasse-gold-50 border border-klasse-gold-200 rounded text-klasse-gold-800 text-sm">
             Disponível no plano {PLAN_NAMES.profissional} ou {PLAN_NAMES.premium}. Fale com o Super Admin para atualizar o plano da escola.
             {isSuperAdmin && escolaId && (
-              <> {' '}<a href={`/super-admin/escolas/${escolaId}/edit`} className="underline text-amber-900">Abrir edição da escola</a></>
+              <> {' '}<a href={`/super-admin/escolas/${escolaId}/edit`} className="underline text-klasse-gold-900">Abrir edição da escola</a></>
             )}
           </div>
         ) : (

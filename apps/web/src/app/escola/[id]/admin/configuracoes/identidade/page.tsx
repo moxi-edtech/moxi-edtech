@@ -184,13 +184,13 @@ export default function IdentidadePage({ params }: Props) {
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
                       <span className="text-xs font-bold text-slate-400 uppercase">Status</span>
-                      <Badge className={`${formData.status === 'ativa' ? 'bg-emerald-500' : 'bg-rose-500'} text-white border-0 text-[9px] font-black`}>
+                      <Badge className={`${formData.status === 'ativa' ? 'bg-klasse-green-500' : 'bg-rose-500'} text-white border-0 text-[9px] font-black`}>
                         {formData.status?.toUpperCase()}
                       </Badge>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-xs font-bold text-slate-400 uppercase">Portal Aluno</span>
-                      <Badge className={`${formData.aluno_portal_enabled ? 'bg-blue-500' : 'bg-slate-200'} text-white border-0 text-[9px] font-black`}>
+                      <Badge className={`${formData.aluno_portal_enabled ? 'bg-slate-500' : 'bg-slate-200'} text-white border-0 text-[9px] font-black`}>
                         {formData.aluno_portal_enabled ? 'ACTIVADO' : 'DESACTIVADO'}
                       </Badge>
                     </div>

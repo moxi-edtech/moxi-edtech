@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { 
   Wallet, 
@@ -9,8 +8,7 @@ import {
   Percent, 
   AlertTriangle, 
   Landmark, 
-  Lock, 
-  ExternalLink 
+  Lock 
 } from "lucide-react";
 import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
 import { buildConfigMenuItems } from "../_shared/menuItems";
@@ -263,7 +261,7 @@ export default function FinanceiroConfiguracoesPage() {
           {/* CARD 1: REGRAS GERAIS */}
           <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-4">
-              <div className="rounded-lg bg-emerald-100 p-2 text-emerald-700">
+              <div className="rounded-lg bg-klasse-green-100 p-2 text-klasse-green-700">
                 <Wallet className="h-5 w-5" />
               </div>
               <div>
@@ -390,27 +388,19 @@ export default function FinanceiroConfiguracoesPage() {
             </div>
           </div>
 
-          {/* CARD 3: CTA PARA TABELA DE PREÇOS */}
-          <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-6">
+          {/* CARD 3: INFO SOBRE MENSALIDADES */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-6">
             <div className="flex items-center gap-4">
               <div className="rounded-lg bg-white p-2 shadow-sm ring-1 ring-slate-100 text-slate-600">
                 <Landmark className="h-6 w-6" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-900">Tabela de Preços & Contas</h3>
+                <h3 className="text-sm font-bold text-slate-900">Mensalidades & Emolumentos</h3>
                 <p className="text-xs text-slate-500">
-                  Gerencie o valor das propinas por classe e contas bancárias.
+                  Configure preços e catálogo na aba dedicada do menu.
                 </p>
               </div>
             </div>
-            
-            <Link
-              href={escolaId ? `/escola/${escolaId}/financeiro/configuracoes` : "#"}
-              className="group inline-flex items-center gap-2 rounded-lg bg-white border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:text-slate-900"
-            >
-              Abrir Gestão Financeira Completa
-              <ExternalLink className="h-3 w-3 text-slate-400 transition-transform group-hover:translate-x-0.5" />
-            </Link>
           </div>
 
         </div>

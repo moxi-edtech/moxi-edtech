@@ -20,7 +20,7 @@ export function OfflineBanner({
   if (online && !fromCache) return null;
 
   return (
-    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800">
+    <div className="rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 px-4 py-2 text-xs text-klasse-gold-800">
       {online ? label : "Sem internet. Exibindo dados salvos localmente."}
     </div>
   );
