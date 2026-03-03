@@ -74,10 +74,41 @@ export async function GET(request: Request) {
       return NextResponse.json({ ok: true, disciplinas: [], nome_aluno: aluno?.nome ?? null, trimestre_atual: null });
     }
 
-    let anoLetivoQuery = supabase
+    const { data: anoLetivoRow } = await supabase
       .from("anos_letivos")
       .select("id")
       .eq("escola_id", ctx.escolaId)
+      .eq("ano", matricula.ano_letivo)
+      .limit(1)
+      .maybeSingle();
+
+    const anoLetivoId = anoLetivoRow?.id;
+
+    const [{ data: periodos }, { data: frequencias }, { data: boletimRows, error: boletimError }] = await Promise.all([
+      anoLetivoId
+        ? supabase
+            .from("periodos_letivos")
+            .select("numero, data_inicio, data_fim")
+            .eq("escola_id", ctx.escolaId)
+            .eq("ano_letivo_id", anoLetivoId)
+            .eq("tipo", "TRIMESTRE")
+            .order("numero", { ascending: true })
+            .limit(50)
+        : Promise.resolve({ data: null }),
+      supabase
+        .from("frequencia_status_periodo")
+        .select("faltas, aulas_previstas, frequencia_min_percent")
+        .eq("escola_id", ctx.escolaId)
+        .eq("matricula_id", matricula.id)
+        .limit(50),
+      supabase
+        .from("vw_boletim_por_matricula")
+        .select("disciplina_id, disciplina_nome, trimestre, nota_final, status, missing_count")
+        .eq("matricula_id", matricula.id)
+        .order("disciplina_nome", { ascending: true })
+        .limit(50),
+    ]);
+
       .eq("ano", anoLetivo)
 
     anoLetivoQuery = applyKf2ListInvariants(anoLetivoQuery, {

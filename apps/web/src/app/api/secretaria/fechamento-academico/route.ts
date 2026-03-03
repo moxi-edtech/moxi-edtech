@@ -6,6 +6,8 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
 import { requireRoleInSchool } from "@/lib/authz";
 import { executarValidacoesFechamento } from "./validacoes/engine";
+import { inngest } from "@/inngest/client";
+import { ESTADOS_FECHAMENTO, runFechamentoOrchestration, setJobState } from "@/lib/secretaria/fechamentoAcademicoOrchestrator";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -34,6 +36,7 @@ const StartSchema = z.object({
   excecao_justificativa: z.string().max(1000).optional(),
   excecao_pendencia_ids: z.array(z.string()).optional(),
   permitir_reaberto_override: z.boolean().default(false),
+  executar_assincrono: z.boolean().default(true),
 }).superRefine((data, ctx) => {
   if (data.acao === "fechar_trimestre" && !data.periodo_letivo_id) {
     ctx.addIssue({
@@ -50,7 +53,21 @@ const RetrySchema = z.object({
   turma_ids: z.array(z.string().uuid()).optional(),
   matricula_ids: z.array(z.string().uuid()).optional(),
   motivo_reabertura: z.string().max(1000).optional(),
+  executar_assincrono: z.boolean().default(true),
 });
+
+async function dispatchAsyncRun(eventPayload: Record<string, unknown>) {
+  await inngest.send({
+    name: "academico/fechamento.run.requested",
+    data: eventPayload,
+  });
+}
+
+async function getExecutorAccessToken(supabase: Awaited<ReturnType<typeof supabaseServerTyped<Database>>>) {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token ?? null;
+}
+
 
 async function insertStep(
   supabase: Awaited<ReturnType<typeof supabaseServerTyped<Database>>>,
@@ -367,6 +384,10 @@ export async function POST(req: Request) {
     }
 
     const supabase = await supabaseServerTyped<Database>();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
@@ -378,6 +399,7 @@ export async function POST(req: Request) {
       payload.data.escola_id ?? null,
       (user.user_metadata as { escola_id?: string | null } | null)?.escola_id ?? null
     );
+    if (!escolaId) return NextResponse.json({ ok: false, error: "Escola inválida" }, { status: 403 });
 
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: "Escola inválida" }, { status: 403 });
@@ -397,6 +419,15 @@ export async function POST(req: Request) {
     if (criticalPendencias.length > 0) {
       const allowException = payload.data.permitir_excecao_critica;
       if (!allowException) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: "Pendências críticas impedem o fechamento.",
+            bloqueado_por_pendencias: true,
+            relatorio: relatorioSanidade,
+          },
+          { status: 422 }
+        );
         return NextResponse.json({
           ok: false,
           error: "Pendências críticas impedem o fechamento.",
@@ -409,6 +440,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: false, error: "excecao_justificativa é obrigatória para exceção crítica." }, { status: 400 });
       }
 
+      const { error: roleError } = await requireRoleInSchool({ supabase, escolaId, roles: ["admin", "admin_escola", "staff_admin"] });
       const { error: roleError } = await requireRoleInSchool({
         supabase,
         escolaId,
@@ -434,6 +466,9 @@ export async function POST(req: Request) {
     }
 
     const idempotencyKey = `${payload.data.ano_letivo_id}:${payload.data.periodo_letivo_id ?? "none"}:${payload.data.acao}`;
+    const { data: existing } = await supabase
+      .from("fechamento_academico_jobs")
+      .select("run_id,estado,counters")
 
     const { data: existing } = await supabase
       .from("fechamento_academico_jobs")
@@ -444,6 +479,7 @@ export async function POST(req: Request) {
       .eq("idempotency_key", idempotencyKey)
       .maybeSingle();
 
+    if (existing && existing.estado !== ESTADOS_FECHAMENTO.FAILED) {
     if (existing && existing.estado !== ESTADOS.FAILED) {
       return NextResponse.json({ ok: true, idempotent: true, run_id: existing.run_id, estado: existing.estado, counters: existing.counters });
     }
@@ -456,6 +492,7 @@ export async function POST(req: Request) {
         escola_id: escolaId,
         executor_user_id: user.id,
         fechamento_tipo: payload.data.acao,
+        estado: ESTADOS_FECHAMENTO.PENDING_VALIDATION,
         estado: ESTADOS.PENDING_VALIDATION,
         ano_letivo_id: payload.data.ano_letivo_id,
         periodo_letivo_id: payload.data.periodo_letivo_id ?? null,
@@ -464,6 +501,36 @@ export async function POST(req: Request) {
         parametros: payload.data,
         idempotency_key: idempotencyKey,
         started_at: new Date().toISOString(),
+        execution_mode: payload.data.executar_assincrono ? "async" : "sync",
+      });
+      if (insertError) return NextResponse.json({ ok: false, error: insertError.message }, { status: 400 });
+    }
+
+    const executorAccessToken = await getExecutorAccessToken(supabase);
+
+    const eventPayload = {
+      run_id: runId,
+      escola_id: escolaId,
+      executor_user_id: user.id,
+      executor_access_token: executorAccessToken,
+      acao: payload.data.acao,
+      ano_letivo_id: payload.data.ano_letivo_id,
+      periodo_letivo_id: payload.data.periodo_letivo_id ?? null,
+      turma_ids: payload.data.turma_ids ?? [],
+      matricula_ids: payload.data.matricula_ids ?? [],
+      motivo: payload.data.motivo,
+      allow_reaberto_override: payload.data.permitir_reaberto_override,
+    };
+
+    if (payload.data.executar_assincrono) {
+      if (!executorAccessToken) {
+        return NextResponse.json({ ok: false, error: "Sessão inválida para execução assíncrona." }, { status: 401 });
+      }
+      await dispatchAsyncRun(eventPayload);
+      return NextResponse.json({ ok: true, run_id: runId, estado: ESTADOS_FECHAMENTO.PENDING_VALIDATION, queued: true }, { status: 202 });
+    }
+
+    const result = await runFechamentoOrchestration({
       });
 
       if (insertError) {
@@ -480,12 +547,14 @@ export async function POST(req: Request) {
       acao: payload.data.acao,
       anoLetivoId: payload.data.ano_letivo_id,
       periodoLetivoId: payload.data.periodo_letivo_id,
+      turmaIds: payload.data.turma_ids ?? [],
       turmaIds,
       matriculaIds: payload.data.matricula_ids ?? [],
       motivo: payload.data.motivo,
       allowReabertoOverride: payload.data.permitir_reaberto_override,
     });
 
+    return NextResponse.json({ ok: true, run_id: runId, estado: result.failed ? ESTADOS_FECHAMENTO.FAILED : ESTADOS_FECHAMENTO.DONE, errors: result.errors });
     return NextResponse.json({
       ok: true,
       run_id: runId,
@@ -507,6 +576,9 @@ export async function GET(req: Request) {
     const fechamentoTipo = url.searchParams.get("acao");
 
     const supabase = await supabaseServerTyped<Database>();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
 
@@ -515,6 +587,10 @@ export async function GET(req: Request) {
 
     let query = supabase
       .from("fechamento_academico_jobs")
+      .select("run_id,estado,fechamento_tipo,ano_letivo_id,execution_mode,counters,errors,started_at,finished_at,created_at,updated_at")
+      .eq("escola_id", escolaId)
+      .order("created_at", { ascending: false })
+      .limit(50);
       .select("run_id,estado,fechamento_tipo,ano_letivo_id,counters,errors,started_at,finished_at,created_at,updated_at")
       .eq("escola_id", escolaId)
       .order("created_at", { ascending: false })
@@ -523,6 +599,7 @@ export async function GET(req: Request) {
     if (runId) query = query.eq("run_id", runId);
     if (anoLetivoId) query = query.eq("ano_letivo_id", anoLetivoId);
     if (periodoLetivoId) query = query.eq("periodo_letivo_id", periodoLetivoId);
+    if (fechamentoTipo === "fechar_trimestre" || fechamentoTipo === "fechar_ano") query = query.eq("fechamento_tipo", fechamentoTipo);
     if (fechamentoTipo === "fechar_trimestre" || fechamentoTipo === "fechar_ano") {
       query = query.eq("fechamento_tipo", fechamentoTipo);
     }
@@ -582,6 +659,12 @@ export async function GET(req: Request) {
 export async function PATCH(req: Request) {
   try {
     const payload = RetrySchema.safeParse(await req.json().catch(() => null));
+    if (!payload.success) return NextResponse.json({ ok: false, error: payload.error.issues[0]?.message ?? "Payload inválido" }, { status: 400 });
+
+    const supabase = await supabaseServerTyped<Database>();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!payload.success) {
       return NextResponse.json({ ok: false, error: payload.error.issues[0]?.message ?? "Payload inválido" }, { status: 400 });
     }
@@ -600,6 +683,9 @@ export async function PATCH(req: Request) {
       .eq("run_id", payload.data.run_id)
       .single();
 
+    if (jobError || !job) return NextResponse.json({ ok: false, error: "Execução não encontrada." }, { status: 404 });
+
+    const failedMatriculasFromErrors = ((job.errors as any[]) ?? []).map((err) => err?.matricula_id).filter((id): id is string => Boolean(id));
     if (jobError || !job) {
       return NextResponse.json({ ok: false, error: "Execução não encontrada." }, { status: 404 });
     }
@@ -618,11 +704,13 @@ export async function PATCH(req: Request) {
 
     const retryTurmas = payload.data.turma_ids ?? ((job.turma_ids as string[]) ?? []);
 
+    await setJobState(supabase, payload.data.run_id, ESTADOS_FECHAMENTO.PENDING_VALIDATION, {
     await setJobState(supabase, payload.data.run_id, ESTADOS.PENDING_VALIDATION, {
       errors: [],
       started_at: new Date().toISOString(),
       finished_at: null,
       executor_user_id: user.id,
+      execution_mode: payload.data.executar_assincrono ? "async" : "sync",
     });
 
     if (retryMatriculas.length > 0) {
@@ -634,6 +722,34 @@ export async function PATCH(req: Request) {
         p_motivo: payload.data.motivo_reabertura,
         p_run_id: payload.data.run_id,
       });
+      if (reopenErr) return NextResponse.json({ ok: false, error: reopenErr.message }, { status: 400 });
+    }
+
+    const executorAccessToken = await getExecutorAccessToken(supabase);
+
+    const eventPayload = {
+      run_id: payload.data.run_id,
+      escola_id: escolaId,
+      executor_user_id: user.id,
+      executor_access_token: executorAccessToken,
+      acao: job.fechamento_tipo,
+      ano_letivo_id: String(job.ano_letivo_id),
+      periodo_letivo_id: (job.periodo_letivo_id as string | null) ?? null,
+      turma_ids: retryTurmas,
+      matricula_ids: retryMatriculas,
+      motivo: payload.data.motivo_reabertura ?? "Reprocessamento parcial de fechamento acadêmico.",
+      allow_reaberto_override: true,
+    };
+
+    if (payload.data.executar_assincrono) {
+      if (!executorAccessToken) {
+        return NextResponse.json({ ok: false, error: "Sessão inválida para execução assíncrona." }, { status: 401 });
+      }
+      await dispatchAsyncRun(eventPayload);
+      return NextResponse.json({ ok: true, run_id: payload.data.run_id, estado: ESTADOS_FECHAMENTO.PENDING_VALIDATION, queued: true }, { status: 202 });
+    }
+
+    const result = await runFechamentoOrchestration({
       if (reopenErr) {
         return NextResponse.json({ ok: false, error: reopenErr.message }, { status: 400 });
       }
@@ -656,6 +772,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({
       ok: true,
       run_id: payload.data.run_id,
+      estado: result.failed ? ESTADOS_FECHAMENTO.FAILED : ESTADOS_FECHAMENTO.DONE,
       estado: result.failed ? ESTADOS.FAILED : ESTADOS.DONE,
       retried_matriculas: retryMatriculas.length,
       errors: result.errors,
