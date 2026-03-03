@@ -12,16 +12,22 @@ const payloadSchema = z.object({
   escolaId: z.string().uuid(),
   tipoDocumento: z.enum([
     "declaracao_frequencia",
-    "declaracao_notas",
+    "boletim_trimestral",
     "cartao_estudante",
     "ficha_inscricao",
+    "comprovante_matricula",
     "historico",
     "certificado",
   ]),
   ano_letivo: z.number().int().optional(), // Ano letivo para documentos finais
 });
 
-const FINAL_DOCUMENT_TYPES = ["declaracao_notas", "historico", "certificado"];
+const FINAL_DOCUMENT_TYPES = ["boletim_trimestral", "historico", "certificado"];
+const FINAL_DOC_BACKEND_TYPE: Record<string, string> = {
+  boletim_trimestral: "boletim_trimestral",
+  historico: "historico",
+  certificado: "certificado",
+};
 
 export async function POST(request: Request) {
   const supabase = await supabaseServerTyped<any>();
@@ -63,7 +69,7 @@ export async function POST(request: Request) {
         p_escola_id: escolaId,
         p_aluno_id: alunoId,
         p_ano_letivo: ano_letivo,
-        p_tipo_documento: tipoDocumento,
+        p_tipo_documento: FINAL_DOC_BACKEND_TYPE[tipoDocumento],
       })
       .single();
 
