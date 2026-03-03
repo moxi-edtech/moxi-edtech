@@ -12,11 +12,11 @@ const SUNSET_DATE = "2027-03-31";
 const REPLACEMENT_ENDPOINT = "/api/secretaria/documentos/emitir";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ matriculaId: string }> }
 ) {
   const { matriculaId } = await params;
-  const supabase = await supabaseServerTyped<Database>();
+  const supabase = await supabaseServerTyped<any>();
 
   const {
     data: { user },
@@ -33,6 +33,7 @@ export async function GET(
 
   const { data: matricula, error: matriculaError } = await supabase
     .from("matriculas")
+    .select("id, escola_id, aluno_id")
     .select(
       `id, aluno_id, turma_id, ano_letivo, status,
        alunos ( id, nome, nome_completo, bi_numero ),
@@ -52,6 +53,25 @@ export async function GET(
     replacement_endpoint: REPLACEMENT_ENDPOINT,
   } as const;
 
+  const proto = request.headers.get("x-forwarded-proto") ?? "http";
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  const baseUrl = host ? `${proto}://${host}` : process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
+  const canonicalRes = await fetch(`${baseUrl}${REPLACEMENT_ENDPOINT}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      cookie: request.headers.get("cookie") ?? "",
+    },
+    body: JSON.stringify({
+      alunoId: matricula.aluno_id,
+      escolaId,
+      tipoDocumento: "declaracao_frequencia",
+    }),
+    cache: "no-store",
+  });
+
+  const canonicalJson = await canonicalRes.json().catch(() => ({}));
   const aluno = (matricula as any).alunos || {};
   const turma = (matricula as any).turmas || {};
 
@@ -106,12 +126,23 @@ export async function GET(
       replacement_endpoint: REPLACEMENT_ENDPOINT,
       matricula_id: matriculaId,
       aluno_id: matricula.aluno_id,
+      canonical_status: canonicalRes.status,
       canonical_status: docError ? 400 : 200,
       deprecated: true,
       sunset_date: SUNSET_DATE,
     },
   }).catch(() => null);
 
+  const responsePayload = {
+    ok: canonicalRes.ok && Boolean((canonicalJson as any)?.ok),
+    ...(canonicalJson as Record<string, unknown>),
+    ...(canonicalJson && (canonicalJson as any).docId
+      ? { print_url: `/secretaria/documentos/${(canonicalJson as any).docId}/frequencia/print` }
+      : {}),
+    ...deprecationPayload,
+  };
+
+  const response = NextResponse.json(responsePayload, { status: canonicalRes.ok ? 200 : canonicalRes.status || 502 });
   const responsePayload = docError || !doc
     ? { ok: false, error: docError?.message || "Falha ao emitir", ...deprecationPayload }
     : {
