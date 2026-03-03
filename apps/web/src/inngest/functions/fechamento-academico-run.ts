@@ -10,15 +10,35 @@ const getSupabaseAdmin = () => {
   return createClient<Database>(url, key);
 };
 
+const getSupabaseForExecutor = (accessToken: string) => {
+  const url = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").trim();
+  const anonKey = (process.env.SUPABASE_ANON_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "").trim();
+  if (!url || !anonKey) throw new Error("Credenciais públicas do Supabase ausentes");
+  if (!accessToken) throw new Error("Token do executor ausente para fechamento assíncrono");
+
+  return createClient<Database>(url, anonKey, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
+};
+
 export const fechamentoAcademicoRun = inngest.createFunction(
   { id: "fechamento-academico-run" },
   { event: "academico/fechamento.run.requested" },
   async ({ event }) => {
-    const supabase = getSupabaseAdmin();
-    const { run_id, escola_id, executor_user_id, acao, ano_letivo_id, periodo_letivo_id, turma_ids, matricula_ids, motivo, allow_reaberto_override } = event.data as any;
+    const supabaseAdmin = getSupabaseAdmin();
+    const { run_id, escola_id, executor_user_id, executor_access_token, acao, ano_letivo_id, periodo_letivo_id, turma_ids, matricula_ids, motivo, allow_reaberto_override } = event.data as any;
+    const supabase = getSupabaseForExecutor(executor_access_token);
 
     try {
-      const { data: job } = await supabase
+      const { data: job } = await supabaseAdmin
         .from("fechamento_academico_jobs")
         .select("run_id,estado")
         .eq("escola_id", escola_id)
@@ -45,7 +65,7 @@ export const fechamentoAcademicoRun = inngest.createFunction(
       return { ok: true, failed: result.failed, errors: result.errors.length };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      await setJobState(supabase, run_id, ESTADOS_FECHAMENTO.FAILED, {
+      await setJobState(supabaseAdmin, run_id, ESTADOS_FECHAMENTO.FAILED, {
         finished_at: new Date().toISOString(),
         errors: [{ stage: ESTADOS_FECHAMENTO.PENDING_VALIDATION, error: message }],
       });
