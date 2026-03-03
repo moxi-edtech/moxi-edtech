@@ -46,16 +46,16 @@ export async function POST(req: Request) {
 
     const { data: itens, error: itensError } = await supabase
       .from("pautas_lote_itens")
-      .select("turma_id")
+       .select("turma_id,status")
       .eq("job_id", job.id)
 
     if (itensError) {
       return NextResponse.json({ ok: false, error: itensError.message }, { status: 500 })
     }
 
-    const turmaIds = (itens || []).map((item: any) => item.turma_id)
+    const turmaIds = (itens || []).filter((item: any) => item.status === "FAILED").map((item: any) => item.turma_id)
     if (turmaIds.length === 0) {
-      return NextResponse.json({ ok: false, error: "Nenhuma turma encontrada" }, { status: 400 })
+      return NextResponse.json({ ok: false, error: "Nenhuma falha para reprocessar" }, { status: 400 })
     }
 
     const { data: canStart, error: startError } = await supabase
@@ -71,8 +71,9 @@ export async function POST(req: Request) {
 
     await supabase
       .from("pautas_lote_itens")
-      .update({ status: "QUEUED", error_message: null, pdf_path: null })
+      .update({ status: "QUEUED", error_message: null, pdf_path: null, checksum_sha256: null })
       .eq("job_id", job.id)
+      .in("turma_id", turmaIds)
 
     await inngest.send({
       name: "docs/pautas-lote.requested",
