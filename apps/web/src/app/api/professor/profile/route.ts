@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import { applyKf2ListInvariants } from '@/lib/kf2'
 import type { Database } from '~types/supabase'
 
 const TurnosSchema = z.enum(['Manhã', 'Tarde', 'Noite'])
@@ -43,11 +44,17 @@ export async function GET() {
       .eq('escola_id', escolaId)
       .eq('teacher_id', teacherRow.id)
 
-    const { data: disciplinasCatalogo } = await supabase
+    let disciplinasCatalogoQuery = supabase
       .from('disciplinas_catalogo')
       .select('id, nome')
       .eq('escola_id', escolaId)
-      .order('nome')
+
+    disciplinasCatalogoQuery = applyKf2ListInvariants(disciplinasCatalogoQuery, {
+      defaultLimit: 50,
+      order: [{ column: 'nome', ascending: true }],
+    })
+
+    const { data: disciplinasCatalogo } = await disciplinasCatalogoQuery
 
     return NextResponse.json({
       ok: true,

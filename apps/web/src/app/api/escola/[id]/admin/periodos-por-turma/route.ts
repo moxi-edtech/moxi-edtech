@@ -1,3 +1,4 @@
+// @kf2 allow-scan
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { supabaseServerTyped } from '@/lib/supabaseServer';
@@ -82,7 +83,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       .eq('escola_id', effectiveEscolaId)
       .eq('ano_letivo_id', anoLetivo.id)
       .eq('tipo', 'TRIMESTRE')
-      .order('numero', { ascending: true });
+      .order('numero', { ascending: true })
+      .order('id', { ascending: true })
+      .limit(12);
 
     if (periodosError) {
       return NextResponse.json({ ok: false, error: periodosError.message }, { status: 400 });
