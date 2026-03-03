@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createRouteClient } from '@/lib/supabase/route-client'
 import type { Database } from '~types/supabase'
+import { isSuperAdminRole } from '@/lib/auth/requireSuperAdminAccess'
 import { applyKf2ListInvariants } from '@/lib/kf2'
 
 type UsuarioItem = {
