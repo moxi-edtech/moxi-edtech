@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
+import type { Database } from "~types/supabase"
 import type { DBWithRPC } from '@/types/supabase-augment'
 import { buildOnboardingEmail, sendMail } from '@/lib/mailer'
 import { parsePlanTier } from '@/config/plans'
@@ -209,7 +210,7 @@ async function ensureAdminUser(
       email,
       nome: params.nome ?? email,
       telefone,
-      role,
+      role: role as Database["public"]["Enums"]["user_role"],
       escola_id: params.escolaId,
       current_escola_id: params.escolaId,
     },

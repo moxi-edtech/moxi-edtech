@@ -618,6 +618,18 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
         }
       }
       dismiss(tid);
+
+      // Finalizar onboarding no banco de dados
+      try {
+        await fetch(`/api/escolas/${escolaId}/onboarding/core/finalize`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tipo: "academico" })
+        });
+      } catch (err) {
+        console.error("Erro ao finalizar onboarding:", err);
+      }
+
       success("Configuração concluída.");
       
       setShowFinalSuccess(true);

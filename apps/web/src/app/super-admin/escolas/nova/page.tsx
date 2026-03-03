@@ -79,14 +79,19 @@ function CriarEscolaForm() {
   useEffect(() => {
     const fetchRequests = async () => {
       setLoadingOnboarding(true);
-      const { data } = await supabase
-        .from('onboarding_requests')
-        .select('id, escola_nome, escola_nif, escola_morada, escola_email, escola_tel, director_nome, status')
-        .in('status', ['pendente', 'em_configuracao'])
-        .order('created_at', { ascending: false });
-      
-      if (data) setOnboardingRequests(data);
-      setLoadingOnboarding(false);
+      try {
+        const { data } = await supabase
+          .from('onboarding_requests')
+          .select('id, escola_nome, escola_nif, escola_morada, escola_email, escola_tel, director_nome, status')
+          .in('status', ['pendente', 'em_configuracao'])
+          .order('created_at', { ascending: false });
+        
+        if (data) setOnboardingRequests(data);
+      } catch (err) {
+        console.error("Erro ao carregar pedidos:", err);
+      } finally {
+        setLoadingOnboarding(false);
+      }
     };
     fetchRequests();
   }, [supabase]);
@@ -104,6 +109,7 @@ function CriarEscolaForm() {
       adminEmail: req.escola_email || "",
       adminTelefone: req.escola_tel || "",
       adminNome: req.director_nome || "",
+      adminPapel: "admin",
     });
     setSelectedOnboardingId(id);
     toast.success("Dados preenchidos a partir do pedido de onboarding!");
@@ -115,6 +121,11 @@ function CriarEscolaForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (currentStep < 2) {
+      setCurrentStep(2);
+      return;
+    }
+
     setMsg(null);
     setCreationResult(null);
 
@@ -327,82 +338,20 @@ function CriarEscolaForm() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-moxinexa-dark">
-                    Papel Inicial
-                  </label>
-                  <select
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
-                    value={formData.adminPapel}
-                    onChange={(e) => handleInputChange('adminPapel', e.target.value)}
-                    disabled={loading}
-                  >
-                    <option value="admin">Administrador</option>
-                    <option value="admin_financeiro">Administrador + Financeiro</option>
-                    <option value="secretaria_financeiro">Secretaria + Financeiro</option>
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-moxinexa-dark">
-                    Email do Administrador *
-                  </label>
-                  <input
-                    type="email"
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
-                    placeholder="email@escola.com"
-                    value={formData.adminEmail}
-                    onChange={(e) => handleInputChange('adminEmail', e.target.value)}
-                    required
-                    disabled={loading}
-                  />
-                  <p className="text-xs text-gray-500">
-                    Será usado para login e recuperação de senha
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-moxinexa-dark">
-                    Telefone do Administrador
-                  </label>
-                  <input
-                    className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-moxinexa-teal focus:border-transparent transition-all"
-                    placeholder="9XXXXXXXX (ex: 923456789)"
-                    value={formData.adminTelefone}
-                    onChange={(e) => handleInputChange('adminTelefone', e.target.value.replace(/\D/g, ''))}
-                    maxLength={9}
-                    disabled={loading}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Review and Confirm */}
-          {currentStep === 3 && (
-            <div className="space-y-6 animate-fadeIn">
-              <div>
-                <h2 className="text-xl font-semibold text-moxinexa-dark mb-2">
-                  Confirmação
-                </h2>
-                <p className="text-moxinexa-gray text-sm">
-                  Revise os dados antes de criar a escola
-                </p>
-              </div>
-
-              {/* School Summary */}
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-                <h3 className="font-semibold text-moxinexa-dark mb-4 flex items-center gap-2">
-                  <BuildingLibraryIcon className="w-5 h-5" />
-                  Resumo da Escola
-                </h3>
-                <div className="grid md:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-gray-600">Nome:</span>
-                    <p className="font-medium">{formData.nome}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Email do Administrador *</label>
+                    <input
+                      type="email"
+                      className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-klasse-green/5 focus:border-klasse-green outline-none transition-all"
+                      placeholder="email@escola.com"
+                      value={formData.adminEmail}
+                      onChange={(e) => handleInputChange('adminEmail', e.target.value)}
+                      required
+                    />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Telefone</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Telefone do Administrador</label>
                     <input
                       className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-klasse-green/5 focus:border-klasse-green outline-none transition-all"
                       placeholder="9XXXXXXXX"
@@ -412,11 +361,24 @@ function CriarEscolaForm() {
                     />
                   </div>
                 </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">Papel Inicial</label>
+                  <select
+                    className="w-full border border-slate-200 rounded-xl p-3 text-sm focus:ring-4 focus:ring-klasse-green/5 focus:border-klasse-green outline-none transition-all appearance-none bg-white"
+                    value={formData.adminPapel}
+                    onChange={(e) => handleInputChange('adminPapel', e.target.value)}
+                  >
+                    <option value="admin">Administrador</option>
+                    <option value="admin_financeiro">Administrador + Financeiro</option>
+                    <option value="secretaria_financeiro">Secretaria + Financeiro</option>
+                  </select>
+                </div>
               </CardContent>
             </Card>
 
             <div className="flex items-center justify-between">
-              <Button variant="outline" onClick={() => setCurrentStep(1)} className="rounded-xl font-bold border-slate-200">
+              <Button type="button" variant="outline" onClick={() => setCurrentStep(1)} className="rounded-xl font-bold border-slate-200">
                 <ArrowLeft size={16} className="mr-2" /> Voltar
               </Button>
               <Button 
@@ -431,7 +393,7 @@ function CriarEscolaForm() {
           </div>
         )}
 
-        {/* Step 3: Confirmation */}
+        {/* Step 3: Success Confirmation */}
         {currentStep === 3 && creationResult && (
           <div className="space-y-6 animate-klasse-fade-up">
             <div className="bg-emerald-50 border-2 border-emerald-100 rounded-[2rem] p-8 text-center space-y-4">

@@ -252,14 +252,9 @@ export function Dashboard({
                       href="/secretaria/acesso-alunos"
                     />
                     <AcaoRapidaCard
-                      icon={<Upload className="h-5 w-5" />}
+                      icon={<Upload size={20} className="text-emerald-600" />}
                       label="Migração"
                       href="/secretaria/migracao/alunos"
-                    />
-                    <AcaoRapidaCard
-                      icon={<Users className="h-5 w-5" />}
-                      label="Usuários Globais"
-                      href="/secretaria/usuarios/globais"
                     />
                   </div>
                 </div>

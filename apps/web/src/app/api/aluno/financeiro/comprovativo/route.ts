@@ -20,18 +20,26 @@ export async function POST(request: Request) {
     const file = formData.get("file");
     if (!mensalidadeId || !(file instanceof File)) return NextResponse.json({ ok: false, error: "Dados inválidos" }, { status: 400 });
 
+    if (file.size > 5 * 1024 * 1024) {
+      return NextResponse.json({ ok: false, error: "O arquivo excede o limite de 5MB" }, { status: 413 });
+    }
+
     const alunoId = resolveSelectedStudentId({ selectedId: studentIdParam, authorizedIds, fallbackId: ctx.alunoId });
     if (!alunoId) return NextResponse.json({ ok: false, error: "Aluno não autorizado" }, { status: 403 });
 
     const routeClient = await createRouteClient();
     const { data: mensalidade } = await routeClient
       .from("mensalidades")
-      .select("id")
+      .select("id, status")
       .eq("id", mensalidadeId)
       .eq("escola_id", ctx.escolaId)
       .eq("aluno_id", alunoId)
       .maybeSingle();
     if (!mensalidade) return NextResponse.json({ ok: false, error: "Mensalidade não encontrada" }, { status: 404 });
+
+    if (mensalidade.status === "pago") {
+      return NextResponse.json({ ok: false, error: "Não é possível enviar comprovativo para uma mensalidade já paga" }, { status: 400 });
+    }
 
     const objectPath = `${ctx.escolaId}/${alunoId}/${mensalidadeId}/${Date.now()}-${file.name.replace(/\s+/g, "_")}`;
     const bytes = Buffer.from(await file.arrayBuffer());
