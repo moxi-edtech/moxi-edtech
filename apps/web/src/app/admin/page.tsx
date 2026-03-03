@@ -64,7 +64,7 @@ function Card({ title, value, icon: Icon, trend, change }: KPI) {
           )}
         </div>
         <div className="rounded-xl bg-gray-100 p-3">
-          <Icon className="h-6 w-6 text-blue-600" />
+          <Icon className="h-6 w-6 text-slate-600" />
         </div>
       </div>
     </div>
@@ -78,7 +78,7 @@ function ChartPlaceholder({ title }: { title: string }) {
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-center gap-2">
-        <ChartPieIcon className="h-5 w-5 text-blue-600" />
+        <ChartPieIcon className="h-5 w-5 text-slate-600" />
         <h3 className="text-sm font-medium text-gray-700">{title}</h3>
       </div>
       <div className="grid h-56 place-items-center rounded-xl border border-dashed border-gray-300 bg-gray-50 text-xs text-gray-400">
@@ -92,7 +92,7 @@ function ChartPlaceholder({ title }: { title: string }) {
 function ActivityItem({ text, time }: { text: string; time: string }) {
   return (
     <li className="flex items-start gap-3 border-b border-gray-100 py-3 last:border-b-0">
-      <span className="mt-1 h-2 w-2 rounded-full bg-blue-600" />
+      <span className="mt-1 h-2 w-2 rounded-full bg-slate-600" />
       <div className="flex-1">
         <p className="text-sm text-gray-700">{text}</p>
         <p className="text-xs text-gray-400">{time}</p>
@@ -108,7 +108,7 @@ function QuickActionButton({ label, route, icon: Icon }: QuickAction) {
       href={route}
       className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
     >
-      <Icon className="h-5 w-5 text-blue-600" />
+      <Icon className="h-5 w-5 text-slate-600" />
       {label}
     </Link>
   );

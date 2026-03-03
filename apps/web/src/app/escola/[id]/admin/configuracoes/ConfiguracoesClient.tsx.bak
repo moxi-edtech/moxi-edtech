@@ -555,7 +555,7 @@ const handleApplyCurriculumPreset = async () => {
             </DialogDescription>
           </DialogHeader>
           {editingClasse && isClasseLocked(editingClasse.id) && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            <div className="rounded-lg border border-klasse-gold-200 bg-klasse-gold-50 px-3 py-2 text-xs text-klasse-gold-800">
               Esta classe está vinculada a currículo publicado e é somente leitura.
             </div>
           )}
@@ -645,7 +645,7 @@ const handleApplyCurriculumPreset = async () => {
             </DialogDescription>
           </DialogHeader>
           {editingDisciplina?.curriculo_status === 'published' && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            <div className="rounded-lg border border-klasse-gold-200 bg-klasse-gold-50 px-3 py-2 text-xs text-klasse-gold-800">
               Esta disciplina está publicada e não pode ser alterada.
             </div>
           )}
@@ -772,10 +772,10 @@ const handleApplyCurriculumPreset = async () => {
           </CardContent>
         </Card>
       ) : (
-        <Card className="bg-amber-50 border-amber-200">
+        <Card className="bg-klasse-gold-50 border-klasse-gold-200">
           <CardContent className="p-6">
             <div className="flex items-center gap-4 justify-between">
-              <div className="text-amber-900">
+              <div className="text-klasse-gold-900">
                 <h3 className="font-semibold">Configuração incompleta</h3>
                 <p className="text-sm">
                   Abra o assistente para criar a sessão acadêmica, períodos,
@@ -885,7 +885,7 @@ const handleApplyCurriculumPreset = async () => {
                           {isClasseLocked(c.id) ? ' · Publicada' : ''}
                         </p>
                         {isClasseLocked(c.id) && (
-                          <div className="mt-1 inline-flex items-center gap-2 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700">
+                          <div className="mt-1 inline-flex items-center gap-2 rounded-full bg-klasse-gold-50 px-2 py-0.5 text-[11px] text-klasse-gold-700">
                             Currículo publicado — edição bloqueada
                             <Link className="underline" href={publishUrl}>
                               Solicitar nova versão
@@ -1034,7 +1034,7 @@ const handleApplyCurriculumPreset = async () => {
                           {d.curriculo_status === 'published' ? ' · Publicada' : ''}
                         </p>
                         {d.curriculo_status === 'published' && (
-                          <div className="mt-1 inline-flex items-center gap-2 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700">
+                          <div className="mt-1 inline-flex items-center gap-2 rounded-full bg-klasse-gold-50 px-2 py-0.5 text-[11px] text-klasse-gold-700">
                             Currículo publicado — edição bloqueada
                             <Link className="underline" href={publishUrl}>
                               Solicitar nova versão
@@ -1411,7 +1411,7 @@ const handleApplyCurriculumPreset = async () => {
                     >
                       Adicionar componente
                     </Button>
-                    <p className={`text-xs ${modeloPesoTotal === 100 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                    <p className={`text-xs ${modeloPesoTotal === 100 ? 'text-klasse-green-600' : 'text-klasse-gold-600'}`}>
                       Soma dos pesos: {modeloPesoTotal}%
                     </p>
                   </div>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { 
   Wallet, 
@@ -9,12 +8,10 @@ import {
   Percent, 
   AlertTriangle, 
   Landmark, 
-  Lock, 
-  ExternalLink 
+  Lock 
 } from "lucide-react";
 import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
 import { buildConfigMenuItems } from "../_shared/menuItems";
-import { ModalShell } from "@/components/ui/ModalShell";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 
 // --- TYPES ---
@@ -26,14 +23,6 @@ type FinanceiroConfig = {
   moeda: string;
 };
 
-type ServicoItem = {
-  id: string;
-  codigo: string;
-  nome: string;
-  descricao: string | null;
-  valor_base: number;
-  ativo: boolean;
-};
 
 const DEFAULT_CONFIG: FinanceiroConfig = {
   dia_vencimento_padrao: 5,
@@ -42,17 +31,6 @@ const DEFAULT_CONFIG: FinanceiroConfig = {
   bloquear_inadimplentes: false,
   moeda: "AOA",
 };
-
-const DEFAULT_SERVICO: ServicoItem = {
-  id: "",
-  codigo: "",
-  nome: "",
-  descricao: "",
-  valor_base: 0,
-  ativo: true,
-};
-
-type CatalogType = "documento" | "servico";
 
 export default function FinanceiroConfiguracoesPage() {
   const params = useParams() as { id?: string };
@@ -66,13 +44,6 @@ export default function FinanceiroConfiguracoesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [config, setConfig] = useState<FinanceiroConfig>(DEFAULT_CONFIG);
-  const [catalogOpen, setCatalogOpen] = useState(false);
-  const [catalogLoading, setCatalogLoading] = useState(false);
-  const [catalogSaving, setCatalogSaving] = useState(false);
-  const [catalogItems, setCatalogItems] = useState<ServicoItem[]>([]);
-  const [catalogError, setCatalogError] = useState<string | null>(null);
-  const [catalogForm, setCatalogForm] = useState<ServicoItem>(DEFAULT_SERVICO);
-  const [catalogType, setCatalogType] = useState<CatalogType>("servico");
 
   // --- FETCH ---
   useEffect(() => {
@@ -155,92 +126,6 @@ export default function FinanceiroConfiguracoesPage() {
     }
   };
 
-  const loadCatalog = async () => {
-    if (!escolaId) return;
-    setCatalogLoading(true);
-    setCatalogError(null);
-    try {
-      const res = await fetch(`/api/escola/${escolaId}/admin/servicos`, { cache: "no-store" });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json?.ok) {
-        throw new Error(json?.error || "Falha ao carregar serviços");
-      }
-      setCatalogItems(Array.isArray(json.items) ? json.items : []);
-    } catch (error) {
-      console.error("Erro ao carregar serviços", error);
-      setCatalogItems([]);
-      setCatalogError(error instanceof Error ? error.message : "Erro ao carregar serviços");
-    } finally {
-      setCatalogLoading(false);
-    }
-  };
-
-  const handleOpenCatalog = () => {
-    setCatalogOpen(true);
-    setCatalogForm(DEFAULT_SERVICO);
-    setCatalogType("servico");
-  };
-
-  const normalizeCodigo = (value: string) => value.replace(/\s+/g, "_").toUpperCase();
-
-  const ensureDocumentoPrefix = (value: string) => {
-    if (!value) return "DOC_";
-    return value.startsWith("DOC_") ? value : `DOC_${value}`;
-  };
-
-  const handleSaveServico = async () => {
-    if (!escolaId) return;
-    if (!catalogForm.codigo.trim() || !catalogForm.nome.trim()) {
-      error("Código e nome são obrigatórios.");
-      return;
-    }
-    if (catalogType === "documento" && !catalogForm.codigo.startsWith("DOC_")) {
-      error("Documentos devem usar prefixo DOC_.");
-      return;
-    }
-    setCatalogSaving(true);
-    try {
-      const res = await fetch(`/api/escola/${escolaId}/admin/servicos`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: catalogForm.id || null,
-          codigo: catalogForm.codigo,
-          nome: catalogForm.nome,
-          descricao: catalogForm.descricao,
-          valor_base: Number(catalogForm.valor_base ?? 0),
-          ativo: Boolean(catalogForm.ativo),
-        }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json?.ok || !json?.item) {
-        throw new Error(json?.error || "Falha ao salvar serviço");
-      }
-
-      setCatalogItems((prev) => {
-        const index = prev.findIndex((item) => item.id === json.item.id);
-        if (index >= 0) {
-          const next = [...prev];
-          next[index] = json.item;
-          return next;
-        }
-        return [json.item, ...prev];
-      });
-      setCatalogForm(DEFAULT_SERVICO);
-      success("Serviço salvo com sucesso.");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Erro ao salvar serviço";
-      error(message);
-    } finally {
-      setCatalogSaving(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!catalogOpen) return;
-    void loadCatalog();
-  }, [catalogOpen]);
-
   return (
     <ConfigSystemShell
       escolaId={escolaId ?? ""}
@@ -263,7 +148,7 @@ export default function FinanceiroConfiguracoesPage() {
           {/* CARD 1: REGRAS GERAIS */}
           <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-6 border-b border-slate-100 pb-4">
-              <div className="rounded-lg bg-emerald-100 p-2 text-emerald-700">
+              <div className="rounded-lg bg-klasse-green-100 p-2 text-klasse-green-700">
                 <Wallet className="h-5 w-5" />
               </div>
               <div>
@@ -372,209 +257,23 @@ export default function FinanceiroConfiguracoesPage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">Catálogo de Serviços e Documentos</h3>
-                <p className="text-xs text-slate-500">
-                  Cadastre serviços avulsos, declarações e documentos pagos/grátis.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleOpenCatalog}
-                className="rounded-lg bg-klasse-gold px-4 py-2 text-xs font-semibold text-white hover:brightness-95"
-              >
-                Gerenciar catálogo
-              </button>
-            </div>
-          </div>
-
-          {/* CARD 3: CTA PARA TABELA DE PREÇOS */}
-          <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 p-6">
+          {/* CARD 3: INFO SOBRE MENSALIDADES */}
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-6">
             <div className="flex items-center gap-4">
               <div className="rounded-lg bg-white p-2 shadow-sm ring-1 ring-slate-100 text-slate-600">
                 <Landmark className="h-6 w-6" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-slate-900">Tabela de Preços & Contas</h3>
+                <h3 className="text-sm font-bold text-slate-900">Mensalidades & Emolumentos</h3>
                 <p className="text-xs text-slate-500">
-                  Gerencie o valor das propinas por classe e contas bancárias.
+                  Configure preços e catálogo na aba dedicada do menu.
                 </p>
               </div>
             </div>
-            
-            <Link
-              href={escolaId ? `/escola/${escolaId}/financeiro/configuracoes` : "#"}
-              className="group inline-flex items-center gap-2 rounded-lg bg-white border border-slate-300 px-4 py-2 text-xs font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:text-slate-900"
-            >
-              Abrir Gestão Financeira Completa
-              <ExternalLink className="h-3 w-3 text-slate-400 transition-transform group-hover:translate-x-0.5" />
-            </Link>
           </div>
 
         </div>
       )}
-      <ModalShell
-        open={catalogOpen}
-        title="Catálogo de Serviços"
-        description="Defina o que pode ser cobrado ou emitido no balcão."
-        onClose={() => setCatalogOpen(false)}
-      >
-        <div className="space-y-5">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-xs font-semibold text-slate-600">Tipo de item</span>
-            {([
-              { id: "servico", label: "Serviço" },
-              { id: "documento", label: "Documento" },
-            ] as const).map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => {
-                  setCatalogType(item.id);
-                  if (item.id === "documento") {
-                    const codigo = ensureDocumentoPrefix(normalizeCodigo(catalogForm.codigo));
-                    setCatalogForm({ ...catalogForm, codigo });
-                  }
-                }}
-                className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-                  catalogType === item.id
-                    ? "bg-klasse-gold text-white"
-                    : "bg-slate-100 text-slate-600"
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="text-xs font-semibold text-slate-600">Código</label>
-              <input
-                value={catalogForm.codigo}
-                onChange={(event) => {
-                  const raw = event.target.value;
-                  const normalized = normalizeCodigo(raw);
-                  const codigo = catalogType === "documento" ? ensureDocumentoPrefix(normalized) : normalized;
-                  setCatalogForm({ ...catalogForm, codigo });
-                }}
-                placeholder={catalogType === "documento" ? "DOC_DECLARACAO" : "SERVICO_AVULSO"}
-                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-              />
-              {catalogType === "documento" ? (
-                <p className="mt-1 text-[10px] text-slate-400">
-                  Recomendado usar prefixo <strong>DOC_</strong> para documentos.
-                </p>
-              ) : null}
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-600">Nome</label>
-              <input
-                value={catalogForm.nome}
-                onChange={(event) => {
-                  const nome = event.target.value;
-                  let codigo = catalogForm.codigo;
-                  if (!catalogForm.id && nome.trim()) {
-                    const slug = normalizeCodigo(nome.trim());
-                    codigo = catalogType === "documento" ? ensureDocumentoPrefix(slug) : slug;
-                  }
-                  setCatalogForm({ ...catalogForm, nome, codigo });
-                }}
-                placeholder="Declaração de Frequência"
-                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-600">Preço (Kz)</label>
-              <input
-                type="number"
-                value={catalogForm.valor_base}
-                onChange={(event) => setCatalogForm({ ...catalogForm, valor_base: Number(event.target.value) })}
-                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-600">Status</label>
-              <select
-                value={catalogForm.ativo ? "ativo" : "inativo"}
-                onChange={(event) => setCatalogForm({ ...catalogForm, ativo: event.target.value === "ativo" })}
-                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-              >
-                <option value="ativo">Ativo</option>
-                <option value="inativo">Inativo</option>
-              </select>
-            </div>
-            <div className="md:col-span-2">
-              <label className="text-xs font-semibold text-slate-600">Descrição</label>
-              <textarea
-                value={catalogForm.descricao ?? ""}
-                onChange={(event) => setCatalogForm({ ...catalogForm, descricao: event.target.value })}
-                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-                rows={2}
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setCatalogForm(DEFAULT_SERVICO)}
-              className="rounded-lg border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
-            >
-              Limpar
-            </button>
-            <button
-              type="button"
-              onClick={handleSaveServico}
-              disabled={catalogSaving}
-              className="rounded-lg bg-klasse-gold px-4 py-2 text-xs font-semibold text-white hover:brightness-95 disabled:opacity-70"
-            >
-              Salvar serviço
-            </button>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-xs font-semibold text-slate-500">Serviços cadastrados</h4>
-              <button
-                type="button"
-                onClick={loadCatalog}
-                className="text-[10px] font-semibold text-slate-500 hover:text-slate-700"
-              >
-                Atualizar
-              </button>
-            </div>
-            {catalogLoading ? (
-              <div className="text-sm text-slate-500">Carregando serviços...</div>
-            ) : catalogError ? (
-              <div className="text-sm text-rose-600">{catalogError}</div>
-            ) : catalogItems.length === 0 ? (
-              <div className="text-sm text-slate-500">Nenhum serviço cadastrado.</div>
-            ) : (
-              <div className="space-y-2">
-                {catalogItems.map((item) => (
-                  <button
-                    type="button"
-                    key={item.id}
-                    onClick={() => setCatalogForm(item)}
-                    className="flex w-full items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3 text-left text-sm hover:border-slate-300"
-                  >
-                    <div>
-                      <div className="font-semibold text-slate-900">{item.nome}</div>
-                      <div className="text-xs text-slate-500">{item.codigo}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-xs font-semibold text-slate-600">{item.valor_base} Kz</div>
-                      <div className="text-[10px] text-slate-400">{item.ativo ? "Ativo" : "Inativo"}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </ModalShell>
     </ConfigSystemShell>
   );
 }

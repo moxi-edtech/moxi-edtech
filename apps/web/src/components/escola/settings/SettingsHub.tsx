@@ -17,6 +17,7 @@ import {
   Wallet,
   Play,
   ChevronDown,
+  Landmark,
 } from "lucide-react";
 
 // ─── Progress ────────────────────────────────────────────────────────────────
@@ -60,6 +61,10 @@ const TurmasPanel = dynamic(
 );
 const FinanceiroPanel = dynamic(
   () => import("@/app/escola/[id]/admin/configuracoes/financeiro/page"),
+  { ssr: false, loading: () => <PanelLoading /> }
+);
+const MensalidadesPanel = dynamic(
+  () => import("@/app/escola/[id]/admin/configuracoes/mensalidades/page"),
   { ssr: false, loading: () => <PanelLoading /> }
 );
 const FluxosPanel = dynamic(
@@ -124,7 +129,7 @@ function StatusBadge({ ok, loading }: { ok?: boolean; loading: boolean }) {
       className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full border ${
         ok
           ? "bg-[#1F6B3B]/10 text-[#1F6B3B] border-[#1F6B3B]/20"
-          : "bg-amber-50 text-amber-700 border-amber-200"
+          : "bg-klasse-gold-50 text-klasse-gold-700 border-klasse-gold-200"
       }`}
     >
       {ok ? "OK" : "Pendente"}
@@ -208,7 +213,8 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
     { id: "avaliacoes",  label: "Avaliações",  icon: BookOpen,       Component: AvaliacoesPanel },
     { id: "turmas",      label: "Turmas",      icon: Users,          Component: TurmasPanel },
     { id: "horarios",    label: "Horários",    icon: CalendarCheck,  Component: () => <HorariosPanel escolaId={escolaId} /> },
-    { id: "financeiro",  label: "Financeiro",  icon: Wallet,         Component: FinanceiroPanel },
+    { id: "financeiro",  label: "Financeiro · Políticas", icon: Wallet,   Component: FinanceiroPanel },
+    { id: "mensalidades", label: "Mensalidades & Emolumentos", icon: Landmark, Component: MensalidadesPanel },
     { id: "fluxos",      label: "Fluxos",      icon: Layers,         Component: FluxosPanel },
     { id: "excecoes",    label: "Exceções",    icon: AlertTriangle,  Component: ExcecoesPanel },
     { id: "avancado",    label: "Avançado",    icon: ShieldCheck,    Component: AvancadoPanel },

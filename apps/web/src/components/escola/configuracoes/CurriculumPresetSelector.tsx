@@ -130,7 +130,7 @@ export function CurriculumPresetSelector({
     <section className="w-full space-y-6">
       {/* Header */}
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
+        <div className="w-10 h-10 rounded-xl bg-klasse-green-50 border border-klasse-green-100 flex items-center justify-center text-klasse-green-600">
           <BookOpen className="w-5 h-5" />
         </div>
         <div className="space-y-1">
@@ -139,7 +139,7 @@ export function CurriculumPresetSelector({
           </h2>
           <p className="text-xs text-slate-500">
             Selecione para carregar o plano curricular oficial de Angola.
-            <span className="block mt-1 text-emerald-600">
+            <span className="block mt-1 text-klasse-green-600">
               <Check className="inline w-3 h-3 mr-1" />
               Depois você poderá personalizar no painel de configurações.
             </span>
@@ -196,8 +196,8 @@ export function CurriculumPresetSelector({
             const v = e.target.value as CurriculumKey | "";
             onChange(v ? v : null);
           }}
-          className="block w-full pl-4 pr-10 py-3 text-sm border border-emerald-500 rounded-xl
-                     focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
+          className="block w-full pl-4 pr-10 py-3 text-sm border border-klasse-green-500 rounded-xl
+                     focus:ring-2 focus:ring-klasse-green-500 focus:border-klasse-green-500
                      outline-none bg-white font-medium text-slate-700 cursor-pointer
                      transition-shadow hover:shadow-md"
         >
@@ -238,7 +238,7 @@ export function CurriculumPresetSelector({
       {/* Resumo da Seleção */}
       {showSelectionSummary && selectedMeta && selectedType && (
         <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-          <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl">
+          <div className="p-4 bg-klasse-green-50 border border-klasse-green-100 rounded-xl">
             <div className="flex items-start gap-3">
               <div
                 className={`w-8 h-8 rounded-lg ${selectedColors.bgLight} border ${selectedColors.border} flex items-center justify-center`}
@@ -247,7 +247,7 @@ export function CurriculumPresetSelector({
               </div>
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold text-emerald-800">
+                  <h3 className="text-sm font-bold text-klasse-green-800">
                     {selectedCatalog?.name ?? selectedMeta.label}
                   </h3>
                   <span
@@ -263,7 +263,7 @@ export function CurriculumPresetSelector({
                 </div>
 
                 {(selectedCatalog?.description ?? selectedMeta.description) && (
-                  <p className="text-xs text-emerald-600">
+                  <p className="text-xs text-klasse-green-600">
                     {selectedCatalog?.description ?? selectedMeta.description}
                   </p>
                 )}
@@ -274,7 +274,7 @@ export function CurriculumPresetSelector({
                     {subjectsPreview.length} disciplinas
                   </span>
                   <span className="text-slate-300">•</span>
-                  <span className="text-emerald-600 font-medium">
+                  <span className="text-klasse-green-600 font-medium">
                     Personalizável depois
                   </span>
                 </div>

@@ -35,8 +35,8 @@ function Spinner({ label = "Carregando..." }: { label?: string }) {
 }
 
 function getCurriculoBadge(status?: CurriculoStatus["status"]) {
-  if (status === "published") return "bg-emerald-100 text-emerald-700";
-  if (status === "draft") return "bg-amber-100 text-amber-700";
+  if (status === "published") return "bg-klasse-green-100 text-klasse-green-700";
+  if (status === "draft") return "bg-klasse-gold-100 text-klasse-gold-700";
   if (status === "archived") return "bg-slate-100 text-slate-500";
   return "bg-slate-100 text-slate-500";
 }
@@ -213,7 +213,7 @@ export default function CourseManager({
                     </div>
                     <div className="flex items-center gap-2">
                       {pendenciasCount > 0 && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-klasse-gold-100 px-3 py-1 text-xs font-semibold text-klasse-gold-700">
                           {pendenciasCount} pendência(s)
                         </span>
                       )}
@@ -268,7 +268,7 @@ export default function CourseManager({
                       <button
                         type="button"
                         onClick={onResolvePendencias}
-                        className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-bold text-amber-700 hover:bg-amber-100"
+                        className="rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 px-4 py-2 text-xs font-bold text-klasse-gold-700 hover:bg-klasse-gold-100"
                       >
                         Resolver pendências
                       </button>
@@ -305,7 +305,7 @@ export default function CourseManager({
                                   </span>
                                 )}
                                 {disc.status_completude !== "completo" && (
-                                  <span className="rounded-full bg-amber-100 text-amber-700 px-2 py-0.5 text-[10px] font-semibold">
+                                  <span className="rounded-full bg-klasse-gold-100 text-klasse-gold-700 px-2 py-0.5 text-[10px] font-semibold">
                                     Pendente
                                   </span>
                                 )}

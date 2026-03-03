@@ -28,9 +28,9 @@ export function WorkersTab({ outboxMetrics, onRunWorker, onRecalcAggregates }: W
         <CardContent>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-4 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-700">{outboxMetrics.pending}</div>
-                <div className="text-sm text-blue-600">Pendentes</div>
+              <div className="text-center p-4 bg-slate-50 rounded-lg">
+                <div className="text-2xl font-bold text-slate-700">{outboxMetrics.pending}</div>
+                <div className="text-sm text-slate-600">Pendentes</div>
               </div>
               <div className="text-center p-4 bg-yellow-50 rounded-lg">
                 <div className="text-2xl font-bold text-yellow-700">{outboxMetrics.retry}</div>

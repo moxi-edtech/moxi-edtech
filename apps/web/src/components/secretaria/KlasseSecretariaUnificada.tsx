@@ -21,7 +21,7 @@ export default function KlasseSecretariaUnificada({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const modeFromQuery = normalizeModo(searchParams?.get("modo"));
+  const modeFromQuery = searchParams ? normalizeModo(searchParams.get("modo")) : null;
   const [activeMode, setActiveMode] = useState<ModoSecretaria>(modeFromQuery ?? "balcao");
 
   useEffect(() => {
@@ -49,9 +49,11 @@ export default function KlasseSecretariaUnificada({
     try {
       localStorage.setItem("klasse_modo_secretaria", mode);
     } catch {}
-    const next = new URLSearchParams(searchParams?.toString() || "");
-    next.set("modo", mode);
-    router.replace(`${pathname}?${next.toString()}`);
+    if (searchParams) {
+      const next = new URLSearchParams(searchParams.toString());
+      next.set("modo", mode);
+      router.replace(`${pathname}?${next.toString()}`);
+    }
   };
 
   const current = useMemo(() => (activeMode === "financeiro" ? financeiroContent : balcaoContent), [activeMode, balcaoContent, financeiroContent]);
@@ -64,7 +66,7 @@ export default function KlasseSecretariaUnificada({
           onClick={() => setMode("balcao")}
           className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
             activeMode === "balcao"
-              ? "bg-emerald-600 text-white"
+              ? "bg-klasse-green-600 text-white"
               : "bg-slate-100 text-slate-700 hover:bg-slate-200"
           }`}
         >
@@ -75,7 +77,7 @@ export default function KlasseSecretariaUnificada({
           onClick={() => setMode("financeiro")}
           className={`rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
             activeMode === "financeiro"
-              ? "bg-emerald-600 text-white"
+              ? "bg-klasse-green-600 text-white"
               : "bg-slate-100 text-slate-700 hover:bg-slate-200"
           }`}
         >

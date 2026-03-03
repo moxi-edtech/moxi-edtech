@@ -394,10 +394,10 @@ export default function AvaliacaoUnificadaClient() {
                   <PreviewPauta />
                 </div>
                 
-                <div className="mt-8 flex items-start gap-3 rounded-xl bg-amber-50 p-4 border border-amber-100 text-amber-800">
-                  <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                <div className="mt-8 flex items-start gap-3 rounded-xl bg-klasse-gold-50 p-4 border border-klasse-gold-100 text-klasse-gold-800">
+                  <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-klasse-gold-600" />
                   <div className="text-xs leading-relaxed">
-                    <p className="font-bold text-amber-900">Impacto da Alteração</p>
+                    <p className="font-bold text-klasse-gold-900">Impacto da Alteração</p>
                     <p className="mt-1 opacity-90">
                       Ao salvar, o sistema recalculará automaticamente as médias de todos os alunos vinculados a este modelo.
                       Certifique-se de notificar a coordenação pedagógica.

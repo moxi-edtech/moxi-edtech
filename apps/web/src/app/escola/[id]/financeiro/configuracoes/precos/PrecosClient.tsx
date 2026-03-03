@@ -22,7 +22,7 @@ const Card = ({ children, className = "" }: { children: React.ReactNode; classNa
   <div className={`bg-white rounded-xl border border-slate-200 shadow-sm ${className}`}>{children}</div>
 )
 
-export default function PrecosClient({ escolaId }: { escolaId: string }) {
+export default function PrecosClient({ escolaId, embedded = false }: { escolaId: string; embedded?: boolean }) {
   const {
     state: {
       sessions,
@@ -47,42 +47,44 @@ export default function PrecosClient({ escolaId }: { escolaId: string }) {
   const destinoAtualLabelSafe = React.useMemo(() => destinoAtualLabel || "—", [destinoAtualLabel])
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-8 font-sans text-slate-900">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200 pb-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Configuração de Preços</h1>
-          <p className="text-slate-500 mt-1 text-sm">Defina as regras de cobrança para matrículas e mensalidades.</p>
-        </div>
+    <div className={embedded ? "space-y-8 font-sans text-slate-900" : "max-w-7xl mx-auto p-6 space-y-8 font-sans text-slate-900"}>
+      {!embedded && (
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200 pb-6">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">Configuração de Preços</h1>
+            <p className="text-slate-500 mt-1 text-sm">Defina as regras de cobrança para matrículas e mensalidades.</p>
+          </div>
 
-        <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
-          <div className="p-2 bg-white rounded-lg shadow-sm">
-            <CalendarDays className="w-4 h-4 text-slate-500" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ano Letivo</span>
-            {sessions.length > 0 ? (
-              <select
-                value={selectedSession}
-                onChange={(e) => setSelectedSession(e.target.value)}
-                className="bg-transparent text-sm font-semibold text-slate-900 outline-none cursor-pointer"
-              >
-                {sessions.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.nome}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                type="number"
-                value={anoLetivo}
-                onChange={(e) => setAnoLetivoFallback(Number(e.target.value) || new Date().getFullYear())}
-                className="bg-transparent text-sm font-semibold w-20 outline-none"
-              />
-            )}
+          <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-200">
+            <div className="p-2 bg-white rounded-lg shadow-sm">
+              <CalendarDays className="w-4 h-4 text-slate-500" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ano Letivo</span>
+              {sessions.length > 0 ? (
+                <select
+                  value={selectedSession}
+                  onChange={(e) => setSelectedSession(e.target.value)}
+                  className="bg-transparent text-sm font-semibold text-slate-900 outline-none cursor-pointer"
+                >
+                  {sessions.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.nome}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="number"
+                  value={anoLetivo}
+                  onChange={(e) => setAnoLetivoFallback(Number(e.target.value) || new Date().getFullYear())}
+                  className="bg-transparent text-sm font-semibold w-20 outline-none"
+                />
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="grid lg:grid-cols-12 gap-8 items-start">
         <div className="lg:col-span-4 space-y-4 order-2 lg:order-1">
@@ -93,7 +95,7 @@ export default function PrecosClient({ escolaId }: { escolaId: string }) {
             <button
               onClick={carregarTabelas}
               disabled={loading}
-              className="text-xs font-medium text-slate-500 hover:text-emerald-600 transition-colors"
+              className="text-xs font-medium text-slate-500 hover:text-klasse-green-600 transition-colors"
             >
               {loading ? <RefreshCw className="w-3 h-3 animate-spin" /> : "Atualizar"}
             </button>
@@ -111,8 +113,8 @@ export default function PrecosClient({ escolaId }: { escolaId: string }) {
                   onClick={() => editar(item)}
                   className={`group relative p-4 rounded-xl border transition-all cursor-pointer hover:shadow-md ${
                     form.id === item.id
-                      ? "bg-emerald-50/50 border-emerald-500 ring-1 ring-emerald-500"
-                      : "bg-white border-slate-200 hover:border-emerald-300"
+                      ? "bg-klasse-green-50/50 border-klasse-green-500 ring-1 ring-klasse-green-500"
+                      : "bg-white border-slate-200 hover:border-klasse-green-300"
                   }`}
                 >
                   <div className="flex justify-between items-start mb-2">
@@ -129,7 +131,7 @@ export default function PrecosClient({ escolaId }: { escolaId: string }) {
                       )}
                     </div>
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Edit3 className="w-4 h-4 text-emerald-600" />
+                      <Edit3 className="w-4 h-4 text-klasse-green-600" />
                     </div>
                   </div>
 
@@ -180,7 +182,7 @@ export default function PrecosClient({ escolaId }: { escolaId: string }) {
                   <select
                     value={form.curso_id}
                     onChange={(e) => setForm((prev) => ({ ...prev, curso_id: e.target.value }))}
-                    className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                    className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-klasse-green-500/20 focus:border-klasse-green-500 outline-none transition-all"
                   >
                     <option value="">(Todos os cursos)</option>
                     {cursos.map((c) => (
@@ -195,7 +197,7 @@ export default function PrecosClient({ escolaId }: { escolaId: string }) {
                   <select
                     value={form.classe_id}
                     onChange={(e) => setForm((prev) => ({ ...prev, classe_id: e.target.value }))}
-                    className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
+                    className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-klasse-green-500/20 focus:border-klasse-green-500 outline-none transition-all"
                   >
                     <option value="">{form.curso_id ? "(Todas as classes deste curso)" : "(Todas as classes)"}</option>
                     {classesFiltradasForm.map((c) => (
@@ -218,7 +220,7 @@ export default function PrecosClient({ escolaId }: { escolaId: string }) {
                       placeholder="0,00"
                       value={form.valor_matricula}
                       onChange={(e) => setForm((prev) => ({ ...prev, valor_matricula: e.target.value }))}
-                      className="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-200 rounded-lg font-mono text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+                      className="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-200 rounded-lg font-mono text-sm focus:ring-2 focus:ring-klasse-green-500/20 focus:border-klasse-green-500 outline-none"
                     />
                   </div>
                 </InputGroup>
@@ -233,7 +235,7 @@ export default function PrecosClient({ escolaId }: { escolaId: string }) {
                       placeholder="0,00"
                       value={form.valor_mensalidade}
                       onChange={(e) => setForm((prev) => ({ ...prev, valor_mensalidade: e.target.value }))}
-                      className="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-200 rounded-lg font-mono text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+                      className="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-200 rounded-lg font-mono text-sm focus:ring-2 focus:ring-klasse-green-500/20 focus:border-klasse-green-500 outline-none"
                     />
                   </div>
                 </InputGroup>
@@ -246,21 +248,21 @@ export default function PrecosClient({ escolaId }: { escolaId: string }) {
                     placeholder="Ex: 5"
                     value={form.dia_vencimento}
                     onChange={(e) => setForm((prev) => ({ ...prev, dia_vencimento: e.target.value }))}
-                    className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none"
+                    className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-klasse-green-500/20 focus:border-klasse-green-500 outline-none"
                   />
                 </InputGroup>
               </div>
 
               <div className="flex items-center justify-between pt-6 border-t border-slate-100">
                 <div className="flex items-center gap-2 text-sm text-slate-500">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span className="w-2 h-2 rounded-full bg-klasse-green-500 animate-pulse"></span>
                   Salvando para: <span className="font-medium text-slate-900">{destinoAtualLabelSafe}</span>
                 </div>
 
                 <button
                   type="submit"
                   disabled={saving}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium text-sm transition-all shadow-sm shadow-emerald-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-klasse-green-600 hover:bg-klasse-green-700 text-white rounded-lg font-medium text-sm transition-all shadow-sm shadow-klasse-green-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                   {form.id ? "Atualizar Regra" : "Criar Regra"}
@@ -280,7 +282,7 @@ export default function PrecosClient({ escolaId }: { escolaId: string }) {
                   <select
                     value={simulacao.curso_id}
                     onChange={(e) => setSimulacao((prev) => ({ ...prev, curso_id: e.target.value }))}
-                    className="bg-white border border-slate-200 text-sm rounded-lg p-2 outline-none focus:border-emerald-500"
+                    className="bg-white border border-slate-200 text-sm rounded-lg p-2 outline-none focus:border-klasse-green-500"
                   >
                     <option value="">Selecione um curso...</option>
                     {cursos.map((c) => (
@@ -292,7 +294,7 @@ export default function PrecosClient({ escolaId }: { escolaId: string }) {
                   <select
                     value={simulacao.classe_id}
                     onChange={(e) => setSimulacao((prev) => ({ ...prev, classe_id: e.target.value }))}
-                    className="bg-white border border-slate-200 text-sm rounded-lg p-2 outline-none focus:border-emerald-500"
+                    className="bg-white border border-slate-200 text-sm rounded-lg p-2 outline-none focus:border-klasse-green-500"
                   >
                     <option value="">Selecione uma classe...</option>
                     {classesFiltradasSimulacao.map((c) => (
@@ -321,7 +323,7 @@ export default function PrecosClient({ escolaId }: { escolaId: string }) {
                       <span>Matrícula</span>
                       <span>{formatarMoeda(resolved.tabela.valor_matricula)}</span>
                     </div>
-                    <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-50 text-[10px] font-medium text-blue-700 border border-blue-100">
+                    <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-slate-50 text-[10px] font-medium text-slate-700 border border-slate-100">
                       <Search className="w-3 h-3" />
                       Fonte: {resolved.origem || "Regra Definida"}
                     </div>

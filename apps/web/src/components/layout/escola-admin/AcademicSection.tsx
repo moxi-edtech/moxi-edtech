@@ -51,7 +51,7 @@ function AcademicItem({ item }: { item: Item }) {
 
         {/* Badge (e.g. "Preços pendentes") */}
         {item.badge && !item.locked && (
-          <span className="mt-1.5 inline-flex items-center rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+          <span className="mt-1.5 inline-flex items-center rounded-full bg-klasse-gold-50 border border-klasse-gold-200 px-2 py-0.5 text-[10px] font-bold text-klasse-gold-700">
             {item.badge}
           </span>
         )}

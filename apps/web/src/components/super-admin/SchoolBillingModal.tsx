@@ -25,13 +25,13 @@ export default function SchoolBillingModal({ escolaId, onClose }: Props) {
             placeholder="Valor (R$)"
             value={valor}
             onChange={(e)=>setValor(e.target.value)}
-            className="w-full px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
           />
           <input
             type="date"
             value={vencimento}
             onChange={(e)=>setVencimento(e.target.value)}
-            className="w-full px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-slate-500"
           />
         </div>
         <div className="mt-4 flex items-center justify-end gap-2">

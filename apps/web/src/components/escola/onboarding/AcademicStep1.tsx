@@ -222,12 +222,12 @@ export default function AcademicStep1({
               </div>
 
               <div className="flex-1">
-                <label className={`${labelClass} text-amber-600`}>Travar Notas</label>
+                <label className={`${labelClass} text-klasse-gold-600`}>Travar Notas</label>
                 <input
                   type="datetime-local"
                   value={periodo.trava_notas_em}
                   onChange={(e) => onPeriodoChange(periodo.numero, "trava_notas_em", e.target.value)}
-                  className={`${inputClass} bg-white border-amber-200 focus:border-amber-400 focus:ring-amber-400`}
+                  className={`${inputClass} bg-white border-klasse-gold-200 focus:border-klasse-gold-400 focus:ring-klasse-gold-400`}
                 />
               </div>
             </div>
@@ -242,7 +242,7 @@ export default function AcademicStep1({
         <div className="text-xs text-slate-500">
           {sessaoAtiva ? (
             <span className="flex items-center gap-2">
-              <Check className="h-3 w-3 text-emerald-500" />
+              <Check className="h-3 w-3 text-klasse-green-500" />
               Sessão ativa: <strong className="text-slate-900">{sessaoAtiva.nome}</strong> ({periodos.length} períodos)
             </span>
           ) : (

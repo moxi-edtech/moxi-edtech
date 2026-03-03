@@ -23,10 +23,10 @@ import type { AlunoStagingRecord, ErroImportacao, ImportResult, MappedColumns } 
 // --- UI COMPONENTS (KLASSE DESIGN SYSTEM) ---
 
 const KlasseColors = {
-  primary: "bg-emerald-900",
-  primaryHover: "hover:bg-emerald-950",
-  accent: "text-amber-500",
-  accentBg: "bg-amber-500",
+  primary: "bg-klasse-green-900",
+  primaryHover: "hover:bg-klasse-green-950",
+  accent: "text-klasse-gold-500",
+  accentBg: "bg-klasse-gold-500",
   surface: "bg-white",
   background: "bg-slate-50",
 };
@@ -69,7 +69,7 @@ const StepIndicator = ({ steps, currentStep }: { steps: any[], currentStep: numb
     <div className="w-full bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-10 shadow-sm">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-bold uppercase text-emerald-900 tracking-wider">Progresso da Migração</span>
+          <span className="text-xs font-bold uppercase text-klasse-green-900 tracking-wider">Progresso da Migração</span>
           <span className="text-xs font-medium text-slate-500">Passo {currentStep} de {steps.length}</span>
         </div>
         <div className="relative h-2 bg-slate-100 rounded-full overflow-hidden">
@@ -84,8 +84,8 @@ const StepIndicator = ({ steps, currentStep }: { steps: any[], currentStep: numb
             const isCompleted = step.id < currentStep;
             return (
               <div key={step.id} className={`flex flex-col items-center ${isActive || isCompleted ? 'opacity-100' : 'opacity-30 hidden sm:flex'}`}>
-                <div className={`flex items-center gap-2 text-xs font-medium ${isActive ? 'text-emerald-900' : 'text-slate-500'}`}>
-                  {isCompleted ? <CheckCircle className="w-3 h-3 text-emerald-600" /> : <step.icon className="w-3 h-3" />}
+                <div className={`flex items-center gap-2 text-xs font-medium ${isActive ? 'text-klasse-green-900' : 'text-slate-500'}`}>
+                  {isCompleted ? <CheckCircle className="w-3 h-3 text-klasse-green-600" /> : <step.icon className="w-3 h-3" />}
                   <span className={isActive ? "font-bold" : ""}>{step.title}</span>
                 </div>
               </div>
@@ -101,7 +101,7 @@ const WizardShell = ({ children, title, subtitle, icon: Icon, backAction }: any)
   <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
     <div className="bg-slate-50/50 px-6 py-5 border-b border-slate-100 flex justify-between items-start">
       <div className="flex gap-4">
-        <div className={`w-12 h-12 rounded-xl ${KlasseColors.primary} flex items-center justify-center text-white shadow-lg shadow-emerald-900/10`}>
+        <div className={`w-12 h-12 rounded-xl ${KlasseColors.primary} flex items-center justify-center text-white shadow-lg shadow-klasse-green-900/10`}>
           <Icon className="w-6 h-6" />
         </div>
         <div>
@@ -380,11 +380,11 @@ function AlunoMigrationWizardContent() {
             <div className="space-y-6 max-w-2xl mx-auto">
               <UploadField onFileSelected={setFile} />
               
-              <div className="bg-amber-50 border border-amber-100 rounded-lg p-4 text-sm text-amber-900">
+              <div className="bg-klasse-gold-50 border border-klasse-gold-100 rounded-lg p-4 text-sm text-klasse-gold-900">
                 <div className="flex items-center gap-2 font-bold mb-2">
                   <Info className="w-4 h-4" /> Requisitos Importantes
                 </div>
-                <ul className="list-disc pl-5 space-y-1 text-amber-800/80">
+                <ul className="list-disc pl-5 space-y-1 text-klasse-gold-800/80">
                   <li>Formato <strong>.CSV</strong> ou <strong>.XLSX</strong></li>
                   <li>Colunas obrigatórias: <strong>Nome</strong>, <strong>Data de Nascimento</strong>.</li>
                   <li>Para alocação automática: <strong>Código da Turma</strong>.</li>
@@ -419,14 +419,14 @@ function AlunoMigrationWizardContent() {
                   <select
                     value={anoLetivo}
                     onChange={(e) => setAnoLetivo(Number(e.target.value))}
-                    className="bg-white border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-emerald-500 focus:border-emerald-500 block w-48 p-2.5"
+                    className="bg-white border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-klasse-green-500 focus:border-klasse-green-500 block w-48 p-2.5"
                   >
                     {[2023, 2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
                   </select>
                 </div>
                 <div className="text-right">
-                   <p className="text-sm font-medium text-emerald-800">Campos mapeados</p>
-                   <p className="text-2xl font-bold text-emerald-900">{Object.keys(mapping).filter(k => mapping[k as keyof MappedColumns]).length} <span className="text-sm font-normal text-slate-400">/ {headers.length}</span></p>
+                   <p className="text-sm font-medium text-klasse-green-800">Campos mapeados</p>
+                   <p className="text-2xl font-bold text-klasse-green-900">{Object.keys(mapping).filter(k => mapping[k as keyof MappedColumns]).length} <span className="text-sm font-normal text-slate-400">/ {headers.length}</span></p>
                 </div>
               </div>
 
@@ -475,16 +475,16 @@ function AlunoMigrationWizardContent() {
          return (
             <WizardShell title="Configuração Final" subtitle="Defina os parâmetros financeiros e de matrícula antes de processar." icon={Settings}>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-                  <div className="col-span-1 md:col-span-2 bg-emerald-50 border border-emerald-100 rounded-xl p-5 flex items-start gap-4">
-                     <CheckCircle className="w-6 h-6 text-emerald-600 mt-1" />
+                  <div className="col-span-1 md:col-span-2 bg-klasse-green-50 border border-klasse-green-100 rounded-xl p-5 flex items-start gap-4">
+                     <CheckCircle className="w-6 h-6 text-klasse-green-600 mt-1" />
                      <div>
-                        <h4 className="font-bold text-emerald-900">Tudo pronto para importar</h4>
-                        <p className="text-sm text-emerald-800/80 mt-1">Os dados foram validados e a estrutura acadêmica preparada. Esta ação irá criar os perfis dos alunos no banco de dados.</p>
+                        <h4 className="font-bold text-klasse-green-900">Tudo pronto para importar</h4>
+                        <p className="text-sm text-klasse-green-800/80 mt-1">Os dados foram validados e a estrutura acadêmica preparada. Esta ação irá criar os perfis dos alunos no banco de dados.</p>
                      </div>
                   </div>
 
                   <div className="space-y-4">
-                     <label className="block p-4 border border-slate-200 rounded-xl hover:border-emerald-500 cursor-pointer transition-all">
+                     <label className="block p-4 border border-slate-200 rounded-xl hover:border-klasse-green-500 cursor-pointer transition-all">
                         <span className="block text-sm font-bold text-slate-900 mb-1">Modo de Operação</span>
                         <select 
                            value={modo} 
@@ -496,9 +496,9 @@ function AlunoMigrationWizardContent() {
                         </select>
                      </label>
                      
-                     <label className="block p-4 border border-slate-200 rounded-xl hover:border-emerald-500 cursor-pointer transition-all">
+                     <label className="block p-4 border border-slate-200 rounded-xl hover:border-klasse-green-500 cursor-pointer transition-all">
                         <div className="flex items-center gap-3">
-                           <input type="checkbox" checked={skipMatricula} onChange={(e) => setSkipMatricula(e.target.checked)} className="rounded text-emerald-600 focus:ring-emerald-500 w-5 h-5" />
+                           <input type="checkbox" checked={skipMatricula} onChange={(e) => setSkipMatricula(e.target.checked)} className="rounded text-klasse-green-600 focus:ring-klasse-green-500 w-5 h-5" />
                            <div>
                               <span className="block text-sm font-bold text-slate-900">Apenas Cadastro</span>
                               <span className="text-xs text-slate-500">Não matricular alunos nas turmas agora</span>
@@ -552,14 +552,14 @@ function AlunoMigrationWizardContent() {
                   <div className="space-y-8">
                   {importFinanceSummary && (
                      <div
-                        className={`border rounded-2xl p-5 ${importFinanceSummary.ok_financeiro ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100'}`}
+                        className={`border rounded-2xl p-5 ${importFinanceSummary.ok_financeiro ? 'bg-klasse-green-50 border-klasse-green-100' : 'bg-klasse-gold-50 border-klasse-gold-100'}`}
                      >
                         <div className="flex gap-3">
                            <div className="mt-0.5">
                               {importFinanceSummary.ok_financeiro ? (
-                                 <CheckCircle className="w-5 h-5 text-emerald-600" />
+                                 <CheckCircle className="w-5 h-5 text-klasse-green-600" />
                               ) : (
-                                 <AlertTriangle className="w-5 h-5 text-amber-600" />
+                                 <AlertTriangle className="w-5 h-5 text-klasse-gold-600" />
                               )}
                            </div>
                            <div className="space-y-1">
@@ -589,7 +589,7 @@ function AlunoMigrationWizardContent() {
                      <div className="bg-white border border-slate-200 rounded-2xl p-5">
                         <div className="flex items-center justify-between mb-3">
                            <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                              <AlertTriangle className="w-4 h-4 text-amber-500" /> Pendências Financeiras
+                              <AlertTriangle className="w-4 h-4 text-klasse-gold-500" /> Pendências Financeiras
                            </h4>
                            <span className="text-xs font-medium text-slate-500">
                               {importFinanceSummary.pendencias_financeiras.itens.length} pendências
@@ -623,12 +623,12 @@ function AlunoMigrationWizardContent() {
 
                   {/* Stats Grid */}
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                     <StatCard label="Importados" value={importResult?.imported || 0} icon={CheckCircle} colorClass="text-emerald-700" bgClass="bg-emerald-50 border-emerald-100" />
-                     <StatCard label="Criados" value={importResult?.turmas_created || 0} icon={School} colorClass="text-blue-700" bgClass="bg-blue-50 border-blue-100" />
-                     <StatCard label="Ignorados" value={importResult?.skipped || 0} icon={AlertTriangle} colorClass="text-amber-700" bgClass="bg-amber-50 border-amber-100" />
+                     <StatCard label="Importados" value={importResult?.imported || 0} icon={CheckCircle} colorClass="text-klasse-green-700" bgClass="bg-klasse-green-50 border-klasse-green-100" />
+                     <StatCard label="Criados" value={importResult?.turmas_created || 0} icon={School} colorClass="text-slate-700" bgClass="bg-slate-50 border-slate-100" />
+                     <StatCard label="Ignorados" value={importResult?.skipped || 0} icon={AlertTriangle} colorClass="text-klasse-gold-700" bgClass="bg-klasse-gold-50 border-klasse-gold-100" />
                      <StatCard label="Erros" value={importResult?.errors || 0} icon={AlertTriangle} colorClass="text-rose-700" bgClass="bg-rose-50 border-rose-100" />
                      <div className="col-span-2 md:col-span-1 flex items-center justify-center p-4">
-                        <button onClick={resetWizard} className="text-sm font-medium text-slate-500 hover:text-emerald-800 flex items-center gap-2 transition-colors">
+                        <button onClick={resetWizard} className="text-sm font-medium text-slate-500 hover:text-klasse-green-800 flex items-center gap-2 transition-colors">
                            <RefreshCw className="w-4 h-4" /> Nova Importação
                         </button>
                      </div>
@@ -640,7 +640,7 @@ function AlunoMigrationWizardContent() {
                         <h3 className="font-bold text-slate-900 flex items-center gap-2">
                            <Users className="w-5 h-5 text-slate-400" /> Matrícula Automática
                         </h3>
-                        {matriculando && <span className="text-xs font-bold text-emerald-600 animate-pulse">PROCESSANDO...</span>}
+                        {matriculando && <span className="text-xs font-bold text-klasse-green-600 animate-pulse">PROCESSANDO...</span>}
                      </div>
 
                      {/* Progress Bar */}
@@ -651,7 +651,7 @@ function AlunoMigrationWizardContent() {
                               <span>{Math.round((progressDone / progressTotal) * 100)}%</span>
                            </div>
                            <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
-                              <div className="bg-emerald-600 h-2 transition-all duration-300" style={{ width: `${(progressDone / progressTotal) * 100}%` }} />
+                              <div className="bg-klasse-green-600 h-2 transition-all duration-300" style={{ width: `${(progressDone / progressTotal) * 100}%` }} />
                            </div>
                         </div>
                      )}
@@ -678,7 +678,7 @@ function AlunoMigrationWizardContent() {
                                                 checked={!!selectedBatches[virtualRow.index]} 
                                                 onChange={(e) => setSelectedBatches({...selectedBatches, [virtualRow.index]: e.target.checked})}
                                                 disabled={matriculando}
-                                                className="rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                                                className="rounded text-klasse-green-600 focus:ring-klasse-green-500 border-slate-300"
                                              />
                                              <div>
                                                 <div className="text-sm font-semibold text-slate-900">{b.turma_nome}</div>
@@ -687,7 +687,7 @@ function AlunoMigrationWizardContent() {
                                           </div>
                                           <div className="text-right">
                                              {result ? (
-                                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-100">
+                                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-klasse-green-50 text-klasse-green-700 text-xs font-bold border border-klasse-green-100">
                                                    <CheckCircle className="w-3 h-3" /> {result.success} OK
                                                 </span>
                                              ) : (
@@ -759,7 +759,7 @@ function AlunoMigrationWizardContent() {
                   )}
 
                   <div className="flex gap-4 pt-4 justify-center">
-                      <a href="/secretaria/alunos" className="text-slate-500 hover:text-emerald-900 text-sm font-medium underline underline-offset-4">Ir para lista de alunos</a>
+                      <a href="/secretaria/alunos" className="text-slate-500 hover:text-klasse-green-900 text-sm font-medium underline underline-offset-4">Ir para lista de alunos</a>
                   </div>
                </div>
             </WizardShell>
@@ -778,7 +778,7 @@ function AlunoMigrationWizardContent() {
       <main className="max-w-5xl mx-auto px-4 sm:px-6 pt-8">
         {/* Back Button */}
         {step > 1 && (
-           <button onClick={() => setStep(s => s - 1)} className="mb-4 flex items-center gap-2 text-sm text-slate-400 hover:text-emerald-800 transition-colors">
+           <button onClick={() => setStep(s => s - 1)} className="mb-4 flex items-center gap-2 text-sm text-slate-400 hover:text-klasse-green-800 transition-colors">
               <ArrowLeft className="w-4 h-4" /> Voltar ao passo anterior
            </button>
         )}
@@ -810,8 +810,8 @@ export default function AlunoMigrationWizard() {
     <Suspense fallback={
        <div className="min-h-screen flex items-center justify-center bg-slate-50">
           <div className="flex flex-col items-center gap-4">
-             <div className="w-12 h-12 border-4 border-emerald-900 border-t-transparent rounded-full animate-spin" />
-             <p className="text-emerald-900 font-medium animate-pulse">Carregando Módulo de Migração...</p>
+             <div className="w-12 h-12 border-4 border-klasse-green-900 border-t-transparent rounded-full animate-spin" />
+             <p className="text-klasse-green-900 font-medium animate-pulse">Carregando Módulo de Migração...</p>
           </div>
        </div>
     }>

@@ -201,7 +201,7 @@ export default function ExcecoesPautaPanel({ params }: { params: Promise<{ id: s
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <AlertTriangle className="text-amber-500 w-5 h-5" />
+            <AlertTriangle className="text-klasse-gold-500 w-5 h-5" />
             Reabertura Excecional de Pauta
           </h2>
           <p className="text-sm text-slate-500">
@@ -218,7 +218,7 @@ export default function ExcecoesPautaPanel({ params }: { params: Promise<{ id: s
       </div>
 
       {showAdd && (
-        <div className="bg-white border-2 border-amber-100 rounded-2xl p-6 shadow-sm space-y-4">
+        <div className="bg-white border-2 border-klasse-gold-100 rounded-2xl p-6 shadow-sm space-y-4">
           <h3 className="font-bold text-slate-900 text-sm uppercase tracking-wider">Configurar Acesso Temporário</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -304,7 +304,7 @@ export default function ExcecoesPautaPanel({ params }: { params: Promise<{ id: s
             <button
               disabled={saving}
               onClick={handleAdd}
-              className="bg-amber-500 text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-amber-600 transition-all disabled:opacity-50 flex items-center gap-2"
+              className="bg-klasse-gold-500 text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-klasse-gold-600 transition-all disabled:opacity-50 flex items-center gap-2"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
               Conceder Acesso Excecional
@@ -371,7 +371,7 @@ export default function ExcecoesPautaPanel({ params }: { params: Promise<{ id: s
                           <XCircle className="w-3 h-3" /> EXPIRADA
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold animate-pulse">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-klasse-green-100 text-klasse-green-700 text-[10px] font-bold animate-pulse">
                           <CheckCircle2 className="w-3 h-3" /> ATIVA
                         </span>
                       )}

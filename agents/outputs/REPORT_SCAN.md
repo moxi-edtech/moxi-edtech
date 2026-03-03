@@ -1,6 +1,6 @@
 # REPORT_SCAN.md — KLASSE FOUNDATION AUDIT
 
-- Verificado em: `2026-02-24T01:13:30.671Z`
+- Verificado em: `2026-03-01T17:53:14.922Z`
 
 ## 1. SUMÁRIO EXECUTIVO
 
@@ -14,6 +14,7 @@
 - Severidade: **HIGH**
 - Status: **PARTIAL**
 - Evidências:
+  - `docs/big-tech-performance.md` — match: /cache:\s*['\"]no-store['\"]/i
   - `tools/validator/fluency-validator-monorepo.js` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/hooks/useMatriculaLogic.ts` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/lib/auth-admin-job.ts` — match: /cache:\s*['\"]no-store['\"]/i
@@ -21,6 +22,8 @@
   - `apps/web/src/app/professor/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/components/financeiro/GerarMensalidadesModal.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/components/financeiro/MissingPricingAlert.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/secretaria/AdmissaoWizardClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
+  - `apps/web/src/components/secretaria/AlunosSecretariaPage.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/components/secretaria/BalcaoAtendimento.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/components/secretaria/BuscaBalcaoRapido.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/components/secretaria/DocumentosEmissaoHubClient.tsx` — match: /cache:\s*['\"]no-store['\"]/i
@@ -36,9 +39,6 @@
   - `apps/web/src/app/financeiro/fecho/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/app/professor/frequencias/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
   - `apps/web/src/app/professor/notas/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/web/src/app/professor/perfil/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/web/src/app/secretaria/(portal-secretaria)/page.tsx` — match: /cache:\s*['\"]no-store['\"]/i
-  - `apps/web/src/components/aluno/disciplinas/DisciplinasList.tsx` — match: /cache:\s*['\"]no-store['\"]/i
 - Recomendação: Remover no-store onde houver MV/camadas cacheáveis; manter só em rotas realmente sensíveis.
 
 ### F09_MV — F09 — Radar de Inadimplência com MATERIALIZED VIEW
@@ -95,10 +95,12 @@
 - Severidade: **LOW**
 - Status: **VALIDATED**
 - Evidências:
+  - `AGENTS.md` — match: /audit_logs|auditLog|create_audit/i
   - `temp_supabase_output.ts` — match: /audit_logs|auditLog|create_audit/i
   - `types/database.ts` — match: /audit_logs|auditLog|create_audit/i
   - `types/supabase.ts` — match: /audit_logs|auditLog|create_audit/i
   - `tools/validator/fluency-validator-monorepo.js` — match: /audit_logs|auditLog|create_audit/i
+  - `supabase/functions/outbox-worker/index.ts` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/migrations/20260127020139_remote_schema.sql` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/migrations/20260127020700_admin_get_escola_health_metrics_rpc.sql` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/migrations/20260127140000_create_confirmar_conciliacao_transacao_rpc.sql` — match: /audit_logs|auditLog|create_audit/i
@@ -118,8 +120,6 @@
   - `supabase/migrations/20260203000012_rpc_gerar_historico_anual.sql` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/migrations/20260203000013_update_finalizar_matricula_rpc.sql` — match: /audit_logs|auditLog|create_audit/i
   - `supabase/migrations/20260203000015_refactor_gerar_mensalidades_trigger.sql` — match: /audit_logs|auditLog|create_audit/i
-  - `supabase/migrations/20260203000016_add_audit_to_finance_rpcs.sql` — match: /audit_logs|auditLog|create_audit/i
-  - `supabase/migrations/20260203000018_rpc_conciliar_transacoes_auto_match.sql` — match: /audit_logs|auditLog|create_audit/i
 - Recomendação: Padronizar schema: actor, action, entity, before, after, ip, created_at; garantir coverage financeiro/matrícula.
 
 ### PLAN_GUARD — P0.3 — Controle de planos (backend + UI)

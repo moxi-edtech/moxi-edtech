@@ -2,11 +2,11 @@
 
 import React from 'react';
 
-export default function UsuariosListClient() {
+export function SecretariaUsuariosListClient() {
   return (
     <div>
-      <h1>Lista de Usuários Globais</h1>
-      <p>Conteúdo da lista de usuários globais será implementado aqui.</p>
+      <h1>Lista de Usuários da Escola</h1>
+      <p>Conteúdo da lista de usuários da escola será implementado aqui.</p>
     </div>
   );
 }

@@ -30,10 +30,10 @@ const statusLabel = (status: ModalExtratoAlunoProps["mensalidades"][number]["sta
 };
 
 const statusTone = (status: ModalExtratoAlunoProps["mensalidades"][number]["status"]) => {
-  if (status === "paga") return "bg-emerald-50 text-emerald-700 border-emerald-200";
+  if (status === "paga") return "bg-klasse-green-50 text-klasse-green-700 border-klasse-green-200";
   if (status === "atrasada") return "bg-rose-50 text-rose-700 border-rose-200";
   if (status === "cancelada") return "bg-slate-50 text-slate-600 border-slate-200";
-  return "bg-amber-50 text-amber-700 border-amber-200";
+  return "bg-klasse-gold-50 text-klasse-gold-700 border-klasse-gold-200";
 };
 
 const formatVencimento = (mensalidade: ModalExtratoAlunoProps["mensalidades"][number]) => {

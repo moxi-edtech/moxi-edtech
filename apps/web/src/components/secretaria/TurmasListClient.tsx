@@ -105,7 +105,7 @@ function computeHealth(
 
 const HEALTH_CONFIG: Record<HealthSignal, { label: string; dot: string; ring: string; text: string }> = {
   ok:       { label: "Saudável",  dot: `bg-[${C.green}]`,  ring: `ring-[${C.green}]/20`,  text: `text-[${C.green}]`  },
-  warning:  { label: "Atenção",   dot: "bg-amber-500",      ring: "ring-amber-200",         text: "text-amber-600"     },
+  warning:  { label: "Atenção",   dot: "bg-klasse-gold-500",      ring: "ring-klasse-gold-200",         text: "text-klasse-gold-600"     },
   critical: { label: "Crítico",   dot: `bg-[${C.rose}]`,   ring: `ring-[${C.rose}]/20`,   text: `text-[${C.rose}]`  },
 };
 
@@ -148,7 +148,7 @@ function ConfirmDialog({ open, message, loading, onConfirm, onCancel }: {
             Cancelar
           </button>
           <button onClick={onConfirm} disabled={loading}
-            className="px-4 py-2 rounded-xl bg-amber-500 text-white text-sm font-bold hover:bg-amber-600 disabled:opacity-60 transition-colors">
+            className="px-4 py-2 rounded-xl bg-klasse-gold-500 text-white text-sm font-bold hover:bg-klasse-gold-600 disabled:opacity-60 transition-colors">
             {loading ? "Aprovando…" : "Confirmar"}
           </button>
         </div>
@@ -292,27 +292,27 @@ function HealthDetail({ turma, financeiro }: { turma: TurmaItem; financeiro?: Fi
       <div className="flex flex-col gap-1 mt-1">
         {/* Ocupação */}
         <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
-          <span className={`w-1 h-1 rounded-full flex-shrink-0 ${pct >= 95 ? "bg-rose-500" : pct >= 75 ? "bg-amber-500" : "bg-[#1F6B3B]"}`} />
+          <span className={`w-1 h-1 rounded-full flex-shrink-0 ${pct >= 95 ? "bg-rose-500" : pct >= 75 ? "bg-klasse-gold-500" : "bg-[#1F6B3B]"}`} />
           Ocupação {pct}%
         </div>
         {/* Professor */}
-        <div className={`flex items-center gap-1.5 text-[10px] ${temProfessor ? "text-slate-500" : "text-amber-600 font-semibold"}`}>
+        <div className={`flex items-center gap-1.5 text-[10px] ${temProfessor ? "text-slate-500" : "text-klasse-gold-600 font-semibold"}`}>
           {temProfessor
             ? <UserCheck size={10} className="text-[#1F6B3B]" />
-            : <UserX size={10} className="text-amber-500" />}
+            : <UserX size={10} className="text-klasse-gold-500" />}
           {temProfessor ? turma.professor_nome : "Sem professor"}
         </div>
         {/* Currículo */}
-        <div className={`flex items-center gap-1.5 text-[10px] ${curriculoOk ? "text-slate-500" : "text-amber-600 font-semibold"}`}>
+        <div className={`flex items-center gap-1.5 text-[10px] ${curriculoOk ? "text-slate-500" : "text-klasse-gold-600 font-semibold"}`}>
           {curriculoOk
             ? <BookOpen size={10} className="text-[#1F6B3B]" />
-            : <BookX size={10} className="text-amber-500" />}
+            : <BookX size={10} className="text-klasse-gold-500" />}
           {curriculoOk ? "Currículo OK" : "Currículo pendente"}
         </div>
         {/* Inadimplência (only if notable) */}
         {financeiro && inadimplencia > 0 && (
           <div className={`flex items-center gap-1.5 text-[10px] ${inadimplencia >= 20 ? "text-rose-600 font-semibold" : "text-slate-500"}`}>
-            <span className={`w-1 h-1 rounded-full flex-shrink-0 ${inadimplencia >= 40 ? "bg-rose-500" : "bg-amber-400"}`} />
+            <span className={`w-1 h-1 rounded-full flex-shrink-0 ${inadimplencia >= 40 ? "bg-rose-500" : "bg-klasse-gold-400"}`} />
             Inadimplência {inadimplencia.toFixed(0)}%
           </div>
         )}
@@ -374,7 +374,7 @@ function SecretaryCardView({
               return (
                 <div key={turma.id} className={`
                   group rounded-xl border bg-white p-4 transition-all hover:shadow-md
-                  ${isDraft ? "border-amber-200 bg-amber-50/30" : "border-slate-200 hover:border-slate-300"}
+                  ${isDraft ? "border-klasse-gold-200 bg-klasse-gold-50/30" : "border-slate-200 hover:border-slate-300"}
                 `}>
                   {/* Card header */}
                   <div className="flex items-start justify-between gap-2 mb-3">
@@ -391,13 +391,13 @@ function SecretaryCardView({
                   <div className="mb-3">
                     <div className="flex justify-between text-[10px] font-bold mb-1">
                       <span className="text-slate-500">{atual}/{max} alunos</span>
-                      <span className={pct >= 95 ? "text-rose-600" : pct >= 75 ? "text-amber-600" : "text-[#1F6B3B]"}>
+                      <span className={pct >= 95 ? "text-rose-600" : pct >= 75 ? "text-klasse-gold-600" : "text-[#1F6B3B]"}>
                         {pct}%
                       </span>
                     </div>
                     <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                       <div
-                        className={`h-full rounded-full transition-all ${pct >= 95 ? "bg-rose-500" : pct >= 75 ? "bg-amber-400" : "bg-[#1F6B3B]"}`}
+                        className={`h-full rounded-full transition-all ${pct >= 95 ? "bg-rose-500" : pct >= 75 ? "bg-klasse-gold-400" : "bg-[#1F6B3B]"}`}
                         style={{ width: `${pct}%` }}
                       />
                     </div>
@@ -408,7 +408,7 @@ function SecretaryCardView({
                     <div className="flex items-center gap-1.5 text-xs text-slate-500">
                       {turma.professor_nome
                         ? <><UserCheck size={12} className="text-[#1F6B3B]" /><span className="truncate max-w-[100px]">{turma.professor_nome}</span></>
-                        : <><UserX size={12} className="text-amber-500" /><span className="text-amber-600 font-semibold">Sem prof.</span></>
+                        : <><UserX size={12} className="text-klasse-gold-500" /><span className="text-klasse-gold-600 font-semibold">Sem prof.</span></>
                       }
                     </div>
 
@@ -420,7 +420,7 @@ function SecretaryCardView({
                         </Link>
                       )}
                       <button onClick={() => onEdit(turma)}
-                        className="p-1.5 text-slate-400 hover:text-[#E3B23C] hover:bg-amber-50 rounded-lg transition-colors">
+                        className="p-1.5 text-slate-400 hover:text-[#E3B23C] hover:bg-klasse-gold-50 rounded-lg transition-colors">
                         <Pencil size={14} />
                       </button>
                     </div>
@@ -457,7 +457,7 @@ function TurmaRow({
   return (
     <tr
       className={`border-b border-slate-100 transition-colors group ${
-        isDraft ? "bg-amber-50/30" : isExpanded ? "bg-slate-50" : "hover:bg-slate-50"
+        isDraft ? "bg-klasse-gold-50/30" : isExpanded ? "bg-slate-50" : "hover:bg-slate-50"
       }`}
       style={style}
     >
@@ -465,7 +465,7 @@ function TurmaRow({
       <td className="px-5 py-4">
         <div className="flex items-center gap-3">
           <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold border flex-shrink-0
-            ${isDraft ? "bg-amber-100 text-amber-700 border-amber-200" : "bg-slate-100 text-slate-600 border-slate-200"}`}>
+            ${isDraft ? "bg-klasse-gold-100 text-klasse-gold-700 border-klasse-gold-200" : "bg-slate-100 text-slate-600 border-slate-200"}`}>
             {iniciais}
           </div>
           <div className="min-w-0">
@@ -481,7 +481,7 @@ function TurmaRow({
               <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-1.5 rounded">
                 {turma.ano_letivo || "—"}
               </span>
-              {isDraft && <span className="text-[10px] font-bold text-amber-600">RASCUNHO</span>}
+              {isDraft && <span className="text-[10px] font-bold text-klasse-gold-600">RASCUNHO</span>}
             </div>
           </div>
         </div>
@@ -526,7 +526,7 @@ function TurmaRow({
                 <Eye size={15} />
               </Link>
               <button onClick={() => onEdit(turma)}
-                className="p-2 text-slate-400 hover:text-[#E3B23C] hover:bg-amber-50 rounded-lg transition-colors">
+                className="p-2 text-slate-400 hover:text-[#E3B23C] hover:bg-klasse-gold-50 rounded-lg transition-colors">
                 <Pencil size={15} />
               </button>
               <button onClick={onToggleExpand}
@@ -799,10 +799,10 @@ export default function TurmasListClient({ adminMode = false }: { adminMode?: bo
 
       {/* ── Pending banner ──────────────────────────────────────────────────── */}
       {adminMode && filters.status === "rascunho" && pendingItems.length > 0 && (
-        <div className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+        <div className="flex items-center justify-between rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 px-4 py-3 text-sm text-klasse-gold-700">
           <span>{pendingItems.length} turma(s) pendente(s) de aprovação.</span>
           <button onClick={() => setConfirmOpen(true)}
-            className="rounded-lg bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-700 transition-colors">
+            className="rounded-lg bg-klasse-gold-600 px-4 py-2 text-xs font-bold text-white hover:bg-klasse-gold-700 transition-colors">
             Aprovar pendentes
           </button>
         </div>

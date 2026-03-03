@@ -124,7 +124,7 @@ export default function DiagnosticsDashboard() {
                       className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
                         run.status === "failed"
                           ? "bg-red-100 text-red-700"
-                          : "bg-emerald-100 text-emerald-700"
+                          : "bg-klasse-green-100 text-klasse-green-700"
                       }`}
                     >
                       {run.status ?? "unknown"}

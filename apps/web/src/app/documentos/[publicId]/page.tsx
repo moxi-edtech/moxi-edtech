@@ -53,7 +53,7 @@ export default async function DocumentoValidationPage({
         </div>
 
         <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-          <p className={`text-sm font-semibold ${valid ? "text-emerald-600" : "text-red-600"}`}>
+          <p className={`text-sm font-semibold ${valid ? "text-klasse-green-600" : "text-red-600"}`}>
             {valid ? "Documento válido" : "Documento inválido ou não encontrado"}
           </p>
           <p className="mt-1 text-xs text-slate-500">

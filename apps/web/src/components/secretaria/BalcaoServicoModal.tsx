@@ -131,7 +131,7 @@ export function BalcaoServicoModal({
           </select>
 
           {decision?.decision === "GRANTED" && (
-            <div className="flex gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+            <div className="flex gap-2 rounded-xl border border-klasse-green-200 bg-klasse-green-50 p-3 text-sm text-klasse-green-900">
               <Check className="mt-0.5 h-4 w-4" />
               <div>
                 <div className="font-bold">Liberado na hora</div>
@@ -154,7 +154,7 @@ export function BalcaoServicoModal({
           )}
 
           {decision?.decision === "REQUIRES_PAYMENT" && (
-            <div className="flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            <div className="flex gap-2 rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 p-3 text-sm text-klasse-gold-900">
               <CreditCard className="mt-0.5 h-4 w-4" />
               <div>
                 <div className="font-bold">Requer pagamento</div>

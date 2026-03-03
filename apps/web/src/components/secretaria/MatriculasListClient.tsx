@@ -83,8 +83,8 @@ function KpiCard({
 }) {
   const tones: Record<string, { iconWrap: string; iconColor: string }> = {
     slate: { iconWrap: "bg-slate-100", iconColor: "text-slate-700" },
-    emerald: { iconWrap: "bg-emerald-100/50", iconColor: "text-emerald-700" },
-    amber: { iconWrap: "bg-amber-100/50", iconColor: "text-amber-700" },
+    emerald: { iconWrap: "bg-klasse-green-100/50", iconColor: "text-klasse-green-700" },
+    amber: { iconWrap: "bg-klasse-gold-100/50", iconColor: "text-klasse-gold-700" },
     violet: { iconWrap: "bg-violet-100/50", iconColor: "text-violet-700" },
   };
 
@@ -109,8 +109,8 @@ function KpiCard({
 
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
-    ativa: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/70",
-    pendente: "bg-amber-50 text-amber-700 ring-1 ring-amber-200/70",
+    ativa: "bg-klasse-green-50 text-klasse-green-700 ring-1 ring-klasse-green-200/70",
+    pendente: "bg-klasse-gold-50 text-klasse-gold-700 ring-1 ring-klasse-gold-200/70",
     cancelada: "bg-red-50 text-red-700 ring-1 ring-red-200/70",
     transferida: "bg-sky-50 text-sky-700 ring-1 ring-sky-200/70",
   };
@@ -726,7 +726,7 @@ export default function MatriculasListClient() {
                           <span>ID: {m.id.slice(0, 6)}</span>
 
                           {m.numero_chamada ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-700 ring-1 ring-emerald-200/70">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-klasse-green-50 px-2 py-0.5 font-semibold text-klasse-green-700 ring-1 ring-klasse-green-200/70">
                               Chamada #{m.numero_chamada}
                             </span>
                           ) : null}
@@ -738,7 +738,7 @@ export default function MatriculasListClient() {
                           ) : null}
 
                           {statusKey !== "ativa" && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 font-semibold text-amber-700 ring-1 ring-amber-200/70">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-klasse-gold-50 px-2 py-0.5 font-semibold text-klasse-gold-700 ring-1 ring-klasse-gold-200/70">
                               Número só é gerado em status ativa
                             </span>
                           )}

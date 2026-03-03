@@ -211,7 +211,7 @@ export default function BackfillStep({ importId, escolaId, onNext, onBack }: Bac
           </>
         ) : (
           <div className="flex flex-col items-center animate-in zoom-in duration-300">
-            <div className="flex items-center gap-2 text-emerald-600 font-bold mb-6 bg-emerald-50 px-4 py-2 rounded-lg border border-emerald-100">
+            <div className="flex items-center gap-2 text-klasse-green-600 font-bold mb-6 bg-klasse-green-50 px-4 py-2 rounded-lg border border-klasse-green-100">
               <CheckCircle2 className="w-5 h-5" /> Estrutura criada com sucesso!
             </div>
             <button onClick={onNext} className="bg-slate-900 hover:bg-slate-800 text-white px-10 py-4 rounded-xl font-bold text-base shadow-xl hover:-translate-y-1 transition-all flex items-center gap-2">
@@ -227,17 +227,17 @@ export default function BackfillStep({ importId, escolaId, onNext, onBack }: Bac
 function PreviewCard({ icon: Icon, label, count, items, color, isSuccess }: any) {
   const hasItems = count > 0;
   const colors: any = {
-    blue: "bg-blue-50 text-blue-600 border-blue-200",
-    purple: "bg-purple-50 text-purple-600 border-purple-200",
+    blue: "bg-slate-50 text-slate-600 border-slate-200",
+    purple: "bg-slate-50 text-slate-600 border-slate-200",
     orange: "bg-orange-50 text-orange-600 border-orange-200",
     teal: "bg-teal-50 text-teal-600 border-teal-200",
     gray: "bg-slate-50 text-slate-400 border-slate-100",
   };
   const style = hasItems ? colors[color] : colors.gray;
   return (
-    <div className={`relative p-5 rounded-2xl border ${hasItems ? style.split(" ")[2] : "border-slate-100"} bg-white shadow-sm transition-all ${isSuccess && hasItems ? "ring-2 ring-emerald-500 border-transparent" : ""}`}>
+    <div className={`relative p-5 rounded-2xl border ${hasItems ? style.split(" ")[2] : "border-slate-100"} bg-white shadow-sm transition-all ${isSuccess && hasItems ? "ring-2 ring-klasse-green-500 border-transparent" : ""}`}>
       {isSuccess && hasItems && (
-        <div className="absolute -top-3 -right-3 bg-emerald-500 text-white rounded-full p-1 shadow-md animate-in zoom-in">
+        <div className="absolute -top-3 -right-3 bg-klasse-green-500 text-white rounded-full p-1 shadow-md animate-in zoom-in">
           <CheckCircle2 className="w-4 h-4" />
         </div>
       )}

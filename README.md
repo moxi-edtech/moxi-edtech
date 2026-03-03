@@ -1,4 +1,4 @@
-# Moxi Nexa — Guia Rápido (Angola)
+# KLASSE — Guia Rápido (Angola)
 
 Este repositório contém o módulo acadêmico/secretaria do Moxi Nexa, preparado para operação em escolas de Angola com foco em importação em massa, backfill automático da estrutura acadêmica, matrícula por turma (RPC) e rematrícula em massa. Para detalhes aprofundados do fluxo de importação e matrícula, consulte também `README-IMP.md`.
 

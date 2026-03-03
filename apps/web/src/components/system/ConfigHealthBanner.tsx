@@ -52,19 +52,19 @@ export default function ConfigHealthBanner() {
   }
 
   return (
-    <div className="w-full bg-amber-50 border-b border-amber-200 text-amber-900 text-sm">
+    <div className="w-full bg-klasse-gold/10 border-b border-klasse-gold/20 text-slate-900 text-sm">
       <div className="max-w-screen-2xl mx-auto px-4 py-2 flex items-start gap-3">
-        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-100 border border-amber-300 text-[10px] mt-0.5">!</span>
+        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-klasse-gold/20 border border-klasse-gold/30 text-[10px] mt-0.5">!</span>
         <div className="flex-1">
           <strong>Configuração incompleta:</strong> defina as variáveis de ambiente ausentes para que as APIs funcionem corretamente.
           <div className="mt-1">
             Faltando: {missing.join(', ')}
           </div>
-          <div className="mt-1 text-[12px] text-amber-800">
+          <div className="mt-1 text-[12px] text-slate-600">
             Edite seu arquivo .env.local e reinicie o servidor de desenvolvimento.
           </div>
         </div>
-        <button onClick={onClose} className="text-amber-800 hover:text-amber-900 px-2">Fechar</button>
+        <button onClick={onClose} className="text-slate-600 hover:text-slate-800 px-2">Fechar</button>
       </div>
     </div>
   )

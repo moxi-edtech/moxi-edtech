@@ -84,7 +84,7 @@ export default function SchoolsSection({ escolas }: { escolas: Escola[] }) {
                 </div>
                 
                 <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                  escola.onboarding_finalizado ? "bg-emerald-50 text-[#1F6B3B]" : "bg-slate-50 text-slate-300"
+                  escola.onboarding_finalizado ? "bg-klasse-green-50 text-[#1F6B3B]" : "bg-slate-50 text-slate-300"
                 }`}>
                   {escola.onboarding_finalizado ? <CheckCircle2 size={20} /> : <CircleDashed size={20} className="animate-spin-slow" />}
                 </div>

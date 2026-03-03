@@ -97,8 +97,8 @@ export async function getDashboardData() {
   }
 
   // Lógica original para escola específica (se necessário no futuro por este import)
-  let countsQuery = (supabase.from("vw_admin_dashboard_counts") as any).select("alunos_ativos, turmas_total, professores_total").eq("escola_id", escolaId).maybeSingle()
-  let financeiroQuery = (supabase.from("vw_financeiro_dashboard") as any).select("total_pendente, total_pago, total_inadimplente").eq("escola_id", escolaId).maybeSingle()
+  const countsQuery = (supabase.from("vw_admin_dashboard_counts") as any).select("alunos_ativos, turmas_total, professores_total").eq("escola_id", escolaId).maybeSingle()
+  const financeiroQuery = (supabase.from("vw_financeiro_dashboard") as any).select("total_pendente, total_pago, total_inadimplente").eq("escola_id", escolaId).maybeSingle()
 
   const [c, f] = await Promise.all([countsQuery, financeiroQuery])
   

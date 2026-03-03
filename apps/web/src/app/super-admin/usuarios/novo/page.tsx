@@ -301,7 +301,7 @@ function CriarUsuarioForm() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-moxinexa-light to-blue-50 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-moxinexa-light to-slate-50 py-8">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
@@ -570,7 +570,7 @@ function Step2({
           </select>
           
           {!escolasLoading && !escolasError && escolas.length === 0 && (
-            <p className="text-sm text-amber-600 mt-1 flex items-center gap-1">
+            <p className="text-sm text-klasse-gold-600 mt-1 flex items-center gap-1">
               <InformationCircleIcon className="w-4 h-4" />
               Nenhuma escola encontrada
             </p>
@@ -613,20 +613,20 @@ function Step2({
       </div>
 
       {/* Generated Login Number */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
         <div className="flex items-center gap-2 mb-2">
-          <SparklesIcon className="w-5 h-5 text-blue-600" />
-          <span className="font-medium text-blue-900">Número de Login Gerado</span>
+          <SparklesIcon className="w-5 h-5 text-slate-600" />
+          <span className="font-medium text-slate-900">Número de Login Gerado</span>
           {isGeneratingLogin && (
-            <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            <div className="w-4 h-4 border-2 border-slate-600 border-t-transparent rounded-full animate-spin" />
           )}
         </div>
         <input
-          className="w-full bg-white border border-blue-300 rounded-lg p-3 text-blue-900 font-mono text-sm disabled:bg-blue-50 disabled:cursor-not-allowed"
+          className="w-full bg-white border border-slate-300 rounded-lg p-3 text-slate-900 font-mono text-sm disabled:bg-slate-50 disabled:cursor-not-allowed"
           value={generatedNumeroLogin || 'Selecione escola e papel para gerar...'}
           disabled
         />
-        <p className="text-blue-700 text-xs mt-2">
+        <p className="text-slate-700 text-xs mt-2">
           Gerado automaticamente com base na escola e papel selecionados
         </p>
       </div>
@@ -820,12 +820,12 @@ function MessageAlert({ type, text }: Message) {
 
 function QuickTips() {
   return (
-    <div className="mt-8 bg-blue-50 border border-blue-200 rounded-2xl p-6">
-      <h3 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+    <div className="mt-8 bg-slate-50 border border-slate-200 rounded-2xl p-6">
+      <h3 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
         <InformationCircleIcon className="w-5 h-5" />
         Dicas Rápidas
       </h3>
-      <ul className="text-blue-800 text-sm space-y-2">
+      <ul className="text-slate-800 text-sm space-y-2">
         <li>• O número de login é gerado automaticamente baseado na escola e papel</li>
         <li>• Se não definir senha, o sistema gerará uma automaticamente</li>
         <li>• O usuário receberá instruções de acesso por email</li>
@@ -858,7 +858,7 @@ function PasswordStrength({ password }: { password: string }) {
   const strengthConfig = {
     0: { label: 'Muito fraca', color: 'bg-red-500' },
     1: { label: 'Muito fraca', color: 'bg-red-500' },
-    2: { label: 'Fraca', color: 'bg-amber-500' },
+    2: { label: 'Fraca', color: 'bg-klasse-gold-500' },
     3: { label: 'Média', color: 'bg-yellow-500' },
     4: { label: 'Forte', color: 'bg-green-500' },
     5: { label: 'Excelente', color: 'bg-moxinexa-teal' },
