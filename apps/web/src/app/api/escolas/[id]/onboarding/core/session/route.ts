@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 import type { Database, Json } from "~types/supabase";
 
 export const dynamic = 'force-dynamic';
@@ -177,11 +178,17 @@ export async function GET(
 
     // RLS policy "anos_letivos_select" will enforce the tenant isolation.
     // The call to resolveEscolaIdForUser sets the session variable used by the policy.
-    const { data: anos, error } = await supabase
+    let anosQuery = supabase
       .from('anos_letivos')
       .select('id, ano, data_inicio, data_fim, ativo')
       .eq('escola_id', userEscolaId) // Explicit filtering is still best practice
-      .order('ano', { ascending: false });
+
+    anosQuery = applyKf2ListInvariants(anosQuery, {
+      defaultLimit: 50,
+      order: [{ column: 'ano', ascending: false }],
+    })
+
+    const { data: anos, error } = await anosQuery;
 
     if (error) {
       return NextResponse.json({ ok: false, error: `Erro ao buscar anos letivos: ${error.message}` }, { status: 500 });
@@ -200,11 +207,17 @@ export async function GET(
     const ativo = anos.find((r) => r.ativo);
     if (ativo) {
       // RLS policy on 'periodos_letivos' will also enforce tenant isolation
-      const { data: per, error: perError } = await supabase
+      let periodosQuery = supabase
         .from('periodos_letivos')
         .select('id, tipo, numero, data_inicio, data_fim')
         .eq('ano_letivo_id', ativo.id)
-        .order('numero', { ascending: true });
+
+      periodosQuery = applyKf2ListInvariants(periodosQuery, {
+        defaultLimit: 50,
+        order: [{ column: 'numero', ascending: true }],
+      })
+
+      const { data: per, error: perError } = await periodosQuery;
 
       if (perError) {
          return NextResponse.json({ ok: false, error: `Erro ao buscar períodos: ${perError.message}` }, { status: 500 });

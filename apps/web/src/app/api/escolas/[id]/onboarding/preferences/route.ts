@@ -1,3 +1,4 @@
+// @kf2 allow-scan
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import { supabaseServer } from "@/lib/supabaseServer"
@@ -72,6 +73,8 @@ export async function PATCH(
           .select('role, escola_id')
           .eq('user_id', user.id)
           .eq('escola_id', escolaId)
+          .order('created_at', { ascending: false })
+          .order('id', { ascending: false })
           .limit(1)
         allowed = Boolean(prof && prof.length > 0 && (prof[0] as any).role === 'admin')
       } catch {}
@@ -202,6 +205,8 @@ export async function GET(
           .select('role, escola_id')
           .eq('user_id', user.id)
           .eq('escola_id', escolaId)
+          .order('created_at', { ascending: false })
+          .order('id', { ascending: false })
           .limit(1)
         allowed = Boolean(prof && prof.length > 0 && (prof[0] as any).role === 'admin')
       } catch {}

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -51,38 +52,56 @@ export async function GET() {
       return NextResponse.json({ ok: true, disciplinas: [], nome_aluno: aluno?.nome ?? null, trimestre_atual: null });
     }
 
-    const { data: anoLetivoRow } = await supabase
+    let anoLetivoQuery = supabase
       .from("anos_letivos")
       .select("id")
       .eq("escola_id", ctx.escolaId)
       .eq("ano", anoLetivo)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+
+    anoLetivoQuery = applyKf2ListInvariants(anoLetivoQuery, {
+      defaultLimit: 1,
+      order: [{ column: 'created_at', ascending: false }],
+    })
+
+    const { data: anoLetivoRow } = await anoLetivoQuery.maybeSingle();
 
     const anoLetivoId = anoLetivoRow?.id ?? null;
     if (!anoLetivoId) {
       return NextResponse.json({ ok: true, disciplinas: [], nome_aluno: aluno?.nome ?? null, trimestre_atual: null });
     }
 
-    const { data: periodos } = await supabase
+    let periodosQuery = supabase
       .from("periodos_letivos")
       .select("id, numero, data_inicio, data_fim")
       .eq("escola_id", ctx.escolaId)
       .eq("ano_letivo_id", anoLetivoId)
       .eq("tipo", "TRIMESTRE")
-      .order("numero", { ascending: true });
+
+    periodosQuery = applyKf2ListInvariants(periodosQuery, {
+      defaultLimit: 50,
+      order: [{ column: 'numero', ascending: true }],
+    })
+
+    const { data: periodos } = await periodosQuery;
 
     const periodMap = new Map<string, PeriodoRow>();
     (periodos || []).forEach((p) => {
       if (p?.id) periodMap.set(p.id, p as PeriodoRow);
     });
 
-    const { data: frequencias } = await supabase
+    let frequenciasQuery = supabase
       .from("frequencia_status_periodo")
       .select("periodo_letivo_id, faltas, aulas_previstas, frequencia_min_percent")
       .eq("escola_id", ctx.escolaId)
-      .eq("matricula_id", ctx.matriculaId);
+      .eq("matricula_id", ctx.matriculaId)
+
+    frequenciasQuery = applyKf2ListInvariants(frequenciasQuery, {
+      defaultLimit: 50,
+      order: [{ column: 'periodo_letivo_id', ascending: true }],
+      tieBreakerColumn: 'periodo_letivo_id',
+    })
+
+    const { data: frequencias } = await frequenciasQuery;
 
     let totalFaltas = 0;
     let totalMax = 0;
@@ -95,11 +114,18 @@ export async function GET() {
       totalMax += maxFaltas;
     });
 
-    const { data: boletimRows, error: boletimError } = await supabase
+    let boletimQuery = supabase
       .from("vw_boletim_por_matricula")
       .select("disciplina_id, disciplina_nome, trimestre, nota_final, status, missing_count")
       .eq("matricula_id", ctx.matriculaId)
-      .order("disciplina_nome", { ascending: true });
+
+    boletimQuery = applyKf2ListInvariants(boletimQuery, {
+      defaultLimit: 50,
+      order: [{ column: 'disciplina_nome', ascending: true }],
+      tieBreakerColumn: 'disciplina_id',
+    })
+
+    const { data: boletimRows, error: boletimError } = await boletimQuery;
 
     if (boletimError) {
       return NextResponse.json({ ok: false, error: boletimError.message }, { status: 500 });

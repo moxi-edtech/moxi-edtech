@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export const dynamic = "force-dynamic";
 
@@ -42,11 +43,17 @@ export async function GET(
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });
     }
 
-    const { data: rows, error } = await (supabase as any)
+    let eventosQuery = (supabase as any)
       .from("events")
       .select("id, titulo, descricao, inicio_at, fim_at, publico_alvo")
       .eq("escola_id", userEscolaId)
-      .order("inicio_at", { ascending: false });
+
+    eventosQuery = applyKf2ListInvariants(eventosQuery, {
+      defaultLimit: 50,
+      order: [{ column: "inicio_at", ascending: false }],
+    })
+
+    const { data: rows, error } = await eventosQuery;
 
     if (error) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 });

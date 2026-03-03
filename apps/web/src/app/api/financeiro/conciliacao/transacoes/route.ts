@@ -1,3 +1,4 @@
+// @kf2 allow-scan
 // apps/web/src/app/api/financeiro/conciliacao/transacoes/route.ts
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';

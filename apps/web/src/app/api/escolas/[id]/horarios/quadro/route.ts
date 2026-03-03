@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import { applyKf2ListInvariants } from '@/lib/kf2'
 import { authorizeTurmasManage } from '@/lib/escola/disciplinas'
 
 export const dynamic = 'force-dynamic'
@@ -43,12 +44,19 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       return NextResponse.json({ ok: false, error: 'versao_id e turma_id são obrigatórios' }, { status: 400 })
     }
 
-    const { data, error } = await supabase
+    let quadroQuery = supabase
       .from('quadro_horarios')
       .select('id, turma_id, disciplina_id, professor_id, sala_id, slot_id, versao_id')
       .eq('escola_id', escolaIdResolved)
       .eq('versao_id', versaoId)
       .eq('turma_id', turmaId)
+
+    quadroQuery = applyKf2ListInvariants(quadroQuery, {
+      defaultLimit: 50,
+      order: [{ column: 'slot_id', ascending: true }],
+    })
+
+    const { data, error } = await quadroQuery
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
 
