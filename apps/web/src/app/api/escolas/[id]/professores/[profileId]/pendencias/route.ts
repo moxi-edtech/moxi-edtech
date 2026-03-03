@@ -48,9 +48,10 @@ export async function GET(req: Request, context: { params: Promise<{ id: string;
       .eq("profile_id", profileId)
 
     pendenciasQuery = applyKf2ListInvariants(pendenciasQuery, {
-      defaultLimit: 50,
+      defaultLimit: 1000,
       order: [{ column: 'turma_nome', ascending: true }],
       tieBreakerColumn: 'turma_disciplina_id',
+      maxLimit: 5000,
     })
 
     const { data: rows, error } = await pendenciasQuery

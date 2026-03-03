@@ -69,28 +69,23 @@ export async function GET() {
           tieBreakerColumn: 'turma_id',
         }
       )
-      const alunosQuery = applyKf2ListInvariants(
-        supabase
+      const alunosCountPromises = turmaIds.map(async (turmaId: string) => {
+        const { count, error } = await supabase
           .from("matriculas")
-          .select("turma_id")
+          .select("id", { count: "exact", head: true })
           .eq("escola_id", escolaId)
-          .in("turma_id", turmaIds)
-          .in("status", ["ativo", "ativa", "active"]),
-        {
-          defaultLimit: 50,
-          order: [{ column: 'turma_id', ascending: true }],
-        }
-      )
+          .eq("turma_id", turmaId)
+          .in("status", ["ativo", "ativa", "active"])
 
-      const [pendenciasRes, alunosRes] = await Promise.all([pendenciasQuery, alunosQuery])
+        if (error) throw error
+        return { turmaId, total: count ?? 0 }
+      })
+
+      const [pendenciasRes, alunosCounts] = await Promise.all([pendenciasQuery, Promise.all(alunosCountPromises)])
 
       if (pendenciasRes.error) {
         return NextResponse.json({ ok: false, error: pendenciasRes.error.message }, { status: 500 })
       }
-      if (alunosRes.error) {
-        return NextResponse.json({ ok: false, error: alunosRes.error.message }, { status: 500 })
-      }
-
       for (const row of pendenciasRes.data || []) {
         const total = row.total_alunos ?? 0
         const pendente = row.pendentes ?? 0
@@ -99,8 +94,8 @@ export async function GET() {
         pendenciasMap.set(row.turma_id, (pendenciasMap.get(row.turma_id) ?? 0) + 1)
       }
 
-      for (const row of (alunosRes.data || []) as Array<{ turma_id: string }>) {
-        alunosMap.set(row.turma_id, (alunosMap.get(row.turma_id) ?? 0) + 1)
+      for (const row of alunosCounts) {
+        alunosMap.set(row.turmaId, row.total)
       }
     }
 
