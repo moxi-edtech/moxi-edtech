@@ -12,6 +12,7 @@ const payloadSchema = z.object({
   escolaId: z.string().uuid(),
   tipoDocumento: z.enum([
     "declaracao_frequencia",
+    "declaracao_notas",
     "boletim_trimestral",
     "cartao_estudante",
     "ficha_inscricao",
@@ -22,13 +23,13 @@ const payloadSchema = z.object({
   ano_letivo: z.number().int().optional(), // Ano letivo para documentos finais
 });
 
-const FINAL_DOCUMENT_TYPES = ["boletim_trimestral", "historico", "certificado"];
-const FINAL_DOCUMENT_TYPES = ["boletim_trimestral", "historico", "certificado", "comprovante_matricula"];
+const FINAL_DOCUMENT_TYPES = ["boletim_trimestral", "historico", "certificado", "comprovante_matricula", "declaracao_notas"] as const;
 const FINAL_DOC_BACKEND_TYPE: Record<string, string> = {
   boletim_trimestral: "boletim_trimestral",
   historico: "historico",
   certificado: "certificado",
   comprovante_matricula: "comprovante_matricula",
+  declaracao_notas: "boletim_trimestral",
 };
 
 export async function POST(request: Request) {
