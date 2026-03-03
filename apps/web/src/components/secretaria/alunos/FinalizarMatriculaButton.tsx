@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import {
   Dialog,
@@ -54,10 +54,32 @@ export function FinalizarMatriculaButton({ matriculaId, alunoNome, escolaId }: F
       }
 
       success(`Matrícula de ${alunoNome} finalizada como ${statusFinal}.`);
+
+      const comprovanteRes = await fetch('/api/secretaria/documentos/comprovante-matricula', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          escolaId,
+          matriculaId,
+          dataHoraEfetivacao: new Date().toISOString(),
+          observacao: `Emissão imediata após finalização (${statusFinal}).`,
+        }),
+      });
+
+      const comprovanteJson = await comprovanteRes.json().catch(() => ({}));
+      if (comprovanteRes.ok && comprovanteJson?.ok && comprovanteJson?.docId) {
+        const printUrl = `/secretaria/documentos/${comprovanteJson.docId}/comprovante-matricula/print`;
+        const popup = window.open(printUrl, '_blank', 'noopener,noreferrer');
+        if (!popup) {
+          success('Comprovante emitido. Permita pop-up para abrir impressão automática.');
+        }
+      }
+
       setOpen(false);
       router.refresh(); // Recarregar a página para mostrar o status atualizado
-    } catch (error: any) {
-      error(error.message || 'Falha ao finalizar matrícula.');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Falha ao finalizar matrícula.";
+      error(message);
     } finally {
       setLoading(false);
     }
@@ -86,7 +108,7 @@ export function FinalizarMatriculaButton({ matriculaId, alunoNome, escolaId }: F
               id="status"
               value={statusFinal}
               onChange={(e) => setStatusFinal(e.target.value as 'concluido' | 'reprovado' | '')}
-              className="col-span-3 px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="col-span-3 px-3 py-2 border rounded-md focus:ring-slate-500 focus:border-slate-500"
               disabled={loading}
             >
               <option value="">Selecione...</option>
@@ -103,7 +125,7 @@ export function FinalizarMatriculaButton({ matriculaId, alunoNome, escolaId }: F
               id="motivo"
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
-              className="col-span-3 px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="col-span-3 px-3 py-2 border rounded-md focus:ring-slate-500 focus:border-slate-500"
               disabled={loading}
               rows={3}
             />

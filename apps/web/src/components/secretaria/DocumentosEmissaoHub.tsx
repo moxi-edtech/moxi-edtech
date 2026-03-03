@@ -6,7 +6,7 @@ import { BookOpen, FileText, Loader2, Search, User } from "lucide-react";
 
 type DocumentoTipo =
   | "declaracao_frequencia"
-  | "declaracao_notas"
+  | "boletim_trimestral"
   | "cartao_estudante"
   | "ficha_inscricao";
 
@@ -32,8 +32,8 @@ const TIPOS: Array<{
     icon: FileText,
   },
   {
-    id: "declaracao_notas",
-    title: "Declaração com Notas",
+    id: "boletim_trimestral",
+    title: "Boletim Trimestral",
     description: "Aproveitamento escolar para transferência.",
     icon: BookOpen,
   },
@@ -137,8 +137,8 @@ export default function DocumentosEmissaoHub({ escolaId }: { escolaId: string })
       const destino =
         tipo === "declaracao_frequencia"
           ? `/secretaria/documentos/${json.docId}/frequencia/print`
-          : tipo === "declaracao_notas"
-          ? `/secretaria/documentos/${json.docId}/notas/print`
+          : tipo === "boletim_trimestral"
+          ? `/secretaria/documentos/${json.docId}/boletim-trimestral/print`
           : tipo === "cartao_estudante"
           ? `/secretaria/documentos/${json.docId}/cartao/print`
           : `/secretaria/documentos/${json.docId}/ficha/print`;
@@ -202,7 +202,7 @@ export default function DocumentosEmissaoHub({ escolaId }: { escolaId: string })
         )}
 
         {selectedAluno && (
-          <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-800">
+          <div className="mt-3 rounded-xl border border-klasse-green-200 bg-klasse-green-50 px-4 py-2 text-sm text-klasse-green-800">
             Selecionado: <span className="font-semibold">{selectedAluno.label}</span>
           </div>
         )}
@@ -219,7 +219,7 @@ export default function DocumentosEmissaoHub({ escolaId }: { escolaId: string })
               onClick={() => setTipo(doc.id)}
               className={`rounded-2xl border px-5 py-6 text-left transition-all ${
                 isActive
-                  ? "border-klasse-gold bg-amber-50 shadow-sm"
+                  ? "border-klasse-gold bg-klasse-gold-50 shadow-sm"
                   : "border-slate-200 bg-white hover:border-klasse-gold/60"
               }`}
             >

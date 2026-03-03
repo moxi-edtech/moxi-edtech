@@ -2,9 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, LayoutDashboard, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { useOfficialDocs, type MiniPautaPayload, type TrimestreNumero } from "@/hooks/useOfficialDocs";
 import { GradeEntryGrid, type StudentGradeRow } from "@/components/professor/GradeEntryGrid";
 
 type TurmaItem = {
@@ -70,14 +69,11 @@ export function PautaRapidaModal({
   const [disciplinaId, setDisciplinaId] = useState("");
   const [loadingTurmas, setLoadingTurmas] = useState(false);
   const [loadingDisciplinas, setLoadingDisciplinas] = useState(false);
-  const [exportingMiniPauta, setExportingMiniPauta] = useState(false);
-  const [exportingTrimestral, setExportingTrimestral] = useState(false);
   const [pautaInitial, setPautaInitial] = useState<StudentGradeRow[]>([]);
   const [pautaDraft, setPautaDraft] = useState<StudentGradeRow[]>([]);
   const [pautaPesoPorTipo, setPautaPesoPorTipo] = useState<Record<string, number> | null>(null);
   const [pautaComponentes, setPautaComponentes] = useState<string[]>([]);
   const [loadingPauta, setLoadingPauta] = useState(false);
-  const { gerarMiniPauta, gerarPautaTrimestral } = useOfficialDocs();
 
   useEffect(() => {
     const supabase = createClient();
@@ -259,62 +255,6 @@ export function PautaRapidaModal({
   const turmaLabel =
     initialTurmaLabel ||
     (turmaSelecionada ? turmaSelecionada.turma_nome || turmaSelecionada.nome || "Turma" : "Turma");
-
-  const handleOpen = (path: string) => {
-    if (!turmaId) return;
-    window.location.href = path;
-  };
-
-  const handleExportMiniPauta = async () => {
-    if (!turmaId || !disciplinaId) return;
-    setExportingMiniPauta(true);
-    try {
-      const params = new URLSearchParams({
-        disciplinaId,
-        periodoNumero: String(periodoNumero),
-      });
-      const res = await fetch(`/api/secretaria/turmas/${turmaId}/mini-pauta?${params.toString()}`, {
-        cache: "no-store",
-        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json?.ok || !json?.payload) {
-        return;
-      }
-      const payload = json.payload as MiniPautaPayload;
-      payload.metadata.trimestresAtivos = [periodoNumero as 1 | 2 | 3];
-      payload.metadata.mostrarTrimestresInativos = false;
-      const filename = `MiniPauta_${payload.metadata.disciplina}_${Date.now()}.pdf`;
-      await gerarMiniPauta(payload, filename);
-    } finally {
-      setExportingMiniPauta(false);
-    }
-  };
-
-  const handleExportPautaTrimestral = async () => {
-    if (!turmaId || !disciplinaId) return;
-    if (![1, 2, 3].includes(periodoNumero)) return;
-    setExportingTrimestral(true);
-    try {
-      const params = new URLSearchParams({
-        disciplinaId,
-        periodoNumero: String(periodoNumero),
-      });
-      const res = await fetch(`/api/secretaria/turmas/${turmaId}/pauta-trimestral?${params.toString()}`, {
-        cache: "no-store",
-        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json?.ok || !json?.payload) {
-        return;
-      }
-      const payload = json.payload as MiniPautaPayload;
-      const filename = `PautaTrimestral_${payload.metadata.disciplina}_${Date.now()}.pdf`;
-      await gerarPautaTrimestral(payload, periodoNumero as TrimestreNumero, filename);
-    } finally {
-      setExportingTrimestral(false);
-    }
-  };
 
   const handleSaveBatch = async (rows: StudentGradeRow[]) => {
     if (!turmaId || !disciplinaId) return;
@@ -506,73 +446,6 @@ export function PautaRapidaModal({
           </div>
         )}
       </div>
-
-      {!lockTurma && (
-        <>
-          <div className="grid gap-2 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => handleOpen(`/api/secretaria/turmas/${turmaId}/pauta`)}
-              disabled={!turmaId}
-              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
-            >
-              <FileText className="h-4 w-4" />
-              Pauta digital (Excel)
-            </button>
-            <button
-              type="button"
-              onClick={() => handleOpen(`/api/secretaria/turmas/${turmaId}/pauta-branca`)}
-              disabled={!turmaId}
-              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
-            >
-              <LayoutDashboard className="h-4 w-4" />
-              Pauta em branco
-            </button>
-          </div>
-
-          <div className="grid gap-2 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => handleOpen(`/api/secretaria/turmas/${turmaId}/mini-pautas`)}
-              disabled={!turmaId}
-              className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 disabled:opacity-50"
-            >
-              <FileText className="h-4 w-4" />
-              Mini-pautas
-            </button>
-            <button
-              type="button"
-              onClick={handleExportMiniPauta}
-              disabled={!turmaId || !disciplinaId || exportingMiniPauta}
-              className="flex items-center justify-center gap-2 rounded-lg bg-klasse-green px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
-            >
-              {exportingMiniPauta ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-              Mini-pauta (PDF)
-            </button>
-            <button
-              type="button"
-              onClick={handleExportPautaTrimestral}
-              disabled={!turmaId || !disciplinaId || exportingTrimestral || periodos.length === 0}
-              className="flex items-center justify-center gap-2 rounded-lg bg-klasse-gold px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
-            >
-              {exportingTrimestral ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-              Pauta Trimestral (PDF)
-            </button>
-            {!hideNavigation && (
-              <button
-                type="button"
-                onClick={() =>
-                  turmaId && router.push(`/secretaria/notas?turmaId=${turmaId}&disciplinaId=${disciplinaId}`)
-                }
-                disabled={!turmaId}
-                className="flex items-center justify-center gap-2 rounded-lg bg-klasse-gold px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
-              >
-                Gerenciar notas da {turmaLabel}
-              </button>
-            )}
-          </div>
-        </>
-      )}
 
       {disciplinaSelecionada ? (
         <p className="text-xs text-slate-500">

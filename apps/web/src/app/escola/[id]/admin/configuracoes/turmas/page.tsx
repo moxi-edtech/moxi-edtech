@@ -742,7 +742,7 @@ export default function TurmasConfiguracoesPage() {
     >
       <div className="space-y-6">
         <div className="rounded-xl bg-slate-50 border border-slate-200 p-5 text-sm text-slate-600 flex gap-4">
-          <div className="rounded-full bg-blue-100 p-2 text-blue-600 h-fit">
+          <div className="rounded-full bg-slate-100 p-2 text-slate-600 h-fit">
             <School className="h-5 w-5" />
           </div>
           <div>
@@ -754,16 +754,16 @@ export default function TurmasConfiguracoesPage() {
           </div>
         </div>
         {selectedCursoId && pendingPublishedClasses.length > 0 && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          <div className="rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 p-4 text-sm text-klasse-gold-800">
             <p className="font-semibold">Classes sem currículo publicado</p>
-            <p className="text-xs text-amber-700 mt-1">
+            <p className="text-xs text-klasse-gold-700 mt-1">
               Publique o currículo destas classes antes de gerar turmas.
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
               {pendingPublishedClasses.map((cls) => (
                 <span
                   key={cls.id}
-                  className="rounded-full border border-amber-200 bg-white px-3 py-1 text-xs font-semibold text-amber-700"
+                  className="rounded-full border border-klasse-gold-200 bg-white px-3 py-1 text-xs font-semibold text-klasse-gold-700"
                 >
                   {cls.nome}
                 </span>
@@ -799,7 +799,7 @@ export default function TurmasConfiguracoesPage() {
                 }
               }}
               disabled={modalActionLoading}
-              className="mt-3 rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-700 disabled:opacity-50"
+              className="mt-3 rounded-xl bg-klasse-gold-600 px-4 py-2 text-xs font-bold text-white hover:bg-klasse-gold-700 disabled:opacity-50"
             >
               {modalActionLoading ? "Publicando..." : "Publicar todas as classes"}
             </button>
@@ -851,8 +851,8 @@ export default function TurmasConfiguracoesPage() {
                       <div
                         className={`mt-1 rounded-full p-1.5 ${
                           isPublished
-                            ? "bg-emerald-100 text-emerald-600"
-                            : "bg-amber-100 text-amber-600"
+                            ? "bg-klasse-green-100 text-klasse-green-600"
+                            : "bg-klasse-gold-100 text-klasse-gold-600"
                         }`}
                       >
                         {isPublished ? (
@@ -864,7 +864,7 @@ export default function TurmasConfiguracoesPage() {
                       <div>
                         <h4 className="font-bold text-slate-900">{curso.nome}</h4>
                         <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-0.5">
-                          <span className={`font-medium ${isPublished ? "text-emerald-700" : "text-amber-700"}`}>
+                          <span className={`font-medium ${isPublished ? "text-klasse-green-700" : "text-klasse-gold-700"}`}>
                             {isPublished ? "Currículo Publicado" : "Rascunho"}
                           </span>
                           <span>•</span>

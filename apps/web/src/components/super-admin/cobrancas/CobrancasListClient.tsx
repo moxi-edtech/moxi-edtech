@@ -3,7 +3,7 @@
 /**
  * CobrancasListClient — Super Admin Billing Portal
  * Design: Light Management — clareza, profissionalismo, consistência.
- * Tokens KLASSE: #1F6B3B (green), #E3B23C (gold).
+ * Tokens KLASSE: klasse-green, klasse-gold, slate.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -39,8 +39,8 @@ type AssinaturaPendente = {
 
 const PLAN_META: Record<PlanTier, { pill: string; dot: string }> = {
   essencial:    { pill: "bg-slate-100 border border-slate-200 text-slate-600",  dot: "bg-slate-400"   },
-  profissional: { pill: "bg-[#E3B23C]/10 border border-[#E3B23C]/20 text-[#B48924]", dot: "bg-[#E3B23C]" },
-  premium:      { pill: "bg-[#1F6B3B]/10 border border-[#1F6B3B]/20 text-[#1F6B3B]", dot: "bg-[#1F6B3B]" },
+  profissional: { pill: "bg-klasse-gold/10 border border-klasse-gold/20 text-klasse-gold", dot: "bg-klasse-gold" },
+  premium:      { pill: "bg-klasse-green/10 border border-klasse-green/20 text-klasse-green", dot: "bg-klasse-green" },
 };
 
 function PlanBadge({ plano }: { plano: PlanTier }) {
@@ -59,8 +59,8 @@ function StatusBadge({ status }: { status: string }) {
   
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide
-      ${isActiva ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 
-        isPendente ? 'bg-amber-100 text-amber-700 border border-amber-200' : 
+      ${isActiva ? 'bg-klasse-green/10 text-klasse-green border border-klasse-green/20' : 
+        isPendente ? 'bg-klasse-gold/10 text-klasse-gold border border-klasse-gold/20' : 
         'bg-slate-100 text-slate-600 border border-slate-200'}`}>
       {status}
     </span>
@@ -203,15 +203,15 @@ export default function CobrancasListClient() {
     <div className="text-slate-900">
       
       {syncReport && (
-        <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-amber-700">Relatório de bootstrap para revisão Super Admin</p>
-          <p className="mt-1 text-xs text-amber-800">
+        <div className="mb-4 rounded-2xl border border-klasse-gold/30 bg-klasse-gold/10 p-4">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-klasse-gold">Relatório de bootstrap para revisão Super Admin</p>
+          <p className="mt-1 text-xs text-slate-700">
             {syncReport.total_escolas_sync} escola(s) no sync; {syncReport.assinaturas_criadas} assinatura(s) criada(s); {syncReport.pendentes_parametrizacao} pendente(s) de parametrização.
           </p>
           {syncReport.escolas_criadas.length > 0 && (
             <div className="mt-2">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-amber-700">Escolas com assinatura criada</p>
-              <ul className="mt-1 space-y-1 text-xs text-amber-900">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-klasse-gold">Escolas com assinatura criada</p>
+              <ul className="mt-1 space-y-1 text-xs text-slate-700">
                 {syncReport.escolas_criadas.map((escola) => (
                   <li key={escola.escola_id}>
                     • {escola.escola_nome} ({PLAN_NAMES[escola.plano]} / {escola.ciclo}) — Kz {escola.valor_kz.toLocaleString()}
@@ -222,8 +222,8 @@ export default function CobrancasListClient() {
           )}
           {syncReport.escolas_pendentes_parametrizacao.length > 0 && (
             <div className="mt-2">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-red-700">Escolas pendentes de parametrização</p>
-              <ul className="mt-1 space-y-1 text-xs text-red-800">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-klasse-gold">Escolas pendentes de parametrização</p>
+              <ul className="mt-1 space-y-1 text-xs text-slate-700">
                 {syncReport.escolas_pendentes_parametrizacao.map((escola) => (
                   <li key={escola.escola_id}>
                     • {escola.escola_nome} ({PLAN_NAMES[escola.plano]} / {escola.ciclo}) — {escola.motivo}
@@ -236,11 +236,11 @@ export default function CobrancasListClient() {
       )}
 
       {pendentesParametrizacao.length > 0 && (
-        <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 flex items-start gap-3">
-          <AlertTriangle className="h-4 w-4 mt-0.5 text-red-600" />
+        <div className="mb-4 rounded-2xl border border-klasse-gold/30 bg-klasse-gold/10 p-4 flex items-start gap-3">
+          <AlertTriangle className="h-4 w-4 mt-0.5 text-klasse-gold" />
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-widest text-red-700">Assinaturas pendentes de parametrização</p>
-            <p className="mt-1 text-xs text-red-800">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-klasse-gold">Assinaturas pendentes de parametrização</p>
+            <p className="mt-1 text-xs text-slate-700">
               {pendentesParametrizacao.length} assinatura(s) com valor_kz inválido ou pendência de configuração inicial. Rever e parametrizar antes da activação.
             </p>
           </div>
@@ -257,13 +257,13 @@ export default function CobrancasListClient() {
         </div>
         <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm">
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Pendentes</p>
-          <p className="text-2xl font-bold text-amber-600">
+          <p className="text-2xl font-bold text-klasse-gold">
             {items.filter(i => i.status === 'pendente').length}
           </p>
         </div>
         <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm">
           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Escolas Activas</p>
-          <p className="text-2xl font-bold text-emerald-600">
+          <p className="text-2xl font-bold text-klasse-green">
             {items.filter(i => i.status === 'activa').length}
           </p>
         </div>
@@ -286,7 +286,7 @@ export default function CobrancasListClient() {
             <button 
               onClick={handleSync} 
               disabled={syncing}
-              className="px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-bold uppercase hover:bg-amber-100 transition-all disabled:opacity-50"
+              className="px-3 py-1.5 rounded-lg bg-klasse-gold/10 border border-klasse-gold/20 text-klasse-gold text-[10px] font-bold uppercase hover:bg-klasse-gold/20 transition-all disabled:opacity-50"
             >
               {syncing ? 'Sincronizando...' : 'Inicializar Assinaturas'}
             </button>
@@ -338,7 +338,7 @@ export default function CobrancasListClient() {
                   <td className="py-4 px-6">
                     <p className="text-slate-700 font-mono font-semibold">Kz {item.valor_kz.toLocaleString()}</p>
                     {item.status === 'pendente' && item.valor_kz <= 0 && (
-                      <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-red-600">Parametrização obrigatória</p>
+                      <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-klasse-gold">Parametrização obrigatória</p>
                     )}
                   </td>
                   <td className="py-4 px-6">
@@ -348,7 +348,7 @@ export default function CobrancasListClient() {
                     {item.comprovativo_url ? (
                       <button 
                         onClick={() => window.open(item.comprovativo_url, '_blank')}
-                        className="flex items-center gap-2 text-[10px] font-bold text-amber-600 uppercase hover:text-amber-700"
+                        className="flex items-center gap-2 text-[10px] font-bold text-klasse-gold uppercase hover:text-klasse-gold/80"
                       >
                         📄 Ver Comprovativo
                       </button>
@@ -370,7 +370,7 @@ export default function CobrancasListClient() {
                         <button
                           disabled={confirmingId === item.id}
                           onClick={() => handleConfirmar(item)}
-                          className="px-3 py-1.5 rounded-lg bg-[#1F6B3B] hover:bg-[#1F6B3B]/90 text-white text-[10px] font-bold uppercase transition-colors disabled:opacity-50 shadow-sm"
+                          className="px-3 py-1.5 rounded-lg bg-klasse-green hover:bg-klasse-green/90 text-white text-[10px] font-bold uppercase transition-colors disabled:opacity-50 shadow-sm"
                         >
                           {confirmingId === item.id ? '...' : 'Activar'}
                         </button>

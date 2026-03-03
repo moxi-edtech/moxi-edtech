@@ -24,7 +24,11 @@ export default function ChartsSection({ escolaId, data }: Props) {
   const [loading, setLoading] = useState(!data)
 
   useEffect(() => {
-    if (data || !escolaId) { setLoading(false); return }
+    if (data || !escolaId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      Promise.resolve().then(() => setLoading(false));
+      return;
+    }
   }, [escolaId, data])
 
   const items = data

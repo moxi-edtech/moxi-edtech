@@ -40,7 +40,7 @@ export default function NoticesSection({ escolaId, notices = [] }: Props) {
 
         <Link
           href={hrefAll}
-          className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-klasse-green-500 hover:bg-emerald-50"
+          className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-klasse-green-500 hover:bg-klasse-green-50"
         >
           Ver tudo <ArrowRight className="h-3.5 w-3.5" />
         </Link>

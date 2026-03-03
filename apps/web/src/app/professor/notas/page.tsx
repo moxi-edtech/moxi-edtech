@@ -384,7 +384,7 @@ export default function ProfessorNotasPage() {
                 Selecione a turma e disciplina para carregar os alunos.
               </div>
             ) : turmaFechada ? (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+              <div className="rounded-xl border border-klasse-gold-200 bg-klasse-gold-50 p-4 text-sm text-klasse-gold-700">
                 Lançamento de notas bloqueado: turma fechada.
               </div>
             ) : (

@@ -48,14 +48,20 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
       .select('status, total')
       .eq('escola_id', resolvedEscolaId)
       .order('status', { ascending: true });
-    pagamentosQuery = applyKf2ListInvariants(pagamentosQuery, { defaultLimit: 50 });
+    pagamentosQuery = applyKf2ListInvariants(pagamentosQuery, { 
+      defaultLimit: 50,
+      tieBreakerColumn: 'status'
+    });
 
     let matriculasMesQuery = supabase
       .from('vw_admin_matriculas_por_mes' as any)
       .select('mes, total')
       .eq('escola_id', resolvedEscolaId)
       .order('mes', { ascending: true });
-    matriculasMesQuery = applyKf2ListInvariants(matriculasMesQuery, { defaultLimit: 50 });
+    matriculasMesQuery = applyKf2ListInvariants(matriculasMesQuery, { 
+      defaultLimit: 50,
+      tieBreakerColumn: 'mes'
+    });
 
     const [
       countsRes,

@@ -66,7 +66,7 @@ type AlertBannerProps = {
 function AlertBanner({ href, lines, tone }: AlertBannerProps) {
   const colors = tone === "orange"
     ? { wrap: "bg-orange-50 border-orange-200 hover:border-orange-300", dot: "bg-orange-400", bold: "text-orange-900", sub: "text-orange-600", icon: "bg-orange-100 text-orange-700 group-hover:bg-orange-200" }
-    : { wrap: "bg-amber-50  border-amber-200  hover:border-amber-300",  dot: "bg-amber-400",  bold: "text-amber-900",  sub: "text-amber-600",  icon: "bg-amber-100  text-amber-700  group-hover:bg-amber-200"  };
+    : { wrap: "bg-klasse-gold-50  border-klasse-gold-200  hover:border-klasse-gold-300",  dot: "bg-klasse-gold-400",  bold: "text-klasse-gold-900",  sub: "text-klasse-gold-600",  icon: "bg-klasse-gold-100  text-klasse-gold-700  group-hover:bg-klasse-gold-200"  };
 
   return (
     <div className="animate-in fade-in duration-500">
@@ -135,7 +135,7 @@ function StatusPill({ status }: { status: string | null }) {
     return <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#1F6B3B]/10 text-[#1F6B3B]">Pago</span>;
   }
   if (s === "pendente") {
-    return <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">Pendente</span>;
+    return <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-klasse-gold-50 text-klasse-gold-700">Pendente</span>;
   }
   return <span className="text-xs text-slate-400">{status ?? "—"}</span>;
 }
@@ -144,7 +144,7 @@ function StatusPill({ status }: { status: string | null }) {
 
 function DiasAtraso({ dias }: { dias: number }) {
   if (dias >= 60) return <TrendingUp   className="w-3.5 h-3.5 text-rose-500" />;
-  if (dias >= 30) return <Minus        className="w-3.5 h-3.5 text-amber-500" />;
+  if (dias >= 30) return <Minus        className="w-3.5 h-3.5 text-klasse-gold-500" />;
   return               <TrendingDown  className="w-3.5 h-3.5 text-slate-400" />;
 }
 

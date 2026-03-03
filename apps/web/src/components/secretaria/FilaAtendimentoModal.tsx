@@ -226,9 +226,9 @@ export function FilaAtendimentoModal({
                         className={cx(
                           "rounded-full px-2 py-1 text-[10px] font-bold uppercase",
                           item.status === "fechado"
-                            ? "bg-emerald-100 text-emerald-700"
+                            ? "bg-klasse-green-100 text-klasse-green-700"
                             : item.status === "em_atendimento"
-                              ? "bg-amber-100 text-amber-700"
+                              ? "bg-klasse-gold-100 text-klasse-gold-700"
                               : "bg-slate-100 text-slate-600"
                         )}
                       >
@@ -273,7 +273,7 @@ export function FilaAtendimentoModal({
                             type="button"
                             onClick={handleFinalizar}
                             disabled={savingFinal || !resolucao.trim()}
-                            className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white disabled:opacity-60"
+                            className="rounded-lg bg-klasse-green-600 px-3 py-1 text-xs font-semibold text-white disabled:opacity-60"
                           >
                             {savingFinal ? "Salvando..." : "Concluir"}
                           </button>

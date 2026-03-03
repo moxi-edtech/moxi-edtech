@@ -137,8 +137,8 @@ export default function ImportacoesListClient() {
                   </td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                      it.status === 'imported' ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' :
-                      it.status === 'pending' ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-200' :
+                      it.status === 'imported' ? 'bg-klasse-green-50 text-klasse-green-700 ring-1 ring-klasse-green-200' :
+                      it.status === 'pending' ? 'bg-klasse-gold-50 text-klasse-gold-700 ring-1 ring-klasse-gold-200' :
                       it.status === 'failed' ? 'bg-red-50 text-red-700 ring-1 ring-red-200' :
                       'bg-slate-100 text-slate-700 ring-1 ring-slate-200'
                     }`}>

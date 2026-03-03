@@ -11,13 +11,17 @@ type UserRole = Database["public"]["Enums"]["user_role"];
 
 const ROLE_START: Record<UserRole, number> = {
   admin: 1,
+  admin_escola: 1,
+  staff_admin: 1,
+  admin_financeiro: 1,
+  super_admin: 1,
+  global_admin: 1,
   aluno: 1001,
   professor: 2001,
   secretaria: 3001,
+  secretaria_financeiro: 3001,
   financeiro: 4001,
   encarregado: 5001,
-  super_admin: 1,
-  global_admin: 1,
 };
 
 const derivePrefix = (escolaId: string) => {

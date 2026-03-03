@@ -41,7 +41,7 @@ export default function NextSteps() {
             <div className={`
               w-6 h-6 rounded-full flex items-center justify-center
               ${step.completed 
-                ? 'bg-emerald-100 text-emerald-600' 
+                ? 'bg-klasse-green-100 text-klasse-green-600' 
                 : step.current
                 ? 'border-2 border-brand-900'
                 : 'border-2 border-slate-200'

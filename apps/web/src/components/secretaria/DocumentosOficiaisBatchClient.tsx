@@ -17,7 +17,6 @@ import {
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { PautaRapidaModal } from "@/components/secretaria/PautaRapidaModal";
-import { useOfficialDocs } from "@/hooks/useOfficialDocs";
 
 type TurmaItem = {
   id: string;
@@ -52,7 +51,7 @@ type JobItem = {
 
 type ToastState = { message: string; type: "success" | "error" } | null;
 
-import { PendenciaItem, PendenciaTipo } from "~types/pendencia";
+import { PendenciaItem } from "~types/pendencia";
 
 function Toast({ toast, onDismiss }: { toast: ToastState; onDismiss: () => void }) {
   useEffect(() => {
@@ -81,7 +80,7 @@ export default function DocumentosOficiaisBatchClient() {
   const [turmas, setTurmas] = useState<TurmaItem[]>([]);
   const [periodos, setPeriodos] = useState<PeriodoItem[]>([]);
   const [periodoId, setPeriodoId] = useState<string>("");
-  const [tipo, setTipo] = useState<"trimestral" | "anual" | "boletim" | "certificado">("trimestral");
+  const [tipo, setTipo] = useState<"trimestral" | "anual" | "boletim_trimestral" | "certificado">("trimestral");
   const [hidePendencias, setHidePendencias] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -104,8 +103,6 @@ export default function DocumentosOficiaisBatchClient() {
   const [pendenciasLoading, setPendenciasLoading] = useState(false);
   const [pendencias, setPendencias] = useState<PendenciaItem[]>([]);
   const [selectedPendencia, setSelectedPendencia] = useState<PendenciaItem | null>(null);
-
-  const { gerarBoletimBatch, gerarCertificadoBatch } = useOfficialDocs();
 
   const pendingPeriodoNumeros = useMemo(() => {
     const numeros = new Set<number>();
@@ -252,15 +249,15 @@ export default function DocumentosOficiaisBatchClient() {
 
   const getLabels = useCallback(() => {
     switch (tipo) {
-      case "boletim":
+      case "boletim_trimestral":
         return {
-          title: "Emissão de Boletins",
+          title: "Emissão de Boletim Trimestral",
           subtitle: "Gere os boletins de notas para entrega aos encarregados.",
-          action: "Gerar Boletins",
-          processing: "A gerar boletins...",
-          success: "Boletins gerados com sucesso!",
-          zipName: "Boletins.zip",
-          history: "Histórico de Boletins",
+          action: "Gerar Boletim Trimestral",
+          processing: "A gerar boletim trimestral...",
+          success: "Boletim trimestral gerado com sucesso!",
+          zipName: "BoletimTrimestral.zip",
+          history: "Histórico de Boletim Trimestral",
         };
       case "certificado":
         return {
@@ -297,20 +294,6 @@ export default function DocumentosOficiaisBatchClient() {
     setSubmitting(true);
     setOptimisticJob("RUNNING");
     try {
-      if (tipo === "certificado" || tipo === "boletim") {
-        for (const turmaId of Array.from(selected)) {
-          if (tipo === "certificado") {
-            await gerarCertificadoBatch(turmaId, []);
-          } else {
-            await gerarBoletimBatch(turmaId, []);
-          }
-        }
-        setToast({ message: `${labels.success}`, type: "success" });
-        setSelected(new Set());
-        setOptimisticJob(null);
-        return;
-      }
-
       const res = await fetch("/api/secretaria/documentos-oficiais/lote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -458,12 +441,12 @@ export default function DocumentosOficiaisBatchClient() {
         <div className="flex items-center gap-3">
           <select
             value={tipo}
-            onChange={(e) => setTipo(e.target.value as "trimestral" | "anual" | "boletim" | "certificado")}
+            onChange={(e) => setTipo(e.target.value as "trimestral" | "anual" | "boletim_trimestral" | "certificado")}
             className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-[#1F6B3B]/20"
           >
             <option value="trimestral">Pauta Trimestral</option>
             <option value="anual">Pauta Anual</option>
-            <option value="boletim">Boletim</option>
+            <option value="boletim_trimestral">Boletim Trimestral</option>
             <option value="certificado">Certificado</option>
           </select>
           <button
@@ -484,14 +467,14 @@ export default function DocumentosOficiaisBatchClient() {
       {effectiveStatus !== "IDLE" && !(effectiveStatus === "FAILED" && latestJob?.error_message?.toLowerCase().includes("cancelado")) && (
         <div
           className={`p-5 rounded-xl border flex items-center justify-between shadow-sm transition-all ${
-            effectiveStatus === "RUNNING" ? "bg-blue-50 border-blue-100" :
+            effectiveStatus === "RUNNING" ? "bg-slate-50 border-slate-100" :
             effectiveStatus === "DONE" ? "bg-[#1F6B3B]/10 border-[#1F6B3B]/20" :
             "bg-rose-50 border-rose-100"
           }`}
         >
           <div className="flex items-center gap-4">
             {effectiveStatus === "RUNNING" ? (
-              <RefreshCw className="w-6 h-6 animate-spin text-blue-600" />
+              <RefreshCw className="w-6 h-6 animate-spin text-slate-600" />
             ) : effectiveStatus === "DONE" ? (
               <CheckCircle2 className="w-6 h-6 text-[#1F6B3B]" />
             ) : (
@@ -500,7 +483,7 @@ export default function DocumentosOficiaisBatchClient() {
             <div>
               <h3
                 className={`font-bold text-sm ${
-                  effectiveStatus === "RUNNING" ? "text-blue-900" :
+                  effectiveStatus === "RUNNING" ? "text-slate-900" :
                   effectiveStatus === "DONE" ? "text-[#1F6B3B]" :
                   "text-rose-700"
                 }`}
@@ -698,9 +681,9 @@ export default function DocumentosOficiaisBatchClient() {
               </div>
               <div className="flex items-center gap-3">
                 <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${
-                  job.status === "SUCCESS" ? "bg-emerald-50 text-emerald-700" :
+                  job.status === "SUCCESS" ? "bg-klasse-green-50 text-klasse-green-700" :
                   job.status === "FAILED" ? "bg-rose-50 text-rose-700" :
-                  "bg-amber-50 text-amber-700"
+                  "bg-klasse-gold-50 text-klasse-gold-700"
                 }`}>
                   {job.status}
                 </span>
@@ -731,7 +714,7 @@ export default function DocumentosOficiaisBatchClient() {
                   </button>
                 )}
                 {!job.download_url && job.status === "PROCESSING" && (
-                  <span className="inline-flex items-center gap-1 text-amber-600">
+                  <span className="inline-flex items-center gap-1 text-klasse-gold-600">
                     <RefreshCw className="h-3 w-3 animate-spin" /> A processar…
                   </span>
                 )}
@@ -835,7 +818,7 @@ export default function DocumentosOficiaisBatchClient() {
                                 Sem avaliação
                               </span>
                             ) : (
-                              <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+                              <span className="inline-flex items-center rounded-full bg-klasse-gold-50 px-2.5 py-1 text-[11px] font-semibold text-klasse-gold-700">
                                 {pendenciaTipo.pendentes} nota(s) pendentes
                               </span>
                             )}

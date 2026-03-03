@@ -43,12 +43,12 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
         </div>
         <form action="" className="flex gap-2 text-sm">
           <input type="text" name="q" defaultValue={q} placeholder="Buscar por nome" className="border rounded px-2 py-1" />
-          <button className="px-3 py-1.5 rounded bg-blue-600 text-white">Buscar</button>
+          <button className="px-3 py-1.5 rounded bg-slate-600 text-white">Buscar</button>
         </form>
       </div>
 
       {!escolaId && (
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded text-amber-800 text-sm">
+        <div className="p-4 bg-klasse-gold-50 border border-klasse-gold-200 rounded text-klasse-gold-800 text-sm">
           Vincule seu perfil a uma escola para consultar extratos.
         </div>
       )}

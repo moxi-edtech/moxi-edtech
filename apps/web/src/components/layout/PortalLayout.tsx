@@ -309,7 +309,7 @@ export default function PortalLayout({
                     <span className="text-[10px] uppercase px-2 py-1 rounded-full bg-gray-100 border text-gray-600">Plano: {PLAN_NAMES[plan]}</span>
                   )}
                   {escolaNome && (
-                    <span className="text-[10px] px-2 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700" title={escolaNome}>
+                    <span className="text-[10px] px-2 py-1 rounded-full bg-slate-50 border border-slate-200 text-slate-700" title={escolaNome}>
                       Escola: {escolaNome}
                     </span>
                   )}
@@ -329,7 +329,7 @@ export default function PortalLayout({
     
                   <SignOutButton
                     label="Sair"
-                    className="px-3 py-1.5 text-xs bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+                    className="px-3 py-1.5 text-xs bg-slate-500 text-white rounded-md hover:bg-slate-600 transition-colors"
                     title="Sair"
                   />
                 </div>

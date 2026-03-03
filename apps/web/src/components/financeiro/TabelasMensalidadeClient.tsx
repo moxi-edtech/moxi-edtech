@@ -192,11 +192,11 @@ export default function TabelasMensalidadeClient() {
                 {filtered.map(item => (
                     <div key={item.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all group relative">
                         <div className="flex justify-between items-start mb-3">
-                            <div className={`p-2 rounded-lg ${item.ativo ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+                            <div className={`p-2 rounded-lg ${item.ativo ? 'bg-klasse-green-50 text-klasse-green-600' : 'bg-slate-100 text-slate-400'}`}>
                                 <DollarSign size={20}/>
                             </div>
                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => { setEditingItem(item); setShowModal(true); }} className="p-2 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-blue-600 transition"><Edit size={16}/></button>
+                                <button onClick={() => { setEditingItem(item); setShowModal(true); }} className="p-2 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-slate-600 transition"><Edit size={16}/></button>
                                 <button onClick={() => handleDelete(item.id)} className="p-2 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition"><Trash2 size={16}/></button>
                             </div>
                         </div>
@@ -492,14 +492,14 @@ function PriceRuleForm({ onClose, onSuccess, initialData, cursos, defaultAno }: 
                     </div>
 
                     <div className="pt-4 border-t border-slate-100">
-                        <label className="flex items-start gap-3 p-3 bg-blue-50 rounded-xl border border-blue-100 cursor-pointer">
+                        <label className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer">
                             <input 
                                 type="checkbox" 
                                 checked={formData.applyExisting} 
                                 onChange={e => setFormData({...formData, applyExisting: e.target.checked})}
-                                className="mt-1 w-4 h-4 text-blue-600 rounded"
+                                className="mt-1 w-4 h-4 text-slate-600 rounded"
                             />
-                            <div className="text-xs text-blue-800">
+                            <div className="text-xs text-slate-800">
                                 <span className="font-bold block">Aplicar a alunos existentes?</span>
                                 Atualiza o valor das próximas mensalidades de quem já está matriculado nesta regra.
                             </div>

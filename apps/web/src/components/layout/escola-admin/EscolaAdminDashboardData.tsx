@@ -73,6 +73,8 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
 
   try {
     const todayKey = new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const currentMonthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
 
     let missingPricingQuery = s
       .from("vw_financeiro_missing_pricing_count")
@@ -81,15 +83,18 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
     missingPricingQuery = applyKf2ListInvariants(missingPricingQuery, {
       defaultLimit: 1,
       order: [{ column: "ano_letivo", ascending: false }],
+      tieBreakerColumn: "ano_letivo",
     });
 
     let financeiroKpiQuery = s
       .from("vw_financeiro_kpis_mes")
       .select("mes_ref, previsto_total, realizado_total")
-      .eq("escola_id", escolaId);
+      .eq("escola_id", escolaId)
+      .eq("mes_ref", currentMonthStart);
     financeiroKpiQuery = applyKf2ListInvariants(financeiroKpiQuery, {
       defaultLimit: 1,
       order: [{ column: "mes_ref", ascending: false }],
+      tieBreakerColumn: "mes_ref",
     });
 
     const [

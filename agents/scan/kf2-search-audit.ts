@@ -76,6 +76,7 @@ function checkFile(file: string, content: string) {
   }
 
   if (KF2_SCAN_PATH_EXCLUDES.some((pathPart) => file.includes(pathPart))) {
+  if (file.includes("/pdf/")) {
     return;
   }
 

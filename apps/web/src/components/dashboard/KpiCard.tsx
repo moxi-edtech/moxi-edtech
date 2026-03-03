@@ -27,8 +27,8 @@ export function KpiCard({
     },
     success: {
       box: "bg-white border-slate-200",
-      icon: "bg-emerald-100 text-emerald-700",
-      value: "text-emerald-700",
+      icon: "bg-klasse-green-100 text-klasse-green-700",
+      value: "text-klasse-green-700",
     },
   }[variant];
 

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabaseServer } from '@/lib/supabaseServer'
+import { createRouteClient } from '@/lib/supabase/route-client'
 import type { Database } from '~types/supabase'
 import { isSuperAdminRole } from '@/lib/auth/requireSuperAdminAccess'
 import { applyKf2ListInvariants } from '@/lib/kf2'
@@ -18,8 +18,8 @@ type UsuarioItem = {
 
 export async function GET() {
   try {
-    // AuthZ: somente super_admin
-    const s = await supabaseServer()
+    // AuthZ: somente super_admin via RPC segura (respeitando SERVICE_ROLE_INVENTORY.md)
+    const s = await createRouteClient()
     const { data: sess } = await s.auth.getUser()
     const user = sess?.user
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
@@ -33,11 +33,21 @@ export async function GET() {
     const { data: rows } = await roleQuery
     const role = (rows?.[0] as any)?.role as string | undefined
     if (!isSuperAdminRole(role)) {
+    
+    if (!user) {
+      return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
+    }
+
+    // Chama a RPC SECURITY DEFINER para validar o papel sem precisar de service_role no TS
+    const { data: isSuperAdmin, error: authError } = await s.rpc('check_super_admin_role')
+
+    if (authError || !isSuperAdmin) {
+      console.log('[DEBUG] SuperAdmin Check Failed:', { userId: user.id, isSuperAdmin, authError: authError?.message });
       return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
     }
 
     // Papéis globais que podem aparecer na lista (sem alunos/professores)
-    const allowedRoles = new Set(['super_admin', 'global_admin', 'admin', 'financeiro', 'secretaria'])
+    const allowedRoles = new Set(['super_admin', 'global_admin', 'admin', 'financeiro', 'secretaria', 'secretaria_financeiro', 'admin_financeiro'])
 
     const isMissingColumn = (err: any) => {
       const msg = err?.message as string | undefined

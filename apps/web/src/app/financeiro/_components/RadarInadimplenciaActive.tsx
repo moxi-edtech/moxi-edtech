@@ -496,11 +496,11 @@ export default function RadarInadimplenciaActive() {
           </h3>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">
+            <div className="text-center p-4 bg-slate-50 rounded-lg">
+              <div className="text-2xl font-bold text-slate-600">
                 {relatorio.totalEnviadas}
               </div>
-              <div className="text-sm text-blue-700">Mensagens Enviadas</div>
+              <div className="text-sm text-slate-700">Mensagens Enviadas</div>
             </div>
             <div className="text-center p-4 bg-green-50 rounded-lg">
               <div className="text-2xl font-bold text-green-600">
@@ -508,11 +508,11 @@ export default function RadarInadimplenciaActive() {
               </div>
               <div className="text-sm text-green-700">Taxa de Resposta</div>
             </div>
-            <div className="text-center p-4 bg-purple-50 rounded-lg">
-              <div className="text-2xl font-bold text-purple-600">
+            <div className="text-center p-4 bg-slate-50 rounded-lg">
+              <div className="text-2xl font-bold text-slate-600">
                 {relatorio.taxaConversao}%
               </div>
-              <div className="text-sm text-purple-700">Taxa de Pagamento</div>
+              <div className="text-sm text-slate-700">Taxa de Pagamento</div>
             </div>
             <div className="text-center p-4 bg-teal-50 rounded-lg">
               <div className="text-2xl font-bold text-moxinexa-teal">
@@ -640,7 +640,7 @@ export default function RadarInadimplenciaActive() {
                         </span>
                       )}
                       {item.status === "recente" && (
-                        <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-700">
+                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-700">
                           🆕 Recente
                         </span>
                       )}

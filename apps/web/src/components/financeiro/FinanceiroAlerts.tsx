@@ -40,12 +40,12 @@ export function FinanceiroAlerts({ notifications }: { notifications: Notificatio
 
   return (
     <div className="mb-6 animate-in slide-in-from-top-2">
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+      <div className="bg-klasse-gold-50 border border-klasse-gold-200 rounded-xl p-4">
         <div className="flex items-center gap-2 mb-3">
-          <div className="p-1.5 bg-amber-100 rounded-lg text-amber-700">
+          <div className="p-1.5 bg-klasse-gold-100 rounded-lg text-klasse-gold-700">
             <BellRing className="w-4 h-4" />
           </div>
-          <h3 className="font-bold text-amber-800 text-sm">
+          <h3 className="font-bold text-klasse-gold-800 text-sm">
             Ações Pendentes ({items.length})
           </h3>
         </div>
@@ -54,7 +54,7 @@ export function FinanceiroAlerts({ notifications }: { notifications: Notificatio
           {items.map((notif) => (
             <div
               key={notif.id}
-              className="bg-white p-3 rounded-lg border border-amber-100 shadow-sm flex justify-between items-center group hover:border-amber-300 transition-all"
+              className="bg-white p-3 rounded-lg border border-klasse-gold-100 shadow-sm flex justify-between items-center group hover:border-klasse-gold-300 transition-all"
             >
               <div>
                 <p className="text-sm font-bold text-slate-700">{notif.titulo}</p>
@@ -65,7 +65,7 @@ export function FinanceiroAlerts({ notifications }: { notifications: Notificatio
                 {notif.link_acao && (
                   <Link
                     href={notif.link_acao}
-                    className="text-xs bg-amber-100 text-amber-800 px-3 py-1.5 rounded-lg font-bold hover:bg-amber-200 flex items-center gap-1"
+                    className="text-xs bg-klasse-gold-100 text-klasse-gold-800 px-3 py-1.5 rounded-lg font-bold hover:bg-klasse-gold-200 flex items-center gap-1"
                   >
                     Configurar <ArrowRight className="w-3 h-3" />
                   </Link>
@@ -74,7 +74,7 @@ export function FinanceiroAlerts({ notifications }: { notifications: Notificatio
                 <button
                   onClick={() => handleMarkAsRead(notif.id)}
                   disabled={loadingId === notif.id}
-                  className="text-slate-400 hover:text-emerald-600 p-1.5 hover:bg-emerald-50 rounded-lg transition-colors disabled:opacity-50"
+                  className="text-slate-400 hover:text-klasse-green-600 p-1.5 hover:bg-klasse-green-50 rounded-lg transition-colors disabled:opacity-50"
                 >
                   <Check className="w-4 h-4" />
                 </button>
@@ -86,4 +86,3 @@ export function FinanceiroAlerts({ notifications }: { notifications: Notificatio
     </div>
   );
 }
-

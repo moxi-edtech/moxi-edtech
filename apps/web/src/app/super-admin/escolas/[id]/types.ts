@@ -15,6 +15,10 @@ export interface EscolaDetalhes {
   aluno_portal_enabled: boolean;
   logo_url: string;
   cor_primaria: string;
+  dominio?: string | null;
+  subdominio?: string | null;
+  ssl_status?: string | null;
+  db_region?: string | null;
 }
 
 export interface EscolaMetricas {

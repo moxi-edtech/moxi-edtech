@@ -287,7 +287,7 @@ export default function HorariosSlotsPage() {
             className={`rounded-2xl border p-4 text-sm ${
               excessoCarga > 0
                 ? "border-rose-200 bg-rose-50 text-rose-800"
-                : "border-emerald-200 bg-emerald-50 text-emerald-800"
+                : "border-klasse-green-200 bg-klasse-green-50 text-klasse-green-800"
             }`}
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
