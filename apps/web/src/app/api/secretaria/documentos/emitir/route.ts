@@ -23,10 +23,12 @@ const payloadSchema = z.object({
 });
 
 const FINAL_DOCUMENT_TYPES = ["boletim_trimestral", "historico", "certificado"];
+const FINAL_DOCUMENT_TYPES = ["boletim_trimestral", "historico", "certificado", "comprovante_matricula"];
 const FINAL_DOC_BACKEND_TYPE: Record<string, string> = {
   boletim_trimestral: "boletim_trimestral",
   historico: "historico",
   certificado: "certificado",
+  comprovante_matricula: "comprovante_matricula",
 };
 
 export async function POST(request: Request) {
