@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createRouteClient } from "@/lib/supabase/route-client"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 import { hasAnyPermission, normalizePapel } from "@/lib/permissions"
+import { applyKf2ListInvariants } from "@/lib/kf2"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -24,24 +25,35 @@ export async function GET(req: Request, context: { params: Promise<{ id: string;
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 })
     }
 
-    const { data: vinc } = await supabase
+    let vincQuery = supabase
       .from("escola_users")
       .select("papel, role")
       .eq("user_id", user.id)
       .eq("escola_id", escolaId)
-      .limit(1)
+
+    vincQuery = applyKf2ListInvariants(vincQuery, { defaultLimit: 1, order: [{ column: 'created_at', ascending: false }] })
+
+    const { data: vinc } = await vincQuery
 
     const papelReq = normalizePapel(vinc?.[0]?.papel ?? (vinc?.[0] as any)?.role)
     const allowed = hasAnyPermission(papelReq, ["visualizar_academico", "gerenciar_turmas", "editar_usuario"])
     if (!allowed) return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 })
 
-    const { data: rows, error } = await supabase
+    let pendenciasQuery = supabase
       .from("vw_professor_pendencias")
       .select(
         "turma_disciplina_id, turma_id, turma_nome, disciplina_id, disciplina_nome, trimestre, tipo, avaliacao_id, total_alunos, notas_lancadas, pendentes"
       )
       .eq("escola_id", escolaId)
       .eq("profile_id", profileId)
+
+    pendenciasQuery = applyKf2ListInvariants(pendenciasQuery, {
+      defaultLimit: 50,
+      order: [{ column: 'turma_nome', ascending: true }],
+      tieBreakerColumn: 'turma_disciplina_id',
+    })
+
+    const { data: rows, error } = await pendenciasQuery
 
     if (error) throw error
 
@@ -110,13 +122,21 @@ export async function GET(req: Request, context: { params: Promise<{ id: string;
 
       const hoje = new Date().toISOString().slice(0, 10)
       const periodosQuery = anoLetivo?.id
-        ? await supabase
-            .from("periodos_letivos")
-            .select("numero, data_inicio, data_fim")
-            .eq("escola_id", escolaId)
-            .eq("ano_letivo_id", anoLetivo.id)
-            .eq("tipo", "TRIMESTRE")
-            .order("numero", { ascending: true })
+        ? await (() => {
+            let periodosQ = supabase
+              .from("periodos_letivos")
+              .select("numero, data_inicio, data_fim")
+              .eq("escola_id", escolaId)
+              .eq("ano_letivo_id", anoLetivo.id)
+              .eq("tipo", "TRIMESTRE")
+
+            periodosQ = applyKf2ListInvariants(periodosQ, {
+              defaultLimit: 50,
+              order: [{ column: 'numero', ascending: true }],
+            })
+
+            return periodosQ
+          })()
         : { data: [] as any[] }
 
       const periodos = (periodosQuery as any).data || []

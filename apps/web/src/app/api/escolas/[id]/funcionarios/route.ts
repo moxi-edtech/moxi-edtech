@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createRouteClient } from "@/lib/supabase/route-client"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 import { hasAnyPermission, normalizePapel } from "@/lib/permissions"
+import { applyKf2ListInvariants } from "@/lib/kf2"
 
 export const dynamic = "force-dynamic"
 
@@ -25,12 +26,15 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 })
     }
 
-    const { data: vinc } = await supabase
+    let vincQuery = supabase
       .from("escola_users")
       .select("papel, role")
       .eq("user_id", user.id)
       .eq("escola_id", escolaId)
-      .limit(1)
+
+    vincQuery = applyKf2ListInvariants(vincQuery, { defaultLimit: 1, order: [{ column: 'created_at', ascending: false }] })
+
+    const { data: vinc } = await vincQuery
 
     const papelReq = normalizePapel(vinc?.[0]?.papel ?? (vinc?.[0] as any)?.role)
     const allowed = hasAnyPermission(papelReq, ["criar_usuario", "editar_usuario"])
@@ -38,11 +42,19 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
 
     const queryClient = supabase as any
 
-    const { data: vinculos, error: vincErr } = await queryClient
+    let vinculosQuery = queryClient
       .from("escola_users")
       .select("id, user_id, created_at, papel")
       .eq("escola_id", escolaId)
       .in("papel", FUNCIONARIO_PAPEIS)
+
+    vinculosQuery = applyKf2ListInvariants(vinculosQuery, {
+      limit: pageSize,
+      offset: (page - 1) * pageSize,
+      order: [{ column: 'created_at', ascending: false }],
+    })
+
+    const { data: vinculos, error: vincErr } = await vinculosQuery
 
     if (vincErr) return NextResponse.json({ ok: false, error: vincErr.message }, { status: 500 })
 

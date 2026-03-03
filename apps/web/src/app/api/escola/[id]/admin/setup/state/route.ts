@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import type { Database } from "~types/supabase";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export async function GET(
   req: NextRequest,
@@ -34,14 +35,18 @@ export async function GET(
 
     let anoLetivo = anoParam ? Number(anoParam) : null;
     if (!anoLetivo) {
-      const { data: activeYear } = await (supabase as any)
+      let activeYearQuery = (supabase as any)
         .from('anos_letivos')
         .select('ano')
         .eq('escola_id', userEscolaId)
         .eq('ativo', true)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+
+      activeYearQuery = applyKf2ListInvariants(activeYearQuery, {
+        defaultLimit: 1,
+        order: [{ column: 'created_at', ascending: false }],
+      })
+
+      const { data: activeYear } = await activeYearQuery.maybeSingle();
       anoLetivo = activeYear?.ano ?? null;
     }
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { requireRoleInSchool } from "@/lib/authz";
+import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -30,14 +31,18 @@ export async function GET(request: Request) {
   });
   if (authError) return authError;
 
-  const { data, error } = await supabase
+  let candidaturasQuery = supabase
     .from("candidaturas")
     .select("id, nome_candidato, status, created_at, updated_at")
     .eq("escola_id", escolaId)
     .in("status", ["rascunho", "pendente", "submetida", "em_analise"])
-    .order("updated_at", { ascending: false })
-    .order("created_at", { ascending: false })
-    .limit(limit ?? 20);
+
+  candidaturasQuery = applyKf2ListInvariants(candidaturasQuery, {
+    limit: limit ?? 20,
+    order: [{ column: "updated_at", ascending: false }, { column: "created_at", ascending: false }],
+  })
+
+  const { data, error } = await candidaturasQuery;
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
@@ -89,11 +94,17 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ ok: true, deleted: "all" });
   }
 
-  const { data: cand, error: candErr } = await supabase
+  let candidaturaQuery = supabase
     .from("candidaturas")
     .select("id, escola_id, status")
     .eq("id", id)
-    .maybeSingle();
+
+  candidaturaQuery = applyKf2ListInvariants(candidaturaQuery, {
+    defaultLimit: 1,
+    order: [{ column: "created_at", ascending: false }],
+  })
+
+  const { data: cand, error: candErr } = await candidaturaQuery.maybeSingle();
 
   if (candErr || !cand) {
     return NextResponse.json({ error: "Candidatura não encontrada" }, { status: 404 });

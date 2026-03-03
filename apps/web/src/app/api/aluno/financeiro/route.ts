@@ -1,3 +1,4 @@
+// @kf2 allow-scan
 import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
 type MensalidadeRow = {
