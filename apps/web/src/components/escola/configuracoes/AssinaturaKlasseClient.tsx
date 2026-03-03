@@ -192,11 +192,11 @@ export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseCli
 
   if (!assinatura) {
     return (
-      <Card className="border-amber-100 bg-amber-50/30">
+      <Card className="border-klasse-gold-100 bg-klasse-gold-50/30">
         <CardContent className="pt-6">
           <div className="flex flex-col items-center text-center space-y-3">
             <span className="text-3xl">ℹ️</span>
-            <CardTitle className="text-amber-800">Sem Assinatura Activa</CardTitle>
+            <CardTitle className="text-klasse-gold-800">Sem Assinatura Activa</CardTitle>
             <CardDescription className="max-w-md">
               A sua escola ainda não tem um plano de subscrição Klasse configurado. 
               Por favor, contacte o suporte da Klasse para activar o seu portal.
@@ -223,7 +223,7 @@ export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseCli
       
       {/* ── Card de Status Principal ── */}
       <Card className="overflow-hidden border-slate-200 shadow-sm">
-        <div className={`h-1.5 w-full ${assinatura.status === 'activa' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+        <div className={`h-1.5 w-full ${assinatura.status === 'activa' ? 'bg-klasse-green-500' : 'bg-klasse-gold-500'}`} />
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <div className="space-y-1">
             <CardTitle className="text-2xl font-bold text-slate-900">
@@ -233,7 +233,7 @@ export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseCli
               Ciclo de Facturação: {assinatura.ciclo}
             </CardDescription>
           </div>
-          <div className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors ${assinatura.status === 'activa' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>
+          <div className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors ${assinatura.status === 'activa' ? 'bg-klasse-green-100 text-klasse-green-700 border-klasse-green-200' : 'bg-klasse-gold-100 text-klasse-gold-700 border-klasse-gold-200'}`}>
             {assinatura.status.toUpperCase()}
           </div>
         </CardHeader>
@@ -321,7 +321,7 @@ export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseCli
               </Button>
             </div>
             {isStripe && (
-              <p className="mt-3 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg p-3">
+              <p className="mt-3 text-xs text-klasse-green-700 bg-klasse-green-50 border border-klasse-green-100 rounded-lg p-3">
                 Pagamentos via Stripe são tratados automaticamente. Use os botões de upgrade e gestão de cartão para acelerar mudanças no seu plano.
               </p>
             )}
@@ -355,7 +355,7 @@ export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseCli
                 </Button>
               </div>
               {hasPagamentoPendente && (
-                <p className="text-[10px] text-amber-600 mt-2 font-medium bg-amber-50 border border-amber-100 p-2 rounded-lg text-center">
+                <p className="text-[10px] text-klasse-gold-600 mt-2 font-medium bg-klasse-gold-50 border border-klasse-gold-100 p-2 rounded-lg text-center">
                   ⚠️ Temos um comprovativo pendente de validação. A activação será concluída em breve pela nossa equipa.
                 </p>
               )}
@@ -399,8 +399,8 @@ export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseCli
                       <td className="py-4 text-slate-600 capitalize">Transferência</td>
                       <td className="py-4">
                         <Badge className={
-                          p.status === 'confirmado' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                          p.status === 'pendente' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                          p.status === 'confirmado' ? 'bg-klasse-green-50 text-klasse-green-600 border-klasse-green-100' :
+                          p.status === 'pendente' ? 'bg-klasse-gold-50 text-klasse-gold-600 border-klasse-gold-100' :
                           'bg-red-50 text-red-600 border-red-100'
                         } variant="outline">
                           {p.status.toUpperCase()}

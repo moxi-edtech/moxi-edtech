@@ -132,7 +132,7 @@ export default function EditarCandidaturaPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-moxinexa-light to-blue-50 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-moxinexa-light to-slate-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-4">
           <button
@@ -146,7 +146,7 @@ export default function EditarCandidaturaPage() {
         </div>
 
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-amber-500 rounded-full mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-klasse-gold-500 rounded-full mb-4">
             <PencilSquareIcon className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-moxinexa-dark mb-2">Resolver pendências da candidatura</h1>

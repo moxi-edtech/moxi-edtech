@@ -507,12 +507,12 @@ function Step1Identificacao(props: {
             Preencha o básico. O sistema salva automaticamente como rascunho.
           </p>
           {localRestored && !initialData && (
-            <p className="mt-1 text-xs text-emerald-700">
+            <p className="mt-1 text-xs text-klasse-green-700">
               Dados restaurados localmente após queda ou retorno.
             </p>
           )}
           {!canEditDraft && (
-            <p className="mt-1 text-xs text-amber-700">
+            <p className="mt-1 text-xs text-klasse-gold-700">
               Esta candidatura já foi submetida e não pode ser editada.
             </p>
           )}
@@ -1094,8 +1094,8 @@ function Step2FitAcademico(props: {
       )}
 
       {localRestored && !initialData && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-          <p className="text-sm font-semibold text-emerald-700">
+        <div className="rounded-xl border border-klasse-green-200 bg-klasse-green-50 p-4">
+          <p className="text-sm font-semibold text-klasse-green-700">
             Dados restaurados localmente após queda ou retorno.
           </p>
         </div>
@@ -1192,14 +1192,14 @@ function Step2FitAcademico(props: {
       </div>
 
       {/* ACORDO FINANCEIRO (Novo) */}
-      <div className="bg-amber-50/50 border border-amber-100 rounded-2xl p-5 space-y-4">
-        <h3 className="text-sm font-bold text-amber-900 flex items-center gap-2">
+      <div className="bg-klasse-gold-50/50 border border-klasse-gold-100 rounded-2xl p-5 space-y-4">
+        <h3 className="text-sm font-bold text-klasse-gold-900 flex items-center gap-2">
           <Save className="w-4 h-4" />
           Acordo Financeiro Especial
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-1">
-            <label className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">
+            <label className="text-[10px] font-bold text-klasse-gold-800 uppercase tracking-wider">
               Desconto (%)
             </label>
             <input
@@ -1212,12 +1212,12 @@ function Step2FitAcademico(props: {
                 onUpdateFinanceiro({ percentagemDesconto: val });
               }}
               disabled={!canEditDraft}
-              className="w-full rounded-xl border-amber-200 bg-white px-3 py-2 text-sm focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 disabled:opacity-60"
+              className="w-full rounded-xl border-klasse-gold-200 bg-white px-3 py-2 text-sm focus:ring-4 focus:ring-klasse-gold-500/20 focus:border-klasse-gold-500 disabled:opacity-60"
               placeholder="Ex: 15"
             />
           </div>
           <div className="space-y-1">
-            <label className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">
+            <label className="text-[10px] font-bold text-klasse-gold-800 uppercase tracking-wider">
               Motivo do Desconto
             </label>
             <select
@@ -1226,7 +1226,7 @@ function Step2FitAcademico(props: {
                 onUpdateFinanceiro({ motivoDesconto: e.target.value });
               }}
               disabled={!canEditDraft}
-              className="w-full rounded-xl border-amber-200 bg-white px-3 py-2 text-sm focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 disabled:opacity-60"
+              className="w-full rounded-xl border-klasse-gold-200 bg-white px-3 py-2 text-sm focus:ring-4 focus:ring-klasse-gold-500/20 focus:border-klasse-gold-500 disabled:opacity-60"
             >
               <option value="">Sem desconto</option>
               <option value="Irmãos">Irmãos na Instituição</option>
@@ -1237,7 +1237,7 @@ function Step2FitAcademico(props: {
             </select>
           </div>
         </div>
-        <p className="text-[10px] text-amber-700 italic">
+        <p className="text-[10px] text-klasse-gold-700 italic">
           * Este desconto será aplicado automaticamente a todas as propinas geradas para esta matrícula.
         </p>
       </div>
@@ -1639,7 +1639,7 @@ function Step3Pagamento(props: {
         )}
 
         {!priceHint && !payment.parcial && (
-          <p className="text-xs text-amber-700">
+          <p className="text-xs text-klasse-gold-700">
             Sem tabela de preço configurada. Informe o valor da matrícula.
           </p>
         )}

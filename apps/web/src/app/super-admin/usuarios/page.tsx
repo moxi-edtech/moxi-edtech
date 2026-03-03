@@ -1,4 +1,4 @@
-import UsuariosListClient from "@/components/super-admin/UsuariosListClient";
+import { SuperAdminUsuariosListClient } from "@/components/super-admin/UsuariosListClient";
 import AuditPageView from "@/components/audit/AuditPageView";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 
@@ -12,7 +12,7 @@ export default async function Page() {
         title="Usuários"
         description="Gestão global de acessos e perfis do sistema."
       />
-      <UsuariosListClient />
+      <SuperAdminUsuariosListClient />
     </>
   );
 }

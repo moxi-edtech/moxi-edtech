@@ -11,6 +11,7 @@ export type Papel =
   | 'aluno'
   | 'professor'
   | 'admin_escola'
+  | 'encarregado'
 
 // Enumerate known permissions to get type-safety across the app
 export type Permission =
@@ -57,6 +58,9 @@ export type GlobalRole =
   | 'financeiro'
   | 'secretaria_financeiro'
   | 'admin_financeiro'
+  | 'admin_escola'
+  | 'staff_admin'
+  | 'encarregado'
   | 'global_admin'
   | 'guest'
 
@@ -77,32 +81,41 @@ export function normalizePapel(papel: Papel | string | null | undefined): Papel 
     admin_financeiro: 'admin_financeiro',
     professor: 'professor',
     aluno: 'aluno',
+    encarregado: 'encarregado',
   }
 
   const key = papel.trim().toLowerCase()
   return map[key] ?? null
 }
 
-// Mapping derived directly from the provided matrix.
-// Note: current app also uses 'admin' and 'staff_admin' for papel; we alias them to 'admin_escola'.
-const ROLE_PERMISSIONS: Record<Papel, ReadonlySet<Permission>> = {
-  // Alias roles map to the same permission set
-  admin: new Set<Permission>([]), // will be replaced below
-  staff_admin: new Set<Permission>([]), // will be replaced below
+const ADMIN_PERMISSIONS = new Set<Permission>([
+  'criar_usuario',
+  'editar_usuario',
+  'remover_usuario',
+  'configurar_escola',
+  'gerenciar_disciplinas',
+  'visualizar_relatorios_globais',
+  'visualizar_financeiro',
+  'visualizar_academico',
+  'registrar_pagamento',
+  'criar_matricula',
+])
 
-  admin_escola: new Set<Permission>([
-    'criar_usuario',
-    'editar_usuario',
-    'remover_usuario',
-    'configurar_escola',
-    'gerenciar_disciplinas',
-    'visualizar_relatorios_globais',
-    'visualizar_financeiro',
-    'visualizar_academico',
-    // Extend to preserve current behavior where admins can act across modules
-    'registrar_pagamento',
-    'criar_matricula',
-  ]),
+const ALUNO_PERMISSIONS = new Set<Permission>([
+  'visualizar_boletim',
+  'visualizar_frequencia',
+  'consultar_calendario',
+  'consultar_horarios',
+  'visualizar_situacao_financeira',
+  'baixar_documentos',
+  'enviar_mensagem',
+])
+
+// Mapping derived directly from the provided matrix.
+const ROLE_PERMISSIONS: Record<Papel, ReadonlySet<Permission>> = {
+  admin: ADMIN_PERMISSIONS,
+  staff_admin: ADMIN_PERMISSIONS,
+  admin_escola: ADMIN_PERMISSIONS,
 
   financeiro: new Set<Permission>([
     'criar_cobranca',
@@ -173,21 +186,9 @@ const ROLE_PERMISSIONS: Record<Papel, ReadonlySet<Permission>> = {
     'visualizar_academico',
   ]),
 
-  aluno: new Set<Permission>([
-    'visualizar_boletim',
-    'visualizar_frequencia',
-    'consultar_calendario',
-    'consultar_horarios',
-    'visualizar_situacao_financeira',
-    'baixar_documentos',
-    'enviar_mensagem',
-  ]),
+  aluno: ALUNO_PERMISSIONS,
+  encarregado: ALUNO_PERMISSIONS,
 }
-
-// Alias papel 'admin' and 'staff_admin' to the 'admin_escola' set
-// This preserves current behavior where 'admin'/'staff_admin' are used
-;(ROLE_PERMISSIONS as any).admin = ROLE_PERMISSIONS.admin_escola
-;(ROLE_PERMISSIONS as any).staff_admin = ROLE_PERMISSIONS.admin_escola
 
 export function getPermissionsForRole(papel: Papel | string | null | undefined): ReadonlySet<Permission> {
   const normalized = normalizePapel(papel)
@@ -250,6 +251,8 @@ export function mapPapelToGlobalRole(papel: Papel | string | null | undefined): 
       return 'professor'
     case 'aluno':
       return 'aluno'
+    case 'encarregado':
+      return 'encarregado'
     default:
       return 'guest'
   }

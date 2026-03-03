@@ -169,8 +169,8 @@ function Hint({ children, className = "" }: { children: React.ReactNode; classNa
 
 function InfoBox({ children, variant = "gold" }: { children: React.ReactNode; variant?: "gold" | "green" }) {
   const styles = {
-    gold:  "bg-amber-50 border-amber-200 text-amber-800",
-    green: "bg-emerald-50 border-emerald-200 text-emerald-800",
+    gold:  "bg-klasse-gold-50 border-klasse-gold-200 text-klasse-gold-800",
+    green: "bg-klasse-green-50 border-klasse-green-200 text-klasse-green-800",
   };
   return (
     <div className={`flex gap-3 p-4 rounded-2xl border text-sm leading-relaxed mb-6 ${styles[variant]}`}>
@@ -501,7 +501,7 @@ export default function OnboardingPage() {
                       <span className="text-[9px] font-black uppercase text-slate-400 ml-3 tracking-widest">{cls.nivel === "EP" ? "Primário" : "Secundário"}</span>
                     </div>
                   </div>
-                  {cls.activa && <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-tighter">Activada</span>}
+                  {cls.activa && <span className="text-[10px] font-bold text-klasse-green-600 uppercase tracking-tighter">Activada</span>}
                 </button>
               ))}
             </div>
@@ -717,7 +717,7 @@ export default function OnboardingPage() {
               {/* Escola */}
               <div className="p-6 bg-white border-b border-slate-50">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-emerald-50 rounded-xl text-[#1F6B3B]"><Building2 size={16} /></div>
+                  <div className="p-2 bg-klasse-green-50 rounded-xl text-[#1F6B3B]"><Building2 size={16} /></div>
                   <h3 className="text-xs font-black uppercase tracking-widest text-slate-800">Instituição</h3>
                 </div>
                 <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm">
@@ -731,7 +731,7 @@ export default function OnboardingPage() {
               {/* Topologia */}
               <div className="p-6 bg-white border-b border-slate-50">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-blue-50 rounded-xl text-blue-600"><Layout size={16} /></div>
+                  <div className="p-2 bg-slate-50 rounded-xl text-slate-600"><Layout size={16} /></div>
                   <h3 className="text-xs font-black uppercase tracking-widest text-slate-800">Dimensão</h3>
                 </div>
                 <div className="grid grid-cols-2 gap-y-4 gap-x-6 text-sm">
@@ -751,7 +751,7 @@ export default function OnboardingPage() {
               {/* Contacto */}
               <div className="p-6 bg-white border-b border-slate-50">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-purple-50 rounded-xl text-purple-600"><Users size={16} /></div>
+                  <div className="p-2 bg-slate-50 rounded-xl text-slate-600"><Users size={16} /></div>
                   <h3 className="text-xs font-black uppercase tracking-widest text-slate-800">Operacional</h3>
                 </div>
                 <div className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl">

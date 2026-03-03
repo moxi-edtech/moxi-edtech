@@ -197,7 +197,7 @@ export default async function FinanceiroDashboardPage({
         .from("notifications")
         .select("id, titulo, mensagem, link_acao, lida, created_at, tipo, target_role")
         .eq("escola_id", escolaId)
-        .eq("target_role", "financeiro")
+        .in("target_role", ["financeiro", "secretaria_financeiro", "admin_financeiro"])
         .eq("lida", false)
         .order("created_at", { ascending: false })
         .limit(5),
@@ -277,7 +277,7 @@ export default async function FinanceiroDashboardPage({
                 <Card title="Cobrado" value={kwanza.format(realizado)} valueClassName="text-[#1F6B3B]" helper={`+${percentPago}% do previsto`} icon={<Wallet />} />
                 <Card title="Previsto" value={kwanza.format(previsto)} valueClassName="text-slate-700" helper="Meta do mês" icon={<TrendingUp />} />
                 <Card title="Em Atraso" value={kwanza.format(inadimplenciaTotal)} valueClassName="text-rose-600" helper={`${alunosInadimplentes} alunos`} icon={<AlertCircle />} />
-                <Card title="Descontos / Pendências" value={kwanza.format(totalPendentes)} valueClassName="text-amber-600" helper="Itens a regularizar" icon={<BadgePercent />} />
+                <Card title="Descontos / Pendências" value={kwanza.format(totalPendentes)} valueClassName="text-klasse-gold-600" helper="Itens a regularizar" icon={<BadgePercent />} />
               </section>
 
               <section className="rounded-xl border border-slate-200/70 bg-white p-5 shadow-sm">
@@ -290,7 +290,7 @@ export default async function FinanceiroDashboardPage({
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-slate-100">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-[#1F6B3B] to-emerald-400 shadow-[0_0_14px_rgba(34,197,94,0.35)]"
+                    className="h-full rounded-full bg-gradient-to-r from-[#1F6B3B] to-klasse-green-400 shadow-[0_0_14px_rgba(34,197,94,0.35)]"
                     style={{ width: `${Math.max(0, Math.min(100, percentPago))}%` }}
                   />
                 </div>

@@ -34,7 +34,7 @@ function statusBadge(totalEmAtraso?: number | null) {
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+    <span className="inline-flex items-center gap-1 rounded-full border border-klasse-green-200 bg-klasse-green-50 px-2 py-0.5 text-[11px] font-semibold text-klasse-green-700">
       <CheckCircle className="h-3 w-3" />
       Regular
     </span>

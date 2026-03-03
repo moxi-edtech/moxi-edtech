@@ -60,37 +60,37 @@ export interface ButtonProps
 }
 
 const toneClasses: Record<ButtonTone, string> = {
-  amber: "bg-amber-500 text-white hover:bg-amber-600",
-  blue: "bg-blue-600 text-white hover:bg-blue-700",
-  emerald: "bg-emerald-600 text-white hover:bg-emerald-700",
+  amber: "bg-klasse-gold-500 text-white hover:bg-klasse-gold-600",
+  blue: "bg-slate-600 text-white hover:bg-slate-700",
+  emerald: "bg-klasse-green-600 text-white hover:bg-klasse-green-700",
   gray: "bg-slate-100 text-slate-700 hover:bg-slate-200",
-  green: "bg-emerald-600 text-white hover:bg-emerald-700",
+  green: "bg-klasse-green-600 text-white hover:bg-klasse-green-700",
   gold: "bg-klasse-gold text-white hover:bg-[#D4A32C]", // Using the color from TipoPresencaStep.tsx
   navy: "bg-slate-900 text-white hover:bg-slate-800",
   neutral: "bg-slate-200 text-slate-800 hover:bg-slate-300",
-  ok: "bg-emerald-600 text-white hover:bg-emerald-700",
+  ok: "bg-klasse-green-600 text-white hover:bg-klasse-green-700",
   red: "bg-red-600 text-white hover:bg-red-700",
   slate: "bg-slate-900 text-white hover:bg-slate-800",
   teal: "bg-teal-600 text-white hover:bg-teal-700",
   violet: "bg-violet-600 text-white hover:bg-violet-700",
-  warn: "bg-amber-500 text-white hover:bg-amber-600",
+  warn: "bg-klasse-gold-500 text-white hover:bg-klasse-gold-600",
 }
 
 const outlineToneClasses: Record<ButtonTone, string> = {
-  amber: "border-amber-400 text-amber-700 hover:bg-amber-50",
-  blue: "border-blue-500 text-blue-600 hover:bg-blue-50",
-  emerald: "border-emerald-500 text-emerald-600 hover:bg-emerald-50",
+  amber: "border-klasse-gold-400 text-klasse-gold-700 hover:bg-klasse-gold-50",
+  blue: "border-slate-500 text-slate-600 hover:bg-slate-50",
+  emerald: "border-klasse-green-500 text-klasse-green-600 hover:bg-klasse-green-50",
   gray: "border-slate-300 text-slate-700 hover:bg-slate-50",
-  green: "border-emerald-500 text-emerald-600 hover:bg-emerald-50",
+  green: "border-klasse-green-500 text-klasse-green-600 hover:bg-klasse-green-50",
   gold: "border-klasse-gold text-klasse-gold hover:bg-klasse-gold/10", // Using the color from TipoPresencaStep.tsx
   navy: "border-slate-700 text-slate-700 hover:bg-slate-50",
   neutral: "border-slate-300 text-slate-700 hover:bg-slate-50",
-  ok: "border-emerald-500 text-emerald-600 hover:bg-emerald-50",
+  ok: "border-klasse-green-500 text-klasse-green-600 hover:bg-klasse-green-50",
   red: "border-red-500 text-red-600 hover:bg-red-50",
   slate: "border-slate-700 text-slate-700 hover:bg-slate-50",
   teal: "border-teal-500 text-teal-600 hover:bg-teal-50",
   violet: "border-violet-500 text-violet-600 hover:bg-violet-50",
-  warn: "border-amber-400 text-amber-700 hover:bg-amber-50",
+  warn: "border-klasse-gold-400 text-klasse-gold-700 hover:bg-klasse-gold-50",
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(

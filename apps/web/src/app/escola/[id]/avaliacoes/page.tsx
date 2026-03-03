@@ -918,7 +918,7 @@ export default function MoxiConfiguracaoAvaliacoes() {
                   ? "border-green-200" 
                   : t.tone === "error" 
                   ? "border-red-200" 
-                  : "border-blue-200"
+                  : "border-slate-200"
               }`}
             >
               <div className="flex items-start gap-3">
@@ -927,7 +927,7 @@ export default function MoxiConfiguracaoAvaliacoes() {
                     ? "bg-green-600 text-white" 
                     : t.tone === "error" 
                     ? "bg-red-600 text-white" 
-                    : "bg-blue-600 text-white"
+                    : "bg-slate-600 text-white"
                 }`}>
                   {t.tone === "success" ? <SvgIcons.check /> : t.tone === "error" ? "!" : "i"}
                 </div>

@@ -364,7 +364,7 @@ export default function AdmissoesRadarClient({ escolaId }: { escolaId: string })
                       </div>
                       <div className="mt-1 text-[11px] text-slate-500">{dt}</div>
                       {rawStatus === 'aguardando_pagamento' && (
-                        <div className="mt-1 text-[11px] text-amber-300">Aguardando pagamento</div>
+                        <div className="mt-1 text-[11px] text-klasse-gold-300">Aguardando pagamento</div>
                       )}
                       {item.status !== 'matriculado' && (
                         <div className="mt-2 flex flex-wrap gap-2">

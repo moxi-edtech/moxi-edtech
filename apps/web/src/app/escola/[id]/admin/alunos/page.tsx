@@ -478,8 +478,8 @@ function SelectionBar({ selected, total, onClear, onArchive, onMessage, onExport
         <button
           onClick={onArchive}
           className="flex items-center gap-1.5 rounded-xl border border-slate-700
-            px-3 py-1.5 text-xs font-semibold text-slate-300 hover:border-amber-500
-            hover:text-amber-400 transition-colors"
+            px-3 py-1.5 text-xs font-semibold text-slate-300 hover:border-klasse-gold-500
+            hover:text-klasse-gold-400 transition-colors"
         >
           <Archive size={12} /> Arquivar
         </button>
@@ -1381,7 +1381,7 @@ export default function AlunosPage({ params }: { params: Promise<{ id: string }>
                                 <button onClick={() => archiveOne(aluno)}
                                   className="flex items-center gap-1 rounded-lg border border-slate-200
                                     px-2 py-1.5 text-xs font-semibold text-slate-500
-                                    hover:border-amber-300 hover:text-amber-600 transition-colors"
+                                    hover:border-klasse-gold-300 hover:text-klasse-gold-600 transition-colors"
                                   title="Arquivar">
                                   <Archive size={12} />
                                 </button>

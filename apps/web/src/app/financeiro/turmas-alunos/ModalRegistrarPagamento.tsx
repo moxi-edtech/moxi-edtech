@@ -145,10 +145,10 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
                 ))}
               </div>
               
-              <div className="mt-6 p-4 bg-emerald-50 rounded-xl">
+              <div className="mt-6 p-4 bg-klasse-green-50 rounded-xl">
                 <div className="flex justify-between items-center">
-                  <span className="font-medium text-emerald-800">Total selecionado:</span>
-                  <span className="text-2xl font-bold text-emerald-700">
+                  <span className="font-medium text-klasse-green-800">Total selecionado:</span>
+                  <span className="text-2xl font-bold text-klasse-green-700">
                     {totalSelecionado.toLocaleString()} Kz
                   </span>
                 </div>
@@ -282,7 +282,7 @@ const ModalRegistrarPagamento: React.FC<ModalRegistrarPagamentoProps> = ({
                   </div>
                   <div className="flex justify-between text-lg font-bold pt-3 border-t border-slate-200">
                     <span>Total:</span>
-                    <span className="text-emerald-700">{totalSelecionado.toLocaleString()} Kz</span>
+                    <span className="text-klasse-green-700">{totalSelecionado.toLocaleString()} Kz</span>
                   </div>
                 </div>
               </div>

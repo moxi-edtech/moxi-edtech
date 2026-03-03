@@ -59,6 +59,8 @@ export async function POST(
       "super_admin",
       "admin",
       "secretaria",
+      "secretaria_financeiro",
+      "admin_financeiro",
     ];
 
     if (!role || !allowedRoles.includes(role)) {

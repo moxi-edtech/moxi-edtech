@@ -242,7 +242,7 @@ export function GradeEntryGrid({
                 type="checkbox"
                 checked={!!info.getValue()}
                 onChange={(e) => updateIsento(info.row.index, e.target.checked)}
-                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                className="rounded border-slate-300 text-klasse-green-600 focus:ring-klasse-green-500"
                 title="Marcar como isento neste trimestre (ex: transferência)"
               />
             </div>
@@ -331,7 +331,7 @@ export function GradeEntryGrid({
               const val = info.getValue()
               if (val === null) return "-"
               return (
-                <span className={`font-bold ${val < 10 ? "text-rose-600" : "text-emerald-600"}`}>
+                <span className={`font-bold ${val < 10 ? "text-rose-600" : "text-klasse-green-600"}`}>
                   {val}
                 </span>
               )
@@ -350,8 +350,8 @@ export function GradeEntryGrid({
   })
 
   const savingIndicator = isSaving
-    ? { label: "Salvando...", icon: <Loader2 className="w-3 h-3 animate-spin" />, tone: "text-blue-600" }
-    : { label: "Salvo", icon: <CheckCircle2 className="w-3 h-3" />, tone: "text-emerald-600" }
+    ? { label: "Salvando...", icon: <Loader2 className="w-3 h-3 animate-spin" />, tone: "text-slate-600" }
+    : { label: "Salvo", icon: <CheckCircle2 className="w-3 h-3" />, tone: "text-klasse-green-600" }
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -389,7 +389,7 @@ export function GradeEntryGrid({
               <tr
                 key={row.id}
                 className={`hover:bg-slate-50 transition-colors ${
-                  highlightId && row.original.id === highlightId ? "bg-emerald-50" : ""
+                  highlightId && row.original.id === highlightId ? "bg-klasse-green-50" : ""
                 }`}
               >
                 {row.getVisibleCells().map((cell) => (
@@ -474,7 +474,7 @@ const GradeInput = ({
           onNavigate(0, 1)
         }
       }}
-      className={`w-full h-8 text-center rounded border border-slate-200 font-bold outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all ${
+      className={`w-full h-8 text-center rounded border border-slate-200 font-bold outline-none focus:ring-2 focus:ring-klasse-green-500 focus:border-transparent transition-all ${
         disabled ? "bg-slate-100 text-slate-400 border-dashed text-[10px]" :
         value !== null && value < 10 ? "text-rose-600 bg-rose-50" : "text-slate-900"
       } ${value === null && !disabled ? "bg-slate-50" : "bg-white"}`}

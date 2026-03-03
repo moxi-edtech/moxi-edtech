@@ -86,7 +86,7 @@ export function FinalizarMatriculaButton({ matriculaId, alunoNome, escolaId }: F
               id="status"
               value={statusFinal}
               onChange={(e) => setStatusFinal(e.target.value as 'concluido' | 'reprovado' | '')}
-              className="col-span-3 px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="col-span-3 px-3 py-2 border rounded-md focus:ring-slate-500 focus:border-slate-500"
               disabled={loading}
             >
               <option value="">Selecione...</option>
@@ -103,7 +103,7 @@ export function FinalizarMatriculaButton({ matriculaId, alunoNome, escolaId }: F
               id="motivo"
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
-              className="col-span-3 px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="col-span-3 px-3 py-2 border rounded-md focus:ring-slate-500 focus:border-slate-500"
               disabled={loading}
               rows={3}
             />

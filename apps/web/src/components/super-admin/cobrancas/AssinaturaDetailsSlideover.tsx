@@ -176,7 +176,7 @@ export default function AssinaturaDetailsSlideover({ assinaturaId, onClose, onUp
                   <select 
                     value={plano} 
                     onChange={(e) => setPlano(e.target.value as any)}
-                    className="w-full text-xs rounded-lg border-slate-200 bg-white p-2 focus:ring-[#1F6B3B]"
+                    className="w-full text-xs rounded-lg border-slate-200 bg-white p-2 focus:ring-2 focus:ring-klasse-green/30 focus:border-klasse-green"
                   >
                     <option value="essencial">Essencial</option>
                     <option value="profissional">Profissional</option>
@@ -188,7 +188,7 @@ export default function AssinaturaDetailsSlideover({ assinaturaId, onClose, onUp
                   <select 
                     value={ciclo} 
                     onChange={(e) => setCiclo(e.target.value as any)}
-                    className="w-full text-xs rounded-lg border-slate-200 bg-white p-2 focus:ring-[#1F6B3B]"
+                    className="w-full text-xs rounded-lg border-slate-200 bg-white p-2 focus:ring-2 focus:ring-klasse-green/30 focus:border-klasse-green"
                   >
                     <option value="mensal">Mensal</option>
                     <option value="anual">Anual</option>
@@ -216,8 +216,11 @@ export default function AssinaturaDetailsSlideover({ assinaturaId, onClose, onUp
                 <Button 
                   fullWidth 
                   variant="outline" 
-                  tone={data.status === 'activa' ? 'red' : 'green'}
-                  className="text-[10px] uppercase font-bold h-10"
+                  className={`text-[10px] uppercase font-bold h-10 ${
+                    data.status === 'activa'
+                      ? 'border-klasse-gold text-klasse-gold hover:bg-klasse-gold/10'
+                      : 'border-klasse-green text-klasse-green hover:bg-klasse-green/10'
+                  }`}
                   onClick={handleToggleStatus}
                 >
                   {data.status === 'activa' ? 'Suspender Escola' : 'Reactivar Escola'}
@@ -245,10 +248,9 @@ export default function AssinaturaDetailsSlideover({ assinaturaId, onClose, onUp
             <Button variant="outline" fullWidth onClick={onClose}>Cancelar</Button>
             <Button 
               fullWidth 
-              tone="green" 
               loading={saving} 
               onClick={handleSave}
-              className="bg-[#1F6B3B] hover:bg-[#1F6B3B]/90 text-white font-bold"
+              className="bg-klasse-green hover:bg-klasse-green/90 text-white font-bold"
             >
               Guardar Alterações
             </Button>
