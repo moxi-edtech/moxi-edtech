@@ -63,7 +63,11 @@ async function dispatchAsyncRun(eventPayload: Record<string, unknown>) {
   });
 }
 
-});
+async function getExecutorAccessToken(supabase: Awaited<ReturnType<typeof supabaseServerTyped<Database>>>) {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token ?? null;
+}
+
 
 async function insertStep(
   supabase: Awaited<ReturnType<typeof supabaseServerTyped<Database>>>,
@@ -502,10 +506,13 @@ export async function POST(req: Request) {
       if (insertError) return NextResponse.json({ ok: false, error: insertError.message }, { status: 400 });
     }
 
+    const executorAccessToken = await getExecutorAccessToken(supabase);
+
     const eventPayload = {
       run_id: runId,
       escola_id: escolaId,
       executor_user_id: user.id,
+      executor_access_token: executorAccessToken,
       acao: payload.data.acao,
       ano_letivo_id: payload.data.ano_letivo_id,
       periodo_letivo_id: payload.data.periodo_letivo_id ?? null,
@@ -516,6 +523,9 @@ export async function POST(req: Request) {
     };
 
     if (payload.data.executar_assincrono) {
+      if (!executorAccessToken) {
+        return NextResponse.json({ ok: false, error: "Sessão inválida para execução assíncrona." }, { status: 401 });
+      }
       await dispatchAsyncRun(eventPayload);
       return NextResponse.json({ ok: true, run_id: runId, estado: ESTADOS_FECHAMENTO.PENDING_VALIDATION, queued: true }, { status: 202 });
     }
@@ -715,10 +725,13 @@ export async function PATCH(req: Request) {
       if (reopenErr) return NextResponse.json({ ok: false, error: reopenErr.message }, { status: 400 });
     }
 
+    const executorAccessToken = await getExecutorAccessToken(supabase);
+
     const eventPayload = {
       run_id: payload.data.run_id,
       escola_id: escolaId,
       executor_user_id: user.id,
+      executor_access_token: executorAccessToken,
       acao: job.fechamento_tipo,
       ano_letivo_id: String(job.ano_letivo_id),
       periodo_letivo_id: (job.periodo_letivo_id as string | null) ?? null,
@@ -729,6 +742,9 @@ export async function PATCH(req: Request) {
     };
 
     if (payload.data.executar_assincrono) {
+      if (!executorAccessToken) {
+        return NextResponse.json({ ok: false, error: "Sessão inválida para execução assíncrona." }, { status: 401 });
+      }
       await dispatchAsyncRun(eventPayload);
       return NextResponse.json({ ok: true, run_id: payload.data.run_id, estado: ESTADOS_FECHAMENTO.PENDING_VALIDATION, queued: true }, { status: 202 });
     }
