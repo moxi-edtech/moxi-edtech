@@ -225,7 +225,13 @@ async function ensureAdminUser(
     { onConflict: 'escola_id,user_id' }
   )
 
-  if (params.papel === 'admin' || params.papel === 'admin_escola' || params.papel === 'staff_admin' || params.papel === 'admin_financeiro') {
+  if (
+    params.papel === 'admin' ||
+    params.papel === 'admin_escola' ||
+    params.papel === 'staff_admin' ||
+    params.papel === 'admin_financeiro' ||
+    params.papel === 'secretaria_financeiro'
+  ) {
     await supabase.from('escola_administradores').upsert(
       {
         escola_id: params.escolaId,
