@@ -1466,6 +1466,54 @@ export type Database = {
           },
         ]
       }
+      configuracoes_financeiro: {
+        Row: {
+          bloquear_inadimplentes: boolean
+          created_at: string
+          dia_vencimento_padrao: number
+          escola_id: string
+          juros_diarios_percent: number
+          moeda: string
+          multa_atraso_percent: number
+          updated_at: string
+        }
+        Insert: {
+          bloquear_inadimplentes?: boolean
+          created_at?: string
+          dia_vencimento_padrao?: number
+          escola_id: string
+          juros_diarios_percent?: number
+          moeda?: string
+          multa_atraso_percent?: number
+          updated_at?: string
+        }
+        Update: {
+          bloquear_inadimplentes?: boolean
+          created_at?: string
+          dia_vencimento_padrao?: number
+          escola_id?: string
+          juros_diarios_percent?: number
+          moeda?: string
+          multa_atraso_percent?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "configuracoes_financeiro_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: true
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "configuracoes_financeiro_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: true
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       curriculum_preset_subjects: {
         Row: {
           avaliacao_mode: string | null
@@ -1730,6 +1778,7 @@ export type Database = {
           entra_no_horario: boolean | null
           escola_id: string
           id: string
+          modelo_excecao_id: string | null
           obrigatoria: boolean
           ordem: number | null
           periodos_ativos: number[] | null
@@ -1755,6 +1804,7 @@ export type Database = {
           entra_no_horario?: boolean | null
           escola_id: string
           id?: string
+          modelo_excecao_id?: string | null
           obrigatoria?: boolean
           ordem?: number | null
           periodos_ativos?: number[] | null
@@ -1780,6 +1830,7 @@ export type Database = {
           entra_no_horario?: boolean | null
           escola_id?: string
           id?: string
+          modelo_excecao_id?: string | null
           obrigatoria?: boolean
           ordem?: number | null
           periodos_ativos?: number[] | null
@@ -1857,6 +1908,13 @@ export type Database = {
             columns: ["escola_id"]
             isOneToOne: false
             referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curso_matriz_modelo_excecao_fk"
+            columns: ["modelo_excecao_id"]
+            isOneToOne: false
+            referencedRelation: "modelos_avaliacao"
             referencedColumns: ["id"]
           },
           {
@@ -6131,8 +6189,8 @@ export type Database = {
       modelos_avaliacao: {
         Row: {
           componentes: Json
-          curso_id: string | null
           created_at: string
+          curso_id: string | null
           escola_id: string
           formula: Json
           id: string
@@ -6144,8 +6202,8 @@ export type Database = {
         }
         Insert: {
           componentes?: Json
-          curso_id?: string | null
           created_at?: string
+          curso_id?: string | null
           escola_id: string
           formula?: Json
           id?: string
@@ -6157,8 +6215,8 @@ export type Database = {
         }
         Update: {
           componentes?: Json
-          curso_id?: string | null
           created_at?: string
+          curso_id?: string | null
           escola_id?: string
           formula?: Json
           id?: string
@@ -6168,7 +6226,22 @@ export type Database = {
           tipo?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "modelos_avaliacao_curso_fk"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "cursos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "modelos_avaliacao_curso_fk"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_cursos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notas: {
         Row: {
@@ -11374,6 +11447,10 @@ export type Database = {
           p_servico_codigo: string
         }
         Returns: Json
+      }
+      calcular_media_trimestral: {
+        Args: { p_notas: Json; p_regras: Json }
+        Returns: number
       }
       can_access: { Args: { eid: string }; Returns: boolean }
       can_bypass_pauta_lock: {

@@ -8,10 +8,10 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "pnpm -w --filter web dev",
-    "build": "pnpm -w --filter web build",
-    "start": "pnpm -w --filter web start",
-    "lint": "pnpm -w --filter web lint",
+    "dev": "pnpm -C apps/web dev",
+    "build": "pnpm -C apps/web build",
+    "start": "pnpm -C apps/web start",
+    "lint": "pnpm -C apps/web lint",
     "typecheck": "pnpm -r typecheck",
     "clean": "rm -rf .next node_modules/.cache",
     "db:types": "bash -c 'set -euo pipefail; mkdir -p types; tmp=$(mktemp); if command -v supabase >/dev/null 2>&1; then supabase gen types typescript --project-id wjtifcpxxxotsbmvbgoq > \"$tmp\"; elif [ \"${VERCEL:-}\" = \"1\" ] && [ -z \"${SUPABASE_ACCESS_TOKEN:-}\" ]; then echo \"Skipping db:types on Vercel (no supabase CLI/token)\"; rm \"$tmp\"; exit 0; else pnpm dlx supabase@latest gen types typescript --project-id wjtifcpxxxotsbmvbgoq > \"$tmp\"; fi; mv \"$tmp\" types/supabase.ts'",
