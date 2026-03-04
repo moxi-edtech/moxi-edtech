@@ -1,6 +1,6 @@
 {
-  "timestamp": "2026-03-01T17:53:14.922Z",
-  "repoRoot": "/Users/gundja/moxi-edtech",
+  "timestamp": "2026-03-04T12:01:04.319Z",
+  "repoRoot": "/workspace/moxi-edtech",
   "summary": {
     "critical": 0,
     "high": 4,
@@ -32,11 +32,19 @@
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
         },
         {
+          "file": "apps/web/src/app/ativar-acesso/page.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
           "file": "apps/web/src/app/financeiro/page.tsx",
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
         },
         {
           "file": "apps/web/src/app/professor/page.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/components/aluno/usePortalSWR.ts",
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
         },
         {
@@ -106,14 +114,6 @@
         {
           "file": "apps/web/src/app/financeiro/fecho/page.tsx",
           "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
-        },
-        {
-          "file": "apps/web/src/app/professor/frequencias/page.tsx",
-          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
-        },
-        {
-          "file": "apps/web/src/app/professor/notas/page.tsx",
-          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
         }
       ],
       "recommendation": "Remover no-store onde houver MV/camadas cacheáveis; manter só em rotas realmente sensíveis."
@@ -158,6 +158,10 @@
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
+          "file": "CHANGELOG.md",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
           "file": "temp_supabase_output.ts",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
@@ -170,11 +174,15 @@
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
-          "file": "tools/validator/fluency-validator-monorepo.js",
+          "file": "docs/academico/historico-imutavel.md",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
-          "file": "supabase/functions/outbox-worker/index.ts",
+          "file": "docs/academico/runbook-fechamento-academico.md",
+          "note": "match: /audit_logs|auditLog|create_audit/i"
+        },
+        {
+          "file": "tools/validator/fluency-validator-monorepo.js",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         },
         {
@@ -243,14 +251,6 @@
         },
         {
           "file": "supabase/migrations/20260203000012_rpc_gerar_historico_anual.sql",
-          "note": "match: /audit_logs|auditLog|create_audit/i"
-        },
-        {
-          "file": "supabase/migrations/20260203000013_update_finalizar_matricula_rpc.sql",
-          "note": "match: /audit_logs|auditLog|create_audit/i"
-        },
-        {
-          "file": "supabase/migrations/20260203000015_refactor_gerar_mensalidades_trigger.sql",
           "note": "match: /audit_logs|auditLog|create_audit/i"
         }
       ],
@@ -345,6 +345,10 @@
           "note": "match: /mv_secretaria_matriculas_status/i"
         },
         {
+          "file": "supabase/migrations/20261201210000_update_financeiro_kpis_realistic.sql",
+          "note": "match: /mv_secretaria_matriculas_status/i"
+        },
+        {
           "file": "supabase/migrations/20260127020139_remote_schema.sql",
           "note": "match: /ux_mv_secretaria_matriculas_status/i"
         },
@@ -359,10 +363,6 @@
         {
           "file": "supabase/migrations/20260127020139_remote_schema.sql",
           "note": "match: /mv_secretaria_matriculas_turma_status/i"
-        },
-        {
-          "file": "supabase/migrations/20260127020139_remote_schema.sql",
-          "note": "match: /ux_mv_secretaria_matriculas_turma_status/i"
         }
       ],
       "recommendation": "Garantir MV + UNIQUE INDEX + refresh function + cron job + view wrapper para secretária e admin (sem cálculo ao vivo)."
