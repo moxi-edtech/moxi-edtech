@@ -65,6 +65,7 @@ export async function GET() {
           .in("turma_id", turmaIds),
         {
           defaultLimit: 500,
+          maxLimit: 500,
           order: [{ column: 'turma_id', ascending: true }],
           tieBreakerColumn: 'turma_id',
         }
@@ -78,6 +79,7 @@ export async function GET() {
           .in("status", ["ativo", "ativa", "active"]),
         {
           defaultLimit: 500,
+          maxLimit: 500,
           order: [{ column: 'turma_id', ascending: true }],
         }
       )
