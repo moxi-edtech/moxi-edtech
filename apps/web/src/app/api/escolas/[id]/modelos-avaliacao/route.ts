@@ -38,7 +38,7 @@ export async function GET(
 
     let query = (supabase as any)
       .from("modelos_avaliacao")
-      .select("id, nome, componentes, tipo, regras, formula, is_default, created_at, updated_at")
+      .select("id, nome, curso_id, componentes, tipo, regras, formula, is_default, created_at, updated_at")
       .eq("escola_id", escolaId);
 
     query = applyKf2ListInvariants(query, {
@@ -96,7 +96,7 @@ export async function POST(
         formula: parsed.data.formula,
         is_default: parsed.data.is_default,
       })
-      .select("id, nome, componentes, tipo, regras, formula, is_default, created_at, updated_at")
+      .select("id, nome, curso_id, componentes, tipo, regras, formula, is_default, created_at, updated_at")
       .single();
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
 

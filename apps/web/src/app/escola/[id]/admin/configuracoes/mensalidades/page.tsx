@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
 import { buildConfigMenuItems } from "../_shared/menuItems";
 import PrecosClient from "@/app/escola/[id]/financeiro/configuracoes/precos/PrecosClient";
@@ -33,6 +33,8 @@ export default function MensalidadesEmolumentosPage() {
   const escolaId = params?.id;
   const base = escolaId ? `/escola/${escolaId}/admin/configuracoes` : "";
   const { error, success } = useToast();
+  const pathname = usePathname();
+  const isStandalone = pathname?.includes("/admin/configuracoes/mensalidades");
 
   const [catalogOpen, setCatalogOpen] = useState(false);
   const [catalogLoading, setCatalogLoading] = useState(false);
@@ -126,6 +128,7 @@ export default function MensalidadesEmolumentosPage() {
       subtitle="Configure valores de mensalidades, matrículas e catálogo de serviços."
       menuItems={buildConfigMenuItems(base)}
       backHref={`/escola/${escolaId}/admin`}
+      embedded={!isStandalone}
     >
       <div className="space-y-6">
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
@@ -136,7 +139,7 @@ export default function MensalidadesEmolumentosPage() {
             </div>
           </div>
           <div className="p-6">
-            <PrecosClient escolaId={escolaId} embedded />
+            <PrecosClient escolaId={escolaId} embedded showDueDate={false} />
           </div>
         </div>
 

@@ -35,6 +35,7 @@ export const sidebarConfig: SidebarConfig = {
     { href: "/escola/[escolaId]/admin/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
     { href: "/escola/[escolaId]/admin/alunos", label: "Alunos", icon: "Users" },
     { href: "/escola/[escolaId]/admin/professores", label: "Professores", icon: "User" },
+    { href: "/admin/operacoes-academicas", label: "Operações Académicas", icon: "Activity" },
     {
       href: "/escola/[escolaId]/admin/turmas",
       label: "Turmas",
@@ -104,6 +105,7 @@ export const sidebarConfig: SidebarConfig = {
     { href: "/escola/[escolaId]/secretaria/calendario", label: "Calendário", icon: "CalendarDays" },
     { href: "/escola/[escolaId]/secretaria/exportacoes", label: "Exportações", icon: "Archive" },
     { href: "/escola/[escolaId]/secretaria/documentos-oficiais", label: "Documentos Oficiais", icon: "FileText" },
+    { href: "/escola/[escolaId]/secretaria/operacoes-academicas", label: "Operações Acadêmicas", icon: "Activity" },
     { href: "/escola/[escolaId]/secretaria/importacoes", label: "Histórico de Importações", icon: "History" },
   ],
   financeiro: [

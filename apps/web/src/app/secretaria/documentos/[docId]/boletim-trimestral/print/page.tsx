@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 type NotaLinha = {
   disciplina_nome: string | null;
-  notas_por_tipo: Record<string, any> | null;
+  notas_por_tipo: Record<string, number | string | null> | null;
 };
 
 const TRIM_KEYS = {
@@ -18,7 +18,7 @@ const TRIM_KEYS = {
   t3: ["III_TRIM", "TRIMESTRE_3", "T3", "3TRI"],
 };
 
-function pickNota(payload: Record<string, any> | null | undefined, keys: string[]) {
+function pickNota(payload: Record<string, number | string | null> | null | undefined, keys: string[]) {
   if (!payload) return null;
   for (const key of keys) {
     const value = payload[key];
@@ -48,17 +48,18 @@ export default async function BoletimTrimestralPrintPage({
   }
 
   const { doc, escolaNome, validationBaseUrl } = data;
-  if (doc.tipo !== "boletim_trimestral") {
+  const tipoDocumento = String(doc.tipo);
+  if (tipoDocumento !== "boletim_trimestral") {
     return <div className="p-8">Documento inválido para esta página.</div>;
   }
 
-  const snapshot = doc.dados_snapshot || {};
+  const snapshot = (doc.dados_snapshot || {}) as Record<string, unknown>;
   const baseUrl =
     process.env.NEXT_PUBLIC_VALIDATION_BASE_URL ??
     validationBaseUrl ??
     (await getRequestOrigin());
-  const hash = snapshot.hash_validacao || "";
-  const numero = snapshot.numero_sequencial;
+  const hash = typeof snapshot.hash_validacao === "string" ? snapshot.hash_validacao : "";
+  const numero = typeof snapshot.numero_sequencial === "number" ? snapshot.numero_sequencial : null;
   const urlValidacao = hash
     ? `${String(baseUrl).replace(/\/$/, "")}/documentos/${doc.public_id}?hash=${hash}`
     : null;
@@ -67,7 +68,7 @@ export default async function BoletimTrimestralPrintPage({
   const { data: notasRows } = await supabase
     .from("vw_boletim_por_matricula")
     .select("disciplina_nome, notas_por_tipo")
-    .eq("matricula_id", snapshot.matricula_id || "")
+    .eq("matricula_id", typeof snapshot.matricula_id === "string" ? snapshot.matricula_id : "")
     .order("disciplina_nome", { ascending: true });
 
   const linhas = (notasRows || []) as NotaLinha[];
@@ -94,12 +95,12 @@ export default async function BoletimTrimestralPrintPage({
 
           <section className="space-y-3 text-sm leading-relaxed">
             <p>
-              Declara-se, para os devidos efeitos, que <strong>{snapshot.aluno_nome || "—"}</strong>,
-              portador do BI nº <strong>{snapshot.aluno_bi || "—"}</strong>, está regularmente
-              matriculado na <strong>{snapshot.classe_nome || "—"}</strong>, Turma
-              <strong> {snapshot.turma_nome || "—"}</strong>, Turno
-              <strong> {snapshot.turma_turno || "—"}</strong>, no ano letivo
-              <strong> {snapshot.ano_letivo || "—"}</strong>, tendo obtido o seguinte aproveitamento
+              Declara-se, para os devidos efeitos, que <strong>{typeof snapshot.aluno_nome === "string" ? snapshot.aluno_nome : "—"}</strong>,
+              portador do BI nº <strong>{typeof snapshot.aluno_bi === "string" ? snapshot.aluno_bi : "—"}</strong>, está regularmente
+              matriculado na <strong>{typeof snapshot.classe_nome === "string" ? snapshot.classe_nome : "—"}</strong>, Turma
+              <strong> {typeof snapshot.turma_nome === "string" ? snapshot.turma_nome : "—"}</strong>, Turno
+              <strong> {typeof snapshot.turma_turno === "string" ? snapshot.turma_turno : "—"}</strong>, no ano letivo
+              <strong> {typeof snapshot.ano_letivo === "string" || typeof snapshot.ano_letivo === "number" ? String(snapshot.ano_letivo) : "—"}</strong>, tendo obtido o seguinte aproveitamento
               pedagógico até a presente data:
             </p>
           </section>

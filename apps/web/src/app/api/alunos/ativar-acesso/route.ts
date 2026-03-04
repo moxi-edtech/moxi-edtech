@@ -13,7 +13,9 @@ export async function POST(req: Request) {
 
     const result = await callAuthAdminJob(req, "activateStudentAccess", { codigo, bi });
     const login = (result as any)?.login as string | undefined;
-    return NextResponse.json({ ok: true, login });
+    const senha = (result as any)?.senha as string | undefined;
+    const created = Boolean((result as any)?.created);
+    return NextResponse.json({ ok: true, login, senha, created });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

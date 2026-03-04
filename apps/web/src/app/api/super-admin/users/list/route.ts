@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { createRouteClient } from '@/lib/supabase/route-client'
 import type { Database } from '~types/supabase'
 import { isSuperAdminRole } from '@/lib/auth/requireSuperAdminAccess'
-import { applyKf2ListInvariants } from '@/lib/kf2'
 
 type UsuarioItem = {
   id: string
@@ -22,17 +21,6 @@ export async function GET() {
     const s = await createRouteClient()
     const { data: sess } = await s.auth.getUser()
     const user = sess?.user
-    if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
-    let roleQuery = s
-      .from('profiles')
-      .select('role')
-      .eq('user_id', user.id)
-
-    roleQuery = applyKf2ListInvariants(roleQuery, { defaultLimit: 1, order: [{ column: 'created_at', ascending: false }] })
-
-    const { data: rows } = await roleQuery
-    const role = (rows?.[0] as any)?.role as string | undefined
-    if (!isSuperAdminRole(role)) {
     
     if (!user) {
       return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
@@ -42,7 +30,6 @@ export async function GET() {
     const { data: isSuperAdmin, error: authError } = await s.rpc('check_super_admin_role')
 
     if (authError || !isSuperAdmin) {
-      console.log('[DEBUG] SuperAdmin Check Failed:', { userId: user.id, isSuperAdmin, authError: authError?.message });
       return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
     }
 

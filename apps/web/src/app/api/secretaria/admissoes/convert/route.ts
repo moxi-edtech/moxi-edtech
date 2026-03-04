@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { requireRoleInSchool } from '@/lib/authz';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
 import { recordAuditServer } from '@/lib/audit';
+import { emitirComprovanteMatricula } from '@/lib/documentos/emitirComprovanteMatricula';
 // import { enqueueOutboxEvent } from '@/lib/outbox';
 
 const convertPayloadSchema = z.object({
@@ -104,7 +105,29 @@ export async function POST(request: Request) {
       details: { candidatura_id, turma_id, metodo_pagamento, referencia: referencia ?? null },
     }).catch(() => null)
 
-    return NextResponse.json({ ok: true, matricula_id: data })
+    const matriculaId = typeof data === 'string' ? data : null
+    let comprovante: { ok: boolean; printUrl?: string; error?: string } | null = null
+    if (matriculaId) {
+      const comprovanteResult = await emitirComprovanteMatricula({
+        supabase,
+        escolaId: candidatura.escola_id,
+        matriculaId,
+        dataHoraEfetivacao: new Date().toISOString(),
+        createdBy: user.id,
+        audit: {
+          portal: "secretaria",
+          acao: "COMPROVANTE_MATRICULA_AUTOEMITIDO",
+        },
+      })
+      if (comprovanteResult.ok) {
+        comprovante = { ok: true, printUrl: comprovanteResult.printUrl }
+      } else {
+        comprovante = { ok: false, error: comprovanteResult.error }
+        console.warn('[admissoes/convert] comprovante não emitido:', comprovanteResult.error)
+      }
+    }
+
+    return NextResponse.json({ ok: true, matricula_id: data, comprovante })
   } catch (error: unknown) {
     console.error('Error converting admission:', error)
     if (typeof error === 'object' && error && 'code' in error && error.code === '23505') { // unique_violation

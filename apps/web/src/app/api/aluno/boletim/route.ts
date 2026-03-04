@@ -16,12 +16,14 @@ type BoletimRow = {
 };
 
 type FrequenciaRow = {
+  periodo_letivo_id: string | null;
   faltas: number | null;
   aulas_previstas: number | null;
   frequencia_min_percent: number | null;
 };
 
 type PeriodoRow = {
+  id: string | null;
   numero: number | null;
   data_inicio: string | null;
   data_fim: string | null;
@@ -83,42 +85,6 @@ export async function GET(request: Request) {
       .maybeSingle();
 
     const anoLetivoId = anoLetivoRow?.id;
-
-    const [{ data: periodos }, { data: frequencias }, { data: boletimRows, error: boletimError }] = await Promise.all([
-      anoLetivoId
-        ? supabase
-            .from("periodos_letivos")
-            .select("numero, data_inicio, data_fim")
-            .eq("escola_id", ctx.escolaId)
-            .eq("ano_letivo_id", anoLetivoId)
-            .eq("tipo", "TRIMESTRE")
-            .order("numero", { ascending: true })
-            .limit(50)
-        : Promise.resolve({ data: null }),
-      supabase
-        .from("frequencia_status_periodo")
-        .select("faltas, aulas_previstas, frequencia_min_percent")
-        .eq("escola_id", ctx.escolaId)
-        .eq("matricula_id", matricula.id)
-        .limit(50),
-      supabase
-        .from("vw_boletim_por_matricula")
-        .select("disciplina_id, disciplina_nome, trimestre, nota_final, status, missing_count")
-        .eq("matricula_id", matricula.id)
-        .order("disciplina_nome", { ascending: true })
-        .limit(50),
-    ]);
-
-      .eq("ano", anoLetivo)
-
-    anoLetivoQuery = applyKf2ListInvariants(anoLetivoQuery, {
-      defaultLimit: 1,
-      order: [{ column: 'created_at', ascending: false }],
-    })
-
-    const { data: anoLetivoRow } = await anoLetivoQuery.maybeSingle();
-
-    const anoLetivoId = anoLetivoRow?.id ?? null;
     if (!anoLetivoId) {
       return NextResponse.json({ ok: true, disciplinas: [], nome_aluno: aluno?.nome ?? null, trimestre_atual: null });
     }
@@ -137,16 +103,11 @@ export async function GET(request: Request) {
 
     const { data: periodos } = await periodosQuery;
 
-    const periodMap = new Map<string, PeriodoRow>();
-    (periodos || []).forEach((p) => {
-      if (p?.id) periodMap.set(p.id, p as PeriodoRow);
-    });
-
     let frequenciasQuery = supabase
       .from("frequencia_status_periodo")
       .select("periodo_letivo_id, faltas, aulas_previstas, frequencia_min_percent")
       .eq("escola_id", ctx.escolaId)
-      .eq("matricula_id", ctx.matriculaId)
+      .eq("matricula_id", matricula.id)
 
     frequenciasQuery = applyKf2ListInvariants(frequenciasQuery, {
       defaultLimit: 50,
@@ -155,56 +116,14 @@ export async function GET(request: Request) {
     })
 
     const { data: frequencias } = await frequenciasQuery;
-      .eq("ano", matricula.ano_letivo)
-      .limit(1)
-      .maybeSingle();
-
-    const anoLetivoId = anoLetivoRow?.id;
-
-    const [{ data: periodos }, { data: frequencias }, { data: boletimRows, error: boletimError }] = await Promise.all([
-      anoLetivoId
-        ? supabase
-            .from("periodos_letivos")
-            .select("numero, data_inicio, data_fim")
-            .eq("escola_id", ctx.escolaId)
-            .eq("ano_letivo_id", anoLetivoId)
-            .eq("tipo", "TRIMESTRE")
-            .order("numero", { ascending: true })
-            .limit(50)
-        : Promise.resolve({ data: null }),
-      supabase
-        .from("frequencia_status_periodo")
-        .select("faltas, aulas_previstas, frequencia_min_percent")
-        .eq("escola_id", ctx.escolaId)
-        .eq("matricula_id", matricula.id)
-        .limit(50),
-      supabase
-        .from("vw_boletim_por_matricula")
-        .select("disciplina_id, disciplina_nome, trimestre, nota_final, status, missing_count")
-        .eq("matricula_id", matricula.id)
-        .order("disciplina_nome", { ascending: true })
-        .limit(50),
-    ]);
-
-    if (boletimError) return NextResponse.json({ ok: false, error: boletimError.message }, { status: 500 });
-
-    let totalFaltas = 0;
-    let totalMax = 0;
-    (frequencias as FrequenciaRow[] | null)?.forEach((row) => {
-      const faltas = Number(row.faltas ?? 0);
-      const aulas = Number(row.aulas_previstas ?? 0);
-      const minPercent = Number(row.frequencia_min_percent ?? 75);
-      totalFaltas += faltas;
-      totalMax += Math.max(0, Math.floor(aulas * (1 - minPercent / 100)));
-    });
 
     let boletimQuery = supabase
       .from("vw_boletim_por_matricula")
       .select("disciplina_id, disciplina_nome, trimestre, nota_final, status, missing_count")
-      .eq("matricula_id", ctx.matriculaId)
+      .eq("matricula_id", matricula.id)
 
     boletimQuery = applyKf2ListInvariants(boletimQuery, {
-      defaultLimit: 50,
+      defaultLimit: 150,
       order: [{ column: 'disciplina_nome', ascending: true }],
       tieBreakerColumn: 'disciplina_id',
     })
@@ -215,15 +134,15 @@ export async function GET(request: Request) {
       return NextResponse.json({ ok: false, error: boletimError.message }, { status: 500 });
     }
 
-    const byDisciplina = new Map<string, {
-      id: string;
-      nome: string;
-      nota_t1: number | null;
-      nota_t2: number | null;
-      nota_t3: number | null;
-      nota_final: number | null;
-      status: "lancada" | "pendente" | "bloqueada";
-    }>();
+    let totalFaltas = 0;
+    let totalMax = 0;
+    (frequencias as FrequenciaRow[] | null)?.forEach((row) => {
+      const faltas = Number(row.faltas ?? 0);
+      const aulas = Number(row.aulas_previstas ?? 0);
+      const minPercent = Number(row.frequencia_min_percent ?? 75);
+      totalFaltas += faltas;
+      totalMax += Math.max(0, Math.floor(aulas * (1 - minPercent / 100)));
+    });
 
     const byDisciplina = new Map<string, Omit<DisciplinaResumo, "faltas" | "faltas_max">>();
     (boletimRows as BoletimRow[] | null)?.forEach((row) => {

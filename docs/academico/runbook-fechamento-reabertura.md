@@ -1,4 +1,4 @@
-# Runbook Operacional — Fechamento Académico e Reabertura de Histórico
+ee# Runbook Operacional — Fechamento Académico e Reabertura de Histórico
 
 ## Público
 - Secretaria

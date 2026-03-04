@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { createActivationToken } from "@/lib/activationLink";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -80,8 +81,31 @@ async function provisionStudent(admin: NonNullable<ReturnType<typeof getAdminCli
   if (!aluno) throw new Error("aluno not found");
 
   const escolaId = aluno.escola_id as string;
+  const { data: escola } = await admin
+    .from("escolas")
+    .select("nome")
+    .eq("id", escolaId)
+    .maybeSingle();
+  const escolaNome = escola?.nome ?? "Escola";
   const login = `aluno_${aluno.id}@${escolaId}.klasse.ao`.toLowerCase();
   const telefone = aluno.responsavel_contato || aluno.telefone_responsavel || aluno.encarregado_telefone || null;
+  const token = createActivationToken({
+    escola_id: escolaId,
+    escola_nome: escolaNome,
+    exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30,
+  });
+  const escolaSlug = escolaNome
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://portal.klasse.ao").replace(/\/$/, "");
+  const activationQuery = new URLSearchParams();
+  if (aluno.codigo_ativacao) activationQuery.set("codigo", aluno.codigo_ativacao);
+  if (token) activationQuery.set("token", token);
+  if (escolaSlug) activationQuery.set("escola", escolaSlug);
+  const activationLink = `${baseUrl}/ativar-acesso?${activationQuery.toString()}`;
 
   let userId = aluno.usuario_auth_id || aluno.profile_id || null;
   if (!userId) {
@@ -90,7 +114,14 @@ async function provisionStudent(admin: NonNullable<ReturnType<typeof getAdminCli
       email: login,
       password: senha,
       email_confirm: true,
-      user_metadata: { nome: aluno.nome, role: "aluno", escola_id: escolaId, aluno_id: aluno.id, primeiro_acesso: true },
+      user_metadata: {
+        nome: aluno.nome,
+        role: "aluno",
+        escola_id: escolaId,
+        aluno_id: aluno.id,
+        primeiro_acesso: true,
+        must_change_password: true,
+      },
       app_metadata: { role: "aluno", escola_id: escolaId },
     });
 
@@ -143,7 +174,7 @@ async function provisionStudent(admin: NonNullable<ReturnType<typeof getAdminCli
     .order("created_at", { ascending: false })
     .limit(5);
 
-  const mensagem = `📚 KLASSE - Acesso liberado para ${aluno.nome}\nLogin: ${login}\nCódigo: ${aluno.codigo_ativacao || ""}\nPortal: https://portal.klasse.ao`;
+  const mensagem = `📚 KLASSE - ${escolaNome}\nAcesso liberado para ${aluno.nome}\nLogin: ${login}\nCódigo: ${aluno.codigo_ativacao || ""}\nAtive em: ${activationLink}`;
 
   for (const row of outboxRows || []) {
     await admin

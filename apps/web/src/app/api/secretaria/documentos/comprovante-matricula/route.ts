@@ -1,16 +1,13 @@
-import { createHash, randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireRoleInSchool } from "@/lib/authz";
-import { recordAuditServer } from "@/lib/audit";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
+import { emitirComprovanteMatricula } from "@/lib/documentos/emitirComprovanteMatricula";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-const FINAL_STATUSES = ["concluido", "transferido", "desistente", "trancado", "inativo"] as const;
 
 const EmitSchema = z.object({
   escolaId: z.string().uuid(),
@@ -49,134 +46,34 @@ export async function POST(request: Request) {
   });
   if (authError) return authError;
 
-  const { data: matricula, error: matriculaError } = await supabase
-    .from("matriculas")
-    .select(`
-      id,
-      escola_id,
-      aluno_id,
-      turma_id,
-      ano_letivo,
-      status,
-      created_at,
-      updated_at,
-      data_matricula,
-      alunos ( id, nome, nome_completo, bi_numero ),
-      turmas ( id, nome, turno )
-    `)
-    .eq("escola_id", escolaId)
-    .eq("id", matriculaId)
-    .single();
+  const emitResult = await emitirComprovanteMatricula({
+    supabase,
+    escolaId,
+    matriculaId,
+    dataHoraEfetivacao,
+    observacao,
+    createdBy: user.id,
+    audit: {
+      portal: "secretaria",
+      acao: "COMPROVANTE_MATRICULA_EMITIDO",
+    },
+  });
 
-  if (matriculaError || !matricula) {
-    return NextResponse.json({ ok: false, error: "Matrícula não encontrada." }, { status: 404 });
-  }
-
-  const statusMatricula = String(matricula.status ?? "").toLowerCase();
-  if (!FINAL_STATUSES.includes(statusMatricula as (typeof FINAL_STATUSES)[number])) {
+  if (!emitResult.ok) {
     return NextResponse.json(
-      {
-        ok: false,
-        error: "Comprovante só pode ser emitido para matrícula em estado final.",
-        currentStatus: statusMatricula,
-      },
-      { status: 422 }
+      { ok: false, error: emitResult.error, currentStatus: emitResult.currentStatus },
+      { status: emitResult.status }
     );
   }
 
-  const { data: existingDoc } = await supabase
-    .from("documentos_emitidos")
-    .select("id, public_id, hash_validacao, created_at")
-    .eq("escola_id", escolaId)
-    .eq("aluno_id", String(matricula.aluno_id))
-    .eq("tipo", "comprovante_matricula")
-    .contains("dados_snapshot", { matricula_id: matriculaId })
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (existingDoc) {
-    return NextResponse.json({
-      ok: true,
-      reused: true,
-      docId: existingDoc.id,
-      publicId: existingDoc.public_id,
-      hash: existingDoc.hash_validacao,
-      printUrl: `/secretaria/documentos/${existingDoc.id}/comprovante-matricula/print`,
-    });
-  }
-
-  const { data: numeroSequencial, error: numeroError } = await supabase.rpc("next_documento_numero", {
-    p_escola_id: escolaId,
-  });
-  if (numeroError) {
-    return NextResponse.json({ ok: false, error: numeroError.message }, { status: 400 });
-  }
-
-  const hashBase = `${randomUUID()}-${matriculaId}-${Date.now()}`;
-  const hashValidacao = createHash("sha256").update(hashBase).digest("hex");
-  const aluno = ((matricula as any).alunos ?? {}) as Record<string, unknown>;
-  const turma = ((matricula as any).turmas ?? {}) as Record<string, unknown>;
-
-  const snapshot = {
-    tipo_documento: "comprovante_matricula",
-    matricula_id: matriculaId,
-    aluno_id: String(matricula.aluno_id),
-    aluno_nome: (aluno.nome_completo as string) || (aluno.nome as string) || "",
-    aluno_bi: (aluno.bi_numero as string) || null,
-    turma_id: matricula.turma_id ?? null,
-    turma_nome: (turma.nome as string) || null,
-    turma_turno: (turma.turno as string) || null,
-    ano_letivo: matricula.ano_letivo ?? null,
-    status_final_matricula: statusMatricula,
-    data_hora_efetivacao: dataHoraEfetivacao,
-    observacao: observacao ?? null,
-    emitido_em: new Date().toISOString(),
-    numero_sequencial: numeroSequencial ?? null,
-    hash_validacao: hashValidacao,
-  };
-
-  const { data: doc, error: docError } = await supabase
-    .from("documentos_emitidos")
-    .insert({
-      escola_id: escolaId,
-      aluno_id: String(matricula.aluno_id),
-      numero_sequencial: numeroSequencial ?? null,
-      tipo: "comprovante_matricula" as Database["public"]["Tables"]["documentos_emitidos"]["Row"]["tipo"],
-      dados_snapshot: snapshot as Database["public"]["Tables"]["documentos_emitidos"]["Row"]["dados_snapshot"],
-      created_by: user.id,
-      hash_validacao: hashValidacao,
-    })
-    .select("id, public_id, hash_validacao")
-    .single();
-
-  if (docError || !doc) {
-    return NextResponse.json({ ok: false, error: docError?.message || "Falha ao emitir comprovante." }, { status: 400 });
-  }
-
-  recordAuditServer({
-    escolaId,
-    portal: "secretaria",
-    acao: "COMPROVANTE_MATRICULA_EMITIDO",
-    entity: "documentos_emitidos",
-    entityId: doc.id,
-    details: {
-      matriculaId,
-      alunoId: matricula.aluno_id,
-      documento_public_id: doc.public_id,
-      documento_hash: doc.hash_validacao,
-      status_final_matricula: statusMatricula,
-      data_hora_efetivacao: dataHoraEfetivacao,
-    },
-  }).catch(() => null);
-
   return NextResponse.json({
     ok: true,
-    docId: doc.id,
-    publicId: doc.public_id,
-    hash: doc.hash_validacao,
+    reused: emitResult.reused ?? false,
+    docId: emitResult.docId,
+    publicId: emitResult.publicId,
+    hash: emitResult.hash,
     tipo: "comprovante_matricula",
-    printUrl: `/secretaria/documentos/${doc.id}/comprovante-matricula/print`,
+    printUrl: emitResult.printUrl,
   });
 }
 

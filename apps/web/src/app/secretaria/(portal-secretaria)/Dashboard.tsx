@@ -14,7 +14,7 @@ import {
   UserCheck,
   KeyRound,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { GlobalSearch } from "@/components/GlobalSearch";
 import { BuscaBalcaoRapido } from "@/components/secretaria/BuscaBalcaoRapido";
@@ -49,12 +49,17 @@ export function Dashboard({
   const { escolaId, isLoading: escolaLoading } = useEscolaId();
   const [filaOpen, setFilaOpen] = useState(false);
   const [balcaoModal, setBalcaoModal] = useState<BalcaoModal>(null);
+  const [nowMs, setNowMs] = useState<number | null>(null);
+
+  useEffect(() => {
+    setNowMs(Date.now());
+  }, []);
   const avisoFechoTrimestre = useMemo(() => {
     const fecho = recentes?.fecho_trimestre;
-    if (!fecho?.trava_notas_em) return null;
+    if (!fecho?.trava_notas_em || nowMs === null) return null;
     const prazo = new Date(fecho.trava_notas_em);
     if (Number.isNaN(prazo.getTime())) return null;
-    const diffMs = prazo.getTime() - Date.now();
+    const diffMs = prazo.getTime() - nowMs;
     const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
     if (days < 0 || days > 5) return null;
     const suffix = fecho.numero ? ` do ${fecho.numero}º trimestre` : " do trimestre";
@@ -72,7 +77,7 @@ export function Dashboard({
       action_label: "Ver pautas pendentes",
       action_href: "/secretaria/notas",
     };
-  }, [recentes?.fecho_trimestre]);
+  }, [nowMs, recentes?.fecho_trimestre]);
   const avisos = useMemo(() => {
     const base = recentes?.avisos_recentes ?? [];
     return avisoFechoTrimestre ? [avisoFechoTrimestre, ...base] : base;
@@ -163,6 +168,21 @@ export function Dashboard({
                 icon={<AlertCircle size={16} />}
                 tone={(recentes?.pendencias ?? counts?.pendencias ?? 0) > 0 ? "warning" : "default"}
               />
+            </div>
+
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+              <SecaoLabel>Operações Acadêmicas</SecaoLabel>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-slate-500">
+                  Monitor único de fechamento acadêmico e lotes oficiais de documentos.
+                </p>
+                <Link
+                  href="/secretaria/operacoes-academicas"
+                  className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  Abrir painel
+                </Link>
+              </div>
             </div>
 
             <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">

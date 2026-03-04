@@ -1,168 +1,105 @@
-"use client";
+import { redirect } from "next/navigation";
+import { supabaseServer } from "@/lib/supabaseServer";
+import AlunoLayoutClient from "@/app/(portal-aluno)/aluno/AlunoLayoutClient";
 
-import React, { useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabaseClient";
-import { parsePlanTier, type PlanTier } from "@/config/plans";
-import { StudentSwitcher } from "@/components/aluno/StudentSwitcher";
-import { BottomNav } from "@/components/aluno/BottomNav";
+const resolveAlunoIds = async (supabase: Awaited<ReturnType<typeof supabaseServer>>, escolaId: string, userId: string, email?: string | null) => {
+  const alunoIds = new Set<string>();
 
-type Educando = { id: string; nome: string; escola_id: string | null };
+  const { data: alunosDiretos } = await supabase
+    .from("alunos")
+    .select("id")
+    .eq("profile_id", userId)
+    .eq("escola_id", escolaId)
+    .limit(20);
 
-function shortSchoolName(nome: string | null): string {
-  if (!nome) return "Portal Aluno";
-  const parts = nome.trim().split(/\s+/).filter(Boolean);
-  if (parts.length <= 2) return nome;
-  return parts.slice(0, 2).join(" ");
-}
+  (alunosDiretos ?? []).forEach((aluno) => {
+    if (aluno?.id) alunoIds.add(aluno.id);
+  });
 
-export default function AlunoLayout({ children }: { children: React.ReactNode }) {
-  const [ready, setReady] = useState(false);
-  const [escolaNome, setEscolaNome] = useState<string | null>(null);
-  const [educandos, setEducandos] = useState<Educando[]>([]);
+  if (email) {
+    const { data: encarregado } = await supabase
+      .from("encarregados")
+      .select("id")
+      .eq("escola_id", escolaId)
+      .ilike("email", email)
+      .limit(1)
+      .maybeSingle();
 
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
-  useEffect(() => {
-    let active = true;
-    const s = createClient();
-
-    (async () => {
-      const { data: userRes } = await s.auth.getUser();
-      const user = userRes?.user;
-      if (!user) {
-        router.replace("/login");
-        return;
-      }
-
-      const { data: vinc } = await s
-        .from("escola_users")
-        .select("escola_id, papel, role")
-        .eq("user_id", user.id)
-        .limit(10);
-
-      const vincPortal = (vinc || []).find((v) => {
-        const papel = v.papel ?? v.role ?? null;
-        return papel === "aluno" || papel === "encarregado";
-      });
-
-      if (!vincPortal?.escola_id) {
-        router.replace("/");
-        return;
-      }
-
-      const escolaId = vincPortal.escola_id;
-
-      const { data: esc } = await s
-        .from("escolas")
-        .select("nome, plano_atual, aluno_portal_enabled, status")
-        .eq("id", escolaId)
-        .maybeSingle();
-
-      if (esc?.status === "suspensa") {
-        router.replace("/escola/suspensa");
-        return;
-      }
-
-      const plano: PlanTier = parsePlanTier(esc?.plano_atual ?? null);
-      const enabled = Boolean(esc?.aluno_portal_enabled);
-      const acessoPortal = Boolean(plano && (plano === "profissional" || plano === "premium") && enabled);
-
-      const alunosDiretosPromise = s
-        .from("alunos")
-        .select("id, nome, escola_id")
-        .eq("profile_id", user.id)
+    if (encarregado?.id) {
+      const { data: alunoLinks } = await supabase
+        .from("aluno_encarregados")
+        .select("aluno_id")
         .eq("escola_id", escolaId)
-        .limit(20);
+        .eq("encarregado_id", encarregado.id)
+        .limit(50);
 
-      const encarregadoPromise = user.email
-        ? s
-            .from("encarregados")
-            .select("id")
-            .eq("escola_id", escolaId)
-            .ilike("email", user.email)
-            .limit(1)
-            .maybeSingle()
-        : Promise.resolve({ data: null as { id: string } | null });
-
-      const [{ data: alunosDiretos }, { data: encarregado }] = await Promise.all([alunosDiretosPromise, encarregadoPromise]);
-
-      let alunosVinculados: Educando[] = [];
-      if (encarregado?.id) {
-        const { data: alunoLinks } = await s
-          .from("aluno_encarregados")
-          .select("aluno:alunos!aluno_encarregados_aluno_id_fkey(id, nome, escola_id)")
-          .eq("escola_id", escolaId)
-          .eq("encarregado_id", encarregado.id)
-          .limit(20);
-
-        alunosVinculados = (alunoLinks || [])
-          .map((row) => row.aluno)
-          .flat()
-          .filter(Boolean) as Educando[];
-      }
-
-      const merged = [...(alunosDiretos || []), ...alunosVinculados].reduce<Educando[]>((acc, row) => {
-        if (!acc.some((a) => a.id === row.id)) acc.push({ id: row.id, nome: row.nome ?? "Educando", escola_id: row.escola_id });
-        return acc;
-      }, []);
-
-      if (!active) return;
-
-      setEscolaNome(esc?.nome ?? null);
-      setEducandos(merged);
-
-      if (!acessoPortal && pathname !== "/aluno/desabilitado") {
-        router.replace("/aluno/desabilitado");
-        return;
-      }
-
-      setReady(true);
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, [pathname, router]);
-
-  const alunoSelecionado = useMemo(() => searchParams?.get("aluno") ?? educandos[0]?.id ?? null, [searchParams, educandos]);
-
-  if (!ready) {
-    return <div className="p-6">🔒 Verificando acesso do aluno…</div>;
+      (alunoLinks ?? []).forEach((link) => {
+        if (link?.aluno_id) alunoIds.add(link.aluno_id);
+      });
+    }
   }
 
-  return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-[calc(84px+env(safe-area-inset-bottom))]">
-      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1F6B3B] text-sm font-semibold text-white">KL</div>
-            <div>
-              <p className="text-xs uppercase tracking-wide text-slate-500">Portal aluno</p>
-              <p className="text-sm font-semibold text-slate-900">{shortSchoolName(escolaNome)}</p>
-            </div>
-          </div>
+  return Array.from(alunoIds);
+};
 
-          <StudentSwitcher educandos={educandos} selectedId={alunoSelecionado} />
-        </div>
-      </header>
+const alunoTemInadimplencia = async (
+  supabase: Awaited<ReturnType<typeof supabaseServer>>,
+  escolaId: string,
+  alunoIds: string[]
+) => {
+  if (alunoIds.length === 0) return false;
+  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
-      <main className="mx-auto w-full max-w-5xl px-4 py-4">
-        <div className="rounded-xl bg-white p-4 shadow-sm md:p-6">{children}</div>
+  const { data: mensalidades } = await supabase
+    .from("mensalidades")
+    .select("id")
+    .eq("escola_id", escolaId)
+    .in("aluno_id", alunoIds)
+    .lte("data_vencimento", cutoff)
+    .not("status", "in", "(pago,isento,cancelado)")
+    .limit(1);
 
-        <div className="mt-4 flex flex-wrap gap-2 text-xs">
-          <span className="rounded-full px-3 py-1 font-medium text-white" style={{ backgroundColor: "#1F6B3B" }}>
-            CTA principal
-          </span>
-          <span className="rounded-full px-3 py-1 font-medium text-slate-900" style={{ backgroundColor: "#E3B23C" }}>
-            Alerta
-          </span>
-        </div>
-      </main>
+  return Boolean(mensalidades && mensalidades.length > 0);
+};
 
-      <BottomNav />
-    </div>
-  );
+export default async function AlunoLayout({ children }: { children: React.ReactNode }) {
+  const supabase = await supabaseServer();
+  const { data: auth } = await supabase.auth.getUser();
+  const user = auth?.user;
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { data: vinculos } = await supabase
+    .from("escola_users")
+    .select("escola_id, papel, role")
+    .eq("user_id", user.id)
+    .limit(10);
+
+  const vincPortal = (vinculos || []).find((v) => {
+    const papel = v.papel ?? v.role ?? null;
+    return papel === "aluno" || papel === "encarregado";
+  });
+
+  if (!vincPortal?.escola_id) {
+    redirect("/");
+  }
+
+  const escolaId = vincPortal.escola_id;
+  const { data: configuracoes } = await (supabase as any)
+    .from("configuracoes_financeiro")
+    .select("bloquear_inadimplentes")
+    .eq("escola_id", escolaId)
+    .maybeSingle();
+
+  if (configuracoes?.bloquear_inadimplentes) {
+    const alunoIds = await resolveAlunoIds(supabase, escolaId, user.id, user.email);
+    const bloqueado = await alunoTemInadimplencia(supabase, escolaId, alunoIds);
+    if (bloqueado) {
+      redirect("/aluno/desabilitado");
+    }
+  }
+
+  return <AlunoLayoutClient>{children}</AlunoLayoutClient>;
 }

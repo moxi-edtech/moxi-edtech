@@ -203,6 +203,7 @@ async function resolveMensalidadeAtual(
   return {
     valor: tabela.valor_mensalidade,
     dia_vencimento: tabela.dia_vencimento,
+    tabela_id: tabela.id,
   };
 }
 
@@ -218,6 +219,7 @@ async function generateMensalidadesForAlunos(client: any, escolaId: string, turm
     const pricing = await resolveMensalidadeAtual(client, escolaId, turmaId, anoLetivoNome, classeId);
     const valor = pricing?.valor;
     const dia = pricing?.dia_vencimento || 5;
+    const tabelaId = pricing?.tabela_id ?? null;
     if (valor == null || !Number.isFinite(valor)) return;
 
     const today = new Date();
@@ -257,6 +259,7 @@ async function generateMensalidadesForAlunos(client: any, escolaId: string, turm
           valor_previsto: valorMes,
           data_vencimento: venc.toISOString().slice(0, 10),
           status: 'pendente',
+          tabela_id: tabelaId,
         });
       }
 

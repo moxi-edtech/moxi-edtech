@@ -18,6 +18,7 @@ type AdminAction =
   | "findUserByEmail"
   | "resolveIdentifierToEmail"
   | "activateStudentAccess"
+  | "resetStudentPassword"
   | "seedSuperAdmin"
   | "seedTest";
 
@@ -181,7 +182,8 @@ export async function POST(req: Request) {
 
         const escolaId = (aluno as any).escola_id as string;
         const login = `aluno_${(aluno as any).id}@${escolaId}.klasse.ao`.toLowerCase();
-        const senha = crypto.randomBytes(6).toString("base64url").slice(0, 10);
+        let senha = crypto.randomBytes(6).toString("base64url").slice(0, 10);
+        let created = false;
 
         let userId = (aluno as any).usuario_auth_id as string | null;
         if (!userId) {
@@ -195,6 +197,7 @@ export async function POST(req: Request) {
               escola_id: escolaId,
               aluno_id: (aluno as any).id,
               primeiro_acesso: true,
+              must_change_password: true,
             },
             app_metadata: { role: "aluno", escola_id: escolaId },
           });
@@ -204,11 +207,13 @@ export async function POST(req: Request) {
               const { data: listUsers } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
               const existing = listUsers?.users?.find((u) => u.email === login);
               userId = existing?.id ?? null;
+              senha = "";
             } else {
               return NextResponse.json({ ok: false, error: createRes.error.message }, { status: 400 });
             }
           } else {
             userId = createRes.data.user?.id || null;
+            created = true;
           }
         }
 
@@ -238,7 +243,32 @@ export async function POST(req: Request) {
           .eq("id", (aluno as any).id)
           .eq("escola_id", escolaId);
 
-        return NextResponse.json({ ok: true, data: { login } });
+        return NextResponse.json({ ok: true, data: { login, senha, created } });
+      }
+      case "resetStudentPassword": {
+        const { userId, login } = payload as any;
+        const targetUserId = String(userId || "").trim();
+        if (!targetUserId) {
+          return NextResponse.json({ ok: false, error: "Missing userId" }, { status: 400 });
+        }
+
+        const { data: userData, error: userError } = await admin.auth.admin.getUserById(targetUserId);
+        if (userError || !userData?.user) {
+          return NextResponse.json({ ok: false, error: userError?.message || "User not found" }, { status: 404 });
+        }
+
+        const senha = crypto.randomBytes(6).toString("base64url").slice(0, 10);
+        const metadata = userData.user.user_metadata || {};
+        const { error: updateError } = await admin.auth.admin.updateUserById(targetUserId, {
+          password: senha,
+          user_metadata: { ...metadata, must_change_password: true, primeiro_acesso: false },
+        });
+
+        if (updateError) {
+          return NextResponse.json({ ok: false, error: updateError.message }, { status: 400 });
+        }
+
+        return NextResponse.json({ ok: true, data: { login, senha } });
       }
       case "seedSuperAdmin": {
         const { email, password, nome } = payload as any;

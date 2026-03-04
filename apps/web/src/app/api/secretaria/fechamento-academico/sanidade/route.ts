@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { executarValidacoesFechamento } from "../validacoes/engine";
+import type { Database } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -17,7 +18,7 @@ const QuerySchema = z.object({
 
 export async function GET(req: Request) {
   try {
-    const supabase = await supabaseServerTyped<any>();
+    const supabase = await supabaseServerTyped<Database>();
     const { data: auth } = await supabase.auth.getUser();
     const user = auth?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
@@ -53,7 +54,7 @@ export async function GET(req: Request) {
       const header = "id,regra,severidade,turma_id,matricula_id,aluno_id,mensagem";
       const lines = relatorio.pendencias.map((p) =>
         [p.id, p.regra, p.severidade, p.turma_id ?? "", p.matricula_id ?? "", p.aluno_id ?? "", JSON.stringify(p.mensagem)]
-          .map((x) => String(x).replaceAll("\n", " "))
+          .map((x) => String(x).replace(/\n/g, " "))
           .join(",")
       );
       return new NextResponse([header, ...lines].join("\n"), {

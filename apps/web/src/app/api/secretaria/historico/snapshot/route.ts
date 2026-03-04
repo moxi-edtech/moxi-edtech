@@ -93,7 +93,7 @@ export async function PATCH(req: Request) {
       p_ano_letivo_id: payload.data.ano_letivo_id,
       p_novo_estado: payload.data.novo_estado,
       p_motivo: payload.data.motivo,
-      p_run_id: payload.data.run_id ?? null,
+      p_run_id: payload.data.run_id ?? undefined,
     });
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });

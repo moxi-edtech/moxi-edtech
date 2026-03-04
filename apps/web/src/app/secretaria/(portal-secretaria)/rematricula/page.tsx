@@ -10,7 +10,8 @@ import {
   CheckCircle2, 
   XCircle, 
   AlertCircle, 
-  Save 
+  Save,
+  Lock 
 } from "lucide-react";
 
 // 1. Tipagens atualizadas para o Payload Enriquecido (UX Defensiva)
@@ -98,14 +99,27 @@ export default function RematriculaPage() {
         
         if (json.ok) {
           // Mapeamento defensivo garantindo a estrutura nova (ou fazendo fallback seguro)
-          const rows = (json.alunos || json.items || []).map((row: any) => ({
-            id: row.aluno_id || row.id,
-            nome: row.aluno_nome || row.nome,
-            // Simulando os Gates caso a API ainda não os envie perfeitamente
-            pode_transitar: row.pode_transitar ?? (row.status === 'ativo' || row.status === 'CONCLUIDA'),
-            pedagogico: row.pedagogico || { status: row.status_matricula || row.status || 'INCOMPLETA' },
-            financeiro: row.financeiro || { em_dia: true, saldo_pendente: 0 }
-          }));
+          const normalizePedagogico = (status?: string | null) => {
+            const normalized = String(status || "").trim().toLowerCase();
+            if (["concluido", "concluida", "aprovado", "aprovada", "concluida"].includes(normalized)) return "CONCLUIDA";
+            if (["reprovado", "reprovada"].includes(normalized)) return "REPROVADA";
+            if (!normalized) return "INCOMPLETA";
+            return status as string;
+          };
+
+          const rows = (json.alunos || json.items || []).map((row: any) => {
+            const pedagogicoStatus = normalizePedagogico(row.pedagogico?.status ?? row.status_matricula ?? row.status);
+            const financeiroEmDia = row.financeiro?.em_dia ?? true;
+            const saldoPendente = Number(row.financeiro?.saldo_pendente ?? 0);
+            const podeTransitar = row.pode_transitar ?? (pedagogicoStatus === "CONCLUIDA" && financeiroEmDia);
+            return {
+              id: row.aluno_id || row.id,
+              nome: row.aluno_nome || row.nome,
+              pode_transitar: podeTransitar,
+              pedagogico: { status: pedagogicoStatus },
+              financeiro: { em_dia: financeiroEmDia, saldo_pendente: saldoPendente },
+            };
+          });
           
           setAlunos(rows);
           
@@ -286,19 +300,31 @@ export default function RematriculaPage() {
                 <tbody className="divide-y divide-slate-100">
                   {filteredAlunos.map((aluno) => {
                     const isSelected = selectedAlunos.includes(aluno.id);
+                    const bloqueioMotivo = !aluno.financeiro.em_dia
+                      ? "Dívida em aberto"
+                      : aluno.pedagogico.status === "REPROVADA"
+                        ? "Reprovado"
+                        : "Notas incompletas";
                     return (
                       <tr key={aluno.id} className={`hover:bg-slate-50 transition-colors ${!aluno.pode_transitar ? 'opacity-75 bg-slate-50/50' : ''}`}>
                         <td className="py-3 px-4">
-                          <input
-                            type="checkbox"
-                            disabled={!aluno.pode_transitar}
-                            checked={isSelected}
-                            className="rounded text-[#1F6B3B] focus:ring-[#E3B23C] disabled:opacity-50"
-                            onChange={(e) => {
-                              if (e.target.checked) setSelectedAlunos([...selectedAlunos, aluno.id]);
-                              else setSelectedAlunos(selectedAlunos.filter((id) => id !== aluno.id));
-                            }}
-                          />
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              disabled={!aluno.pode_transitar}
+                              checked={isSelected}
+                              className="rounded text-[#1F6B3B] focus:ring-[#E3B23C] disabled:opacity-50"
+                              onChange={(e) => {
+                                if (e.target.checked) setSelectedAlunos([...selectedAlunos, aluno.id]);
+                                else setSelectedAlunos(selectedAlunos.filter((id) => id !== aluno.id));
+                              }}
+                            />
+                            {!aluno.pode_transitar && (
+                              <div title={bloqueioMotivo}>
+                                <Lock className="w-4 h-4 text-red-600" aria-label="Bloqueado" />
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td className="py-3 px-4 font-medium text-slate-900">{aluno.nome}</td>
                         

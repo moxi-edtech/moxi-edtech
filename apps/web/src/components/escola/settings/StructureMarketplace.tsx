@@ -58,6 +58,7 @@ export type CourseDetails = {
     entra_no_horario?: boolean | null;
     avaliacao_mode_key?: "inherit_school" | "custom" | "inherit_disciplina" | null;
     avaliacao_disciplina_id?: string | null;
+    modelo_excecao_id?: string | null;
     status_completude?: string | null;
     curriculo_status?: string | null;
     matrix_ids: string[];
@@ -91,8 +92,21 @@ export type CourseDraft = {
   baseKey: string;
 };
 
+type ModeloAvaliacao = {
+  id: string;
+  nome: string;
+  curso_id?: string | null;
+  is_default?: boolean | null;
+};
+
+type CourseAvaliacao = {
+  global_default: ModeloAvaliacao | null;
+  course_default: ModeloAvaliacao | null;
+  modelos: ModeloAvaliacao[];
+};
+
 type ActiveTab = "my_courses" | "catalog";
-type ManagerTab = "turmas" | "disciplinas";
+type ManagerTab = "turmas" | "disciplinas" | "avaliacao";
 
 export type CurriculoStatus = {
   curso_id: string;
@@ -147,6 +161,8 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
   const [managerTab, setManagerTab] = useState<ManagerTab>("turmas");
   const [details, setDetails] = useState<CourseDetails | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [loadingAvaliacao, setLoadingAvaliacao] = useState(false);
+  const [courseAvaliacao, setCourseAvaliacao] = useState<CourseAvaliacao | null>(null);
   const [curriculoStatusByCurso, setCurriculoStatusByCurso] = useState<Record<string, CurriculoStatus[]>>({});
   const [curriculoAnoLetivo, setCurriculoAnoLetivo] = useState<{ id: string; ano: number } | null>(null);
 
@@ -190,6 +206,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         mode: disciplina.avaliacao_mode_key ?? (disciplina.avaliacao_mode === "personalizada" ? "custom" : "inherit_school"),
         base_id: disciplina.avaliacao_disciplina_id ?? null,
       },
+      modelo_excecao_id: disciplina.modelo_excecao_id ?? null,
       area: disciplina.area ?? null,
       programa_texto: null,
       class_ids: disciplina.class_ids ?? [],
@@ -354,6 +371,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
           entra_no_horario: primary.entra_no_horario ?? null,
           avaliacao_mode_key: primary.avaliacao_mode ?? null,
           avaliacao_disciplina_id: primary.avaliacao_disciplina_id ?? null,
+          modelo_excecao_id: primary.modelo_excecao_id ?? null,
           status_completude: primary.status_completude ?? null,
           curriculo_status: primary.curriculo_status ?? null,
           matrix_ids: [],
@@ -408,20 +426,34 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
       setSelectedCourseId(courseId);
       setManagerTab(tab);
       setLoadingDetails(true);
+      setLoadingAvaliacao(true);
       setDetails(null);
+      setCourseAvaliacao(null);
 
       try {
-        const nextDetails = await fetchCourseDetails(courseId);
+        const [nextDetails, avaliacaoRes] = await Promise.all([
+          fetchCourseDetails(courseId),
+          fetch(`/api/escolas/${escolaId}/cursos/${courseId}/avaliacao`, { cache: "no-store" })
+            .then(async (res) => {
+              const json = await res.json().catch(() => null);
+              if (!res.ok || json?.ok === false) {
+                throw new Error(json?.error || "Falha ao carregar avaliação do curso.");
+              }
+              return json.data as CourseAvaliacao;
+            }),
+        ]);
         setDetails(nextDetails);
+        setCourseAvaliacao(avaliacaoRes);
       } catch (e: any) {
         console.error(e);
         error(e?.message || "Erro ao carregar detalhes do curso.");
         setSelectedCourseId(null);
       } finally {
         setLoadingDetails(false);
+        setLoadingAvaliacao(false);
       }
     },
-    [fetchCourseDetails]
+    [error, escolaId, fetchCourseDetails]
   );
 
   useEffect(() => {
@@ -884,10 +916,17 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                   periodos_ativos: payload.periodos_ativos,
                   entra_no_horario: payload.entra_no_horario,
                   avaliacao_mode: payload.avaliacao.mode,
-                  avaliacao_modelo_id: null,
+                  avaliacao_modelo_id:
+                    payload.avaliacao.mode === "custom"
+                      ? payload.modelo_excecao_id ?? null
+                      : null,
                   avaliacao_disciplina_id:
                     payload.avaliacao.mode === "inherit_disciplina"
                       ? payload.avaliacao.base_id ?? null
+                      : null,
+                  modelo_excecao_id:
+                    payload.avaliacao.mode === "custom"
+                      ? payload.modelo_excecao_id ?? null
                       : null,
                 }),
               });
@@ -934,10 +973,17 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
                 periodos_ativos: payload.periodos_ativos,
                 entra_no_horario: payload.entra_no_horario,
                 avaliacao_mode: payload.avaliacao.mode,
-                avaliacao_modelo_id: null,
+                avaliacao_modelo_id:
+                  payload.avaliacao.mode === "custom"
+                    ? payload.modelo_excecao_id ?? null
+                    : null,
                 avaliacao_disciplina_id:
                   payload.avaliacao.mode === "inherit_disciplina"
                     ? payload.avaliacao.base_id ?? null
+                    : null,
+                modelo_excecao_id:
+                  payload.avaliacao.mode === "custom"
+                    ? payload.modelo_excecao_id ?? null
                     : null,
               }),
             });
@@ -975,6 +1021,37 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     if (pendingDisciplines.length === 0) return;
     openEditDisciplina(pendingDisciplines[0], true);
   }, [openEditDisciplina, pendingDisciplines]);
+
+  const handleUpdateAvaliacao = useCallback(
+    async (payload: { override: boolean; modeloId?: string | null }) => {
+      if (!selectedCourseId) return;
+      try {
+        const res = await fetch(`/api/escolas/${escolaId}/cursos/${selectedCourseId}/avaliacao`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ override: payload.override, modelo_id: payload.modeloId ?? null }),
+        });
+        const json = await res.json().catch(() => null);
+        if (!res.ok || json?.ok === false) {
+          throw new Error(json?.error || "Falha ao atualizar avaliação do curso.");
+        }
+        const refreshed = await fetch(`/api/escolas/${escolaId}/cursos/${selectedCourseId}/avaliacao`, {
+          cache: "no-store",
+        }).then(async (resp) => {
+          const data = await resp.json().catch(() => null);
+          if (!resp.ok || data?.ok === false) {
+            throw new Error(data?.error || "Falha ao recarregar avaliação do curso.");
+          }
+          return data.data as CourseAvaliacao;
+        });
+        setCourseAvaliacao(refreshed);
+        success("Regra de avaliação atualizada.");
+      } catch (e: any) {
+        error(e?.message || "Erro ao salvar regra do curso.");
+      }
+    },
+    [error, escolaId, selectedCourseId, success]
+  );
 
   useEffect(() => {
     if (searchParams?.get("resolvePendencias") !== "1") return;
@@ -1029,11 +1106,14 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
           selectedCourse={selectedCourse}
           managerTab={managerTab}
           loadingDetails={loadingDetails}
+          loadingAvaliacao={loadingAvaliacao}
           details={details}
           curriculoInfo={
             selectedCourseId ? curriculoStatusByCurso[selectedCourseId] : undefined
           }
           curriculoAnoLetivo={curriculoAnoLetivo}
+          courseAvaliacao={courseAvaliacao}
+          onUpdateAvaliacao={handleUpdateAvaliacao}
           onTabChange={setManagerTab}
           onGenerateTurmas={handleAddTurma}
           onCreateDisciplina={openCreateDisciplina}
@@ -1053,6 +1133,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
             existingCodes={details.disciplinas.map((d) => d.codigo)}
             existingNames={details.disciplinas.map((d) => d.nome)}
             existingDisciplines={details.disciplinas.map((d) => ({ id: d.id, nome: d.nome }))}
+            avaliacaoModelos={courseAvaliacao?.modelos?.map((modelo) => ({ id: modelo.id, nome: modelo.nome })) ?? []}
             classOptions={details.classes}
             pendingDisciplines={resolvePendencias ? pendingDisciplines.map((d) => ({ id: d.id, nome: d.nome })) : []}
             onSelectPending={(id) => {
