@@ -12,6 +12,7 @@ const resolveStatusCompletude = (payload: {
   avaliacao_mode?: string | null;
   avaliacao_modelo_id?: string | null;
   avaliacao_disciplina_id?: string | null;
+  modelo_excecao_id?: string | null;
 }) => {
   const hasCarga = Number(payload.carga_horaria_semanal ?? 0) > 0;
   const hasClassificacao = Boolean(payload.classificacao);
@@ -19,7 +20,7 @@ const resolveStatusCompletude = (payload: {
   const hasHorario = payload.entra_no_horario !== null && payload.entra_no_horario !== undefined;
   const hasAvaliacao =
     payload.avaliacao_mode === "inherit_school" ||
-    (payload.avaliacao_mode === "custom" && Boolean(payload.avaliacao_modelo_id)) ||
+    (payload.avaliacao_mode === "custom" && (Boolean(payload.avaliacao_modelo_id) || Boolean(payload.modelo_excecao_id))) ||
     (payload.avaliacao_mode === "inherit_disciplina" && Boolean(payload.avaliacao_disciplina_id));
 
   return hasCarga && hasClassificacao && hasPeriodos && hasHorario && hasAvaliacao
@@ -74,6 +75,7 @@ export async function PUT(
       avaliacao_mode: z.enum(['inherit_school', 'custom', 'inherit_disciplina']).nullable().optional(),
       avaliacao_modelo_id: z.string().uuid().nullable().optional(),
       avaliacao_disciplina_id: z.string().uuid().nullable().optional(),
+      modelo_excecao_id: z.string().uuid().nullable().optional(),
     });
     const parsed = schema.safeParse(raw);
     if (!parsed.success) {
@@ -83,7 +85,7 @@ export async function PUT(
 
     const { data: cmRow } = await (supabase as any)
       .from('curso_matriz')
-      .select('id, disciplina_id, classe_id, curso_id, obrigatoria, carga_horaria, ordem, curso_curriculo_id, curriculo:curso_curriculos(id,status,curso_id,ano_letivo_id,version), carga_horaria_semanal, classificacao, periodos_ativos, entra_no_horario, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id, conta_para_media_med')
+      .select('id, disciplina_id, classe_id, curso_id, obrigatoria, carga_horaria, ordem, curso_curriculo_id, curriculo:curso_curriculos(id,status,curso_id,ano_letivo_id,version), carga_horaria_semanal, classificacao, periodos_ativos, entra_no_horario, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id, modelo_excecao_id, conta_para_media_med')
       .eq('escola_id', escolaId)
       .eq('id', disciplinaId)
       .maybeSingle();
@@ -139,7 +141,7 @@ export async function PUT(
       if (draftId) {
         const { data: publishedRows, error: publishedErr } = await (supabase as any)
           .from('curso_matriz')
-          .select('disciplina_id, classe_id, curso_id, obrigatoria, ordem, ativo, carga_horaria, carga_horaria_semanal, classificacao, periodos_ativos, entra_no_horario, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id, status_completude')
+          .select('disciplina_id, classe_id, curso_id, obrigatoria, ordem, ativo, carga_horaria, carga_horaria_semanal, classificacao, periodos_ativos, entra_no_horario, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id, modelo_excecao_id, status_completude')
           .eq('escola_id', escolaId)
           .eq('curso_curriculo_id', curriculo.id)
           .eq('classe_id', cmRow.classe_id);
@@ -203,6 +205,10 @@ export async function PUT(
 
     if (targetMatrizId) {
       const matrizUpdates: Record<string, any> = {};
+      const modeloExcecaoId = parsed.data.modelo_excecao_id
+        ?? (parsed.data.avaliacao_mode === 'custom'
+          ? parsed.data.avaliacao_modelo_id ?? null
+          : undefined);
       if (parsed.data.tipo !== undefined) {
         matrizUpdates.obrigatoria = parsed.data.tipo === 'core';
         if (parsed.data.classificacao === undefined) {
@@ -221,9 +227,14 @@ export async function PUT(
       if (parsed.data.periodos_ativos !== undefined) matrizUpdates.periodos_ativos = parsed.data.periodos_ativos;
       if (parsed.data.entra_no_horario !== undefined) matrizUpdates.entra_no_horario = parsed.data.entra_no_horario;
       if (parsed.data.avaliacao_mode !== undefined) matrizUpdates.avaliacao_mode = parsed.data.avaliacao_mode;
-      if (parsed.data.avaliacao_modelo_id !== undefined) matrizUpdates.avaliacao_modelo_id = parsed.data.avaliacao_modelo_id;
+      if (parsed.data.avaliacao_modelo_id !== undefined || modeloExcecaoId !== undefined) {
+        matrizUpdates.avaliacao_modelo_id = parsed.data.avaliacao_modelo_id ?? modeloExcecaoId ?? null;
+      }
       if (parsed.data.avaliacao_disciplina_id !== undefined) {
         matrizUpdates.avaliacao_disciplina_id = parsed.data.avaliacao_disciplina_id;
+      }
+      if (parsed.data.modelo_excecao_id !== undefined || modeloExcecaoId !== undefined) {
+        matrizUpdates.modelo_excecao_id = parsed.data.modelo_excecao_id ?? modeloExcecaoId ?? null;
       }
 
       const statusCompletude = resolveStatusCompletude({
@@ -236,6 +247,7 @@ export async function PUT(
         avaliacao_modelo_id: parsed.data.avaliacao_modelo_id ?? cmRow?.avaliacao_modelo_id ?? null,
         avaliacao_disciplina_id:
           parsed.data.avaliacao_disciplina_id ?? cmRow?.avaliacao_disciplina_id ?? null,
+        modelo_excecao_id: parsed.data.modelo_excecao_id ?? cmRow?.modelo_excecao_id ?? null,
       });
       matrizUpdates.status_completude = statusCompletude;
 
@@ -265,6 +277,9 @@ export async function PUT(
     }
     if (parsed.data.avaliacao_disciplina_id !== undefined) {
       turmaUpdates.avaliacao_disciplina_id = parsed.data.avaliacao_disciplina_id;
+    }
+    if (parsed.data.modelo_excecao_id !== undefined) {
+      turmaUpdates.modelo_avaliacao_id = parsed.data.modelo_excecao_id ?? null;
     }
 
     const turmaMatrizIds = Array.from(

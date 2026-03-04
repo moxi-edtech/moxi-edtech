@@ -1,4 +1,3 @@
--- Versão “evoluída” com UPSERT + validação
 
 -- Garantir unicidade lógica de aluno por escola:
 

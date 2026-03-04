@@ -45,6 +45,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
     // fallback por rota
     if (safePathname.startsWith("/super-admin")) return "superadmin";
+    if (safePathname.startsWith("/admin")) return "admin";
     if (safePathname.startsWith("/secretaria")) return "secretaria";
     if (safePathname.includes("/escola/") && safePathname.includes("/admin")) return "admin";
     if (safePathname.includes("/escola/") && safePathname.includes("/secretaria")) return "secretaria";

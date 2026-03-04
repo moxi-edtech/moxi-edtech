@@ -339,7 +339,7 @@ export default function AvaliacaoUnificadaClient() {
               <PreviewPauta />
 
               {/* Grid Secundário */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Card Frequência */}
                 <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
                   <div className="flex items-center gap-4">
@@ -352,6 +352,22 @@ export default function AvaliacaoUnificadaClient() {
                         <span className="text-2xl font-bold text-slate-900">{frequenciaMinPercent}%</span>
                         <span className="text-xs text-slate-500">mínimo exigido</span>
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card Escopo */}
+                <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+                      <Calculator className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Escopo da Regra</p>
+                      <p className="mt-0.5 text-sm font-bold text-slate-900">Padrão da escola</p>
+                      <p className="text-xs text-slate-500">
+                        Aplica-se a todos os cursos/níveis. Exceções são definidas em Disciplinas.
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -389,6 +405,10 @@ export default function AvaliacaoUnificadaClient() {
                   modelosAvaliacao={modelos.map((modelo) => ({ id: modelo.id, nome: modelo.nome }))}
                   avaliacaoConfig={avaliacaoConfig}
                 />
+
+                <div className="mt-4 text-xs text-slate-600">
+                  Regra aplicada por padrão a todos os cursos/níveis. Para exceções, configure o modo de avaliação em Disciplinas.
+                </div>
 
                 <div className="mt-6">
                   <PreviewPauta />

@@ -41,6 +41,17 @@ type ImportFinancePendencia = {
   turma_codigo: string | null;
 };
 
+type ImportBlockingItem = {
+  id: string;
+  mensagem: string;
+  raw_value: string | null;
+};
+
+type ImportBlockingSummary = {
+  total?: number;
+  itens?: ImportBlockingItem[];
+};
+
 type ImportFinanceSummary = {
   ok_financeiro?: boolean;
   mensagem_resumo?: string;
@@ -144,6 +155,7 @@ function AlunoMigrationWizardContent() {
   const [importErrors, setImportErrors] = useState<ErroImportacao[]>([]);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importFinanceSummary, setImportFinanceSummary] = useState<ImportFinanceSummary | null>(null);
+  const [importBlockingSummary, setImportBlockingSummary] = useState<ImportBlockingSummary | null>(null);
   const [skipMatricula, setSkipMatricula] = useState(false);
   const [startMonth, setStartMonth] = useState<number>(new Date().getMonth() + 1);
   const [modo, setModo] = useState<'migracao' | 'onboarding'>('migracao');
@@ -246,6 +258,7 @@ function AlunoMigrationWizardContent() {
     setImportErrors([]);
     setImportResult(null);
     setImportFinanceSummary(null);
+    setImportBlockingSummary(null);
     setImportId(null);
     setConfigSummary(null);
     setMatriculaBatches([]);
@@ -326,6 +339,16 @@ function AlunoMigrationWizardContent() {
               alertas: Array.isArray(data?.alertas) ? data.alertas.filter(Boolean) : [],
               resumo: data?.resumo ?? undefined,
               pendencias_financeiras: data?.pendencias_financeiras ?? undefined,
+            }
+          : null
+      );
+      setImportBlockingSummary(
+        data?.bloqueios_importacao
+          ? {
+              total: data.bloqueios_importacao.total ?? 0,
+              itens: Array.isArray(data.bloqueios_importacao.itens)
+                ? data.bloqueios_importacao.itens
+                : [],
             }
           : null
       );
@@ -550,6 +573,35 @@ function AlunoMigrationWizardContent() {
          return (
             <WizardShell title="Importação Concluída" subtitle="Resumo da operação e matrículas." icon={CheckCircle}>
                   <div className="space-y-8">
+                  {importBlockingSummary && (importBlockingSummary.total ?? 0) > 0 && (
+                     <div className="border rounded-2xl p-5 bg-red-50 border-red-100">
+                        <div className="flex gap-3">
+                           <div className="mt-0.5">
+                              <AlertTriangle className="w-5 h-5 text-red-600" />
+                           </div>
+                           <div className="space-y-1">
+                              <p className="text-sm font-bold text-slate-900">Bloqueios de importação</p>
+                              <p className="text-sm text-slate-700">
+                                 Há {importBlockingSummary.total} linha(s) bloqueadas por critérios obrigatórios do TURMA_CODIGO.
+                              </p>
+                              {importBlockingSummary.itens && importBlockingSummary.itens.length > 0 && (
+                                 <ul className="text-xs text-slate-600 list-disc pl-4">
+                                    {importBlockingSummary.itens.slice(0, 8).map((item, index) => (
+                                       <li key={`${item.id}-${index}`}>
+                                          {item.mensagem}
+                                       </li>
+                                    ))}
+                                 </ul>
+                              )}
+                              {importBlockingSummary.itens && importBlockingSummary.itens.length > 8 && (
+                                 <p className="text-xs text-slate-500">
+                                    + {importBlockingSummary.itens.length - 8} bloqueios no relatório completo.
+                                 </p>
+                              )}
+                           </div>
+                        </div>
+                     </div>
+                  )}
                   {importFinanceSummary && (
                      <div
                         className={`border rounded-2xl p-5 ${importFinanceSummary.ok_financeiro ? 'bg-klasse-green-50 border-klasse-green-100' : 'bg-klasse-gold-50 border-klasse-gold-100'}`}

@@ -7,6 +7,8 @@ import {
   BuildingLibraryIcon,
   ChartBarIcon,
   ChartPieIcon,
+  ClipboardDocumentListIcon,
+  LockClosedIcon,
   PlusIcon,
   UserGroupIcon,
 } from '@heroicons/react/24/outline';
@@ -128,6 +130,38 @@ export default async function Page() {
     session.user.escola_id
   );
 
+  const today = new Date().toISOString().slice(0, 10);
+  const { data: anoAtivo } = escolaId
+    ? await supabase
+        .from('anos_letivos')
+        .select('id, ano')
+        .eq('escola_id', escolaId)
+        .eq('ativo', true)
+        .maybeSingle()
+    : { data: null };
+
+  const { data: periodoAtual } = escolaId && anoAtivo?.id
+    ? await supabase
+        .from('periodos_letivos')
+        .select('id, numero, tipo, data_inicio, data_fim')
+        .eq('escola_id', escolaId)
+        .eq('ano_letivo_id', anoAtivo.id)
+        .eq('tipo', 'TRIMESTRE')
+        .lte('data_inicio', today)
+        .gte('data_fim', today)
+        .maybeSingle()
+    : { data: null };
+
+  const fechamentoParams = new URLSearchParams();
+  if (anoAtivo?.id) fechamentoParams.set('ano_letivo_id', anoAtivo.id);
+  if (periodoAtual?.id) {
+    fechamentoParams.set('periodo_letivo_id', periodoAtual.id);
+    fechamentoParams.set('acao', 'fechar_trimestre');
+  }
+  const fechamentoRoute = fechamentoParams.toString()
+    ? `/secretaria/fechamento-academico?${fechamentoParams.toString()}`
+    : '/secretaria/fechamento-academico';
+
   const { data: countsRow } = escolaId
     ? await supabase
         .from('vw_admin_dashboard_counts')
@@ -174,6 +208,9 @@ export default async function Page() {
     { label: 'Criar Escola', route: '/admin/escolas/novo', icon: BuildingLibraryIcon },
     { label: 'Lançar Nota', route: '/admin/academico/notas/novo', icon: ChartBarIcon },
     { label: 'Registrar Pagamento', route: '/admin/financeiro/pagamentos/novo', icon: BanknotesIcon },
+    { label: 'Operações Académicas', route: '/admin/operacoes-academicas', icon: ClipboardDocumentListIcon },
+    { label: 'Fecho Académico', route: fechamentoRoute, icon: LockClosedIcon },
+    { label: 'Runbook Fechamento', route: '/docs/academico/runbook-fechamento-academico', icon: ChartPieIcon },
   ];
 
   return (

@@ -4,6 +4,7 @@ import type { Database } from "~types/supabase";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
 import { recordAuditServer } from "@/lib/audit";
+import { emitirComprovanteMatricula } from "@/lib/documentos/emitirComprovanteMatricula";
 
 export async function POST(request: NextRequest) {
   const supabase = await supabaseServerTyped<Database>();
@@ -75,7 +76,24 @@ export async function POST(request: NextRequest) {
       const { error: cErr } = await supabase.rpc('confirmar_matricula', {
         p_matricula_id: m.id,
       });
-      if (cErr) confirm_errors.push({ id: m.id as string, error: cErr.message });
+      if (cErr) {
+        confirm_errors.push({ id: m.id as string, error: cErr.message });
+        continue;
+      }
+      const comprovanteResult = await emitirComprovanteMatricula({
+        supabase,
+        escolaId: escola_id,
+        matriculaId: String(m.id),
+        dataHoraEfetivacao: new Date().toISOString(),
+        createdBy: user.id,
+        audit: {
+          portal: "admin_escola",
+          acao: "COMPROVANTE_MATRICULA_AUTOEMITIDO",
+        },
+      });
+      if (!comprovanteResult.ok) {
+        console.warn('[matriculas/massa/por-turma] comprovante não emitido:', comprovanteResult.error);
+      }
     }
   }
 

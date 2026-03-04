@@ -44,6 +44,19 @@ const normalizeComponentes = (config: unknown): AvaliacaoConfig | null => {
   return null;
 };
 
+const buildFormulaFromComponentes = (componentes: AvaliacaoComponente[]) => {
+  const ativos = componentes.filter((comp) => comp.ativo !== false);
+  if (ativos.length === 0) return null;
+  return {
+    tipo: 'ponderada',
+    mt_formula: ativos.map((comp) => comp.code),
+    pesos: ativos.reduce<Record<string, number>>((acc, comp) => {
+      acc[comp.code] = Number(comp.peso ?? 0);
+      return acc;
+    }, {}),
+  };
+};
+
 const resolveDefaultConfig = async (supabase: SupabaseClient<Database>, escolaId: string) => {
   let defaultConfigQuery = supabase
     .from('modelos_avaliacao')
@@ -200,6 +213,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const avaliacaoConfig = hasComponentes(payload.avaliacao_config)
       ? payload.avaliacao_config
       : defaultConfig ?? { componentes: [] };
+    const formulaAvaliacao = buildFormulaFromComponentes(avaliacaoConfig.componentes ?? []);
 
     const { data: existing, error: existingError } = await supabase
       .from('configuracoes_escola')
@@ -245,6 +259,26 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         NextResponse.json({ ok: false, error: 'Erro ao salvar configurações.' }, { status: 500 }),
         start
       );
+    }
+
+    if (payload.modelo_avaliacao) {
+      const { error: updateModeloError } = await supabase
+        .from('modelos_avaliacao')
+        .update({
+          componentes: avaliacaoConfig,
+          formula: formulaAvaliacao,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('escola_id', effectiveEscolaId)
+        .eq('id', payload.modelo_avaliacao);
+
+      if (updateModeloError) {
+        console.error('Error updating modelos_avaliacao formula:', updateModeloError);
+        return withNoStore(
+          NextResponse.json({ ok: false, error: 'Erro ao atualizar o modelo de avaliação.' }, { status: 500 }),
+          start
+        );
+      }
     }
 
     return withNoStore(NextResponse.json({ ok: true, data: { ...data, has_config: true } }, { status: 200 }), start);

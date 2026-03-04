@@ -22,7 +22,15 @@ const Card = ({ children, className = "" }: { children: React.ReactNode; classNa
   <div className={`bg-white rounded-xl border border-slate-200 shadow-sm ${className}`}>{children}</div>
 )
 
-export default function PrecosClient({ escolaId, embedded = false }: { escolaId: string; embedded?: boolean }) {
+export default function PrecosClient({
+  escolaId,
+  embedded = false,
+  showDueDate = true,
+}: {
+  escolaId: string;
+  embedded?: boolean;
+  showDueDate?: boolean;
+}) {
   const {
     state: {
       sessions,
@@ -240,17 +248,21 @@ export default function PrecosClient({ escolaId, embedded = false }: { escolaId:
                   </div>
                 </InputGroup>
 
-                <InputGroup label="Dia de Vencimento">
-                  <input
-                    type="number"
-                    min="1"
-                    max="31"
-                    placeholder="Ex: 5"
-                    value={form.dia_vencimento}
-                    onChange={(e) => setForm((prev) => ({ ...prev, dia_vencimento: e.target.value }))}
-                    className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-klasse-green-500/20 focus:border-klasse-green-500 outline-none"
-                  />
-                </InputGroup>
+                {showDueDate && (
+                  <InputGroup label="Dia de Vencimento">
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      placeholder="Ex: 5"
+                      value={form.dia_vencimento}
+                      onChange={(event) =>
+                        setForm((prev) => ({ ...prev, dia_vencimento: event.target.value }))
+                      }
+                      className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-klasse-green-500/20 focus:border-klasse-green-500 outline-none"
+                    />
+                  </InputGroup>
+                )}
               </div>
 
               <div className="flex items-center justify-between pt-6 border-t border-slate-100">

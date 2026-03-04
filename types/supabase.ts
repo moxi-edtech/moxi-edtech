@@ -2710,6 +2710,166 @@ export type Database = {
           },
         ]
       }
+      fechamento_academico_job_steps: {
+        Row: {
+          contexto: Json
+          created_at: string
+          error_message: string | null
+          escola_id: string
+          etapa: string
+          executor_user_id: string | null
+          id: number
+          run_id: string
+          status: string
+        }
+        Insert: {
+          contexto?: Json
+          created_at?: string
+          error_message?: string | null
+          escola_id: string
+          etapa: string
+          executor_user_id?: string | null
+          id?: number
+          run_id: string
+          status: string
+        }
+        Update: {
+          contexto?: Json
+          created_at?: string
+          error_message?: string | null
+          escola_id?: string
+          etapa?: string
+          executor_user_id?: string | null
+          id?: number
+          run_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fechamento_academico_job_steps_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fechamento_academico_job_steps_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fechamento_academico_job_steps_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "fechamento_academico_jobs"
+            referencedColumns: ["run_id"]
+          },
+        ]
+      }
+      fechamento_academico_jobs: {
+        Row: {
+          ano_letivo_id: string
+          counters: Json
+          created_at: string
+          errors: Json
+          escola_id: string
+          estado: string
+          execution_mode: string
+          executor_user_id: string | null
+          fechamento_tipo: string
+          finished_at: string | null
+          id: string
+          idempotency_key: string
+          matricula_ids: string[]
+          parametros: Json
+          periodo_letivo_id: string | null
+          run_id: string
+          started_at: string | null
+          turma_ids: string[]
+          updated_at: string
+        }
+        Insert: {
+          ano_letivo_id: string
+          counters?: Json
+          created_at?: string
+          errors?: Json
+          escola_id: string
+          estado?: string
+          execution_mode?: string
+          executor_user_id?: string | null
+          fechamento_tipo: string
+          finished_at?: string | null
+          id?: string
+          idempotency_key: string
+          matricula_ids?: string[]
+          parametros?: Json
+          periodo_letivo_id?: string | null
+          run_id?: string
+          started_at?: string | null
+          turma_ids?: string[]
+          updated_at?: string
+        }
+        Update: {
+          ano_letivo_id?: string
+          counters?: Json
+          created_at?: string
+          errors?: Json
+          escola_id?: string
+          estado?: string
+          execution_mode?: string
+          executor_user_id?: string | null
+          fechamento_tipo?: string
+          finished_at?: string | null
+          id?: string
+          idempotency_key?: string
+          matricula_ids?: string[]
+          parametros?: Json
+          periodo_letivo_id?: string | null
+          run_id?: string
+          started_at?: string | null
+          turma_ids?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fechamento_academico_jobs_ano_letivo_id_fkey"
+            columns: ["ano_letivo_id"]
+            isOneToOne: false
+            referencedRelation: "anos_letivos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fechamento_academico_jobs_ano_letivo_id_fkey"
+            columns: ["ano_letivo_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_ano_letivo_preferido"
+            referencedColumns: ["ano_letivo_id"]
+          },
+          {
+            foreignKeyName: "fechamento_academico_jobs_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fechamento_academico_jobs_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fechamento_academico_jobs_periodo_letivo_id_fkey"
+            columns: ["periodo_letivo_id"]
+            isOneToOne: false
+            referencedRelation: "periodos_letivos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fecho_caixa: {
         Row: {
           approval_note: string | null
@@ -4527,31 +4687,55 @@ export type Database = {
         Row: {
           aluno_id: string
           ano_letivo: number
+          ano_letivo_id: string | null
           data_fechamento: string
           escola_id: string
           id: string
+          matricula_id: string | null
           media_geral: number | null
           resultado_final: string
+          snapshot_lock_run_id: string | null
+          snapshot_locked_at: string | null
+          snapshot_reopen_reason: string | null
+          snapshot_reopened_at: string | null
+          snapshot_reopened_by: string | null
+          snapshot_status: string
           turma_id: string
         }
         Insert: {
           aluno_id: string
           ano_letivo: number
+          ano_letivo_id?: string | null
           data_fechamento?: string
           escola_id: string
           id?: string
+          matricula_id?: string | null
           media_geral?: number | null
           resultado_final: string
+          snapshot_lock_run_id?: string | null
+          snapshot_locked_at?: string | null
+          snapshot_reopen_reason?: string | null
+          snapshot_reopened_at?: string | null
+          snapshot_reopened_by?: string | null
+          snapshot_status?: string
           turma_id: string
         }
         Update: {
           aluno_id?: string
           ano_letivo?: number
+          ano_letivo_id?: string | null
           data_fechamento?: string
           escola_id?: string
           id?: string
+          matricula_id?: string | null
           media_geral?: number | null
           resultado_final?: string
+          snapshot_lock_run_id?: string | null
+          snapshot_locked_at?: string | null
+          snapshot_reopen_reason?: string | null
+          snapshot_reopened_at?: string | null
+          snapshot_reopened_by?: string | null
+          snapshot_status?: string
           turma_id?: string
         }
         Relationships: [
@@ -4658,6 +4842,147 @@ export type Database = {
             columns: ["historico_ano_id"]
             isOneToOne: false
             referencedRelation: "historico_anos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      historico_snapshot_locks: {
+        Row: {
+          allow_reopen: boolean
+          ano_letivo_id: string
+          created_at: string
+          escola_id: string
+          historico_ano_id: string | null
+          id: string
+          lock_job_id: string | null
+          lock_reason: string | null
+          lock_run_id: string | null
+          lock_source: string
+          lock_step: string | null
+          locked_at: string | null
+          matricula_id: string
+          reopened_at: string | null
+          reopened_by: string | null
+          reopened_reason: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          allow_reopen?: boolean
+          ano_letivo_id: string
+          created_at?: string
+          escola_id: string
+          historico_ano_id?: string | null
+          id?: string
+          lock_job_id?: string | null
+          lock_reason?: string | null
+          lock_run_id?: string | null
+          lock_source?: string
+          lock_step?: string | null
+          locked_at?: string | null
+          matricula_id: string
+          reopened_at?: string | null
+          reopened_by?: string | null
+          reopened_reason?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          allow_reopen?: boolean
+          ano_letivo_id?: string
+          created_at?: string
+          escola_id?: string
+          historico_ano_id?: string | null
+          id?: string
+          lock_job_id?: string | null
+          lock_reason?: string | null
+          lock_run_id?: string | null
+          lock_source?: string
+          lock_step?: string | null
+          locked_at?: string | null
+          matricula_id?: string
+          reopened_at?: string | null
+          reopened_by?: string | null
+          reopened_reason?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historico_snapshot_locks_ano_letivo_id_fkey"
+            columns: ["ano_letivo_id"]
+            isOneToOne: false
+            referencedRelation: "anos_letivos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historico_snapshot_locks_ano_letivo_id_fkey"
+            columns: ["ano_letivo_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_ano_letivo_preferido"
+            referencedColumns: ["ano_letivo_id"]
+          },
+          {
+            foreignKeyName: "historico_snapshot_locks_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historico_snapshot_locks_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historico_snapshot_locks_historico_ano_id_fkey"
+            columns: ["historico_ano_id"]
+            isOneToOne: false
+            referencedRelation: "historico_anos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historico_snapshot_locks_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historico_snapshot_locks_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_boletim_por_matricula_legacy"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "historico_snapshot_locks_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_secretaria"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "historico_snapshot_locks_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_validas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historico_snapshot_locks_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_presencas_por_turma"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "historico_snapshot_locks_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_matriculas"
             referencedColumns: ["id"]
           },
         ]
@@ -5806,6 +6131,7 @@ export type Database = {
       modelos_avaliacao: {
         Row: {
           componentes: Json
+          curso_id: string | null
           created_at: string
           escola_id: string
           formula: Json
@@ -5818,6 +6144,7 @@ export type Database = {
         }
         Insert: {
           componentes?: Json
+          curso_id?: string | null
           created_at?: string
           escola_id: string
           formula?: Json
@@ -5830,6 +6157,7 @@ export type Database = {
         }
         Update: {
           componentes?: Json
+          curso_id?: string | null
           created_at?: string
           escola_id?: string
           formula?: Json
@@ -6769,31 +7097,40 @@ export type Database = {
       }
       pautas_lote_itens: {
         Row: {
+          artifact_expires_at: string | null
+          checksum_sha256: string | null
           created_at: string
           error_message: string | null
           id: string
           job_id: string
           pdf_path: string | null
+          retry_count: number
           status: string
           turma_id: string
           updated_at: string
         }
         Insert: {
+          artifact_expires_at?: string | null
+          checksum_sha256?: string | null
           created_at?: string
           error_message?: string | null
           id?: string
           job_id: string
           pdf_path?: string | null
+          retry_count?: number
           status?: string
           turma_id: string
           updated_at?: string
         }
         Update: {
+          artifact_expires_at?: string | null
+          checksum_sha256?: string | null
           created_at?: string
           error_message?: string | null
           id?: string
           job_id?: string
           pdf_path?: string | null
+          retry_count?: number
           status?: string
           turma_id?: string
           updated_at?: string
@@ -6831,51 +7168,69 @@ export type Database = {
       }
       pautas_lote_jobs: {
         Row: {
+          cancel_requested_at: string | null
           created_at: string
           created_by: string | null
+          documento_tipo: string | null
           error_message: string | null
           escola_id: string
           failed_count: number
           id: string
+          idempotency_key: string | null
+          manifest_path: string | null
           periodo_letivo_id: string | null
           processed: number
+          signed_url_expires_at: string | null
           status: string
           success_count: number
           tipo: string
           total_turmas: number
           updated_at: string
+          zip_checksum_sha256: string | null
           zip_path: string | null
         }
         Insert: {
+          cancel_requested_at?: string | null
           created_at?: string
           created_by?: string | null
+          documento_tipo?: string | null
           error_message?: string | null
           escola_id: string
           failed_count?: number
           id?: string
+          idempotency_key?: string | null
+          manifest_path?: string | null
           periodo_letivo_id?: string | null
           processed?: number
+          signed_url_expires_at?: string | null
           status?: string
           success_count?: number
           tipo: string
           total_turmas?: number
           updated_at?: string
+          zip_checksum_sha256?: string | null
           zip_path?: string | null
         }
         Update: {
+          cancel_requested_at?: string | null
           created_at?: string
           created_by?: string | null
+          documento_tipo?: string | null
           error_message?: string | null
           escola_id?: string
           failed_count?: number
           id?: string
+          idempotency_key?: string | null
+          manifest_path?: string | null
           periodo_letivo_id?: string | null
           processed?: number
+          signed_url_expires_at?: string | null
           status?: string
           success_count?: number
           tipo?: string
           total_turmas?: number
           updated_at?: string
+          zip_checksum_sha256?: string | null
           zip_path?: string | null
         }
         Relationships: [
@@ -9913,6 +10268,135 @@ export type Database = {
           },
         ]
       }
+      vw_historico_snapshot_status: {
+        Row: {
+          allow_reopen: boolean | null
+          ano_letivo_id: string | null
+          escola_id: string | null
+          historico_ano_id: string | null
+          lock_reason: string | null
+          lock_run_id: string | null
+          lock_step: string | null
+          locked_at: string | null
+          matricula_id: string | null
+          reopened_at: string | null
+          reopened_by: string | null
+          reopened_reason: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          allow_reopen?: boolean | null
+          ano_letivo_id?: string | null
+          escola_id?: string | null
+          historico_ano_id?: string | null
+          lock_reason?: string | null
+          lock_run_id?: string | null
+          lock_step?: string | null
+          locked_at?: string | null
+          matricula_id?: string | null
+          reopened_at?: string | null
+          reopened_by?: string | null
+          reopened_reason?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          allow_reopen?: boolean | null
+          ano_letivo_id?: string | null
+          escola_id?: string | null
+          historico_ano_id?: string | null
+          lock_reason?: string | null
+          lock_run_id?: string | null
+          lock_step?: string | null
+          locked_at?: string | null
+          matricula_id?: string | null
+          reopened_at?: string | null
+          reopened_by?: string | null
+          reopened_reason?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historico_snapshot_locks_ano_letivo_id_fkey"
+            columns: ["ano_letivo_id"]
+            isOneToOne: false
+            referencedRelation: "anos_letivos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historico_snapshot_locks_ano_letivo_id_fkey"
+            columns: ["ano_letivo_id"]
+            isOneToOne: false
+            referencedRelation: "vw_escola_ano_letivo_preferido"
+            referencedColumns: ["ano_letivo_id"]
+          },
+          {
+            foreignKeyName: "historico_snapshot_locks_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historico_snapshot_locks_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historico_snapshot_locks_historico_ano_id_fkey"
+            columns: ["historico_ano_id"]
+            isOneToOne: false
+            referencedRelation: "historico_anos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historico_snapshot_locks_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "matriculas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historico_snapshot_locks_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_boletim_por_matricula_legacy"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "historico_snapshot_locks_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_secretaria"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "historico_snapshot_locks_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_validas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "historico_snapshot_locks_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_presencas_por_turma"
+            referencedColumns: ["matricula_id"]
+          },
+          {
+            foreignKeyName: "historico_snapshot_locks_matricula_id_fkey"
+            columns: ["matricula_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_matriculas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vw_klasse_network_aprovacao: {
         Row: {
           ano_letivo: number | null
@@ -11762,6 +12246,17 @@ export type Database = {
         Args: { p_escola_id: string }
         Returns: boolean
       }
+      historico_set_snapshot_state: {
+        Args: {
+          p_ano_letivo_id: string
+          p_escola_id: string
+          p_matricula_ids: string[]
+          p_motivo: string
+          p_novo_estado: string
+          p_run_id?: string
+        }
+        Returns: Json
+      }
       horario_auto_configurar_cargas: {
         Args: {
           p_escola_id: string
@@ -12481,6 +12976,7 @@ export type Database = {
         | "historico"
         | "declaracao_frequencia"
         | "declaracao_notas"
+        | "comprovante_matricula"
       user_role:
         | "super_admin"
         | "global_admin"
@@ -12727,6 +13223,7 @@ export const Constants = {
         "historico",
         "declaracao_frequencia",
         "declaracao_notas",
+        "comprovante_matricula",
       ],
       user_role: [
         "super_admin",

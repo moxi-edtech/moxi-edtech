@@ -147,6 +147,25 @@ export async function POST(request: Request) {
     console.error("[import_migrations] update error", { importId, error: updateErr });
   }
 
+  const { data: importErrors, error: importErrorsErr } = await supabase
+    .from("import_errors")
+    .select("id, message, raw_value")
+    .eq("import_id", importId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (importErrorsErr) {
+    console.error("[import_errors] read error", { importId, error: importErrorsErr });
+  }
+
+  const bloqueiosImportacao = (importErrors ?? []).map((item) => ({
+    id: item.id,
+    mensagem: item.message,
+    raw_value: item.raw_value,
+  }));
+
+  const okImportacao = result.ok && (result.errors ?? 0) === 0;
+
   let financeResult: FinanceContextResult = { activeMatriculas: 0, pendencias: [] };
   let financeErrorMessage: string | null = null;
   try {
@@ -197,9 +216,11 @@ export async function POST(request: Request) {
   const pendenciasTotal = pendenciasFinanceiras.length;
   const okFinanceiro = !financeErrorMessage && pendenciasTotal === 0;
 
-  const mensagemResumo = pendenciasTotal > 0
-    ? `Importação concluída: ${result.imported} importados, ${pendenciasTotal} com pendências financeiras.`
-    : `Importação concluída: ${result.imported} importados sem pendências financeiras.`;
+  const mensagemResumo = result.errors > 0
+    ? `Importação concluída com bloqueios: ${result.imported} importados, ${result.errors} com erros.`
+    : pendenciasTotal > 0
+      ? `Importação concluída: ${result.imported} importados, ${pendenciasTotal} com pendências financeiras.`
+      : `Importação concluída: ${result.imported} importados sem pendências financeiras.`;
 
   try {
     const { error: clearPendenciasErr } = await supabase
@@ -252,8 +273,8 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({
-    ok: result.ok,
-    ok_importacao: result.ok,
+    ok: okImportacao,
+    ok_importacao: okImportacao,
     ok_financeiro: okFinanceiro,
     mensagem_resumo: mensagemResumo,
     resumo: {
@@ -264,12 +285,19 @@ export async function POST(request: Request) {
       financeiro_ativo: financeResult.activeMatriculas,
       pendencias_financeiras: pendenciasTotal,
     },
+    bloqueios_importacao: {
+      total: result.errors ?? 0,
+      itens: bloqueiosImportacao,
+    },
     pendencias_financeiras: {
       total: pendenciasTotal,
       por_motivo: pendenciasPorMotivo,
       itens: pendenciasVisiveis,
     },
-    alertas: financeErrorMessage ? [financeErrorMessage] : [],
+    alertas: [
+      ...(financeErrorMessage ? [financeErrorMessage] : []),
+      ...(bloqueiosImportacao.map((item) => item.mensagem).filter(Boolean) as string[]),
+    ],
     result,
   });
 }

@@ -23,158 +23,164 @@ const payloadSchema = z.object({
   ano_letivo: z.number().int().optional(), // Ano letivo para documentos finais
 });
 
-const FINAL_DOCUMENT_TYPES = ["boletim_trimestral", "historico", "certificado", "comprovante_matricula", "declaracao_notas"] as const;
-const FINAL_DOC_BACKEND_TYPE: Record<string, string> = {
+type TipoDocumento = z.infer<typeof payloadSchema>["tipoDocumento"];
+
+const FINAL_DOCUMENT_TYPES: TipoDocumento[] = ["boletim_trimestral", "historico", "certificado", "comprovante_matricula", "declaracao_notas"];
+const FINAL_DOC_BACKEND_TYPE: Record<TipoDocumento, string> = {
   boletim_trimestral: "boletim_trimestral",
   historico: "historico",
   certificado: "certificado",
   comprovante_matricula: "comprovante_matricula",
   declaracao_notas: "boletim_trimestral",
+  declaracao_frequencia: "declaracao_frequencia",
+  cartao_estudante: "cartao_estudante",
+  ficha_inscricao: "ficha_inscricao",
 };
 
 export async function POST(request: Request) {
-  const supabase = await supabaseServerTyped<any>();
-  const { data: auth } = await supabase.auth.getUser();
-  const user = auth?.user;
+  try {
+    const supabase = await supabaseServerTyped<Database>();
+    const { data: auth } = await supabase.auth.getUser();
+    const user = auth?.user;
 
-  if (!user) {
-    return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
-  }
-
-  const body = await request.json().catch(() => null);
-  const parsed = payloadSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ ok: false, error: parsed.error.format() }, { status: 400 });
-  }
-
-  const { alunoId, escolaId, tipoDocumento, ano_letivo } = parsed.data;
-  const resolvedEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
-
-  if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
-    return NextResponse.json({ ok: false, error: "Escola inválida" }, { status: 403 });
-  }
-
-  const { error: authError } = await requireRoleInSchool({
-    supabase,
-    escolaId,
-    roles: ["secretaria", "admin", "admin_escola", "staff_admin"],
-  });
-  if (authError) return authError;
-
-  // Se for um documento final, usa a nova RPC baseada no histórico
-  if (FINAL_DOCUMENT_TYPES.includes(tipoDocumento)) {
-    if (!ano_letivo) {
-      return NextResponse.json({ ok: false, error: "O ano letivo é obrigatório para este tipo de documento." }, { status: 400 });
+    if (!user) {
+      return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     }
 
-    const { data: result, error: rpcError } = await supabase
-      .rpc("emitir_documento_final", {
-        p_escola_id: escolaId,
-        p_aluno_id: alunoId,
-        p_ano_letivo: ano_letivo,
-        p_tipo_documento: FINAL_DOC_BACKEND_TYPE[tipoDocumento],
-      })
+    const body = await request.json().catch(() => null);
+    const parsed = payloadSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ ok: false, error: parsed.error.format() }, { status: 400 });
+    }
+
+    const { alunoId, escolaId, tipoDocumento, ano_letivo } = parsed.data;
+    const resolvedEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
+
+    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+      return NextResponse.json({ ok: false, error: "Escola inválida" }, { status: 403 });
+    }
+
+    const { error: authError } = await requireRoleInSchool({
+      supabase,
+      escolaId,
+      roles: ["secretaria", "admin", "admin_escola", "staff_admin"],
+    });
+    if (authError) return authError;
+
+    // Se for um documento final, usa a nova RPC baseada no histórico
+    if (FINAL_DOCUMENT_TYPES.includes(tipoDocumento)) {
+      if (!ano_letivo) {
+        return NextResponse.json({ ok: false, error: "O ano letivo é obrigatório para este tipo de documento." }, { status: 400 });
+      }
+
+      const { data: result, error: rpcError } = await supabase
+        .rpc("emitir_documento_final", {
+          p_escola_id: escolaId,
+          p_aluno_id: alunoId,
+          p_ano_letivo: ano_letivo,
+          p_tipo_documento: FINAL_DOC_BACKEND_TYPE[tipoDocumento] as any,
+        })
+        .single();
+
+      if (rpcError) {
+        return NextResponse.json({ ok: false, error: rpcError.message }, { status: 400 });
+      }
+      recordAuditServer({
+        escolaId,
+        portal: "secretaria",
+        acao: "DOCUMENTO_FINAL_EMITIDO",
+        entity: "documentos_emitidos",
+        entityId: (result as any)?.id ?? null,
+        details: { alunoId, tipoDocumento, ano_letivo },
+      }).catch(() => null);
+      return NextResponse.json(result);
+    }
+
+    // Lógica para documentos baseados na matrícula ativa
+    const { data: matricula, error: matriculaError } = await supabase
+      .from("matriculas")
+      .select(`
+        id, aluno_id, turma_id, ano_letivo, status,
+        alunos ( id, nome, nome_completo, bi_numero ),
+        turmas ( id, nome, turno, classes ( nome ), cursos ( nome ) )
+      `)
+      .eq("escola_id", escolaId)
+      .eq("aluno_id", alunoId)
+      .in("status", ["ativa", "ativo"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (matriculaError || !matricula) {
+      return NextResponse.json({ ok: false, error: "Matrícula ativa não encontrada" }, { status: 404 });
+    }
+
+    const aluno = (matricula as any).alunos || {};
+    const turma = (matricula as any).turmas || {};
+
+    const hashBase = `${randomUUID()}-${matricula.id}-${Date.now()}`;
+    const hashValidacao = createHash("sha256").update(hashBase).digest("hex");
+
+    const { data: numeroSequencial, error: numeroError } = await supabase
+      .rpc("next_documento_numero", { p_escola_id: escolaId });
+    if (numeroError) {
+      return NextResponse.json({ ok: false, error: numeroError.message }, { status: 400 });
+    }
+
+    const snapshot = {
+      aluno_id: alunoId,
+      aluno_nome: aluno.nome_completo || aluno.nome || "",
+      aluno_bi: aluno.bi_numero || null,
+      matricula_id: matricula.id,
+      turma_id: turma.id || null,
+      turma_nome: turma.nome || null,
+      turma_turno: turma.turno || null,
+      classe_nome: turma.classes?.nome || null,
+      curso_nome: turma.cursos?.nome || null,
+      ano_letivo: matricula.ano_letivo || null,
+      tipo_documento: tipoDocumento,
+      numero_sequencial: numeroSequencial ?? null,
+      hash_validacao: hashValidacao,
+    };
+
+    const insertPayload: any = {
+      escola_id: escolaId,
+      aluno_id: alunoId,
+      numero_sequencial: numeroSequencial ?? null,
+      tipo: tipoDocumento,
+      dados_snapshot: snapshot,
+      created_by: user.id,
+      hash_validacao: hashValidacao,
+    };
+
+    const { data: doc, error: docError } = await supabase
+      .from("documentos_emitidos")
+      .insert(insertPayload)
+      .select("id, public_id")
       .single();
 
-    if (rpcError) {
-      return NextResponse.json({ ok: false, error: rpcError.message }, { status: 400 });
+    if (docError || !doc) {
+      return NextResponse.json({ ok: false, error: docError?.message || "Falha ao emitir" }, { status: 400 });
     }
+
     recordAuditServer({
       escolaId,
       portal: "secretaria",
-      acao: "DOCUMENTO_FINAL_EMITIDO",
+      acao: "DOCUMENTO_EMITIDO",
       entity: "documentos_emitidos",
-      entityId: (result as any)?.id ?? null,
-      details: { alunoId, tipoDocumento, ano_letivo },
+      entityId: doc.id,
+      details: { alunoId, tipoDocumento },
     }).catch(() => null);
-    return NextResponse.json(result);
+
+    return NextResponse.json({
+      ok: true,
+      docId: doc.id,
+      publicId: doc.public_id,
+      hash: hashValidacao,
+      tipo: tipoDocumento,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
-
-  // Lógica antiga para documentos baseados na matrícula ativa
-  const { data: matricula, error: matriculaError } = await supabase
-    .from("matriculas")
-    .select(
-      `id, aluno_id, turma_id, ano_letivo, status,
-       alunos ( id, nome, nome_completo, bi_numero ),
-       turmas ( id, nome, turno, classes ( nome ), cursos ( nome ) )`
-    )
-    .eq("escola_id", escolaId)
-    .eq("aluno_id", alunoId)
-    .in("status", ["ativa", "ativo"])
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (matriculaError || !matricula) {
-    return NextResponse.json(
-      { ok: false, error: "Matrícula ativa não encontrada" },
-      { status: 404 }
-    );
-  }
-
-  const aluno = (matricula as any).alunos || {};
-  const turma = (matricula as any).turmas || {};
-
-  const hashBase = `${randomUUID()}-${matricula.id}-${Date.now()}`;
-  const hashValidacao = createHash("sha256").update(hashBase).digest("hex");
-
-  const { data: numeroSequencial, error: numeroError } = await supabase
-    .rpc("next_documento_numero", { p_escola_id: escolaId });
-  if (numeroError) {
-    return NextResponse.json({ ok: false, error: numeroError.message }, { status: 400 });
-  }
-
-  const snapshot = {
-    aluno_id: alunoId,
-    aluno_nome: aluno.nome_completo || aluno.nome || "",
-    aluno_bi: aluno.bi_numero || null,
-    matricula_id: matricula.id,
-    turma_id: turma.id || null,
-    turma_nome: turma.nome || null,
-    turma_turno: turma.turno || null,
-    classe_nome: turma.classes?.nome || null,
-    curso_nome: turma.cursos?.nome || null,
-    ano_letivo: matricula.ano_letivo || null,
-    tipo_documento: tipoDocumento,
-    numero_sequencial: numeroSequencial ?? null,
-    hash_validacao: hashValidacao,
-  };
-
-  const insertPayload: Database["public"]["Tables"]["documentos_emitidos"]["Insert"] = {
-    escola_id: escolaId,
-    aluno_id: alunoId,
-    numero_sequencial: numeroSequencial ?? null,
-    tipo: tipoDocumento as Database["public"]["Tables"]["documentos_emitidos"]["Row"]["tipo"],
-    dados_snapshot:
-      snapshot as Database["public"]["Tables"]["documentos_emitidos"]["Row"]["dados_snapshot"],
-    created_by: user.id,
-    hash_validacao: hashValidacao,
-  };
-
-  const { data: doc, error: docError } = await supabase
-    .from("documentos_emitidos")
-    .insert(insertPayload)
-    .select("id, public_id")
-    .single();
-
-  if (docError || !doc) {
-    return NextResponse.json({ ok: false, error: docError?.message || "Falha ao emitir" }, { status: 400 });
-  }
-
-  recordAuditServer({
-    escolaId,
-    portal: "secretaria",
-    acao: "DOCUMENTO_EMITIDO",
-    entity: "documentos_emitidos",
-    entityId: doc.id,
-    details: { alunoId, tipoDocumento },
-  }).catch(() => null);
-
-      return NextResponse.json({
-        ok: true,
-        docId: doc.id,
-        publicId: doc.public_id,
-        hash: hashValidacao,
-        tipo: tipoDocumento,
-      });
-    }
+}

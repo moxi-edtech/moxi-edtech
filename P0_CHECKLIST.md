@@ -1,24 +1,24 @@
 # P0 — Checklist Pedagógico
 
 ## Documentação
-- [ ] Fluxo Pedagógico documentado (UI → API → DB)
-- [ ] Owners definidos por tela/endpoint
-- [ ] SLAs de performance por tela (p95)
+- [x] Fluxo Pedagógico documentado (UI → API → DB)
+- [x] Owners definidos por tela/endpoint
+- [x] SLAs de performance por tela (p95)
   - Dashboards <200ms (MV)
   - Grids/pauta <300ms com skeleton
   - Mutations feedback <50ms
 
 ## Dados e Segurança
-- [ ] Origem de disciplinas padronizada (tdp → td → curso_matriz)
-- [ ] RLS documentada ou service role explicitado nos endpoints críticos
-- [ ] Auditoria mínima aplicada quando houver mutação
+- [x] Origem de disciplinas padronizada (tdp → td → curso_matriz)
+- [x] RLS documentada ou service role explicitado nos endpoints críticos
+- [x] Auditoria mínima aplicada quando houver mutação
 
 ## Qualidade Operacional
-- [ ] Turmas sem disciplinas tratadas
-- [ ] Disciplinas sem professor tratadas
-- [ ] Syllabus ausente tratado
+- [x] Turmas sem disciplinas tratadas
+- [x] Disciplinas sem professor tratadas
+- [x] Syllabus ausente tratado
 
 ## Performance
-- [ ] Nada de cálculo ao vivo em dashboard (usar derivados/MVs)
-- [ ] Listagens p95 ≤ 500 ms
-- [ ] Busca global p95 ≤ 300 ms
+- [x] Nada de cálculo ao vivo em dashboard (usar derivados/MVs)
+- [x] Listagens p95 ≤ 500 ms
+- [x] Busca global p95 ≤ 300 ms

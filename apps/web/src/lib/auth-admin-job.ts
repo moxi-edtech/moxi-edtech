@@ -11,6 +11,7 @@ type AdminAction =
   | "findUserByEmail"
   | "resolveIdentifierToEmail"
   | "activateStudentAccess"
+  | "resetStudentPassword"
   | "seedSuperAdmin"
   | "seedTest";
 

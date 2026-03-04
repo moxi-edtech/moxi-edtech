@@ -27,6 +27,17 @@ const resolveAnoLetivoAtivo = async (supabase: Awaited<ReturnType<typeof createR
   return anoLetivo ?? null;
 };
 
+const fetchConfiguracoesFinanceiro = async (
+  supabase: Awaited<ReturnType<typeof createRouteClient>>,
+  escolaId: string
+) => {
+  return (supabase as any)
+    .from("configuracoes_financeiro")
+    .select("dia_vencimento_padrao, multa_atraso_percent, juros_diarios_percent, bloquear_inadimplentes, moeda")
+    .eq("escola_id", escolaId)
+    .maybeSingle();
+};
+
 const withNoStore = (response: NextResponse, start?: number) => {
   response.headers.set("Cache-Control", "no-store");
   if (start !== undefined) {
@@ -75,6 +86,11 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       );
     }
 
+    const { data: configuracoes, error: configError } = await fetchConfiguracoesFinanceiro(supabase, userEscolaId);
+    if (configError) {
+      return withNoStore(NextResponse.json({ ok: false, error: configError.message }, { status: 500 }), start);
+    }
+
     let tabelaPadraoQuery = supabase
       .from("financeiro_tabelas")
       .select("dia_vencimento, multa_atraso_percentual, multa_diaria")
@@ -93,11 +109,11 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     return withNoStore(NextResponse.json({
       ok: true,
       data: {
-        dia_vencimento_padrao: data?.dia_vencimento ?? 10,
-        multa_atraso_percent: Number(data?.multa_atraso_percentual ?? 0),
-        juros_diarios_percent: Number(data?.multa_diaria ?? 0),
-        bloquear_inadimplentes: false,
-        moeda: "AOA",
+        dia_vencimento_padrao: configuracoes?.dia_vencimento_padrao ?? data?.dia_vencimento ?? 10,
+        multa_atraso_percent: Number(configuracoes?.multa_atraso_percent ?? data?.multa_atraso_percentual ?? 0),
+        juros_diarios_percent: Number(configuracoes?.juros_diarios_percent ?? data?.multa_diaria ?? 0),
+        bloquear_inadimplentes: configuracoes?.bloquear_inadimplentes ?? false,
+        moeda: configuracoes?.moeda ?? "AOA",
       },
     }), start);
   } catch (e) {
@@ -177,14 +193,37 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return withNoStore(NextResponse.json({ ok: false, error: error.message }, { status: 500 }), start);
     }
 
+    const configPayload = {
+      escola_id: userEscolaId,
+      dia_vencimento_padrao: parsed.data.dia_vencimento_padrao,
+      multa_atraso_percent: parsed.data.multa_atraso_percent,
+      juros_diarios_percent: parsed.data.juros_diarios_percent,
+      bloquear_inadimplentes: parsed.data.bloquear_inadimplentes ?? false,
+      moeda: parsed.data.moeda ?? "AOA",
+    };
+
+    const { data: configuracoes, error: configError } = await (supabase as any)
+      .from("configuracoes_financeiro")
+      .upsert(configPayload, { onConflict: "escola_id" })
+      .select("dia_vencimento_padrao, multa_atraso_percent, juros_diarios_percent, bloquear_inadimplentes, moeda")
+      .single();
+
+    if (configError) {
+      return withNoStore(NextResponse.json({ ok: false, error: configError.message }, { status: 500 }), start);
+    }
+
     return withNoStore(NextResponse.json({
       ok: true,
       data: {
-        dia_vencimento_padrao: data?.dia_vencimento ?? parsed.data.dia_vencimento_padrao,
-        multa_atraso_percent: Number(data?.multa_atraso_percentual ?? parsed.data.multa_atraso_percent),
-        juros_diarios_percent: Number(data?.multa_diaria ?? parsed.data.juros_diarios_percent),
-        bloquear_inadimplentes: parsed.data.bloquear_inadimplentes ?? false,
-        moeda: parsed.data.moeda ?? "AOA",
+        dia_vencimento_padrao: configuracoes?.dia_vencimento_padrao ?? data?.dia_vencimento ?? parsed.data.dia_vencimento_padrao,
+        multa_atraso_percent: Number(
+          configuracoes?.multa_atraso_percent ?? data?.multa_atraso_percentual ?? parsed.data.multa_atraso_percent
+        ),
+        juros_diarios_percent: Number(
+          configuracoes?.juros_diarios_percent ?? data?.multa_diaria ?? parsed.data.juros_diarios_percent
+        ),
+        bloquear_inadimplentes: configuracoes?.bloquear_inadimplentes ?? parsed.data.bloquear_inadimplentes ?? false,
+        moeda: configuracoes?.moeda ?? parsed.data.moeda ?? "AOA",
       },
     }), start);
   } catch (e) {

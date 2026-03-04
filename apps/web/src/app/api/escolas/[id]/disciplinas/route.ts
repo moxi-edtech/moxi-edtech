@@ -13,6 +13,7 @@ const resolveStatusCompletude = (payload: {
   avaliacao_mode?: string | null;
   avaliacao_modelo_id?: string | null;
   avaliacao_disciplina_id?: string | null;
+  modelo_excecao_id?: string | null;
 }) => {
   const hasCarga = Number(payload.carga_horaria_semanal ?? 0) > 0;
   const hasClassificacao = Boolean(payload.classificacao);
@@ -20,7 +21,7 @@ const resolveStatusCompletude = (payload: {
   const hasHorario = payload.entra_no_horario !== null && payload.entra_no_horario !== undefined;
   const hasAvaliacao =
     payload.avaliacao_mode === "inherit_school" ||
-    (payload.avaliacao_mode === "custom" && Boolean(payload.avaliacao_modelo_id)) ||
+    (payload.avaliacao_mode === "custom" && (Boolean(payload.avaliacao_modelo_id) || Boolean(payload.modelo_excecao_id))) ||
     (payload.avaliacao_mode === "inherit_disciplina" && Boolean(payload.avaliacao_disciplina_id));
 
   return hasCarga && hasClassificacao && hasPeriodos && hasHorario && hasAvaliacao
@@ -60,7 +61,7 @@ export async function GET(
         .from("curso_matriz")
         .select(
           `id, curso_id, classe_id, disciplina_id, carga_horaria, carga_horaria_semanal, obrigatoria, ordem,
-           classificacao, periodos_ativos, entra_no_horario, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id,
+           classificacao, periodos_ativos, entra_no_horario, avaliacao_mode, avaliacao_modelo_id, avaliacao_disciplina_id, modelo_excecao_id,
            conta_para_media_med,
            status_completude, curso_curriculo_id,
            disciplina:disciplinas_catalogo!curso_matriz_disciplina_id_fkey(id, nome, sigla, is_avaliavel, area),
@@ -124,6 +125,7 @@ export async function GET(
       avaliacao_mode: r.avaliacao_mode ?? undefined,
       avaliacao_modelo_id: r.avaliacao_modelo_id ?? undefined,
       avaliacao_disciplina_id: r.avaliacao_disciplina_id ?? undefined,
+      modelo_excecao_id: r.modelo_excecao_id ?? undefined,
       status_completude: r.status_completude ?? undefined,
       is_core: r.classificacao ? r.classificacao === 'core' : undefined,
       is_avaliavel: r.disciplina?.is_avaliavel ?? undefined,
@@ -184,6 +186,7 @@ export async function POST(
       avaliacao_mode: z.enum(['inherit_school', 'custom', 'inherit_disciplina']).nullable().optional(),
       avaliacao_modelo_id: z.string().uuid().nullable().optional(),
       avaliacao_disciplina_id: z.string().uuid().nullable().optional(),
+      modelo_excecao_id: z.string().uuid().nullable().optional(),
     });
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
@@ -237,14 +240,17 @@ export async function POST(
     const classificacao = parsed.data.classificacao ?? (parsed.data.obrigatoria ? 'core' : 'complementar');
     const periodosAtivos = parsed.data.periodos_ativos ?? [1, 2, 3];
     const avaliacaoMode = parsed.data.avaliacao_mode ?? 'inherit_school';
+    const modeloExcecaoId = parsed.data.modelo_excecao_id
+      ?? (avaliacaoMode === 'custom' ? parsed.data.avaliacao_modelo_id ?? null : null);
     const statusCompletude = resolveStatusCompletude({
       carga_horaria_semanal: parsed.data.carga_horaria_semanal ?? null,
       classificacao,
       periodos_ativos: periodosAtivos,
       entra_no_horario: parsed.data.entra_no_horario ?? true,
       avaliacao_mode: avaliacaoMode,
-      avaliacao_modelo_id: parsed.data.avaliacao_modelo_id ?? null,
+      avaliacao_modelo_id: parsed.data.avaliacao_modelo_id ?? modeloExcecaoId,
       avaliacao_disciplina_id: parsed.data.avaliacao_disciplina_id ?? null,
+      modelo_excecao_id: modeloExcecaoId,
     });
 
     const payload: any = {
@@ -257,8 +263,9 @@ export async function POST(
       periodos_ativos: periodosAtivos,
       entra_no_horario: parsed.data.entra_no_horario ?? true,
       avaliacao_mode: avaliacaoMode,
-      avaliacao_modelo_id: parsed.data.avaliacao_modelo_id ?? null,
+      avaliacao_modelo_id: parsed.data.avaliacao_modelo_id ?? modeloExcecaoId,
       avaliacao_disciplina_id: parsed.data.avaliacao_disciplina_id ?? null,
+      modelo_excecao_id: modeloExcecaoId,
       status_completude: statusCompletude,
     };
     if (parsed.data.carga_horaria !== undefined) payload.carga_horaria = parsed.data.carga_horaria;

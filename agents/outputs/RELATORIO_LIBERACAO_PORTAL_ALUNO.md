@@ -26,6 +26,11 @@ Validar se escolas com portal do aluno concedido conseguem liberar acesso dos al
    - Identificado que o frontend do Super Admin (`EscolaMonitor.tsx`) falhava ao tentar atualizar a flag `aluno_portal_enabled` via cliente, devido a restrições de RLS.
    - **Correção:** Criada a API `/api/super-admin/escolas/[id]/update` que utiliza a RPC segura `check_super_admin_role` para autorização e executa o update via backend, resolvendo o problema de delegação de acesso e cumprindo com o `SERVICE_ROLE_INVENTORY.md`.
 
+5. **Bloqueio automático por inadimplência (server-side)**
+   - Local: `apps/web/src/app/(portal-aluno)/aluno/layout.tsx`
+   - Se `configuracoes_financeiro.bloquear_inadimplentes = true` e houver mensalidades vencidas há mais de 30 dias, o portal redireciona para `/aluno/desabilitado` antes de renderizar.
+   - Considera alunos diretos e educandos vinculados ao encarregado.
+
 ## Fluxo de Acesso do Aluno (Pós-Liberação)
 Após a liberação pela secretaria, o aluno segue o seguinte fluxo de ativação:
 1.  **Portal de Ativação:** O aluno acessa `/ativar-acesso`.
@@ -38,6 +43,7 @@ Após a liberação pela secretaria, o aluno segue o seguinte fluxo de ativaçã
 - **Escola com portal concedido (`aluno_portal_enabled = true`)**: consegue executar a liberação, desde que tenha permissão de ação na escola.
 - **Escola sem portal concedido (`aluno_portal_enabled = false`)**: recebe bloqueio explícito (`409`) antes da RPC.
 - **Efetivação da liberação**: ocorre no banco (marca acesso liberado e gera código), com processamento assíncrono adicional via filas.
+- **Bloqueio automático (inadimplência)**: o portal é bloqueado server-side quando a configuração estiver ativa e o aluno tiver mensalidade vencida > 30 dias.
 
 ## Observação operacional
 > **⚠️ NOTA DE FOCO FUTURO:** O status retornado pela API permanece como `queued`. Parte do fluxo (notificação/provisionamento) é assíncrona. O fluxo de ativação do aluno (`/ativar-acesso`) foi mapeado tecnicamente, mas será objeto de testes manuais e refinamento de UX em um momento posterior conforme orientação do usuário.

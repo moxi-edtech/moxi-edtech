@@ -37,6 +37,7 @@ export type DisciplinaForm = {
     mode: AvaliacaoMode;
     base_id?: string | null;
   };
+  modelo_excecao_id?: string | null;
   programa_texto?: string | null;
   class_ids?: string[];
   apply_scope?: "all" | "selected";
@@ -68,6 +69,7 @@ type Props = {
     options: { id: string; nome: string; label: string }[];
     onChange: (id: string) => void;
   };
+  avaliacaoModelos?: { id: string; nome: string }[];
   standardInfo?: {
     baseHours: number | null;
     isOutOfStandard: boolean;
@@ -89,6 +91,7 @@ const emptyDisciplina: DisciplinaForm = {
   is_avaliavel: true,
   conta_para_media_med: true,
   avaliacao: { mode: "inherit_school", base_id: null },
+  modelo_excecao_id: null,
   programa_texto: null,
 };
 
@@ -113,6 +116,7 @@ function applyDefaults(payload: DisciplinaForm): DisciplinaForm {
     avaliacao: payload.avaliacao?.mode
       ? payload.avaliacao
       : { mode: "inherit_school", base_id: null },
+    modelo_excecao_id: payload.modelo_excecao_id ?? null,
     periodo_mode: payload.periodo_mode ?? "ano",
     periodos_ativos:
       payload.periodos_ativos && payload.periodos_ativos.length > 0
@@ -152,6 +156,7 @@ export function DisciplinaModal({
   onSelectPending,
   classOptions = [],
   disciplineSelector,
+  avaliacaoModelos = [],
   standardInfo,
   onClose,
   onSave,
@@ -226,6 +231,10 @@ export function DisciplinaModal({
 
     if (form.avaliacao.mode === "inherit_disciplina" && !form.avaliacao.base_id) {
       nextErrors.avaliacao = "Selecione a disciplina base.";
+    }
+
+    if (form.avaliacao.mode === "custom" && !form.modelo_excecao_id) {
+      nextErrors.modelo_excecao_id = "Selecione um modelo de avaliação.";
     }
 
     if (classOptions.length > 0 && applyScope === "selected" && classIds.length === 0) {
@@ -802,6 +811,31 @@ export function DisciplinaModal({
                 </select>
                 {errors.avaliacao && (
                   <p className="mt-1 text-xs text-red-600">{errors.avaliacao}</p>
+                )}
+              </div>
+            )}
+
+            {form.avaliacao.mode === "custom" && (
+              <div className="mt-4">
+                <select
+                  value={form.modelo_excecao_id ?? ""}
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      modelo_excecao_id: event.target.value || null,
+                    }))
+                  }
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                >
+                  <option value="">Selecione um modelo</option>
+                  {avaliacaoModelos.map((modelo) => (
+                    <option key={modelo.id} value={modelo.id}>
+                      {modelo.nome}
+                    </option>
+                  ))}
+                </select>
+                {errors.modelo_excecao_id && (
+                  <p className="mt-1 text-xs text-red-600">{errors.modelo_excecao_id}</p>
                 )}
               </div>
             )}

@@ -149,7 +149,7 @@ export function AcoesRapidasBalcao({
     }
     setMensalidadeAtual(mensalidadeSugerida);
     setModalAberto(true);
-  }, [mensalidadeSugerida]);
+  }, [mensalidadeSugerida, error]);
 
   const goDocumento = useCallback(
     (tipo: "declaracao_frequencia" | "declaracao_notas") => {

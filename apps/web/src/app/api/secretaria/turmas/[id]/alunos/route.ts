@@ -24,6 +24,14 @@ type AlunoTurmaRow = {
   responsavel_nome: string | null;
   responsavel_telefone: string | null;
   responsavel_relacao: string | null;
+  pode_transitar?: boolean;
+  pedagogico?: {
+    status: "CONCLUIDA" | "REPROVADA" | "INCOMPLETA" | string;
+  };
+  financeiro?: {
+    em_dia: boolean;
+    saldo_pendente: number;
+  };
 };
 
 export async function GET(
@@ -99,6 +107,38 @@ export async function GET(
     }
 
     const rows = (data ?? []) as any[];
+    const matriculaIds = rows.map((mat) => mat.id).filter(Boolean);
+
+    const mensalidadesMap = new Map<string, number>();
+    if (matriculaIds.length > 0) {
+      const { data: mensalidades, error: mensalidadesError } = await supabase
+        .from("mensalidades")
+        .select("matricula_id, status, valor_previsto, valor, valor_pago_total")
+        .eq("escola_id", escolaId)
+        .in("matricula_id", matriculaIds);
+
+      if (mensalidadesError) {
+        console.error("[turmas/alunos] mensalidades error", mensalidadesError);
+      } else {
+        for (const row of mensalidades ?? []) {
+          const status = String((row as any).status || "").toLowerCase();
+          if (["pago", "isento", "cancelado"].includes(status)) continue;
+          const valorPrevisto = Number((row as any).valor_previsto ?? (row as any).valor ?? 0);
+          const valorPago = Number((row as any).valor_pago_total ?? 0);
+          const saldo = Math.max(valorPrevisto - valorPago, 0);
+          if (!Number.isFinite(saldo) || saldo <= 0) continue;
+          const matriculaId = (row as any).matricula_id as string;
+          mensalidadesMap.set(matriculaId, (mensalidadesMap.get(matriculaId) ?? 0) + saldo);
+        }
+      }
+    }
+
+    const normalizePedagogicoStatus = (status: string | null | undefined) => {
+      const normalized = String(status || "").trim().toLowerCase();
+      if (["concluido", "concluida", "aprovado", "aprovada"].includes(normalized)) return "CONCLUIDA";
+      if (["reprovado", "reprovada"].includes(normalized)) return "REPROVADA";
+      return "INCOMPLETA";
+    };
 
     const alunos: AlunoTurmaRow[] = rows.map((mat, index) => {
       const aluno = Array.isArray(mat.alunos) ? mat.alunos[0] : mat.alunos;
@@ -107,6 +147,11 @@ export async function GET(
           ? aluno.profiles[0]
           : aluno.profiles
         : null;
+
+      const saldoPendente = mensalidadesMap.get(mat.id) ?? 0;
+      const financeiroEmDia = saldoPendente <= 0;
+      const pedagogicoStatus = normalizePedagogicoStatus(mat.status ?? null);
+      const podeTransitar = financeiroEmDia && pedagogicoStatus === "CONCLUIDA";
 
       return {
         matricula_id: mat.id,
@@ -127,6 +172,14 @@ export async function GET(
         responsavel_nome: aluno?.responsavel ?? null,
         responsavel_telefone: aluno?.telefone_responsavel ?? null,
         responsavel_relacao: aluno?.encarregado_relacao ?? null,
+        pode_transitar: podeTransitar,
+        pedagogico: {
+          status: pedagogicoStatus,
+        },
+        financeiro: {
+          em_dia: financeiroEmDia,
+          saldo_pendente: saldoPendente,
+        },
       };
     });
 

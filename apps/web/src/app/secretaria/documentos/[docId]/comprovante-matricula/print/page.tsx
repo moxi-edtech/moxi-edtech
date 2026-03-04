@@ -23,15 +23,17 @@ export default async function ComprovanteMatriculaPrintPage({
     return <div className="p-8">Documento inválido para esta página.</div>;
   }
 
-  const snapshot = doc.dados_snapshot || {};
+  const snapshot = (doc.dados_snapshot || {}) as Record<string, unknown>;
   const baseUrl = process.env.NEXT_PUBLIC_VALIDATION_BASE_URL ?? validationBaseUrl ?? (await getRequestOrigin());
-  const hash = snapshot.hash_validacao || "";
-  const numero = snapshot.numero_sequencial;
+  const hash = typeof snapshot.hash_validacao === "string" ? snapshot.hash_validacao : "";
+  const numero = typeof snapshot.numero_sequencial === "number" ? snapshot.numero_sequencial : null;
   const urlValidacao = hash ? `${String(baseUrl).replace(/\/$/, "")}/documentos/${doc.public_id}?hash=${hash}` : null;
 
-  const efetivacao = snapshot.data_hora_efetivacao
-    ? new Date(String(snapshot.data_hora_efetivacao)).toLocaleString("pt-PT")
-    : "—";
+  const efetivacaoRaw = snapshot.data_hora_efetivacao;
+  const efetivacao =
+    typeof efetivacaoRaw === "string" || typeof efetivacaoRaw === "number"
+      ? new Date(String(efetivacaoRaw)).toLocaleString("pt-PT")
+      : "—";
 
   return (
     <div className={`min-h-screen ${styles.printRoot} font-serif text-slate-900`}>
@@ -49,15 +51,19 @@ export default async function ComprovanteMatriculaPrintPage({
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-slate-500">Aluno</p>
-                <p className="font-semibold">{snapshot.aluno_nome || "—"}</p>
+                <p className="font-semibold">{typeof snapshot.aluno_nome === "string" ? snapshot.aluno_nome : "—"}</p>
               </div>
               <div>
                 <p className="text-xs text-slate-500">Turma</p>
-                <p className="font-semibold">{snapshot.turma_nome || "—"}</p>
+                <p className="font-semibold">{typeof snapshot.turma_nome === "string" ? snapshot.turma_nome : "—"}</p>
               </div>
               <div>
                 <p className="text-xs text-slate-500">Ano Letivo</p>
-                <p className="font-semibold">{snapshot.ano_letivo ?? "—"}</p>
+                <p className="font-semibold">
+                  {typeof snapshot.ano_letivo === "string" || typeof snapshot.ano_letivo === "number"
+                    ? String(snapshot.ano_letivo)
+                    : "—"}
+                </p>
               </div>
               <div>
                 <p className="text-xs text-slate-500">Data/hora da efetivação</p>

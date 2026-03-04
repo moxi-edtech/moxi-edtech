@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Archive, DollarSign, FileCheck, FileText, Pencil, RotateCcw, Trash2 } from "lucide-react";
+import { Archive, DollarSign, FileCheck, FileText, KeyRound, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import type { AlunoNormalizado } from "@/lib/aluno/types";
 
 export type DossierRole = "admin" | "secretaria";
@@ -11,6 +11,7 @@ export type DossierRole = "admin" | "secretaria";
 export function DossierAcoes({ role, aluno, escolaId }: { role: DossierRole; aluno: AlunoNormalizado; escolaId: string }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [resetResult, setResetResult] = useState<{ login: string; senha: string } | null>(null);
 
   async function run(url: string, body?: unknown) {
     setLoading(true);
@@ -28,10 +29,29 @@ export function DossierAcoes({ role, aluno, escolaId }: { role: DossierRole; alu
     }
   }
 
+  async function handleResetSenha() {
+    setLoading(true);
+    setResetResult(null);
+    try {
+      const res = await fetch(`/api/secretaria/alunos/${aluno.id}/reset-senha`, { method: "POST" });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.ok) throw new Error(json.error || "Falha ao resetar senha.");
+      if (json.login && json.senha) {
+        setResetResult({ login: json.login, senha: json.senha });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Falha ao resetar senha.";
+      window.alert(message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   if (role === "admin") {
     const isArquivado = aluno.perfil.status === "arquivado";
     return (
-      <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
         <Link href={`/escola/${escolaId}/admin/alunos/${aluno.id}/editar`} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-[#1F6B3B] hover:text-[#1F6B3B]"><Pencil size={14} className="inline mr-1" />Editar</Link>
         {!isArquivado ? (
           <button disabled={loading} onClick={() => run(`/api/secretaria/alunos/${aluno.id}/delete`, { reason: "Arquivado via Admin" })} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-[#E3B23C]/40 hover:text-[#E3B23C]"><Archive size={14} className="inline mr-1" />Arquivar</button>
@@ -41,12 +61,27 @@ export function DossierAcoes({ role, aluno, escolaId }: { role: DossierRole; alu
             <button disabled={loading} onClick={() => run(`/api/secretaria/alunos/${aluno.id}/hard-delete`)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-rose-200 hover:text-rose-700"><Trash2 size={14} className="inline mr-1" />Eliminar</button>
           </>
         )}
+        <button
+          disabled={loading}
+          onClick={handleResetSenha}
+          className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-[#1F6B3B] hover:text-[#1F6B3B]"
+        >
+          <KeyRound size={14} className="inline mr-1" />Resetar senha
+        </button>
+        </div>
+        {resetResult && (
+          <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
+            <div><span className="font-semibold">Login:</span> {resetResult.login}</div>
+            <div><span className="font-semibold">Senha temporária:</span> {resetResult.senha}</div>
+          </div>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-2 flex-wrap">
       <Link
         href={`/secretaria/alunos/${aluno.id}/pagamento`}
         className={`rounded-xl px-4 py-2.5 text-sm font-semibold text-white ${
@@ -76,6 +111,20 @@ export function DossierAcoes({ role, aluno, escolaId }: { role: DossierRole; alu
         >
           <FileCheck size={14} className="inline mr-1" />Matricular
         </Link>
+      )}
+      <button
+        disabled={loading}
+        onClick={handleResetSenha}
+        className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+      >
+        <KeyRound size={14} className="inline mr-1" />Resetar senha
+      </button>
+      </div>
+      {resetResult && (
+        <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
+          <div><span className="font-semibold">Login:</span> {resetResult.login}</div>
+          <div><span className="font-semibold">Senha temporária:</span> {resetResult.senha}</div>
+        </div>
       )}
     </div>
   );

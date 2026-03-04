@@ -1,4 +1,4 @@
-ifiqu# Session Summary — Curriculum Presets Refactor
+# Session Summary — Curriculum Presets Refactor
 
 ## Scope
 - Refatoração completa de `curriculum-presets` com novas keys, componentes e carga horária semanal.
@@ -63,3 +63,12 @@ ifiqu# Session Summary — Curriculum Presets Refactor
 - Seed inicial de modelos `pap`, `estagio` e `final_unica` com regras padrão.
 - Resolver isenção por regra (ex.: média anual >= X) e refletir na pauta/boletim.
 - Ajustar PDFs oficiais para renderizar modelo não trimestral.
+
+## Session 2026-?? — GradeEngine V2 Cascade
+- `calcular_media_trimestral` criada com fallback aritmético e uso em MV do boletim.
+- `modelos_avaliacao.curso_id` + `curso_matriz.modelo_excecao_id` adicionados para cascade.
+- MV `internal.mv_boletim_por_matricula` refatorada para `COALESCE` (disciplina → curso → escola).
+- API de override por curso: `GET/POST /api/escolas/[id]/cursos/[cursoId]/avaliacao`.
+- Disciplina modal permite selecionar modelo de exceção quando avaliação é `custom`.
+- Aba **Avaliação** no Course Manager com toggle de override por curso.
+- Badge “Exceção” exibido no currículo.
