@@ -20,11 +20,13 @@ export async function resolveAuthorizedStudentIds(params: {
 
   let linkedIds: string[] = [];
   if (userEmail) {
+    const normalizedEmail = userEmail.trim();
+
     const { data: encarregado } = await supabase
       .from("encarregados")
       .select("id")
       .eq("escola_id", escolaId)
-      .ilike("email", userEmail)
+      .eq("email", normalizedEmail)
       .limit(1)
       .maybeSingle();
 
