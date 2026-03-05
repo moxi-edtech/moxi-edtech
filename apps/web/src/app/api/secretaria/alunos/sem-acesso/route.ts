@@ -4,6 +4,7 @@ import type { Database } from "~types/supabase";
 import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { assertPortalAccess } from "@/lib/portalAccess";
 
 export async function GET(req: Request) {
   try {
@@ -11,6 +12,11 @@ export async function GET(req: Request) {
     const { data: userRes } = await s.auth.getUser();
     const user = userRes?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+
+    const portalCheck = await assertPortalAccess(s as any, user.id, "secretaria");
+    if (!portalCheck.ok) {
+      return NextResponse.json({ ok: false, error: portalCheck.error }, { status: portalCheck.status });
+    }
 
     const url = new URL(req.url);
     const escolaIdParam = url.searchParams.get("escolaId") || null;

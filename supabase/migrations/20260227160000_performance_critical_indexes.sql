@@ -22,11 +22,11 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_alunos_escola_nome_status
 
 -- 5. Listagem de Turmas por Curso (Secretaria)
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_turmas_escola_curso_status 
-  ON public.turmas (escola_id, curso_id, status);
+  ON public.turmas (escola_id, curso_id, status_validacao);
 
 -- 6. Notas e Boletins (Pedagógico)
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_notas_escola_periodo_disciplina 
-  ON public.notas (escola_id, periodo_letivo_id, disciplina_id);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_notas_escola_avaliacao 
+  ON public.notas (escola_id, avaliacao_id);
 
 -- 7. Polling do Outbox Worker (Infra)
 -- Crítico para o Worker não fazer Seq Scan na tabela de eventos que cresce rápido.
