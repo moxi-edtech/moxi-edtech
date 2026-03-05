@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { callAuthAdminJob } from "@/lib/auth-admin-job";
 import { recordAuditServer } from "@/lib/audit";
+import { assertPortalAccess } from "@/lib/portalAccess";
 
 export async function POST(req: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -16,6 +17,11 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     const user = userRes?.user;
     if (!user) {
       return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+    }
+
+    const portalCheck = await assertPortalAccess(s as any, user.id, "secretaria");
+    if (!portalCheck.ok) {
+      return NextResponse.json({ ok: false, error: portalCheck.error }, { status: portalCheck.status });
     }
 
     const { data: prof, error: profErr } = await s

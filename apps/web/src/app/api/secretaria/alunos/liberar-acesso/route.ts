@@ -3,6 +3,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { callAuthAdminJob } from "@/lib/auth-admin-job";
+import { assertPortalAccess } from "@/lib/portalAccess";
 import type { Database } from "~types/supabase";
 
 export async function POST(req: Request) {
@@ -11,6 +12,11 @@ export async function POST(req: Request) {
     const { data: userRes } = await s.auth.getUser();
     const user = userRes?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+
+    const portalCheck = await assertPortalAccess(s as any, user.id, "secretaria");
+    if (!portalCheck.ok) {
+      return NextResponse.json({ ok: false, error: portalCheck.error }, { status: portalCheck.status });
+    }
 
     const body = await req.json().catch(() => null);
     const alunoIds = Array.isArray(body?.alunoIds) ? (body.alunoIds.filter(Boolean) as string[]) : [];
