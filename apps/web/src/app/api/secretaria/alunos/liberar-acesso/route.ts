@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { callAuthAdminJob } from "@/lib/auth-admin-job";
 import type { Database } from "~types/supabase";
 
 export async function POST(req: Request) {
@@ -15,6 +16,7 @@ export async function POST(req: Request) {
     const alunoIds = Array.isArray(body?.alunoIds) ? (body.alunoIds.filter(Boolean) as string[]) : [];
     const canal = (body?.canal || body?.metodoEnvio || "whatsapp") as string;
     const escolaIdRequest = (body?.escolaId || body?.escola_id || null) as string | null;
+    const gerarCredenciais = body?.gerarCredenciais !== false;
 
     if (alunoIds.length === 0) {
       return NextResponse.json({ ok: false, error: "Informe alunos para liberar" }, { status: 400 });
@@ -48,10 +50,77 @@ export async function POST(req: Request) {
     if (rpcErr) return NextResponse.json({ ok: false, error: rpcErr.message }, { status: 400 });
 
     const rows = Array.isArray(rpcRes) ? rpcRes : [];
-    const detalhes: Array<{ id: string; status: string; request_id?: string | null }> = [];
+    const alunoIdsLiberados = rows.map((row: any) => row.aluno_id).filter(Boolean);
+    let alunosMap = new Map<
+      string,
+      { nome: string | null; codigo_ativacao: string | null; bi_numero: string | null }
+    >();
+
+    if (alunoIdsLiberados.length > 0) {
+      const { data: alunosData, error: alunosErr } = await s
+        .from("alunos")
+        .select("id, nome, codigo_ativacao, bi_numero")
+        .eq("escola_id", escolaId)
+        .in("id", alunoIdsLiberados);
+
+      if (!alunosErr && alunosData) {
+        alunosMap = new Map(
+          alunosData.map((row: any) => [
+            row.id,
+            {
+              nome: row.nome ?? null,
+              codigo_ativacao: row.codigo_ativacao ?? null,
+              bi_numero: row.bi_numero ?? null,
+            },
+          ])
+        );
+      }
+    }
+
+    const detalhes: Array<{
+      id: string;
+      status: string;
+      request_id?: string | null;
+      nome?: string | null;
+      codigo_ativacao?: string | null;
+      login?: string | null;
+      senha?: string | null;
+    }> = [];
 
     for (const row of rows as any[]) {
-      detalhes.push({ id: row.aluno_id, status: "queued", request_id: row.request_id });
+      const extra = alunosMap.get(row.aluno_id) || { nome: null, codigo_ativacao: null, bi_numero: null };
+      const codigo = extra.codigo_ativacao || row.codigo_ativacao || null;
+      let login: string | null = null;
+      let senha: string | null = null;
+      let status = "queued";
+
+      if (gerarCredenciais) {
+        if (!extra.bi_numero) {
+          status = "bi_missing";
+        } else if (codigo) {
+          try {
+            const result = await callAuthAdminJob(req, "activateStudentAccess", {
+              codigo,
+              bi: extra.bi_numero,
+            });
+            login = (result as any)?.login ?? null;
+            senha = (result as any)?.senha ?? null;
+            status = "activated";
+          } catch (error) {
+            status = "activation_failed";
+          }
+        }
+      }
+
+      detalhes.push({
+        id: row.aluno_id,
+        status,
+        request_id: row.request_id,
+        nome: extra.nome,
+        codigo_ativacao: codigo,
+        login,
+        senha,
+      });
     }
 
     return NextResponse.json({ ok: true, liberados: rows.length, detalhes });

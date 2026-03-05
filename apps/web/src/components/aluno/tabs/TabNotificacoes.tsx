@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 type Aviso = { id: string; titulo: string; resumo: string; origem: string; data: string };
 
-export function AvisosList() {
+export function TabNotificacoes() {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<Aviso[]>([]);
 
@@ -26,16 +26,18 @@ export function AvisosList() {
     return () => { mounted = false };
   }, []);
 
-  if (loading) return <div>Carregando avisos…</div>;
-  if (!items.length) return <div className="text-sm text-gray-600">Nenhum aviso encontrado.</div>;
+  if (loading) return <div className="h-24 animate-pulse rounded-2xl bg-slate-100" />;
+  if (!items.length) return <div className="text-sm text-slate-500">Nenhum aviso encontrado.</div>;
 
   return (
     <div className="space-y-3">
       {items.map((a) => (
-        <div key={a.id} className="p-4 rounded border bg-white">
-          <div className="text-sm text-gray-500">{a.origem} • {new Date(a.data).toLocaleDateString()}</div>
-          <div className="font-medium">{a.titulo}</div>
-          <div className="text-sm text-gray-600">{a.resumo}</div>
+        <div key={a.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="text-xs text-slate-400">
+            {a.origem} • {new Date(a.data).toLocaleDateString("pt-PT")}
+          </div>
+          <div className="mt-1 text-sm font-semibold text-slate-900">{a.titulo}</div>
+          <div className="mt-2 text-sm text-slate-600">{a.resumo}</div>
         </div>
       ))}
     </div>

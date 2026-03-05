@@ -15,6 +15,16 @@ export function LiberarAcessoAlunos({ escolaId }: Props) {
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [liberados, setLiberados] = useState<
+    Array<{
+      id: string;
+      nome?: string | null;
+      codigo_ativacao?: string | null;
+      login?: string | null;
+      senha?: string | null;
+      status?: string | null;
+    }>
+  >([]);
 
   const toggleSelecionar = (id: string) => {
     setSelecionados((prev) =>
@@ -32,14 +42,26 @@ export function LiberarAcessoAlunos({ escolaId }: Props) {
     if (selecionados.length === 0) return;
     setSubmitting(true);
     setMessage(null);
+    setLiberados([]);
     try {
       const res = await fetch('/api/secretaria/alunos/liberar-acesso', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ escolaId, alunoIds: selecionados, canal: 'whatsapp' }),
+        body: JSON.stringify({ escolaId, alunoIds: selecionados, canal: 'whatsapp', gerarCredenciais: true }),
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao liberar acesso');
+      const detalhes = Array.isArray(json.detalhes) ? json.detalhes : [];
+      setLiberados(
+        detalhes.map((item: any) => ({
+          id: item.id,
+          nome: item.nome ?? null,
+          codigo_ativacao: item.codigo_ativacao ?? null,
+          login: item.login ?? null,
+          senha: item.senha ?? null,
+          status: item.status ?? null,
+        }))
+      );
       setMessage(`${json.liberados} aluno(s) tiveram acesso liberado.`);
       limparSelecao();
       refetch();
@@ -82,6 +104,42 @@ export function LiberarAcessoAlunos({ escolaId }: Props) {
           <div className="flex items-center gap-2 text-klasse-green-700 bg-klasse-green-50 border border-klasse-green-200 rounded-lg p-3 text-sm">
             <CheckCircle className="w-4 h-4" />
             {message}
+          </div>
+        )}
+
+        {liberados.length > 0 && (
+          <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700">
+            <p className="font-semibold text-slate-900">Credenciais geradas</p>
+            <p className="text-xs text-slate-500">
+              Entregue o login e a senha para o primeiro acesso.
+            </p>
+            <div className="mt-3 space-y-2">
+              {liberados.map((item) => (
+                <div key={item.id} className="flex items-center justify-between gap-2 rounded-md border border-slate-100 bg-slate-50 px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-900 truncate">{item.nome ?? "Aluno"}</p>
+                    <p className="text-xs text-slate-500">ID: {item.id}</p>
+                    {item.status === "bi_missing" && (
+                      <p className="text-xs text-amber-600">BI em falta: não foi possível gerar credenciais.</p>
+                    )}
+                    {item.status === "activation_failed" && (
+                      <p className="text-xs text-amber-600">Falha ao gerar credenciais. Tente novamente.</p>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-slate-800">
+                      {item.login || "Login pendente"}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {item.senha ? `Senha: ${item.senha}` : "Senha já definida"}
+                    </p>
+                    <p className="text-xs text-slate-400">
+                      Código: {item.codigo_ativacao || "—"}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

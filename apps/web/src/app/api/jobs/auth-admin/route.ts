@@ -181,14 +181,32 @@ export async function POST(req: Request) {
         }
 
         const escolaId = (aluno as any).escola_id as string;
-        const login = `aluno_${(aluno as any).id}@${escolaId}.klasse.ao`.toLowerCase();
+        const { data: matriculaRow } = await admin
+          .from("matriculas")
+          .select("numero_matricula")
+          .eq("escola_id", escolaId)
+          .eq("aluno_id", (aluno as any).id)
+          .not("numero_matricula", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const numeroMatriculaRaw = matriculaRow?.numero_matricula
+          ? String(matriculaRow.numero_matricula).trim()
+          : "";
+        const numeroMatricula = numeroMatriculaRaw.replace(/[^a-zA-Z0-9]/g, "");
+        const loginCandidate = (numeroMatricula
+          ? `aluno_${numeroMatricula}@escola.ao`
+          : `aluno_${(aluno as any).id}@escola.ao`
+        ).toLowerCase();
+        let login = loginCandidate;
         let senha = crypto.randomBytes(6).toString("base64url").slice(0, 10);
         let created = false;
 
         let userId = (aluno as any).usuario_auth_id as string | null;
         if (!userId) {
           const createRes = await admin.auth.admin.createUser({
-            email: login,
+            email: loginCandidate,
             password: senha,
             email_confirm: true,
             user_metadata: {
@@ -196,6 +214,7 @@ export async function POST(req: Request) {
               role: "aluno",
               escola_id: escolaId,
               aluno_id: (aluno as any).id,
+              numero_matricula: numeroMatricula,
               primeiro_acesso: true,
               must_change_password: true,
             },
@@ -205,7 +224,7 @@ export async function POST(req: Request) {
           if (createRes.error) {
             if (createRes.error.message?.toLowerCase().includes("registered")) {
               const { data: listUsers } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-              const existing = listUsers?.users?.find((u) => u.email === login);
+              const existing = listUsers?.users?.find((u) => u.email === loginCandidate);
               userId = existing?.id ?? null;
               senha = "";
             } else {
@@ -215,6 +234,11 @@ export async function POST(req: Request) {
             userId = createRes.data.user?.id || null;
             created = true;
           }
+        }
+
+        if (userId) {
+          const { data: userData } = await admin.auth.admin.getUserById(userId);
+          login = userData?.user?.email || loginCandidate;
         }
 
         if (!userId) return NextResponse.json({ ok: false, error: "Falha ao criar usuário" }, { status: 500 });
@@ -227,7 +251,7 @@ export async function POST(req: Request) {
             role: "aluno" as any,
             escola_id: escolaId,
             current_escola_id: escolaId,
-            numero_login: login,
+            numero_login: numeroMatricula || null,
           } as TablesInsert<"profiles">,
           { onConflict: "user_id" }
         );
@@ -268,7 +292,8 @@ export async function POST(req: Request) {
           return NextResponse.json({ ok: false, error: updateError.message }, { status: 400 });
         }
 
-        return NextResponse.json({ ok: true, data: { login, senha } });
+        const loginResposta = userData.user.email || login;
+        return NextResponse.json({ ok: true, data: { login: loginResposta, senha } });
       }
       case "seedSuperAdmin": {
         const { email, password, nome } = payload as any;

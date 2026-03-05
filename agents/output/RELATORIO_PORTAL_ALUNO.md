@@ -1,13 +1,15 @@
 # Relatório — Portal Aluno
 
-Data: 2026-03-02
-Escopo: revisão do estado atual do portal aluno após os últimos ajustes de layout, APIs e guardas de autorização.
+Data: 2026-03-04
+Escopo: revisão do estado atual do portal aluno após o redesign light, refactor de layout e ajustes de navegação.
 
 ## 1) Estado atual
 
-- O portal aluno já está integrado com dados reais em endpoints `/api/aluno/*` para home, académico e financeiro.
+- O portal aluno está com layout light baseado no design system Klasse (cards, headings e navegação).
+- As rotas principais utilizam dados reais via `/api/aluno/*` para dashboard, académico e financeiro.
 - A seleção de `studentId` está protegida por validação de vínculo via `auth.uid()` + vínculos de aluno/encarregado.
 - Fluxo de comprovativo financeiro está ativo (upload + transição para `em_verificacao`).
+- Navegação inferior fixa com prefetch explícito para transições instantâneas.
 
 ## 2) Riscos/pendências identificadas
 
@@ -26,6 +28,10 @@ Escopo: revisão do estado atual do portal aluno após os últimos ajustes de la
 4. **Teste anti-IDOR parcial**
    - Existe teste de helper de autorização, mas falta suíte de integração/API cobrindo tentativas cruzadas endpoint a endpoint.
 
+5. **Documentos ainda com stub**
+   - Rota `/aluno/documentos` existe, mas o conteúdo ainda é placeholder.
+   - Impacto: funcionalidade incompleta no portal.
+
 ## 3) Backlog recomendado (prioridade)
 
 ### P0
@@ -40,10 +46,11 @@ Escopo: revisão do estado atual do portal aluno após os últimos ajustes de la
 ### P1
 - Evoluir payload académico para suportar MAC/NPP/PT e MT com origem separada e rastreável.
 - Melhorar telemetria/auditoria para registrar tentativas de `studentId` não autorizado.
+- Completar documentos com emissão real (declarações/boletins).
 
 ### P2
 - Refinos de UX (mensagens de estado, skeletons e acessibilidade do drawer).
 
 ## 4) Conclusão
 
-O portal está funcional com dados reais e proteção de seleção de aluno na camada de aplicação, mas ainda requer fechamento de segurança no banco (RLS por vínculo) e testes de integração anti-IDOR para atingir maturidade de produção.
+O portal está funcional com dados reais e novo layout light, com navegação rápida e seleção de aluno preservada. Ainda requer fechamento de segurança no banco (RLS por vínculo), emissão real de documentos e testes anti-IDOR para maturidade de produção.

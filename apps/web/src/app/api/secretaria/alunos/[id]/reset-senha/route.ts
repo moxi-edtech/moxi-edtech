@@ -44,7 +44,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
 
     const { data: aluno, error: alunoErr } = await s
       .from("alunos")
-      .select("id, escola_id, usuario_auth_id, profile_id")
+      .select("id, escola_id, usuario_auth_id, profile_id, codigo_ativacao, bi_numero")
       .eq("id", alunoId)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -67,13 +67,36 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     }
 
     const userId = (aluno as any).usuario_auth_id || (aluno as any).profile_id || null;
+
+    const { data: matriculaRow } = await s
+      .from("matriculas")
+      .select("numero_matricula")
+      .eq("escola_id", alunoEscolaId)
+      .eq("aluno_id", alunoId)
+      .not("numero_matricula", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const numeroMatriculaRaw = matriculaRow?.numero_matricula
+      ? String(matriculaRow.numero_matricula).trim()
+      : "";
+    const numeroMatricula = numeroMatriculaRaw.replace(/[^a-zA-Z0-9]/g, "");
+    const login = (numeroMatricula ? `aluno_${numeroMatricula}@escola.ao` : `aluno_${alunoId}@escola.ao`).toLowerCase();
     if (!userId) {
-      return NextResponse.json({ ok: false, error: "Aluno ainda não ativou o acesso" }, { status: 400 });
+      const codigo = (aluno as any).codigo_ativacao as string | null;
+      const biNumero = (aluno as any).bi_numero as string | null;
+      if (!codigo || !biNumero) {
+        return NextResponse.json(
+          { ok: false, error: "Aluno ainda não ativou o acesso e não possui BI/código para ativação" },
+          { status: 400 }
+        );
+      }
+
+      const data = await callAuthAdminJob(req, "activateStudentAccess", { codigo, bi: biNumero });
+      return NextResponse.json({ ok: true, login: data?.login ?? login, senha: data?.senha, created: true });
     }
 
-    const login = `aluno_${alunoId}@${alunoEscolaId}.klasse.ao`.toLowerCase();
     const data = await callAuthAdminJob(req, "resetStudentPassword", { userId, login });
-
     const response = { ok: true, login: data?.login ?? login, senha: data?.senha };
 
     try {

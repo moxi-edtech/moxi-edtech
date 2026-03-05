@@ -29,15 +29,18 @@ export function DisciplinasList() {
     };
   }, []);
 
-  if (loading) return <div>Carregando disciplinas…</div>;
+  if (loading) return <div className="h-24 animate-pulse rounded-2xl bg-slate-100" />;
 
-  if (!disciplinas.length) return <div className="text-sm text-gray-600">Nenhuma disciplina encontrada.</div>;
+  if (!disciplinas.length) return <div className="text-sm text-slate-500">Nenhuma disciplina encontrada.</div>;
 
   return (
-    <ul className="list-disc list-inside text-sm text-gray-700">
+    <div className="grid gap-3 sm:grid-cols-2">
       {disciplinas.map((d) => (
-        <li key={d.id}>{d.nome}</li>
+        <div key={d.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-sm font-semibold text-slate-900">{d.nome}</p>
+          <p className="text-xs text-slate-400">Disciplina ativa</p>
+        </div>
       ))}
-    </ul>
+    </div>
   );
 }
