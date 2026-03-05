@@ -6050,6 +6050,7 @@ export type Database = {
           observacao: string | null
           observacoes: string | null
           status: string | null
+          tabela_id: string | null
           turma_id: string | null
           updated_at: string
           updated_by: string | null
@@ -6074,6 +6075,7 @@ export type Database = {
           observacao?: string | null
           observacoes?: string | null
           status?: string | null
+          tabela_id?: string | null
           turma_id?: string | null
           updated_at?: string
           updated_by?: string | null
@@ -6098,6 +6100,7 @@ export type Database = {
           observacao?: string | null
           observacoes?: string | null
           status?: string | null
+          tabela_id?: string | null
           turma_id?: string | null
           updated_at?: string
           updated_by?: string | null
@@ -6182,6 +6185,13 @@ export type Database = {
             columns: ["matricula_id"]
             isOneToOne: false
             referencedRelation: "vw_search_matriculas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mensalidades_tabela_id_fkey"
+            columns: ["tabela_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_tabelas"
             referencedColumns: ["id"]
           },
         ]
@@ -6556,6 +6566,116 @@ export type Database = {
             columns: ["evento_id"]
             isOneToOne: false
             referencedRelation: "eventos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notificacoes_eventos_secretaria_admin: {
+        Row: {
+          created_at: string | null
+          descricao: string | null
+          escola_id: string
+          evento_id: string | null
+          id: string
+          status: string
+          titulo: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          descricao?: string | null
+          escola_id: string
+          evento_id?: string | null
+          id?: string
+          status?: string
+          titulo: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          descricao?: string | null
+          escola_id?: string
+          evento_id?: string | null
+          id?: string
+          status?: string
+          titulo?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notificacoes_eventos_secretaria_admin_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notificacoes_eventos_secretaria_admin_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notificacoes_pagamento_admin: {
+        Row: {
+          created_at: string | null
+          descricao: string | null
+          escola_id: string
+          id: string
+          pagamento_id: string | null
+          status: string
+          titulo: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          descricao?: string | null
+          escola_id: string
+          id?: string
+          pagamento_id?: string | null
+          status?: string
+          titulo: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          descricao?: string | null
+          escola_id?: string
+          id?: string
+          pagamento_id?: string | null
+          status?: string
+          titulo?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notificacoes_pagamento_admin_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notificacoes_pagamento_admin_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notificacoes_pagamento_admin_pagamento_id_fkey"
+            columns: ["pagamento_id"]
+            isOneToOne: false
+            referencedRelation: "pagamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notificacoes_pagamento_admin_pagamento_id_fkey"
+            columns: ["pagamento_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_pagamentos"
             referencedColumns: ["id"]
           },
         ]
@@ -13054,6 +13174,7 @@ export type Database = {
         | "declaracao_frequencia"
         | "declaracao_notas"
         | "comprovante_matricula"
+        | "boletim_trimestral"
       user_role:
         | "super_admin"
         | "global_admin"
@@ -13301,6 +13422,7 @@ export const Constants = {
         "declaracao_frequencia",
         "declaracao_notas",
         "comprovante_matricula",
+        "boletim_trimestral",
       ],
       user_role: [
         "super_admin",
