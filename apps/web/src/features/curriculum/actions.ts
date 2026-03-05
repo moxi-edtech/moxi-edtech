@@ -24,6 +24,14 @@ const normalize = (value?: string | null): string =>
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
 
+const normalizeNomeNorm = (value?: string | null): string =>
+  (value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+
 const normalizeClasse = (value?: string | null): string =>
   normalize(value).replace(/classe/g, "").replace(/[^a-z0-9]/g, "");
 
@@ -250,12 +258,8 @@ export async function hydrateCourseCurriculum(
       const disciplinas = source.filter((d) => normalizeClasse(d.classe) === classKey);
 
       return disciplinas.map((disc) => ({
-        escola_id: escolaId,
-        curso_escola_id: cursoId,
         nome: disc.nome,
-        classe_nome: cls.nome,
         classe_id: cls.id ?? null,
-        nivel_ensino: disc.componente === "TECNICA" ? "tecnico" : "geral",
         tipo: disc.tipo || "core",
       }));
     });
@@ -267,12 +271,83 @@ export async function hydrateCourseCurriculum(
 
   if (!rows.length) return;
 
+  const disciplinaByNorm = new Map<string, string>();
+  for (const row of rows) {
+    if (!row?.nome) continue;
+    const norm = normalizeNomeNorm(row.nome);
+    if (!norm) continue;
+    if (!disciplinaByNorm.has(norm)) disciplinaByNorm.set(norm, row.nome);
+  }
+
+  if (disciplinaByNorm.size === 0) return;
+
+  const catalogRows = Array.from(disciplinaByNorm.entries()).map(([_, nome]) => ({
+    escola_id: escolaId,
+    nome,
+  }));
+
   const { error: upsertError } = await supabase
-    .from("disciplinas")
-    .upsert(rows, {
-      onConflict: "curso_escola_id,classe_nome,nome",
+    .from("disciplinas_catalogo")
+    .upsert(catalogRows, {
+      onConflict: "escola_id,nome_norm",
       ignoreDuplicates: false,
     });
 
   if (upsertError) throw upsertError;
+
+  const { data: catalogo, error: catalogoError } = await supabase
+    .from("disciplinas_catalogo")
+    .select("id, nome_norm")
+    .eq("escola_id", escolaId)
+    .in("nome_norm", Array.from(disciplinaByNorm.keys()));
+
+  if (catalogoError) throw catalogoError;
+
+  const disciplinaIdByNorm = new Map<string, string>();
+  for (const row of catalogo || []) {
+    if (row?.nome_norm && row?.id) disciplinaIdByNorm.set(row.nome_norm, row.id);
+  }
+
+  const classIds = Array.from(new Set(rows.map((row) => row.classe_id).filter(Boolean))) as string[];
+  const disciplinaIds = Array.from(new Set(disciplinaIdByNorm.values()));
+
+  if (!classIds.length || !disciplinaIds.length) return;
+
+  const { data: existingMatrix, error: existingError } = await supabase
+    .from("curso_matriz")
+    .select("classe_id, disciplina_id")
+    .eq("escola_id", escolaId)
+    .eq("curso_id", cursoId)
+    .in("classe_id", classIds)
+    .in("disciplina_id", disciplinaIds);
+
+  if (existingError) throw existingError;
+
+  const existingKeys = new Set(
+    (existingMatrix || []).map((row) => `${row.classe_id}:${row.disciplina_id}`)
+  );
+
+  const matrixRows = rows
+    .map((row) => {
+      if (!row?.classe_id || !row?.nome) return null;
+      const norm = normalizeNomeNorm(row.nome);
+      const disciplinaId = disciplinaIdByNorm.get(norm);
+      if (!disciplinaId) return null;
+      const key = `${row.classe_id}:${disciplinaId}`;
+      if (existingKeys.has(key)) return null;
+      return {
+        escola_id: escolaId,
+        curso_id: cursoId,
+        classe_id: row.classe_id,
+        disciplina_id: disciplinaId,
+        obrigatoria: row.tipo === "core",
+      };
+    })
+    .filter(Boolean) as Array<{ escola_id: string; curso_id: string; classe_id: string; disciplina_id: string; obrigatoria: boolean }>;
+
+  if (!matrixRows.length) return;
+
+  const { error: matrixError } = await supabase.from("curso_matriz").insert(matrixRows);
+
+  if (matrixError) throw matrixError;
 }
