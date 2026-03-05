@@ -179,12 +179,19 @@ export async function saveAndValidateTurma(payload: ValidateTurmaPayload) {
          finalClasseId = (matchClasse as any).id;
        } else {
          // CRIA A CLASSE NA HORA
+         const classeNomeFinal =
+           classeNomeNormalizada || (targetNumber ? `${targetNumber}ª Classe` : null);
+
+         if (!classeNomeFinal) {
+           throw new Error("Nome da classe inválido para criação automática.");
+         }
+
          const { data: newClass, error: createClassError } = await supabase
            .from("classes")
            .insert({
              escola_id: payload.escola_id,
              curso_id: finalCursoId,
-             nome: classeNomeNormalizada || (targetNumber ? `${targetNumber}ª Classe` : null), // Ex: "10ª Classe"
+             nome: classeNomeFinal, // Ex: "10ª Classe"
              numero: targetNumber,
              ordem: targetNumber || null,
            })
