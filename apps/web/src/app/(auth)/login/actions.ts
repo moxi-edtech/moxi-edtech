@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { supabaseServer } from "~/lib/supabase/server";
+import { supabaseRouteClient } from "~/lib/supabase/server";
 import { normalizePapel } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 
@@ -21,7 +21,7 @@ export async function loginAction(_: unknown, formData: FormData) {
     return { ok: false, message: errorMessage };
   }
 
-  const supabase = await supabaseServer();
+  const supabase = await supabaseRouteClient();
 
   const { data, error } = await supabase.auth.signInWithPassword({
     email: parsed.data.email,
