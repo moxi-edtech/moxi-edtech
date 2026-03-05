@@ -55,6 +55,19 @@ export async function supabaseServerTyped<TDatabase = Database>() {
   });
 }
 
+/**
+ * Server-side Supabase client for Route Handlers.
+ * Reads + writes cookies (used for auth refresh in API routes).
+ */
+export async function supabaseRouteClient<TDatabase = Database>() {
+  const { url, anonKey } = getSupabaseEnv();
+  const cookieStore = await cookies();
+
+  return createServerClient<TDatabase>(url, anonKey, {
+    cookies: buildMutableCookieAdapter(cookieStore),
+  });
+}
+
 function buildCookieAdapter(cookieStore: Awaited<ReturnType<typeof cookies>>) {
   return {
     getAll() {
@@ -62,5 +75,16 @@ function buildCookieAdapter(cookieStore: Awaited<ReturnType<typeof cookies>>) {
     },
     // No-op: writing cookies here causaria "Cookies can only be modified..."
     setAll(_cookies: { name: string; value: string; options: CookieOptions }[]) {},
+  } satisfies Parameters<typeof createServerClient>[2]["cookies"];
+}
+
+function buildMutableCookieAdapter(cookieStore: Awaited<ReturnType<typeof cookies>>) {
+  return {
+    getAll() {
+      return cookieStore.getAll().map(({ name, value }) => ({ name, value }));
+    },
+    setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+      cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
+    },
   } satisfies Parameters<typeof createServerClient>[2]["cookies"];
 }
