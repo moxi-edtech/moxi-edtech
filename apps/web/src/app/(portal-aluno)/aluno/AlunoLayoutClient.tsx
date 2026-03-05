@@ -2,19 +2,12 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Bell, BookOpen, FileText, Home, Wallet } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
-import { parsePlanTier, type PlanTier } from "@/config/plans";
-import { StudentSwitcher } from "@/components/aluno/StudentSwitcher";
-import { BottomNav } from "@/components/aluno/BottomNav";
+import { AlunoHeader } from "@/components/aluno/layout/AlunoHeader";
+import { AlunoBottomNav } from "@/components/aluno/layout/AlunoBottomNav";
 
 type Educando = { id: string; nome: string; escola_id: string | null };
-
-function shortSchoolName(nome: string | null): string {
-  if (!nome) return "Portal Aluno";
-  const parts = nome.trim().split(/\s+/).filter(Boolean);
-  if (parts.length <= 2) return nome;
-  return parts.slice(0, 2).join(" ");
-}
 
 export default function AlunoLayoutClient({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
@@ -24,6 +17,7 @@ export default function AlunoLayoutClient({ children }: { children: React.ReactN
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const searchValue = searchParams?.toString() ?? "";
 
   useEffect(() => {
     let active = true;
@@ -66,9 +60,8 @@ export default function AlunoLayoutClient({ children }: { children: React.ReactN
         return;
       }
 
-      const plano: PlanTier = parsePlanTier(esc?.plano_atual ?? null);
       const enabled = Boolean(esc?.aluno_portal_enabled);
-      const acessoPortal = Boolean(plano && (plano === "profissional" || plano === "premium") && enabled);
+      const acessoPortal = enabled;
 
       const alunosDiretosPromise = s
         .from("alunos")
@@ -128,41 +121,58 @@ export default function AlunoLayoutClient({ children }: { children: React.ReactN
   }, [pathname, router]);
 
   const alunoSelecionado = useMemo(() => searchParams?.get("aluno") ?? educandos[0]?.id ?? null, [searchParams, educandos]);
+  const alunoSelecionadoNome = useMemo(
+    () => educandos.find((aluno) => aluno.id === alunoSelecionado)?.nome ?? educandos[0]?.nome ?? "",
+    [educandos, alunoSelecionado]
+  );
+
+  const safePathname = pathname ?? "";
+  const navItems = [
+    { href: "/aluno/dashboard", label: "Início", icon: Home },
+    { href: "/aluno/academico", label: "Académico", icon: BookOpen },
+    { href: "/aluno/financeiro", label: "Financeiro", icon: Wallet },
+    { href: "/aluno/documentos", label: "Documentos", icon: FileText },
+    { href: "/aluno/avisos", label: "Avisos", icon: Bell },
+  ];
+
+  const withAlunoParam = (href: string) => {
+    if (!alunoSelecionado) return href;
+    const params = new URLSearchParams(searchValue);
+    params.set("aluno", alunoSelecionado);
+    return `${href}?${params.toString()}`;
+  };
+
+  const handleTrocarAluno = (id: string) => {
+    const params = new URLSearchParams(searchValue);
+    params.set("aluno", id);
+    router.replace(`${pathname}?${params.toString()}`);
+  };
+
+  useEffect(() => {
+    navItems.forEach((item) => {
+      router.prefetch(withAlunoParam(item.href));
+    });
+  }, [alunoSelecionado, searchValue, router]);
 
   if (!ready) {
     return <div className="p-6">🔒 Verificando acesso do aluno…</div>;
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-[calc(84px+env(safe-area-inset-bottom))]">
-      <header className="sticky top-0 z-20 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1F6B3B] text-sm font-semibold text-white">KL</div>
-            <div>
-              <p className="text-xs uppercase tracking-wide text-slate-500">Portal aluno</p>
-              <p className="text-sm font-semibold text-slate-900">{shortSchoolName(escolaNome)}</p>
-            </div>
-          </div>
+    <div className="min-h-screen bg-slate-50 text-slate-900">
+      <AlunoHeader
+        escolaNome={escolaNome}
+        alunoSelecionadoNome={alunoSelecionadoNome}
+        educandos={educandos}
+        alunoSelecionadoId={alunoSelecionado}
+        onSelectAluno={handleTrocarAluno}
+      />
 
-          <StudentSwitcher educandos={educandos} selectedId={alunoSelecionado} />
-        </div>
-      </header>
+      <main className="mx-auto w-full max-w-5xl px-4 py-4 pb-[calc(96px+env(safe-area-inset-bottom))]">
+        <div className="rounded-2xl bg-white p-4 shadow-sm md:p-6">{children}</div>
 
-      <main className="mx-auto w-full max-w-5xl px-4 py-4">
-        <div className="rounded-xl bg-white p-4 shadow-sm md:p-6">{children}</div>
-
-        <div className="mt-4 flex flex-wrap gap-2 text-xs">
-          <span className="rounded-full px-3 py-1 font-medium text-white" style={{ backgroundColor: "#1F6B3B" }}>
-            CTA principal
-          </span>
-          <span className="rounded-full px-3 py-1 font-medium text-slate-900" style={{ backgroundColor: "#E3B23C" }}>
-            Alerta
-          </span>
-        </div>
+        <AlunoBottomNav items={navItems} activePath={safePathname} withAlunoParam={withAlunoParam} />
       </main>
-
-      <BottomNav />
     </div>
   );
 }

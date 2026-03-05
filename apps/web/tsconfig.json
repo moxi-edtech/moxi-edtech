@@ -49,6 +49,7 @@
   "exclude": [
     "node_modules",
     ".next",
+    "src/modelo_portal_do_aluno",
     "playwright.config.ts",
     "tests",
     "**/*.spec.ts",

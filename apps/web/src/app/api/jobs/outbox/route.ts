@@ -87,7 +87,20 @@ async function provisionStudent(admin: NonNullable<ReturnType<typeof getAdminCli
     .eq("id", escolaId)
     .maybeSingle();
   const escolaNome = escola?.nome ?? "Escola";
-  const login = `aluno_${aluno.id}@${escolaId}.klasse.ao`.toLowerCase();
+  const { data: matriculaRow } = await admin
+    .from("matriculas")
+    .select("numero_matricula")
+    .eq("escola_id", escolaId)
+    .eq("aluno_id", aluno.id)
+    .not("numero_matricula", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const numeroMatriculaRaw = matriculaRow?.numero_matricula
+    ? String(matriculaRow.numero_matricula).trim()
+    : "";
+  const numeroMatricula = numeroMatriculaRaw.replace(/[^a-zA-Z0-9]/g, "");
+  const login = (numeroMatricula ? `aluno_${numeroMatricula}@escola.ao` : `aluno_${aluno.id}@escola.ao`).toLowerCase();
   const telefone = aluno.responsavel_contato || aluno.telefone_responsavel || aluno.encarregado_telefone || null;
   const token = createActivationToken({
     escola_id: escolaId,
@@ -148,7 +161,7 @@ async function provisionStudent(admin: NonNullable<ReturnType<typeof getAdminCli
       role: "aluno" as any,
       escola_id: escolaId,
       current_escola_id: escolaId,
-      numero_login: login,
+      numero_login: numeroMatricula || null,
     },
     { onConflict: "user_id" }
   );
