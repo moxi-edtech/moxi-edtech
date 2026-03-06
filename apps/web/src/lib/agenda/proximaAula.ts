@@ -29,6 +29,7 @@ function slotWeekOffsetSeconds(slot: ProximaAulaSlot, nowIsoWeekday: number, now
   const endSec = timeToSeconds(slot.fim)
 
   if (!Number.isFinite(startSec) || !Number.isFinite(endSec)) return Number.POSITIVE_INFINITY
+  if (startSec >= endSec) return Number.POSITIVE_INFINITY
 
   const dayDelta = (slotIsoDay - nowIsoWeekday + 7) % 7
 
@@ -66,4 +67,3 @@ export function escolherProximaAula(
 
   return valid[0]?.slot ?? null
 }
-

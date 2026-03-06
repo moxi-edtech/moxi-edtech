@@ -53,6 +53,21 @@ type ExistingAssignment = {
   locked?: boolean;
 };
 
+type DisponibilidadeRow = {
+  professor_id: string | null;
+  dia_semana: number | null;
+  periodo_inicio: string | null;
+  periodo_fim: string | null;
+  tipo: string | null;
+};
+
+type DisponibilidadeRange = {
+  day: number;
+  start: number;
+  end: number;
+  tipo: "indisponivel" | "evitar";
+};
+
 type AutoScheduleResult = {
   ok: boolean;
   assignments: ExistingAssignment[];
@@ -78,6 +93,34 @@ type AutoScheduleResult = {
 
 const buildSlotKey = (day: number, ordem: number) => `${day}-${ordem}`;
 const MAX_UNIQUE_DISCIPLINES_PER_DAY = 5;
+const SECONDS_IN_DAY = 24 * 60 * 60;
+const AVOID_PENALTY = 12;
+
+function timeToSeconds(value: string | null | undefined) {
+  if (!value) return Number.NaN;
+  const [hh, mm, ss = "00"] = value.split(":");
+  return Number(hh) * 3600 + Number(mm) * 60 + Number(ss);
+}
+
+function buildDisponibilidadeMap(rows: DisponibilidadeRow[]) {
+  const map = new Map<string, DisponibilidadeRange[]>();
+  for (const row of rows) {
+    if (!row.professor_id || !row.dia_semana) continue;
+    const start = row.periodo_inicio ? timeToSeconds(row.periodo_inicio) : 0;
+    const end = row.periodo_fim ? timeToSeconds(row.periodo_fim) : SECONDS_IN_DAY;
+    if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
+    const range: DisponibilidadeRange = {
+      day: row.dia_semana,
+      start,
+      end,
+      tipo: row.tipo === "evitar" ? "evitar" : "indisponivel",
+    };
+    const list = map.get(row.professor_id) || [];
+    list.push(range);
+    map.set(row.professor_id, list);
+  }
+  return map;
+}
 
 function buildSlotIndex(slots: Slot[]) {
   const slotById = new Map<string, Slot>();
@@ -297,6 +340,7 @@ function pickSlot({
   dayTotals,
   dayDisciplines,
   dayAssignments,
+  professorDisponibilidade,
   phase,
 }: {
   disciplina: DisciplinaNeed;
@@ -310,6 +354,7 @@ function pickSlot({
   dayTotals: Map<number, number>;
   dayDisciplines: Map<number, Set<string>>;
   dayAssignments: Map<number, Map<number, string>>;
+  professorDisponibilidade: Map<string, DisponibilidadeRange[]>;
   phase: "strict" | "relax";
 }) {
   const constraints = prepareConstraints(disciplina);
@@ -366,6 +411,26 @@ function pickSlot({
     }
 
     let score = 0;
+    let availabilityPenalty = 0;
+    if (prof) {
+      const ranges = professorDisponibilidade.get(prof) || [];
+      if (ranges.length > 0) {
+        const slotStart = timeToSeconds(slot.start);
+        const slotEnd = timeToSeconds(slot.end);
+        if (!Number.isFinite(slotStart) || !Number.isFinite(slotEnd)) continue;
+        let blocked = false;
+        for (const range of ranges) {
+          if (range.day !== slot.day) continue;
+          if (slotEnd <= range.start || slotStart >= range.end) continue;
+          if (range.tipo === "indisponivel") {
+            blocked = true;
+            break;
+          }
+          availabilityPenalty = Math.max(availabilityPenalty, AVOID_PENALTY);
+        }
+        if (blocked) continue;
+      }
+    }
     const adjacentSlot = getAdjacentSlot(slotsByDay, slot, 1) ?? getAdjacentSlot(slotsByDay, slot, -1);
     const dayMap = dayAssignments.get(slot.day) || new Map();
     const adjacentMatch =
@@ -381,6 +446,7 @@ function pickSlot({
     if (constraints.evitar_ultimo_tempo && isLast) score -= 5;
     score -= daySlots;
     score += Math.round((1 - daySlots / dayCapacity) * 10);
+    score -= availabilityPenalty;
 
     candidates.push({ slot, score });
   }
@@ -480,6 +546,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     ) as string[];
     const professorProfileMap = new Map<string, string>();
     const professorTurnosMap = new Map<string, string[]>();
+    let professorDisponibilidadeMap = new Map<string, DisponibilidadeRange[]>();
 
     if (professorIds.length > 0) {
       const { data: professoresRows } = await supabase
@@ -505,6 +572,18 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
           const turnos = Array.isArray(row.turnos_disponiveis) ? row.turnos_disponiveis : [];
           professorTurnosMap.set(row.profile_id, turnos as string[]);
         }
+      }
+    }
+
+    if (professorIds.length > 0) {
+      const { data: disponibilidadeRows } = await supabase
+        .from("professor_disponibilidade")
+        .select("professor_id, dia_semana, periodo_inicio, periodo_fim, tipo")
+        .eq("escola_id", escolaIdResolved)
+        .in("professor_id", professorIds);
+
+      if (disponibilidadeRows && disponibilidadeRows.length > 0) {
+        professorDisponibilidadeMap = buildDisponibilidadeMap(disponibilidadeRows as DisponibilidadeRow[]);
       }
     }
 
@@ -757,6 +836,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
             dayTotals,
             dayDisciplines,
             dayAssignments,
+            professorDisponibilidade: professorDisponibilidadeMap,
             phase,
           });
 

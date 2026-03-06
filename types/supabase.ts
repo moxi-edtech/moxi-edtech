@@ -5081,6 +5081,82 @@ export type Database = {
           },
         ]
       }
+      horario_eventos: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          escola_id: string
+          id: string
+          payload: Json | null
+          tipo: string
+          turma_id: string
+          versao_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          escola_id: string
+          id?: string
+          payload?: Json | null
+          tipo: string
+          turma_id: string
+          versao_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          escola_id?: string
+          id?: string
+          payload?: Json | null
+          tipo?: string
+          turma_id?: string
+          versao_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "horario_eventos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "horario_eventos_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "horario_eventos_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "horario_eventos_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_secretaria"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "horario_eventos_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "horario_eventos_versao_id_fkey"
+            columns: ["versao_id"]
+            isOneToOne: false
+            referencedRelation: "horario_versoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       horario_slots: {
         Row: {
           created_at: string | null
@@ -5131,6 +5207,72 @@ export type Database = {
             columns: ["escola_id"]
             isOneToOne: false
             referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      horario_versoes: {
+        Row: {
+          created_at: string
+          escola_id: string
+          id: string
+          publicado_em: string | null
+          status: string
+          turma_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          escola_id: string
+          id?: string
+          publicado_em?: string | null
+          status?: string
+          turma_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          escola_id?: string
+          id?: string
+          publicado_em?: string | null
+          status?: string
+          turma_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "horario_versoes_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "horario_versoes_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "horario_versoes_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "horario_versoes_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_matriculas_secretaria"
+            referencedColumns: ["turma_id"]
+          },
+          {
+            foreignKeyName: "horario_versoes_turma_id_fkey"
+            columns: ["turma_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_turmas"
             referencedColumns: ["id"]
           },
         ]
@@ -8048,11 +8190,60 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "quadro_horarios_disciplina_id_fkey"
-            columns: ["disciplina_id"]
+            foreignKeyName: "fk_quadro_horarios_disciplina_escola"
+            columns: ["disciplina_id", "escola_id"]
             isOneToOne: false
             referencedRelation: "disciplinas_catalogo"
-            referencedColumns: ["id"]
+            referencedColumns: ["id", "escola_id"]
+          },
+          {
+            foreignKeyName: "fk_quadro_horarios_professor_escola"
+            columns: ["professor_id", "escola_id"]
+            isOneToOne: false
+            referencedRelation: "professores"
+            referencedColumns: ["id", "escola_id"]
+          },
+          {
+            foreignKeyName: "fk_quadro_horarios_professor_escola"
+            columns: ["professor_id", "escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_professores"
+            referencedColumns: ["id", "escola_id"]
+          },
+          {
+            foreignKeyName: "fk_quadro_horarios_sala_escola"
+            columns: ["sala_id", "escola_id"]
+            isOneToOne: false
+            referencedRelation: "salas"
+            referencedColumns: ["id", "escola_id"]
+          },
+          {
+            foreignKeyName: "fk_quadro_horarios_slot_escola"
+            columns: ["slot_id", "escola_id"]
+            isOneToOne: false
+            referencedRelation: "horario_slots"
+            referencedColumns: ["id", "escola_id"]
+          },
+          {
+            foreignKeyName: "fk_quadro_horarios_turma_escola"
+            columns: ["turma_id", "escola_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id", "escola_id"]
+          },
+          {
+            foreignKeyName: "fk_quadro_horarios_turma_escola"
+            columns: ["turma_id", "escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_turmas"
+            referencedColumns: ["id", "escola_id"]
+          },
+          {
+            foreignKeyName: "fk_quadro_horarios_versao_escola_turma"
+            columns: ["versao_id", "escola_id", "turma_id"]
+            isOneToOne: false
+            referencedRelation: "horario_versoes"
+            referencedColumns: ["id", "escola_id", "turma_id"]
           },
           {
             foreignKeyName: "quadro_horarios_escola_id_fkey"
@@ -8066,55 +8257,6 @@ export type Database = {
             columns: ["escola_id"]
             isOneToOne: false
             referencedRelation: "escolas_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "quadro_horarios_professor_id_fkey"
-            columns: ["professor_id"]
-            isOneToOne: false
-            referencedRelation: "professores"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "quadro_horarios_professor_id_fkey"
-            columns: ["professor_id"]
-            isOneToOne: false
-            referencedRelation: "vw_search_professores"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "quadro_horarios_sala_id_fkey"
-            columns: ["sala_id"]
-            isOneToOne: false
-            referencedRelation: "salas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "quadro_horarios_slot_id_fkey"
-            columns: ["slot_id"]
-            isOneToOne: false
-            referencedRelation: "horario_slots"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "quadro_horarios_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "turmas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "quadro_horarios_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_matriculas_secretaria"
-            referencedColumns: ["turma_id"]
-          },
-          {
-            foreignKeyName: "quadro_horarios_turma_id_fkey"
-            columns: ["turma_id"]
-            isOneToOne: false
-            referencedRelation: "vw_search_turmas"
             referencedColumns: ["id"]
           },
         ]
@@ -10952,6 +11094,64 @@ export type Database = {
         }
         Relationships: []
       }
+      vw_rotinas_compat: {
+        Row: {
+          curso_oferta_id: string | null
+          escola_id: string | null
+          fim: string | null
+          id: string | null
+          inicio: string | null
+          professor_user_id: string | null
+          sala: string | null
+          secao_id: string | null
+          turma_id: string | null
+          weekday: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_quadro_horarios_disciplina_escola"
+            columns: ["curso_oferta_id", "escola_id"]
+            isOneToOne: false
+            referencedRelation: "disciplinas_catalogo"
+            referencedColumns: ["id", "escola_id"]
+          },
+          {
+            foreignKeyName: "fk_quadro_horarios_turma_escola"
+            columns: ["turma_id", "escola_id"]
+            isOneToOne: false
+            referencedRelation: "turmas"
+            referencedColumns: ["id", "escola_id"]
+          },
+          {
+            foreignKeyName: "fk_quadro_horarios_turma_escola"
+            columns: ["turma_id", "escola_id"]
+            isOneToOne: false
+            referencedRelation: "vw_search_turmas"
+            referencedColumns: ["id", "escola_id"]
+          },
+          {
+            foreignKeyName: "professores_profile_id_fkey"
+            columns: ["professor_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "quadro_horarios_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quadro_horarios_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vw_search_alunos: {
         Row: {
           created_at: string | null
@@ -11985,6 +12185,15 @@ export type Database = {
         }
         Returns: string
       }
+      ensure_horario_versao: {
+        Args: {
+          p_escola_id: string
+          p_status?: string
+          p_turma_id: string
+          p_versao_id?: string
+        }
+        Returns: string
+      }
       escola_has_feature: {
         Args: { p_escola_id: string; p_feature: string }
         Returns: boolean
@@ -12605,6 +12814,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      log_horario_event: {
+        Args: {
+          p_escola_id: string
+          p_payload?: Json
+          p_tipo: string
+          p_turma_id: string
+          p_versao_id: string
+        }
+        Returns: undefined
+      }
       mark_outbox_event_failed: {
         Args: { p_error: string; p_event_id: string }
         Returns: undefined
@@ -12757,6 +12976,10 @@ export type Database = {
           payload: Json
           tipo: string
         }[]
+      }
+      publish_horario_versao: {
+        Args: { p_escola_id: string; p_turma_id: string; p_versao_id: string }
+        Returns: string
       }
       realizar_pagamento_balcao: {
         Args: {
@@ -13108,6 +13331,16 @@ export type Database = {
           p_escola_id: string
           p_presencas: Json
           p_turma_id: string
+        }
+        Returns: Json
+      }
+      upsert_quadro_horarios_versao_atomic: {
+        Args: {
+          p_escola_id: string
+          p_items: Json
+          p_publish?: boolean
+          p_turma_id: string
+          p_versao_id: string
         }
         Returns: Json
       }
