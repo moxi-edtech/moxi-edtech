@@ -7,7 +7,7 @@ export interface EscolaDetalhes {
   endereco: string;
   telefone?: string | null;
   email?: string | null;
-  plano_atual: 'essencial' | 'profissional';
+  plano_atual: 'essencial' | 'profissional' | 'premium';
   status: string;
   created_at: string;
   updated_at: string;
@@ -19,6 +19,17 @@ export interface EscolaDetalhes {
   subdominio?: string | null;
   ssl_status?: string | null;
   db_region?: string | null;
+}
+
+export interface PlanLimits {
+  plan: 'essencial' | 'profissional' | 'premium';
+  price_mensal_kz: number;
+  max_alunos: number | null;
+  max_admin_users: number | null;
+  max_storage_gb: number | null;
+  professores_ilimitados: boolean;
+  api_enabled: boolean;
+  multi_campus: boolean;
 }
 
 export interface EscolaMetricas {

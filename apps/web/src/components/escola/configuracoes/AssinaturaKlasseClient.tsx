@@ -34,6 +34,17 @@ type Pagamento = {
   comprovativo_url?: string;
 };
 
+type PlanoLimites = {
+  plan: PlanTier;
+  price_mensal_kz: number;
+  max_alunos: number | null;
+  max_admin_users: number | null;
+  max_storage_gb: number | null;
+  professores_ilimitados: boolean;
+  api_enabled: boolean;
+  multi_campus: boolean;
+};
+
 export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseClientProps) {
   const [assinatura, setAssinatura] = useState<Assinatura | null>(null);
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
@@ -41,6 +52,7 @@ export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseCli
   const [uploading, setUploading] = useState(false);
   const [actionLoading, setActionLoading] = useState<null | "upgrade" | "annual" | "portal">(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [planoLimites, setPlanoLimites] = useState<PlanoLimites | null>(null);
 
   const supabase = createClient();
 
@@ -83,6 +95,17 @@ export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseCli
       }));
 
       setPagamentos(normalizedPgs);
+
+      if (normalizedAss?.plano) {
+        const { data: limitsData } = await supabase
+          .from('app_plan_limits')
+          .select('plan, price_mensal_kz, max_alunos, max_admin_users, max_storage_gb, professores_ilimitados, api_enabled, multi_campus')
+          .eq('plan', normalizedAss.plano)
+          .maybeSingle();
+        setPlanoLimites((limitsData as PlanoLimites) ?? null);
+      } else {
+        setPlanoLimites(null);
+      }
 
     } catch (err: any) {
       toast.error("Erro ao carregar dados de assinatura: " + err.message);
@@ -363,6 +386,56 @@ export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseCli
           )}
         </CardContent>
       </Card>
+
+      {planoLimites && (
+        <Card className="border-slate-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Contrato do Plano</CardTitle>
+            <CardDescription>Limites actuais para a escola</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 text-sm text-slate-700">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Preço mensal</span>
+              <span className="font-bold">Kz {planoLimites.price_mensal_kz.toLocaleString("pt-AO")}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Alunos</span>
+              <span className="font-bold">
+                {planoLimites.max_alunos ? `Até ${planoLimites.max_alunos}` : "Ilimitado"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Utilizadores admin</span>
+              <span className="font-bold">
+                {planoLimites.max_admin_users ? `Até ${planoLimites.max_admin_users}` : "Ilimitado"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Professores</span>
+              <span className="font-bold">{planoLimites.professores_ilimitados ? "Ilimitado" : "Limitado"}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Storage</span>
+              <span className="font-bold">
+                {planoLimites.max_storage_gb ? `${planoLimites.max_storage_gb} GB` : "Ilimitado"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">API</span>
+              <span className="font-bold">{planoLimites.api_enabled ? "Ativa" : "Não"}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Multi-campus</span>
+              <span className="font-bold">{planoLimites.multi_campus ? "Ativo" : "Não"}</span>
+            </div>
+            {planoLimites.max_admin_users && (
+              <div className="rounded-xl bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
+                No piloto (3–6 meses), o limite de utilizadores administrativos é apenas monitorado.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── Histórico de Pagamentos ── */}
       <Card className="border-slate-200" id="billing-history">

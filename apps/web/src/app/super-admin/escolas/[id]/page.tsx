@@ -22,6 +22,7 @@ export default function EscolaMonitoramentoPage() {
     performance, 
     atividades, 
     saude,
+    planLimits,
     loadEscolaData 
   } = useEscolaMonitorData(escolaId);
   
@@ -69,6 +70,7 @@ export default function EscolaMonitoramentoPage() {
           performance={performance}
           atividades={atividades}
           saude={saude}
+          planLimits={planLimits}
           refreshing={refreshing}
           onRefresh={loadEscolaData}
           onUpdate={loadEscolaData}
