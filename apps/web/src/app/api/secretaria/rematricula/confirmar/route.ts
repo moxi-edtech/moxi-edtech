@@ -5,6 +5,7 @@ import { recordAuditServer } from '@/lib/audit'
 import { normalizeAnoLetivo, resolveTabelaPreco } from '@/lib/financeiro/tabela-preco'
 import { tryCanonicalFetch } from '@/lib/api/proxyCanonical'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
+import { ACTIVE_MATRICULA_STATUSES } from '@/lib/matriculas/status'
 
 const Body = z.object({
   promocoes: z.array(z.object({ origem_turma_id: z.string().uuid(), destino_turma_id: z.string().uuid() })).optional(),
@@ -34,7 +35,9 @@ export async function POST(req: Request) {
     const forwarded = await tryCanonicalFetch(req, `/api/escolas/${escolaId}/rematricula/confirmar`)
     if (forwarded) return forwarded
 
-    const resultsPromocoes: Array<{ origem_turma_id: string; destino_turma_id: string; inserted: number; skipped: number }> = []
+    type BlockedItem = { aluno_id?: string | null; matricula_id?: string | null; motivos?: string[]; aluno_nome?: string | null }
+    type InsertedItem = { aluno_id?: string | null; matricula_id?: string | null; aluno_nome?: string | null }
+    const resultsPromocoes: Array<{ origem_turma_id: string; destino_turma_id: string; inserted: number; skipped: number; blocked: BlockedItem[] }> = []
 
     const gerarMensalidades = Boolean((json as any)?.gerar_mensalidades)
     const gerarTodas = (json as any)?.gerar_todas !== false
@@ -52,30 +55,48 @@ export async function POST(req: Request) {
           })
           if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
           const row = Array.isArray(data) ? data[0] : data
-          resultsPromocoes.push({ origem_turma_id: p.origem_turma_id, destino_turma_id: p.destino_turma_id, inserted: row?.inserted ?? 0, skipped: row?.skipped ?? 0 })
+          const insertedList = (Array.isArray(row?.inserted) ? row.inserted : []) as InsertedItem[]
+          const skippedList = (Array.isArray(row?.skipped) ? row.skipped : []) as BlockedItem[]
+          const blockedAlunoIds = Array.from(new Set(skippedList.map((item) => item?.aluno_id).filter(Boolean))) as string[]
+          let alunoNomeById = new Map<string, string>()
+          if (blockedAlunoIds.length > 0) {
+            const { data: alunos } = await supabase
+              .from('alunos')
+              .select('id, nome')
+              .eq('escola_id', escolaId)
+              .in('id', blockedAlunoIds)
+            alunoNomeById = new Map((alunos || []).map((a: any) => [a.id, a.nome]))
+          }
+          const blockedEnriched = skippedList.map((item) => ({
+            ...item,
+            aluno_nome: item?.aluno_id ? (alunoNomeById.get(item.aluno_id) ?? null) : null,
+          }))
+          resultsPromocoes.push({
+            origem_turma_id: p.origem_turma_id,
+            destino_turma_id: p.destino_turma_id,
+            inserted: insertedList.length,
+            skipped: skippedList.length,
+            blocked: blockedEnriched,
+          })
 
           // Mensalidades pós-processo (RPC): determinar inseridos comparando antes/depois
-          if (gerarMensalidades && (row?.inserted ?? 0) > 0) {
+          if (gerarMensalidades && insertedList.length > 0) {
             const { data: dest } = await supabase.from('turmas').select('session_id, classe_id, ano_letivo').eq('id', p.destino_turma_id).maybeSingle()
             const sessionId = (dest as any)?.session_id as string | null
             if (sessionId) {
-              const { data: preActive } = await supabase
-                .from('matriculas')
-                .select('aluno_id')
-                .eq('escola_id', escolaId)
-                .eq('session_id', sessionId)
-                .in('status', ['ativo','ativa','active'])
-              const preSet = new Set<string>((preActive || []).map((r:any)=>r.aluno_id))
-              const { data: nowActive } = await supabase
-                .from('matriculas')
-                .select('aluno_id')
-                .eq('escola_id', escolaId)
-                .eq('turma_id', p.destino_turma_id)
-                .eq('session_id', sessionId)
-                .in('status', ['ativo','ativa','active'])
-              const nowSet = new Set<string>((nowActive || []).map((r:any)=>r.aluno_id))
-              const insertedAlunos = Array.from(nowSet).filter(id => !preSet.has(id))
-              await generateMensalidadesForAlunos(supabase as any, escolaId, p.destino_turma_id, sessionId, (dest as any)?.ano_letivo ?? null, (dest as any)?.classe_id ?? null, insertedAlunos, gerarTodas)
+              const insertedAlunos = insertedList.map((item: any) => item?.aluno_id).filter(Boolean)
+              if (insertedAlunos.length > 0) {
+                await generateMensalidadesForAlunos(
+                  supabase as any,
+                  escolaId,
+                  p.destino_turma_id,
+                  sessionId,
+                  (dest as any)?.ano_letivo ?? null,
+                  (dest as any)?.classe_id ?? null,
+                  insertedAlunos,
+                  gerarTodas
+                )
+              }
             }
           }
         }
@@ -90,7 +111,7 @@ export async function POST(req: Request) {
           .update({ status: 'concluido' })
           .eq('escola_id', escolaId)
           .eq('turma_id', c.origem_turma_id)
-          .in('status', ['ativo', 'ativa', 'active'])
+                .in('status', ACTIVE_MATRICULA_STATUSES)
       }
     }
 

@@ -4,6 +4,7 @@ import type { Database } from "~types/supabase"
 import { createElement, type ReactElement } from "react"
 import { applyKf2ListInvariants } from "@/lib/kf2"
 import { GradeEngine, type RawGradeRow, type GradeWeights } from "@/lib/pedagogico/grade-engine"
+import { ACTIVE_MATRICULA_STATUSES } from "@/lib/matriculas/status"
 import {
   buildPesoPorTipo,
   resolveModeloAvaliacao,
@@ -84,7 +85,7 @@ export async function buildPautaGeralPayload({
     )
     .eq("escola_id", escolaId)
     .eq("turma_id", turmaId)
-    .in("status", ["ativo", "ativa", "active"])
+    .in("status", ACTIVE_MATRICULA_STATUSES)
     .order("numero_chamada", { ascending: true, nullsFirst: false })
 
   matriculasQuery = applyKf2ListInvariants(matriculasQuery, { defaultLimit: 1000 })

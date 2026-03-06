@@ -87,6 +87,12 @@ export async function POST(
       }
     }
 
+    try {
+      await supabase.rpc("refresh_mv_boletim_por_matricula");
+    } catch (err) {
+      console.warn("[matriculas/finalizar] refresh_mv_boletim_por_matricula falhou", err);
+    }
+
     const { data: result, error: rpcError } = await supabase.rpc("finalizar_matricula_blindada", {
       p_escola_id: escolaId,
       p_matricula_id: matriculaId,

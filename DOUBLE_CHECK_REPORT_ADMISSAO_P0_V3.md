@@ -100,3 +100,9 @@ Após a estabilização do fluxo de admissão, foi identificado um gap crítico:
 
 - **Conclusão:** O ciclo de vida do aluno, da candidatura à gestão financeira, está agora totalmente integrado e automatizado.
 
+## 7. Atualizações Recentes (Matrículas Ativas & Notas)
+- **Status canônico de matrícula:** Normalização para `status = 'ativo'` via `canonicalize_matricula_status_text`, mantendo `ativo = true` como fonte primária.
+- **Constraint ajustada:** `matriculas_numero_only_when_ativa` reescrita para usar `status = 'ativo'`.
+- **Notas batch:** `lancar_notas_batch` agora filtra por `matriculas.ativo = true` para evitar divergências entre `status` legados.
+- **Endpoints de pautas/notas:** Padronizados para `ACTIVE_MATRICULA_STATUSES` em todas as rotas de boletim/pauta.
+- **Teste de regressão SQL:** `supabase/ops/tests/regression_lancar_notas_active.sql` valida inclusão de status legados quando `ativo = true`.
