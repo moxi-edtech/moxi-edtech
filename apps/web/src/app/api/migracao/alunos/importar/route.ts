@@ -3,7 +3,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { importBelongsToEscola, userHasAccessToEscola } from "../../auth-helpers";
 import { resolveTabelaPreco } from "@/lib/financeiro/tabela-preco";
-import { checkAlunoPlanLimit } from "@/lib/plan/limits";
+import { buildPlanLimitError, checkAlunoPlanLimit } from "@/lib/plan/limits";
+import { recordAuditServer } from "@/lib/audit";
 
 import type { Database } from "~types/supabase";
 import type { ImportResult } from "~types/migracao";
@@ -101,12 +102,25 @@ export async function POST(request: Request) {
   const incoming = stagedCount ?? 0;
   const limitCheck = await checkAlunoPlanLimit(supabase, escolaId, incoming);
   if (!limitCheck.ok) {
+    await supabase.from("notifications").insert({
+      escola_id: escolaId,
+      target_role: "super_admin",
+      tipo: "plan_limit_alunos",
+      titulo: "Limite de alunos atingido",
+      mensagem: `Importação bloqueada: limite do plano atingido (${limitCheck.current}/${limitCheck.max}).`,
+      link_acao: `/super-admin/escolas/${escolaId}`,
+    });
+
+    recordAuditServer({
+      escolaId,
+      portal: "secretaria",
+      acao: "PLAN_LIMIT_ALUNOS",
+      entity: "alunos",
+      details: limitCheck,
+    }).catch(() => null);
+
     return NextResponse.json(
-      {
-        ok: false,
-        error: `Limite do plano atingido (${limitCheck.current}/${limitCheck.max}).`,
-        details: limitCheck,
-      },
+      buildPlanLimitError(escolaId, limitCheck),
       { status: 403 }
     );
   }

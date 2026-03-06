@@ -69,6 +69,12 @@ export default function AlunosPage() {
   const [listQuery, setListQuery] = useState("");
   const [listItems, setListItems] = useState<AlunoListItem[]>([]);
   const [listLoading, setListLoading] = useState(false);
+  const [planLimitError, setPlanLimitError] = useState<null | {
+    error: string;
+    upgrade_url?: string;
+    contact?: string;
+    details?: { current: number; max: number | null };
+  }>(null);
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -307,6 +313,7 @@ export default function AlunosPage() {
     setIsSubmitting(true);
     setSubmitSuccess(false);
     setCreatedCandidaturaId(null);
+    setPlanLimitError(null);
 
     try {
       const payload: Record<string, unknown> = {
@@ -340,7 +347,18 @@ export default function AlunosPage() {
       });
 
       const json = await res.json().catch(() => null);
-      if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao criar candidatura");
+      if (!res.ok || !json?.ok) {
+        if (json?.code === "PLAN_LIMIT") {
+          setPlanLimitError({
+            error: json?.error || "Limite do plano atingido.",
+            upgrade_url: json?.upgrade_url,
+            contact: json?.contact,
+            details: json?.details,
+          });
+          return;
+        }
+        throw new Error(json?.error || "Falha ao criar candidatura");
+      }
 
       if (json?.candidatura_id || json?.id) {
         setCreatedCandidaturaId(String(json.candidatura_id || json.id));
@@ -438,6 +456,30 @@ export default function AlunosPage() {
           <h1 className="text-3xl font-bold text-moxinexa-dark mb-2">Gestão de Estudantes</h1>
           <p className="text-moxinexa-gray text-lg">Cadastro de candidatos separado da matrícula</p>
         </div>
+
+        {planLimitError && (
+          <div className="mb-6 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 shadow-sm">
+            <div className="font-semibold">{planLimitError.error}</div>
+            {planLimitError.details?.max && (
+              <div className="text-xs text-rose-600 mt-1">
+                Limite actual: {planLimitError.details.current}/{planLimitError.details.max} alunos.
+              </div>
+            )}
+            <div className="mt-3 flex flex-wrap gap-3">
+              {planLimitError.upgrade_url && (
+                <a
+                  href={planLimitError.upgrade_url}
+                  className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold uppercase tracking-wide text-white"
+                >
+                  Fazer upgrade
+                </a>
+              )}
+              {planLimitError.contact && (
+                <span className="text-xs text-rose-600">Contacto: {planLimitError.contact}</span>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="flex justify-center mb-8">
           <div className="bg-white rounded-2xl shadow-sm p-2 border border-gray-200">
