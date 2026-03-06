@@ -16,7 +16,13 @@ ALTER TABLE public.quadro_horarios
   DROP CONSTRAINT IF EXISTS quadro_horarios_professor_id_fkey,
   DROP CONSTRAINT IF EXISTS quadro_horarios_sala_id_fkey,
   DROP CONSTRAINT IF EXISTS quadro_horarios_slot_id_fkey,
-  DROP CONSTRAINT IF EXISTS fk_quadro_horarios_versao;
+  DROP CONSTRAINT IF EXISTS fk_quadro_horarios_versao,
+  DROP CONSTRAINT IF EXISTS fk_quadro_horarios_turma_escola,
+  DROP CONSTRAINT IF EXISTS fk_quadro_horarios_disciplina_escola,
+  DROP CONSTRAINT IF EXISTS fk_quadro_horarios_professor_escola,
+  DROP CONSTRAINT IF EXISTS fk_quadro_horarios_sala_escola,
+  DROP CONSTRAINT IF EXISTS fk_quadro_horarios_slot_escola,
+  DROP CONSTRAINT IF EXISTS fk_quadro_horarios_versao_escola_turma;
 
 ALTER TABLE public.quadro_horarios
   ADD CONSTRAINT fk_quadro_horarios_turma_escola
