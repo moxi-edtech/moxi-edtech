@@ -134,17 +134,18 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
         notasCount = (notasRows ?? []).length
       }
 
-      // Check rotinas (horário) by turma and professor profile
-      let rotinasCount = 0
-      if (profile?.user_id) {
-        const { data: rotinasRows } = await supabase
-          .from('rotinas')
+      // Check horário oficial SSOT (quadro_horarios + horario_slots) by turma/professor/disciplina
+      let horarioOficialCount = 0
+      if (row.professor_id) {
+        const { data: quadroRows } = await supabase
+          .from('quadro_horarios')
           .select('id')
           .eq('escola_id', escolaId)
           .eq('turma_id', turmaId)
-          .eq('professor_user_id', profile.user_id)
+          .eq('professor_id', row.professor_id)
+          .eq('disciplina_id', discInfo?.id ?? row.curso_matriz_id)
           .limit(1)
-        rotinasCount = (rotinasRows ?? []).length
+        horarioOficialCount = (quadroRows ?? []).length
       }
 
       // Check presenças: tenta filtrar por disciplina_id quando houver; senão, nível de turma
@@ -194,12 +195,12 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
         horarios: null,
         planejamento: null,
         vinculos: {
-          horarios: rotinasCount > 0,
+          horarios: horarioOficialCount > 0,
           notas: notasCount > 0,
           presencas: (presencasCount ?? 0) > 0, // turma-level
           planejamento: hasPlanejamento,
         },
-        counts: { rotinas: rotinasCount, notas: notasCount, presencas: presencasCount },
+        counts: { rotinas: horarioOficialCount, notas: notasCount, presencas: presencasCount },
       })
     }
 

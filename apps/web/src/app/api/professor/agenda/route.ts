@@ -31,12 +31,22 @@ export async function GET() {
 
     if (!prof?.id) return NextResponse.json({ ok: true, items: [] })
 
+    const { data: publishedVersions } = await supabase
+      .from('horario_versoes')
+      .select('id')
+      .eq('escola_id', escolaId)
+      .eq('status', 'publicada')
+
+    const publishedVersionIds = (publishedVersions || []).map((row: { id: string }) => row.id)
+    if (publishedVersionIds.length === 0) return NextResponse.json({ ok: true, items: [] })
+
     const { data: quadroRows, error: quadroErr } = await applyKf2ListInvariants(
       supabase
         .from('quadro_horarios')
         .select('slot_id, turma_id, disciplina_id, sala_id')
         .eq('escola_id', escolaId)
         .eq('professor_id', prof.id)
+        .in('versao_id', publishedVersionIds)
     )
 
     if (quadroErr) return NextResponse.json({ ok: false, error: quadroErr.message }, { status: 400 })
