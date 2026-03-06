@@ -4,6 +4,7 @@ import { supabaseServer } from '@/lib/supabaseServer'
 import { hasPermission } from '@/lib/permissions'
 import { recordAuditServer } from '@/lib/audit'
 import { callAuthAdminJob } from '@/lib/auth-admin-job'
+import { checkAlunoPlanLimit } from '@/lib/plan/limits'
 
 const BodySchema = z.object({
   nome: z.string().trim().min(1, 'Informe o nome'),
@@ -66,6 +67,18 @@ export async function POST(
 
     if (!profCheck || (profCheck as any).escola_id !== escolaId) {
       return NextResponse.json({ ok: false, error: 'Perfil não vinculado à escola' }, { status: 403 })
+    }
+
+    const limitCheck = await checkAlunoPlanLimit(s as any, escolaId, 1)
+    if (!limitCheck.ok) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: `Limite do plano atingido (${limitCheck.current}/${limitCheck.max}).`,
+          details: limitCheck,
+        },
+        { status: 403 },
+      )
     }
 
     const admin = await supabaseServer()
