@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import type { Database } from "~types/supabase";
+import { escolherProximaAula, normalizeIsoWeekday } from "@/lib/agenda/proximaAula";
 
 type DatabaseWithAvisos = Database & {
   public: Database["public"] & {
@@ -20,7 +21,20 @@ type DatabaseWithAvisos = Database & {
   };
 };
 
-type RotinaRow = { weekday: number | null; inicio: string | null; fim: string | null; sala: string | null };
+type ProximaAulaRow = {
+  slot_id: string | null;
+  weekday: number | null;
+  inicio: string | null;
+  fim: string | null;
+  sala: string | null;
+  ordem?: number | null;
+};
+type QuadroProximaAulaRow = {
+  slot_id: string | null;
+  sala_id: string | null;
+  sala?: { nome: string | null } | null;
+  slot?: { dia_semana: number | null; inicio: string | null; fim: string | null; ordem: number | null; is_intervalo: boolean | null } | null;
+};
 type NotaRow = { valor: number | null; created_at: string | null };
 type MensalidadeRow = { status: string | null };
 type StatusFinanceiro = { emDia: boolean; pendentes: number; error?: string };
@@ -32,22 +46,52 @@ export async function GET() {
     if (!ctx) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     const { escolaId, matriculaId, turmaId, anoLetivo } = ctx;
 
-    // Próxima aula (heurística: próxima rotina da turma pelo weekday atual)
-    let proxima_aula: RotinaRow | null = null;
+    // Próxima aula (lê apenas versão publicada do quadro oficial)
+    let proxima_aula: ProximaAulaRow | null = null;
     try {
-      if (turmaId) {
+      if (turmaId && escolaId) {
         const now = new Date();
-        const weekday = now.getDay(); // 0..6
-        let rotinasQuery = supabase
-          .from('rotinas')
-          .select('weekday, inicio, fim, sala')
+        const { data: versaoPublicada } = await supabase
+          .from('horario_versoes')
+          .select('id')
+          .eq('escola_id', escolaId)
           .eq('turma_id', turmaId)
-          .gte('weekday', weekday)
-          .order('weekday', { ascending: true })
-          .limit(1);
-        if (escolaId) rotinasQuery = rotinasQuery.eq('escola_id', escolaId);
-        const { data: rs } = await rotinasQuery;
-        proxima_aula = rs?.[0] ?? null;
+          .eq('status', 'publicada')
+          .order('publicado_em', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const { data: quadroRows } = versaoPublicada?.id
+          ? await supabase
+              .from('quadro_horarios')
+              .select('slot_id, sala_id, sala:salas(nome), slot:horario_slots!inner(dia_semana, inicio, fim, ordem, is_intervalo)')
+              .eq('escola_id', escolaId)
+              .eq('turma_id', turmaId)
+              .eq('versao_id', versaoPublicada.id)
+              .order('slot_id', { ascending: true })
+          : { data: [] as QuadroProximaAulaRow[] };
+
+        const normalizedSlots: ProximaAulaRow[] = ((quadroRows || []) as QuadroProximaAulaRow[])
+          .filter((row) => row.slot && !row.slot.is_intervalo)
+          .map((row) => ({
+            slot_id: row.slot_id,
+            weekday: row.slot?.dia_semana ? normalizeIsoWeekday(row.slot.dia_semana) : null,
+            inicio: row.slot?.inicio ?? null,
+            fim: row.slot?.fim ?? null,
+            sala: row.sala?.nome ?? null,
+            ordem: row.slot?.ordem ?? null,
+          }));
+
+        const nextSlot = escolherProximaAula(normalizedSlots, now);
+        proxima_aula = nextSlot
+          ? {
+              slot_id: nextSlot.slot_id,
+              weekday: nextSlot.weekday,
+              inicio: nextSlot.inicio,
+              fim: nextSlot.fim,
+              sala: nextSlot.sala,
+            }
+          : null;
       }
     } catch {}
 

@@ -7,6 +7,8 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
+type HorarioVersaoRow = { id: string; status: string; publicado_em: string | null; created_at: string | null };
+
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     const supabase = await supabaseServerTyped<any>();
@@ -29,16 +31,37 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       return NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 });
     }
 
-    const { data } = await supabase
-      .from("quadro_horarios")
-      .select("versao_id, created_at")
+    const { data: versoes } = await supabase
+      .from("horario_versoes")
+      .select("id, status, publicado_em, created_at")
       .eq("escola_id", escolaId)
       .eq("turma_id", turmaId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .order("created_at", { ascending: false });
 
-    return NextResponse.json({ ok: true, versao_id: data?.versao_id ?? null });
+    const versoesRows = (versoes || []) as HorarioVersaoRow[];
+    const publicada = versoesRows.find((row) => row.status === "publicada") ?? null;
+    let draft = versoesRows.find((row) => row.status === "draft") ?? null;
+
+    if (!draft) {
+      const { data: createdDraft, error: createDraftError } = await supabase
+        .from("horario_versoes")
+        .insert({ escola_id: escolaId, turma_id: turmaId, status: "draft" })
+        .select("id, status, publicado_em, created_at")
+        .single();
+
+      if (createDraftError) {
+        return NextResponse.json({ ok: false, error: createDraftError.message }, { status: 400 });
+      }
+
+      draft = createdDraft as HorarioVersaoRow;
+    }
+
+    return NextResponse.json({
+      ok: true,
+      versao_id: draft?.id ?? null,
+      versao_publicada_id: publicada?.id ?? null,
+      versoes: versoesRows,
+    });
   } catch (err: any) {
     return NextResponse.json({ ok: false, error: err?.message || "Erro desconhecido" }, { status: 500 });
   }

@@ -7,3 +7,10 @@
 4) Validar envio de e-mails via `/api/jobs/outbox` e logs do worker.
 5) UI/API: `/secretaria/acesso-alunos` lista pendentes; `/api/secretaria/alunos/sem-acesso`, `/metricas-acesso`, `/liberar-acesso` (idempotente); ativação self-service `/ativar-acesso` → `/api/alunos/ativar-acesso` (código + BI).
 6) Segurança: rate limit em `/ativar-acesso`; para e-mails sintéticos, prever reset de senha via secretaria (não por “esqueci minha senha”).
+
+## Checklist de paridade de agenda (migração SSOT)
+
+1) Confirmar que **agenda professor** (`/api/professor/agenda`) e **próxima aula aluno** (`/api/aluno/dashboard`) retornam o mesmo `slot_id` para a mesma combinação de `turma_id + professor_id`.
+2) Validar que ambos os endpoints leem de `quadro_horarios + horario_slots` (sem leitura directa de `rotinas`).
+3) Se houver divergência de slot, bloquear deploy da migração e corrigir mapeamento de `disciplina_id/professor_id` no quadro oficial.
+4) Enquanto existir consumidor legado, usar apenas `vw_rotinas_compat` para leitura temporária; escrita em `rotinas` deve permanecer bloqueada.

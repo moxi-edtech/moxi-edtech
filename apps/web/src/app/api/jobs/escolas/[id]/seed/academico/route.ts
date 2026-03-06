@@ -308,8 +308,8 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       alunos.push({ user_id: userId!, aluno_id: alunoId!, matricula_id: matriculaId, secao_id: sec })
     }
 
-    // 9) Frequências: last 14 days for matching rotinas weekdays
-    const { data: rotinas } = await admin.from('rotinas').select('id, weekday, secao_id, curso_oferta_id')
+    // 9) Frequências: last 14 days for matching agenda slots (compat view during migration)
+    const { data: rotinas } = await admin.from('vw_rotinas_compat').select('id, weekday, secao_id, curso_oferta_id')
       .eq('turma_id', turmaId!)
     const today = new Date()
     const dateOf = (d: Date) => d.toISOString().slice(0,10)
