@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAlunoContext } from "@/lib/alunoContext";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import type { Database } from "~types/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { escolherProximaAula, normalizeIsoWeekday } from "@/lib/agenda/proximaAula";
 
 type DatabaseWithAvisos = Database & {
@@ -40,6 +41,22 @@ type MensalidadeRow = { status: string | null };
 type StatusFinanceiro = { emDia: boolean; pendentes: number; error?: string };
 type AvisoRow = { id: string; titulo: string | null; resumo: string | null; origem: string | null; created_at: string | null };
 
+type DatabaseWithHorarioVersoes = Database & {
+  public: Database["public"] & {
+    Tables: Database["public"]["Tables"] & {
+      horario_versoes: {
+        Row: {
+          id: string;
+          escola_id: string;
+          turma_id: string;
+          status: string | null;
+          publicado_em: string | null;
+        };
+      };
+    };
+  };
+};
+
 export async function GET() {
   try {
     const { supabase, ctx } = await getAlunoContext();
@@ -51,7 +68,8 @@ export async function GET() {
     try {
       if (turmaId && escolaId) {
         const now = new Date();
-        const { data: versaoPublicada } = await supabase
+        const supabaseHorarios = supabase as SupabaseClient<DatabaseWithHorarioVersoes>;
+        const { data: versaoPublicada } = await supabaseHorarios
           .from('horario_versoes')
           .select('id')
           .eq('escola_id', escolaId)
