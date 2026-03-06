@@ -19,13 +19,13 @@ Três planos calibrados para a realidade do mercado angolano — do colégio pri
 
 | Benefício | ESSENCIAL | PROFISSIONAL | PREMIUM |
 | :--- | :--- | :--- | :--- |
-| **Preço mensal** | Kz 60.000/mês | Kz 120.000/mês | Negociado |
-| **Preço anual** | Kz 600.000/ano (2 meses grátis) | Kz 1.200.000/ano (2 meses grátis) | Negociado |
-| **Alunos** | até 300 | até 800 | Ilimitado |
-| **Utilizadores** | até 10 | até 30 | Ilimitado |
+| **Preço mensal** | Kz 80.000/mês | Kz 140.000/mês | Negociado |
+| **Preço anual** | Kz 800.000/ano (2 meses grátis) | Kz 1.400.000/ano (2 meses grátis) | Negociado |
+| **Alunos** | até 600 | até 1500 | Ilimitado |
+| **Utilizadores** | até 10 (monitorar no piloto) | até 30 (monitorar no piloto) | Ilimitado |
 | **Turmas** | até 20 | até 60 | Ilimitado |
 | **Storage** | 5 GB | 20 GB | 100 GB+ |
-| **Portais** | Secretaria + Director | Todos os portais | Todos + API |
+| **Portais** | Secretaria + Director | Todos os portais | Todos + API + multi-campus |
 | **Documentos MED** | ✓ Incluído | ✓ Incluído | ✓ Incluído |
 | **KLASSE Network** | Leitura | Leitura + contribuição | ✓ Completo |
 | **Suporte** | Email 48h | Email 24h + chat | Dedicado |
@@ -40,6 +40,8 @@ Quando uma escola atinge o limite do plano, o sistema não bloqueia abruptamente
 - **95%**: Banner persistente + email automático ao director — *"Limite quase atingido · Considere fazer upgrade"*
 - **100%**: Bloqueio de novos registos. Funcionalidades existentes continuam a funcionar. Prazo de 7 dias para upgrade.
 - **+7 dias**: Após 7 dias sem upgrade, conta entra em modo leitura. Dados preservados. Acesso de escrita suspenso.
+
+**Piloto (3–6 meses):** ignorar o limite de utilizadores administrativos; monitorar apenas.
 
 ---
 
