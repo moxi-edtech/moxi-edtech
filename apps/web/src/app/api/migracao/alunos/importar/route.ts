@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { importBelongsToEscola, userHasAccessToEscola } from "../../auth-helpers";
 import { resolveTabelaPreco } from "@/lib/financeiro/tabela-preco";
+import { checkAlunoPlanLimit } from "@/lib/plan/limits";
 
 import type { Database } from "~types/supabase";
 import type { ImportResult } from "~types/migracao";
@@ -90,6 +91,25 @@ export async function POST(request: Request) {
   if (!hasAccess) return NextResponse.json({ error: "Sem vínculo com a escola" }, { status: 403 });
   const sameEscola = await importBelongsToEscola(supabase, importId, escolaId);
   if (!sameEscola) return NextResponse.json({ error: "Importação não pertence à escola" }, { status: 403 });
+
+  const { count: stagedCount } = await supabase
+    .from("staging_alunos")
+    .select("id", { count: "exact", head: true })
+    .eq("import_id", importId)
+    .eq("escola_id", escolaId);
+
+  const incoming = stagedCount ?? 0;
+  const limitCheck = await checkAlunoPlanLimit(supabase, escolaId, incoming);
+  if (!limitCheck.ok) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: `Limite do plano atingido (${limitCheck.current}/${limitCheck.max}).`,
+        details: limitCheck,
+      },
+      { status: 403 }
+    );
+  }
 
   type ImportModo = "migracao" | "onboarding";
   const modoFinal: ImportModo = body.modo === "onboarding" ? "onboarding" : "migracao";
