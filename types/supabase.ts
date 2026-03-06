@@ -560,6 +560,42 @@ export type Database = {
           },
         ]
       }
+      app_plan_limits: {
+        Row: {
+          api_enabled: boolean
+          max_admin_users: number | null
+          max_alunos: number | null
+          max_storage_gb: number | null
+          multi_campus: boolean
+          plan: Database["public"]["Enums"]["app_plan_tier"]
+          price_mensal_kz: number
+          professores_ilimitados: boolean
+          updated_at: string
+        }
+        Insert: {
+          api_enabled?: boolean
+          max_admin_users?: number | null
+          max_alunos?: number | null
+          max_storage_gb?: number | null
+          multi_campus?: boolean
+          plan: Database["public"]["Enums"]["app_plan_tier"]
+          price_mensal_kz: number
+          professores_ilimitados?: boolean
+          updated_at?: string
+        }
+        Update: {
+          api_enabled?: boolean
+          max_admin_users?: number | null
+          max_alunos?: number | null
+          max_storage_gb?: number | null
+          multi_campus?: boolean
+          plan?: Database["public"]["Enums"]["app_plan_tier"]
+          price_mensal_kz?: number
+          professores_ilimitados?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       assinaturas: {
         Row: {
           ciclo: string
@@ -12850,8 +12886,8 @@ export type Database = {
         }
         Returns: {
           errors: Json
-          inserted: number
-          skipped: number
+          inserted: Json
+          skipped: Json
         }[]
       }
       request_liberar_acesso: {

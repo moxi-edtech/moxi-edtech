@@ -29,7 +29,17 @@ export async function GET(_req: Request, context: { params: Promise<{ id: string
       .eq('escola_id', resolvedEscolaId)
       .maybeSingle();
     const planoRaw = (data as any)?.plano_atual ?? null;
-    return NextResponse.json({ plano: planoRaw ? parsePlanTier(planoRaw) : null });
+    const plano = planoRaw ? parsePlanTier(planoRaw) : null;
+
+    const { data: limites } = plano
+      ? await supabase
+          .from('app_plan_limits')
+          .select('plan, price_mensal_kz, max_alunos, max_admin_users, max_storage_gb, professores_ilimitados, api_enabled, multi_campus')
+          .eq('plan', plano)
+          .maybeSingle()
+      : { data: null };
+
+    return NextResponse.json({ plano, limites: limites ?? null });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ plano: null, error: message }, { status: 200 });
