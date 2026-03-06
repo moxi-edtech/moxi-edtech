@@ -3,6 +3,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas"
 import { applyKf2ListInvariants } from "@/lib/kf2"
+import { ACTIVE_MATRICULA_STATUSES } from "@/lib/matriculas/status"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -76,7 +77,7 @@ export async function GET() {
           .select("turma_id")
           .eq("escola_id", escolaId)
           .in("turma_id", turmaIds)
-          .in("status", ["ativo", "ativa", "active"]),
+          .in("status", ACTIVE_MATRICULA_STATUSES),
         {
           defaultLimit: 500,
           maxLimit: 500,

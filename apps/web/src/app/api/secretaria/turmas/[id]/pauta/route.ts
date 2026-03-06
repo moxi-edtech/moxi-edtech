@@ -5,6 +5,7 @@ import { applyKf2ListInvariants } from '@/lib/kf2';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
 import { requireFeature } from '@/lib/plan/requireFeature';
 import { HttpError } from '@/lib/errors';
+import { ACTIVE_MATRICULA_STATUSES } from '@/lib/matriculas/status';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -54,7 +55,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       `)
       .eq('turma_id', turmaId)
       .eq('escola_id', escolaId)
-      .in('status', ['ativo', 'ativa', 'active']); // Somente alunos com matrícula ativa
+      .in('status', ACTIVE_MATRICULA_STATUSES); // Somente alunos com matrícula ativa
 
     matriculasQuery = applyKf2ListInvariants(matriculasQuery, { defaultLimit: 1000 });
 

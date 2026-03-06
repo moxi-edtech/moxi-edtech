@@ -3,10 +3,17 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
+type BlockedItem = { aluno_id?: string; aluno_nome?: string | null; matricula_id?: string; motivos?: string[] }
+
 type SuggestaoTurma = {
   tipo: 'promocao' | 'conclusao'
   origem: { id: string; nome: string }
   destino?: { id: string; nome: string } | null
+  bloqueios?: {
+    inadimplencia: number
+    reprovacao: number
+    detalhes: BlockedItem[]
+  }
 }
 
 export default function ConfirmarRematriculaPage() {
@@ -16,7 +23,7 @@ export default function ConfirmarRematriculaPage() {
   const [summary, setSummary] = useState<{
     total_inserted: number;
     total_skipped: number;
-    items: Array<{ origem: string; destino: string; inserted: number; skipped: number }>;
+    items: Array<{ origem: string; destino: string; inserted: number; skipped: number; blocked: BlockedItem[] }>;
   } | null>(null);
   const [gerarMensalidades, setGerarMensalidades] = useState(false);
   const [gerarTodas, setGerarTodas] = useState(true);
@@ -61,11 +68,12 @@ export default function ConfirmarRematriculaPage() {
       if (!res.ok || !json.ok) {
         throw new Error(json.error || "Falha ao confirmar rematrícula em massa");
       }
-      const items = (json.results?.promocoes || []).map((r: { origem_turma_id: string; destino_turma_id: string; inserted?: number; skipped?: number }) => ({
+      const items = (json.results?.promocoes || []).map((r: { origem_turma_id: string; destino_turma_id: string; inserted?: number; skipped?: number; blocked?: BlockedItem[] }) => ({
         origem: sugestoes.find((s) => s.origem.id === r.origem_turma_id)?.origem?.nome || r.origem_turma_id,
         destino: sugestoes.find((s) => s.destino?.id === r.destino_turma_id)?.destino?.nome || r.destino_turma_id,
         inserted: r.inserted ?? 0,
         skipped: r.skipped ?? 0,
+        blocked: Array.isArray(r.blocked) ? r.blocked : [],
       }))
       setSummary({ total_inserted: json.results?.total_inserted ?? 0, total_skipped: json.results?.total_skipped ?? 0, items })
     } catch (e) {
@@ -105,7 +113,29 @@ export default function ConfirmarRematriculaPage() {
           {summary.items.length > 0 && (
             <ul className="mt-2 list-disc list-inside">
               {summary.items.map((it, idx) => (
-                <li key={idx}>Origem {it.origem} → Destino {it.destino}: {it.inserted} inseridos, {it.skipped} ignorados</li>
+                <li key={idx}>
+                  Origem {it.origem} → Destino {it.destino}: {it.inserted} inseridos, {it.skipped} ignorados
+                  {it.blocked.length > 0 && (
+                    <span className="text-xs text-slate-600 ml-2">• bloqueios: {it.blocked.length}</span>
+                  )}
+                  {it.blocked.length > 0 && (
+                    <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+                      <div className="font-medium">Bloqueios (até 5)</div>
+                      <ul className="list-disc list-inside">
+                        {it.blocked.slice(0, 5).map((item, bidx) => (
+                          <li key={bidx}>
+                            {(item.aluno_nome || item.aluno_id || "aluno")} • motivos: {(item.motivos || []).join(', ')}
+                          </li>
+                        ))}
+                      </ul>
+                      {it.blocked.length > 5 && (
+                        <div className="mt-1 text-[11px] text-amber-800">
+                          +{it.blocked.length - 5} alunos bloqueados
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </li>
               ))}
             </ul>
           )}
@@ -118,6 +148,28 @@ export default function ConfirmarRematriculaPage() {
           {sugestoes.map((s, i) => (
             <li key={i}>
               {s.tipo === 'promocao' ? `Promover alunos de ${s.origem.nome} para ${s.destino?.nome}` : `Concluir turma ${s.origem.nome}`}
+              {s.bloqueios && (s.bloqueios.inadimplencia > 0 || s.bloqueios.reprovacao > 0) && (
+                <span className="ml-2 text-xs text-amber-700">
+                  bloqueios: {s.bloqueios.inadimplencia} inadimplência, {s.bloqueios.reprovacao} reprovação
+                </span>
+              )}
+              {s.bloqueios && s.bloqueios.detalhes?.length > 0 && (
+                <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+                  <div className="font-medium">Alunos bloqueados (até 5)</div>
+                  <ul className="list-disc list-inside">
+                    {s.bloqueios.detalhes.slice(0, 5).map((item, idx) => (
+                      <li key={idx}>
+                        {(item.aluno_nome || item.aluno_id || "aluno")} • motivos: {(item.motivos || []).join(', ')}
+                      </li>
+                    ))}
+                  </ul>
+                  {s.bloqueios.detalhes.length > 5 && (
+                    <div className="mt-1 text-[11px] text-amber-800">
+                      +{s.bloqueios.detalhes.length - 5} alunos bloqueados
+                    </div>
+                  )}
+                </div>
+              )}
             </li>
           ))}
         </ul>

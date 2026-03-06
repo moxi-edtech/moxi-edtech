@@ -214,6 +214,12 @@ async function runOrchestration(params: {
     finalMatriculaIds = (mats ?? []).map((m: any) => m.id);
   }
 
+  try {
+    await supabase.rpc("refresh_mv_boletim_por_matricula");
+  } catch (err) {
+    console.warn("[fechamento-academico] refresh_mv_boletim_por_matricula falhou", err);
+  }
+
   const finalizeErrors: any[] = [];
   for (const mid of finalMatriculaIds) {
     const { error } = await supabase.rpc("finalizar_matricula_blindada", {

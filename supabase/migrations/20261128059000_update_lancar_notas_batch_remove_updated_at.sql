@@ -142,7 +142,7 @@ BEGIN
       AND m.turma_id = p_turma_id
       AND m.aluno_id = (nota_record->>'aluno_id')::uuid
       AND m.ano_letivo = v_ano_letivo
-      AND m.status = 'ativa';
+      AND m.ativo IS TRUE;
 
     IF v_matricula_id IS NOT NULL THEN
       v_rows_to_upsert := array_append(v_rows_to_upsert, jsonb_build_object(

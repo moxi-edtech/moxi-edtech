@@ -27,6 +27,7 @@ interface AlunoTriagem {
   id: string;
   nome: string;
   pode_transitar: boolean;
+  motivos_bloqueio: string[];
   pedagogico: {
     status: "CONCLUIDA" | "REPROVADA" | "INCOMPLETA" | string;
   };
@@ -68,6 +69,7 @@ export default function RematriculaPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
+  const [motivoFilter, setMotivoFilter] = useState("todos");
 
   // Load Inicial de Turmas
   useEffect(() => {
@@ -112,10 +114,14 @@ export default function RematriculaPage() {
             const financeiroEmDia = row.financeiro?.em_dia ?? true;
             const saldoPendente = Number(row.financeiro?.saldo_pendente ?? 0);
             const podeTransitar = row.pode_transitar ?? (pedagogicoStatus === "CONCLUIDA" && financeiroEmDia);
+            const motivos: string[] = [];
+            if (!financeiroEmDia) motivos.push("inadimplencia");
+            if (pedagogicoStatus === "REPROVADA") motivos.push("reprovacao");
             return {
               id: row.aluno_id || row.id,
               nome: row.aluno_nome || row.nome,
               pode_transitar: podeTransitar,
+              motivos_bloqueio: motivos,
               pedagogico: { status: pedagogicoStatus },
               financeiro: { em_dia: financeiroEmDia, saldo_pendente: saldoPendente },
             };
@@ -143,7 +149,25 @@ export default function RematriculaPage() {
     if (statusFilter === "aptos") return matchesSearch && aluno.pode_transitar;
     if (statusFilter === "pendentes") return matchesSearch && !aluno.pode_transitar;
     return matchesSearch;
+  }).filter((aluno) => {
+    if (motivoFilter === "todos") return true;
+    if (motivoFilter === "inadimplencia") return aluno.motivos_bloqueio.includes("inadimplencia");
+    if (motivoFilter === "reprovacao") return aluno.motivos_bloqueio.includes("reprovacao");
+    if (motivoFilter === "notas_incompletas") return aluno.pedagogico.status === "INCOMPLETA" && aluno.motivos_bloqueio.length === 0;
+    return true;
   });
+
+  const totals = React.useMemo(() => {
+    const base = { total: alunos.length, aptos: 0, pendentes: 0, inadimplencia: 0, reprovacao: 0, notas_incompletas: 0 };
+    for (const aluno of alunos) {
+      if (aluno.pode_transitar) base.aptos += 1;
+      else base.pendentes += 1;
+      if (aluno.motivos_bloqueio.includes("inadimplencia")) base.inadimplencia += 1;
+      if (aluno.motivos_bloqueio.includes("reprovacao")) base.reprovacao += 1;
+      if (aluno.pedagogico.status === "INCOMPLETA" && aluno.motivos_bloqueio.length === 0) base.notas_incompletas += 1;
+    }
+    return base;
+  }, [alunos]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -248,6 +272,50 @@ export default function RematriculaPage() {
           <div className="space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <h2 className="text-lg font-bold text-slate-950 font-sora">Triagem de Alunos</h2>
+              <div className="flex flex-wrap gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => { setStatusFilter("todos"); setMotivoFilter("todos"); }}
+                  className="rounded-full border border-slate-200 px-3 py-1 text-slate-600 hover:bg-slate-50"
+                >
+                  Total {totals.total}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setStatusFilter("aptos"); setMotivoFilter("todos"); }}
+                  className="rounded-full border border-klasse-green-200 bg-klasse-green-50 px-3 py-1 text-klasse-green-800"
+                >
+                  Aptos {totals.aptos}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setStatusFilter("pendentes"); setMotivoFilter("todos"); }}
+                  className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-800"
+                >
+                  Pendentes {totals.pendentes}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setStatusFilter("pendentes"); setMotivoFilter("inadimplencia"); }}
+                  className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-orange-800"
+                >
+                  Inadimplência {totals.inadimplencia}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setStatusFilter("pendentes"); setMotivoFilter("reprovacao"); }}
+                  className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-red-800"
+                >
+                  Reprovação {totals.reprovacao}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setStatusFilter("pendentes"); setMotivoFilter("notas_incompletas"); }}
+                  className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-slate-700"
+                >
+                  Notas incompletas {totals.notas_incompletas}
+                </button>
+              </div>
               
               {/* Filtros */}
               <div className="flex gap-2">
@@ -270,6 +338,19 @@ export default function RematriculaPage() {
                     <option value="todos">Todos</option>
                     <option value="aptos">Aptos a Transitar</option>
                     <option value="pendentes">Com Pendências</option>
+                  </select>
+                </div>
+                <div className="relative">
+                  <Filter className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <select
+                    value={motivoFilter}
+                    onChange={(e) => setMotivoFilter(e.target.value)}
+                    className="pl-9 rounded-xl border-slate-200 text-sm focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20"
+                  >
+                    <option value="todos">Todos os motivos</option>
+                    <option value="inadimplencia">Inadimplência</option>
+                    <option value="reprovacao">Reprovação</option>
+                    <option value="notas_incompletas">Notas incompletas</option>
                   </select>
                 </div>
               </div>
@@ -300,11 +381,13 @@ export default function RematriculaPage() {
                 <tbody className="divide-y divide-slate-100">
                   {filteredAlunos.map((aluno) => {
                     const isSelected = selectedAlunos.includes(aluno.id);
-                    const bloqueioMotivo = !aluno.financeiro.em_dia
-                      ? "Dívida em aberto"
-                      : aluno.pedagogico.status === "REPROVADA"
-                        ? "Reprovado"
-                        : "Notas incompletas";
+                    const bloqueioMotivo = aluno.motivos_bloqueio.length > 0
+                      ? aluno.motivos_bloqueio.includes("inadimplencia")
+                        ? "Dívida em aberto"
+                        : "Reprovado"
+                      : aluno.pedagogico.status === "INCOMPLETA"
+                        ? "Notas incompletas"
+                        : ""
                     return (
                       <tr key={aluno.id} className={`hover:bg-slate-50 transition-colors ${!aluno.pode_transitar ? 'opacity-75 bg-slate-50/50' : ''}`}>
                         <td className="py-3 px-4">
@@ -326,7 +409,12 @@ export default function RematriculaPage() {
                             )}
                           </div>
                         </td>
-                        <td className="py-3 px-4 font-medium text-slate-900">{aluno.nome}</td>
+                        <td className="py-3 px-4 font-medium text-slate-900">
+                          <div>{aluno.nome}</div>
+                          {!aluno.pode_transitar && bloqueioMotivo && (
+                            <div className="text-xs text-red-600 mt-1">{bloqueioMotivo}</div>
+                          )}
+                        </td>
                         
                         {/* BADGE PEDAGÓGICA */}
                         <td className="py-3 px-4 text-center">

@@ -8,6 +8,7 @@ import {
   buildPesoPorTipo,
   resolveModeloAvaliacao,
 } from '@/lib/academico/avaliacao-utils'
+import { ACTIVE_MATRICULA_STATUSES } from '@/lib/matriculas/status'
 import type { Database } from '~types/supabase'
 
 type ProfessorRow = { id: string }
@@ -208,7 +209,7 @@ export async function GET(req: Request) {
       )
       .eq('escola_id', escolaId)
       .eq('turma_id', turmaIdValue)
-      .in('status', ['ativo', 'ativa', 'active'])
+      .in('status', ACTIVE_MATRICULA_STATUSES)
       .order('numero_chamada', { ascending: true, nullsFirst: false })
 
     matriculasQuery = applyKf2ListInvariants(matriculasQuery, { defaultLimit: 50 })

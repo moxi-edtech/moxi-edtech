@@ -54,9 +54,27 @@ export async function POST(req: Request) {
       });
       if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
       const row = Array.isArray(data) ? data[0] : data;
+      type BlockedItem = { aluno_id?: string | null; matricula_id?: string | null; motivos?: string[]; aluno_nome?: string | null };
+      type InsertedItem = { aluno_id?: string | null; matricula_id?: string | null };
+      const insertedList = (Array.isArray(row?.inserted) ? row.inserted : []) as InsertedItem[];
+      const skippedList = (Array.isArray(row?.skipped) ? row.skipped : []) as BlockedItem[];
+      const blockedAlunoIds = Array.from(new Set(skippedList.map((item) => item?.aluno_id).filter(Boolean))) as string[];
+      let alunoNomeById = new Map<string, string>();
+      if (blockedAlunoIds.length > 0) {
+        const { data: alunos } = await (supabase as any)
+          .from('alunos')
+          .select('id, nome')
+          .eq('escola_id', escolaId)
+          .in('id', blockedAlunoIds);
+        alunoNomeById = new Map((alunos || []).map((a: any) => [a.id, a.nome]));
+      }
+      const blockedEnriched: BlockedItem[] = skippedList.map((item) => ({
+        ...item,
+        aluno_nome: item?.aluno_id ? (alunoNomeById.get(item.aluno_id) ?? null) : null,
+      }));
       // audit
       recordAuditServer({ escolaId, portal: 'secretaria', acao: 'REMATRICULA_RPC', entity: 'matriculas', details: { origin_turma_id, destination_turma_id, inserted: row?.inserted ?? 0, skipped: row?.skipped ?? 0 } }).catch(()=>null)
-      const insertedCount = row?.inserted ?? 0;
+      const insertedCount = insertedList.length;
       // Pós-processo: gerar mensalidades para os realmente inseridos
       if (gerar_mensalidades && insertedCount > 0) {
         const { data: nowActive } = await (supabase as any)
@@ -70,7 +88,13 @@ export async function POST(req: Request) {
         const insertedAlunos = Array.from(nowSet).filter(id => !preSet.has(id));
         await generateMensalidadesForAlunos(supabase as any, escolaId, destination_turma_id, sessionId, (destTurma as any)?.ano_letivo ?? null, (destTurma as any)?.classe_id ?? null, insertedAlunos, gerar_todas);
       }
-      return NextResponse.json({ ok: true, inserted: insertedCount, skipped: row?.skipped ?? 0, errors: row?.errors ?? [] });
+      return NextResponse.json({
+        ok: true,
+        inserted: insertedCount,
+        skipped: skippedList.length,
+        blocked: blockedEnriched,
+        errors: row?.errors ?? [],
+      });
     }
 
     // Get the destination turma to get the session_id and validate escola

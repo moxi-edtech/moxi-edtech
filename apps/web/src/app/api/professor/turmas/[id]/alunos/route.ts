@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { applyKf2ListInvariants } from "@/lib/kf2";
+import { ACTIVE_MATRICULA_STATUSES } from "@/lib/matriculas/status";
 import type { Database } from "~types/supabase";
 
 type MatriculaAlunoRow = {
@@ -70,7 +71,7 @@ export async function GET(
       .select("id, aluno_id, alunos!inner(id, nome)")
       .eq("escola_id", escolaId)
       .eq("turma_id", turmaId)
-      .in("status", ["ativo", "ativa", "active"])
+      .in("status", ACTIVE_MATRICULA_STATUSES)
       .order("created_at", { ascending: true });
 
     query = applyKf2ListInvariants(query);

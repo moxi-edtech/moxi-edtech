@@ -11,6 +11,7 @@ import {
   buildPesoPorTipo,
   resolveModeloAvaliacao,
 } from '@/lib/academico/avaliacao-utils'
+import { ACTIVE_MATRICULA_STATUSES } from '@/lib/matriculas/status'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -128,7 +129,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       )
       .eq('escola_id', escolaId)
       .eq('turma_id', turmaId)
-      .in('status', ['ativo', 'ativa', 'active'])
+      .in('status', ACTIVE_MATRICULA_STATUSES)
       .order('numero_chamada', { ascending: true, nullsFirst: false })
 
     matriculasQuery = applyKf2ListInvariants(matriculasQuery, { defaultLimit: 1000 })

@@ -3,6 +3,7 @@ import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { tryCanonicalFetch } from '@/lib/api/proxyCanonical'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { applyKf2ListInvariants } from '@/lib/kf2'
+import { ACTIVE_MATRICULA_STATUSES } from '@/lib/matriculas/status'
 
 // Rule: 6 -> 7, 9 -> 10, 12 -> concluido
 function proximaClasseNumero(num: number): number | null {
@@ -52,6 +53,77 @@ export async function GET(req: Request) {
       turmaByClasse.set(cid, arr)
     }
 
+    const turmaIds = (turmas || []).map((t: any) => t.id).filter(Boolean)
+    const bloqueioPorTurma = new Map<string, { inadimplencia: number; reprovacao: number; detalhes: any[] }>()
+
+    let bloquearInadimplentes = false
+    try {
+      const { data: cfg } = await supabase
+        .from('configuracoes_financeiro')
+        .select('bloquear_inadimplentes')
+        .eq('escola_id', escolaId)
+        .maybeSingle()
+      bloquearInadimplentes = Boolean((cfg as any)?.bloquear_inadimplentes)
+    } catch {}
+
+    if (turmaIds.length > 0) {
+      let matriculasQuery = supabase
+        .from('matriculas')
+        .select('id, aluno_id, turma_id, status, ano_letivo, alunos(nome)')
+        .eq('escola_id', escolaId)
+        .in('turma_id', turmaIds)
+        .in('status', ['ativo', 'ativa', 'active', 'reprovado', 'reprovada', 'reprovado_por_faltas'])
+
+      matriculasQuery = applyKf2ListInvariants(matriculasQuery, { defaultLimit: 2000 })
+      const { data: matriculas } = await matriculasQuery
+
+      const matriculaIds = (matriculas || []).map((m: any) => m.id).filter(Boolean)
+      const inadimplenciaPorMatricula = new Set<string>()
+
+      if (bloquearInadimplentes && matriculaIds.length > 0) {
+        const { data: mensalidades } = await supabase
+          .from('mensalidades')
+          .select('matricula_id, status, data_vencimento')
+          .eq('escola_id', escolaId)
+          .in('matricula_id', matriculaIds)
+          .in('status', ['pendente', 'pago_parcial'])
+          .lt('data_vencimento', new Date().toISOString().slice(0, 10))
+
+        for (const row of mensalidades || []) {
+          if ((row as any).matricula_id) inadimplenciaPorMatricula.add((row as any).matricula_id)
+        }
+      }
+
+      for (const m of matriculas || []) {
+        const turmaId = (m as any).turma_id as string
+        if (!turmaId) continue
+        const entry = bloqueioPorTurma.get(turmaId) || { inadimplencia: 0, reprovacao: 0, detalhes: [] }
+        const status = String((m as any).status || '').toLowerCase()
+        const motivos: string[] = []
+
+        if (bloquearInadimplentes && inadimplenciaPorMatricula.has((m as any).id)) {
+          motivos.push('inadimplencia')
+          entry.inadimplencia += 1
+        }
+        if (['reprovado', 'reprovada', 'reprovado_por_faltas'].includes(status)) {
+          motivos.push('reprovacao')
+          entry.reprovacao += 1
+        }
+
+        if (motivos.length > 0) {
+          const aluno = Array.isArray((m as any).alunos) ? (m as any).alunos[0] : (m as any).alunos
+          entry.detalhes.push({
+            aluno_id: (m as any).aluno_id,
+            aluno_nome: aluno?.nome ?? null,
+            matricula_id: (m as any).id,
+            motivos,
+          })
+        }
+
+        bloqueioPorTurma.set(turmaId, entry)
+      }
+    }
+
     // Carrega classes (numero) da escola
     let classesQuery = supabase
       .from('classes')
@@ -79,7 +151,7 @@ export async function GET(req: Request) {
       .from('vw_secretaria_matriculas_turma_status')
       .select('turma_id, status, total')
       .eq('escola_id', escolaId)
-      .in('status', ['ativo', 'ativa', 'active'])
+        .in('status', ACTIVE_MATRICULA_STATUSES)
 
     matsResumoQuery = applyKf2ListInvariants(matsResumoQuery, { defaultLimit: 50 })
 
@@ -111,6 +183,7 @@ export async function GET(req: Request) {
           destino: null,
           regra: `${numero}ª → concluído`,
           total_alunos: total,
+          bloqueios: bloqueioPorTurma.get((origem as any).id) ?? { inadimplencia: 0, reprovacao: 0, detalhes: [] },
         })
         continue
       }
@@ -129,6 +202,7 @@ export async function GET(req: Request) {
         destino: destinoTurma ? { id: destinoTurma.id, nome: destinoTurma.nome, turno: destinoTurma.turno ?? null } : null,
         regra: `${numero}ª → ${prox}ª`,
         total_alunos: total,
+        bloqueios: bloqueioPorTurma.get((origem as any).id) ?? { inadimplencia: 0, reprovacao: 0, detalhes: [] },
       })
     }
 

@@ -1,5 +1,6 @@
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import type { Database } from "~types/supabase";
+import { ACTIVE_MATRICULA_STATUSES } from "@/lib/matriculas/status";
 
 export type AlunoContext = {
   userId: string;
@@ -61,7 +62,7 @@ export async function getAlunoContext() {
         .from("matriculas")
         .select("id, turma_id, escola_id, ano_letivo")
         .eq('aluno_id', alunoId)
-        .in('status', ['ativo', 'ativa', 'active'])
+        .in('status', ACTIVE_MATRICULA_STATUSES)
         .order('ano_letivo', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(1);
@@ -76,7 +77,7 @@ export async function getAlunoContext() {
           .select("id, turma_id, escola_id, ano_letivo")
           .eq('aluno_id', alunoId)
           .eq('escola_id', escolaId)
-          .in('status', ['ativo', 'ativa', 'active'])
+          .in('status', ACTIVE_MATRICULA_STATUSES)
           .order('ano_letivo', { ascending: false })
           .order('created_at', { ascending: false })
           .limit(1);
