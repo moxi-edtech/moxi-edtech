@@ -12,6 +12,15 @@ export type AlunoLimitCheck = {
   incoming: number;
 };
 
+export type PlanLimitErrorPayload = {
+  ok: false;
+  code: "PLAN_LIMIT";
+  error: string;
+  details: AlunoLimitCheck;
+  upgrade_url: string;
+  contact: string;
+};
+
 export async function checkAlunoPlanLimit(
   supabase: SupabaseClient<Database>,
   escolaId: string,
@@ -49,4 +58,15 @@ export async function checkAlunoPlanLimit(
   }
 
   return { ok: true, plan, max, current, incoming };
+}
+
+export function buildPlanLimitError(escolaId: string, check: AlunoLimitCheck): PlanLimitErrorPayload {
+  return {
+    ok: false,
+    code: "PLAN_LIMIT",
+    error: `Limite do plano atingido (${check.current}/${check.max}).`,
+    details: check,
+    upgrade_url: `/escola/${escolaId}/admin/configuracoes/assinatura`,
+    contact: "suporte@moxinexa.com",
+  };
 }

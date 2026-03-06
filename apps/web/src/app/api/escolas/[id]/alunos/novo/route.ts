@@ -4,7 +4,7 @@ import { supabaseServer } from '@/lib/supabaseServer'
 import { hasPermission } from '@/lib/permissions'
 import { recordAuditServer } from '@/lib/audit'
 import { callAuthAdminJob } from '@/lib/auth-admin-job'
-import { checkAlunoPlanLimit } from '@/lib/plan/limits'
+import { buildPlanLimitError, checkAlunoPlanLimit } from '@/lib/plan/limits'
 
 const BodySchema = z.object({
   nome: z.string().trim().min(1, 'Informe o nome'),
@@ -71,14 +71,24 @@ export async function POST(
 
     const limitCheck = await checkAlunoPlanLimit(s as any, escolaId, 1)
     if (!limitCheck.ok) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: `Limite do plano atingido (${limitCheck.current}/${limitCheck.max}).`,
-          details: limitCheck,
-        },
-        { status: 403 },
-      )
+      await s.from('notifications').insert({
+        escola_id: escolaId,
+        target_role: 'super_admin',
+        tipo: 'plan_limit_alunos',
+        titulo: 'Limite de alunos atingido',
+        mensagem: `A escola atingiu o limite de alunos (${limitCheck.current}/${limitCheck.max}).`,
+        link_acao: `/super-admin/escolas/${escolaId}`,
+      })
+
+      recordAuditServer({
+        escolaId,
+        portal: 'secretaria',
+        acao: 'PLAN_LIMIT_ALUNOS',
+        entity: 'alunos',
+        details: limitCheck,
+      }).catch(() => null)
+
+      return NextResponse.json(buildPlanLimitError(escolaId, limitCheck), { status: 403 })
     }
 
     const admin = await supabaseServer()

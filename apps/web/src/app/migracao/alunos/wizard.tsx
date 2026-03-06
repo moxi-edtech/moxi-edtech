@@ -156,6 +156,12 @@ function AlunoMigrationWizardContent() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importFinanceSummary, setImportFinanceSummary] = useState<ImportFinanceSummary | null>(null);
   const [importBlockingSummary, setImportBlockingSummary] = useState<ImportBlockingSummary | null>(null);
+  const [planLimitError, setPlanLimitError] = useState<null | {
+    error: string;
+    upgrade_url?: string;
+    contact?: string;
+    details?: { current: number; max: number | null };
+  }>(null);
   const [skipMatricula, setSkipMatricula] = useState(false);
   const [startMonth, setStartMonth] = useState<number>(new Date().getMonth() + 1);
   const [modo, setModo] = useState<'migracao' | 'onboarding'>('migracao');
@@ -319,6 +325,7 @@ function AlunoMigrationWizardContent() {
 
   const handleImport = async () => {
     setLoading(true); setApiErrors([]);
+    setPlanLimitError(null);
     try {
       const res = await fetch("/api/migracao/alunos/importar", {
         method: "POST",
@@ -327,7 +334,18 @@ function AlunoMigrationWizardContent() {
       });
       const data = await res.json();
       const result = data.result || data;
-      if (!res.ok) throw new Error(data.error || result.error);
+      if (!res.ok) {
+        if (data?.code === "PLAN_LIMIT") {
+          setPlanLimitError({
+            error: data?.error || "Limite do plano atingido.",
+            upgrade_url: data?.upgrade_url,
+            contact: data?.contact,
+            details: data?.details,
+          });
+          return;
+        }
+        throw new Error(data.error || result.error);
+      }
       
       setImportResult(result);
       const hasFinanceSummary = data?.pendencias_financeiras || data?.ok_financeiro !== undefined || data?.mensagem_resumo;
@@ -845,6 +863,30 @@ function AlunoMigrationWizardContent() {
                    {apiErrors.map((e, i) => <li key={i}>{e}</li>)}
                 </ul>
               </div>
+            </div>
+          </div>
+        )}
+
+        {planLimitError && (
+          <div className="mb-6 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 shadow-sm">
+            <div className="font-semibold">{planLimitError.error}</div>
+            {planLimitError.details?.max && (
+              <div className="text-xs text-rose-600 mt-1">
+                Limite actual: {planLimitError.details.current}/{planLimitError.details.max} alunos.
+              </div>
+            )}
+            <div className="mt-3 flex flex-wrap gap-3">
+              {planLimitError.upgrade_url && (
+                <a
+                  href={planLimitError.upgrade_url}
+                  className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold uppercase tracking-wide text-white"
+                >
+                  Fazer upgrade
+                </a>
+              )}
+              {planLimitError.contact && (
+                <span className="text-xs text-rose-600">Contacto: {planLimitError.contact}</span>
+              )}
             </div>
           </div>
         )}

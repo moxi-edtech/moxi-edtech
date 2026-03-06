@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { recordAuditServer } from '@/lib/audit'
+import { buildPlanLimitError, checkAlunoPlanLimit } from '@/lib/plan/limits'
 
 const BodySchema = z.object({
   nome: z.string().trim().min(1, 'Informe o nome'),
@@ -72,6 +73,28 @@ export async function POST(req: Request) {
 
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: 'Usuário não vinculado a nenhuma escola.' }, { status: 403 })
+    }
+
+    const limitCheck = await checkAlunoPlanLimit(s as any, escolaId, 1)
+    if (!limitCheck.ok) {
+      await s.from('notifications').insert({
+        escola_id: escolaId,
+        target_role: 'super_admin',
+        tipo: 'plan_limit_alunos',
+        titulo: 'Limite de alunos atingido',
+        mensagem: `A escola atingiu o limite de alunos (${limitCheck.current}/${limitCheck.max}).`,
+        link_acao: `/super-admin/escolas/${escolaId}`,
+      })
+
+      recordAuditServer({
+        escolaId,
+        portal: 'secretaria',
+        acao: 'PLAN_LIMIT_ALUNOS',
+        entity: 'alunos',
+        details: limitCheck,
+      }).catch(() => null)
+
+      return NextResponse.json(buildPlanLimitError(escolaId, limitCheck), { status: 403 })
     }
     
     const nomeCompleto = `${body.primeiro_nome || ''} ${body.sobrenome || ''}`.replace(/\s+/g, ' ').trim() || body.nome.trim()
