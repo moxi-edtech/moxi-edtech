@@ -11,11 +11,12 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabaseClient";
-import type { 
-  EscolaDetalhes, 
-  EscolaMetricas, 
-  PerformanceMetrics, 
-  AtividadeRecente 
+import type {
+  EscolaDetalhes,
+  EscolaMetricas,
+  PerformanceMetrics,
+  AtividadeRecente,
+  PlanLimits,
 } from "@/app/super-admin/escolas/[id]/types";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -215,6 +216,7 @@ interface EscolaMonitorProps {
   performance: PerformanceMetrics;
   atividades: AtividadeRecente[];
   saude: number;
+  planLimits: PlanLimits[];
   refreshing: boolean;
   onRefresh: () => void;
   onUpdate: () => void;
@@ -226,6 +228,7 @@ export default function EscolaMonitor({
   performance,
   atividades,
   saude,
+  planLimits,
   refreshing,
   onRefresh,
   onUpdate,
@@ -263,6 +266,17 @@ export default function EscolaMonitor({
       toast.error('Erro: ' + error.message);
     }
   };
+
+  const planOrder: Array<PlanLimits['plan']> = ["essencial", "profissional", "premium"];
+  const planByTier = useMemo(() => {
+    const map = new Map<PlanLimits['plan'], PlanLimits>();
+    for (const plan of planLimits || []) {
+      map.set(plan.plan, plan);
+    }
+    return map;
+  }, [planLimits]);
+
+  const alunosTotal = metricas?.alunos_total ?? 0;
 
   return (
     <div className="bg-slate-50 font-sans text-slate-900">
@@ -440,6 +454,51 @@ export default function EscolaMonitor({
                         <span>STORAGE: 1.2 GB USADO</span>
                         <span>LIMITE: 5.0 GB</span>
                       </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-slate-200 rounded-3xl overflow-hidden shadow-sm mt-6">
+                  <CardHeader className="bg-slate-50/60 border-b border-slate-100 p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-lg">Limite de alunos por plano</CardTitle>
+                        <CardDescription>Uso actual e margem para upgrade</CardDescription>
+                      </div>
+                      <Badge className="bg-slate-800 text-white hover:bg-slate-800 border-0 uppercase font-bold text-[10px]">
+                        {alunosTotal} alunos activos
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <div className="grid gap-4">
+                      {planOrder.map((tier) => {
+                        const limits = planByTier.get(tier);
+                        const max = limits?.max_alunos ?? null;
+                        const remaining = max === null ? null : Math.max(0, max - alunosTotal);
+                        const isCurrent = escola.plano_atual === tier;
+                        return (
+                          <div key={tier} className={`flex flex-col gap-2 rounded-2xl border ${isCurrent ? 'border-klasse-green/40 bg-klasse-green/5' : 'border-slate-200 bg-white'} p-4`}>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold uppercase tracking-widest text-slate-500">{tier}</span>
+                                {isCurrent && (
+                                  <Badge className="bg-klasse-green text-white border-0 text-[9px] font-bold uppercase">Plano actual</Badge>
+                                )}
+                              </div>
+                              <span className="text-xs font-semibold text-slate-700">
+                                {max === null ? "Ilimitado" : `Limite ${max}`}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm text-slate-700">
+                              <span>Alunos actuais: <strong>{alunosTotal}</strong></span>
+                              <span>
+                                {remaining === null ? "Sem limite" : `Faltam ${remaining}`}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </CardContent>
                 </Card>

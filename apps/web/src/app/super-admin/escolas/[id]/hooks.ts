@@ -8,7 +8,8 @@ import {
   EscolaMetricas, 
   PerformanceMetrics, 
   AtividadeRecente, 
-  AlertaEscola 
+  AlertaEscola,
+  PlanLimits
 } from './types';
 
 // Helper function moved outside the hook
@@ -31,6 +32,7 @@ export function useEscolaMonitorData(escolaId: string) {
   const [performance, setPerformance] = useState<PerformanceMetrics | null>(null);
   const [atividades, setAtividades] = useState<AtividadeRecente[]>([]);
   const [alertas, setAlertas] = useState<AlertaEscola[]>([]);
+  const [planLimits, setPlanLimits] = useState<PlanLimits[]>([]);
 
   const loadEscolaData = useCallback(async () => {
     if (!escolaId) return;
@@ -47,17 +49,19 @@ export function useEscolaMonitorData(escolaId: string) {
       if (escolaError) throw escolaError;
       setEscola(escolaData as EscolaDetalhes);
       
-      const [metricasData, performanceData, atividadesData, alertasData] = await Promise.all([
+      const [metricasData, performanceData, atividadesData, alertasData, planLimitsData] = await Promise.all([
         loadMetricas(supabase, escolaId),
         loadPerformance(supabase, escolaId),
         loadAtividades(supabase, escolaId),
-        loadAlertas(supabase, escolaId)
+        loadAlertas(supabase, escolaId),
+        loadPlanLimits(supabase)
       ]);
       
       setMetricas(metricasData);
       setPerformance(performanceData);
       setAtividades(atividadesData);
       setAlertas(alertasData);
+      setPlanLimits(planLimitsData);
       
     } catch (error) {
       console.error('Erro ao carregar dados da escola:', error);
@@ -81,7 +85,7 @@ export function useEscolaMonitorData(escolaId: string) {
     return Math.max(0, s);
   })();
 
-  return { loading, refreshing, escola, metricas, performance, atividades, alertas, loadEscolaData, saude };
+  return { loading, refreshing, escola, metricas, performance, atividades, alertas, planLimits, loadEscolaData, saude };
 }
 
 // Sub-fetching functions
@@ -169,4 +173,11 @@ async function loadAlertas(supabase: any, id: string): Promise<AlertaEscola[]> {
   }
   
   return alertas;
+}
+
+async function loadPlanLimits(supabase: any): Promise<PlanLimits[]> {
+  const { data } = await supabase
+    .from('app_plan_limits')
+    .select('plan, price_mensal_kz, max_alunos, max_admin_users, max_storage_gb, professores_ilimitados, api_enabled, multi_campus');
+  return (data || []) as PlanLimits[];
 }
