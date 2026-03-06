@@ -60,75 +60,71 @@ O domínio de horários melhorou com `quadro_horarios` + `horario_slots`, mas ai
 ## GAP-04 — `horario_slots` sem invariantes temporais fortes
 **Diagnóstico atual**
 - Existe check de `dia_semana`.
-- Não há check explícito `inicio < fim` nem unicidade por (`escola_id`,`turno_id`,`dia_semana`,`ordem`) no artefato identificado.
+- As constraints temporais foram reforçadas com checks e exclusão por sobreposição.
 
 **Evidência**
-- Migração de scheduler define apenas `horario_slots_dia_semana_check`.
+- Migração `20261216030000_horario_slots_temporal_guardrails.sql` adiciona `inicio < fim`, unicidade por dia/turno/ordem e exclusão de sobreposição.
 
 **Risco de coesão**
-- Slots inválidos/sobrepostos podem degradar algoritmo automático e publicação manual.
+- Mitigado com guardrails temporais e saneamento de slots existentes.
 
 **Cura recomendada**
-- Adicionar checks e unicidade de ordem por dia/turno.
-- Opcional: exclusão temporal (gist) para impedir sobreposição.
+- Manter o saneamento e os checks como parte do pipeline de migrações.
 
 ---
 
 ## GAP-05 — Algoritmo automático ignora indisponibilidade formal do professor
 **Diagnóstico atual**
-- Existe tabela `professor_disponibilidade` no schema.
-- O auto-scheduler utiliza `teachers.turnos_disponiveis`, mas não cruza com `professor_disponibilidade` por dia/faixa.
+- Existe tabela `professor_disponibilidade` no schema e agora é consumida pelo auto-scheduler.
+- O algoritmo cruza dia/faixa e trata `indisponivel` como hard constraint.
 
 **Evidência**
-- `horarios/auto` consulta `teachers.turnos_disponiveis`.
-- Não há consulta a `professor_disponibilidade` no fluxo de alocação.
+- `horarios/auto` consulta `professor_disponibilidade` e aplica bloqueio/penalidade na seleção de slot.
 
 **Risco de coesão**
-- Grade “válida” tecnicamente pode violar indisponibilidades reais.
+- Mitigado: slots conflitando com indisponibilidade são ignorados.
 
 **Cura recomendada**
-- Incorporar indisponibilidade como hard constraint no `pickSlot`.
+- Manter atualização de disponibilidade e revisar penalidade de `evitar` conforme feedback da escola.
 
 ---
 
 ## GAP-06 — Cálculo de “próxima aula” do aluno com semântica frágil
 **Diagnóstico atual**
-- Usa heurística por `Date.getDay()` e `weekday >= hoje` sobre `rotinas`.
-- Não considera versão publicada de `quadro_horarios` nem horário atual do slot.
+- A API do aluno consulta apenas `quadro_horarios` publicado e usa hora do slot.
 
 **Evidência**
-- `aluno/dashboard` usa `rotinas` com `weekday`.
+- `aluno/dashboard` usa `quadro_horarios + horario_slots` com cálculo por timestamp.
 
 **Risco de coesão**
-- “Próxima aula” pode ficar errada perto da virada do dia/semana.
+- Mitigado com cálculo por horário real e validação de intervalos.
 
 **Cura recomendada**
-- Migrar para leitura de `quadro_horarios + horario_slots` publicado e cálculo por timestamp.
+- Manter consulta à versão publicada e validar slots com `inicio < fim`.
 
 ---
 
 ## GAP-07 — Ausência de vínculo curricular forte no item de quadro
 **Diagnóstico atual**
-- `quadro_horarios` guarda `disciplina_id` direto.
-- Regras de carga em publish usam `turma_disciplinas`/`curso_matriz` separadamente.
+- `quadro_horarios` guarda `disciplina_id` direto, mas agora valida contra `turma_disciplinas` + `curso_matriz`.
 
 **Risco de coesão**
-- Menor rastreabilidade curricular do slot para o contrato letivo da turma.
+- Mitigado com trigger de coerência curricular no insert/update do quadro.
 
 **Cura recomendada**
-- Avaliar chave para `turma_disciplina_id` no quadro (ou constraint de coerência disciplina↔turma).
+- Manter trigger de coerência disciplina↔turma e avaliar extensão futura para `turma_disciplina_id`.
 
 ---
 
 ## GAP-08 — Falta de trilha de auditoria explícita para operações de horários
 **Diagnóstico atual**
-- Não há registro explícito de auditoria no endpoint de gravação/publicação de quadro.
+- Auditoria adicionada com eventos de draft/publish registrados em tabela própria.
 
 **Risco de coesão**
-- Dificulta reconstrução legal/operacional de “quem publicou que versão e quando”.
+- Mitigado com tabela `horario_eventos` e payload com hash do quadro.
 
 **Cura recomendada**
-- Registrar eventos de `DRAFT_SAVE`, `PUBLISH`, `UNPUBLISH`, `DELETE_VERSION` com hash do payload.
+- Manter logging de `DRAFT_SAVE` e `PUBLISH`; adicionar `UNPUBLISH` e `DELETE_VERSION` quando as rotas forem criadas.
 
 ---
 
@@ -139,4 +135,5 @@ O domínio de horários melhorou com `quadro_horarios` + `horario_slots`, mas ai
 
 ## Estado final
 - **GAP-01/02/03 mitigados** com SSOT, versionamento e atomicidade.
-- Permanecem GAP-04 a GAP-08 para próximos sprints.
+- **GAP-04/05/06 mitigados** com guardrails temporais, disponibilidade de professor e próxima aula por slots.
+- **GAP-07/08 mitigados** com coerência curricular e trilha de auditoria.
