@@ -19,6 +19,17 @@ type IdentidadeForm = {
   aluno_portal_enabled: boolean;
 };
 
+type PlanoLimites = {
+  plan: string;
+  price_mensal_kz: number;
+  max_alunos: number | null;
+  max_admin_users: number | null;
+  max_storage_gb: number | null;
+  professores_ilimitados: boolean;
+  api_enabled: boolean;
+  multi_campus: boolean;
+};
+
 type Props = {
   params: Promise<{ id: string }>;
 };
@@ -40,6 +51,7 @@ export default function IdentidadePage({ params }: Props) {
     status: null,
     aluno_portal_enabled: false,
   });
+  const [planoLimites, setPlanoLimites] = useState<PlanoLimites | null>(null);
 
   const logoPreview = useMemo(() => formData.logo_url?.trim() || "", [formData.logo_url]);
 
@@ -67,6 +79,7 @@ export default function IdentidadePage({ params }: Props) {
           status: json?.data?.status ?? null,
           aluno_portal_enabled: !!json?.data?.aluno_portal_enabled,
         });
+        setPlanoLimites(json?.limites ?? null);
       } catch (err) {
         console.error(err);
         error("Erro inesperado ao carregar identidade.");
@@ -203,6 +216,55 @@ export default function IdentidadePage({ params }: Props) {
                   </div>
                 </div>
               </div>
+
+              {planoLimites && (
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
+                  <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest border-b border-slate-50 pb-3 mb-2">Contrato do Plano</h3>
+                  <div className="grid gap-3 text-xs text-slate-600">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold uppercase text-slate-400">Preço mensal</span>
+                      <span className="font-bold text-slate-800">Kz {planoLimites.price_mensal_kz.toLocaleString("pt-AO")}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold uppercase text-slate-400">Alunos</span>
+                      <span className="font-bold text-slate-800">
+                        {planoLimites.max_alunos ? `Até ${planoLimites.max_alunos}` : "Ilimitado"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold uppercase text-slate-400">Utilizadores admin</span>
+                      <span className="font-bold text-slate-800">
+                        {planoLimites.max_admin_users ? `Até ${planoLimites.max_admin_users}` : "Ilimitado"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold uppercase text-slate-400">Professores</span>
+                      <span className="font-bold text-slate-800">
+                        {planoLimites.professores_ilimitados ? "Ilimitado" : "Limitado"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold uppercase text-slate-400">Storage</span>
+                      <span className="font-bold text-slate-800">
+                        {planoLimites.max_storage_gb ? `${planoLimites.max_storage_gb} GB` : "Ilimitado"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold uppercase text-slate-400">API</span>
+                      <span className="font-bold text-slate-800">{planoLimites.api_enabled ? "Ativa" : "Não"}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold uppercase text-slate-400">Multi-campus</span>
+                      <span className="font-bold text-slate-800">{planoLimites.multi_campus ? "Ativo" : "Não"}</span>
+                    </div>
+                    {planoLimites.max_admin_users && (
+                      <div className="rounded-xl bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
+                        No piloto (3–6 meses), o limite de utilizadores administrativos é apenas monitorado.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4 shadow-sm">
                 <h3 className="text-sm font-semibold text-slate-800">Prévia do logótipo</h3>
