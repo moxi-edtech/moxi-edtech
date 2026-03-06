@@ -69,15 +69,17 @@ export async function GET() {
       if (turmaId && escolaId) {
         const now = new Date();
         const supabaseHorarios = supabase as SupabaseClient<DatabaseWithHorarioVersoes>;
-        const { data: versaoPublicada } = await supabaseHorarios
-          .from('horario_versoes')
-          .select('id')
-          .eq('escola_id', escolaId)
-          .eq('turma_id', turmaId)
-          .eq('status', 'publicada')
-          .order('publicado_em', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        const versaoPublicada = (
+          await supabaseHorarios
+            .from('horario_versoes')
+            .select('id')
+            .eq('escola_id', escolaId)
+            .eq('turma_id', turmaId)
+            .eq('status', 'publicada')
+            .order('publicado_em', { ascending: false })
+            .limit(1)
+            .maybeSingle()
+        ).data as { id: string } | null;
 
         const { data: quadroRows } = versaoPublicada?.id
           ? await supabase
