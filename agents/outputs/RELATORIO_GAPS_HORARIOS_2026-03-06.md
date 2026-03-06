@@ -10,17 +10,17 @@ O domínio de horários melhorou com `quadro_horarios` + `horario_slots`, mas ai
 ## GAP-01 — Dupla fonte de verdade (legacy `rotinas` vs novo `quadro_horarios`)
 **Diagnóstico atual**
 - A agenda do professor já consome `quadro_horarios` + `horario_slots`.
-- A dashboard do aluno continua consumindo `rotinas` para “próxima aula”.
+- A dashboard do aluno já consome `quadro_horarios` (SSOT) para “próxima aula”.
 
 **Evidência**
 - `professor/agenda` lê `quadro_horarios`.
 - `aluno/dashboard` lê `rotinas`.
 
 **Risco de coesão**
-- Professor e aluno podem ver horários diferentes para a mesma turma/dia.
+- Mitigado após migração para SSOT no portal do aluno.
 
 **Cura recomendada**
-- Definir `quadro_horarios` como SSOT de leitura (professor e aluno).
+- Manter `quadro_horarios` como SSOT de leitura (professor e aluno).
 - Tratar `rotinas` apenas como legado temporário com plano de depreciação.
 
 ---
@@ -28,34 +28,32 @@ O domínio de horários melhorou com `quadro_horarios` + `horario_slots`, mas ai
 ## GAP-02 — `versao_id` sem isolamento por constraint (versionamento sem blindagem)
 **Diagnóstico atual**
 - A API trabalha com `versao_id` no payload de quadro.
-- Porém o schema histórico impõe `UNIQUE (turma_id, slot_id)` e exclusões por professor/sala sem `versao_id`.
+- O schema atual já inclui `horario_versoes` e constraints por versão.
 
 **Evidência**
 - `quadro/route.ts` exige `versao_id`.
 - Constraints no schema base não incluem `versao_id`.
 
 **Risco de coesão**
-- Não é possível manter rascunho e publicado em paralelo de forma robusta; risco de colisão e overwrite indevido.
+- Mitigado com constraints versionadas e entidade `horario_versoes`.
 
 **Cura recomendada**
-- Introduzir entidade de versão (`horario_versoes`) e ajustar constraints para escopo de versão.
-- Regras globais (professor/sala) devem incidir sobre versão publicada.
+- Garantir manutenção contínua do SSOT e constraints versionadas.
 
 ---
 
 ## GAP-03 — Publicação não atômica (delete + insert) suscetível a corrida
 **Diagnóstico atual**
-- O endpoint de quadro faz `delete` e depois `insert` para a versão/turma.
-- Sem transação no backend da API, há janela de inconsistência sob concorrência.
+- O endpoint agora usa RPC transacional para delete+insert por versão.
 
 **Evidência**
 - Fluxo explícito de `delete` seguido de `insert` em `quadro/route.ts`.
 
 **Risco de coesão**
-- Em concorrência, pode ocorrer perda parcial de grade ou conflito intermitente.
+- Mitigado com RPC `upsert_quadro_horarios_versao_atomic`.
 
 **Cura recomendada**
-- Consolidar publicação em RPC transacional (`publish_horario_version`) com lock lógico por turma/versão.
+- Manter publicação via RPC transacional com lock por turma/versão.
 
 ---
 
@@ -140,5 +138,5 @@ O domínio de horários melhorou com `quadro_horarios` + `horario_slots`, mas ai
 3. GAP-07, GAP-08 (governança e robustez de domínio).
 
 ## Estado final
-- **Existem gaps restantes relevantes**.
-- Recomendação: executar plano de cura em 2 sprints (S1: SSOT/versionamento/atomicidade; S2: disponibilidade/observabilidade).
+- **GAP-01/02/03 mitigados** com SSOT, versionamento e atomicidade.
+- Permanecem GAP-04 a GAP-08 para próximos sprints.

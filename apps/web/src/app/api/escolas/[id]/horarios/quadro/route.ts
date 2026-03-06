@@ -257,33 +257,27 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       }
     }
 
-    const { error } = await supabase
+    const { data: upsertResult, error: upsertError } = await supabase.rpc('upsert_quadro_horarios_versao_atomic', {
+      p_escola_id: escolaIdResolved,
+      p_turma_id: parsed.data.turma_id,
+      p_versao_id: versaoId,
+      p_items: parsed.data.items,
+      p_publish: mode === 'publish',
+    })
+
+    if (upsertError) return NextResponse.json({ ok: false, error: upsertError.message }, { status: 400 })
+
+    const { data, error: selectError } = await supabase
       .from('quadro_horarios')
-      .delete()
+      .select('id, turma_id, disciplina_id, professor_id, sala_id, slot_id, versao_id')
       .eq('escola_id', escolaIdResolved)
       .eq('turma_id', parsed.data.turma_id)
       .eq('versao_id', versaoId)
 
-    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
-
-    const { data, error: insertError } = await supabase
-      .from('quadro_horarios')
-      .insert(payload)
-      .select('id, turma_id, disciplina_id, professor_id, sala_id, slot_id, versao_id')
-
-    if (insertError) return NextResponse.json({ ok: false, error: insertError.message }, { status: 400 })
+    if (selectError) return NextResponse.json({ ok: false, error: selectError.message }, { status: 400 })
 
     if (mode === 'publish') {
-      const { data: publishedVersionId, error: publishError } = await supabase.rpc('publish_horario_versao', {
-        p_escola_id: escolaIdResolved,
-        p_turma_id: parsed.data.turma_id,
-        p_versao_id: versaoId,
-      })
-
-      if (publishError) {
-        return NextResponse.json({ ok: false, error: publishError.message }, { status: 400 })
-      }
-
+      const publishedVersionId = (upsertResult as { published_id?: string | null } | null)?.published_id ?? null
       const response = NextResponse.json({ ok: true, versao_id: String(publishedVersionId || versaoId), status: 'publicada', items: data || [] })
       response.headers.set('Server-Timing', `app;dur=${Date.now() - start}`)
       return response
