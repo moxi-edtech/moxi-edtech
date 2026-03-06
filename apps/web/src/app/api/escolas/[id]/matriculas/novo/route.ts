@@ -5,6 +5,7 @@ import { recordAuditServer } from "@/lib/audit";
 import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
 import { hasPermission, type Papel } from "@/lib/permissions";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { buildPlanLimitError, checkAlunoPlanLimit } from "@/lib/plan/limits";
 import type { Database } from "~types/supabase";
 
 // Schema validation
@@ -69,6 +70,28 @@ export async function POST(
       return NextResponse.json({ ok: false, error: "Escola excluída não permite criar matrículas." }, { status: 400 });
     if (esc?.status === "suspensa")
       return NextResponse.json({ ok: false, error: "Escola suspensa. Regularize pagamentos." }, { status: 400 });
+
+    const limitCheck = await checkAlunoPlanLimit(supabase as any, escolaId, 1);
+    if (!limitCheck.ok) {
+      await supabase.from('notifications').insert({
+        escola_id: escolaId,
+        target_role: 'super_admin',
+        tipo: 'plan_limit_alunos',
+        titulo: 'Limite de alunos atingido',
+        mensagem: `Tentativa de matrícula bloqueada (${limitCheck.current}/${limitCheck.max}).`,
+        link_acao: `/super-admin/escolas/${escolaId}`,
+      });
+
+      recordAuditServer({
+        escolaId,
+        portal: "secretaria",
+        acao: "PLAN_LIMIT_ALUNOS",
+        entity: "matriculas",
+        details: limitCheck,
+      }).catch(() => null);
+
+      return NextResponse.json(buildPlanLimitError(escolaId, limitCheck), { status: 403 });
+    }
 
     // 4.1 Validar ano_letivo_id pertence à escola
     const { data: anoRow, error: anoErr } = await supabase

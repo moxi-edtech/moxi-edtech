@@ -5,6 +5,7 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
 import { recordAuditServer } from "@/lib/audit";
 import { emitirComprovanteMatricula } from "@/lib/documentos/emitirComprovanteMatricula";
+import { buildPlanLimitError, checkAlunoPlanLimit } from "@/lib/plan/limits";
 
 export async function POST(request: NextRequest) {
   const supabase = await supabaseServerTyped<Database>();
@@ -36,6 +37,34 @@ export async function POST(request: NextRequest) {
     roles: ["admin", "admin_escola", "secretaria", "staff_admin"],
   });
   if (roleError) return roleError;
+
+  const { count: stagedCount } = await supabase
+    .from("staging_alunos")
+    .select("id", { count: "exact", head: true })
+    .eq("import_id", import_id)
+    .eq("escola_id", escola_id);
+
+  const limitCheck = await checkAlunoPlanLimit(supabase as any, escola_id, stagedCount ?? 0);
+  if (!limitCheck.ok) {
+    await supabase.from('notifications').insert({
+      escola_id: escola_id,
+      target_role: 'super_admin',
+      tipo: 'plan_limit_alunos',
+      titulo: 'Limite de alunos atingido',
+      mensagem: `Matrícula em massa bloqueada (${limitCheck.current}/${limitCheck.max}).`,
+      link_acao: `/super-admin/escolas/${escola_id}`,
+    });
+
+    recordAuditServer({
+      escolaId: escola_id,
+      portal: "admin_escola",
+      acao: "PLAN_LIMIT_ALUNOS",
+      entity: "matriculas",
+      details: limitCheck,
+    }).catch(() => null);
+
+    return NextResponse.json(buildPlanLimitError(escola_id, limitCheck), { status: 403 });
+  }
   let finalTurmaId = turma_id;
 
   if (!finalTurmaId) {
