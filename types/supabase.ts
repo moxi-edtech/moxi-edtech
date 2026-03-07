@@ -2624,7 +2624,7 @@ export type Database = {
           nome: string
           onboarding_finalizado?: boolean
           plano_atual?: Database["public"]["Enums"]["app_plan_tier"]
-          slug?: string
+          slug: string
           status?: string | null
           updated_at?: string | null
           use_mv_dashboards?: boolean
@@ -6706,43 +6706,61 @@ export type Database = {
         Row: {
           action_label: string | null
           action_url: string | null
+          agrupamento_chave: string | null
+          arquivada: boolean
+          arquivada_em: string | null
           corpo: string | null
           created_at: string
           destinatario_id: string
           escola_id: string
           evento_id: string
+          gatilho: string | null
           id: string
           lida: boolean
           lida_em: string | null
+          modal_id: string | null
           prioridade: Database["public"]["Enums"]["notificacao_prioridade"]
+          tipo: string | null
           titulo: string
         }
         Insert: {
           action_label?: string | null
           action_url?: string | null
+          agrupamento_chave?: string | null
+          arquivada?: boolean
+          arquivada_em?: string | null
           corpo?: string | null
           created_at?: string
           destinatario_id: string
           escola_id: string
           evento_id: string
+          gatilho?: string | null
           id?: string
           lida?: boolean
           lida_em?: string | null
+          modal_id?: string | null
           prioridade?: Database["public"]["Enums"]["notificacao_prioridade"]
+          tipo?: string | null
           titulo: string
         }
         Update: {
           action_label?: string | null
           action_url?: string | null
+          agrupamento_chave?: string | null
+          arquivada?: boolean
+          arquivada_em?: string | null
           corpo?: string | null
           created_at?: string
           destinatario_id?: string
           escola_id?: string
           evento_id?: string
+          gatilho?: string | null
           id?: string
           lida?: boolean
           lida_em?: string | null
+          modal_id?: string | null
           prioridade?: Database["public"]["Enums"]["notificacao_prioridade"]
+          tipo?: string | null
           titulo?: string
         }
         Relationships: [
@@ -12494,6 +12512,10 @@ export type Database = {
         }[]
       }
       generate_activation_code: { Args: never; Returns: string }
+      generate_escola_slug: {
+        Args: { p_id?: string; p_nome: string }
+        Returns: string
+      }
       generate_unique_numero_login: {
         Args: {
           p_escola_id: string
@@ -13263,6 +13285,7 @@ export type Database = {
         Args: { p_ano_data: Json; p_escola_id: string }
         Returns: Json
       }
+      slugify_escola_nome: { Args: { input: string }; Returns: string }
       soft_delete_aluno: {
         Args: { p_deleted_by: string; p_id: string; p_reason: string }
         Returns: undefined
@@ -13333,6 +13356,10 @@ export type Database = {
         Returns: Json
       }
       unaccent: { Args: { "": string }; Returns: string }
+      update_escola_slug: {
+        Args: { p_escola_id: string; p_slug: string }
+        Returns: undefined
+      }
       update_financeiro_from_pagamento: {
         Args: { p_event: Json }
         Returns: undefined
@@ -13431,6 +13458,36 @@ export type Database = {
         | "matricula.concluida"
         | "aluno.arquivado"
         | "documento.emitido"
+        | "sistema.manutencao"
+        | "sistema.funcionalidade"
+        | "plano.limite_80"
+        | "plano.limite_100"
+        | "subscricao.expira"
+        | "subscricao.expirada"
+        | "turma.aprovada"
+        | "turma.rejeitada"
+        | "propina.definida"
+        | "desconto.aprovado"
+        | "importacao.alunos.concluida"
+        | "catalogo.precos.ativado"
+        | "financeiro.fecho.autorizado"
+        | "ano_letivo.ativado"
+        | "turma.atribuida"
+        | "notas.prazo_3d"
+        | "notas.prazo_expirado"
+        | "matricula.aluno_matriculado"
+        | "matricula.aluno_transferido"
+        | "matricula.aluno_cancelado"
+        | "matricula.aluno_reintegrado"
+        | "matricula.confirmada"
+        | "matricula.renovacao_disponivel"
+        | "propina.atraso"
+        | "propina.vence_3d"
+        | "nota.lancada"
+        | "avaliacao.marcada"
+        | "frequencia.falta_registada"
+        | "frequencia.faltas_limite"
+        | "nota.abaixo_media"
       fecho_status: "draft" | "declared" | "approved" | "rejected"
       financeiro_categoria_item:
         | "uniforme"
@@ -13673,6 +13730,36 @@ export const Constants = {
         "matricula.concluida",
         "aluno.arquivado",
         "documento.emitido",
+        "sistema.manutencao",
+        "sistema.funcionalidade",
+        "plano.limite_80",
+        "plano.limite_100",
+        "subscricao.expira",
+        "subscricao.expirada",
+        "turma.aprovada",
+        "turma.rejeitada",
+        "propina.definida",
+        "desconto.aprovado",
+        "importacao.alunos.concluida",
+        "catalogo.precos.ativado",
+        "financeiro.fecho.autorizado",
+        "ano_letivo.ativado",
+        "turma.atribuida",
+        "notas.prazo_3d",
+        "notas.prazo_expirado",
+        "matricula.aluno_matriculado",
+        "matricula.aluno_transferido",
+        "matricula.aluno_cancelado",
+        "matricula.aluno_reintegrado",
+        "matricula.confirmada",
+        "matricula.renovacao_disponivel",
+        "propina.atraso",
+        "propina.vence_3d",
+        "nota.lancada",
+        "avaliacao.marcada",
+        "frequencia.falta_registada",
+        "frequencia.faltas_limite",
+        "nota.abaixo_media",
       ],
       fecho_status: ["draft", "declared", "approved", "rejected"],
       financeiro_categoria_item: [
