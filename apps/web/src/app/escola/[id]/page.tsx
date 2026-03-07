@@ -21,6 +21,13 @@ export default async function EscolaIdPage({ params }: { params: Promise<{ id: s
     .eq('user_id', user.id)
     .single();
 
+  const { data: escolaInfo } = await supabase
+    .from('escolas')
+    .select('slug')
+    .eq('id', id)
+    .maybeSingle();
+  const escolaParam = escolaInfo?.slug ? String(escolaInfo.slug) : id;
+
   if (error || !escolaUsuario) {
     // This can happen if the user is not associated with the school
     // Or if there's a DB error.
@@ -31,15 +38,15 @@ export default async function EscolaIdPage({ params }: { params: Promise<{ id: s
   }
 
   if (escolaUsuario.papel === 'admin' || escolaUsuario.papel === 'admin_escola') {
-    return redirect(`/escola/${id}/admin/dashboard`);
+    return redirect(`/escola/${escolaParam}/admin/dashboard`);
   }
 
   if (escolaUsuario.papel === 'secretaria_financeiro') {
-    return redirect(`/escola/${id}/secretaria?modo=balcao`);
+    return redirect(`/escola/${escolaParam}/secretaria?modo=balcao`);
   }
 
   if (escolaUsuario.papel === 'admin_financeiro') {
-    return redirect(`/escola/${id}/admin/dashboard?tab=financeiro`);
+    return redirect(`/escola/${escolaParam}/admin/dashboard?tab=financeiro`);
   }
 
   if (escolaUsuario.papel === 'professor') {
@@ -50,5 +57,5 @@ export default async function EscolaIdPage({ params }: { params: Promise<{ id: s
     return redirect('/aluno/dashboard');
   }
 
-  return redirect(`/escola/${id}/dashboard`);
+  return redirect(`/escola/${escolaParam}/dashboard`);
 }

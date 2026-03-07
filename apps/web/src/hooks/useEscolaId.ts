@@ -5,18 +5,33 @@ import { createClient } from "@/lib/supabaseClient";
 
 type UseEscolaIdState = {
   escolaId: string | null;
+  escolaSlug: string | null;
   isLoading: boolean;
   error: string | null;
 };
 
 export function useEscolaId(): UseEscolaIdState {
   const [escolaId, setEscolaId] = useState<string | null>(null);
+  const [escolaSlug, setEscolaSlug] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
     const supabase = createClient();
+
+    const loadSlug = async (resolvedId: string) => {
+      try {
+        const { data } = await supabase
+          .from("escolas")
+          .select("slug")
+          .eq("id", resolvedId)
+          .maybeSingle();
+        if (active) setEscolaSlug(data?.slug ? String(data.slug) : null);
+      } catch {
+        if (active) setEscolaSlug(null);
+      }
+    };
 
     (async () => {
       try {
@@ -38,13 +53,17 @@ export function useEscolaId(): UseEscolaIdState {
           .limit(1);
         const fromProfile = (prof?.[0] as any)?.current_escola_id || (prof?.[0] as any)?.escola_id;
         if (fromProfile) {
-          if (active) setEscolaId(String(fromProfile));
+          const resolved = String(fromProfile);
+          if (active) setEscolaId(resolved);
+          await loadSlug(resolved);
           return;
         }
 
         const metaEscola = (user.app_metadata as any)?.escola_id as string | undefined;
         if (metaEscola) {
-          if (active) setEscolaId(String(metaEscola));
+          const resolved = String(metaEscola);
+          if (active) setEscolaId(resolved);
+          await loadSlug(resolved);
           return;
         }
 
@@ -54,7 +73,13 @@ export function useEscolaId(): UseEscolaIdState {
           .eq("user_id", user.id)
           .limit(1);
         const fromLink = (vinc?.[0] as any)?.escola_id;
-        if (active) setEscolaId(fromLink ? String(fromLink) : null);
+        const resolved = fromLink ? String(fromLink) : null;
+        if (active) setEscolaId(resolved);
+        if (resolved) {
+          await loadSlug(resolved);
+        } else if (active) {
+          setEscolaSlug(null);
+        }
       } catch (e) {
         if (active) setError(e instanceof Error ? e.message : "Erro ao resolver escola");
       } finally {
@@ -67,5 +92,5 @@ export function useEscolaId(): UseEscolaIdState {
     };
   }, []);
 
-  return { escolaId, isLoading, error };
+  return { escolaId, escolaSlug, isLoading, error };
 }

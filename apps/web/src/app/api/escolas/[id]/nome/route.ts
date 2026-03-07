@@ -38,7 +38,7 @@ export async function GET(_req: NextRequest, context: { params: Promise<{ id: st
       metaEscolaId ? String(metaEscolaId) : null
     );
     if (shouldLog) log('resolve', performance.now() - resolveStart);
-    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+    if (!resolvedEscolaId) {
       const onboardingStart = shouldLog ? performance.now() : 0;
       const { data: draft } = await supabase
         .from("onboarding_drafts")

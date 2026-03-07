@@ -9,7 +9,7 @@ export default function SecretariaLayout({ children }: { children: React.ReactNo
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { escolaId, isLoading } = useEscolaId();
+  const { escolaId, escolaSlug, isLoading } = useEscolaId();
 
   useEffect(() => {
     if (isLoading || !escolaId) return;
@@ -18,9 +18,10 @@ export default function SecretariaLayout({ children }: { children: React.ReactNo
 
     const suffix = pathname.slice("/secretaria".length);
     const query = searchParams?.toString() ?? "";
-    const nextPath = `/escola/${escolaId}/secretaria${suffix}${query ? `?${query}` : ""}`;
+    const escolaParam = escolaSlug || escolaId;
+    const nextPath = `/escola/${escolaParam}/secretaria${suffix}${query ? `?${query}` : ""}`;
     router.replace(nextPath);
-  }, [escolaId, isLoading, pathname, router, searchParams]);
+  }, [escolaId, escolaSlug, isLoading, pathname, router, searchParams]);
 
   return (
     <RequireSecretaria>
