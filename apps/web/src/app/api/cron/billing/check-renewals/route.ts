@@ -4,6 +4,7 @@ import { supabaseServer } from '@/lib/supabaseServer';
 import { sendMail, buildBillingRenewalEmail } from '@/lib/mailer';
 import { differenceInDays, parseISO } from 'date-fns';
 import { PLAN_NAMES, type PlanTier } from '@/config/plans';
+import { dispatchAdminNotificacao } from '@/lib/notificacoes/dispatchAdminNotificacao';
 
 /**
  * Cron Job: Verifica renovações de subscrição e envia avisos por email.
@@ -100,6 +101,27 @@ export async function GET(req: NextRequest) {
 
         if (res.ok) resultados.emailsEnviados++;
         else resultados.erros.push(`Falha ao enviar para ${emailDestino}: ${res.error}`);
+
+        if (diasRestantes === 7) {
+          await dispatchAdminNotificacao({
+            escolaId: ass.escola_id,
+            key: 'SUBSCRICAO_EXPIRA_7',
+            params: { dias: diasRestantes, actionUrl: `${baseUrl}/escola/${escolaParam}/admin/configuracoes/assinatura` },
+            agrupamentoTTLHoras: 24 * 7,
+          });
+        }
+      }
+
+      if (diasRestantes <= 0) {
+        const escolaSlug = (ass.escolas as any)?.slug as string | undefined;
+        const escolaParam = escolaSlug ? String(escolaSlug) : ass.escola_id;
+        const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || "https://klasse.ao").replace(/\/$/, "");
+        await dispatchAdminNotificacao({
+          escolaId: ass.escola_id,
+          key: 'SUBSCRICAO_EXPIRADA',
+          params: { actionUrl: `${baseUrl}/escola/${escolaParam}/admin/configuracoes/assinatura` },
+          agrupamentoTTLHoras: 24 * 7,
+        });
       }
     }
 

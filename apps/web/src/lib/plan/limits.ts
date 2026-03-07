@@ -1,6 +1,7 @@
 import { parsePlanTier, type PlanTier } from "@/config/plans";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
+import { dispatchAdminNotificacao } from "@/lib/notificacoes/dispatchAdminNotificacao";
 
 type PlanLimitsRow = Database["public"]["Tables"]["app_plan_limits"]["Row"];
 
@@ -28,7 +29,7 @@ export async function checkAlunoPlanLimit(
 ): Promise<AlunoLimitCheck> {
   const { data: escolaRow } = await supabase
     .from("escolas")
-    .select("plano_atual")
+    .select("plano_atual, slug")
     .eq("id", escolaId)
     .maybeSingle();
 
@@ -52,6 +53,30 @@ export async function checkAlunoPlanLimit(
 
   const current = count ?? 0;
   const nextTotal = current + incoming;
+
+  if (max !== null && max > 0) {
+    const percent = Math.floor((current / max) * 100);
+    const escolaParam = escolaRow?.slug ? String(escolaRow.slug) : escolaId;
+    const actionUrl = `/escola/${escolaParam}/admin/configuracoes/assinatura`;
+
+    if (percent >= 80 && percent < 100) {
+      void dispatchAdminNotificacao({
+        supabase,
+        escolaId,
+        key: "LIMITE_ALUNOS_80",
+        params: { percentual: 80, actionUrl },
+      });
+    }
+
+    if (nextTotal >= max) {
+      void dispatchAdminNotificacao({
+        supabase,
+        escolaId,
+        key: "LIMITE_ALUNOS_100",
+        params: { percentual: 100, actionUrl },
+      });
+    }
+  }
 
   if (max !== null && nextTotal > max) {
     return { ok: false, plan, max, current, incoming };

@@ -4,6 +4,7 @@ import { createRouteClient } from "@/lib/supabase/route-client";
 import { importBelongsToEscola, userHasAccessToEscola } from "../../auth-helpers";
 import { resolveTabelaPreco } from "@/lib/financeiro/tabela-preco";
 import { buildPlanLimitError, checkAlunoPlanLimit } from "@/lib/plan/limits";
+import { dispatchSecretariaNotificacao } from "@/lib/notificacoes/dispatchSecretariaNotificacao";
 import { recordAuditServer } from "@/lib/audit";
 
 import type { Database } from "~types/supabase";
@@ -527,6 +528,13 @@ async function notificarRascunhosESucesso(params: {
 }) {
   const { supabase, escolaId, importId, result, activeMatriculas, pendenciasFinanceiras } = params;
 
+  const { data: escolaRow } = await supabase
+    .from("escolas")
+    .select("slug")
+    .eq("id", escolaId)
+    .maybeSingle();
+  const escolaParam = escolaRow?.slug ? String(escolaRow.slug) : escolaId;
+
   // Notificação para Admin/Pedagógico sobre rascunhos criados
   const { data: turmasRascunho } = await supabase
     .from("turmas")
@@ -537,13 +545,16 @@ async function notificarRascunhosESucesso(params: {
 
   const totalRascunho = turmasRascunho?.length || 0;
   if (totalRascunho > 0) {
-    await supabase.from("notifications").insert({
-      escola_id: escolaId,
-      target_role: "admin",
-      tipo: "turmas_rascunho_importacao",
-      titulo: `Importação gerou ${totalRascunho} turmas em rascunho`,
-      mensagem: "Revise e aprove para liberar o financeiro.",
-      link_acao: "/dashboard/turmas",
+    await dispatchSecretariaNotificacao({
+      escolaId,
+      key: "IMPORTACAO_ALUNOS_CONCLUIDA",
+      params: {
+        total: result.imported,
+        actionUrl: `/escola/${escolaParam}/secretaria/matriculas?import=${importId}`,
+      },
+      roles: ["secretaria", "secretaria_financeiro", "admin", "admin_escola", "staff_admin"],
+      actorRole: "secretaria",
+      agrupamentoTTLHoras: 12,
     });
   }
 
