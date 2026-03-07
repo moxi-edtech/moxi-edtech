@@ -432,7 +432,7 @@ function usePagamentoSubmit({
 }) {
   const [processando, setProcessando] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
-  const { success, error } = useToast();
+  const { error } = useToast();
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
@@ -494,7 +494,6 @@ function usePagamentoSubmit({
         }
       }
 
-      success("Pagamento registado.", "Recibo disponível para impressão.");
       onConcluido();
       if (onSuccess) onSuccess();
 
