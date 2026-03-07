@@ -3,8 +3,10 @@
 Data: 2026-03-06
 
 ## Situação actual
-- URL pública inclui UUID de escola:
-  - Exemplo: `https://klasse.ao/escola/<uuid>/admin/dashboard`
+- Iniciada migração para slug no path.
+- URL pública aceita slug, mantendo compatibilidade com UUID:
+  - Exemplo (slug): `https://klasse.ao/escola/{slug}/admin/dashboard`
+  - Exemplo (legado): `https://klasse.ao/escola/<uuid>/admin/dashboard`
 
 ## Riscos / impactos
 - UX fraca (URL longa e pouco memorizável).
@@ -21,16 +23,23 @@ Data: 2026-03-06
    - `https://klasse.ao/escola/{slug}/admin/dashboard`
    - Menos mudança infra, ainda evita UUID exposto.
 
-## Recomendação principal
-- **Subdomínio por escola** (ideal para multi‑tenant).
+## Recomendação actual
+- **Slug em path** (decisão fechada para esta fase).
 
-## Plano de migração sugerido (alto nível)
-1) Criar coluna `slug` em `escolas` (único, normalizado, obrigatório).
-2) Criar resolução `slug → escola_id` no backend.
-3) Ajustar rotas para aceitar `{slug}` e redirecionar `{uuid}` antigo.
-4) Atualizar links internos e emails.
-5) Configurar wildcard DNS (`*.klasse.ao`) para Vercel.
+## Plano de migração (estado)
+1) Criar coluna `slug` em `escolas` (único, normalizado, obrigatório). ✅
+2) Backfill automático com deduplicação + trigger para novos registros. ✅
+3) Resolver `{slug} → escola_id` no backend. ✅
+4) Ajustar rotas para aceitar `{slug}` e redirecionar `{uuid}` antigo. ✅
+5) Atualizar links internos e emails. ⏳
+6) Considerar subdomínio/wildcard em fase futura. ⏳
+
+## Implementação (referências)
+- Migration: `supabase/migrations/20260328000000_escolas_slug.sql`
+- Middleware: `apps/web/src/middleware.ts`
+- Helpers: `apps/web/src/lib/tenant/resolveEscolaParam.ts`, `apps/web/src/lib/tenant/escolaSlug.ts`
+- Resolução unificada: `apps/web/src/lib/tenant/resolveEscolaIdForUser.ts`
 
 ## Notas
-- Se houver documentos públicos ou QR codes, manter compatibilidade por 6–12 meses com redirect.
+- Compatibilidade: manter redirect de UUID por 12 meses (302 inicialmente, depois 301).
 - Expor UUID apenas em APIs privadas/authenticated quando necessário.

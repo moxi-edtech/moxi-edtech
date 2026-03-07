@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "~types/supabase";
+import { isEscolaUuid } from "./escolaSlug";
+import { resolveEscolaParam } from "./resolveEscolaParam";
 
 type Client = SupabaseClient<Database>;
 
@@ -28,15 +30,20 @@ export async function resolveEscolaIdForUser(
   }
 
   if (requestedEscolaId) {
-    if (metadataEscolaId && String(metadataEscolaId) === String(requestedEscolaId)) {
-      return String(requestedEscolaId);
+    const normalizedRequestedId = isEscolaUuid(requestedEscolaId)
+      ? requestedEscolaId
+      : (await resolveEscolaParam(client, requestedEscolaId)).escolaId;
+    if (!normalizedRequestedId) return null;
+
+    if (metadataEscolaId && String(metadataEscolaId) === String(normalizedRequestedId)) {
+      return String(normalizedRequestedId);
     }
     try {
       const { data: allowed, error } = await client.rpc("has_access_to_escola_fast", {
-        p_escola_id: requestedEscolaId,
+        p_escola_id: normalizedRequestedId,
       });
       if (error) return null;
-      const resolved = allowed ? String(requestedEscolaId) : null;
+      const resolved = allowed ? String(normalizedRequestedId) : null;
       if (resolved) {
         cache.set(cacheKey, { escolaId: resolved, expiresAt: Date.now() + CACHE_TTL_MS });
       }
