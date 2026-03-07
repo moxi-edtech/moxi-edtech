@@ -4,6 +4,7 @@ import { resolveTabelaPreco } from "@/lib/financeiro/tabela-preco";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { dispatchSecretariaNotificacao } from "@/lib/notificacoes/dispatchSecretariaNotificacao";
+import { dispatchFinanceiroNotificacao } from "@/lib/notificacoes/dispatchFinanceiroNotificacao";
 
 function parseAnoLetivo(value: unknown) {
   const n = typeof value === "string" ? Number(value) : Number(value ?? "");
@@ -166,6 +167,14 @@ export async function POST(req: Request) {
       agrupamentoTTLHoras: 24,
     });
 
+    await dispatchFinanceiroNotificacao({
+      escolaId,
+      key: "CATALOGO_PRECOS_ATIVADO",
+      params: { actionUrl: `/escola/${escolaParam}/financeiro` },
+      actorRole: "admin",
+      agrupamentoTTLHoras: 24,
+    });
+
     return NextResponse.json({ ok: true, item: data });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
@@ -254,6 +263,14 @@ export async function PATCH(req: Request) {
         anoLetivo: updates.ano_letivo ?? data?.ano_letivo ?? null,
         actionUrl: `/escola/${escolaParam}/secretaria`,
       },
+      agrupamentoTTLHoras: 24,
+    });
+
+    await dispatchFinanceiroNotificacao({
+      escolaId: (existente as any).escola_id as string,
+      key: "CATALOGO_PRECOS_ATIVADO",
+      params: { actionUrl: `/escola/${escolaParam}/financeiro` },
+      actorRole: "admin",
       agrupamentoTTLHoras: 24,
     });
 

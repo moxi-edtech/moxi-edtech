@@ -6,6 +6,7 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
 import type { Database } from "~types/supabase";
 import { recordAuditServer } from "@/lib/audit";
+import { dispatchAlunoNotificacao } from "@/lib/notificacoes/dispatchAlunoNotificacao";
 
 const payloadSchema = z.object({
   alunoId: z.string().uuid(),
@@ -93,6 +94,16 @@ export async function POST(request: Request) {
         entityId: (result as any)?.id ?? null,
         details: { alunoId, tipoDocumento, ano_letivo },
       }).catch(() => null);
+
+      await dispatchAlunoNotificacao({
+        escolaId,
+        key: "DOCUMENTO_EMITIDO",
+        alunoIds: [alunoId],
+        params: { actionUrl: "/aluno/documentos" },
+        actorId: user.id,
+        actorRole: "secretaria",
+        agrupamentoTTLHoras: 12,
+      });
       return NextResponse.json(result);
     }
 
@@ -171,6 +182,16 @@ export async function POST(request: Request) {
       entityId: doc.id,
       details: { alunoId, tipoDocumento },
     }).catch(() => null);
+
+    await dispatchAlunoNotificacao({
+      escolaId,
+      key: "DOCUMENTO_EMITIDO",
+      alunoIds: [alunoId],
+      params: { actionUrl: "/aluno/documentos" },
+      actorId: user.id,
+      actorRole: "secretaria",
+      agrupamentoTTLHoras: 12,
+    });
 
     return NextResponse.json({
       ok: true,

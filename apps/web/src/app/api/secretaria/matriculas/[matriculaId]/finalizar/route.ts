@@ -3,6 +3,8 @@ import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { requireRoleInSchool } from "@/lib/authz";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { dispatchProfessorNotificacao } from "@/lib/notificacoes/dispatchProfessorNotificacao";
+import { dispatchAlunoNotificacao } from "@/lib/notificacoes/dispatchAlunoNotificacao";
 
 export const dynamic = "force-dynamic";
 
@@ -113,6 +115,80 @@ export async function POST(
 
     if (!result?.ok && result?.status === "incompleto") {
       return NextResponse.json({ ok: false, error: result.message, motivos: result.motivos }, { status: 422 });
+    }
+
+    if (result?.status === "ativo") {
+      const { data: actorProfile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const actorRole = (actorProfile as { role?: string | null } | null)?.role ?? null;
+
+      const { data: matriculaDetalhe } = await supabase
+        .from("matriculas")
+        .select("id, turma_id, aluno_id, alunos(nome), turmas(nome)")
+        .eq("id", matriculaId)
+        .maybeSingle();
+
+      const turmaId = (matriculaDetalhe as any)?.turma_id as string | null;
+      const alunoId = (matriculaDetalhe as any)?.aluno_id as string | null;
+      const alunoNome = (matriculaDetalhe as any)?.alunos?.nome ?? null;
+      const turmaNome = (matriculaDetalhe as any)?.turmas?.nome ?? null;
+
+      if (turmaId) {
+        const { data: professoresTurma } = await supabase
+          .from("turma_disciplinas")
+          .select("professor_id")
+          .eq("escola_id", escolaId)
+          .eq("turma_id", turmaId);
+
+        const professorIds = Array.from(
+          new Set((professoresTurma ?? []).map((row: any) => row.professor_id).filter(Boolean))
+        );
+
+        if (professorIds.length > 0) {
+          const { data: professorProfiles } = await supabase
+            .from("professores")
+            .select("profile_id")
+            .in("id", professorIds)
+            .eq("escola_id", escolaId);
+
+          const recipientIds = Array.from(
+            new Set(
+              (professorProfiles ?? [])
+                .map((row: any) => row.profile_id)
+                .filter(Boolean)
+            )
+          ) as string[];
+
+          if (recipientIds.length > 0) {
+            await dispatchProfessorNotificacao({
+              escolaId,
+              key: "ALUNO_MATRICULADO",
+              params: { alunoNome, turmaNome },
+              recipientIds,
+              actorId: user.id,
+              actorRole: actorRole ?? "secretaria",
+              agrupamentoTTLHoras: 6,
+            });
+          }
+        }
+      }
+
+      if (alunoId) {
+        await dispatchAlunoNotificacao({
+          escolaId,
+          key: "MATRICULA_CONFIRMADA",
+          alunoIds: [alunoId],
+          params: { alunoNome, actionUrl: "/aluno" },
+          actorId: user.id,
+          actorRole: actorRole ?? "secretaria",
+          agrupamentoTTLHoras: 12,
+        });
+      }
     }
 
     return NextResponse.json({ ok: true, status: result?.status, origem: result?.status_fecho_origem });

@@ -5,6 +5,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
 import { emitirComprovanteMatricula } from "@/lib/documentos/emitirComprovanteMatricula";
+import { dispatchAlunoNotificacao } from "@/lib/notificacoes/dispatchAlunoNotificacao";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -64,6 +65,24 @@ export async function POST(request: Request) {
       { ok: false, error: emitResult.error, currentStatus: emitResult.currentStatus },
       { status: emitResult.status }
     );
+  }
+
+  const { data: matriculaRow } = await supabase
+    .from("matriculas")
+    .select("aluno_id")
+    .eq("id", matriculaId)
+    .maybeSingle();
+  const alunoId = (matriculaRow as { aluno_id?: string | null } | null)?.aluno_id ?? null;
+  if (alunoId) {
+    await dispatchAlunoNotificacao({
+      escolaId,
+      key: "DOCUMENTO_EMITIDO",
+      alunoIds: [alunoId],
+      params: { actionUrl: "/aluno/documentos" },
+      actorId: user.id,
+      actorRole: "secretaria",
+      agrupamentoTTLHoras: 12,
+    });
   }
 
   return NextResponse.json({

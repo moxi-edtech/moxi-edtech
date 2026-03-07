@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { supabaseServerTyped } from '@/lib/supabaseServer';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
 import { emitirEvento } from '@/lib/eventos/emitirEvento';
+import { dispatchProfessorNotificacao } from '@/lib/notificacoes/dispatchProfessorNotificacao';
 import type { Database } from '~types/supabase';
 
 export const dynamic = 'force-dynamic';
@@ -340,6 +341,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       entidade_tipo: 'curriculo',
       entidade_id: result?.published_curriculo_id ?? null,
     }).catch(() => null);
+
+    await dispatchProfessorNotificacao({
+      escolaId: userEscolaId,
+      key: 'CURRICULO_PUBLICADO',
+      actorId: user.id,
+      actorRole: 'admin',
+      agrupamentoTTLHoras: 24,
+    });
 
     const shouldGenerateTurmas = rebuildTurmas || autoGenerateTurmas;
 

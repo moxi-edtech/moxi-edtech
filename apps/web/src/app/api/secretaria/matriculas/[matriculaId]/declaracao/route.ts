@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { recordAuditServer } from "@/lib/audit";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { dispatchAlunoNotificacao } from "@/lib/notificacoes/dispatchAlunoNotificacao";
 import type { Database } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
@@ -115,6 +116,16 @@ export async function GET(
   if (docError || !doc) {
     return NextResponse.json({ ok: false, error: docError?.message || "Falha ao emitir", ...deprecationPayload }, { status: 400 });
   }
+
+  await dispatchAlunoNotificacao({
+    escolaId,
+    key: "DOCUMENTO_EMITIDO",
+    alunoIds: [matricula.aluno_id],
+    params: { actionUrl: "/aluno/documentos" },
+    actorId: user.id,
+    actorRole: "secretaria",
+    agrupamentoTTLHoras: 12,
+  });
 
   const response = NextResponse.json({
     ok: true,

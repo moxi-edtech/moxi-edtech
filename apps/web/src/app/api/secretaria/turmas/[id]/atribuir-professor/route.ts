@@ -6,6 +6,7 @@ import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { tryCanonicalFetch } from '@/lib/api/proxyCanonical'
 import { requireFeature } from '@/lib/plan/requireFeature'
 import { HttpError } from '@/lib/errors'
+import { dispatchProfessorNotificacao } from '@/lib/notificacoes/dispatchProfessorNotificacao'
 
 const Body = z.object({
   disciplina_id: z.string().uuid(), // agora espera curso_matriz_id
@@ -56,6 +57,15 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     // Upsert unique by (turma_id, curso_matriz_id)
     // Ensure curso_matriz entry and professor exist and belong to escola
+    const { data: actorProfile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    const actorRole = (actorProfile as { role?: string | null } | null)?.role ?? null
+
     const [matrizQ, profByIdQ, profByUserQ, turmaQ] = await Promise.all([
       supabase
         .from('curso_matriz')
@@ -71,7 +81,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       body.professor_user_id
         ? supabase.from('professores').select('id, profile_id').eq('profile_id', body.professor_user_id).eq('escola_id', escolaId).maybeSingle()
         : Promise.resolve({ data: null } as any),
-      supabase.from('turmas').select('id').eq('id', turmaId).eq('escola_id', escolaId).maybeSingle(),
+      supabase.from('turmas').select('id, nome').eq('id', turmaId).eq('escola_id', escolaId).maybeSingle(),
     ])
     if (!matrizQ.data) return NextResponse.json({ ok: false, error: 'Disciplina/Matriz não encontrada' }, { status: 404, headers })
     const profResolved = (profByIdQ.data || profByUserQ.data) as any | null
@@ -87,12 +97,28 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       .eq('curso_matriz_id', body.disciplina_id)
       .maybeSingle()
 
+    const professorProfileId = profResolved.profile_id as string | null | undefined
+
     if (existing?.id) {
       const { error: updErr } = await supabase
         .from('turma_disciplinas')
         .update({ professor_id: profResolved.id })
         .eq('id', existing.id)
       if (updErr) return NextResponse.json({ ok: false, error: updErr.message }, { status: 400, headers })
+      if (professorProfileId) {
+        await dispatchProfessorNotificacao({
+          escolaId,
+          key: 'TURMA_ATRIBUIDA',
+          params: {
+            turmaNome: (turmaQ.data as { nome?: string | null } | null)?.nome ?? null,
+            actionUrl: `/professor/turmas/${turmaId}`,
+          },
+          recipientIds: [professorProfileId],
+          actorId: user.id,
+          actorRole: actorRole ?? 'secretaria',
+          agrupamentoTTLHoras: 12,
+        })
+      }
       return NextResponse.json({ ok: true, mode: 'updated' }, { headers })
     }
 
@@ -105,6 +131,20 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         professor_id: profResolved.id,
       } as any)
     if (insErr) return NextResponse.json({ ok: false, error: insErr.message }, { status: 400, headers })
+    if (professorProfileId) {
+      await dispatchProfessorNotificacao({
+        escolaId,
+        key: 'TURMA_ATRIBUIDA',
+        params: {
+          turmaNome: (turmaQ.data as { nome?: string | null } | null)?.nome ?? null,
+          actionUrl: `/professor/turmas/${turmaId}`,
+        },
+        recipientIds: [professorProfileId],
+        actorId: user.id,
+        actorRole: actorRole ?? 'secretaria',
+        agrupamentoTTLHoras: 12,
+      })
+    }
     return NextResponse.json({ ok: true, mode: 'created' }, { headers })
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
