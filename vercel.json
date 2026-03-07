@@ -1,7 +1,13 @@
 {
   "redirects": [
     {
-      "source": "https://www.klasse.ao/:path*",
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.klasse.ao"
+        }
+      ],
       "destination": "https://klasse.ao/:path*",
       "permanent": true
     }
