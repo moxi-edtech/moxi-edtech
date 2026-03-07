@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export type Prioridade = "info" | "aviso" | "urgente";
+export type Gatilho = "H" | "S";
+export type TipoNotificacao = "I" | "A";
 
 export interface Notificacao {
   id: string;
@@ -13,6 +15,12 @@ export interface Notificacao {
   prioridade: Prioridade;
   action_label: string | null;
   action_url: string | null;
+  gatilho: Gatilho | null;
+  tipo: TipoNotificacao | null;
+  modal_id: string | null;
+  agrupamento_chave: string | null;
+  arquivada: boolean;
+  arquivada_em: string | null;
   lida: boolean;
   lida_em: string | null;
   created_at: string;
@@ -38,8 +46,9 @@ export function useNotificacoes(): UseNotificacoesReturn {
     const { data, error } = await supabase
       .from("notificacoes")
       .select(
-        "id, evento_id, titulo, corpo, prioridade, action_label, action_url, lida, lida_em, created_at"
+        "id, evento_id, titulo, corpo, prioridade, action_label, action_url, gatilho, tipo, modal_id, agrupamento_chave, arquivada, arquivada_em, lida, lida_em, created_at"
       )
+      .eq("arquivada", false)
       .order("created_at", { ascending: false })
       .limit(50);
 
@@ -121,10 +130,11 @@ export function useNotificacoes(): UseNotificacoesReturn {
         prev.map((n) => (n.id === id ? { ...n, lida: true, lida_em: timestamp } : n))
       );
 
-      const { error } = await supabase
-        .from("notificacoes")
-        .update({ lida: true, lida_em: timestamp })
-        .eq("id", id);
+    const { error } = await supabase
+      .from("notificacoes")
+      .update({ lida: true, lida_em: timestamp })
+      .eq("id", id)
+      .eq("arquivada", false);
 
       if (error) {
         console.error("[useNotificacoes] marcarLida error:", error.message);
@@ -141,7 +151,8 @@ export function useNotificacoes(): UseNotificacoesReturn {
     const { error } = await supabase
       .from("notificacoes")
       .update({ lida: true, lida_em: timestamp })
-      .eq("lida", false);
+      .eq("lida", false)
+      .eq("arquivada", false);
 
     if (error) {
       console.error("[useNotificacoes] marcarTodasLidas error:", error.message);

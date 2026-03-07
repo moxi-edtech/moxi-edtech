@@ -2,6 +2,7 @@
 
 import { createClient } from "~/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+import { dispatchSecretariaNotificacao } from "@/lib/notificacoes/dispatchSecretariaNotificacao";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,13 @@ export async function POST(
 
   const supabase = await createClient();
 
+  const { data: escolaRow } = await supabase
+    .from("escolas")
+    .select("slug")
+    .eq("id", escolaId)
+    .maybeSingle();
+  const escolaParam = escolaRow?.slug ? String(escolaRow.slug) : escolaId;
+
   const { error } = await supabase.rpc("aprovar_turmas", {
     p_turma_ids: turma_ids,
     p_escola_id: escolaId,
@@ -43,6 +51,13 @@ export async function POST(
       { status: 500 }
     );
   }
+
+  await dispatchSecretariaNotificacao({
+    escolaId,
+    key: "TURMA_APROVADA",
+    params: { actionUrl: `/escola/${escolaParam}/secretaria/turmas` },
+    agrupamentoTTLHoras: 12,
+  });
 
   return NextResponse.json({ ok: true });
 }

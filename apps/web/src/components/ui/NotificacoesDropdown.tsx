@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Bell, CheckCheck, Info, X, Zap } from "lucide-react";
+import { ModalShell } from "@/components/ui/ModalShell";
 import {
   useNotificacoes,
   type Notificacao,
@@ -57,7 +58,7 @@ function NotificacaoItem({
 }: {
   notificacao: Notificacao;
   onLida: (id: string) => void;
-  onAction: (url: string, id: string) => void;
+  onAction: (notificacao: Notificacao) => void;
 }) {
   const cfg = PRIORIDADE_CONFIG[notificacao.prioridade];
   const Icon = cfg.icon;
@@ -68,8 +69,8 @@ function NotificacaoItem({
         notificacao.lida ? "opacity-60 hover:opacity-80" : "hover:bg-slate-50"
       }`}
       onClick={() => {
-        if (notificacao.action_url) {
-          onAction(notificacao.action_url, notificacao.id);
+        if (notificacao.action_url || notificacao.tipo === "A" || notificacao.modal_id) {
+          onAction(notificacao);
         } else {
           onLida(notificacao.id);
         }
@@ -113,6 +114,7 @@ export function NotificacoesDropdown() {
   const router = useRouter();
   const ref = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
+  const [modalNotificacao, setModalNotificacao] = useState<Notificacao | null>(null);
 
   const { notificacoes, naoLidas, loading, marcarLida, marcarTodasLidas } = useNotificacoes();
 
@@ -127,10 +129,32 @@ export function NotificacoesDropdown() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const handleAction = (url: string, id: string) => {
-    marcarLida(id);
+  const handleAction = (notificacao: Notificacao) => {
+    if (notificacao.tipo === "A" || notificacao.modal_id) {
+      setModalNotificacao(notificacao);
+      setOpen(false);
+      return;
+    }
+
+    if (notificacao.action_url) {
+      marcarLida(notificacao.id);
+      setOpen(false);
+      router.push(notificacao.action_url);
+      return;
+    }
+
+    marcarLida(notificacao.id);
     setOpen(false);
-    router.push(url);
+  };
+
+  const handleModalAction = () => {
+    if (!modalNotificacao) return;
+    marcarLida(modalNotificacao.id);
+    const actionUrl = modalNotificacao.action_url;
+    setModalNotificacao(null);
+    if (actionUrl) {
+      router.push(actionUrl);
+    }
   };
 
   return (
@@ -204,6 +228,37 @@ export function NotificacoesDropdown() {
           )}
         </div>
       )}
+
+      <ModalShell
+        open={Boolean(modalNotificacao)}
+        title={modalNotificacao?.titulo ?? "Notificação"}
+        description={undefined}
+        onClose={() => setModalNotificacao(null)}
+        footer={
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setModalNotificacao(null)}
+              className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            >
+              Fechar
+            </button>
+            {modalNotificacao?.action_url && (
+              <button
+                type="button"
+                onClick={handleModalAction}
+                className="rounded-lg bg-klasse-green-600 px-3 py-2 text-xs font-semibold text-white hover:bg-klasse-green-700"
+              >
+                {modalNotificacao?.action_label || "Abrir"}
+              </button>
+            )}
+          </div>
+        }
+      >
+        <div className="space-y-2 text-sm text-slate-600">
+          {modalNotificacao?.corpo ? <p>{modalNotificacao.corpo}</p> : null}
+        </div>
+      </ModalShell>
     </div>
   );
 }

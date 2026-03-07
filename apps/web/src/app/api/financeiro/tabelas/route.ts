@@ -3,6 +3,7 @@ import { supabaseServer } from "@/lib/supabaseServer";
 import { resolveTabelaPreco } from "@/lib/financeiro/tabela-preco";
 import { applyKf2ListInvariants } from "@/lib/kf2";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { dispatchSecretariaNotificacao } from "@/lib/notificacoes/dispatchSecretariaNotificacao";
 
 function parseAnoLetivo(value: unknown) {
   const n = typeof value === "string" ? Number(value) : Number(value ?? "");
@@ -147,6 +148,24 @@ export async function POST(req: Request) {
       .single();
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+
+    const { data: escolaRow } = await s
+      .from("escolas")
+      .select("slug")
+      .eq("id", escolaId)
+      .maybeSingle();
+    const escolaParam = escolaRow?.slug ? String(escolaRow.slug) : escolaId;
+
+    await dispatchSecretariaNotificacao({
+      escolaId,
+      key: "PROPINA_DEFINIDA",
+      params: {
+        anoLetivo,
+        actionUrl: `/escola/${escolaParam}/secretaria`,
+      },
+      agrupamentoTTLHoras: 24,
+    });
+
     return NextResponse.json({ ok: true, item: data });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
@@ -220,6 +239,24 @@ export async function PATCH(req: Request) {
       .single();
 
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+
+    const { data: escolaRow } = await s
+      .from("escolas")
+      .select("slug")
+      .eq("id", (existente as any).escola_id as string)
+      .maybeSingle();
+    const escolaParam = escolaRow?.slug ? String(escolaRow.slug) : (existente as any).escola_id;
+
+    await dispatchSecretariaNotificacao({
+      escolaId: (existente as any).escola_id as string,
+      key: "PROPINA_DEFINIDA",
+      params: {
+        anoLetivo: updates.ano_letivo ?? data?.ano_letivo ?? null,
+        actionUrl: `/escola/${escolaParam}/secretaria`,
+      },
+      agrupamentoTTLHoras: 24,
+    });
+
     return NextResponse.json({ ok: true, item: data });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
