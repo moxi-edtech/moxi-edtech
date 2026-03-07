@@ -118,17 +118,17 @@ export function PagamentoModal({
 
     const status = json?.data?.status ?? (method === "cash" ? "settled" : "pending");
     if (status === "settled") {
-      success("Pagamento liquidado.", "Serviço liberado.");
+      // Feedback principal exibido via ConfirmacaoContextual/FluxoPosAccao
+      setFeedback({
+        status: "success",
+        message: "Pagamento liquidado e serviço liberado.",
+      });
     } else {
-      success("Pagamento registado.", "Serviço pendente de confirmação.");
+      setFeedback({
+        status: "success",
+        message: "Pagamento registrado como pendente.",
+      });
     }
-    setFeedback({
-      status: "success",
-      message:
-        status === "settled"
-          ? "Pagamento liquidado e serviço liberado."
-          : "Pagamento registrado como pendente.",
-    });
     setLoading(false);
     setShowSuccess(true);
   }
