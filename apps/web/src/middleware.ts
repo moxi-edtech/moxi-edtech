@@ -88,6 +88,48 @@ async function resolveUserRole(request: NextRequest, response: NextResponse) {
   return profile?.role ?? null;
 }
 
+async function resolveUserTenant(request: NextRequest, response: NextResponse) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
+
+  const supabase = createServerClient(url, key, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+      },
+    },
+  });
+
+  const { data: userRes } = await supabase.auth.getUser();
+  const user = userRes?.user;
+  if (!user) return null;
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, escola_id, current_escola_id')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return {
+    role: profile?.role ?? null,
+    escolaId: profile?.current_escola_id ?? profile?.escola_id ?? null,
+  };
+}
+
+function createForbiddenResponse(baseResponse: NextResponse, isApi: boolean) {
+  const denied = isApi
+    ? NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    : new NextResponse('Forbidden', { status: 403 });
+  applyResponseCookies(baseResponse, denied);
+  return denied;
+}
+
 function createSupabaseClient(request: NextRequest, response: NextResponse) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -178,6 +220,17 @@ export async function middleware(request: NextRequest) {
     if (escolaParam !== 'suspensa') {
       const resolved = await resolveEscolaSlugMapping(request, response, escolaParam);
       if (resolved) {
+        const tenant = await resolveUserTenant(request, response);
+        if (!tenant) {
+          return createForbiddenResponse(response, isApi);
+        }
+
+        if (tenant.role !== 'global_admin') {
+          if (!tenant.escolaId || tenant.escolaId !== resolved.id) {
+            return createForbiddenResponse(response, isApi);
+          }
+        }
+
         if (isEscolaUuid(escolaParam) && !isApi && resolved.slug !== escolaParam) {
           const redirectUrl = request.nextUrl.clone();
           redirectUrl.pathname = `/escola/${resolved.slug}${suffix}`;
