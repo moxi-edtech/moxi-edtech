@@ -24,7 +24,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { userRole, isLoading: isLoadingRole } = useUserRole();
-  const { escolaId: escolaIdFromSession } = useEscolaId();
+  const { escolaId: escolaIdFromSession, escolaSlug } = useEscolaId();
   const [financeBadges, setFinanceBadges] = useState<Record<string, string>>({});
   const [escolaNome, setEscolaNome] = useState<string | null>(null);
   const [planoNome, setPlanoNome] = useState<string | null>(null);
@@ -54,7 +54,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     return null;
   }, [userRole, safePathname]);
 
-  const navEscolaId = escolaIdFromPath || escolaIdFromSession;
+  const navEscolaId = escolaSlug || escolaIdFromPath || escolaIdFromSession;
   const displayedEscolaNome = navEscolaId ? escolaNome : null;
   const displayedPlanoNome = navEscolaId ? planoNome : null;
 

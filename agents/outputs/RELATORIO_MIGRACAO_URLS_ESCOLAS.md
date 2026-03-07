@@ -24,6 +24,18 @@ Data: 2026-03-06
   - Camada única de resolução `slug ↔ id`
 - `apps/web/src/lib/tenant/escolaSlug.ts`
   - Utilitários `isEscolaUuid` e normalização
+- `apps/web/src/hooks/useEscolaId.ts`
+  - Resolve `escolaSlug` no client para links
+- `apps/web/src/components/layout/klasse/AppShell.tsx`
+  - Preferência por slug na geração de links
+- `apps/web/src/app/secretaria/client-layout.tsx`
+  - Redirects usam slug quando disponível
+- `apps/web/src/app/escola/[id]/page.tsx`
+  - Redirects primários usam slug
+- `apps/web/src/app/escola/[id]/onboarding/page.tsx`
+  - Redirects de onboarding usam slug
+- `apps/web/src/app/api/escolas/[id]/nome/route.ts`
+  - Resolução compatível com slug
 
 ## Rotas cobertas
 - `/escola/{slug}/**` (rewrite interno para UUID)
@@ -31,7 +43,7 @@ Data: 2026-03-06
 - `/api/escola/{slug}/**` (rewrite interno para UUID)
 
 ## Pendências / próximos passos
-1) Atualizar links internos para usar slug (reduz redirects).
+1) Atualizar links internos restantes para usar slug (reduz redirects).
 2) Expor `slug` em views/consultas administrativas quando necessário.
 3) Após estabilização, trocar redirect 302 → 301.
 4) Auditoria final em rotas externas (emails, notificações, boletos, relatórios).
@@ -42,4 +54,10 @@ Data: 2026-03-06
 - `apps/web/src/lib/tenant/resolveEscolaIdForUser.ts`
 - `apps/web/src/lib/tenant/resolveEscolaParam.ts`
 - `apps/web/src/lib/tenant/escolaSlug.ts`
+- `apps/web/src/hooks/useEscolaId.ts`
+- `apps/web/src/components/layout/klasse/AppShell.tsx`
+- `apps/web/src/app/secretaria/client-layout.tsx`
+- `apps/web/src/app/escola/[id]/page.tsx`
+- `apps/web/src/app/escola/[id]/onboarding/page.tsx`
+- `apps/web/src/app/api/escolas/[id]/nome/route.ts`
 - `types/supabase.ts`
