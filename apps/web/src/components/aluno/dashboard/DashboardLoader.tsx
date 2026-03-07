@@ -99,7 +99,51 @@ export default function DashboardLoader() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <StatCardsSkeleton count={3} />
+        <AlunoCard className="bg-gradient-to-br from-[#0d1f12] via-[#12321d] to-[#1f4028] text-white border-[#1f4028]">
+          <div className="h-3 w-32 rounded-full bg-white/20" />
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
+            <div className="space-y-3">
+              <div className="h-6 w-48 rounded-full bg-white/20" />
+              <div className="flex flex-wrap gap-2">
+                <div className="h-6 w-24 rounded-full bg-white/20" />
+                <div className="h-6 w-28 rounded-full bg-white/20" />
+                <div className="h-6 w-28 rounded-full bg-white/20" />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {[0, 1, 2].map((idx) => (
+                <div key={idx} className="rounded-xl bg-white/10 px-3 py-2 text-center">
+                  <div className="h-3 w-20 rounded-full bg-white/20 mx-auto" />
+                  <div className="mt-2 h-5 w-12 rounded-full bg-white/20 mx-auto" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </AlunoCard>
+
+        <div className="space-y-3">
+          <div className="h-4 w-32 rounded-full bg-slate-200" />
+          <div className="grid gap-3 md:grid-cols-3">
+            {[0, 1, 2].map((idx) => (
+              <AlunoCard key={idx}>
+                <div className="flex items-center justify-between">
+                  <div className="h-4 w-24 rounded-full bg-slate-200" />
+                  <div className="h-4 w-10 rounded-full bg-slate-200" />
+                </div>
+                <div className="mt-3 h-2 w-full rounded-full bg-slate-200" />
+              </AlunoCard>
+            ))}
+          </div>
+        </div>
+
+        <AlunoCard>
+          <div className="h-4 w-28 rounded-full bg-slate-200" />
+          <div className="mt-3 flex gap-3">
+            <div className="h-4 w-32 rounded-full bg-slate-200" />
+            <div className="h-4 w-20 rounded-full bg-slate-200" />
+          </div>
+        </AlunoCard>
+
         <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100">
             <p className="text-sm font-bold text-slate-700">Avisos recentes</p>

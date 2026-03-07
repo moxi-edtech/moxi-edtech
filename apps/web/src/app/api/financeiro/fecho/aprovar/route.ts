@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { dispatchFinanceiroNotificacao } from "@/lib/notificacoes/dispatchFinanceiroNotificacao";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -37,6 +38,15 @@ export async function POST(request: Request) {
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: "Escola não identificada" }, { status: 403 });
     }
+
+    const { data: roleRow } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const actorRole = (roleRow as { role?: string | null } | null)?.role ?? null;
 
     const body = await request.json().catch(() => null);
     const parsed = payloadSchema.safeParse(body);
@@ -74,6 +84,24 @@ export async function POST(request: Request) {
 
     if (error) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    }
+
+    if (parsed.data.aprovacao === "approved") {
+      const { data: escolaRow } = await supabase
+        .from("escolas")
+        .select("slug")
+        .eq("id", escolaId)
+        .maybeSingle();
+      const escolaParam = escolaRow?.slug ? String(escolaRow.slug) : escolaId;
+
+      await dispatchFinanceiroNotificacao({
+        escolaId,
+        key: "FECHO_AUTORIZADO",
+        params: { actionUrl: `/escola/${escolaParam}/financeiro/fecho` },
+        actorId: user.id,
+        actorRole: actorRole ?? "admin",
+        agrupamentoTTLHoras: 12,
+      });
     }
 
     return NextResponse.json({ ok: true, data });

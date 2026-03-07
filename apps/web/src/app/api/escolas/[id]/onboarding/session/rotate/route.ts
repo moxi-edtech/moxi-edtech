@@ -4,6 +4,7 @@ import { supabaseServer } from "@/lib/supabaseServer"
 import { hasPermission } from "@/lib/permissions"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 import { recordAuditServer } from "@/lib/audit"
+import { dispatchProfessorNotificacao } from "@/lib/notificacoes/dispatchProfessorNotificacao"
 
 // POST /api/escolas/[id]/onboarding/session/rotate
 // Archives current active session (if any) and creates a new active session.
@@ -229,6 +230,14 @@ export async function POST(
       entityId: anoLetivoId ?? null,
       details: { nome, data_inicio, data_fim, tipo: tipoUpper },
     }).catch(() => null)
+
+    await dispatchProfessorNotificacao({
+      escolaId,
+      key: 'ANO_LETIVO_ACTIVADO',
+      actorId: user.id,
+      actorRole: 'admin',
+      agrupamentoTTLHoras: 24,
+    })
 
     return NextResponse.json({ ok: true, data: { novaSessao: active, todasSessoes: all } })
   } catch (e) {

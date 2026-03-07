@@ -4,6 +4,7 @@ import { normalizeAnoLetivo, resolveTabelaPreco } from "@/lib/financeiro/tabela-
 import { recordAuditServer } from "@/lib/audit";
 import { tryCanonicalFetch } from "@/lib/api/proxyCanonical";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { dispatchAlunoNotificacao } from "@/lib/notificacoes/dispatchAlunoNotificacao";
 
 export async function POST(req: Request) {
   try {
@@ -88,6 +89,19 @@ export async function POST(req: Request) {
         const insertedAlunos = Array.from(nowSet).filter(id => !preSet.has(id));
         await generateMensalidadesForAlunos(supabase as any, escolaId, destination_turma_id, sessionId, (destTurma as any)?.ano_letivo ?? null, (destTurma as any)?.classe_id ?? null, insertedAlunos, gerar_todas);
       }
+
+      if (insertedList.length > 0) {
+        const insertedAlunoIds = insertedList.map((item) => item.aluno_id).filter(Boolean) as string[];
+        await dispatchAlunoNotificacao({
+          escolaId,
+          key: "RENOVACAO_DISPONIVEL",
+          alunoIds: insertedAlunoIds,
+          params: { actionUrl: "/aluno/renovacao" },
+          actorId: user.id,
+          actorRole: "secretaria",
+          agrupamentoTTLHoras: 24,
+        });
+      }
       return NextResponse.json({
         ok: true,
         inserted: insertedCount,
@@ -166,6 +180,17 @@ export async function POST(req: Request) {
       const { data: dest } = await supabase.from('turmas').select('session_id, ano_letivo, classe_id').eq('id', destination_turma_id).maybeSingle();
       const sessionId = (dest as any)?.session_id as string | null;
       await generateMensalidadesForAlunos(supabase as any, escolaId, destination_turma_id, sessionId!, (dest as any)?.ano_letivo ?? null, (dest as any)?.classe_id ?? null, toInsert, gerar_todas);
+    }
+    if (inserted > 0) {
+      await dispatchAlunoNotificacao({
+        escolaId,
+        key: "RENOVACAO_DISPONIVEL",
+        alunoIds: toInsert,
+        params: { actionUrl: "/aluno/renovacao" },
+        actorId: user.id,
+        actorRole: "secretaria",
+        agrupamentoTTLHoras: 24,
+      });
     }
     recordAuditServer({ escolaId, portal: 'secretaria', acao: 'REMATRICULA_APP', entity: 'matriculas', details: { origin_turma_id, destination_turma_id, inserted, skipped } }).catch(()=>null)
     return NextResponse.json({ ok: true, inserted, skipped });
