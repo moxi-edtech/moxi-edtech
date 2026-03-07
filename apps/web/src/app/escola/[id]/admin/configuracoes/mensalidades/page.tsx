@@ -142,7 +142,7 @@ export default function MensalidadesEmolumentosPage() {
             </div>
           </div>
           <div className="p-6">
-            <PrecosClient escolaId={escolaId} embedded showDueDate={false} />
+            <PrecosClient escolaId={escolaParam} embedded showDueDate={false} />
           </div>
         </div>
 
