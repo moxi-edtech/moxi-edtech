@@ -420,6 +420,13 @@ export default async function Page(props: {
   const resolvedEscolaId = await resolveEscolaIdForUser(supabase, user.id);
   if (!resolvedEscolaId || resolvedEscolaId !== escolaId) redirect("/login");
 
+  const { data: escolaInfo } = await supabase
+    .from("escolas")
+    .select("slug")
+    .eq("id", resolvedEscolaId)
+    .maybeSingle();
+  const escolaParam = escolaInfo?.slug ? String(escolaInfo.slug) : escolaId;
+
   const q = (searchParams.q ?? "").trim();
   const portal = PORTAIS_SET.has(searchParams.portal ?? "")
     ? (searchParams.portal as typeof PORTAIS[number]["value"])
@@ -428,7 +435,7 @@ export default async function Page(props: {
   const days = parseDays(searchParams.days);
   const since = sinceFromDays(days);
 
-  const basePath = `/escola/${escolaId}/admin/relatorios`;
+  const basePath = `/escola/${escolaParam}/admin/relatorios`;
 
   let query = supabase
     .from("audit_logs")
@@ -471,7 +478,7 @@ export default async function Page(props: {
             <ol className="flex items-center gap-1 text-xs font-semibold text-slate-400">
               <li>
                 <Link
-                  href={`/escola/${escolaId}/admin`}
+                  href={`/escola/${escolaParam}/admin`}
                   className="hover:text-[#1F6B3B] transition-colors"
                 >
                   Admin

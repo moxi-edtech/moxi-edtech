@@ -36,6 +36,20 @@ Data: 2026-03-06
   - Redirects de onboarding usam slug
 - `apps/web/src/app/api/escolas/[id]/nome/route.ts`
   - Resolução compatível com slug
+- `apps/web/src/app/escola/[id]/admin/configuracoes/*`
+  - Links e requests usam slug quando disponível
+- `apps/web/src/app/escola/[id]/admin/relatorios/page.tsx`
+  - Base path passa a usar slug
+- `apps/web/src/app/escola/[id]/horarios/*`
+  - Navegação interna usa slug
+- `apps/web/src/components/layout/escola-admin/*`
+  - Dashboard usa slug nos links de avisos/eventos/KPIs/ações
+- `apps/web/src/app/api/escola/[id]/billing/stripe-portal/route.ts`
+  - `return_url` com slug
+- `apps/web/src/app/api/super-admin/escolas/[id]/billing-email/route.ts`
+  - Links de cobrança com slug
+- `apps/web/src/app/api/escolas/[id]/onboarding/core/finalize/route.ts`
+  - `nextPath` com slug e queries usando `escolaId` resolvido
 
 ## Rotas cobertas
 - `/escola/{slug}/**` (rewrite interno para UUID)

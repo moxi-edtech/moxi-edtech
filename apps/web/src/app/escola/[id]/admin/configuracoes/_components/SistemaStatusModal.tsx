@@ -16,6 +16,7 @@ import {
   LayoutDashboard
 } from "lucide-react";
 import { ModalShell } from "@/components/ui/ModalShell";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 // Copied from sistema/page.tsx
 // --- TYPES ---
@@ -50,7 +51,9 @@ type SistemaStatusModalProps = {
 export function SistemaStatusModal({ open, onClose }: SistemaStatusModalProps) {
   const params = useParams() as { id?: string };
   const escolaId = params?.id;
-  const base = escolaId ? `/escola/${escolaId}/admin/configuracoes` : "";
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
+  const base = escolaParam ? `/escola/${escolaParam}/admin/configuracoes` : "";
 
     // --- MENU CONFIG ---
   const modules = useMemo(() => [
@@ -105,12 +108,12 @@ export function SistemaStatusModal({ open, onClose }: SistemaStatusModalProps) {
 
   // --- FETCH ---
   useEffect(() => {
-    if (!escolaId || !open) return;
+    if (!escolaParam || !open) return;
     const load = async () => {
       setLoading(true);
       try {
         // Fetch Setup State
-        const stateRes = await fetch(`/api/escola/${escolaId}/admin/setup/state`, { cache: "no-store" });
+        const stateRes = await fetch(`/api/escola/${escolaParam}/admin/setup/state`, { cache: "no-store" });
         const stateJson = await stateRes.json().catch(() => null);
         
         if (stateRes.ok && stateJson?.data) {
@@ -123,7 +126,7 @@ export function SistemaStatusModal({ open, onClose }: SistemaStatusModalProps) {
         }
 
         // Fetch Impacto
-        const impactRes = await fetch(`/api/escola/${escolaId}/admin/setup/impact`, {
+        const impactRes = await fetch(`/api/escola/${escolaParam}/admin/setup/impact`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({}),
@@ -136,7 +139,7 @@ export function SistemaStatusModal({ open, onClose }: SistemaStatusModalProps) {
       }
     };
     load();
-  }, [escolaId, open, modules.length]);
+  }, [escolaParam, open, modules.length]);
 
   return (
     <ModalShell

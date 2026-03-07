@@ -18,6 +18,7 @@ import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
 import AcademicStep2Config from "@/components/escola/onboarding/AcademicStep2Config";
 import { buildConfigMenuItems } from "../../_shared/menuItems";
 import { useToast } from "@/components/feedback/FeedbackSystem";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 // --- TIPAGENS ---
 type Componente = { code: string; peso: number; ativo: boolean };
@@ -53,7 +54,9 @@ type Props = {
 
 export default function AvaliacaoUnificadaPage({ params }: Props) {
   const { id: escolaId } = use(params);
-  const base = `/escola/${escolaId}/admin/configuracoes`;
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
+  const base = `/escola/${escolaParam}/admin/configuracoes`;
   const { toast, dismiss, success, error } = useToast();
 
   // --- ESTADOS ---
@@ -74,7 +77,7 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
     async function load() {
       try {
         const [configRes, modelosRes] = await Promise.all([
-          fetch(`/api/escola/${escolaId}/admin/configuracoes/avaliacao-frequencia`, { cache: "no-store" }),
+          fetch(`/api/escola/${escolaParam}/admin/configuracoes/avaliacao-frequencia`, { cache: "no-store" }),
           fetch(`/api/escolas/${escolaId}/modelos-avaliacao?limit=50`, { cache: "no-store" }),
         ]);
         const json = await configRes.json().catch(() => null);
@@ -113,7 +116,7 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
     }
     load();
     return () => { cancelled = true; };
-  }, [escolaId]);
+  }, [escolaId, escolaParam]);
 
   // --- HANDLERS ---
   const handleModeloChange = (novoModelo: string) => {
@@ -126,7 +129,7 @@ export default function AvaliacaoUnificadaPage({ params }: Props) {
 
   const handleSave = async () => {
     setSaving(true);
-    const promise = fetch(`/api/escola/${escolaId}/admin/configuracoes/avaliacao-frequencia`, {
+    const promise = fetch(`/api/escola/${escolaParam}/admin/configuracoes/avaliacao-frequencia`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

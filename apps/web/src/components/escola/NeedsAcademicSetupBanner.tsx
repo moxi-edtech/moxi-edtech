@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 type Props = {
   escolaId: string;
@@ -11,6 +12,8 @@ type Props = {
 
 export default function NeedsAcademicSetupBanner({ escolaId, message, className }: Props) {
   const router = useRouter();
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
   const text = useMemo(() => message || "Algumas configurações acadêmicas precisam de atenção.", [message]);
 
   return (
@@ -22,7 +25,7 @@ export default function NeedsAcademicSetupBanner({ escolaId, message, className 
         </div>
         <button
           type="button"
-          onClick={() => router.push(`/escola/${escolaId}/admin/configuracoes`)}
+          onClick={() => router.push(`/escola/${escolaParam}/admin/configuracoes`)}
           className="inline-flex items-center rounded-md bg-klasse-gold-600 px-3 py-2 text-sm font-medium text-white hover:bg-klasse-gold-700"
         >
           Abrir Configurações

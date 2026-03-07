@@ -7,6 +7,7 @@ import PrecosClient from "@/app/escola/[id]/financeiro/configuracoes/precos/Prec
 import { ModalShell } from "@/components/ui/ModalShell";
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/feedback/FeedbackSystem";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 type ServicoItem = {
   id: string;
@@ -31,7 +32,9 @@ type CatalogType = "documento" | "servico";
 export default function MensalidadesEmolumentosPage() {
   const params = useParams() as { id?: string };
   const escolaId = params?.id;
-  const base = escolaId ? `/escola/${escolaId}/admin/configuracoes` : "";
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
+  const base = escolaParam ? `/escola/${escolaParam}/admin/configuracoes` : "";
   const { error, success } = useToast();
   const pathname = usePathname();
   const isStandalone = pathname?.includes("/admin/configuracoes/mensalidades");
@@ -45,16 +48,16 @@ export default function MensalidadesEmolumentosPage() {
   const [catalogType, setCatalogType] = useState<CatalogType>("servico");
 
   useEffect(() => {
-    if (!catalogOpen || !escolaId) return;
+    if (!catalogOpen || !escolaParam) return;
     void loadCatalog();
-  }, [catalogOpen, escolaId]);
+  }, [catalogOpen, escolaParam]);
 
   const loadCatalog = async () => {
-    if (!escolaId) return;
+    if (!escolaParam) return;
     setCatalogLoading(true);
     setCatalogError(null);
     try {
-      const res = await fetch(`/api/escola/${escolaId}/admin/servicos`, { cache: "no-store" });
+      const res = await fetch(`/api/escola/${escolaParam}/admin/servicos`, { cache: "no-store" });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao carregar serviços");
       setCatalogItems(Array.isArray(json.items) ? json.items : []);
@@ -73,7 +76,7 @@ export default function MensalidadesEmolumentosPage() {
   };
 
   const handleSaveServico = async () => {
-    if (!escolaId) return;
+    if (!escolaParam) return;
     if (!catalogForm.codigo.trim() || !catalogForm.nome.trim()) {
       error("Código e nome são obrigatórios.");
       return;
@@ -84,7 +87,7 @@ export default function MensalidadesEmolumentosPage() {
     }
     setCatalogSaving(true);
     try {
-      const res = await fetch(`/api/escola/${escolaId}/admin/servicos`, {
+      const res = await fetch(`/api/escola/${escolaParam}/admin/servicos`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -119,15 +122,15 @@ export default function MensalidadesEmolumentosPage() {
     }
   };
 
-  if (!escolaId) return null;
+  if (!escolaParam) return null;
 
   return (
     <ConfigSystemShell
-      escolaId={escolaId}
+      escolaId={escolaParam}
       title="Mensalidades & Emolumentos"
       subtitle="Configure valores de mensalidades, matrículas e catálogo de serviços."
       menuItems={buildConfigMenuItems(base)}
-      backHref={`/escola/${escolaId}/admin`}
+      backHref={`/escola/${escolaParam}/admin`}
       embedded={!isStandalone}
     >
       <div className="space-y-6">

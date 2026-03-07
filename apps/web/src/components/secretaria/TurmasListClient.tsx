@@ -544,7 +544,8 @@ function TurmaRow({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function TurmasListClient({ adminMode = false }: { adminMode?: boolean }) {
-  const { escolaId, isLoading: escolaLoading } = useEscolaId();
+  const { escolaId, escolaSlug, isLoading: escolaLoading } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
 
   const [data,            setData]            = useState<TurmasResponse | null>(null);
   const [items,           setItems]           = useState<TurmaItem[]>([]);
@@ -734,8 +735,8 @@ export default function TurmasListClient({ adminMode = false }: { adminMode?: bo
     }
   }, [escolaId, pendingItems, fetchData]);
 
-  const detailHrefBase = adminMode && escolaId
-    ? `/escola/${escolaId}/admin/turmas`
+  const detailHrefBase = adminMode && escolaParam
+    ? `/escola/${escolaParam}/admin/turmas`
     : `/secretaria/turmas`;
 
   const handleFilterChange = useCallback((next: Partial<ActiveFilters>) => {

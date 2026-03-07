@@ -20,9 +20,16 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
     }
 
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id, requestedEscolaId);
-    if (!escolaId || escolaId !== requestedEscolaId) {
+    if (!escolaId) {
       return NextResponse.json({ ok: false, error: "Acesso negado a esta escola." }, { status: 403 });
     }
+
+    const { data: escolaInfo } = await supabase
+      .from("escolas")
+      .select("slug")
+      .eq("id", escolaId)
+      .maybeSingle();
+    const escolaParam = escolaInfo?.slug ? String(escolaInfo.slug) : escolaId;
 
     const { data: assinatura, error } = await supabase
       .from("assinaturas")
@@ -54,8 +61,8 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
     }
 
     const portalUrl = assinatura.stripe_customer_id
-      ? `${basePortalUrl}?prefilled_email=&customer=${encodeURIComponent(assinatura.stripe_customer_id)}&return_url=${encodeURIComponent(`${appUrl}/escola/${escolaId}/admin/configuracoes/assinatura`)}`
-      : `${basePortalUrl}?return_url=${encodeURIComponent(`${appUrl}/escola/${escolaId}/admin/configuracoes/assinatura`)}`;
+      ? `${basePortalUrl}?prefilled_email=&customer=${encodeURIComponent(assinatura.stripe_customer_id)}&return_url=${encodeURIComponent(`${appUrl}/escola/${escolaParam}/admin/configuracoes/assinatura`)}`
+      : `${basePortalUrl}?return_url=${encodeURIComponent(`${appUrl}/escola/${escolaParam}/admin/configuracoes/assinatura`)}`;
 
     return NextResponse.json({
       ok: true,

@@ -14,12 +14,15 @@ import { Select } from "@/components/ui/Select";
 import { pdf } from "@react-pdf/renderer";
 import { QuadroHorarioPdf } from "@/templates/pdf/horarios/QuadroHorario";
 import { useToast } from "@/components/feedback/FeedbackSystem";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 const DIAS_SEMANA = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"];
 
 export default function QuadroHorariosPage() {
   const params = useParams();
   const escolaId = params?.id as string;
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
   const { online } = useOfflineStatus();
   const { success, error, warning, toast: rawToast } = useToast();
   const [isMounted, setIsMounted] = useState(false);
@@ -1008,13 +1011,13 @@ export default function QuadroHorariosPage() {
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-2 rounded-full bg-slate-100 p-1">
               <Link
-                href={`/escola/${escolaId}/horarios/slots`}
+                href={`/escola/${escolaParam}/horarios/slots`}
                 className="rounded-full px-4 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-950"
               >
                 Slots
               </Link>
               <Link
-                href={`/escola/${escolaId}/horarios/quadro`}
+                href={`/escola/${escolaParam}/horarios/quadro`}
                 className="rounded-full bg-slate-950 px-4 py-1.5 text-xs font-semibold text-white"
               >
                 Quadro

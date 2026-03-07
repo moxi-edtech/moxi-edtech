@@ -23,6 +23,7 @@ export default function ConfiguracoesPage({ params }: Props) {
   const [setupComplete, setSetupComplete] = useState(false);
   const [forceWizard, setForceWizard] = useState(false); // Para edição manual
   const [schoolDisplayName, setSchoolDisplayName] = useState("");
+  const [escolaParam, setEscolaParam] = useState(escolaId);
 
   // 1. Verificar Estado da Escola
   useEffect(() => {
@@ -42,7 +43,7 @@ export default function ConfiguracoesPage({ params }: Props) {
             .eq('escola_id', escolaId),
           supabase
             .from('escolas')
-            .select('nome')
+            .select('nome, slug')
             .eq('id', escolaId)
             .maybeSingle(),
         ]);
@@ -56,7 +57,9 @@ export default function ConfiguracoesPage({ params }: Props) {
         }
 
         const nome = (escolaNomeResult.data as any)?.nome as string | undefined;
+        const slug = (escolaNomeResult.data as any)?.slug as string | undefined;
         if (nome) setSchoolDisplayName(nome);
+        if (slug) setEscolaParam(String(slug));
         // --- End existing checkStatus logic ---
 
       } catch (error: any) {
@@ -110,7 +113,7 @@ export default function ConfiguracoesPage({ params }: Props) {
         )}
         
         <AcademicSetupWizard 
-          escolaId={escolaId} 
+          escolaId={escolaParam} 
           initialSchoolName={schoolDisplayName}
           onComplete={() => {
              // Quando terminar, atualizamos o estado local
@@ -119,7 +122,7 @@ export default function ConfiguracoesPage({ params }: Props) {
              
              // Se era a primeira vez, mandamos para o Dashboard para ver o "Hero"
              if (!setupComplete) {
-                window.location.href = `/escola/${escolaId}/admin/dashboard`;
+                window.location.href = `/escola/${escolaParam}/admin/dashboard`;
              }
           }}
         />
@@ -132,7 +135,7 @@ export default function ConfiguracoesPage({ params }: Props) {
   return (
     <div className="bg-slate-50 min-h-screen">
       <SettingsHub 
-        escolaId={escolaId} 
+        escolaId={escolaParam} 
         onOpenWizard={() => setForceWizard(true)} 
       />
     </div>

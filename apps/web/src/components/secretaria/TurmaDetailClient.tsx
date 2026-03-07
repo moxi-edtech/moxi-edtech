@@ -12,6 +12,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { usePlanFeature } from "@/hooks/usePlanFeature";
 import { GradeEntryGrid, type StudentGradeRow } from "@/components/professor/GradeEntryGrid";
 import { Skeleton } from "@/components/feedback/FeedbackSystem";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 //
@@ -394,6 +395,9 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
   const alunosScrollRef               = useRef<HTMLDivElement | null>(null);
   const { isEnabled: canQrDocs }      = usePlanFeature("doc_qr_code");
   const alunos                        = data?.alunos ?? [];
+  const { escolaSlug } = useEscolaId();
+  const escolaId = data?.turma.escola_id;
+  const escolaParam = escolaSlug || escolaId;
 
   const alunosVirtualizer = useVirtualizer({
     count:            alunos.length,
@@ -420,7 +424,6 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
     load();
   }, [turmaId]);
 
-  const escolaId = data?.turma.escola_id;
 
   useEffect(() => {
     if (!escolaId || !turmaId) return;
@@ -1258,7 +1261,7 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
                     Fechar
                   </button>
                   <Link
-                    href={`/escola/${escolaId}/professores?tab=atribuir`}
+                    href={`/escola/${escolaParam}/professores?tab=atribuir`}
                     onClick={() => setActionModal(null)}
                     className="px-4 py-2 rounded-xl bg-[#E3B23C] text-white text-sm font-bold hover:brightness-95"
                   >

@@ -4,6 +4,7 @@
 import { UsersRound, Users, UserCheck, Wallet, AlertCircle } from "lucide-react";
 import StatCard from "@/components/shared/StatCard";
 import type { SetupStatus } from "./setupStatus";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -54,6 +55,8 @@ export default function KpiSection({
   setupStatus,
   financeiroHref,
 }: Props) {
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
   if (error) {
     return (
       <div className="flex items-center gap-2 p-4 text-sm text-red-600 bg-red-50 rounded-xl border border-red-100 font-medium">
@@ -75,8 +78,8 @@ export default function KpiSection({
   const { turmasOk } = setupStatus;
 
   // financeiroHref comes scoped from the server — fallback mirrors that scope
-  const adminHref   = (path: string) => `/escola/${escolaId}/admin/${path}`;
-  const financeHref = financeiroHref ?? `/escola/${escolaId}/financeiro`;
+  const adminHref   = (path: string) => `/escola/${escolaParam}/admin/${path}`;
+  const financeHref = financeiroHref ?? `/escola/${escolaParam}/financeiro`;
 
   const kpis = [
     {

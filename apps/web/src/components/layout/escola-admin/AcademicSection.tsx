@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { ArrowRight, Settings, TrendingUp, CreditCard, Users, BookOpen, Lock, Layers } from "lucide-react";
 import type { SetupStatus } from "./setupStatus";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -94,26 +95,28 @@ export default function AcademicSection({
   missingPricingCount?: number;
   financeiroHref?:     string;
 }) {
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
   const { avaliacaoFrequenciaOk, turmasOk } = setupStatus;
 
   const canFinanceiro = turmasOk;
   const canPromocao   = avaliacaoFrequenciaOk && turmasOk;
 
   // Scoped fallback — mirrors the fix applied in Data and Content
-  const pagamentosHref = financeiroHref ?? `/escola/${escolaId}/financeiro`;
+  const pagamentosHref = financeiroHref ?? `/escola/${escolaParam}/financeiro`;
 
   const items: Item[] = [
     {
       title:       "Configurações Acadêmicas",
       description: "Disciplinas, calendário e regras",
       icon:        Settings,
-      href:        `/escola/${escolaId}/admin/configuracoes-academicas`,
+      href:        `/escola/${escolaParam}/admin/configuracoes-academicas`,
     },
     {
       title:       "Funcionários",
       description: "Equipe, acessos e permissões",
       icon:        Users,
-      href:        `/escola/${escolaId}/admin/funcionarios`,
+      href:        `/escola/${escolaParam}/admin/funcionarios`,
     },
     {
       title:       "Pagamentos",
@@ -128,7 +131,7 @@ export default function AcademicSection({
       title:       "Promoção",
       description: "Progressão de alunos",
       icon:        TrendingUp,
-      href:        `/escola/${escolaId}/admin/promocao`,
+      href:        `/escola/${escolaParam}/admin/promocao`,
       locked:      !canPromocao,
       reason:      !avaliacaoFrequenciaOk
         ? "Configure avaliação e frequência primeiro."
@@ -138,7 +141,7 @@ export default function AcademicSection({
       title:       "Biblioteca",
       description: "Acervo e empréstimos",
       icon:        BookOpen,
-      href:        `/escola/${escolaId}/admin/biblioteca`,
+      href:        `/escola/${escolaParam}/admin/biblioteca`,
     },
   ];
 
@@ -156,7 +159,7 @@ export default function AcademicSection({
         </div>
 
         <Link
-          href={`/escola/${escolaId}/admin`}
+          href={`/escola/${escolaParam}/admin`}
           className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-[#1F6B3B] hover:underline"
         >
           Ver tudo <ArrowRight className="h-3.5 w-3.5" />

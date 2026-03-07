@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { CalendarDays, ArrowRight, CalendarX } from "lucide-react";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 export type Evento = {
   id: string;
@@ -24,7 +25,9 @@ function formatDate(iso: string) {
 }
 
 export default function EventsSection({ escolaId, events = [] }: Props) {
-  const hrefAll = escolaId ? `/escola/${escolaId}/admin/eventos` : "#";
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
+  const hrefAll = escolaParam ? `/escola/${escolaParam}/admin/eventos` : "#";
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -67,8 +70,8 @@ export default function EventsSection({ escolaId, events = [] }: Props) {
         <ul className="divide-y divide-slate-100">
           {events.slice(0, 5).map((ev) => {
             const date = formatDate(ev.dataISO);
-            const href = escolaId
-              ? `/escola/${escolaId}/admin/eventos/${ev.id}`
+            const href = escolaParam
+              ? `/escola/${escolaParam}/admin/eventos/${ev.id}`
               : "#";
 
             return (

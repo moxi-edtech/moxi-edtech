@@ -18,6 +18,7 @@ import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
 import { buildConfigMenuItems } from "../_shared/menuItems";
 import { DisciplinaModal, type DisciplinaForm } from "@/components/escola/settings/_components/DisciplinaModal";
 import { Skeleton, useToast } from "@/components/feedback/FeedbackSystem";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 type Curso = { id: string; nome: string };
 type Classe = { id: string; curso_id?: string; nome: string; turno?: string | null };
@@ -125,7 +126,9 @@ const ModalShell = ({
 export default function TurmasConfiguracoesPage() {
   const params = useParams() as { id?: string };
   const escolaId = params?.id;
-  const base = escolaId ? `/escola/${escolaId}/admin/configuracoes` : "";
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
+  const base = escolaParam ? `/escola/${escolaParam}/admin/configuracoes` : "";
   const { success, error, warning, toast: rawToast, dismiss } = useToast();
   const menuItems = buildConfigMenuItems(base);
 
@@ -155,24 +158,24 @@ export default function TurmasConfiguracoesPage() {
   const [disciplinaEditingMatrixByClass, setDisciplinaEditingMatrixByClass] = useState<Record<string, string[]>>({});
 
   const fetchCurriculoStatus = useCallback(async () => {
-    if (!escolaId) return;
-    const res = await fetch(`/api/escola/${escolaId}/admin/curriculo/status`, { cache: "no-store" });
+    if (!escolaParam) return;
+    const res = await fetch(`/api/escola/${escolaParam}/admin/curriculo/status`, { cache: "no-store" });
     const json = await res.json().catch(() => null);
     if (res.ok) {
       setCurriculos(json?.curriculos ?? []);
       setAnoLetivo(json?.ano_letivo ?? null);
     }
-  }, [escolaId]);
+  }, [escolaParam]);
 
   const loadData = useCallback(async () => {
-    if (!escolaId) return;
+    if (!escolaId || !escolaParam) return;
     setLoading(true);
     try {
       const [cursosRes, classesRes, curriculoRes, impactRes] = await Promise.all([
         fetch(`/api/escolas/${escolaId}/cursos`, { cache: "no-store" }),
         fetch(`/api/escolas/${escolaId}/classes`, { cache: "no-store" }),
-        fetch(`/api/escola/${escolaId}/admin/curriculo/status`, { cache: "no-store" }),
-        fetch(`/api/escola/${escolaId}/admin/setup/impact`, {
+        fetch(`/api/escola/${escolaParam}/admin/curriculo/status`, { cache: "no-store" }),
+        fetch(`/api/escola/${escolaParam}/admin/setup/impact`, {
           method: "POST",
           body: JSON.stringify({}),
         }),
@@ -390,7 +393,7 @@ export default function TurmasConfiguracoesPage() {
 
     setModalActionLoading(true);
     try {
-      const res = await fetch(`/api/escola/${escolaId}/admin/curriculo/publish`, {
+      const res = await fetch(`/api/escola/${escolaParam}/admin/curriculo/publish`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -512,7 +515,7 @@ export default function TurmasConfiguracoesPage() {
 
     setModalActionLoading(true);
     try {
-      const res = await fetch(`/api/escola/${escolaId}/admin/turmas/generate`, {
+      const res = await fetch(`/api/escola/${escolaParam}/admin/turmas/generate`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -701,7 +704,7 @@ export default function TurmasConfiguracoesPage() {
     let toastId: string | null = null;
     try {
       toastId = rawToast({ variant: "syncing", title: "Publicando configuração...", duration: 0 });
-      const res = await fetch(`/api/escola/${escolaId}/admin/setup/commit`, {
+      const res = await fetch(`/api/escola/${escolaParam}/admin/setup/commit`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -775,7 +778,7 @@ export default function TurmasConfiguracoesPage() {
                 if (!selectedCursoId || !selectedCurriculo) return;
                 setModalActionLoading(true);
                 try {
-                  const res = await fetch(`/api/escola/${escolaId}/admin/curriculo/publish`, {
+                  const res = await fetch(`/api/escola/${escolaParam}/admin/curriculo/publish`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -918,7 +921,7 @@ export default function TurmasConfiguracoesPage() {
         )}
 
         <Link
-          href={escolaId ? `/escola/${escolaId}/admin/turmas` : "#"}
+          href={escolaParam ? `/escola/${escolaParam}/admin/turmas` : "#"}
           className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 sm:w-auto"
         >
           <span>Gerenciar turmas manualmente</span>

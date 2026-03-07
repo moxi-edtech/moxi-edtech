@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Check, RefreshCw, Save } from "lucide-react";
 import { FluxoPosAccao, ConfirmacaoContextual, Passo } from "@/components/harmonia";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 /**
  * KLASSE Standard:
@@ -1495,14 +1496,14 @@ function Step3Pagamento(props: {
             }}
             onEscolher={(passo: Passo) => {
               if (passo.id === "emitir_boletim") {
-                router.push(`/escola/${escolaId}/secretaria/documentos?matriculaId=${candidaturaId}`);
+                router.push(`/escola/${escolaParam}/secretaria/documentos?matriculaId=${candidaturaId}`);
               } else if (passo.id === "registar_propina") {
-                router.push(`/escola/${escolaId}/secretaria/balcao?alunoId=${candidaturaId}`);
+                router.push(`/escola/${escolaParam}/secretaria/balcao?alunoId=${candidaturaId}`);
               } else if (passo.id === "nova_matricula") {
-                window.location.href = `/escola/${escolaId}/secretaria/admissoes/nova`;
+                window.location.href = `/escola/${escolaParam}/secretaria/admissoes/nova`;
               }
             }}
-            onDismiss={() => router.push(`/escola/${escolaId}/secretaria/matriculas`)}
+            onDismiss={() => router.push(`/escola/${escolaParam}/secretaria/matriculas`)}
           />
         </div>
       );
@@ -1525,7 +1526,7 @@ function Step3Pagamento(props: {
           </button>
           <button
             type="button"
-            onClick={() => router.push(`/escola/${escolaId}/secretaria/admissoes`)}
+            onClick={() => router.push(`/escola/${escolaParam}/secretaria/admissoes`)}
             className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:border-klasse-gold/40"
           >
             Voltar ao radar
@@ -1704,6 +1705,8 @@ function Step3Pagamento(props: {
 
 export default function AdmissaoWizardClient({ escolaId }: { escolaId: string }) {
   const router = useRouter();
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
   const [step, setStep] = useState(1);
   const [candidaturaId, setCandidaturaId] = useState<string | null>(null);
   const [turmaId, setTurmaId] = useState<string | null>(null);
@@ -1800,7 +1803,7 @@ export default function AdmissaoWizardClient({ escolaId }: { escolaId: string })
 
   const handleResume = (id: string) => {
     if (!isUuid(id)) return;
-    const next = `/escola/${escolaId}/secretaria/admissoes/nova?candidaturaId=${id}`;
+    const next = `/escola/${escolaParam}/secretaria/admissoes/nova?candidaturaId=${id}`;
     router.push(next);
   };
 

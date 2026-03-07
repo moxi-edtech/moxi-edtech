@@ -17,6 +17,7 @@ import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
 import { buildConfigMenuItems } from "../_shared/menuItems";
 import { SistemaStatusModal } from "../_components/SistemaStatusModal";
 import { useToast } from "@/components/feedback/FeedbackSystem";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 // --- TYPES ---
 type WorkflowStep = {
@@ -33,7 +34,9 @@ type WorkflowStep = {
 export default function FluxosConfiguracaoPage() {
   const params = useParams() as { id?: string };
   const escolaId = params?.id;
-  const base = escolaId ? `/escola/${escolaId}/admin/configuracoes` : "";
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
+  const base = escolaParam ? `/escola/${escolaParam}/admin/configuracoes` : "";
   const { success } = useToast();
   
   const menuItems = buildConfigMenuItems(base);
@@ -112,7 +115,7 @@ export default function FluxosConfiguracaoPage() {
   return (
     <>
       <ConfigSystemShell
-        escolaId={escolaId ?? ""}
+        escolaId={escolaParam ?? ""}
         title="Fluxos de Trabalho"
         subtitle="Defina o caminho que a nota percorre até o boletim."
         menuItems={menuItems}
