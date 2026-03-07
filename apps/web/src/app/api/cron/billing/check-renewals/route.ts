@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
         escolas:escola_id (
           id,
           nome,
+          slug,
           escola_users (
             id,
             role,
@@ -76,6 +77,10 @@ export async function GET(req: NextRequest) {
         const dataFormatada = dataRenovacao.toLocaleDateString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric' });
         const referencia = `KLASSE-${ass.escola_id.slice(0, 4)}-${ass.id.slice(0, 4)}`.toUpperCase();
         
+        const escolaSlug = (ass.escolas as any)?.slug as string | undefined;
+        const escolaParam = escolaSlug ? String(escolaSlug) : ass.escola_id;
+
+        const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || "https://klasse.ao").replace(/\/$/, "");
         const { subject, html, text } = await buildBillingRenewalEmail({
           escolaNome: (ass.escolas as any)?.nome || 'Director(a)',
           plano: planoNome,
@@ -83,7 +88,7 @@ export async function GET(req: NextRequest) {
           dataRenovacao: dataFormatada,
           diasRestantes,
           referencia,
-          linkPagamento: `https://moxi-edtech.vercel.app/escola/${ass.escola_id}/admin/configuracoes/assinatura`
+          linkPagamento: `${baseUrl}/escola/${escolaParam}/admin/configuracoes/assinatura`
         });
 
         const res = await sendMail({

@@ -29,7 +29,7 @@ interface BillingRenewalEmailProps {
 
 const baseUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
-  : "https://moxi-edtech.vercel.app"; // Fallback URL
+  : "https://klasse.ao"; // Fallback URL
 
 export const BillingRenewalEmail = ({
   escolaNome = "Director(a)",

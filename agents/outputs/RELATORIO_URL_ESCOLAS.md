@@ -41,5 +41,5 @@ Data: 2026-03-06
 - Resolução unificada: `apps/web/src/lib/tenant/resolveEscolaIdForUser.ts`
 
 ## Notas
-- Compatibilidade: manter redirect de UUID por 12 meses (302 inicialmente, depois 301).
+- Compatibilidade: manter redirect de UUID por 12 meses (302 inicialmente, agora 301).
 - Expor UUID apenas em APIs privadas/authenticated quando necessário.
