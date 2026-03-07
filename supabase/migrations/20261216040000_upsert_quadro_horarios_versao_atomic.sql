@@ -1,5 +1,6 @@
-BEGIN;
-
+DO $$
+BEGIN
+  EXECUTE $function$
 CREATE OR REPLACE FUNCTION public.upsert_quadro_horarios_versao_atomic(
   p_escola_id uuid,
   p_turma_id uuid,
@@ -11,7 +12,7 @@ RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO 'public'
-AS $$
+AS $body$
 DECLARE
   v_versao_id uuid;
   v_rows int := 0;
@@ -66,8 +67,9 @@ BEGIN
     'published_id', v_published_id
   );
 END;
+$body$;
+$function$;
+
+  EXECUTE 'GRANT EXECUTE ON FUNCTION public.upsert_quadro_horarios_versao_atomic(uuid, uuid, uuid, jsonb, boolean) TO authenticated';
+END
 $$;
-
-GRANT EXECUTE ON FUNCTION public.upsert_quadro_horarios_versao_atomic(uuid, uuid, uuid, jsonb, boolean) TO authenticated;
-
-COMMIT;

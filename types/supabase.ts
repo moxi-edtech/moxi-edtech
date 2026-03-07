@@ -2608,6 +2608,7 @@ export type Database = {
           nome: string
           onboarding_finalizado: boolean
           plano_atual: Database["public"]["Enums"]["app_plan_tier"]
+          slug: string
           status: string | null
           updated_at: string | null
           use_mv_dashboards: boolean
@@ -2623,6 +2624,7 @@ export type Database = {
           nome: string
           onboarding_finalizado?: boolean
           plano_atual?: Database["public"]["Enums"]["app_plan_tier"]
+          slug?: string
           status?: string | null
           updated_at?: string | null
           use_mv_dashboards?: boolean
@@ -2638,6 +2640,7 @@ export type Database = {
           nome?: string
           onboarding_finalizado?: boolean
           plano_atual?: Database["public"]["Enums"]["app_plan_tier"]
+          slug?: string
           status?: string | null
           updated_at?: string | null
           use_mv_dashboards?: boolean

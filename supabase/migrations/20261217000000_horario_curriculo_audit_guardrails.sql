@@ -36,6 +36,9 @@ WITH CHECK (
   AND user_has_role_in_school(escola_id, array['admin','admin_escola','secretaria']::text[])
 );
 
+DO $$
+BEGIN
+  EXECUTE $function$
 CREATE OR REPLACE FUNCTION public.log_horario_event(
   p_escola_id uuid,
   p_turma_id uuid,
@@ -47,7 +50,7 @@ RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO 'public'
-AS $$
+AS $body$
 BEGIN
   IF p_tipo IS NULL OR p_tipo NOT IN ('DRAFT_SAVE', 'PUBLISH', 'UNPUBLISH', 'DELETE_VERSION') THEN
     RAISE EXCEPTION 'tipo de evento inválido: %', p_tipo;
@@ -70,12 +73,20 @@ BEGIN
     auth.uid()
   );
 END;
+$body$;
+$function$;
+
+  EXECUTE 'GRANT EXECUTE ON FUNCTION public.log_horario_event(uuid, uuid, uuid, text, jsonb) TO authenticated';
+END
 $$;
 
+DO $$
+BEGIN
+  EXECUTE $function$
 CREATE OR REPLACE FUNCTION public.trg_validate_quadro_curriculo_cohesion()
 RETURNS trigger
 LANGUAGE plpgsql
-AS $$
+AS $body$
 BEGIN
   IF NOT EXISTS (
     SELECT 1
@@ -90,6 +101,9 @@ BEGIN
 
   RETURN NEW;
 END;
+$body$;
+$function$;
+END
 $$;
 
 DROP TRIGGER IF EXISTS trg_validate_quadro_curriculo_cohesion ON public.quadro_horarios;
@@ -98,6 +112,9 @@ BEFORE INSERT OR UPDATE ON public.quadro_horarios
 FOR EACH ROW
 EXECUTE FUNCTION public.trg_validate_quadro_curriculo_cohesion();
 
+DO $$
+BEGIN
+  EXECUTE $function$
 CREATE OR REPLACE FUNCTION public.publish_horario_versao(
   p_escola_id uuid,
   p_turma_id uuid,
@@ -105,7 +122,7 @@ CREATE OR REPLACE FUNCTION public.publish_horario_versao(
 )
 RETURNS uuid
 LANGUAGE plpgsql
-AS $$
+AS $body$
 DECLARE
   v_exists uuid;
   v_rows integer;
@@ -158,8 +175,14 @@ BEGIN
 
   RETURN p_versao_id;
 END;
+$body$;
+$function$;
+END
 $$;
 
+DO $$
+BEGIN
+  EXECUTE $function$
 CREATE OR REPLACE FUNCTION public.upsert_quadro_horarios_versao_atomic(
   p_escola_id uuid,
   p_turma_id uuid,
@@ -171,7 +194,7 @@ RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO 'public'
-AS $$
+AS $body$
 DECLARE
   v_versao_id uuid;
   v_rows int := 0;
@@ -238,8 +261,9 @@ BEGIN
     'published_id', v_published_id
   );
 END;
+$body$;
+$function$;
+END
 $$;
-
-GRANT EXECUTE ON FUNCTION public.log_horario_event(uuid, uuid, uuid, text, jsonb) TO authenticated;
 
 COMMIT;

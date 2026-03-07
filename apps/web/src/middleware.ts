@@ -2,16 +2,21 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { isEscolaUuid } from '@/lib/tenant/escolaSlug';
+import { resolveEscolaParam } from '@/lib/tenant/resolveEscolaParam';
 
 // Simulação de Rate Limiting simples em memória (Edge Runtime)
 // Nota: Em produção real, o Edge Runtime pode resetar a memória entre instâncias.
 // Para 100 escolas, o ideal é usar Upstash Redis ou similar.
 const rateLimitMap = new Map<string, { count: number, lastReset: number }>();
+const escolaSlugCache = new Map<string, { id: string; slug: string; expiresAt: number }>();
 
 const LIMITS = {
   STRICT: { count: 5, windowMs: 60 * 1000 }, // 5 reqs por minuto
   PUBLIC: { count: 30, windowMs: 60 * 1000 }, // 30 reqs por minuto
 };
+
+const ESCOLA_SLUG_TTL_MS = 5 * 60 * 1000;
 
 function isRateLimited(ip: string, limitKey: keyof typeof LIMITS) {
   const now = Date.now();
@@ -83,6 +88,54 @@ async function resolveUserRole(request: NextRequest, response: NextResponse) {
   return profile?.role ?? null;
 }
 
+function createSupabaseClient(request: NextRequest, response: NextResponse) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
+
+  return createServerClient(url, key, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+      },
+    },
+  });
+}
+
+function applyResponseCookies(source: NextResponse, target: NextResponse) {
+  source.cookies.getAll().forEach(({ name, value, ...options }) => {
+    target.cookies.set(name, value, options);
+  });
+}
+
+async function resolveEscolaSlugMapping(
+  request: NextRequest,
+  response: NextResponse,
+  escolaParam: string
+) {
+  const cacheKey = escolaParam.toLowerCase();
+  const cached = escolaSlugCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached;
+  }
+
+  const supabase = createSupabaseClient(request, response);
+  if (!supabase) return null;
+
+  const resolved = await resolveEscolaParam(supabase as any, escolaParam);
+  if (!resolved.escolaId || !resolved.slug) return null;
+
+  const entry = { id: resolved.escolaId, slug: resolved.slug, expiresAt: Date.now() + ESCOLA_SLUG_TTL_MS };
+  escolaSlugCache.set(`id:${resolved.escolaId}`, entry);
+  escolaSlugCache.set(`slug:${resolved.slug.toLowerCase()}`, entry);
+  escolaSlugCache.set(cacheKey, entry);
+
+  return entry;
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   
@@ -116,6 +169,35 @@ export async function middleware(request: NextRequest) {
 
   const response = NextResponse.next();
 
+  const escolaMatch = pathname.match(/^\/(api\/)?escola\/([^/]+)(\/.*)?$/);
+  if (escolaMatch) {
+    const isApi = Boolean(escolaMatch[1]);
+    const escolaParam = escolaMatch[2];
+    const suffix = escolaMatch[3] ?? '';
+
+    if (escolaParam !== 'suspensa') {
+      const resolved = await resolveEscolaSlugMapping(request, response, escolaParam);
+      if (resolved) {
+        if (isEscolaUuid(escolaParam) && !isApi && resolved.slug !== escolaParam) {
+          const redirectUrl = request.nextUrl.clone();
+          redirectUrl.pathname = `/escola/${resolved.slug}${suffix}`;
+          const redirectResponse = NextResponse.redirect(redirectUrl, 302);
+          applyResponseCookies(response, redirectResponse);
+          return redirectResponse;
+        }
+
+        if (!isEscolaUuid(escolaParam)) {
+          const rewrittenUrl = request.nextUrl.clone();
+          const prefix = isApi ? '/api/escola' : '/escola';
+          rewrittenUrl.pathname = `${prefix}/${resolved.id}${suffix}`;
+          const rewriteResponse = NextResponse.rewrite(rewrittenUrl);
+          applyResponseCookies(response, rewriteResponse);
+          return rewriteResponse;
+        }
+      }
+    }
+  }
+
   const portalRule = PORTAL_RULES.find((rule) => pathname.startsWith(rule.prefix));
   if (!portalRule) return response;
 
@@ -138,6 +220,8 @@ export async function middleware(request: NextRequest) {
 // Configuração para aplicar o middleware apenas em rotas de API sensíveis
 export const config = {
   matcher: [
+    '/escola/:path*',
+    '/api/escola/:path*',
     '/admin/:path*',
     '/secretaria/:path*',
     '/financeiro/:path*',
