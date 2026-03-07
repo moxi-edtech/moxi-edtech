@@ -84,13 +84,13 @@ const HorariosPanel = ({ escolaId }: { escolaId: string }) => (
     <p className="text-sm text-slate-500">Configure os tempos de aula e monte o quadro automático.</p>
     <div className="grid gap-3 sm:grid-cols-2">
       <Link
-        href={`/escola/${escolaId}/horarios/slots`}
+        href={`/escola/${escolaParam}/horarios/slots`}
         className="rounded-xl border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
       >
         Configurar Slots
       </Link>
       <Link
-        href={`/escola/${escolaId}/horarios/quadro`}
+        href={`/escola/${escolaParam}/horarios/quadro`}
         className="rounded-xl border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
       >
         Abrir Quadro
@@ -139,6 +139,7 @@ function StatusBadge({ ok, loading }: { ok?: boolean; loading: boolean }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps) {
+  const escolaParam = escolaId;
   const [progress, setProgress] = useState<number | null>(null);
   const [setupStatus, setSetupStatus] = useState<SetupStatus | null>(null);
   const [estruturaCounts, setEstruturaCounts] = useState<EstruturaCounts | null>(null);
@@ -149,9 +150,9 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
     let cancelled = false;
 
     async function fetchStatus() {
-      if (!escolaId) return;
+      if (!escolaParam) return;
       try {
-        const res = await fetch(`/api/escola/${escolaId}/admin/setup/state`, { cache: "no-store" });
+        const res = await fetch(`/api/escola/${escolaParam}/admin/setup/state`, { cache: "no-store" });
         const json = await res.json().catch(() => null);
         if (!res.ok) throw new Error(json?.error);
         if (cancelled) return;
@@ -167,7 +168,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
         });
         if (typeof data?.completion_percent === "number") setProgress(data.completion_percent);
 
-        const impactRes = await fetch(`/api/escola/${escolaId}/admin/setup/impact`, {
+        const impactRes = await fetch(`/api/escola/${escolaParam}/admin/setup/impact`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({}),
@@ -190,7 +191,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
 
     fetchStatus();
     return () => { cancelled = true; };
-  }, [escolaId]);
+  }, [escolaParam]);
 
   // ─── Derived ────────────────────────────────────────────────────────────────
   const anoLetivoOk = setupStatus?.ano_letivo_ok && setupStatus?.periodos_ok;
@@ -206,13 +207,13 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
   const pathname = usePathname();
   const safePathname = pathname ?? "/";
   const searchParams = useSearchParams();
-  const panelParams = useMemo(() => Promise.resolve({ id: escolaId }), [escolaId]);
+  const panelParams = useMemo(() => Promise.resolve({ id: escolaParam }), [escolaParam]);
 
   const tabs = [
     { id: "calendario",  label: "Calendário",  icon: CalendarCheck, Component: CalendarioPanel },
     { id: "avaliacoes",  label: "Avaliações",  icon: BookOpen,       Component: AvaliacoesPanel },
     { id: "turmas",      label: "Turmas",      icon: Users,          Component: TurmasPanel },
-    { id: "horarios",    label: "Horários",    icon: CalendarCheck,  Component: () => <HorariosPanel escolaId={escolaId} /> },
+    { id: "horarios",    label: "Horários",    icon: CalendarCheck,  Component: () => <HorariosPanel escolaId={escolaParam} /> },
     { id: "financeiro",  label: "Financeiro · Políticas", icon: Wallet,   Component: FinanceiroPanel },
     { id: "mensalidades", label: "Mensalidades & Emolumentos", icon: Landmark, Component: MensalidadesPanel },
     { id: "fluxos",      label: "Fluxos",      icon: Layers,         Component: FluxosPanel },
@@ -246,19 +247,19 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
       title: "Oferta Formativa",
       desc: estruturaMeta ?? "Cursos, níveis e disciplinas.",
       icon: Layers,
-      href: `/escola/${escolaId}/admin/configuracoes/estrutura`,
+      href: `/escola/${escolaParam}/admin/configuracoes/estrutura`,
     },
     {
       title: "Identidade",
       desc: "Logo e dados da escola.",
       icon: Building2,
-      href: `/escola/${escolaId}/admin/configuracoes/identidade`,
+      href: `/escola/${escolaParam}/admin/configuracoes/identidade`,
     },
     {
       title: "Horários",
       desc: "Slots e quadro automático.",
       icon: CalendarCheck,
-      href: `/escola/${escolaId}/horarios/slots`,
+      href: `/escola/${escolaParam}/horarios/slots`,
     },
   ];
 
@@ -397,7 +398,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
             Configurações detalhadas
           </h2>
           <Link
-            href={`/escola/${escolaId}/admin/configuracoes/${
+            href={`/escola/${escolaParam}/admin/configuracoes/${
               activeTab.id === "avaliacoes" ? "avaliacao" : activeTab.id
             }`}
             className="text-xs font-semibold text-[#E3B23C] hover:underline flex items-center gap-1"
@@ -438,7 +439,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
             {/* Sandbox shortcut — lives naturally here */}
             <div className="hidden md:block mt-4 pt-4 border-t border-slate-100">
               <Link
-                href={`/escola/${escolaId}/admin/configuracoes/sandbox`}
+                href={`/escola/${escolaParam}/admin/configuracoes/sandbox`}
                 className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition-all w-full"
               >
                 <Play className="w-4 h-4 flex-shrink-0" />
@@ -477,7 +478,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
           <div className="px-6 pb-6 border-t border-rose-200">
             <div className="pt-4">
               <Link
-                href={`/escola/${escolaId}/admin/configuracoes`}
+                href={`/escola/${escolaParam}/admin/configuracoes`}
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-rose-300 bg-white text-sm font-semibold text-rose-700 hover:bg-rose-50 transition-colors"
               >
                 <AlertTriangle className="w-4 h-4" />

@@ -426,10 +426,10 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
 
 
   useEffect(() => {
-    if (!escolaId || !turmaId) return;
+    if (!escolaParam || !turmaId) return;
     async function fetchPeriodos() {
       const res  = await fetch(
-        `/api/escola/${escolaId}/admin/periodos-por-turma?turma_id=${encodeURIComponent(turmaId)}`,
+        `/api/escola/${escolaParam}/admin/periodos-por-turma?turma_id=${encodeURIComponent(turmaId)}`,
         { cache: "no-store" }
       );
       const json = await res.json().catch(() => null);
@@ -443,15 +443,15 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
       }
     }
     fetchPeriodos();
-  }, [escolaId, turmaId]);
+  }, [escolaParam, turmaId]);
 
   useEffect(() => {
-    if (!escolaId || !turmaId) return;
+    if (!escolaParam || !turmaId) return;
     let active = true;
     async function fetchTurmaFecho() {
       setTurmaFechoLoading(true);
       try {
-        const res = await fetch(`/api/escola/${escolaId}/admin/turmas/${turmaId}/fecho`, { cache: "no-store" });
+        const res = await fetch(`/api/escola/${escolaParam}/admin/turmas/${turmaId}/fecho`, { cache: "no-store" });
         if (!active) return;
         if (res.status === 403) {
           setTurmaFechoAllowed(false);
@@ -474,7 +474,7 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
     return () => {
       active = false;
     };
-  }, [escolaId, turmaId]);
+  }, [escolaParam, turmaId]);
 
   useEffect(() => {
     const selected = periodos.find((p) => p.id === periodoId);
@@ -540,17 +540,17 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
   }, [actionModal, turmaId, notasPeriodoNumero]);
 
   useEffect(() => {
-    if (!escolaId || !turmaId || !periodoId) { setPeriodoClosed(false); return; }
+    if (!escolaParam || !turmaId || !periodoId) { setPeriodoClosed(false); return; }
     async function fetchStatus() {
       const res  = await fetch(
-        `/api/escola/${escolaId}/admin/frequencias/fechar-periodo?turma_id=${encodeURIComponent(turmaId)}&periodo_letivo_id=${encodeURIComponent(periodoId)}`,
+        `/api/escola/${escolaParam}/admin/frequencias/fechar-periodo?turma_id=${encodeURIComponent(turmaId)}&periodo_letivo_id=${encodeURIComponent(periodoId)}`,
         { cache: "no-store" }
       );
       const json = await res.json().catch(() => null);
       if (res.ok && json?.ok) setPeriodoClosed(Boolean(json.closed));
     }
     fetchStatus();
-  }, [escolaId, turmaId, periodoId]);
+  }, [escolaParam, turmaId, periodoId]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleListaPdf = () => {
@@ -559,10 +559,10 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
   };
 
   const handleClosePeriodoConfirmed = useCallback(async () => {
-    if (!escolaId || !turmaId || !periodoId) return;
+    if (!escolaParam || !turmaId || !periodoId) return;
     setClosing(true);
     try {
-      const res  = await fetch(`/api/escola/${escolaId}/admin/frequencias/fechar-periodo`, {
+      const res  = await fetch(`/api/escola/${escolaParam}/admin/frequencias/fechar-periodo`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify({ turma_id: turmaId, periodo_letivo_id: periodoId }),
@@ -577,13 +577,13 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
     } finally {
       setClosing(false);
     }
-  }, [escolaId, turmaId, periodoId]);
+  }, [escolaParam, turmaId, periodoId]);
 
   const handleTurmaFechoConfirmed = useCallback(async () => {
-    if (!escolaId || !turmaId || !turmaFechoTarget) return;
+    if (!escolaParam || !turmaId || !turmaFechoTarget) return;
     setTurmaFechoLoading(true);
     try {
-      const res = await fetch(`/api/escola/${escolaId}/admin/turmas/${turmaId}/fecho`, {
+      const res = await fetch(`/api/escola/${escolaParam}/admin/turmas/${turmaId}/fecho`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -604,7 +604,7 @@ export default function TurmaDetailClient({ turmaId }: { turmaId: string }) {
     } finally {
       setTurmaFechoLoading(false);
     }
-  }, [escolaId, turmaId, turmaFechoTarget]);
+  }, [escolaParam, turmaId, turmaFechoTarget]);
 
   const handleSaveNotas = useCallback(async (rows: StudentGradeRow[]) => {
     if (actionModal?.type !== "notas") return;

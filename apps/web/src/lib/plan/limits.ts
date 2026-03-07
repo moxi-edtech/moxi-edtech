@@ -60,13 +60,13 @@ export async function checkAlunoPlanLimit(
   return { ok: true, plan, max, current, incoming };
 }
 
-export function buildPlanLimitError(escolaId: string, check: AlunoLimitCheck): PlanLimitErrorPayload {
+export function buildPlanLimitError(escolaParam: string, check: AlunoLimitCheck): PlanLimitErrorPayload {
   return {
     ok: false,
     code: "PLAN_LIMIT",
     error: `Limite do plano atingido (${check.current}/${check.max}).`,
     details: check,
-    upgrade_url: `/escola/${escolaId}/admin/configuracoes/assinatura`,
+    upgrade_url: `/escola/${escolaParam}/admin/configuracoes/assinatura`,
     contact: "suporte@moxinexa.com",
   };
 }

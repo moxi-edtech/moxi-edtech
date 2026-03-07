@@ -145,6 +145,7 @@ async function apiGet<T>(url: string, signal?: AbortSignal): Promise<T> {
 
 // ---------- Component ----------
 export default function StructureMarketplace({ escolaId }: { escolaId: string }) {
+  const escolaParam = escolaId;
   const supabase = useMemo(() => createClient(), []);
   const { success, error, warning, toast: rawToast } = useToast();
   const searchParams = useSearchParams();
@@ -267,7 +268,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     let active = true;
     const loadCurriculoStatus = async () => {
       try {
-        const res = await fetch(`/api/escola/${escolaId}/admin/curriculo/status`, {
+        const res = await fetch(`/api/escola/${escolaParam}/admin/curriculo/status`, {
           cache: "no-store",
         });
         const json = await res.json().catch(() => null);
@@ -548,7 +549,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         onConfirm: async () => {
           closeConfirm();
           try {
-            const res = await fetch(`/api/escola/${escolaId}/admin/turmas/generate`, {
+            const res = await fetch(`/api/escola/${escolaParam}/admin/turmas/generate`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -697,7 +698,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
     async (presetKey: CurriculumKey) => {
       setQuickInstallingKey(presetKey);
       try {
-        const res = await fetch(`/api/escola/${escolaId}/admin/curriculo/install-preset`, {
+        const res = await fetch(`/api/escola/${escolaParam}/admin/curriculo/install-preset`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -748,7 +749,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
           }
         }
 
-        const res = await fetch(`/api/escola/${escolaId}/admin/curriculo/install-preset`, {
+        const res = await fetch(`/api/escola/${escolaParam}/admin/curriculo/install-preset`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

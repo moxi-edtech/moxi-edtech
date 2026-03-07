@@ -94,7 +94,13 @@ export async function POST(req: Request) {
         details: limitCheck,
       }).catch(() => null)
 
-      return NextResponse.json(buildPlanLimitError(escolaId, limitCheck), { status: 403 })
+      const { data: escolaInfo } = await s
+        .from('escolas')
+        .select('slug')
+        .eq('id', escolaId)
+        .maybeSingle()
+      const escolaParam = escolaInfo?.slug ? String(escolaInfo.slug) : escolaId
+      return NextResponse.json(buildPlanLimitError(escolaParam, limitCheck), { status: 403 })
     }
     
     const nomeCompleto = `${body.primeiro_nome || ''} ${body.sobrenome || ''}`.replace(/\s+/g, ' ').trim() || body.nome.trim()

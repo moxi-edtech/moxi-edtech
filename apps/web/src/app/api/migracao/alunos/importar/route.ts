@@ -120,7 +120,7 @@ export async function POST(request: Request) {
     }).catch(() => null);
 
     return NextResponse.json(
-      buildPlanLimitError(escolaId, limitCheck),
+      buildPlanLimitError(body.escolaId, limitCheck),
       { status: 403 }
     );
   }

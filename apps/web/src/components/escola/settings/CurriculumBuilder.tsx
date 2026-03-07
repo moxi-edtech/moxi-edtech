@@ -183,6 +183,7 @@ export default function CurriculumBuilder({
   initialPresetKey?: CurriculumKey | null;
   externalPresetCatalogMap?: Record<string, any>;
 }) {
+  const escolaParam = escolaId;
   const supabase = useMemo(() => createClient(), []);
   const { success, error } = useToast();
   const [step, setStep] = useState(1);
@@ -600,7 +601,7 @@ export default function CurriculumBuilder({
       setIsSaving(true);
 
       const res = await fetch(
-        `/api/escola/${escolaId}/admin/curriculo/apply-preset`,
+        `/api/escola/${escolaParam}/admin/curriculo/apply-preset`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

@@ -60,6 +60,7 @@ function resolveHref(
   item: { id: string; label: string; type: string }
 ) {
   const basePortal = portal || "secretaria";
+  const escolaParam = escolaId ?? null;
   if (basePortal === "professor") {
     return `/professor/notas?alunoId=${item.id}`;
   }
@@ -68,25 +69,25 @@ function resolveHref(
     if (item.type === "recibo") {
       return "/financeiro/cobrancas";
     }
-    return escolaId
-      ? `/escola/${escolaId}/financeiro/pagamentos?q=${encodeURIComponent(item.label)}`
+    return escolaParam
+      ? `/escola/${escolaParam}/financeiro/pagamentos?q=${encodeURIComponent(item.label)}`
       : `/financeiro/cobrancas?q=${encodeURIComponent(item.label)}`;
   }
 
   if (basePortal === "admin") {
-    if (!escolaId) return "/admin";
+    if (!escolaParam) return "/admin";
     switch (item.type) {
       case "turma":
-        return `/escola/${escolaId}/admin/turmas`;
+        return `/escola/${escolaParam}/admin/turmas`;
       case "professor":
-        return `/escola/${escolaId}/admin/professores`;
+        return `/escola/${escolaParam}/admin/professores`;
       case "classe":
       case "curso":
-        return `/escola/${escolaId}/admin/configuracoes`;
+        return `/escola/${escolaParam}/admin/configuracoes`;
       case "usuario":
-        return `/escola/${escolaId}/admin/funcionarios`;
+        return `/escola/${escolaParam}/admin/funcionarios`;
       default:
-        return `/escola/${escolaId}/admin`;
+        return `/escola/${escolaParam}/admin`;
     }
   }
 
@@ -100,8 +101,8 @@ function resolveHref(
     case "mensalidade":
     case "pagamento":
     case "recibo":
-      return escolaId
-        ? `/escola/${escolaId}/financeiro/pagamentos?q=${encodeURIComponent(item.label)}`
+      return escolaParam
+        ? `/escola/${escolaParam}/financeiro/pagamentos?q=${encodeURIComponent(item.label)}`
         : `/financeiro/cobrancas?q=${encodeURIComponent(item.label)}`;
     case "aluno":
     default:
