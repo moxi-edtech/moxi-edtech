@@ -506,7 +506,7 @@ function usePagamentoSubmit({
   }, [
     mensalidade, trocoValido, processando, metodo, detalhes,
     valorPagoNum, mesAno, canEmitirRecibo, aluno.id,
-    onConcluido, onRecibo, safeClose, onSuccess, success, error,
+    onConcluido, onRecibo, onSuccess, error,
   ]);
 
   return { processando, submit };
