@@ -1,0 +1,9 @@
+{
+  "redirects": [
+    {
+      "source": "https://www.klasse.ao/:path*",
+      "destination": "https://klasse.ao/:path*",
+      "permanent": true
+    }
+  ]
+}
