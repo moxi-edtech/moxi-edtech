@@ -57,8 +57,9 @@ const PERIOD_OPTIONS = [
 export default async function OperacoesAcademicasPage({
   searchParams,
 }: {
-  searchParams?: SearchParams;
+  searchParams?: Promise<SearchParams>;
 }) {
+  const resolvedSearchParams = await searchParams;
   const s = await supabaseServer();
   const { data: sess } = await s.auth.getUser();
   const user = sess?.user;
@@ -84,9 +85,9 @@ export default async function OperacoesAcademicasPage({
     );
   }
 
-  const selectedPeriod = searchParams?.periodo ?? "7d";
-  const selectedStatus = searchParams?.status ?? "all";
-  const selectedTipo = searchParams?.tipo ?? "all";
+  const selectedPeriod = resolvedSearchParams?.periodo ?? "7d";
+  const selectedStatus = resolvedSearchParams?.status ?? "all";
+  const selectedTipo = resolvedSearchParams?.tipo ?? "all";
   const queryParams = new URLSearchParams({
     periodo: selectedPeriod,
     status: selectedStatus,

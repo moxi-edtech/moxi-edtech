@@ -76,12 +76,23 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     const { data: limites } = plano
       ? await supabase
           .from("app_plan_limits")
-          .select("plan, price_mensal_kz, max_alunos, max_admin_users, max_storage_gb, professores_ilimitados, api_enabled, multi_campus")
+          .select("plan, price_mensal_kz, max_alunos, max_admin_users, max_storage_gb, professores_ilimitados, api_enabled, multi_campus, fin_recibo_pdf, sec_upload_docs, sec_matricula_online, doc_qr_code, app_whatsapp_auto, suporte_prioritario")
           .eq("plan", plano)
           .maybeSingle()
       : { data: null };
 
-    return withNoStore(NextResponse.json({ ok: true, data, limites: limites ?? null }), start);
+    const { data: assinatura } = await supabase
+      .from("assinaturas")
+      .select("valor_kz, ciclo, status")
+      .eq("escola_id", effectiveEscolaId)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    return withNoStore(
+      NextResponse.json({ ok: true, data, limites: limites ?? null, assinatura: assinatura ?? null }),
+      start
+    );
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     console.error("Error in identidade GET API:", message);

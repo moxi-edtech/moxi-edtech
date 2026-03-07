@@ -3,7 +3,6 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import type { Database } from "~types/supabase";
 import { authorizeEscolaAction } from "@/lib/escola/disciplinas";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
-import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export async function GET(req: Request) {
   try {
@@ -20,9 +19,7 @@ export async function GET(req: Request) {
     const authz = await authorizeEscolaAction(s as any, escolaId, user.id, []);
     if (!authz.allowed) return NextResponse.json({ ok: false, error: authz.reason || "Sem permissão" }, { status: 403 });
 
-    let rpcQuery = (s as any).rpc('get_metricas_acesso_alunos', { p_escola_id: escolaId });
-    rpcQuery = applyKf2ListInvariants(rpcQuery, { defaultLimit: 1 });
-    const { data, error } = await rpcQuery;
+    const { data, error } = await (s as any).rpc('get_metricas_acesso_alunos', { p_escola_id: escolaId });
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
 
     const metrics = Array.isArray(data) ? data[0] : data;

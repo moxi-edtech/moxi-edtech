@@ -563,6 +563,9 @@ export type Database = {
       app_plan_limits: {
         Row: {
           api_enabled: boolean
+          app_whatsapp_auto: boolean
+          doc_qr_code: boolean
+          fin_recibo_pdf: boolean
           max_admin_users: number | null
           max_alunos: number | null
           max_storage_gb: number | null
@@ -570,10 +573,16 @@ export type Database = {
           plan: Database["public"]["Enums"]["app_plan_tier"]
           price_mensal_kz: number
           professores_ilimitados: boolean
+          sec_matricula_online: boolean
+          sec_upload_docs: boolean
+          suporte_prioritario: boolean
           updated_at: string
         }
         Insert: {
           api_enabled?: boolean
+          app_whatsapp_auto?: boolean
+          doc_qr_code?: boolean
+          fin_recibo_pdf?: boolean
           max_admin_users?: number | null
           max_alunos?: number | null
           max_storage_gb?: number | null
@@ -581,10 +590,16 @@ export type Database = {
           plan: Database["public"]["Enums"]["app_plan_tier"]
           price_mensal_kz: number
           professores_ilimitados?: boolean
+          sec_matricula_online?: boolean
+          sec_upload_docs?: boolean
+          suporte_prioritario?: boolean
           updated_at?: string
         }
         Update: {
           api_enabled?: boolean
+          app_whatsapp_auto?: boolean
+          doc_qr_code?: boolean
+          fin_recibo_pdf?: boolean
           max_admin_users?: number | null
           max_alunos?: number | null
           max_storage_gb?: number | null
@@ -592,6 +607,9 @@ export type Database = {
           plan?: Database["public"]["Enums"]["app_plan_tier"]
           price_mensal_kz?: number
           professores_ilimitados?: boolean
+          sec_matricula_online?: boolean
+          sec_upload_docs?: boolean
+          suporte_prioritario?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -13247,6 +13265,10 @@ export type Database = {
         Returns: undefined
       }
       sum_component_pesos: { Args: { p_componentes: Json }; Returns: number }
+      sync_escola_plano_from_assinatura: {
+        Args: { p_escola_id: string }
+        Returns: undefined
+      }
       tenant_profiles_by_ids: {
         Args: { p_user_ids: string[] }
         Returns: {
@@ -13261,6 +13283,14 @@ export type Database = {
           telefone: string
           user_id: string
         }[]
+      }
+      transferir_aluno_turma: {
+        Args: {
+          p_matricula_origem_id: string
+          p_motivo?: string
+          p_turma_destino_id: string
+        }
+        Returns: string
       }
       transferir_matricula: {
         Args: {

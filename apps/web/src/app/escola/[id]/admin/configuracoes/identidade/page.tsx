@@ -28,6 +28,18 @@ type PlanoLimites = {
   professores_ilimitados: boolean;
   api_enabled: boolean;
   multi_campus: boolean;
+  fin_recibo_pdf?: boolean;
+  sec_upload_docs?: boolean;
+  sec_matricula_online?: boolean;
+  doc_qr_code?: boolean;
+  app_whatsapp_auto?: boolean;
+  suporte_prioritario?: boolean;
+};
+
+type AssinaturaResumo = {
+  valor_kz: number | null;
+  ciclo: "mensal" | "anual" | null;
+  status: string | null;
 };
 
 type Props = {
@@ -52,6 +64,18 @@ export default function IdentidadePage({ params }: Props) {
     aluno_portal_enabled: false,
   });
   const [planoLimites, setPlanoLimites] = useState<PlanoLimites | null>(null);
+  const [assinatura, setAssinatura] = useState<AssinaturaResumo | null>(null);
+  const beneficiosPlano = useMemo(() => {
+    if (!planoLimites) return [];
+    return [
+      { label: "Recibos em PDF", enabled: Boolean(planoLimites.fin_recibo_pdf) },
+      { label: "Upload de documentos", enabled: Boolean(planoLimites.sec_upload_docs) },
+      { label: "Matrícula online", enabled: Boolean(planoLimites.sec_matricula_online) },
+      { label: "Documentos com QR", enabled: Boolean(planoLimites.doc_qr_code) },
+      { label: "WhatsApp automático", enabled: Boolean(planoLimites.app_whatsapp_auto) },
+      { label: "Suporte prioritário", enabled: Boolean(planoLimites.suporte_prioritario) },
+    ];
+  }, [planoLimites]);
 
   const logoPreview = useMemo(() => formData.logo_url?.trim() || "", [formData.logo_url]);
 
@@ -80,6 +104,7 @@ export default function IdentidadePage({ params }: Props) {
           aluno_portal_enabled: !!json?.data?.aluno_portal_enabled,
         });
         setPlanoLimites(json?.limites ?? null);
+        setAssinatura(json?.assinatura ?? null);
       } catch (err) {
         console.error(err);
         error("Erro inesperado ao carregar identidade.");
@@ -223,7 +248,13 @@ export default function IdentidadePage({ params }: Props) {
                   <div className="grid gap-3 text-xs text-slate-600">
                     <div className="flex items-center justify-between">
                       <span className="font-semibold uppercase text-slate-400">Preço mensal</span>
-                      <span className="font-bold text-slate-800">Kz {planoLimites.price_mensal_kz.toLocaleString("pt-AO")}</span>
+                      <span className="font-bold text-slate-800">
+                        {assinatura?.valor_kz
+                          ? `Kz ${assinatura.valor_kz.toLocaleString("pt-AO")}`
+                          : planoLimites.price_mensal_kz
+                            ? `Kz ${planoLimites.price_mensal_kz.toLocaleString("pt-AO")}`
+                            : "Sob consulta"}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="font-semibold uppercase text-slate-400">Alunos</span>
@@ -256,6 +287,19 @@ export default function IdentidadePage({ params }: Props) {
                     <div className="flex items-center justify-between">
                       <span className="font-semibold uppercase text-slate-400">Multi-campus</span>
                       <span className="font-bold text-slate-800">{planoLimites.multi_campus ? "Ativo" : "Não"}</span>
+                    </div>
+                    <div className="pt-2">
+                      <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Benefícios</div>
+                      <div className="mt-2 grid gap-2 text-[11px] text-slate-600">
+                        {beneficiosPlano.map((item) => (
+                          <div key={item.label} className="flex items-center justify-between">
+                            <span>{item.label}</span>
+                            <span className={`font-semibold ${item.enabled ? "text-klasse-green-600" : "text-slate-400"}`}>
+                              {item.enabled ? "Ativo" : "Indisponível"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                     {planoLimites.max_admin_users && (
                       <div className="rounded-xl bg-slate-50 px-3 py-2 text-[11px] text-slate-500">

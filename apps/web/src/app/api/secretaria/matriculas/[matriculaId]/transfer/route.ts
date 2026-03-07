@@ -65,11 +65,11 @@ export async function PUT(request: Request, { params }: { params: Promise<{ matr
       return NextResponse.json({ ok: false, error: "A turma destino deve ser diferente" }, { status: 400 });
     }
     
-    const { data: result, error: rpcError } = await supabase
-      .rpc('transferir_matricula', {
-        p_escola_id: escolaId,
-        p_matricula_id: matriculaId,
-        p_target_turma_id: parsed.data.turma_id,
+    const { data: newMatriculaId, error: rpcError } = await supabase
+      .rpc('transferir_aluno_turma', {
+        p_matricula_origem_id: matriculaId,
+        p_turma_destino_id: parsed.data.turma_id,
+        p_motivo: null,
       })
       .single();
 
@@ -77,7 +77,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ matr
       return NextResponse.json({ ok: false, error: rpcError.message }, { status: 400 });
     }
 
-    if (!result || typeof result !== 'object') {
+    if (!newMatriculaId) {
       return NextResponse.json({ ok: false, error: 'Formato de resposta inesperado do RPC.' }, { status: 500 });
     }
 
@@ -90,7 +90,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ matr
       details: { turma_origem: matriculaData.turma_id, turma_destino: parsed.data.turma_id },
     }).catch(() => null);
 
-    return NextResponse.json({ ok: true, ...(result as object) });
+    return NextResponse.json({ ok: true, matricula_id: newMatriculaId });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

@@ -3,7 +3,7 @@ Data: 2026-03-06
 Escopo: `supabase/migrations`, `apps/web/src/app/api/**`
 
 ## Veredito Executivo
-O domínio de horários melhorou com `quadro_horarios` + `horario_slots`, mas ainda existem gaps de coesão e invariantes de domínio que podem causar divergência entre agenda de professor, visão do aluno e publicação de quadro oficial.
+O domínio de horários está agora coberto por guardrails de coesão: SSOT consolidado, versionamento e publicação atômica, invariantes temporais de slots, indisponibilidade docente aplicada, próxima aula calculada por slots publicados, coerência curricular validada, trilha de auditoria em produção e UI alinhada para destacar conflitos e slots inválidos.
 
 ---
 
@@ -62,6 +62,9 @@ O domínio de horários melhorou com `quadro_horarios` + `horario_slots`, mas ai
 - Existe check de `dia_semana`.
 - As constraints temporais foram reforçadas com checks e exclusão por sobreposição.
 
+**Alinhamento UI**
+- `SlotsConfig` destaca `inicio >= fim` e sobreposição no dia/turno.
+
 **Evidência**
 - Migração `20261216030000_horario_slots_temporal_guardrails.sql` adiciona `inicio < fim`, unicidade por dia/turno/ordem e exclusão de sobreposição.
 
@@ -77,6 +80,9 @@ O domínio de horários melhorou com `quadro_horarios` + `horario_slots`, mas ai
 **Diagnóstico atual**
 - Existe tabela `professor_disponibilidade` no schema e agora é consumida pelo auto-scheduler.
 - O algoritmo cruza dia/faixa e trata `indisponivel` como hard constraint.
+
+**Alinhamento UI**
+- `SchedulerBoard` alerta conflitos detectados após salvar/publicar.
 
 **Evidência**
 - `horarios/auto` consulta `professor_disponibilidade` e aplica bloqueio/penalidade na seleção de slot.
@@ -108,6 +114,9 @@ O domínio de horários melhorou com `quadro_horarios` + `horario_slots`, mas ai
 **Diagnóstico atual**
 - `quadro_horarios` guarda `disciplina_id` direto, mas agora valida contra `turma_disciplinas` + `curso_matriz`.
 
+**Evidência**
+- Trigger `trg_validate_quadro_curriculo_cohesion` em `20261217000000_horario_curriculo_audit_guardrails.sql`.
+
 **Risco de coesão**
 - Mitigado com trigger de coerência curricular no insert/update do quadro.
 
@@ -119,6 +128,9 @@ O domínio de horários melhorou com `quadro_horarios` + `horario_slots`, mas ai
 ## GAP-08 — Falta de trilha de auditoria explícita para operações de horários
 **Diagnóstico atual**
 - Auditoria adicionada com eventos de draft/publish registrados em tabela própria.
+
+**Evidência**
+- Tabela `horario_eventos` + função `log_horario_event` em `20261217000000_horario_curriculo_audit_guardrails.sql`.
 
 **Risco de coesão**
 - Mitigado com tabela `horario_eventos` e payload com hash do quadro.
@@ -137,3 +149,4 @@ O domínio de horários melhorou com `quadro_horarios` + `horario_slots`, mas ai
 - **GAP-01/02/03 mitigados** com SSOT, versionamento e atomicidade.
 - **GAP-04/05/06 mitigados** com guardrails temporais, disponibilidade de professor e próxima aula por slots.
 - **GAP-07/08 mitigados** com coerência curricular e trilha de auditoria.
+- **UI alinhada** com alertas de conflitos e slots inválidos.
