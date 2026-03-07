@@ -68,7 +68,7 @@ Data: 2026-03-06
 1) Atualizar links internos restantes para usar slug (reduz redirects). ✅
 2) Expor `slug` em views/consultas administrativas quando necessário.
 3) Após estabilização, trocar redirect 302 → 301. ✅
-4) Auditoria final em rotas externas (emails, notificações, boletos, relatórios).
+4) Auditoria final em rotas externas (emails, notificações, boletos, relatórios). ✅
 
 ## Diff resumido
 - `supabase/migrations/20260328000000_escolas_slug.sql`

@@ -72,7 +72,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
     if (action === 'resend_instructions') {
       const { data: ass } = await s
         .from('assinaturas')
-        .select('*, escolas:escola_id(nome, escola_users(email, role, papel_escola))')
+        .select('*, escolas:escola_id(nome, slug, escola_users(email, role, papel_escola))')
         .eq('id', id)
         .single();
 
@@ -81,6 +81,10 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
       const admin = (ass.escolas as any)?.escola_users?.find((u: any) => u.role === 'admin' || u.papel_escola === 'admin_escola');
       if (!admin?.email) return NextResponse.json({ ok: false, error: 'Email do director não encontrado' }, { status: 400 });
 
+      const escolaSlug = (ass.escolas as any)?.slug as string | undefined;
+      const escolaParam = escolaSlug ? String(escolaSlug) : ass.escola_id;
+
+      const baseUrl = (process.env.NEXT_PUBLIC_BASE_URL || "https://klasse.ao").replace(/\/$/, "");
       const { subject, html, text } = await buildBillingRenewalEmail({
         escolaNome: (ass.escolas as any)?.nome || 'Director(a)',
         plano: PLAN_NAMES[ass.plano as PlanTier] || ass.plano,
@@ -88,7 +92,7 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
         dataRenovacao: new Date(ass.data_renovacao).toLocaleDateString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric' }),
         diasRestantes: 30, // Placeholder para instrução inicial
         referencia: `KLASSE-${ass.escola_id.slice(0, 4)}-${ass.id.slice(0, 4)}`.toUpperCase(),
-        linkPagamento: `https://moxi-edtech.vercel.app/escola/${ass.escola_id}/admin/configuracoes/assinatura`
+        linkPagamento: `${baseUrl}/escola/${escolaParam}/admin/configuracoes/assinatura`
       });
 
       await sendMail({ to: admin.email, subject, html, text });
