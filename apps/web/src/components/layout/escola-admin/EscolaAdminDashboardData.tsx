@@ -69,6 +69,7 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
   };
 
   const emptyKpis: KpiStats = { alunos: 0, turmas: 0, professores: 0, avaliacoes: 0 };
+  let financeiroHref = `/escola/${escolaId}/financeiro`;
 
   try {
     const todayKey = new Date().toISOString().slice(0, 10);
@@ -236,7 +237,7 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
     // ─── Derived values ───────────────────────────────────────────────────
     const anoLetivo        = deriveAnoLetivo(anoLetivoResult.data?.ano ?? undefined);
     const escolaParam = escolaNomeResult.data?.slug ? String(escolaNomeResult.data.slug) : escolaId;
-    const financeiroHref = `/escola/${escolaParam}/financeiro`;
+    financeiroHref = `/escola/${escolaParam}/financeiro`;
     const pendingTurmasCount = pendingTurmasResult.data?.pendentes_total ?? 0;
     const missingPricingCount = Number(missingPricingResult.data?.[0]?.missing_count ?? 0);
     const charts           = (dashboardChartsRes as any)?.charts as DashboardCharts | undefined;

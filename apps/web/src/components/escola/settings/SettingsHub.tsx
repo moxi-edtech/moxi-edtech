@@ -84,13 +84,13 @@ const HorariosPanel = ({ escolaId }: { escolaId: string }) => (
     <p className="text-sm text-slate-500">Configure os tempos de aula e monte o quadro automático.</p>
     <div className="grid gap-3 sm:grid-cols-2">
       <Link
-        href={`/escola/${escolaParam}/horarios/slots`}
+        href={`/escola/${escolaId}/horarios/slots`}
         className="rounded-xl border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
       >
         Configurar Slots
       </Link>
       <Link
-        href={`/escola/${escolaParam}/horarios/quadro`}
+        href={`/escola/${escolaId}/horarios/quadro`}
         className="rounded-xl border border-slate-200 bg-white p-4 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
       >
         Abrir Quadro

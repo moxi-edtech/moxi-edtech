@@ -1274,6 +1274,7 @@ function Step3Pagamento(props: {
   candidaturaId: string | null;
   turmaId: string | null;
   escolaId: string;
+  escolaParam: string;
   cursoId: string | null;
   classeId: string | null;
   anoLetivo?: number | null;
@@ -1290,6 +1291,7 @@ function Step3Pagamento(props: {
     candidaturaId,
     turmaId,
     escolaId,
+    escolaParam,
     cursoId,
     classeId,
     anoLetivo,
@@ -1964,6 +1966,7 @@ export default function AdmissaoWizardClient({ escolaId }: { escolaId: string })
             candidaturaId={candidaturaId}
             turmaId={turmaId}
             escolaId={escolaId}
+            escolaParam={escolaParam}
             cursoId={cursoId}
             classeId={classeId}
             anoLetivo={initialData?.ano_letivo ?? null}
