@@ -5,20 +5,23 @@ import { useParams } from "next/navigation";
 import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
 import { buildConfigMenuItems } from "../_shared/menuItems";
 import { useToast } from "@/components/feedback/FeedbackSystem";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 export default function AvancadoConfiguracoesPage() {
   const params = useParams() as { id?: string };
   const escolaId = params?.id;
-  const base = escolaId ? `/escola/${escolaId}/admin/configuracoes` : "";
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
+  const base = escolaParam ? `/escola/${escolaParam}/admin/configuracoes` : "";
   const menuItems = buildConfigMenuItems(base);
   const { success, error } = useToast();
 
   const [saving, setSaving] = useState(false);
   const handleSave = async () => {
-    if (!escolaId) return;
+    if (!escolaParam) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/escola/${escolaId}/admin/setup/commit`, {
+      const res = await fetch(`/api/escola/${escolaParam}/admin/setup/commit`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -41,7 +44,7 @@ export default function AvancadoConfiguracoesPage() {
 
   return (
     <ConfigSystemShell
-      escolaId={escolaId ?? ""}
+      escolaId={escolaParam ?? ""}
       title="Avançado · Governança e Auditoria"
       subtitle="Ajustes críticos e políticas de segurança."
       menuItems={menuItems}

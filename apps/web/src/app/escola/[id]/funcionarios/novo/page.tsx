@@ -4,6 +4,7 @@ import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { useEscolaId } from "@/hooks/useEscolaId";
 import {
   ArrowLeftIcon,
   UserPlusIcon,
@@ -18,6 +19,8 @@ export default function NovoFuncionarioPage({ embedded = false }: { embedded?: b
   const router = useRouter();
   const p = useParams() as Record<string, string | string[] | undefined>;
   const escolaId = useMemo(() => (Array.isArray(p.id) ? p.id[0] : (p.id ?? "")), [p.id]);
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
 
   const [form, setForm] = useState({
     nome: "",
@@ -97,7 +100,7 @@ export default function NovoFuncionarioPage({ embedded = false }: { embedded?: b
               <Link
                 key={tab}
                 href={
-                  tab === "funcionarios" ? `/escola/${escolaId}/funcionarios` : `/escola/${escolaId}/funcionarios/novo`
+                  tab === "funcionarios" ? `/escola/${escolaParam}/funcionarios` : `/escola/${escolaParam}/funcionarios/novo`
                 }
                 className={`px-6 py-3 font-medium relative ${
                   tab === "novo" ? "text-klasse-gold" : "text-slate-500 hover:text-slate-900"

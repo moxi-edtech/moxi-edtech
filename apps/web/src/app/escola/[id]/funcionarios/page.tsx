@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { useEscolaId } from "@/hooks/useEscolaId";
 import {
   UserGroupIcon,
   PlusIcon,
@@ -33,6 +34,8 @@ const papelLabels: Record<string, string> = {
 export default function FuncionariosPage({ embedded = false }: { embedded?: boolean } = {}) {
   const p = useParams() as Record<string, string | string[] | undefined>;
   const escolaId = useMemo(() => (Array.isArray(p.id) ? p.id[0] : (p.id ?? "")), [p.id]);
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
   const [search, setSearch] = useState("");
   const [items, setItems] = useState<Funcionario[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,7 +77,7 @@ export default function FuncionariosPage({ embedded = false }: { embedded?: bool
           <h1 className="text-3xl font-bold text-klasse-green">Funcionários</h1>
         </div>
         {!embedded && (
-          <Link href={`/escola/${escolaId}/funcionarios/novo`}>
+          <Link href={`/escola/${escolaParam}/funcionarios/novo`}>
             <Button tone="gold">
               <PlusIcon className="w-5 h-5" />
               Novo Funcionário
@@ -89,7 +92,7 @@ export default function FuncionariosPage({ embedded = false }: { embedded?: bool
             <Link
               key={tab}
               href={
-                tab === "novo" ? `/escola/${escolaId}/funcionarios/novo` : `/escola/${escolaId}/funcionarios`
+                tab === "novo" ? `/escola/${escolaParam}/funcionarios/novo` : `/escola/${escolaParam}/funcionarios`
               }
               className={`px-6 py-3 font-medium relative ${
                 tab === "funcionarios"

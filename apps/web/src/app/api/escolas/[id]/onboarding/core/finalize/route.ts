@@ -28,9 +28,16 @@ export async function POST(
     }
 
     const resolvedEscolaId = await resolveEscolaIdForUser(sserver as any, user.id, escolaId)
-    if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
+    if (!resolvedEscolaId) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 })
     }
+    const escolaIdResolved = resolvedEscolaId
+    const { data: escolaInfo } = await sserver
+      .from('escolas')
+      .select('slug')
+      .eq('id', escolaIdResolved)
+      .maybeSingle()
+    const escolaParam = escolaInfo?.slug ? String(escolaInfo.slug) : escolaIdResolved
 
     // 2) Authorization: must have configurar_escola permission linked to this escola
     let authorized = false
@@ -39,7 +46,7 @@ export async function POST(
       const { data: vinc } = await sserver
         .from("escola_users")
         .select("papel")
-        .eq("escola_id", escolaId)
+        .eq("escola_id", escolaIdResolved)
         .eq("user_id", user.id)
         .limit(1)
 
@@ -47,7 +54,7 @@ export async function POST(
         const papel = (vinc[0] as any).papel as any
         if (hasPermission(papel, 'configurar_escola')) {
           authorized = true
-          nextPath = `/escola/${escolaId}/admin/dashboard`
+          nextPath = `/escola/${escolaParam}/admin/dashboard`
         }
       }
     } catch (_) {
@@ -60,12 +67,12 @@ export async function POST(
         const { data: adminLink } = await sserver
           .from("escola_administradores")
           .select("user_id")
-          .eq("escola_id", escolaId)
+          .eq("escola_id", escolaIdResolved)
           .eq("user_id", user.id)
           .limit(1)
 
         authorized = Boolean(adminLink && adminLink.length > 0)
-        if (authorized) nextPath = `/escola/${escolaId}/admin/dashboard`
+        if (authorized) nextPath = `/escola/${escolaParam}/admin/dashboard`
       } catch (_) {
         // ignore and keep authorized as false
       }
@@ -78,11 +85,11 @@ export async function POST(
           .from("profiles")
           .select("user_id, role, escola_id")
           .eq("user_id", user.id)
-          .eq("escola_id", escolaId)
+          .eq("escola_id", escolaIdResolved)
           .limit(1)
 
         authorized = Boolean(prof && prof.length > 0 && (prof[0] as any).role === 'admin')
-        if (authorized) nextPath = `/escola/${escolaId}/admin/dashboard`
+        if (authorized) nextPath = `/escola/${escolaParam}/admin/dashboard`
       } catch (_) {
         // keep false
       }
@@ -94,7 +101,7 @@ export async function POST(
         const { data: escolaView } = await sserver
           .from("escolas")
           .select("id")
-          .eq("id", escolaId)
+          .eq("id", escolaIdResolved)
           .limit(1)
         authorized = Boolean(escolaView && escolaView.length > 0)
       } catch (_) {
@@ -153,7 +160,7 @@ export async function POST(
     } = payload;
 
     // 3) Bloqueia onboarding para escolas suspensas/excluídas
-    const { data: esc } = await sserver.from('escolas').select('status').eq('id', escolaId).limit(1)
+    const { data: esc } = await sserver.from('escolas').select('status').eq('id', escolaIdResolved).limit(1)
     const status = (esc?.[0] as any)?.status as string | undefined
     if (status === 'excluida') return NextResponse.json({ ok: false, error: 'Escola excluída não permite finalizar onboarding.' }, { status: 400 })
     if (status === 'suspensa') return NextResponse.json({ ok: false, error: 'Escola suspensa por pagamento. Regularize para finalizar onboarding.' }, { status: 400 })
@@ -169,7 +176,7 @@ export async function POST(
     }
 
     const updateEscolaWithFallback = async (patch: any) => {
-      const { data, error } = await sserver.from('escolas').update(patch).eq('id', escolaId)
+      const { data, error } = await sserver.from('escolas').update(patch).eq('id', escolaIdResolved)
       if (error && Object.prototype.hasOwnProperty.call(patch, 'needs_academic_setup')) {
         const msg = error.message || ''
         if (
@@ -179,7 +186,7 @@ export async function POST(
         ) {
           const clone: any = { ...patch }
           delete clone.needs_academic_setup
-          const { error: err2 } = await sserver.from('escolas').update(clone).eq('id', escolaId)
+          const { error: err2 } = await sserver.from('escolas').update(clone).eq('id', escolaIdResolved)
           return { error: err2 }
         }
       }
@@ -227,14 +234,14 @@ export async function POST(
         const { data: existing } = await (sserver as any)
           .from('cursos')
           .select('nome')
-          .eq('escola_id', escolaId)
+          .eq('escola_id', escolaIdResolved)
           .in('nome', list)
 
         const existingNames = new Set<string>((existing || []).map((r: any) => r.nome as string))
         const toCreate = list.filter((nome) => !existingNames.has(nome))
 
         if (toCreate.length) {
-          const cursoRows = toCreate.map((nome) => ({ nome, escola_id: escolaId })) as any[]
+          const cursoRows = toCreate.map((nome) => ({ nome, escola_id: escolaIdResolved })) as any[]
           const { error: subjectsError } = await (sserver as any).from('cursos').insert(cursoRows)
           if (subjectsError) {
             return NextResponse.json({ ok: true, warning: subjectsError.message })
@@ -282,8 +289,8 @@ export async function POST(
           email: inv.email,
           nome: inv.nome ?? inv.papel,
           role: roleEnum as any,
-          escola_id: escolaId,
-          current_escola_id: escolaId,
+          escola_id: escolaIdResolved,
+          current_escola_id: escolaIdResolved,
         }
         if (numeroLogin) {
           profilePayload.numero_login = numeroLogin
@@ -299,7 +306,7 @@ export async function POST(
         // Link papel
         try {
           await sserver.from('escola_users').upsert(
-            { escola_id: escolaId, user_id: userId, papel: inv.papel } as any,
+            { escola_id: escolaIdResolved, user_id: userId, papel: inv.papel } as any,
             { onConflict: 'escola_id,user_id' }
           )
         } catch {}
@@ -307,7 +314,7 @@ export async function POST(
         // Audit
         try {
           recordAuditServer({
-            escolaId,
+            escolaId: escolaIdResolved,
             portal: 'admin_escola',
             acao: 'USUARIO_CONVIDADO',
             entity: 'usuario',
@@ -324,7 +331,7 @@ export async function POST(
 
         // Envia email de credenciais (inclui numero_login só se já existir)
         try {
-          const { data: esc2 } = await sserver.from('escolas' as any).select('nome').eq('id', escolaId).maybeSingle()
+          const { data: esc2 } = await sserver.from('escolas' as any).select('nome').eq('id', escolaIdResolved).maybeSingle()
           const escolaNome = (esc2 as any)?.nome ?? null
           const loginUrl = process.env.NEXT_PUBLIC_BASE_URL ? `${process.env.NEXT_PUBLIC_BASE_URL}/login` : null
           const mail = buildCredentialsEmail({
@@ -346,11 +353,11 @@ export async function POST(
     }
 
     recordAuditServer({
-      escolaId,
+      escolaId: escolaIdResolved,
       portal: 'admin_escola',
       acao: 'ONBOARDING_FINALIZADO',
       entity: 'escolas',
-      entityId: escolaId,
+      entityId: escolaIdResolved,
       details: {
         tipo: tipo ?? 'geral',
         sessionId: sessionId ?? null,
@@ -360,7 +367,7 @@ export async function POST(
 
     return NextResponse.json({
       ok: true,
-      nextPath: nextPath ?? `/escola/${escolaId}/admin/dashboard`,
+      nextPath: nextPath ?? `/escola/${escolaParam}/admin/dashboard`,
       invites: inviteResult,
     })
   } catch (err) {

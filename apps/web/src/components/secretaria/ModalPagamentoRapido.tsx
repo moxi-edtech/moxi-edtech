@@ -11,6 +11,7 @@ import { usePlanFeature } from "@/hooks/usePlanFeature";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { FluxoPosAccao, ConfirmacaoContextual, Passo } from "@/components/harmonia";
 import { useRouter } from "next/navigation";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 // ─── Tokens ──────────────────────────────────────────────────────────────────
 // Fonte de verdade: nunca usar cores avulsas fora deste mapa.
@@ -364,6 +365,8 @@ function EstadoConcluido({
   onClose: () => void;
 }) {
   const router = useRouter();
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
   return (
     <div className="py-2 space-y-6">
       <ConfirmacaoContextual
@@ -384,10 +387,10 @@ function EstadoConcluido({
           mes: mesAno,
         }}
         onEscolher={(passo: Passo) => {
-          if (passo.id === "emitir_recibo") {
-            router.push(`/escola/${escolaId}/financeiro/pagamentos`);
-          } else if (passo.id === "ver_atrasos") {
-            router.push(`/escola/${escolaId}/financeiro/radar`);
+          if (passo.id === "emitir_recibo" && escolaParam) {
+            router.push(`/escola/${escolaParam}/financeiro/pagamentos`);
+          } else if (passo.id === "ver_atrasos" && escolaParam) {
+            router.push(`/escola/${escolaParam}/financeiro/radar`);
           } else if (passo.id === "novo_pagamento") {
             onClose();
           }

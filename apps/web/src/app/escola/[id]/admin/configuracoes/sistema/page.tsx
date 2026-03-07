@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
 import { buildConfigMenuItems } from "../_shared/menuItems";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 // --- TYPES ---
 type SetupState = {
@@ -45,7 +46,9 @@ type ImpactData = {
 export default function SistemaConfiguracoesPage() {
   const params = useParams() as { id?: string };
   const escolaId = params?.id;
-  const base = escolaId ? `/escola/${escolaId}/admin/configuracoes` : "";
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
+  const base = escolaParam ? `/escola/${escolaParam}/admin/configuracoes` : "";
 
   // --- MENU CONFIG ---
   const modules = useMemo(() => [
@@ -100,11 +103,11 @@ export default function SistemaConfiguracoesPage() {
 
   // --- FETCH ---
   useEffect(() => {
-    if (!escolaId) return;
+    if (!escolaParam) return;
     const load = async () => {
       try {
         // Fetch Setup State
-        const stateRes = await fetch(`/api/escola/${escolaId}/admin/setup/state`, { cache: "no-store" });
+        const stateRes = await fetch(`/api/escola/${escolaParam}/admin/setup/state`, { cache: "no-store" });
         const stateJson = await stateRes.json().catch(() => null);
         
         if (stateRes.ok && stateJson?.data) {
@@ -117,7 +120,7 @@ export default function SistemaConfiguracoesPage() {
         }
 
         // Fetch Impacto
-        const impactRes = await fetch(`/api/escola/${escolaId}/admin/setup/impact`, {
+        const impactRes = await fetch(`/api/escola/${escolaParam}/admin/setup/impact`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({}),
@@ -130,13 +133,13 @@ export default function SistemaConfiguracoesPage() {
       }
     };
     load();
-  }, [escolaId, modules.length]);
+  }, [escolaParam, modules.length]);
 
   const blockersList = setupState?.blockers?.map((b) => `${b.severity === 'critical' ? '🔴' : '⚠️'} ${b.title}`) ?? [];
 
   return (
     <ConfigSystemShell
-      escolaId={escolaId ?? ""}
+      escolaId={escolaParam ?? ""}
       title="Configurações do Sistema"
       subtitle="Painel de Controle do Ano Letivo."
       menuItems={buildConfigMenuItems(base)}

@@ -18,5 +18,12 @@ export default async function BalcaoPage() {
     return notFound(); // Ou exibir erro de escola
   }
 
-  return redirect(`/escola/${escolaId}/secretaria`);
+  const { data: escolaInfo } = await supabase
+    .from("escolas")
+    .select("slug")
+    .eq("id", escolaId)
+    .maybeSingle();
+  const escolaParam = escolaInfo?.slug ? String(escolaInfo.slug) : escolaId;
+
+  return redirect(`/escola/${escolaParam}/secretaria`);
 }

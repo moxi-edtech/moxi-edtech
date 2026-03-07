@@ -5,6 +5,7 @@ import { BookOpen, CalendarCheck, Users, ChevronRight } from "lucide-react";
 import { DossierAcoes, type DossierRole } from "@/components/aluno/DossierAcoes";
 import { formatDate } from "@/lib/formatters";
 import type { AlunoNormalizado } from "@/lib/aluno/types";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 export function DossierHeader({
   aluno,
@@ -16,6 +17,8 @@ export function DossierHeader({
   escolaId: string;
 }) {
   const { perfil, matricula_atual } = aluno;
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
 
   const status = (perfil.status ?? "pendente").toLowerCase();
   const statusLabel = status.replace(/_/g, " ");
@@ -66,7 +69,7 @@ export function DossierHeader({
         <nav className="flex items-center gap-1 rounded-xl bg-slate-50/70 px-3 py-2 text-xs text-slate-400">
           {role === "admin" ? (
             <Link
-              href={`/escola/${escolaId}/admin/alunos`}
+              href={`/escola/${escolaParam}/admin/alunos`}
               className="hover:text-slate-600 transition-colors"
             >
               Admin

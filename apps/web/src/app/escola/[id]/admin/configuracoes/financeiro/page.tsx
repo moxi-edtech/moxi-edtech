@@ -13,6 +13,7 @@ import {
 import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
 import { buildConfigMenuItems } from "../_shared/menuItems";
 import { useToast } from "@/components/feedback/FeedbackSystem";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 // --- TYPES ---
 type FinanceiroConfig = {
@@ -35,7 +36,9 @@ const DEFAULT_CONFIG: FinanceiroConfig = {
 export default function FinanceiroConfiguracoesPage() {
   const params = useParams() as { id?: string };
   const escolaId = params?.id;
-  const base = escolaId ? `/escola/${escolaId}/admin/configuracoes` : "";
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
+  const base = escolaParam ? `/escola/${escolaParam}/admin/configuracoes` : "";
   const { toast, dismiss, success, error } = useToast();
   
   const menuItems = buildConfigMenuItems(base);
@@ -49,9 +52,9 @@ export default function FinanceiroConfiguracoesPage() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      if (!escolaId) return;
+      if (!escolaParam) return;
       try {
-        const res = await fetch(`/api/escola/${escolaId}/admin/configuracoes/financeiro`, {
+        const res = await fetch(`/api/escola/${escolaParam}/admin/configuracoes/financeiro`, {
           cache: "no-store",
         });
         const json = await res.json().catch(() => null);
@@ -76,14 +79,14 @@ export default function FinanceiroConfiguracoesPage() {
     }
     load();
     return () => { cancelled = true; };
-  }, [escolaId]);
+  }, [escolaParam]);
 
   // --- HANDLERS ---
   const handleSave = async () => {
-    if (!escolaId) return;
+    if (!escolaParam) return;
     setSaving(true);
     
-    const promise = fetch(`/api/escola/${escolaId}/admin/configuracoes/financeiro`, {
+    const promise = fetch(`/api/escola/${escolaParam}/admin/configuracoes/financeiro`, {
       method: "POST", // Ou PUT/PATCH dependendo da sua API
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(config),
@@ -97,7 +100,7 @@ export default function FinanceiroConfiguracoesPage() {
       }
       
       // Commit do setup step
-      const commitRes = await fetch(`/api/escola/${escolaId}/admin/setup/commit`, {
+      const commitRes = await fetch(`/api/escola/${escolaParam}/admin/setup/commit`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -128,7 +131,7 @@ export default function FinanceiroConfiguracoesPage() {
 
   return (
     <ConfigSystemShell
-      escolaId={escolaId ?? ""}
+      escolaId={escolaParam ?? ""}
       title="Financeiro · Políticas de Cobrança"
       subtitle="Defina as regras globais de pagamentos, multas e restrições."
       menuItems={menuItems}

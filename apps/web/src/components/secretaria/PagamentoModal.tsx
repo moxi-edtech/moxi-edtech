@@ -43,8 +43,9 @@ export function PagamentoModal({
   const [feedback, setFeedback] = useState<{ status: "success" | "error"; message: string } | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const { success, error } = useToast();
-  const { escolaId } = useEscolaId();
+  const { escolaId, escolaSlug } = useEscolaId();
   const router = useRouter();
+  const escolaParam = escolaSlug || escolaId;
 
   const needsRef = useMemo(() => method === "tpa", [method]);
   const needsEvidence = useMemo(() => method === "transfer", [method]);
@@ -165,10 +166,10 @@ export function PagamentoModal({
                   mes: new Date().toLocaleDateString("pt-PT", { month: "long", year: "numeric" }),
                 }}
                 onEscolher={(passo: Passo) => {
-                  if (passo.id === "emitir_recibo") {
-                    router.push(`/escola/${escolaId}/financeiro/pagamentos`);
-                  } else if (passo.id === "ver_atrasos") {
-                    router.push(`/escola/${escolaId}/financeiro/radar`);
+                  if (passo.id === "emitir_recibo" && escolaParam) {
+                    router.push(`/escola/${escolaParam}/financeiro/pagamentos`);
+                  } else if (passo.id === "ver_atrasos" && escolaParam) {
+                    router.push(`/escola/${escolaParam}/financeiro/radar`);
                   } else if (passo.id === "novo_pagamento") {
                     handleClose();
                   }

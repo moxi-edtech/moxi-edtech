@@ -12,6 +12,7 @@ import QuickActionsSection from "./QuickActionsSection";
 import ChartsSection   from "./ChartsSection";
 import { RadarOperacional, type OperationalAlert } from "@/components/feedback/FeedbackSystem";
 import { EstadoVazio } from "@/components/harmonia";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 import type {
   KpiStats,
@@ -169,7 +170,9 @@ export default function EscolaAdminDashboardContent({
   pagamentosRecentes = [],
   receitaResumo,
 }: Props) {
-  const financeBase = financeiroHref ?? `/escola/${escolaId}/financeiro`;
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
+  const financeBase = financeiroHref ?? `/escola/${escolaParam}/financeiro`;
   const [progress, setProgress] = useState(0);
 
   const horaAtual = new Date().getHours();
@@ -211,7 +214,7 @@ export default function EscolaAdminDashboardContent({
       titulo: `${pendingTurmasCount} turma${pendingTurmasCount > 1 ? "s" : ""} pendente${pendingTurmasCount > 1 ? "s" : ""} de validação`,
       descricao: "Revise turmas para liberar matrículas e financeiro.",
       count: pendingTurmasCount,
-      link: `/escola/${escolaId}/admin/turmas?status=pendente`,
+      link: `/escola/${escolaParam}/admin/turmas?status=pendente`,
       link_label: "Ver turmas",
     });
   }
@@ -223,7 +226,7 @@ export default function EscolaAdminDashboardContent({
       titulo: "Horários incompletos",
       descricao: "Ajuste a carga horária para liberar o quadro automático.",
       count: curriculoPendencias?.horario ?? 0,
-      link: `/escola/${escolaId}/admin/configuracoes/academico-completo`,
+      link: `/escola/${escolaParam}/admin/configuracoes/academico-completo`,
       link_label: "Ajustar currículo",
     });
   }
@@ -235,7 +238,7 @@ export default function EscolaAdminDashboardContent({
       titulo: "Avaliação incompleta",
       descricao: "Configure avaliação para liberar lançamento de notas.",
       count: curriculoPendencias?.avaliacao ?? 0,
-      link: `/escola/${escolaId}/admin/configuracoes/academico-completo`,
+      link: `/escola/${escolaParam}/admin/configuracoes/academico-completo`,
       link_label: "Configurar avaliação",
     });
   }
@@ -247,7 +250,7 @@ export default function EscolaAdminDashboardContent({
       titulo: "Tabelas de preço pendentes",
       descricao: "Defina preços para liberar cobranças automáticas.",
       count: missingPricingCount,
-      link: `/escola/${escolaId}/admin/configuracoes/financeiro`,
+      link: `/escola/${escolaParam}/admin/configuracoes/financeiro`,
       link_label: "Configurar preços",
     });
   }
@@ -327,7 +330,7 @@ export default function EscolaAdminDashboardContent({
           {typeof pendingTurmasCount === "number" && pendingTurmasCount > 0 && (
             <AlertBanner
               tone="orange"
-              href={`/escola/${escolaId}/admin/turmas?status=pendente`}
+              href={`/escola/${escolaParam}/admin/turmas?status=pendente`}
               lines={[{
                 bold: `${pendingTurmasCount} turma${pendingTurmasCount > 1 ? "s" : ""} pendente${pendingTurmasCount > 1 ? "s" : ""} de validação`,
                 sub:  "Revise e aprove as turmas importadas/rascunho.",
@@ -337,7 +340,7 @@ export default function EscolaAdminDashboardContent({
           {curriculoAlerts.length > 0 && (
             <AlertBanner
               tone="amber"
-              href={`/escola/${escolaId}/admin/configuracoes/estrutura?resolvePendencias=1`}
+              href={`/escola/${escolaParam}/admin/configuracoes/estrutura?resolvePendencias=1`}
               lines={curriculoAlerts}
             />
           )}

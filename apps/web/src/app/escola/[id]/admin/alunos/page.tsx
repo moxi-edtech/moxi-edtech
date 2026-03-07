@@ -5,6 +5,7 @@ import React, {
   useCallback, useRef, useMemo,
 } from "react";
 import Link from "next/link";
+import { useEscolaId } from "@/hooks/useEscolaId";
 import {
   Search, UserPlus, Archive, RotateCcw, Trash2, Edit,
   X, AlertTriangle, CheckCircle2, Loader2, Users,
@@ -707,6 +708,8 @@ function RowSkeleton() {
 
 export default function AlunosPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: escolaId } = use(params);
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
 
   // ── Estado principal ────────────────────────────────────────────────────────
   const [tab,          setTab]          = useState<"ativos" | "arquivados">("ativos");
@@ -1360,7 +1363,7 @@ export default function AlunosPage({ params }: { params: Promise<{ id: string }>
                             opacity-0 group-hover:opacity-100 transition-opacity">
                             {tab === "ativos" ? (
                               <>
-                                <Link href={`/escola/${escolaId}/admin/alunos/${aluno.id}`}
+                                <Link href={`/escola/${escolaParam}/admin/alunos/${aluno.id}`}
                                   className="flex items-center gap-1 rounded-lg border border-slate-200
                                     px-2 py-1.5 text-xs font-semibold text-slate-600
                                     hover:border-[#1F6B3B] hover:text-[#1F6B3B] transition-colors"

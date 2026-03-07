@@ -11,6 +11,7 @@ import NovoFuncionarioPage from "@/app/escola/[id]/funcionarios/novo/page";
 import FuncionariosPage from "@/app/escola/[id]/funcionarios/page";
 import ProfessoresPage from "@/app/escola/[id]/professores/page";
 import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -192,6 +193,8 @@ export default function QuickActionsSection({
   escolaId:    string;
   setupStatus: SetupStatus;
 }) {
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
   const { anoLetivoOk, avaliacaoFrequenciaOk, turmasOk } = setupStatus;
   const [modalAction, setModalAction] = useState<QuickAction | null>(null);
 
@@ -202,14 +205,14 @@ export default function QuickActionsSection({
       key: "funcionario",
       label: "Novo Funcionário",
       icon:  UserPlus,
-      href:  `/escola/${escolaId}/admin/funcionarios/novo`,
+      href:  `/escola/${escolaParam}/admin/funcionarios/novo`,
       opensModal: true,
     },
     {
       key: "nota",
       label:    "Lançar Nota",
       icon:     FileText,
-      href:     `/escola/${escolaId}/admin/notas`,
+      href:     `/escola/${escolaParam}/admin/notas`,
       opensModal: true,
       disabled: !canLaunchNota,
       reason:   !avaliacaoFrequenciaOk
@@ -220,14 +223,14 @@ export default function QuickActionsSection({
       key: "aviso",
       label: "Criar Aviso",
       icon:  Megaphone,
-      href:  `/escola/${escolaId}/admin/avisos/novo`,
+      href:  `/escola/${escolaParam}/admin/avisos/novo`,
       opensModal: true,
     },
     {
       key: "evento",
       label: "Agendar Evento",
       icon:  Calendar,
-      href:  `/escola/${escolaId}/admin/calendario/novo`,
+      href:  `/escola/${escolaParam}/admin/calendario/novo`,
       opensModal: true,
     },
   ];
@@ -254,7 +257,7 @@ export default function QuickActionsSection({
       <QuickActionModal
         action={modalAction}
         onClose={() => setModalAction(null)}
-        escolaId={escolaId}
+        escolaId={escolaParam}
         allowProfessor={anoLetivoOk}
       />
     </section>

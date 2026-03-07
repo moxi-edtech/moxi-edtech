@@ -20,8 +20,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     }
 
     // Dados da escola
-    const { data: esc } = await (s as any).from('escolas').select('nome,status').eq('id', escolaId).limit(1)
+    const { data: esc } = await (s as any).from('escolas').select('nome,status,slug').eq('id', escolaId).limit(1)
     const escolaNome = (esc?.[0] as any)?.nome || 'sua escola'
+    const escolaSlug = (esc?.[0] as any)?.slug as string | undefined
+    const escolaParam = escolaSlug ? String(escolaSlug) : escolaId
     const status = (esc?.[0] as any)?.status as string | undefined
     if (status === 'excluida') return NextResponse.json({ ok: false, error: 'Escola excluída não permite cobrança.' }, { status: 400 })
     if (status === 'suspensa') return NextResponse.json({ ok: false, error: 'Escola suspensa por pagamento. Regularize para enviar cobranças.' }, { status: 400 })
@@ -59,8 +61,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     // Links
     const origin = new URL(req.url).origin
-    const boletoUrl = `${origin}/escola/${escolaId}/financeiro/boletos`
-    const dashboardUrl = `${origin}/escola/${escolaId}/financeiro`
+    const boletoUrl = `${origin}/escola/${escolaParam}/financeiro/boletos`
+    const dashboardUrl = `${origin}/escola/${escolaParam}/financeiro`
 
     // Opcional: payload com valor/vencimento (se vier no body)
     let valor: string | null = null

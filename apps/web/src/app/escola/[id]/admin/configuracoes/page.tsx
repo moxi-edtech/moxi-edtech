@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 import AcademicSetupWizard from "@/components/escola/onboarding/AcademicSetupWizard";
 import SettingsHub from "@/components/escola/settings/SettingsHub";
 import SettingsHubSkeleton from "@/components/escola/settings/SettingsHubSkeleton";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 // Definição de Props para Next.js 15
 type Props = {
@@ -17,6 +18,8 @@ export default function ConfiguracoesPage({ params }: Props) {
   // 1. Desembrulha os params (Obrigatório no Next.js 15)
   const resolvedParams = use(params);
   const escolaId = resolvedParams.id;
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
 
   const [loading, setLoading] = useState(true);
   const [forceWizard, setForceWizard] = useState(false);
@@ -39,7 +42,7 @@ export default function ConfiguracoesPage({ params }: Props) {
       }
       try {
         // --- Existing checkStatus logic for pageSetupStatus ---
-        const pageRes = await fetch(`/api/escola/${escolaId}/admin/setup/status`, {
+        const pageRes = await fetch(`/api/escola/${escolaParam}/admin/setup/status`, {
           cache: "no-store",
         });
         const pageJson = await pageRes.json().catch(() => null);
@@ -67,7 +70,7 @@ export default function ConfiguracoesPage({ params }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [escolaId]);
+  }, [escolaParam]);
 
   // 3. Estado de Carregamento
   if (loading) {
@@ -100,7 +103,7 @@ export default function ConfiguracoesPage({ params }: Props) {
         )}
         
         <AcademicSetupWizard 
-          escolaId={escolaId} 
+          escolaId={escolaParam} 
           onComplete={() => {
             setForceWizard(false);
           }}
@@ -158,7 +161,7 @@ export default function ConfiguracoesPage({ params }: Props) {
         )}
       </div>
       <SettingsHub 
-        escolaId={escolaId} 
+        escolaId={escolaParam} 
         onOpenWizard={() => setForceWizard(true)} 
       />
     </div>

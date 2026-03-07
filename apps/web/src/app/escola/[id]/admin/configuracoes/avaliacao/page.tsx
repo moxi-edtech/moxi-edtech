@@ -17,6 +17,7 @@ import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
 import { buildConfigMenuItems } from "../_shared/menuItems";
 import AcademicStep2Config from "@/components/escola/onboarding/AcademicStep2Config";
 import { Skeleton, useToast } from "@/components/feedback/FeedbackSystem";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 type Componente = { code: string; peso: number; ativo: boolean };
 type AvaliacaoConfigData = { componentes: Componente[] };
@@ -41,7 +42,9 @@ const cloneConfig = (config?: { componentes?: ReadonlyArray<Componente> } | Comp
 export default function AvaliacaoUnificadaClient() {
   const params = useParams() as { id?: string };
   const escolaId = params?.id;
-  const base = escolaId ? `/escola/${escolaId}/admin/configuracoes` : "";
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
+  const base = escolaParam ? `/escola/${escolaParam}/admin/configuracoes` : "";
   const { toast, dismiss, success, error } = useToast();
 
   // --- ESTADOS ---
@@ -68,10 +71,10 @@ export default function AvaliacaoUnificadaClient() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      if (!escolaId) return;
+      if (!escolaParam) return;
       try {
         const [configRes, modelosRes] = await Promise.all([
-          fetch(`/api/escola/${escolaId}/admin/configuracoes/avaliacao-frequencia`, { cache: "no-store" }),
+          fetch(`/api/escola/${escolaParam}/admin/configuracoes/avaliacao-frequencia`, { cache: "no-store" }),
           fetch(`/api/escolas/${escolaId}/modelos-avaliacao?limit=50`, { cache: "no-store" }),
         ]);
         const json = await configRes.json().catch(() => null);
@@ -110,7 +113,7 @@ export default function AvaliacaoUnificadaClient() {
     }
     load();
     return () => { cancelled = true; };
-  }, [escolaId]);
+  }, [escolaId, escolaParam]);
 
   // --- HANDLERS ---
   const handleModeloChange = (novoModelo: string) => {
@@ -122,13 +125,13 @@ export default function AvaliacaoUnificadaClient() {
   };
 
   const handleSave = async () => {
-    if (!escolaId) {
+    if (!escolaParam) {
       error("Escola não identificada.");
       return;
     }
     setSaving(true);
     const tid = toast({ variant: "syncing", title: "Aplicando regras...", duration: 0 });
-    const promise = fetch(`/api/escola/${escolaId}/admin/configuracoes/avaliacao-frequencia`, {
+    const promise = fetch(`/api/escola/${escolaParam}/admin/configuracoes/avaliacao-frequencia`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

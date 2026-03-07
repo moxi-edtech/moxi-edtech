@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Archive, DollarSign, FileCheck, FileText, KeyRound, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import type { AlunoNormalizado } from "@/lib/aluno/types";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 export type DossierRole = "admin" | "secretaria";
 
@@ -12,6 +13,8 @@ export function DossierAcoes({ role, aluno, escolaId }: { role: DossierRole; alu
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [resetResult, setResetResult] = useState<{ login: string; senha: string } | null>(null);
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
 
   async function run(url: string, body?: unknown) {
     setLoading(true);
@@ -52,7 +55,7 @@ export function DossierAcoes({ role, aluno, escolaId }: { role: DossierRole; alu
     return (
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2 flex-wrap">
-        <Link href={`/escola/${escolaId}/admin/alunos/${aluno.id}/editar`} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-[#1F6B3B] hover:text-[#1F6B3B]"><Pencil size={14} className="inline mr-1" />Editar</Link>
+        <Link href={`/escola/${escolaParam}/admin/alunos/${aluno.id}/editar`} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-[#1F6B3B] hover:text-[#1F6B3B]"><Pencil size={14} className="inline mr-1" />Editar</Link>
         {!isArquivado ? (
           <button disabled={loading} onClick={() => run(`/api/secretaria/alunos/${aluno.id}/delete`, { reason: "Arquivado via Admin" })} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:border-[#E3B23C]/40 hover:text-[#E3B23C]"><Archive size={14} className="inline mr-1" />Arquivar</button>
         ) : (

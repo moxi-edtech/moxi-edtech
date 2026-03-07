@@ -14,6 +14,7 @@ import {
   ArrowRight 
 } from "lucide-react";
 import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 // --- TYPES ---
 type SimulationResult = {
@@ -33,7 +34,9 @@ export default function SandboxConfiguracoesPage() {
   const params = useParams() as { id?: string };
   const router = useRouter();
   const escolaId = params?.id;
-  const base = escolaId ? `/escola/${escolaId}/admin/configuracoes` : "";
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
+  const base = escolaParam ? `/escola/${escolaParam}/admin/configuracoes` : "";
 
   const menuItems = [
     { label: "📅 Calendário", href: `${base}/calendario` },
@@ -66,7 +69,7 @@ export default function SandboxConfiguracoesPage() {
 
     try {
       // Chama a API real de Preview
-      const res = await fetch(`/api/escola/${escolaId}/admin/setup/preview`, {
+      const res = await fetch(`/api/escola/${escolaParam}/admin/setup/preview`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ changes: {} }), // Envia estado atual
@@ -108,16 +111,16 @@ export default function SandboxConfiguracoesPage() {
   };
 
   const handleApplyToProduction = async () => {
-    if (!escolaId) return;
+    if (!escolaParam) return;
     setApplying(true);
     try {
-      await fetch(`/api/escola/${escolaId}/admin/setup/commit`, {
+      await fetch(`/api/escola/${escolaParam}/admin/setup/commit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ changes: { sandbox: true, applied_at: new Date() } }),
       });
       toast.success("Configurações aplicadas com sucesso!");
-      router.push(`/escola/${escolaId}/dashboard`); // Redireciona para o app real
+      router.push(`/escola/${escolaParam}/dashboard`); // Redireciona para o app real
     } catch (error) {
       toast.error("Erro ao aplicar configurações.");
     } finally {
@@ -127,7 +130,7 @@ export default function SandboxConfiguracoesPage() {
 
   return (
     <ConfigSystemShell
-      escolaId={escolaId ?? ""}
+      escolaId={escolaParam ?? ""}
       title="Sandbox · Teste de Impacto"
       subtitle="Simule o comportamento do ano letivo antes de publicar."
       menuItems={menuItems}

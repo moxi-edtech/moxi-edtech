@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Megaphone, ArrowRight, BellOff } from "lucide-react";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 export type Aviso = {
   id: string;
@@ -22,7 +23,9 @@ function formatDateShort(iso: string) {
 }
 
 export default function NoticesSection({ escolaId, notices = [] }: Props) {
-  const hrefAll = escolaId ? `/escola/${escolaId}/admin/avisos` : "#";
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
+  const hrefAll = escolaParam ? `/escola/${escolaParam}/admin/avisos` : "#";
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -63,8 +66,8 @@ export default function NoticesSection({ escolaId, notices = [] }: Props) {
         <ul className="divide-y divide-slate-100">
           {notices.slice(0, 5).map((n) => {
             const date = formatDateShort(n.dataISO);
-            const href = escolaId
-              ? `/escola/${escolaId}/admin/avisos/${n.id}`
+            const href = escolaParam
+              ? `/escola/${escolaParam}/admin/avisos/${n.id}`
               : "#";
 
             return (

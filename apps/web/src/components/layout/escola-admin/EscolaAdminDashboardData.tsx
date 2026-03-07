@@ -40,7 +40,6 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
   const baseUrl      = host ? `${protocol}://${host}` : "";
 
   // Scoped to this escola — fixes the "/financeiro" global fallback bug
-  const financeiroHref = `/escola/${escolaId}/financeiro`;
 
   const fetchJson = async <T,>(path: string, fallback: T): Promise<T> => {
     if (!baseUrl) return fallback;
@@ -146,7 +145,7 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
       missingPricingQuery,
       financeiroKpiQuery,
 
-      s.from("escolas").select("nome").eq("id", escolaId).maybeSingle(),
+      s.from("escolas").select("nome, slug").eq("id", escolaId).maybeSingle(),
 
       fetchJson(`/api/escolas/${escolaId}/admin/dashboard`, { ok: false, charts: null }),
 
@@ -236,6 +235,8 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
 
     // ─── Derived values ───────────────────────────────────────────────────
     const anoLetivo        = deriveAnoLetivo(anoLetivoResult.data?.ano ?? undefined);
+    const escolaParam = escolaNomeResult.data?.slug ? String(escolaNomeResult.data.slug) : escolaId;
+    const financeiroHref = `/escola/${escolaParam}/financeiro`;
     const pendingTurmasCount = pendingTurmasResult.data?.pendentes_total ?? 0;
     const missingPricingCount = Number(missingPricingResult.data?.[0]?.missing_count ?? 0);
     const charts           = (dashboardChartsRes as any)?.charts as DashboardCharts | undefined;

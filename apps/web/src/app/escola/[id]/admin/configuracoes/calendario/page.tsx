@@ -6,6 +6,7 @@ import { ArrowLeft, Save, RefreshCw, Calendar, Lock, AlertTriangle, CheckCircle2
 import { Skeleton } from "@/components/feedback/FeedbackSystem";
 import { format, parseISO } from "date-fns"; // Recomendo usar date-fns se tiver, senão use helpers nativos abaixo
 import { useToast } from "@/components/feedback/FeedbackSystem";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 // --- TYPES ---
 type Periodo = {
@@ -32,7 +33,9 @@ const toInputDate = (isoString?: string | null) => {
 
 export default function CalendarioConfigPage({ params }: Props) {
   const { id: escolaId } = use(params);
-  const base = escolaId ? `/escola/${escolaId}/admin/configuracoes` : "";
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
+  const base = escolaParam ? `/escola/${escolaParam}/admin/configuracoes` : "";
   const { toast, dismiss, success, error, warning } = useToast();
 
   // --- STATE ---
@@ -54,7 +57,7 @@ export default function CalendarioConfigPage({ params }: Props) {
     let cancelled = false;
     async function load() {
       try {
-        const res = await fetch(`/api/escola/${escolaId}/admin/periodos-letivos`, { cache: "no-store" });
+        const res = await fetch(`/api/escola/${escolaParam}/admin/periodos-letivos`, { cache: "no-store" });
         const json = await res.json().catch(() => null);
         
         if (cancelled) return;
@@ -71,9 +74,9 @@ export default function CalendarioConfigPage({ params }: Props) {
         if (!cancelled) setLoading(false);
       }
     }
-    load();
+    if (escolaParam) load();
     return () => { cancelled = true; };
-  }, [escolaId]);
+  }, [escolaParam]);
 
   // --- HANDLERS ---
   const handlePesoChange = (id: string, valor: string) => {
@@ -104,7 +107,7 @@ export default function CalendarioConfigPage({ params }: Props) {
     }
 
     setSaving(true);
-    const promise = fetch(`/api/escola/${escolaId}/admin/periodos-letivos/upsert-bulk`, {
+    const promise = fetch(`/api/escola/${escolaParam}/admin/periodos-letivos/upsert-bulk`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(periodos), // Enviamos o objeto completo atualizado
@@ -112,7 +115,7 @@ export default function CalendarioConfigPage({ params }: Props) {
       if (!res.ok) throw new Error("Falha ao salvar");
       
       // Commit do setup (opcional, dependendo da sua arquitetura)
-      const commitRes = await fetch(`/api/escola/${escolaId}/admin/setup/commit`, {
+      const commitRes = await fetch(`/api/escola/${escolaParam}/admin/setup/commit`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

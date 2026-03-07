@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { Skeleton } from "@/components/feedback/FeedbackSystem";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { Badge } from "@/components/ui/Badge";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 type IdentidadeForm = {
   nome: string;
@@ -48,7 +49,9 @@ type Props = {
 
 export default function IdentidadePage({ params }: Props) {
   const { id: escolaId } = use(params);
-  const base = escolaId ? `/escola/${escolaId}/admin/configuracoes` : "";
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
+  const base = escolaParam ? `/escola/${escolaParam}/admin/configuracoes` : "";
   const { error } = useToast();
 
   const [loading, setLoading] = useState(true);
@@ -83,7 +86,7 @@ export default function IdentidadePage({ params }: Props) {
     let cancelled = false;
     async function load() {
       try {
-        const res = await fetch(`/api/escola/${escolaId}/admin/configuracoes/identidade`, {
+        const res = await fetch(`/api/escola/${escolaParam}/admin/configuracoes/identidade`, {
           cache: "no-store",
         });
         const json = await res.json().catch(() => null);
@@ -113,11 +116,11 @@ export default function IdentidadePage({ params }: Props) {
       }
     }
 
-    if (escolaId) load();
+    if (escolaParam) load();
     return () => {
       cancelled = true;
     };
-  }, [escolaId]);
+  }, [escolaParam]);
 
   const inputClass =
     "w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 outline-none transition-all focus:border-klasse-gold focus:ring-1 focus:ring-klasse-gold placeholder:text-slate-300 bg-slate-50";

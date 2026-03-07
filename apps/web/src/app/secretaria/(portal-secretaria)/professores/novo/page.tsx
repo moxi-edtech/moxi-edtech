@@ -24,5 +24,12 @@ export default async function Page() {
     return redirect("/secretaria");
   }
 
-  return redirect(`/escola/${escolaId}/professores?tab=adicionar`);
+  const { data: escolaInfo } = await s
+    .from("escolas")
+    .select("slug")
+    .eq("id", escolaId)
+    .maybeSingle();
+  const escolaParam = escolaInfo?.slug ? String(escolaInfo.slug) : escolaId;
+
+  return redirect(`/escola/${escolaParam}/professores?tab=adicionar`);
 }

@@ -31,7 +31,7 @@ Data: 2026-03-06
 2) Backfill automático com deduplicação + trigger para novos registros. ✅
 3) Resolver `{slug} → escola_id` no backend. ✅
 4) Ajustar rotas para aceitar `{slug}` e redirecionar `{uuid}` antigo. ✅
-5) Atualizar links internos e emails. ⏳ (parcial: AppShell + redirect secretaria)
+5) Atualizar links internos e emails. ⏳ (parcial: AppShell, redirects secretaria, dashboard/admin config/relatórios)
 6) Considerar subdomínio/wildcard em fase futura. ⏳
 
 ## Implementação (referências)
