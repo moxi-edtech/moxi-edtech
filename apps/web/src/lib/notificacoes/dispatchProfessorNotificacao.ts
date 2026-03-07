@@ -16,6 +16,7 @@ type DispatchParams = {
   key: ProfessorNotificacaoKey;
   params?: {
     turmaNome?: string | null;
+    alunoNome?: string | null;
     actionUrl?: string | null;
   };
   recipientIds?: string[];

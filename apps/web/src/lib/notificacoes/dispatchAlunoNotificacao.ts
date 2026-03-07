@@ -13,6 +13,8 @@ type DispatchParams = {
   params?: {
     alunoNome?: string | null;
     dias?: number;
+    disciplinaNome?: string | null;
+    faltas?: number | null;
     actionUrl?: string | null;
   };
   actorId?: string | null;
@@ -23,6 +25,11 @@ type DispatchParams = {
 const EVENTO_TIPO_MAP: Record<AlunoNotificacaoKey, string> = {
   MATRICULA_CONFIRMADA: "matricula.confirmada",
   DOCUMENTO_EMITIDO: "documento.emitido",
+  NOTA_LANCADA: "nota.lancada",
+  AVALIACAO_MARCADA: "avaliacao.marcada",
+  FALTA_REGISTADA: "frequencia.falta_registada",
+  FALTAS_LIMITE: "frequencia.faltas_limite",
+  NOTA_BAIXA: "nota.abaixo_media",
   RENOVACAO_DISPONIVEL: "matricula.renovacao_disponivel",
   PROPINA_ATRASO: "propina.atraso",
   PROPINA_VENCE_3D: "propina.vence_3d",

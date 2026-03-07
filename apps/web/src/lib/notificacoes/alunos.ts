@@ -3,6 +3,11 @@ import type { Gatilho, Prioridade, TipoNotificacao } from "@/hooks/useNotificaco
 export type AlunoNotificacaoKey =
   | "MATRICULA_CONFIRMADA"
   | "DOCUMENTO_EMITIDO"
+  | "NOTA_LANCADA"
+  | "AVALIACAO_MARCADA"
+  | "FALTA_REGISTADA"
+  | "FALTAS_LIMITE"
+  | "NOTA_BAIXA"
   | "RENOVACAO_DISPONIVEL"
   | "PROPINA_ATRASO"
   | "PROPINA_VENCE_3D";
@@ -21,6 +26,9 @@ export type AlunoNotificacaoPayload = {
 
 type TemplateParams = {
   alunoNome?: string | null;
+  disciplinaNome?: string | null;
+  data?: string | null;
+  faltas?: number | null;
   dias?: number;
   actionUrl?: string | null;
 };
@@ -54,6 +62,58 @@ const ALUNO_NOTIFICACOES: Record<AlunoNotificacaoKey, AlunoNotificacaoTemplate> 
     gatilho: "H",
     tipo: "I",
     agrupamento_chave: () => "documento_emitido",
+  },
+  NOTA_LANCADA: {
+    titulo: ({ disciplinaNome }) => `Nota lançada — ${disciplinaNome ?? "disciplina"}`,
+    corpo: () => "Uma nova nota foi registada.",
+    prioridade: "info",
+    action_label: "Ver notas",
+    action_url: ({ actionUrl }) => actionUrl ?? null,
+    gatilho: "H",
+    tipo: "I",
+    agrupamento_chave: ({ disciplinaNome }) => `nota_lancada_${disciplinaNome ?? "geral"}`,
+  },
+  AVALIACAO_MARCADA: {
+    titulo: ({ disciplinaNome, data }) =>
+      `Avaliação marcada — ${disciplinaNome ?? "disciplina"}${data ? ` (${data})` : ""}`,
+    corpo: () => "Foi marcada uma nova avaliação.",
+    prioridade: "info",
+    action_label: "Ver detalhes",
+    action_url: ({ actionUrl }) => actionUrl ?? null,
+    gatilho: "H",
+    tipo: "I",
+    agrupamento_chave: ({ disciplinaNome }) => `avaliacao_marcada_${disciplinaNome ?? "geral"}`,
+  },
+  FALTA_REGISTADA: {
+    titulo: () => "Falta registada",
+    corpo: () => "Uma falta foi registada.",
+    prioridade: "info",
+    action_label: "Ver histórico",
+    action_url: ({ actionUrl }) => actionUrl ?? null,
+    gatilho: "H",
+    tipo: "I",
+    agrupamento_chave: () => "falta_registada",
+  },
+  FALTAS_LIMITE: {
+    titulo: ({ faltas }) => `Faltas a atingir limite — ${faltas ?? 0} faltas registadas`,
+    corpo: () => "O número de faltas está próximo do limite.",
+    prioridade: "aviso",
+    action_label: "Ver histórico",
+    action_url: ({ actionUrl }) => actionUrl ?? null,
+    gatilho: "S",
+    tipo: "A",
+    modal_id: "faltas_limite",
+    agrupamento_chave: () => "faltas_limite",
+  },
+  NOTA_BAIXA: {
+    titulo: ({ disciplinaNome }) => `Nota abaixo da média — ${disciplinaNome ?? "disciplina"}`,
+    corpo: () => "Uma nota abaixo da média foi registada.",
+    prioridade: "aviso",
+    action_label: "Ver notas",
+    action_url: ({ actionUrl }) => actionUrl ?? null,
+    gatilho: "S",
+    tipo: "I",
+    agrupamento_chave: ({ disciplinaNome }) => `nota_baixa_${disciplinaNome ?? "geral"}`,
   },
   RENOVACAO_DISPONIVEL: {
     titulo: () => "Renovação de matrícula disponível",

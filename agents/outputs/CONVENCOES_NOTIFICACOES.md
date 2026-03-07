@@ -93,3 +93,11 @@
 - `modal_id`: identifica o modal de resolução quando `tipo = A`.
 - `agrupamento_chave`: chave de deduplicação/agrupamento.
 - `arquivada`: boolean para histórico/arquivo.
+
+## Implementação (estado actual)
+- Admin → Secretaria: turmas aprovadas, importações concluídas, propinas definidas.
+- Admin → Financeiro: catálogo de preços activado, fecho autorizado.
+- Admin → Professores: currículo publicado, ano lectivo activado, turma atribuída.
+- Secretaria → Professor: matrícula confirmada, transferida, cancelada, reintegrada.
+- Secretaria → Aluno/Encarregado: matrícula confirmada, documentos emitidos, renovação disponível.
+- Sistema → Aluno/Encarregado: alertas de propinas via cron (`/api/cron/financeiro/propinas-alertas`).

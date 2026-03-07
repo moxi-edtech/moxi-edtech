@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { enqueueOutboxEvent, markOutboxEventFailed, markOutboxEventProcessed } from '@/lib/outbox'
+import { dispatchAlunoNotificacao } from '@/lib/notificacoes/dispatchAlunoNotificacao'
 import type { Database } from '~types/supabase'
 
 const Body = z.object({
@@ -150,6 +151,67 @@ export async function POST(req: Request) {
     if (error) {
       console.error('Error calling upsert_frequencias_batch RPC:', error);
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
+    }
+
+    const faltas = body.presencas.filter((p) => p.status === 'falta')
+    if (faltas.length > 0) {
+      const alunoIds = faltas.map((p) => p.aluno_id)
+      await dispatchAlunoNotificacao({
+        escolaId,
+        key: 'FALTA_REGISTADA',
+        alunoIds,
+        params: { actionUrl: '/aluno' },
+        actorId: user.id,
+        actorRole: 'professor',
+        agrupamentoTTLHoras: 12,
+      })
+
+      const { data: matriculas } = await supabase
+        .from('matriculas')
+        .select('id, aluno_id')
+        .eq('escola_id', escolaId)
+        .eq('turma_id', body.turma_id)
+        .in('aluno_id', alunoIds)
+
+      const matriculaByAluno = new Map(
+        (matriculas ?? []).map((row: any) => [row.aluno_id, row.id])
+      )
+      const matriculaIds = Array.from(new Set(matriculas?.map((row: any) => row.id).filter(Boolean) || []))
+
+      if (matriculaIds.length > 0) {
+        const { data: frequenciasRows } = await supabase
+          .from('frequencias')
+          .select('matricula_id, status')
+          .eq('escola_id', escolaId)
+          .in('matricula_id', matriculaIds)
+          .eq('status', 'falta')
+
+        const faltasCount = new Map<string, number>()
+        for (const row of frequenciasRows ?? []) {
+          const id = (row as any).matricula_id as string | null
+          if (!id) continue
+          faltasCount.set(id, (faltasCount.get(id) ?? 0) + 1)
+        }
+
+        const LIMITE_FALTAS_ALERTA = 3
+        const alunosEmLimite = alunoIds.filter((alunoId) => {
+          const matriculaId = matriculaByAluno.get(alunoId)
+          if (!matriculaId) return false
+          return (faltasCount.get(matriculaId) ?? 0) >= LIMITE_FALTAS_ALERTA
+        })
+
+        if (alunosEmLimite.length > 0) {
+          await dispatchAlunoNotificacao({
+            escolaId,
+            key: 'FALTAS_LIMITE',
+            alunoIds: alunosEmLimite,
+            params: { faltas: LIMITE_FALTAS_ALERTA, actionUrl: '/aluno' },
+            actorId: user.id,
+            actorRole: 'professor',
+            agrupamentoTTLHoras: 24,
+          })
+        }
+      }
     }
 
     return NextResponse.json({ ok: true, data });
