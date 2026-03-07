@@ -181,7 +181,7 @@ export async function middleware(request: NextRequest) {
         if (isEscolaUuid(escolaParam) && !isApi && resolved.slug !== escolaParam) {
           const redirectUrl = request.nextUrl.clone();
           redirectUrl.pathname = `/escola/${resolved.slug}${suffix}`;
-          const redirectResponse = NextResponse.redirect(redirectUrl, 302);
+          const redirectResponse = NextResponse.redirect(redirectUrl, 301);
           applyResponseCookies(response, redirectResponse);
           return redirectResponse;
         }

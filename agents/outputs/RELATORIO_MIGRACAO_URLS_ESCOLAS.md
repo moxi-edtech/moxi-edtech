@@ -67,7 +67,7 @@ Data: 2026-03-06
 ## Pendências / próximos passos
 1) Atualizar links internos restantes para usar slug (reduz redirects). ✅
 2) Expor `slug` em views/consultas administrativas quando necessário.
-3) Após estabilização, trocar redirect 302 → 301.
+3) Após estabilização, trocar redirect 302 → 301. ✅
 4) Auditoria final em rotas externas (emails, notificações, boletos, relatórios).
 
 ## Diff resumido
