@@ -76,7 +76,8 @@ function Toast({ toast, onDismiss }: { toast: ToastState; onDismiss: () => void 
 }
 
 export default function DocumentosOficiaisBatchClient() {
-  const { escolaId } = useEscolaId();
+  const { escolaId, escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
   const [turmas, setTurmas] = useState<TurmaItem[]>([]);
   const [periodos, setPeriodos] = useState<PeriodoItem[]>([]);
   const [periodoId, setPeriodoId] = useState<string>("");
@@ -162,15 +163,15 @@ export default function DocumentosOficiaisBatchClient() {
   }, []);
 
   const loadPeriodos = useCallback(async () => {
-    if (!escolaId) return;
-    const res = await fetch(`/api/escola/${escolaId}/admin/periodos-letivos`, { cache: "no-store" });
+    if (!escolaParam) return;
+    const res = await fetch(`/api/escola/${escolaParam}/admin/periodos-letivos`, { cache: "no-store" });
     const json = await res.json().catch(() => null);
     if (res.ok && json?.ok && Array.isArray(json.periodos)) {
       const list = json.periodos.filter((p: any) => p.tipo === "TRIMESTRE");
       setPeriodos(list);
       if (!periodoId && list.length > 0) setPeriodoId(list[0].id);
     }
-  }, [escolaId, periodoId]);
+  }, [escolaParam, periodoId]);
 
   const loadJobs = useCallback(async () => {
     setJobsError(null);

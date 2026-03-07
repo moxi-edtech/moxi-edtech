@@ -58,12 +58,12 @@ function ActionCard({ action, onOpen }: { action: QuickAction; onOpen?: (action:
 function QuickActionModal({
   action,
   onClose,
-  escolaId,
+  escolaParam,
   allowProfessor,
 }: {
   action: QuickAction | null;
   onClose: () => void;
-  escolaId: string;
+  escolaParam: string;
   allowProfessor: boolean;
 }) {
   if (!action) return null;
@@ -84,7 +84,7 @@ function QuickActionModal({
               revisar e exportar notas com todos os filtros.
             </p>
             <Link
-              href={`/escola/${escolaId}/admin/notas`}
+              href={`/escola/${escolaParam}/admin/notas`}
               className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95"
             >
               Abrir notas
@@ -257,7 +257,7 @@ export default function QuickActionsSection({
       <QuickActionModal
         action={modalAction}
         onClose={() => setModalAction(null)}
-        escolaId={escolaParam}
+        escolaParam={escolaParam}
         allowProfessor={anoLetivoOk}
       />
     </section>

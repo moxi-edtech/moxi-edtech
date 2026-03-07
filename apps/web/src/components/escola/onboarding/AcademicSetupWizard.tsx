@@ -13,6 +13,7 @@ import {
   CalendarCheck
 } from "lucide-react";
 import { createClient } from "@/lib/supabaseClient";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 // Componentes Filhos (já refatorados anteriormente)
 import AcademicStep1 from "./AcademicStep1";
@@ -130,6 +131,9 @@ function WizardStepper({ currentStep }: { currentStep: number }) {
 // --- MAIN COMPONENT ---
 export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoolName }: Props) {
   const { toast, dismiss, success, error, warning } = useToast();
+  const { escolaId: escolaUuid, escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
+  const escolaUuidResolved = escolaUuid || escolaId;
   const [step, setStep] = useState(1);
 
   // --- STATES (STEP 1) ---
@@ -196,7 +200,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
     let cancelled = false;
     async function fetchSession() {
       try {
-        const { data: ano } = await supabase.from('anos_letivos').select('*').eq('escola_id', escolaId).eq('ativo', true).order('created_at', { ascending: false }).limit(1).maybeSingle();
+        const { data: ano } = await supabase.from('anos_letivos').select('*').eq('escola_id', escolaUuidResolved).eq('ativo', true).order('created_at', { ascending: false }).limit(1).maybeSingle();
         if (!cancelled && ano) {
           setAnoLetivo(ano.ano);
           setAnoLetivoId(ano.id);
@@ -204,7 +208,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
           setDataFim(ano.data_fim);
           setSessaoAtiva({ id: ano.id, nome: `Ano ${ano.ano}`, ano_letivo: String(ano.ano), data_inicio: ano.data_inicio, data_fim: ano.data_fim, status: ano.ativo ? 'ativa' : 'arquivada' });
           
-          const { data: pDb } = await supabase.from('periodos_letivos').select('*').eq('escola_id', escolaId).eq('ano_letivo_id', ano.id).order('numero');
+          const { data: pDb } = await supabase.from('periodos_letivos').select('*').eq('escola_id', escolaUuidResolved).eq('ano_letivo_id', ano.id).order('numero');
           if (pDb) {
             setPeriodos(pDb.map((p: any) => ({ ...p, nome: `Trimestre ${p.numero}`, sessao_id: ano.id })));
             setPeriodosConfig(pDb.map((p: any) => ({ numero: p.numero, data_inicio: p.data_inicio, data_fim: p.data_fim, trava_notas_em: p.trava_notas_em ? String(p.trava_notas_em).slice(0, 16) : "" })));
@@ -212,15 +216,15 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
         }
       } catch (e) { console.error(e); }
     }
-    if (escolaId) fetchSession();
+    if (escolaUuidResolved) fetchSession();
     return () => { cancelled = true; };
-  }, [escolaId, supabase]);
+  }, [escolaUuidResolved, supabase]);
 
   // Fetch School Name (API)
   useEffect(() => {
     async function fn() {
       try {
-        const res = await fetch(`/api/escolas/${escolaId}/nome`, { cache: "no-store" });
+        const res = await fetch(`/api/escolas/${escolaUuidResolved}/nome`, { cache: "no-store" });
         const j = await res.json();
         const n = j?.nome ?? j?.data?.nome;
         const nif = j?.nif ?? j?.data?.nif;
@@ -231,16 +235,16 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
         if (plano) setSchoolPlan(plano);
       } catch (e) { console.error(e); }
     }
-    if (escolaId) fn();
-  }, [escolaId]);
+    if (escolaUuidResolved) fn();
+  }, [escolaUuidResolved]);
 
   useEffect(() => {
     let active = true;
     async function loadDraft() {
-      if (!escolaId) return;
+      if (!escolaUuidResolved) return;
       if (Object.keys(curriculumOverrides).length > 0) return;
       try {
-        const res = await fetch(`/api/escolas/${escolaId}/onboarding/draft`, { cache: "no-store" });
+        const res = await fetch(`/api/escolas/${escolaUuidResolved}/onboarding/draft`, { cache: "no-store" });
         const json = await res.json().catch(() => null);
         const overrides = json?.draft?.data?.curriculumOverrides;
         if (active && overrides && typeof overrides === "object") {
@@ -254,18 +258,18 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
     return () => {
       active = false;
     };
-  }, [escolaId, curriculumOverrides]);
+  }, [escolaUuidResolved, curriculumOverrides]);
 
   // Fetch Config (Step 2)
   useEffect(() => {
     let active = true;
     async function fn() {
-      if (!escolaId) return;
+      if (!escolaParam) return;
       setLoadingConfig(true);
       try {
         const [configRes, modelosRes] = await Promise.all([
-          fetch(`/api/escola/${escolaId}/admin/configuracoes/avaliacao-frequencia`, { cache: "no-store" }),
-          fetch(`/api/escolas/${escolaId}/modelos-avaliacao?limit=50`, { cache: "no-store" }),
+          fetch(`/api/escola/${escolaParam}/admin/configuracoes/avaliacao-frequencia`, { cache: "no-store" }),
+          fetch(`/api/escolas/${escolaUuidResolved}/modelos-avaliacao?limit=50`, { cache: "no-store" }),
         ]);
         const j = await configRes.json();
         const modelosJson = await modelosRes.json().catch(() => null);
@@ -291,22 +295,22 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
     }
     fn();
     return () => { active = false; };
-  }, [escolaId]);
+  }, [escolaParam, escolaUuidResolved]);
 
   // Fetch Counts
   useEffect(() => {
     let active = true;
     async function fn() {
-      if (!escolaId) return;
+      if (!escolaParam) return;
       try {
-        const r = await fetch(`/api/escola/${escolaId}/admin/setup/status`, { cache: "no-store" });
+        const r = await fetch(`/api/escola/${escolaParam}/admin/setup/status`, { cache: "no-store" });
         const j = await r.json();
         if (active && j?.data?.estrutura_counts) setEstruturaCounts(j.data.estrutura_counts);
       } catch (e) { console.error(e); }
     }
     fn();
     return () => { active = false; };
-  }, [escolaId]);
+  }, [escolaParam]);
 
   // --- HANDLERS ---
   const handleTurnoToggle = (t: keyof TurnosState) => setTurnos(p => ({ ...p, [t]: !p[t] }));
@@ -315,7 +319,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
     setCreatingSession(true);
     const tid = toast({ variant: "syncing", title: "Salvando sessão...", duration: 0 });
     try {
-      const r1 = await fetch(`/api/escola/${escolaId}/admin/ano-letivo/upsert`, {
+      const r1 = await fetch(`/api/escola/${escolaParam}/admin/ano-letivo/upsert`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ano: anoLetivo, data_inicio: dataInicio, data_fim: dataFim, ativo: true })
       });
@@ -329,7 +333,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
         trava_notas_em: p.trava_notas_em ? new Date(p.trava_notas_em).toISOString() : null
       }));
 
-      const r2 = await fetch(`/api/escola/${escolaId}/admin/periodos-letivos/upsert-bulk`, {
+      const r2 = await fetch(`/api/escola/${escolaParam}/admin/periodos-letivos/upsert-bulk`, {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(periods)
       });
       if (!r2.ok) throw new Error("Erro nos períodos");
@@ -351,7 +355,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
   const handleSavePreferences = async () => {
     const tid = toast({ variant: "syncing", title: "Salvando regras...", duration: 0 });
     try {
-      const r = await fetch(`/api/escola/${escolaId}/admin/configuracoes/avaliacao-frequencia`, {
+        const r = await fetch(`/api/escola/${escolaParam}/admin/configuracoes/avaliacao-frequencia`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ frequencia_modelo: frequenciaModelo, frequencia_min_percent: frequenciaMinPercent, modelo_avaliacao: modeloAvaliacao, avaliacao_config: avaliacaoConfig })
       });
@@ -387,7 +391,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
       const { data: schoolRows, error: schoolErr } = await supabase
         .from("school_subjects")
         .select("preset_subject_id, custom_name, custom_weekly_hours, is_active")
-        .eq("escola_id", escolaId)
+        .eq("escola_id", escolaUuidResolved)
         .in("preset_subject_id", presetIds);
       if (schoolErr) throw schoolErr;
       schoolMap = new Map((schoolRows || []).map((row: any) => [row.preset_subject_id, row]));
@@ -427,7 +431,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
       }, {} as any);
 
       const applied: any = {};
-      const cursosList = await fetchAllPaginated<any>(`/api/escolas/${escolaId}/cursos`);
+      const cursosList = await fetchAllPaginated<any>(`/api/escolas/${escolaUuidResolved}/cursos`);
 
       for (const k in grouped) {
         const { cursoNome, rows } = grouped[k];
@@ -472,7 +476,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
           }
         }
 
-        const r = await fetch(`/api/escola/${escolaId}/admin/curriculo/install-preset`, {
+        const r = await fetch(`/api/escola/${escolaParam}/admin/curriculo/install-preset`, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             presetKey: k, ano_letivo_id: anoLetivoId,
@@ -507,7 +511,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
     if (!anoLetivoId) return error("Sem ano letivo.");
     const tid = toast({ variant: "syncing", title: "Gerando turmas...", duration: 0 });
     try {
-      const slotsRes = await fetch(`/api/escolas/${escolaId}/horarios/slots`, { cache: "no-store" });
+      const slotsRes = await fetch(`/api/escolas/${escolaUuidResolved}/horarios/slots`, { cache: "no-store" });
       const slotsJson = await slotsRes.json().catch(() => null);
       const slotsPayload = slotsRes.ok && slotsJson?.ok ? (slotsJson.items || []) : [];
       const selectedTurnos = (Object.keys(turnos) as Array<keyof TurnosState>)
@@ -566,7 +570,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
         );
       }
 
-      const classesDb = await fetchAllPaginated<any>(`/api/escolas/${escolaId}/classes`);
+      const classesDb = await fetchAllPaginated<any>(`/api/escolas/${escolaUuidResolved}/classes`);
       const mapClasses: any = {}; // cursoId -> { nome: id }
       classesDb.forEach((c: any) => {
         if(!mapClasses[c.curso_id]) mapClasses[c.curso_id] = {};
@@ -586,7 +590,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
         const cm = mapClasses[info.cursoId] || {};
         const payload: any[] = [];
 
-        const resPublish = await fetch(`/api/escola/${escolaId}/admin/curriculo/publish`, {
+        const resPublish = await fetch(`/api/escola/${escolaParam}/admin/curriculo/publish`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -611,7 +615,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
         });
 
         if (payload.length) {
-          await fetch(`/api/escola/${escolaId}/admin/turmas/generate`, {
+          await fetch(`/api/escola/${escolaParam}/admin/turmas/generate`, {
             method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ cursoId: info.cursoId, anoLetivo, turmas: payload })
           });
@@ -621,7 +625,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
 
       // Finalizar onboarding no banco de dados
       try {
-        await fetch(`/api/escolas/${escolaId}/onboarding/core/finalize`, {
+        await fetch(`/api/escolas/${escolaUuidResolved}/onboarding/core/finalize`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ tipo: "academico" })
@@ -637,7 +641,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
       // Pequeno delay para o utilizador ver a confirmação contextual (Harmonia UX)
       setTimeout(() => {
         if (onComplete) onComplete();
-        else window.location.href = `/escola/${escolaId}/admin/dashboard`;
+        else window.location.href = `/escola/${escolaParam}/admin/dashboard`;
       }, 2000);
 
     } catch (e: any) {
@@ -714,7 +718,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
 
           {step === 3 && (
             <AcademicStep2
-              escolaId={escolaId}
+              escolaId={escolaUuidResolved}
               presetCategory={presetCategory} onPresetCategoryChange={setPresetCategory}
               matrix={matrix} onMatrixChange={setMatrix} onMatrixUpdate={handleMatrixUpdate}
               turnos={turnos}

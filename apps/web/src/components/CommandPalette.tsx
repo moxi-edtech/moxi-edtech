@@ -42,6 +42,7 @@ function detectIntent(value: string) {
 
 export function CommandPalette({ escolaId, portal }: Props) {
   const router = useRouter();
+  const escolaParam = escolaId ?? null;
   const [isOpen, setIsOpen] = useState(false);
   const { query, setQuery, results, loading } = useGlobalSearch(escolaId, {
     transformQuery: stripIntentKeywords,
@@ -58,8 +59,8 @@ export function CommandPalette({ escolaId, portal }: Props) {
         items.push({
           id: "pagamento-aluno",
           label: `Registrar pagamento para ${primaryResult.label}`,
-          href: escolaId
-            ? `/escola/${escolaId}/financeiro/pagamentos?q=${encodeURIComponent(primaryResult.label)}`
+          href: escolaParam
+            ? `/escola/${escolaParam}/financeiro/pagamentos?q=${encodeURIComponent(primaryResult.label)}`
             : `/financeiro/cobrancas?q=${encodeURIComponent(primaryResult.label)}`,
           hint: "Financeiro",
         });
@@ -67,7 +68,7 @@ export function CommandPalette({ escolaId, portal }: Props) {
         items.push({
           id: "pagamento",
           label: "Abrir pagamentos",
-          href: escolaId ? `/escola/${escolaId}/financeiro/pagamentos` : "/financeiro/cobrancas",
+          href: escolaParam ? `/escola/${escolaParam}/financeiro/pagamentos` : "/financeiro/cobrancas",
           hint: "Financeiro",
         });
       }
@@ -90,7 +91,7 @@ export function CommandPalette({ escolaId, portal }: Props) {
     }
 
     return items;
-  }, [intent, primaryResult, escolaId]);
+  }, [intent, primaryResult, escolaParam]);
 
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {

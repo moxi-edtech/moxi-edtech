@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
 import { Building2, CreditCard, ArrowUpRight, FileText, CheckCircle2, AlertCircle, ShieldCheck } from "lucide-react";
+import { useEscolaId } from "@/hooks/useEscolaId";
 
 interface AssinaturaKlasseClientProps {
   escolaId: string;
@@ -52,6 +53,8 @@ type PlanoLimites = {
 };
 
 export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseClientProps) {
+  const { escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
   const [assinatura, setAssinatura] = useState<Assinatura | null>(null);
   const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
   const [loading, setLoading] = useState(true);
@@ -131,15 +134,15 @@ export default function AssinaturaKlasseClient({ escolaId }: AssinaturaKlasseCli
   };
 
   useEffect(() => {
-    if (escolaId) loadData();
-  }, [escolaId]);
+    if (escolaParam) loadData();
+  }, [escolaParam]);
 
   const handleBillingAction = async (action: "upgrade" | "annual" | "portal", payload?: Record<string, unknown>) => {
     try {
       setActionLoading(action);
       const endpoint = action === "portal"
-        ? `/api/escola/${escolaId}/billing/stripe-portal`
-        : `/api/escola/${escolaId}/billing/upgrade`;
+        ? `/api/escola/${escolaParam}/billing/stripe-portal`
+        : `/api/escola/${escolaParam}/billing/upgrade`;
 
       const response = await fetch(endpoint, {
         method: "POST",

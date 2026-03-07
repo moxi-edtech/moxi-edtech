@@ -38,6 +38,14 @@ Data: 2026-03-06
   - Resolução compatível com slug
 - `apps/web/src/app/escola/[id]/admin/configuracoes/*`
   - Links e requests usam slug quando disponível
+- `apps/web/src/components/escola/settings/*`
+  - SettingsHub + marketplace + currículo agora usam slug em links
+- `apps/web/src/components/escola/onboarding/AcademicSetupWizard.tsx`
+  - APIs `escola` usam slug; `escolas` mantém UUID
+- `apps/web/src/components/secretaria/*`
+  - Fluxos de documentos/pagamentos/turma usam slug em navegação
+- `apps/web/src/components/layout/escola-admin/*`
+  - Dashboard usa slug nos links de avisos/eventos/KPIs/ações
 - `apps/web/src/app/escola/[id]/admin/relatorios/page.tsx`
   - Base path passa a usar slug
 - `apps/web/src/app/escola/[id]/horarios/*`
@@ -57,7 +65,7 @@ Data: 2026-03-06
 - `/api/escola/{slug}/**` (rewrite interno para UUID)
 
 ## Pendências / próximos passos
-1) Atualizar links internos restantes para usar slug (reduz redirects).
+1) Atualizar links internos restantes para usar slug (reduz redirects). ✅
 2) Expor `slug` em views/consultas administrativas quando necessário.
 3) Após estabilização, trocar redirect 302 → 301.
 4) Auditoria final em rotas externas (emails, notificações, boletos, relatórios).

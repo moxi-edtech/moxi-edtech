@@ -69,6 +69,7 @@ export default function DocumentosEmissaoHubClient({
   alunoId?: string | null;
   defaultTipo?: DocumentoTipo | null;
 }) {
+  const escolaParam = escolaId;
   const router = useRouter();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
@@ -173,10 +174,10 @@ export default function DocumentosEmissaoHubClient({
   useEffect(() => {
     let active = true;
     const loadServicos = async () => {
-      if (!escolaId) return;
+      if (!escolaParam) return;
       setLoadingServicos(true);
       try {
-        const res = await fetch(`/api/escola/${escolaId}/admin/servicos`, { cache: "no-store" });
+        const res = await fetch(`/api/escola/${escolaParam}/admin/servicos`, { cache: "no-store" });
         const json = await res.json().catch(() => ({}));
         if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao carregar serviços");
         if (active) {
@@ -193,7 +194,7 @@ export default function DocumentosEmissaoHubClient({
     return () => {
       active = false;
     };
-  }, [escolaId]);
+  }, [escolaParam]);
 
   const normalizedResults = useMemo(() => results.slice(0, 6), [results]);
 

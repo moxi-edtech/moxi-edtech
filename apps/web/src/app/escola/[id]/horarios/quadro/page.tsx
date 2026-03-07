@@ -504,7 +504,7 @@ export default function QuadroHorariosPage() {
     const anoLetivo = selectedTurma.ano_letivo ?? new Date().getFullYear();
     try {
       setGeneratingContraturno(true);
-      const res = await fetch(`/api/escola/${escolaId}/admin/turmas/generate`, {
+      const res = await fetch(`/api/escola/${escolaParam}/admin/turmas/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

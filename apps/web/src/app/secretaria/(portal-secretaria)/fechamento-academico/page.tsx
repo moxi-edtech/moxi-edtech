@@ -81,7 +81,8 @@ export default function FechamentoAcademicoPage() {
   const [anoLetivoOptions, setAnoLetivoOptions] = useState<Array<{ id: string; label: string }>>([]);
   const [periodoOptions, setPeriodoOptions] = useState<Array<{ id: string; label: string }>>([]);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const { escolaId } = useEscolaId();
+  const { escolaId, escolaSlug } = useEscolaId();
+  const escolaParam = escolaSlug || escolaId;
 
   const turmaIdsArray = turmaIds
     .split(",")
@@ -106,7 +107,7 @@ export default function FechamentoAcademicoPage() {
   }, [searchParams, anoLetivoId, periodoLetivoId, turmaIds, prefillDone]);
 
   useEffect(() => {
-    if (autoPrefillDone || !escolaId) return;
+    if (autoPrefillDone || !escolaParam) return;
     if (anoLetivoId && (acao !== "fechar_trimestre" || periodoLetivoId)) {
       setAutoPrefillDone(true);
       return;
@@ -114,7 +115,7 @@ export default function FechamentoAcademicoPage() {
 
     const carregar = async () => {
       try {
-        const res = await fetch(`/api/escola/${escolaId}/admin/periodos-letivos`, { cache: "no-store" });
+        const res = await fetch(`/api/escola/${escolaParam}/admin/periodos-letivos`, { cache: "no-store" });
         const json = (await res.json().catch(() => null)) as PeriodosResponse | null;
         if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao carregar períodos");
 
