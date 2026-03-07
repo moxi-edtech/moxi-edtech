@@ -1,8 +1,229 @@
 {
-  "timestamp": "2026-01-20T01:37:36.160Z",
-  "status": "PASS",
-  "blocking_findings": [],
+  "timestamp": "2026-03-04T12:01:08.043Z",
+  "status": "FAIL",
+  "blocking_findings": [
+    {
+      "id": "NO_STORE",
+      "title": "Anti-pattern — uso de cache: 'no-store' em páginas/relatórios",
+      "severity": "HIGH",
+      "status": "PARTIAL",
+      "evidence": [
+        {
+          "file": "docs/big-tech-performance.md",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "tools/validator/fluency-validator-monorepo.js",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/hooks/useMatriculaLogic.ts",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/lib/auth-admin-job.ts",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/app/ativar-acesso/page.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/app/financeiro/page.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/app/professor/page.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/components/aluno/usePortalSWR.ts",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/components/financeiro/GerarMensalidadesModal.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/components/financeiro/MissingPricingAlert.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/components/secretaria/AdmissaoWizardClient.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/components/secretaria/AlunosSecretariaPage.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/components/secretaria/BalcaoAtendimento.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/components/secretaria/BuscaBalcaoRapido.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/components/secretaria/DocumentosEmissaoHubClient.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/components/secretaria/DocumentosOficiaisBatchClient.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/components/secretaria/FilaAtendimentoModal.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/components/secretaria/ImportacoesListClient.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/components/secretaria/MatriculasListClient.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/components/secretaria/ModalPagamentoRapido.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/components/secretaria/PagamentoModal.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/components/secretaria/PautaRapidaModal.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/components/secretaria/TurmaDetailClient.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/app/financeiro/_components/RadarInadimplenciaActive.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        },
+        {
+          "file": "apps/web/src/app/financeiro/fecho/page.tsx",
+          "note": "match: /cache:\\s*['\\\"]no-store['\\\"]/i"
+        }
+      ],
+      "recommendation": "Remover no-store onde houver MV/camadas cacheáveis; manter só em rotas realmente sensíveis."
+    },
+    {
+      "id": "F09_MV",
+      "title": "F09 — Radar de Inadimplência com MATERIALIZED VIEW",
+      "severity": "HIGH",
+      "status": "PARTIAL",
+      "evidence": [
+        {
+          "file": "supabase/migrations/20260127020139_remote_schema.sql",
+          "note": "match: /CREATE\\s+UNIQUE\\s+INDEX\\s+.*ux_mv_radar_inadimplencia/i"
+        },
+        {
+          "file": "supabase/migrations/20260127020139_remote_schema.sql",
+          "note": "match: /refresh_mv_radar_inadimplencia\\s*\\(/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations/20251120100000_create_financial_module.sql",
+          "note": "match: /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\.vw_radar_inadimplencia/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations/20251123230000_replace_vw_radar_inadimplencia.sql",
+          "note": "match: /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\.vw_radar_inadimplencia/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations/20251124133000_align_financeiro_schema.sql",
+          "note": "match: /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\.vw_radar_inadimplencia/i"
+        }
+      ],
+      "recommendation": "Garantir MV + UNIQUE INDEX + refresh function + cron job + view wrapper."
+    },
+    {
+      "id": "F18_MV",
+      "title": "F18 — Caixa/Propinas com MATERIALIZED VIEW",
+      "severity": "HIGH",
+      "status": "PARTIAL",
+      "evidence": [
+        {
+          "file": "supabase/migrations/20260127020139_remote_schema.sql",
+          "note": "match: /CREATE\\s+UNIQUE\\s+INDEX\\s+.*ux_mv_pagamentos_status/i"
+        },
+        {
+          "file": "supabase/migrations/20260127020139_remote_schema.sql",
+          "note": "match: /refresh_mv_pagamentos_status\\s*\\(/i"
+        },
+        {
+          "file": "supabase/migrations/20260202010300_fix_pagamentos_status_refresh.sql",
+          "note": "match: /refresh_mv_pagamentos_status\\s*\\(/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations_backup/20250916000100_create_views.sql",
+          "note": "match: /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\.pagamentos_status/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations/20250916000100_create_views.sql",
+          "note": "match: /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\.pagamentos_status/i"
+        },
+        {
+          "file": "supabase/migrations_archive/migrations_backup/migrations/20250916000100_create_views.sql",
+          "note": "match: /CREATE\\s+OR\\s+REPLACE\\s+VIEW\\s+public\\.pagamentos_status/i"
+        }
+      ],
+      "recommendation": "Garantir MV + UNIQUE INDEX + refresh function + cron job + view wrapper."
+    },
+    {
+      "id": "P0_3_MV_DASHBOARDS",
+      "title": "P0.3 — Dashboards Secretaria/Admin em MATERIALIZED VIEW",
+      "severity": "HIGH",
+      "status": "PARTIAL",
+      "evidence": [
+        {
+          "file": "supabase/migrations/20260127020139_remote_schema.sql",
+          "note": "match: /mv_secretaria_dashboard_counts/i"
+        },
+        {
+          "file": "supabase/migrations/20260127020139_remote_schema.sql",
+          "note": "match: /ux_mv_secretaria_dashboard_counts/i"
+        },
+        {
+          "file": "supabase/migrations/20260127020139_remote_schema.sql",
+          "note": "match: /refresh_mv_secretaria_dashboard_counts/i"
+        },
+        {
+          "file": "supabase/migrations/20260127020139_remote_schema.sql",
+          "note": "match: /vw_secretaria_dashboard_counts/i"
+        },
+        {
+          "file": "supabase/migrations/20260127020139_remote_schema.sql",
+          "note": "match: /mv_secretaria_matriculas_status/i"
+        },
+        {
+          "file": "supabase/migrations/20261201210000_update_financeiro_kpis_realistic.sql",
+          "note": "match: /mv_secretaria_matriculas_status/i"
+        },
+        {
+          "file": "supabase/migrations/20260127020139_remote_schema.sql",
+          "note": "match: /ux_mv_secretaria_matriculas_status/i"
+        },
+        {
+          "file": "supabase/migrations/20260127020139_remote_schema.sql",
+          "note": "match: /refresh_mv_secretaria_matriculas_status/i"
+        },
+        {
+          "file": "supabase/migrations/20260127020139_remote_schema.sql",
+          "note": "match: /vw_secretaria_matriculas_status/i"
+        },
+        {
+          "file": "supabase/migrations/20260127020139_remote_schema.sql",
+          "note": "match: /mv_secretaria_matriculas_turma_status/i"
+        }
+      ],
+      "recommendation": "Garantir MV + UNIQUE INDEX + refresh function + cron job + view wrapper para secretária e admin (sem cálculo ao vivo)."
+    }
+  ],
   "notes": [
-    "PASS: sem bloqueios P0/P1."
+    "Hard-gate ativo: CRITICAL/HIGH bloqueiam PR até resolver."
   ]
 }

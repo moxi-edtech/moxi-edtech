@@ -18,14 +18,16 @@ type MensalidadeRow = {
   valor?: number | null
 }
 
-const supabaseAdmin = (() => {
+function getSupabaseAdmin() {
   const url = (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').trim();
   const key = (process.env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim();
+
   if (!url || !key) {
-    console.warn('[MCX Webhook Job] Missing SUPABASE_URL/NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+    return null;
   }
+
   return createAdminClient(url, key);
-})();
+}
 
 function resolveJobToken(req: Request) {
   return req.headers.get('x-job-token') || req.headers.get('authorization')?.replace('Bearer ', '');
@@ -48,6 +50,12 @@ export async function POST(req: Request) {
   }
 
   try {
+    const supabaseAdmin = getSupabaseAdmin();
+    if (!supabaseAdmin) {
+      console.warn('[MCX Webhook Job] Missing SUPABASE_URL/NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+      return NextResponse.json({ error: 'Supabase server env is missing' }, { status: 500 });
+    }
+
     const raw = await req.text();
     const secret = (process.env.MCX_WEBHOOK_SECRET || '').trim();
     const signature =
