@@ -4,6 +4,7 @@ import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { recordAuditServer } from '@/lib/audit'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { enqueueOutboxEvent, markOutboxEventFailed, markOutboxEventProcessed } from '@/lib/outbox'
+import { dispatchAlunoNotificacao } from '@/lib/notificacoes/dispatchAlunoNotificacao'
 import type { Database } from '~types/supabase'
 
 const Body = z.object({
@@ -63,7 +64,47 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true, data });
+    const { data: turmaRow } = await supabase
+      .from('turmas')
+      .select('nome')
+      .eq('id', body.turma_id)
+      .eq('escola_id', escolaId)
+      .maybeSingle()
+    const { data: disciplinaRow } = await supabase
+      .from('disciplinas_catalogo')
+      .select('nome')
+      .eq('id', body.disciplina_id)
+      .maybeSingle()
+
+    const disciplinaNome = body.disciplina_nome ?? (disciplinaRow as any)?.nome ?? null
+    const turmaNome = (turmaRow as any)?.nome ?? null
+
+    const alunoIds = body.notas.map((n) => n.aluno_id)
+    await dispatchAlunoNotificacao({
+      escolaId,
+      key: 'NOTA_LANCADA',
+      alunoIds,
+      params: { disciplinaNome, actionUrl: '/aluno' },
+      actorId: user.id,
+      actorRole: 'professor',
+      agrupamentoTTLHoras: 12,
+    })
+
+    const NOTA_MEDIA_MINIMA = 10
+    const abaixoMedia = body.notas.filter((n) => n.valor < NOTA_MEDIA_MINIMA)
+    if (abaixoMedia.length > 0) {
+      await dispatchAlunoNotificacao({
+        escolaId,
+        key: 'NOTA_BAIXA',
+        alunoIds: abaixoMedia.map((n) => n.aluno_id),
+        params: { disciplinaNome, actionUrl: '/aluno' },
+        actorId: user.id,
+        actorRole: 'professor',
+        agrupamentoTTLHoras: 24,
+      })
+    }
+
+    return NextResponse.json({ ok: true, data, turma_nome: turmaNome, disciplina_nome: disciplinaNome });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     if (supabase) {
