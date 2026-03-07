@@ -99,6 +99,10 @@ export function SchedulerBoard({
     () => (estoque || []).filter((a) => a.missingLoad).length,
     [estoque]
   );
+  const conflictCount = useMemo(
+    () => Object.keys(conflictSlots || {}).length,
+    [conflictSlots]
+  );
 
   // Sincroniza grid externo
   useEffect(() => {
@@ -234,6 +238,12 @@ export function SchedulerBoard({
                   {autoConfiguring ? "Configurando..." : "Auto-Configurar cargas"}
                 </button>
               )}
+            </div>
+          )}
+          {conflictCount > 0 && (
+            <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+              <div className="font-semibold">{conflictCount} conflito(s) no quadro.</div>
+              <div className="mt-1">Revise os slots destacados antes de publicar.</div>
             </div>
           )}
           {!effectiveTurmaSala && onAssignTurmaSala && (

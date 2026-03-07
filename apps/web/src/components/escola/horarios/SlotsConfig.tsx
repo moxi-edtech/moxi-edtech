@@ -42,12 +42,51 @@ export function SlotsConfig({ value, onChange, onSave }: any) {
   const [activeDia, setActiveDia] = useState(1);
   const [showGenerator, setShowGenerator] = useState(false); // Esconde o gerador por padrão
 
+  const timeToMinutes = (time: string) => {
+    const [hour, minute] = time.split(":").map(Number);
+    if (!Number.isFinite(hour) || !Number.isFinite(minute)) return Number.NaN;
+    return hour * 60 + minute;
+  };
+
   // Filtra slots do dia/turno atual
   const currentSlots = useMemo(() => {
     return value
       .filter((s: HorarioSlot) => s.turno_id === activeTurno && s.dia_semana === activeDia)
       .sort((a: any, b: any) => a.ordem - b.ordem);
   }, [value, activeTurno, activeDia]);
+
+  const slotIssues = useMemo(() => {
+    const invalid = new Set<string>();
+    const overlap = new Set<string>();
+    const normalSlots = currentSlots.filter((slot) => !slot.is_intervalo);
+
+    for (const slot of currentSlots) {
+      const start = timeToMinutes(slot.inicio);
+      const end = timeToMinutes(slot.fim);
+      if (!Number.isFinite(start) || !Number.isFinite(end) || start >= end) {
+        invalid.add(slot.id);
+      }
+    }
+
+    for (let i = 0; i < normalSlots.length; i += 1) {
+      const a = normalSlots[i];
+      const aStart = timeToMinutes(a.inicio);
+      const aEnd = timeToMinutes(a.fim);
+      if (!Number.isFinite(aStart) || !Number.isFinite(aEnd)) continue;
+      for (let j = i + 1; j < normalSlots.length; j += 1) {
+        const b = normalSlots[j];
+        const bStart = timeToMinutes(b.inicio);
+        const bEnd = timeToMinutes(b.fim);
+        if (!Number.isFinite(bStart) || !Number.isFinite(bEnd)) continue;
+        if (aStart < bEnd && bStart < aEnd) {
+          overlap.add(a.id);
+          overlap.add(b.id);
+        }
+      }
+    }
+
+    return { invalid, overlap };
+  }, [currentSlots]);
 
   // Actions
   const handleRemove = (id: string) => {
@@ -192,7 +231,7 @@ export function SlotsConfig({ value, onChange, onSave }: any) {
                      ) : (
                         <div className="relative pl-6 border-l-2 border-slate-100 space-y-8 py-4">
                            {currentSlots.map((slot: any, index: number) => (
-                              <div key={slot.id} className="relative group">
+                           <div key={slot.id} className="relative group">
                                  {/* Timeline Dot */}
                                  <div className={`
                                     absolute -left-[31px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-[3px] border-white shadow-sm z-10
@@ -204,6 +243,10 @@ export function SlotsConfig({ value, onChange, onSave }: any) {
                                     ${slot.is_intervalo 
                                        ? "bg-klasse-gold-50/50 border-klasse-gold-100" 
                                        : "bg-white border-slate-100"
+                                    }
+                                    ${slotIssues.invalid.has(slot.id) || slotIssues.overlap.has(slot.id)
+                                       ? "border-rose-300 bg-rose-50/40"
+                                       : ""
                                     }
                                  `}>
                                     <div className="flex items-center gap-5">
@@ -230,8 +273,18 @@ export function SlotsConfig({ value, onChange, onSave }: any) {
                                              <div className="px-2 py-0.5 bg-slate-100 rounded text-xs font-mono font-medium text-slate-600">
                                                 {slot.fim}
                                              </div>
+                                             {slotIssues.invalid.has(slot.id) && (
+                                                <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-700">
+                                                   Horário inválido
+                                                </span>
+                                             )}
+                                             {!slotIssues.invalid.has(slot.id) && slotIssues.overlap.has(slot.id) && (
+                                                <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-700">
+                                                   Sobreposição
+                                                </span>
+                                             )}
                                           </div>
-                                       </div>
+                                      </div>
                                     </div>
 
                                     <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">

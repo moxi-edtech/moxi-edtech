@@ -4,27 +4,29 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { useAlunosSemAcesso } from "@/hooks/useAlunosSemAcesso";
-import { AlertCircle, CheckCircle, Loader2, Send, Users } from "lucide-react";
+// Nota do CTO: Vais precisar de criar este hook para ler os limites do plano do Supabase
+import { useLimitesPlano } from "@/hooks/useLimitesPlano"; 
+import { AlertCircle, Check, Loader2, Key, Users, ShieldAlert } from "lucide-react";
 
 type Props = {
   escolaId: string;
 };
 
 export function LiberarAcessoAlunos({ escolaId }: Props) {
-  const { alunos, loading, error, refetch } = useAlunosSemAcesso(escolaId);
+  const { alunos, loading: loadingAlunos, error, refetch } = useAlunosSemAcesso(escolaId);
+  
+  // O Novo Motor de Licenças (A simular a chamada)
+  const { licencasUsadas, licencasTotais, loading: loadingLimites } = useLimitesPlano(escolaId); 
+  const licencasDisponiveis =
+    licencasTotais === null ? Number.POSITIVE_INFINITY : Math.max(0, licencasTotais - licencasUsadas);
+  const licencasTotaisLabel = licencasTotais === null ? "Ilimitado" : String(licencasTotais);
+  const licencasDisponiveisLabel =
+    licencasTotais === null ? "∞" : String(Math.max(0, licencasTotais - licencasUsadas));
+
   const [selecionados, setSelecionados] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const [liberados, setLiberados] = useState<
-    Array<{
-      id: string;
-      nome?: string | null;
-      codigo_ativacao?: string | null;
-      login?: string | null;
-      senha?: string | null;
-      status?: string | null;
-    }>
-  >([]);
+  const [liberados, setLiberados] = useState<any[]>([]);
 
   const toggleSelecionar = (id: string) => {
     setSelecionados((prev) =>
@@ -33,16 +35,24 @@ export function LiberarAcessoAlunos({ escolaId }: Props) {
   };
 
   const selecionarTodos = () => {
-    setSelecionados(alunos.map((a) => a.id));
+    // Trava de Segurança: Não deixar selecionar mais do que o limite do plano
+    const limiteSeguro = alunos.slice(0, licencasDisponiveis);
+    setSelecionados(limiteSeguro.map((a) => a.id));
   };
 
   const limparSelecao = () => setSelecionados([]);
 
   const handleLiberar = async () => {
     if (selecionados.length === 0) return;
+    if (selecionados.length > licencasDisponiveis) {
+      setMessage("Erro: A seleção excede o limite do seu plano atual.");
+      return;
+    }
+
     setSubmitting(true);
     setMessage(null);
     setLiberados([]);
+    
     try {
       const res = await fetch('/api/secretaria/alunos/liberar-acesso', {
         method: 'POST',
@@ -50,19 +60,11 @@ export function LiberarAcessoAlunos({ escolaId }: Props) {
         body: JSON.stringify({ escolaId, alunoIds: selecionados, canal: 'whatsapp', gerarCredenciais: true }),
       });
       const json = await res.json().catch(() => null);
+      
       if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao liberar acesso');
-      const detalhes = Array.isArray(json.detalhes) ? json.detalhes : [];
-      setLiberados(
-        detalhes.map((item: any) => ({
-          id: item.id,
-          nome: item.nome ?? null,
-          codigo_ativacao: item.codigo_ativacao ?? null,
-          login: item.login ?? null,
-          senha: item.senha ?? null,
-          status: item.status ?? null,
-        }))
-      );
-      setMessage(`${json.liberados} aluno(s) tiveram acesso liberado.`);
+      
+      setLiberados(Array.isArray(json.detalhes) ? json.detalhes : []);
+      setMessage(`${json.liberados} aluno(s) tiveram acesso liberado com sucesso.`);
       limparSelecao();
       refetch();
     } catch (e: any) {
@@ -73,69 +75,76 @@ export function LiberarAcessoAlunos({ escolaId }: Props) {
   };
 
   const pendentes = useMemo(() => alunos || [], [alunos]);
+  const isOverLimit = selecionados.length > licencasDisponiveis;
 
   return (
-    <Card>
-      <CardHeader className="flex items-center justify-between">
+    <Card className="rounded-xl shadow-sm border-slate-200">
+      <CardHeader className="flex flex-row items-center justify-between pb-6 border-b border-slate-100">
         <div>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-teal-600" />
-            Liberar acesso ao portal
+          <CardTitle className="flex items-center gap-2 text-[#1F6B3B]">
+            <Users className="w-5 h-5" />
+            Ativação de Portal
           </CardTitle>
-          <p className="text-sm text-slate-500 mt-1">Selecione alunos sem acesso e gere credenciais em lote.</p>
+          <p className="text-sm text-slate-500 mt-1 font-sora">
+            Gere credenciais de acesso para alunos elegíveis.
+          </p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-slate-500">
-          {loading ? (
-            <span className="flex items-center gap-1"><Loader2 className="w-4 h-4 animate-spin" /> Carregando</span>
-          ) : (
-            <span>{pendentes.length} pendente(s)</span>
+        
+        {/* PAINEL DE LICENÇAS (Upsell B2B) */}
+          {!loadingLimites && (
+            <div className="flex flex-col items-end rounded-xl border border-slate-200 bg-white px-4 py-2 shadow-sm">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Licenças Disponíveis</span>
+              <div className="flex items-baseline gap-1">
+                <span className={`text-xl font-bold ${licencasTotais !== null && licencasDisponiveis <= 5 ? 'text-rose-600' : 'text-klasse-gold'}`}>
+                  {licencasDisponiveisLabel}
+                </span>
+                <span className="text-sm text-slate-500">/ {licencasTotaisLabel}</span>
+              </div>
+              <span className="mt-1 text-[10px] text-slate-500">Usadas: {licencasUsadas}</span>
+            </div>
           )}
-        </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+
+      <CardContent className="space-y-6 pt-6">
+        {/* Alertas */}
         {error && (
-          <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 rounded-lg p-3 text-sm">
-            <AlertCircle className="w-4 h-4" />
+          <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 rounded-xl p-4 text-sm font-medium">
+            <AlertCircle className="w-5 h-5" />
             {error}
           </div>
         )}
 
         {message && (
-          <div className="flex items-center gap-2 text-klasse-green-700 bg-klasse-green-50 border border-klasse-green-200 rounded-lg p-3 text-sm">
-            <CheckCircle className="w-4 h-4" />
+          <div className="flex items-center gap-2 text-[#1F6B3B] bg-green-50 border border-[#1F6B3B]/20 rounded-xl p-4 text-sm font-medium">
+            <Check className="w-5 h-5" />
             {message}
           </div>
         )}
 
+        {isOverLimit && (
+          <div className="flex items-center gap-2 text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm font-medium">
+            <ShieldAlert className="w-5 h-5" />
+            Atenção: Selecionou mais alunos ({selecionados.length}) do que o seu plano permite ({licencasDisponiveis}). Faça um upgrade para continuar.
+          </div>
+        )}
+
+        {/* Bloco de Credenciais Geradas */}
         {liberados.length > 0 && (
-          <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700">
-            <p className="font-semibold text-slate-900">Credenciais geradas</p>
-            <p className="text-xs text-slate-500">
-              Entregue o login e a senha para o primeiro acesso.
-            </p>
-            <div className="mt-3 space-y-2">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <div className="flex items-center gap-2 mb-4">
+              <Key className="w-4 h-4 text-[#E3B23C]" />
+              <h3 className="font-semibold text-slate-900 text-sm">Credenciais Prontas para Envio</h3>
+            </div>
+            <div className="space-y-2 max-h-[250px] overflow-y-auto pr-2">
               {liberados.map((item) => (
-                <div key={item.id} className="flex items-center justify-between gap-2 rounded-md border border-slate-100 bg-slate-50 px-3 py-2">
+                <div key={item.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-900 truncate">{item.nome ?? "Aluno"}</p>
-                    <p className="text-xs text-slate-500">ID: {item.id}</p>
-                    {item.status === "bi_missing" && (
-                      <p className="text-xs text-amber-600">BI em falta: não foi possível gerar credenciais.</p>
-                    )}
-                    {item.status === "activation_failed" && (
-                      <p className="text-xs text-amber-600">Falha ao gerar credenciais. Tente novamente.</p>
-                    )}
+                    <p className="text-sm font-semibold text-slate-900 truncate">{item.nome ?? "Aluno"}</p>
+                    {item.status === "bi_missing" && <p className="text-xs text-red-600 mt-1">Falha: BI não cadastrado.</p>}
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold text-slate-800">
-                      {item.login || "Login pendente"}
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {item.senha ? `Senha: ${item.senha}` : "Senha já definida"}
-                    </p>
-                    <p className="text-xs text-slate-400">
-                      Código: {item.codigo_ativacao || "—"}
-                    </p>
+                  <div className="text-right font-geist text-sm">
+                    <p className="text-slate-900 font-medium">{item.login || "—"}</p>
+                    <p className="text-slate-500 text-xs">{item.senha || "Senha definida"}</p>
                   </div>
                 </div>
               ))}
@@ -143,47 +152,66 @@ export function LiberarAcessoAlunos({ escolaId }: Props) {
           </div>
         )}
 
-        {pendentes.length === 0 && !loading ? (
-          <div className="text-center text-sm text-slate-500 py-6">
-            Todos os alunos elegíveis já têm acesso liberado.
+        {/* Lista de Alunos Pendentes */}
+        {pendentes.length === 0 && !loadingAlunos ? (
+          <div className="flex flex-col items-center justify-center py-10 text-slate-400">
+            <Check className="w-8 h-8 text-slate-300 mb-2" />
+            <p className="text-sm">Todos os alunos da base já possuem acesso.</p>
           </div>
         ) : (
-          <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
-            {pendentes.map((aluno) => (
-              <label
-                key={aluno.id}
-                className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition hover:border-teal-200 ${selecionados.includes(aluno.id) ? 'border-teal-400 bg-teal-50/60' : 'border-slate-200'}`}
-              >
-                <input
-                  type="checkbox"
-                  checked={selecionados.includes(aluno.id)}
-                  onChange={() => toggleSelecionar(aluno.id)}
-                  className="mt-1"
-                />
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <p className="font-semibold text-slate-900">{aluno.nome}</p>
-                    <span className="text-xs text-slate-500">{aluno.codigo_ativacao || 'Sem código'}</span>
+          <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+            {pendentes.map((aluno) => {
+              const isActive = selecionados.includes(aluno.id);
+              return (
+                <label
+                  key={aluno.id}
+                  className={`flex items-center gap-4 p-4 rounded-xl border transition-all cursor-pointer ${
+                    isActive 
+                      ? 'border-[#E3B23C] bg-slate-50 ring-1 ring-[#E3B23C]/25' 
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isActive}
+                    onChange={() => toggleSelecionar(aluno.id)}
+                    disabled={!isActive && selecionados.length >= licencasDisponiveis}
+                    className="w-4 h-4 text-[#E3B23C] border-slate-300 rounded focus:ring-4 focus:ring-[#E3B23C]/20"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-slate-900 text-sm truncate">{aluno.nome}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">ID: {aluno.codigo_ativacao || 'Pendente'}</p>
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">Telefone: {aluno.telefone || '—'}</p>
-                  <p className="text-[11px] text-slate-400">Criado em: {aluno.criado_em ? new Date(aluno.criado_em).toLocaleDateString('pt-PT') : '—'}</p>
-                </div>
-              </label>
-            ))}
+                </label>
+              );
+            })}
           </div>
         )}
 
-        <div className="flex items-center justify-between pt-2">
-          <div className="text-sm text-slate-500">{selecionados.length} selecionado(s)</div>
-          <div className="flex gap-2">
-            <Button variant="outline" tone="gray" size="sm" onClick={selecionarTodos} disabled={pendentes.length === 0 || submitting}>
-              Selecionar todos
-            </Button>
-            <Button variant="outline" tone="gray" size="sm" onClick={limparSelecao} disabled={selecionados.length === 0 || submitting}>
+        {/* Footer Actions */}
+        <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+          <div className="text-sm font-medium text-slate-500">
+            <span className={isOverLimit ? "text-red-600 font-bold" : "text-slate-900"}>
+              {selecionados.length}
+            </span> selecionados
+          </div>
+          <div className="flex gap-3">
+            <Button 
+              variant="outline" 
+              className="border-slate-200 rounded-xl text-slate-700 bg-white hover:bg-slate-50"
+              onClick={limparSelecao} 
+              disabled={selecionados.length === 0 || submitting}
+            >
               Limpar
             </Button>
-            <Button tone="teal" size="sm" onClick={handleLiberar} disabled={selecionados.length === 0 || submitting} loading={submitting}>
-              <Send className="w-4 h-4" /> Liberar acesso
+            <Button 
+              className="bg-[#E3B23C] text-white rounded-xl hover:brightness-95 border-none shadow-sm"
+              onClick={handleLiberar} 
+              disabled={selecionados.length === 0 || submitting || isOverLimit}
+              loading={submitting}
+            >
+              <Key className="w-4 h-4 mr-2" />
+              Gerar Acessos
             </Button>
           </div>
         </div>

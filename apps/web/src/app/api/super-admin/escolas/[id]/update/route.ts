@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createRouteClient } from '@/lib/supabase/route-client'
 import { recordAuditClient } from '@/lib/auditClient'
+import { parsePlanTier } from '@/config/plans'
 
 export async function POST(
   req: Request,
@@ -23,11 +24,51 @@ export async function POST(
       return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
     }
 
+    const nextUpdates = { ...updates }
+    const rawPlano = (nextUpdates as { plano?: string | null; plano_atual?: string | null }).plano
+      ?? (nextUpdates as { plano?: string | null; plano_atual?: string | null }).plano_atual
+      ?? null
+
+    if (rawPlano) {
+      const plano = parsePlanTier(rawPlano)
+      const { data: assinaturaAtiva, error: assinaturaError } = await s
+        .from('assinaturas')
+        .select('id, status')
+        .eq('escola_id', escolaId)
+        .eq('status', 'activa')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (assinaturaError) {
+        return NextResponse.json({ ok: false, error: assinaturaError.message }, { status: 500 })
+      }
+
+      if (!assinaturaAtiva?.id) {
+        return NextResponse.json(
+          { ok: false, error: 'Assinatura activa não encontrada. Atualize via billing.' },
+          { status: 400 }
+        )
+      }
+
+      const { error: assinaturaUpdateError } = await s
+        .from('assinaturas')
+        .update({ plano })
+        .eq('id', assinaturaAtiva.id)
+
+      if (assinaturaUpdateError) {
+        return NextResponse.json({ ok: false, error: assinaturaUpdateError.message }, { status: 500 })
+      }
+
+      delete (nextUpdates as { plano?: string | null }).plano
+      delete (nextUpdates as { plano_atual?: string | null }).plano_atual
+    }
+
     // Executa a atualização
     const { error: updateError } = await s
       .from('escolas')
       .update({
-        ...updates,
+        ...nextUpdates,
         updated_at: new Date().toISOString(),
       })
       .eq('id', escolaId)
