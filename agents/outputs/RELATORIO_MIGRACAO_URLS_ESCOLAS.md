@@ -18,6 +18,8 @@ Data: 2026-03-06
   - Resolve `{slug|uuid}` para `escola_id`
   - Rewrite para `/escola/{uuid}` e `/api/escola/{uuid}`
   - Redirect 302 de UUID legado → slug
+  - Validação de tenant: bloqueia acesso quando `slug` não corresponde ao `escola_id` do usuário
+  - Requer sessão válida para `/escola/*` e `/api/escola/*`
 - `apps/web/src/lib/tenant/resolveEscolaIdForUser.ts`
   - Aceita slug ou UUID, com resolução via `escolas.slug`
 - `apps/web/src/lib/tenant/resolveEscolaParam.ts`
