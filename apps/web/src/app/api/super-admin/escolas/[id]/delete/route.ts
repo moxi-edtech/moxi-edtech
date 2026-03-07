@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { recordAuditServer } from '@/lib/audit'
+import { invalidateEscolaSlugCache } from '@/lib/tenant/resolveEscolaParam'
 import { isSuperAdminRole } from '@/lib/auth/requireSuperAdminAccess'
 
 export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -18,17 +19,26 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
       return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
     }
 
+    const sAny = s as any
+    const { data: escolaBefore } = await sAny.from('escolas').select('slug').eq('id', escolaId).maybeSingle()
+    const oldSlug = escolaBefore?.slug ?? null
+
     // Tenta exclusão definitiva
-    const delRes = await (s as any).from('escolas').delete().eq('id', escolaId)
+    const delRes = await sAny.from('escolas').delete().eq('id', escolaId)
     if (!delRes.error) {
+      invalidateEscolaSlugCache(oldSlug)
       recordAuditServer({ escolaId, portal: 'super_admin', acao: 'ESCOLA_DELETADA', entity: 'escola', entityId: escolaId }).catch(() => null)
       return NextResponse.json({ ok: true, mode: 'hard' })
     }
 
     // Se falhou (provável FK), marca como excluída (soft delete)
     console.warn('[super-admin] Hard delete falhou, aplicando soft delete:', delRes.error.message)
-    const upRes = await (s as any).from('escolas').update({ status: 'excluida' as any }).eq('id', escolaId)
+    const upRes = await sAny.from('escolas').update({ status: 'excluida' as any }).eq('id', escolaId)
     if (!upRes.error) {
+      const { data: escolaAfter } = await sAny.from('escolas').select('slug').eq('id', escolaId).maybeSingle()
+      const newSlug = escolaAfter?.slug ?? null
+      invalidateEscolaSlugCache(oldSlug)
+      invalidateEscolaSlugCache(newSlug)
       recordAuditServer({ escolaId, portal: 'super_admin', acao: 'ESCOLA_MARCADA_EXCLUSAO', entity: 'escola', entityId: escolaId, details: { reason: delRes.error.message } }).catch(() => null)
       return NextResponse.json({ ok: true, mode: 'soft' })
     }

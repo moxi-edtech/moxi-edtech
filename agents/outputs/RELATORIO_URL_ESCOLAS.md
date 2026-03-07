@@ -43,3 +43,10 @@ Data: 2026-03-06
 ## Notas
 - Compatibilidade: manter redirect de UUID por 12 meses (302 inicialmente, agora 301).
 - Expor UUID apenas em APIs privadas/authenticated quando necessário.
+- Cache de slug invalida explicitamente em fluxos de atualização/suspensão/reativação/exclusão; TTL continua apenas como otimização.
+
+## Security considerations
+- Slugs são identificadores públicos e não são tratados como segredos.
+- A autorização continua garantida via RLS e checks de roles.
+- Enumerar slugs não concede acesso a dados da escola.
+- Isolamento de tenant é garantido por validação no middleware, resolução de tenant no backend e RLS no banco de dados.

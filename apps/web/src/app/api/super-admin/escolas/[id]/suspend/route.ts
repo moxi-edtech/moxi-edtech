@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { recordAuditServer } from '@/lib/audit'
+import { invalidateEscolaSlugCache } from '@/lib/tenant/resolveEscolaParam'
 import { isSuperAdminRole } from '@/lib/auth/requireSuperAdminAccess'
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -25,8 +26,17 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     }
 
     const sAny = s as any
+    const { data: escolaBefore } = await sAny.from('escolas').select('slug').eq('id', escolaId).maybeSingle()
+    const oldSlug = escolaBefore?.slug ?? null
+
     const { error } = await sAny.from('escolas').update({ status: 'suspensa' }).eq('id', escolaId)
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
+
+    const { data: escolaAfter } = await sAny.from('escolas').select('slug').eq('id', escolaId).maybeSingle()
+    const newSlug = escolaAfter?.slug ?? null
+
+    invalidateEscolaSlugCache(oldSlug)
+    invalidateEscolaSlugCache(newSlug)
 
     recordAuditServer({ escolaId, portal: 'super_admin', acao: 'ESCOLA_SUSPENSA', entity: 'escola', entityId: escolaId, details: { status: 'suspensa', motivo: motivo || undefined } }).catch(() => null)
 

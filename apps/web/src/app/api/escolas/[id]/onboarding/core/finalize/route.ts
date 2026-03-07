@@ -8,6 +8,7 @@ import { buildCredentialsEmail, buildOnboardingEmail, sendMail } from "@/lib/mai
 import { z } from 'zod'
 import { hasPermission } from "@/lib/permissions"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
+import { invalidateEscolaSlugCache } from "@/lib/tenant/resolveEscolaParam"
 
 // POST /api/escolas/[id]/onboarding
 // Authorizes current user against the target escola, then performs updates/inserts
@@ -37,6 +38,7 @@ export async function POST(
       .select('slug')
       .eq('id', escolaIdResolved)
       .maybeSingle()
+    const oldSlug = escolaInfo?.slug ?? null
     const escolaParam = escolaInfo?.slug ? String(escolaInfo.slug) : escolaIdResolved
 
     // 2) Authorization: must have configurar_escola permission linked to this escola
@@ -216,6 +218,16 @@ export async function POST(
         )
       }
     }
+
+    const { data: escolaAfter } = await sserver
+      .from('escolas')
+      .select('slug')
+      .eq('id', escolaIdResolved)
+      .maybeSingle()
+    const newSlug = escolaAfter?.slug ?? null
+
+    invalidateEscolaSlugCache(oldSlug)
+    invalidateEscolaSlugCache(newSlug)
 
     // 3.2) Lógica de criação de turma legada removida pois não está em conformidade com o novo modelo acadêmico.
     // A criação de turmas deve ser feita via fluxo de configuração acadêmica, que exige mais contexto (currículo, ano letivo).
