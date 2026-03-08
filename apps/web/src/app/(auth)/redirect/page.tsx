@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabaseClient";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam";
 
 export default function RedirectPage() {
   const router = useRouter();
@@ -62,6 +63,9 @@ export default function RedirectPage() {
           const role: string = profile?.role ?? "guest";
           const escola_id: string | null = profile?.escola_id ?? null;
           const resolvedEscolaId = escola_id || (await resolveEscolaIdForUser(supabase, user.id));
+          const baseEscolaId = escola_id || resolvedEscolaId;
+          const resolvedParam = baseEscolaId ? await resolveEscolaParam(supabase, baseEscolaId) : null;
+          const escolaParam = resolvedParam?.slug ? resolvedParam.slug : baseEscolaId;
 
           // Roteamento por role
           if (escola_id && (role === "admin" || role === "staff_admin")) {
@@ -72,7 +76,11 @@ export default function RedirectPage() {
               .limit(1);
             const e0 = (esc && esc.length > 0) ? esc[0] : { onboarding_finalizado: false };
             const done = Boolean(e0.onboarding_finalizado);
-            router.replace(done ? `/escola/${escola_id}/admin` : `/escola/${escola_id}/onboarding`);
+            if (escolaParam) {
+              router.replace(done ? `/escola/${escolaParam}/admin` : `/escola/${escolaParam}/onboarding`);
+            } else {
+              router.replace(done ? `/escola/${escola_id}/admin` : `/escola/${escola_id}/onboarding`);
+            }
             return;
           }
 
@@ -89,7 +97,11 @@ export default function RedirectPage() {
                   .limit(1);
                 const e0 = (esc && esc.length > 0) ? esc[0] : { onboarding_finalizado: false };
                 const done = Boolean(e0.onboarding_finalizado);
-                router.replace(done ? `/escola/${escola_id}/admin` : `/escola/${escola_id}/onboarding`);
+                if (escolaParam) {
+                  router.replace(done ? `/escola/${escolaParam}/admin` : `/escola/${escolaParam}/onboarding`);
+                } else {
+                  router.replace(done ? `/escola/${escola_id}/admin` : `/escola/${escola_id}/onboarding`);
+                }
               } else {
                 router.replace("/admin");
               }
@@ -119,8 +131,8 @@ export default function RedirectPage() {
               break;
             }
             case "secretaria":
-              if (resolvedEscolaId) {
-                router.replace(`/escola/${resolvedEscolaId}/secretaria`);
+              if (escolaParam) {
+                router.replace(`/escola/${escolaParam}/secretaria`);
               } else {
                 router.replace("/secretaria");
               }
@@ -129,21 +141,21 @@ export default function RedirectPage() {
               router.replace("/financeiro");
               break;
             case "secretaria_financeiro": {
-              if (resolvedEscolaId) {
+              if (escolaParam) {
                 let modo = 'balcao'
                 try {
                   const saved = localStorage.getItem('klasse_modo_secretaria')
                   if (saved === 'balcao' || saved === 'financeiro') modo = saved
                 } catch {}
-                router.replace(`/escola/${resolvedEscolaId}/secretaria?modo=${modo}`)
+                router.replace(`/escola/${escolaParam}/secretaria?modo=${modo}`)
               } else {
                 router.replace('/secretaria')
               }
               break;
             }
             case "admin_financeiro":
-              if (resolvedEscolaId) {
-                router.replace(`/escola/${resolvedEscolaId}/admin/dashboard?tab=financeiro`)
+              if (escolaParam) {
+                router.replace(`/escola/${escolaParam}/admin/dashboard?tab=financeiro`)
               } else {
                 router.replace('/admin')
               }

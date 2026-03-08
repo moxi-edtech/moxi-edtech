@@ -1,5 +1,6 @@
 import { supabaseServer } from "@/lib/supabaseServer";
 import { redirect } from "next/navigation";
+import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam";
 import { isSuperAdminRole } from "./requireSuperAdminAccess";
 
 /**
@@ -25,10 +26,17 @@ export async function requireSchoolActive(escolaId: string) {
   }
 
   // 2. Verificar Status da Escola
+  const resolved = await resolveEscolaParam(supabase as any, escolaId);
+  if (!resolved.escolaId && resolved.paramType === "slug") {
+    return { status: 'not_found' };
+  }
+
+  const resolvedId = resolved.escolaId ?? escolaId;
+
   const { data: escola, error } = await supabase
     .from("escolas")
     .select("status")
-    .eq("id", escolaId)
+    .eq("id", resolvedId)
     .single();
 
   if (error || !escola) return { status: 'not_found' };
