@@ -50,25 +50,39 @@ type TurmaDataState = {
 const DIAS_SEMANA = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"];
 
 const mapSlots = (slots: SlotApi[]): { slots: SchedulerSlot[]; slotLookup: Record<string, string> } => {
-  const grouped = new Map<number, SlotApi>();
+  const grouped = new Map<number, SlotApi[]>();
   const lookup: Record<string, string> = {};
 
   for (const slot of slots) {
     if (slot.dia_semana < 1 || slot.dia_semana > 5) continue;
-    if (!grouped.has(slot.ordem)) {
-      grouped.set(slot.ordem, slot);
-    }
+    const list = grouped.get(slot.ordem) || [];
+    list.push(slot);
+    grouped.set(slot.ordem, list);
     const dia = DIAS_SEMANA[slot.dia_semana - 1];
     lookup[`${dia}-${slot.ordem}`] = slot.id;
   }
 
-  const formatted: SchedulerSlot[] = Array.from(grouped.values())
-    .sort((a, b) => a.ordem - b.ordem)
-    .map((slot) => ({
-      id: String(slot.ordem),
-      label: `${slot.inicio} - ${slot.fim}`,
-      tipo: slot.is_intervalo ? "intervalo" : "aula",
-    }));
+  const formatted: SchedulerSlot[] = Array.from(grouped.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([ordem, items]) => {
+      const sorted = items
+        .filter((slot) => slot.inicio && slot.fim)
+        .sort((a, b) => String(a.inicio).localeCompare(String(b.inicio)));
+      const horarioPorDia: Record<string, string> = {};
+      for (const slot of sorted) {
+        const dia = DIAS_SEMANA[slot.dia_semana - 1];
+        horarioPorDia[dia] = `${slot.inicio} - ${slot.fim}`;
+      }
+      const first = sorted[0];
+      const labelDefault = first ? `${first.inicio} - ${first.fim}` : "";
+      const tipo = (first?.is_intervalo ? "intervalo" : "aula") as "aula" | "intervalo";
+      return {
+        id: String(ordem),
+        labelDefault,
+        tipo,
+        horariosPorDia: horarioPorDia,
+      };
+    });
 
   return { slots: formatted, slotLookup: lookup };
 };

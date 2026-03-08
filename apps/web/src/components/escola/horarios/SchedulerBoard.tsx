@@ -15,8 +15,9 @@ import { getAllocationStatus } from "@/lib/rules/scheduler-rules";
 // --- TYPES (Mantive os seus, estão ótimos) ---
 export type SchedulerSlot = {
   id: string;
-  label: string;
+  labelDefault: string;
   tipo: "aula" | "intervalo";
+  horariosPorDia?: Record<string, string>;
 };
 
 export type SchedulerAula = {
@@ -320,50 +321,61 @@ export function SchedulerBoard({
             </div>
 
             {/* Slots */}
-            {tempos?.map((tempo) => (
-              <div key={tempo.id} className="grid grid-cols-6 border-b border-slate-200 last:border-b-0 min-h-[110px]">
-                {/* Coluna Horário */}
-                <div className="p-2 border-r border-slate-200 bg-slate-50/30 flex flex-col justify-center items-center text-xs">
-                  <span className="font-bold text-slate-900 mb-1">{tempo.label.split(" - ")[0]}</span>
-                  <span className="text-slate-400 text-[10px]">{tempo.label.split(" - ")[1]}</span>
-                  {tempo.tipo === "intervalo" && (
-                    <span className="mt-2 px-2 py-0.5 bg-klasse-gold-100 text-klasse-gold-700 rounded-full font-bold text-[9px] uppercase tracking-wide">
-                      Intervalo
-                    </span>
-                  )}
-                </div>
+            {tempos?.map((tempo) => {
+              const defaultRange = tempo.labelDefault.split(" - ");
+              const horarios = tempo.horariosPorDia || {};
+              const uniqueRanges = Array.from(new Set(Object.values(horarios)));
+              const hasDifferentTimes = uniqueRanges.length > 1;
 
-                {/* Intervalo Row */}
-                {tempo.tipo === "intervalo" ? (
-                  <div className="col-span-5 bg-stripes-gray flex items-center justify-center">
-                    <span className="text-slate-200 font-black text-4xl tracking-[1.5em] opacity-40 select-none uppercase">
-                      Recreio
-                    </span>
+              return (
+                <div key={tempo.id} className="grid grid-cols-6 border-b border-slate-200 last:border-b-0 min-h-[110px]">
+                  {/* Coluna Horário */}
+                  <div className="p-2 border-r border-slate-200 bg-slate-50/30 flex flex-col justify-center items-center text-xs">
+                    <span className="font-bold text-slate-900 mb-1">{defaultRange[0] || "—"}</span>
+                    <span className="text-slate-400 text-[10px]">{defaultRange[1] || ""}</span>
+                    {hasDifferentTimes && (
+                      <span className="mt-1 text-[9px] font-semibold text-klasse-gold-600">Horário varia</span>
+                    )}
+                    {tempo.tipo === "intervalo" && (
+                      <span className="mt-2 px-2 py-0.5 bg-klasse-gold-100 text-klasse-gold-700 rounded-full font-bold text-[9px] uppercase tracking-wide">
+                        Intervalo
+                      </span>
+                    )}
                   </div>
-                ) : (
-                  // Aula Cells
-                  diasSemana.map((dia) => {
-                    const slotId = `${dia}-${tempo.id}`;
-                    const aulaId = grid[slotId];
-                    const aula = aulaId ? getAulaById(aulaId) : null;
-                    const hasConflict = Boolean(conflictSlots?.[slotId]); // Simplificado
 
-                    return (
-                      <DroppableSlot key={slotId} id={slotId} hasConflict={hasConflict} isFilled={!!aula}>
-                        {aula ? (
-                          <DraggableGridItem slotId={slotId} aula={aula}>
-                            <div className={`
-                              group h-full w-full rounded-lg p-2.5 border border-transparent shadow-sm 
-                              flex flex-col justify-between cursor-grab active:cursor-grabbing hover:brightness-95 transition-all
-                              ${aula.cor} /* Usa classes funcionais tipo bg-slate-50 */
-                            `}>
-                              <div className="flex justify-between items-start">
-                                <span className="font-bold text-xs uppercase tracking-tight">{aula.sigla}</span>
-                                {(hasConflict || aula.conflito) && (
-                                  <AlertOctagon className="w-4 h-4 text-rose-600 animate-pulse" />
-                                )}
-                              </div>
-                              <div className="space-y-1">
+                  {/* Intervalo Row */}
+                  {tempo.tipo === "intervalo" ? (
+                    <div className="col-span-5 bg-stripes-gray flex items-center justify-center">
+                      <span className="text-slate-200 font-black text-4xl tracking-[1.5em] opacity-40 select-none uppercase">
+                        Recreio
+                      </span>
+                    </div>
+                  ) : (
+                    // Aula Cells
+                    diasSemana.map((dia) => {
+                      const slotId = `${dia}-${tempo.id}`;
+                      const aulaId = grid[slotId];
+                      const aula = aulaId ? getAulaById(aulaId) : null;
+                      const hasConflict = Boolean(conflictSlots?.[slotId]);
+                      const horarioDia = horarios[dia] || tempo.labelDefault;
+
+                      return (
+                        <DroppableSlot key={slotId} id={slotId} hasConflict={hasConflict} isFilled={!!aula}>
+                          {aula ? (
+                            <DraggableGridItem slotId={slotId} aula={aula}>
+                              <div className={`
+                                group h-full w-full rounded-lg p-2.5 border border-transparent shadow-sm 
+                                flex flex-col justify-between cursor-grab active:cursor-grabbing hover:brightness-95 transition-all
+                                ${aula.cor}
+                              `}>
+                                <div className="flex justify-between items-start">
+                                  <span className="font-bold text-xs uppercase tracking-tight">{aula.sigla}</span>
+                                  {(hasConflict || aula.conflito) && (
+                                    <AlertOctagon className="w-4 h-4 text-rose-600 animate-pulse" />
+                                  )}
+                                </div>
+                                <div className="space-y-1">
+                                  <div className="text-[10px] text-slate-500">{horarioDia}</div>
                                   {aula.professorId ? (
                                     <div className="text-[10px] font-medium opacity-80 truncate leading-tight">
                                       {aula.professor.split(" ")[0]}
@@ -388,16 +400,17 @@ export function SchedulerBoard({
                                       {getSalaLabel()}
                                     </div>
                                   ) : null}
+                                </div>
                               </div>
-                            </div>
-                          </DraggableGridItem>
-                        ) : null}
-                      </DroppableSlot>
-                    );
-                  })
-                )}
-              </div>
-            ))}
+                            </DraggableGridItem>
+                          ) : null}
+                        </DroppableSlot>
+                      );
+                    })
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
