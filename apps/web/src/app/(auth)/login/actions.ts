@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { supabaseRouteClient } from "~/lib/supabase/server";
 import { normalizePapel } from "@/lib/permissions";
+import { resolveEscolaParam } from "@/lib/tenant/resolveEscolaParam";
 import { redirect } from "next/navigation";
 
 const LoginSchema = z.object({
@@ -64,12 +65,16 @@ export async function loginAction(_: unknown, formData: FormData) {
     if (firstLink) {
       const { papel, escola_id } = firstLink;
       const papelNormalizado = normalizePapel(papel);
+      const resolvedParam = escola_id
+        ? await resolveEscolaParam(supabase as any, String(escola_id))
+        : null;
+      const escolaParam = resolvedParam?.slug ? String(resolvedParam.slug) : escola_id ? String(escola_id) : null;
 
       if ((papelNormalizado === "admin" || papelNormalizado === "staff_admin" || papelNormalizado === "admin_escola") && escola_id) {
-        redirect(`/escola/${escola_id}/admin/dashboard`);
+        redirect(`/escola/${escolaParam ?? escola_id}/admin/dashboard`);
       } else if (papelNormalizado === "secretaria") {
         if (escola_id) {
-          redirect(`/escola/${escola_id}/secretaria`);
+          redirect(`/escola/${escolaParam ?? escola_id}/secretaria`);
         } else {
           redirect("/secretaria");
         }
@@ -77,13 +82,13 @@ export async function loginAction(_: unknown, formData: FormData) {
         redirect("/financeiro");
       } else if (papelNormalizado === "secretaria_financeiro") {
         if (escola_id) {
-          redirect(`/escola/${escola_id}/secretaria?modo=balcao`);
+          redirect(`/escola/${escolaParam ?? escola_id}/secretaria?modo=balcao`);
         } else {
           redirect("/secretaria");
         }
       } else if (papelNormalizado === "admin_financeiro") {
         if (escola_id) {
-          redirect(`/escola/${escola_id}/admin/dashboard?tab=financeiro`);
+          redirect(`/escola/${escolaParam ?? escola_id}/admin/dashboard?tab=financeiro`);
         } else {
           redirect("/admin");
         }
@@ -92,7 +97,7 @@ export async function loginAction(_: unknown, formData: FormData) {
       } else if (papelNormalizado === "aluno") {
         redirect("/aluno/dashboard");
       } else if (escola_id) {
-        redirect(`/escola/${escola_id}`);
+        redirect(`/escola/${escolaParam ?? escola_id}`);
       }
     }
     
