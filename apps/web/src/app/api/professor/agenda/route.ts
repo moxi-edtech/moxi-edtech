@@ -9,6 +9,12 @@ type SlotRow = { id: string; turno_id: string | null; ordem: number | null; inic
 type TurmaRow = { id: string; nome: string | null; sala: string | null }
 type DisciplinaRow = { id: string; nome: string | null }
 type SalaRow = { id: string; nome: string | null }
+type TurmaDisciplinaRow = { turma_id: string | null; curso_matriz?: { disciplina_id?: string | null } | null }
+type LegacyAssignmentRow = { turma_id: string | null; disciplina_id: string | null }
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+export const fetchCache = 'force-no-store'
 
 export async function GET() {
   try {
@@ -30,6 +36,33 @@ export async function GET() {
     ).maybeSingle()
 
     if (!prof?.id) return NextResponse.json({ ok: true, items: [] })
+
+    const { data: assignedRows } = await applyKf2ListInvariants(
+      supabase
+        .from('turma_disciplinas')
+        .select('turma_id, curso_matriz:curso_matriz!turma_disciplinas_curso_matriz_id_fkey(disciplina_id)')
+        .eq('escola_id', escolaId)
+        .eq('professor_id', prof.id),
+      { defaultLimit: 200 }
+    )
+
+    const { data: legacyRows } = await supabase
+      .from('turma_disciplinas_professores')
+      .select('turma_id, disciplina_id')
+      .eq('escola_id', escolaId)
+      .eq('professor_id', prof.id)
+
+    const allowedPairs = new Set<string>()
+    for (const row of ((assignedRows as TurmaDisciplinaRow[]) || [])) {
+      const turmaId = row.turma_id
+      const disciplinaId = row.curso_matriz?.disciplina_id ?? null
+      if (turmaId && disciplinaId) allowedPairs.add(`${turmaId}:${disciplinaId}`)
+    }
+    for (const row of ((legacyRows as LegacyAssignmentRow[]) || [])) {
+      if (row.turma_id && row.disciplina_id) allowedPairs.add(`${row.turma_id}:${row.disciplina_id}`)
+    }
+
+    if (allowedPairs.size === 0) return NextResponse.json({ ok: true, items: [] })
 
     const { data: publishedVersions } = await supabase
       .from('horario_versoes')
@@ -117,6 +150,10 @@ export async function GET() {
     for (const s of ((salasRes as { data?: SalaRow[] }).data || [])) salaMap.set(s.id, s.nome ?? null)
 
     const items = (quadroRows || [])
+      .filter((row: QuadroRow) => {
+        if (!row.turma_id || !row.disciplina_id) return false
+        return allowedPairs.has(`${row.turma_id}:${row.disciplina_id}`)
+      })
       .map((row: QuadroRow) => {
         if (!row.slot_id || !row.turma_id || !row.disciplina_id) return null
         const slot = slotMap.get(row.slot_id)
