@@ -92,7 +92,7 @@ type AutoScheduleResult = {
 };
 
 const buildSlotKey = (day: number, ordem: number) => `${day}-${ordem}`;
-const MAX_UNIQUE_DISCIPLINES_PER_DAY = 5;
+const MAX_UNIQUE_DISCIPLINES_PER_DAY = 7;
 const SECONDS_IN_DAY = 24 * 60 * 60;
 const AVOID_PENALTY = 12;
 
@@ -373,7 +373,7 @@ function pickSlot({
     }
 
     const dayCount = perDayCount.get(slot.day) || 0;
-    if (dayCount >= 1) {
+    if (dayCount >= 1 && phase === "strict") {
       const contiguous = hasAdjacentSameDiscipline({
         slotsByDay,
         dayAssignments,
@@ -660,7 +660,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         }
       }
 
-      if (isSameTurma) {
+      if (isSameTurma && !body.overwrite_unlocked) {
         existingCounts.set(
           row.disciplina_id,
           (existingCounts.get(row.disciplina_id) || 0) + 1
