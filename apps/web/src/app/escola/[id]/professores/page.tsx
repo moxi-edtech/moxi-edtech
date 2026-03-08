@@ -10,8 +10,8 @@ import {
   ArrowLeftIcon,
 } from "@heroicons/react/24/outline"
 import {
-  BookOpen, UserCheck, UserX, LayoutGrid, List,
-  X, AlertCircle, CheckCircle2, ChevronLeft, RefreshCw,
+  UserCheck, UserX, LayoutGrid, List,
+  X, AlertCircle, CheckCircle2, ChevronLeft, RefreshCw, Eye, Pencil, KeyRound,
 } from "lucide-react"
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
@@ -482,28 +482,33 @@ function ProfCard({ prof, onView, onEdit, onResend, onReset }: {
   const labels      = Array.from(new Set(
     atribuicoes.map((a) => `${a.turma_nome ?? "Turma"} · ${a.disciplina_nome ?? "Disciplina"}`)
   ))
-  const visible     = labels.slice(0, 3)
+  const visible     = labels.slice(0, 2)
   const remaining   = labels.length - visible.length
 
   const cargaMax   = prof.carga_horaria_maxima ?? 0
   const cargaReal  = prof.carga_horaria_real   ?? 0
+  const cargaPct   = cargaMax > 0 ? Math.min(Math.round((cargaReal / cargaMax) * 100), 100) : null
   const cargaLabel = cargaMax > 0 ? `${cargaReal} / ${cargaMax} tempos` : `${cargaReal} tempos`
-  const cargaCls   = !cargaMax
-    ? "border-slate-200 text-slate-500"
-    : cargaReal > cargaMax  ? "border-rose-200 bg-rose-50 text-rose-600"
-    : cargaReal >= cargaMax * 0.8 ? "border-klasse-gold-200 bg-klasse-gold-50 text-klasse-gold-700"
-    : "border-[#1F6B3B]/20 bg-[#1F6B3B]/8 text-[#1F6B3B]"
+  const avatarInitial = (prof.nome || prof.email || "?").trim().charAt(0).toUpperCase()
+  const cargaBarCls = cargaPct === null
+    ? "bg-slate-200"
+    : cargaReal > cargaMax  ? "bg-rose-500"
+    : cargaReal >= cargaMax * 0.8 ? "bg-klasse-gold-400"
+    : "bg-[#1F6B3B]"
+  const cargaPctCls = cargaPct === null
+    ? "text-slate-400"
+    : cargaReal > cargaMax  ? "text-rose-600"
+    : cargaReal >= cargaMax * 0.8 ? "text-klasse-gold-600"
+    : "text-[#1F6B3B]"
 
   return (
-    <div className="group rounded-xl border border-slate-200 bg-white p-4 transition-all hover:shadow-md hover:border-slate-300">
-      {/* Header — avatar + name clickable */}
+    <div className="group rounded-xl border bg-white p-4 transition-all hover:shadow-md hover:border-slate-300">
+      {/* Card header */}
       <div className="flex items-start justify-between gap-3 mb-3">
         <button onClick={onView} className="flex items-center gap-3 min-w-0 text-left hover:opacity-80 transition-opacity">
-          <img
-            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(prof.nome || prof.email)}&background=1F6B3B&color=fff`}
-            alt={prof.nome}
-            className="h-11 w-11 rounded-xl border border-slate-200 flex-shrink-0"
-          />
+          <div className="h-8 w-8 rounded-lg bg-[#1F6B3B]/10 flex items-center justify-center flex-shrink-0 text-[11px] font-black text-[#1F6B3B]">
+            {avatarInitial}
+          </div>
           <div className="min-w-0">
             <p className="text-sm font-bold text-slate-900 truncate group-hover:text-[#1F6B3B] transition-colors">
               {prof.nome || "Sem nome"}
@@ -511,31 +516,37 @@ function ProfCard({ prof, onView, onEdit, onResend, onReset }: {
             <p className="text-xs text-slate-400 truncate">{prof.email}</p>
           </div>
         </button>
-        <div className="flex flex-col items-end gap-1">
-          <ComplianceBadge status={prof.compliance_status ?? "OK"} />
-          <PendenciasResumoBadge total={prof.pendencias_total ?? 0} />
-        </div>
+        <ComplianceBadge status={prof.compliance_status ?? "OK"} />
       </div>
 
-      {/* Status + atribuições */}
+      {/* Carga horária */}
+      <div className="mb-3">
+        <div className="flex justify-between text-[10px] font-bold mb-1">
+          <span className="text-slate-500">Carga horária</span>
+          <span className={cargaPctCls}>{cargaPct === null ? "—" : `${cargaPct}%`}</span>
+        </div>
+        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all ${cargaBarCls}`}
+            style={{ width: `${cargaPct ?? 100}%` }}
+          />
+        </div>
+        <p className="mt-1 text-[10px] font-semibold text-slate-500">{cargaLabel}</p>
+      </div>
+
+      {/* Status + pendências */}
       <div className="flex items-center justify-between text-xs mb-3">
         <div className="flex items-center gap-1.5">
           {prof.last_login
             ? <><UserCheck size={12} className="text-[#1F6B3B]" /><span className="text-[#1F6B3B] font-semibold">Ativo</span></>
             : <><UserX size={12} className="text-klasse-gold-500" /><span className="text-klasse-gold-600 font-semibold">Pendente</span></>
           }
+          <span className="text-slate-300">·</span>
+          <span className="text-slate-500">
+            {atribuicoes.length > 0 ? `${atribuicoes.length} turma(s)` : "Sem turmas"}
+          </span>
         </div>
-        <div className="flex items-center gap-1.5 text-slate-500">
-          <BookOpen size={12} className="text-slate-400" />
-          {atribuicoes.length > 0 ? `${atribuicoes.length} turma(s)` : "Sem turmas"}
-        </div>
-      </div>
-
-      {/* Carga horária */}
-      <div className="mb-3">
-        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${cargaCls}`}>
-          {cargaLabel}
-        </span>
+        <PendenciasResumoBadge total={prof.pendencias_total ?? 0} />
       </div>
 
       {/* Turmas */}
@@ -557,20 +568,24 @@ function ProfCard({ prof, onView, onEdit, onResend, onReset }: {
       )}
 
       {/* Actions — visible on hover */}
-      <div className="flex flex-wrap gap-2 pt-3 border-t border-slate-100 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button onClick={onEdit}
-          className="rounded-lg border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-colors">
-          Editar
+      <div className="flex items-center gap-1 pt-3 border-t border-slate-100 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button onClick={onView} title="Ver detalhes"
+          className="p-1.5 text-slate-400 hover:text-[#1F6B3B] hover:bg-green-50 rounded-lg transition-colors">
+          <Eye size={14} />
+        </button>
+        <button onClick={onEdit} title="Editar"
+          className="p-1.5 text-slate-400 hover:text-[#E3B23C] hover:bg-klasse-gold-50 rounded-lg transition-colors">
+          <Pencil size={14} />
         </button>
         {!prof.last_login && (
-          <button onClick={onResend}
-            className="rounded-lg border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-colors">
-            Reenviar convite
+          <button onClick={onResend} title="Reenviar convite"
+            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
+            <RefreshCw size={14} />
           </button>
         )}
-        <button onClick={onReset}
-          className="rounded-lg border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:border-slate-300 transition-colors">
-          Nova senha
+        <button onClick={onReset} title="Nova senha"
+          className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors">
+          <KeyRound size={14} />
         </button>
       </div>
     </div>
@@ -1434,12 +1449,14 @@ export default function ProfessoresPage() {
                       ))
                       const visible   = labels.slice(0, 2)
                       const remaining = labels.length - visible.length
+                      const avatarInitial = (p.nome || p.email || "?").trim().charAt(0).toUpperCase()
                       return (
                         <tr key={p.user_id} className="hover:bg-slate-50 transition-colors">
                           <td className="px-5 py-4">
                             <button onClick={() => openDetail(p)} className="flex items-center gap-3 hover:opacity-80 transition-opacity text-left">
-                              <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(p.nome || p.email)}&background=1F6B3B&color=fff`}
-                                alt={p.nome} className="h-9 w-9 rounded-xl border border-slate-200 flex-shrink-0" />
+                              <div className="h-8 w-8 rounded-lg bg-[#1F6B3B]/10 flex items-center justify-center flex-shrink-0 text-[11px] font-black text-[#1F6B3B]">
+                                {avatarInitial}
+                              </div>
                               <div className="min-w-0">
                                 <p className="text-sm font-bold text-slate-900 hover:text-[#1F6B3B] truncate transition-colors">{p.nome || "Sem nome"}</p>
                                 <p className="text-xs text-slate-400 truncate">{p.email}</p>

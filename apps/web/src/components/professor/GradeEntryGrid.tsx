@@ -366,7 +366,71 @@ export function GradeEntryGrid({
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="block md:hidden">
+        <div className="divide-y divide-slate-100">
+          {table.getRowModel().rows.map((row) => {
+            const isHighlighted = highlightId && row.original.id === highlightId
+            return (
+              <div
+                key={row.id}
+                className={`p-4 ${isHighlighted ? "bg-klasse-green-50" : "bg-white"}`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs text-slate-400 font-mono">Nº {row.original.numero}</p>
+                    <p className="text-sm font-semibold text-slate-900">{row.original.nome}</p>
+                  </div>
+                  <SyncIndicator
+                    status={row.original._status === "pending" ? "syncing" : row.original._status}
+                    compact
+                  />
+                </div>
+
+                {showIsento && (
+                  <label className="mt-3 flex items-center gap-2 text-xs text-slate-500">
+                    <input
+                      type="checkbox"
+                      checked={!!row.original.is_isento}
+                      onChange={(e) => updateIsento(row.index, e.target.checked)}
+                      className="rounded border-slate-300 text-klasse-green-600 focus:ring-klasse-green-500"
+                    />
+                    Isento neste trimestre
+                  </label>
+                )}
+
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  {[
+                    { label: "MAC", key: "mac1" as const, value: row.original.mac1 },
+                    { label: "NPP", key: "npp1" as const, value: row.original.npp1 },
+                    { label: "NPT", key: "npt1" as const, value: row.original.npt1 },
+                  ].map((item) => (
+                    <div key={item.label} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-[10px] font-semibold uppercase text-slate-400">{item.label}</p>
+                      <div className="mt-2">
+                        <GradeInput
+                          inputRef={() => null}
+                          disabled={!!row.original.is_isento}
+                          value={item.value}
+                          onChange={(val) => updateGrade(row.index, item.key, val)}
+                          onNavigate={() => null}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                    <p className="text-[10px] font-semibold uppercase text-slate-400">MT</p>
+                    <div className="mt-2 text-lg font-semibold text-slate-900">
+                      {row.original.mt1 ?? "—"}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm text-left">
           <thead className="bg-white text-slate-500 font-bold uppercase text-xs border-b border-slate-200">
             {table.getHeaderGroups().map((headerGroup) => (
@@ -474,7 +538,7 @@ const GradeInput = ({
           onNavigate(0, 1)
         }
       }}
-      className={`w-full h-8 text-center rounded border border-slate-200 font-bold outline-none focus:ring-2 focus:ring-klasse-green-500 focus:border-transparent transition-all ${
+      className={`w-full h-11 md:h-8 text-center rounded border border-slate-200 font-bold outline-none focus:ring-2 focus:ring-klasse-green-500 focus:border-transparent transition-all ${
         disabled ? "bg-slate-100 text-slate-400 border-dashed text-[10px]" :
         value !== null && value < 10 ? "text-rose-600 bg-rose-50" : "text-slate-900"
       } ${value === null && !disabled ? "bg-slate-50" : "bg-white"}`}

@@ -20,7 +20,15 @@ const TOPBAR_LABELS: Record<UserRole, { title: string; subtitle: string }> = {
   gestor: { title: "Gestor", subtitle: "Portal do gestor" },
 };
 
-export default function AppShell({ children }: { children: React.ReactNode }) {
+export default function AppShell({
+  children,
+  mobileNav,
+  hideSidebarOnMobile = false,
+}: {
+  children: React.ReactNode;
+  mobileNav?: React.ReactNode;
+  hideSidebarOnMobile?: boolean;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const { userRole, isLoading: isLoadingRole } = useUserRole();
@@ -219,12 +227,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="flex">
-        <Sidebar
-          items={navItems}
-          escolaNome={displayedEscolaNome}
-          planoNome={displayedPlanoNome}
-          portalTitle={topbarLabels?.title}
-        />
+        <div className={hideSidebarOnMobile ? "hidden md:block" : "block"}>
+          <Sidebar
+            items={navItems}
+            escolaNome={displayedEscolaNome}
+            planoNome={displayedPlanoNome}
+            portalTitle={topbarLabels?.title}
+          />
+        </div>
         <div className="flex-1 min-w-0">
           <Topbar
             portalTitle={topbarLabels?.title}
@@ -236,9 +246,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             escolaId={navEscolaId}
             portal={inferredRole ?? undefined}
           />
-          <main className="p-4 md:p-6">{children}</main>
+          <main className={mobileNav ? "p-4 md:p-6 pb-24" : "p-4 md:p-6"}>{children}</main>
         </div>
       </div>
+      {mobileNav ? <div className="md:hidden">{mobileNav}</div> : null}
     </div>
   );
 }
