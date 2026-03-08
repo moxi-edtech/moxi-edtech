@@ -107,9 +107,9 @@ const mapAulas = (items: any[]): SchedulerAula[] =>
     };
   });
 
-const fetchJson = async (url: string, signal: AbortSignal) => {
+const fetchJson = async (url: string, signal: AbortSignal, cache: RequestCache = "force-cache") => {
   try {
-    const res = await fetch(url, { cache: "force-cache", signal });
+    const res = await fetch(url, { cache, signal });
     const json = await res.json().catch(() => ({}));
     return { res, json };
   } catch (err: any) {
@@ -139,9 +139,9 @@ export function useHorarioBaseData(escolaId?: string, refreshToken?: number) {
 
 
     Promise.all([
-      fetchJson(`/api/escolas/${escolaId}/horarios/slots`, controller.signal),
-      fetchJson(`/api/escolas/${escolaId}/salas`, controller.signal),
-      fetchJson(`/api/secretaria/turmas-simples?ano=${anoAtual}`, controller.signal),
+      fetchJson(`/api/escolas/${escolaId}/horarios/slots`, controller.signal, "no-store"),
+      fetchJson(`/api/escolas/${escolaId}/salas`, controller.signal, "no-store"),
+      fetchJson(`/api/secretaria/turmas-simples?ano=${anoAtual}`, controller.signal, "no-store"),
     ])
       .then(([slotsRes, salasRes, turmasRes]) => {
         if (controller.signal.aborted || requestId !== requestRef.current) return;
@@ -244,8 +244,9 @@ export function useHorarioTurmaData({
       fetchJson(
         `/api/secretaria/turmas/${currentTurmaId}/disciplinas?escola_id=${encodeURIComponent(currentEscolaId)}`,
         controller.signal,
+        "no-store",
       ),
-      fetchJson(`/api/escolas/${currentEscolaId}/horarios/quadro?${params.toString()}`, controller.signal),
+      fetchJson(`/api/escolas/${currentEscolaId}/horarios/quadro?${params.toString()}`, controller.signal, "no-store"),
     ])
       .then(([disciplinasRes, quadroRes]) => {
         if (controller.signal.aborted || requestId !== requestRef.current) return;
