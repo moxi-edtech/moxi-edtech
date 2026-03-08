@@ -1,11 +1,8 @@
-import AppShell from "@/components/layout/klasse/AppShell";
+import ProfessorPortalLayout from "@/components/professor/layout/ProfessorPortalLayout";
 import React from "react";
 
 export default function ProfessorLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AppShell>
-      {children}
-    </AppShell>
+    <ProfessorPortalLayout>{children}</ProfessorPortalLayout>
   );
 }
-

@@ -41,6 +41,7 @@ export default function ProfessorNotasPage() {
   const [turmaStatusFecho, setTurmaStatusFecho] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
   const [trimestreSelecionado, setTrimestreSelecionado] = useState<1 | 2 | 3>(1)
+  const [savingNow, setSavingNow] = useState(false)
 
   const { online } = useOfflineStatus()
   const { gerarMiniPauta } = useOfficialDocs()
@@ -224,6 +225,17 @@ export default function ProfessorNotasPage() {
     )
   }
 
+  const handleSaveNow = async () => {
+    if (!turmaId || !disciplinaId || pauta.length === 0) return
+    if (turmaFechada) return
+    setSavingNow(true)
+    try {
+      await handleSaveBatch(pauta)
+    } finally {
+      setSavingNow(false)
+    }
+  }
+
   const handleExportMiniPauta = async () => {
     if (!turmaId || !disciplinaId || pauta.length === 0) return
     const turmaNome = atribs.find((a) => a.turma.id === turmaId)?.turma.nome || turmaId
@@ -296,7 +308,7 @@ export default function ProfessorNotasPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="max-w-6xl mx-auto p-6 space-y-6">
+      <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
         <div>
           <h1 className="text-2xl font-semibold text-klasse-green">Lançamento de notas</h1>
           <p className="text-sm text-slate-500">
@@ -377,6 +389,75 @@ export default function ProfessorNotasPage() {
           </aside>
 
           <section>
+            <div className="md:hidden sticky top-0 z-20 mb-4 rounded-xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <select
+                  value={turmaId}
+                  onChange={(event) => {
+                    setTurmaId(event.target.value)
+                    setDisciplinaId("")
+                    setTurmaDisciplinaId(null)
+                    setDisciplinaNome(null)
+                    setPauta([])
+                  }}
+                  className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                >
+                  <option value="">Turma</option>
+                  {Array.from(new Set(atribs.map((a) => a.turma.id))).map((tid) => (
+                    <option key={tid} value={tid}>
+                      {atribs.find((a) => a.turma.id === tid)?.turma.nome || tid}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={disciplinaId}
+                  onChange={(event) => {
+                    const nextId = event.target.value
+                    setDisciplinaId(nextId)
+                    const atrib = (atribsByTurma.get(turmaId) || []).find((a) => a.disciplina.id === nextId)
+                    setTurmaDisciplinaId(atrib?.turma_disciplina_id ?? null)
+                    setDisciplinaNome(atrib?.disciplina.nome ?? null)
+                  }}
+                  className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                  disabled={!turmaId}
+                >
+                  <option value="">Disciplina</option>
+                  {(atribsByTurma.get(turmaId) || [])
+                    .filter((a) => a.disciplina.id)
+                    .map((a) => (
+                      <option key={a.disciplina.id} value={a.disciplina.id || ""}>
+                        {a.disciplina.nome || a.disciplina.id}
+                      </option>
+                    ))}
+                </select>
+                <select
+                  value={trimestreSelecionado}
+                  onChange={(event) => setTrimestreSelecionado(Number(event.target.value) as 1 | 2 | 3)}
+                  className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                  disabled={!turmaId || periodosAtivos.length === 0}
+                >
+                  {periodosAtivos.length === 0 && <option value={trimestreSelecionado}>Sem períodos</option>}
+                  {periodosAtivos.map((periodo) => (
+                    <option key={periodo} value={periodo}>
+                      {`Trimestre ${periodo}`}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={handleSaveNow}
+                  disabled={!turmaId || !disciplinaId || pauta.length === 0 || savingNow || !!turmaFechada}
+                  className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                >
+                  {savingNow ? "Salvando..." : "Salvar agora"}
+                </button>
+              </div>
+              {!online && (
+                <div className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
+                  Offline: as notas serão sincronizadas quando a conexão voltar.
+                </div>
+              )}
+            </div>
             {loading ? (
               <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">Carregando pauta...</div>
             ) : data.length === 0 ? (
