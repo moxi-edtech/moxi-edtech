@@ -18,6 +18,16 @@ type AgendaItem = {
   fim: string;
 };
 
+type PendenciasResumo = {
+  avaliacoes_pendentes: number;
+  faltas_a_lancar: number;
+};
+
+type OverviewInfo = {
+  escola_nome: string | null;
+  primeiro_nome: string | null;
+};
+
 const dayLabel = (day: number) => {
   switch (day) {
     case 1:
@@ -43,21 +53,44 @@ export default function Page() {
   const [atribs, setAtribs] = useState<AtribItem[]>([]);
   const [agenda, setAgenda] = useState<AgendaItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendenciasResumo, setPendenciasResumo] = useState<PendenciasResumo | null>(null);
+  const [overview, setOverview] = useState<OverviewInfo | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       try {
         setLoading(true);
-        const [atribsRes, agendaRes] = await Promise.all([
+        setPendenciasResumo(null);
+        const [atribsRes, agendaRes, pendRes, overviewRes] = await Promise.all([
           fetch("/api/professor/atribuicoes", { cache: "no-store" }),
           fetch("/api/professor/agenda", { cache: "no-store" }),
+          fetch("/api/professor/dashboard/pendencias", { cache: "no-store" }),
+          fetch("/api/professor/dashboard/overview", { cache: "no-store" }),
         ]);
         const atribsJson = await atribsRes.json().catch(() => null);
         const agendaJson = await agendaRes.json().catch(() => null);
+        const pendJson = await pendRes.json().catch(() => null);
+        const overviewJson = await overviewRes.json().catch(() => null);
         if (!cancelled) {
           setAtribs((atribsJson?.items || []) as AtribItem[]);
           setAgenda((agendaJson?.items || []) as AgendaItem[]);
+          if (pendRes.ok && pendJson?.ok) {
+            setPendenciasResumo({
+              avaliacoes_pendentes: Number(pendJson.avaliacoes_pendentes ?? 0),
+              faltas_a_lancar: Number(pendJson.faltas_a_lancar ?? 0),
+            });
+          } else {
+            setPendenciasResumo({ avaliacoes_pendentes: 0, faltas_a_lancar: 0 });
+          }
+          if (overviewRes.ok && overviewJson?.ok) {
+            setOverview({
+              escola_nome: overviewJson.escola_nome ?? null,
+              primeiro_nome: overviewJson.primeiro_nome ?? null,
+            });
+          } else {
+            setOverview({ escola_nome: null, primeiro_nome: null });
+          }
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -96,14 +129,61 @@ export default function Page() {
     return map;
   }, [agenda]);
 
+  const todayKey = useMemo(() => {
+    const day = new Date().getDay();
+    return day === 0 ? 7 : day;
+  }, []);
+
+  const aulasHoje = useMemo(() => {
+    return agenda.filter((item) => item.dia_semana === todayKey).length;
+  }, [agenda, todayKey]);
+
+  const turmasAtivas = turmaMap.length;
+  const avaliacoesPendentes = pendenciasResumo?.avaliacoes_pendentes ?? 0;
+  const faltasALancar = pendenciasResumo?.faltas_a_lancar ?? 0;
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <div className="max-w-6xl mx-auto p-6 space-y-6">
         <header>
           <h1 className="text-2xl font-bold text-klasse-green">Portal do Professor</h1>
-          <p className="text-sm text-slate-500 mt-1">Resumo das suas turmas e agenda semanal.</p>
+          <p className="text-sm text-slate-500 mt-1">
+            <span className="font-medium text-slate-700">
+              {overview?.escola_nome ? overview.escola_nome : 'Escola'}
+            </span>
+            {overview?.primeiro_nome && (
+              <>
+                <span className="mx-1 text-slate-400">·</span>
+                <span className="font-semibold text-klasse-green">
+                  {overview.primeiro_nome}
+                </span>
+              </>
+            )}
+          </p>
         </header>
         <AssignmentsBanner />
+        <section className="rounded-2xl border border-emerald-950/30 bg-gradient-to-br from-[#0d1f12] via-[#12321d] to-[#1f4028] text-white p-5 shadow-sm">
+          <p className="text-xs uppercase tracking-[0.2em] text-emerald-100/70">Resumo do dia</p>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-semibold">Hoje no portal</h2>
+              <p className="text-sm text-emerald-100/80 mt-1">Acompanhe o que precisa de atenção.</p>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { label: "Aulas hoje", value: aulasHoje },
+                { label: "Turmas ativas", value: turmasAtivas },
+                { label: "Avaliações pendentes", value: avaliacoesPendentes },
+                { label: "Faltas a lançar", value: faltasALancar },
+              ].map((item) => (
+                <div key={item.label} className="rounded-xl bg-white/10 px-3 py-2 text-center">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-emerald-50/70">{item.label}</p>
+                  <p className="text-lg font-semibold text-white">{loading ? "—" : item.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
         <div className="grid lg:grid-cols-[2fr_1fr] gap-6">
           <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">

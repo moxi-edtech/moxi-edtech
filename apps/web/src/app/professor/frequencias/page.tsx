@@ -158,7 +158,43 @@ export default function ProfessorFrequenciasPage() {
           </button>
         </aside>
         <section className="rounded-xl border border-slate-200 bg-white">
-          <table className="min-w-full text-sm">
+          <div className="divide-y divide-slate-100 md:hidden">
+            {alunos.map((a) => {
+              const current = statusMap[a.id] || 'presente'
+              return (
+                <div key={a.id} className="p-3">
+                  <p className="text-sm font-semibold text-slate-900">{a.nome}</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {([
+                      { value: 'presente', label: 'Presente', cls: 'border-[#1F6B3B]/20 text-[#1F6B3B] bg-[#1F6B3B]/10' },
+                      { value: 'falta', label: 'Falta', cls: 'border-rose-200 text-rose-600 bg-rose-50' },
+                      { value: 'atraso', label: 'Atraso', cls: 'border-klasse-gold-200 text-klasse-gold-700 bg-klasse-gold-50' },
+                    ] as const).map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setStatusMap((s) => ({ ...s, [a.id]: opt.value }))}
+                        className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
+                          current === opt.value
+                            ? opt.cls
+                            : 'border-slate-200 text-slate-500 hover:border-slate-300'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+            {alunos.length === 0 && (
+              <div className="p-3 text-sm text-slate-500">
+                Selecione turma e disciplina para carregar alunos.
+              </div>
+            )}
+          </div>
+
+          <table className="min-w-full text-sm hidden md:table">
             <thead>
               <tr className="bg-gray-50 text-left">
                 <th className="p-2">Aluno</th>
