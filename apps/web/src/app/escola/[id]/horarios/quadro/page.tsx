@@ -553,7 +553,7 @@ export default function QuadroHorariosPage() {
 
   const buildGridRows = () => {
     const rows: Array<{ tempo: string; values: string[] }> = [];
-    const tempoLabels = (horariosDisponiveis ?? []).map((slot) => slot.label);
+    const tempoLabels = (horariosDisponiveis ?? []).map((slot) => slot.labelDefault);
     const sortedTempos = (horariosDisponiveis ?? []).map((slot) => slot.id);
     const aulaById = new Map(aulas.map((aula) => [aula.id, aula]));
 
