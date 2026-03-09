@@ -15,7 +15,7 @@ type TurmaDisciplinaRow = {
   curso_matriz_id: string | null
   curso_matriz?: { disciplina_id?: string | null; disciplina?: { id?: string | null } | null } | null
 }
-type LegacyAssignmentRow = { turma_id: string | null; disciplina_id: string | null }
+type AssignmentRow = { turma_id: string | null; disciplina_id: string | null }
 type TurmaMetaRow = { id: string; curso_id: string | null; classe_id: string | null }
 type CursoMatrizRow = {
   id: string
@@ -58,28 +58,18 @@ export async function GET() {
     }
 
     let query = supabase
-      .from('turma_disciplinas')
-      .select('id, turma_id, curso_matriz_id, curso_matriz:curso_matriz!turma_disciplinas_curso_matriz_id_fkey(id, disciplina_id, disciplina:disciplinas_catalogo!curso_matriz_disciplina_id_fkey(id))')
-      .eq('escola_id', escolaId)
-      .eq('professor_id', professorId)
-
-    query = applyKf2ListInvariants(query, { defaultLimit: 50 })
-    const { data: tdp, error: tdpErr } = await query
-    if (tdpErr) return NextResponse.json({ ok: false, error: tdpErr.message }, { status: 400 })
-
-    const { data: legacyAssignments } = await supabase
       .from('turma_disciplinas_professores')
       .select('turma_id, disciplina_id')
       .eq('escola_id', escolaId)
       .eq('professor_id', professorId)
 
-    const turmaIdsFromTdp = (tdp || [])
-      .map((row: TurmaDisciplinaRow) => row.turma_id)
-      .filter((id): id is string => Boolean(id))
-    const turmaIdsFromLegacy = (legacyAssignments || [])
-      .map((row: LegacyAssignmentRow) => row.turma_id)
-      .filter((id): id is string => Boolean(id))
-    const turmaIds = Array.from(new Set([...turmaIdsFromTdp, ...turmaIdsFromLegacy]))
+    query = applyKf2ListInvariants(query, { defaultLimit: 50 })
+    const { data: assignments, error: assignmentsErr } = await query
+    if (assignmentsErr) return NextResponse.json({ ok: false, error: assignmentsErr.message }, { status: 400 })
+
+    const turmaIds = Array.from(
+      new Set((assignments || []).map((row: AssignmentRow) => row.turma_id).filter((id): id is string => Boolean(id)))
+    )
 
     const turmaMetaRows = turmaIds.length
       ? await supabase
@@ -96,11 +86,7 @@ export async function GET() {
     }
 
     const disciplinaIds = Array.from(
-      new Set(
-        (legacyAssignments || [])
-          .map((row: LegacyAssignmentRow) => row.disciplina_id)
-          .filter((id): id is string => Boolean(id))
-      )
+      new Set((assignments || []).map((row: AssignmentRow) => row.disciplina_id).filter((id): id is string => Boolean(id)))
     )
     const classeIds = Array.from(
       new Set(turmaMeta.map((row: TurmaMetaRow) => row.classe_id).filter((id): id is string => Boolean(id)))
@@ -125,30 +111,32 @@ export async function GET() {
       })
     }
 
-    const legacyMatrizIds = new Set<string>()
-    const legacyResolved = (legacyAssignments || [])
-      .map((row: LegacyAssignmentRow) => {
+    const resolvedAssignments = (assignments || [])
+      .map((row: AssignmentRow) => {
         if (!row.turma_id || !row.disciplina_id) return null
         const turmaInfo = turmaMap.get(row.turma_id)
         if (!turmaInfo?.curso_id || !turmaInfo?.classe_id) return null
         const key = `${turmaInfo.curso_id}:${turmaInfo.classe_id}:${row.disciplina_id}`
         const matriz = matrizByKey.get(key)
         if (!matriz?.id) return null
-        legacyMatrizIds.add(matriz.id)
-        return { turma_id: row.turma_id, curso_matriz_id: matriz.id }
+        return {
+          turma_id: row.turma_id,
+          curso_matriz_id: matriz.id,
+          disciplina_id: matriz.disciplinaId ?? row.disciplina_id,
+        }
       })
-      .filter(Boolean) as Array<{ turma_id: string; curso_matriz_id: string }>
+      .filter(Boolean) as Array<{ turma_id: string; curso_matriz_id: string; disciplina_id?: string | null }>
 
-    const legacyTurmaIds = Array.from(new Set(legacyResolved.map((row) => row.turma_id)))
-    const legacyMatrizIdList = Array.from(legacyMatrizIds)
+    const resolvedTurmaIds = Array.from(new Set(resolvedAssignments.map((row) => row.turma_id)))
+    const resolvedMatrizIds = Array.from(new Set(resolvedAssignments.map((row) => row.curso_matriz_id)))
 
-    const turmaDisciplinaRows = legacyTurmaIds.length && legacyMatrizIdList.length
+    const turmaDisciplinaRows = resolvedTurmaIds.length && resolvedMatrizIds.length
       ? await supabase
           .from('turma_disciplinas')
           .select('id, turma_id, curso_matriz_id')
           .eq('escola_id', escolaId)
-          .in('turma_id', legacyTurmaIds)
-          .in('curso_matriz_id', legacyMatrizIdList)
+          .in('turma_id', resolvedTurmaIds)
+          .in('curso_matriz_id', resolvedMatrizIds)
       : { data: [] as TurmaDisciplinaRow[] }
 
     const turmaDisciplinaMap = new Map<string, { id: string; turma_id: string; curso_matriz_id: string }>()
@@ -161,56 +149,18 @@ export async function GET() {
       })
     }
 
-    const merged = new Map<string, { id: string; turma_id: string; curso_matriz_id: string; disciplina_id?: string | null }>()
-    for (const row of (tdp || []) as TurmaDisciplinaRow[]) {
-      if (!row?.turma_id || !row?.curso_matriz_id) continue
-      merged.set(`${row.turma_id}:${row.curso_matriz_id}`, {
-        id: row.id,
-        turma_id: row.turma_id,
-        curso_matriz_id: row.curso_matriz_id,
-        disciplina_id: row?.curso_matriz?.disciplina_id ?? row?.curso_matriz?.disciplina?.id ?? null,
-      })
-    }
-
-    for (const row of legacyResolved) {
-      const key = `${row.turma_id}:${row.curso_matriz_id}`
-      const turmaDisciplina = turmaDisciplinaMap.get(key)
-      if (!turmaDisciplina) continue
-      if (!merged.has(key)) {
-        merged.set(key, {
-          id: turmaDisciplina.id,
-          turma_id: turmaDisciplina.turma_id,
-          curso_matriz_id: turmaDisciplina.curso_matriz_id,
-        })
-      }
-    }
-
-    const mergedRows = Array.from(merged.values())
-    const matrizIds = Array.from(new Set(mergedRows.map((row) => row.curso_matriz_id).filter(Boolean)))
-
-    const matrizRes = matrizIds.length
-      ? await supabase
-          .from('curso_matriz')
-          .select('id, disciplina_id, disciplina:disciplinas_catalogo(id)')
-          .in('id', matrizIds)
-          .eq('escola_id', escolaId)
-      : { data: [] as CursoMatrizRow[] }
-
-    const matrizMap = new Map<string, { disciplinaId: string | null }>()
-    for (const row of ((matrizRes as { data?: CursoMatrizRow[] }).data || [])) {
-      matrizMap.set(row.id, { disciplinaId: row.disciplina_id ?? row.disciplina?.id ?? null })
-    }
-
-    const assignments = mergedRows
+    const assignmentPairs = resolvedAssignments
       .map((row) => {
-        const matriz = matrizMap.get(row.curso_matriz_id)
+        const key = `${row.turma_id}:${row.curso_matriz_id}`
+        const turmaDisciplina = turmaDisciplinaMap.get(key)
+        if (!turmaDisciplina) return null
         return {
           turma_id: row.turma_id,
-          turma_disciplina_id: row.id,
-          disciplina_id: matriz?.disciplinaId ?? row.disciplina_id ?? null,
+          turma_disciplina_id: turmaDisciplina.id,
+          disciplina_id: row.disciplina_id ?? null,
         }
       })
-      .filter((row) => Boolean(row.turma_id))
+      .filter(Boolean) as Array<{ turma_id: string; turma_disciplina_id: string; disciplina_id: string | null }>
 
     const { data: pendenciasRows } = await supabase
       .from('vw_professor_pendencias')
@@ -239,9 +189,9 @@ export async function GET() {
     const avaliacoesPendentes = pendenciasByTurma.size
 
     const today = new Date().toISOString().slice(0, 10)
-    const turmaIdsForAttendance = Array.from(new Set(assignments.map((row) => row.turma_id).filter(Boolean)))
+    const turmaIdsForAttendance = Array.from(new Set(assignmentPairs.map((row) => row.turma_id).filter(Boolean)))
     const disciplinaIdsForAttendance = Array.from(
-      new Set(assignments.map((row) => row.disciplina_id).filter((id): id is string => Boolean(id)))
+      new Set(assignmentPairs.map((row) => row.disciplina_id).filter((id): id is string => Boolean(id)))
     )
 
     const presencasRows = turmaIdsForAttendance.length && disciplinaIdsForAttendance.length
@@ -260,7 +210,7 @@ export async function GET() {
       presencasSet.add(`${row.turma_id}:${row.disciplina_id}`)
     }
 
-    const faltasALancar = assignments.filter((row) => {
+    const faltasALancar = assignmentPairs.filter((row) => {
       if (!row.disciplina_id) return false
       return !presencasSet.has(`${row.turma_id}:${row.disciplina_id}`)
     }).length

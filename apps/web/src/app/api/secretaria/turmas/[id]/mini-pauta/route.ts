@@ -76,7 +76,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
     const { data: turmaDisciplina } = await supabase
       .from('turma_disciplinas')
-      .select('id, professor_id')
+      .select('id')
       .eq('escola_id', escolaId)
       .eq('turma_id', turmaId)
       .eq('curso_matriz_id', matriz.id)
@@ -84,6 +84,15 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     if (!turmaDisciplina?.id) {
       return NextResponse.json({ ok: false, error: 'Disciplina não atribuída à turma' }, { status: 404 })
     }
+
+    const { data: turmaProfessor } = await supabase
+      .from('turma_disciplinas_professores')
+      .select('professor_id')
+      .eq('escola_id', escolaId)
+      .eq('turma_id', turmaId)
+      .eq('disciplina_id', parsed.data.disciplinaId)
+      .maybeSingle()
+    const professorId = (turmaProfessor as { professor_id?: string | null } | null)?.professor_id ?? null
 
     const { data: anoLetivo } = await supabase
       .from('anos_letivos')
@@ -234,11 +243,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     }
 
     let professorNome: string | null = null
-    if (turmaDisciplina.professor_id) {
+    if (professorId) {
       const { data: professor } = await supabase
         .from('professores')
         .select('profiles!professores_profile_id_fkey ( nome )')
-        .eq('id', turmaDisciplina.professor_id)
+        .eq('id', professorId)
         .eq('escola_id', escolaId)
         .maybeSingle()
       const profile = Array.isArray((professor as any)?.profiles) ? (professor as any)?.profiles?.[0] : (professor as any)?.profiles

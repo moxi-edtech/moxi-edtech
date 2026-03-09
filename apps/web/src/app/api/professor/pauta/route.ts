@@ -13,7 +13,7 @@ import type { Database } from '~types/supabase'
 
 type ProfessorRow = { id: string }
 type TurmaRow = { id: string; curso_id: string | null; classe_id: string | null }
-type TurmaDisciplinaRow = { id: string; professor_id: string | null; curso_matriz_id: string | null }
+type TurmaDisciplinaRow = { id: string; curso_matriz_id: string | null }
 type CursoMatrizRow = {
   id: string
   disciplina_id: string | null
@@ -101,12 +101,12 @@ export async function GET(req: Request) {
       | { id: string; disciplina_id: string | null; avaliacao_mode: string | null; avaliacao_modelo_id: string | null; avaliacao_disciplina_id: string | null }
       | null = null
 
-    let turmaDisciplina: { id: string; professor_id: string | null; curso_matriz_id: string | null } | null = null
+    let turmaDisciplina: { id: string; curso_matriz_id: string | null } | null = null
 
     if (turmaDisciplinaIdValue) {
       const { data } = await admin
         .from('turma_disciplinas')
-        .select('id, professor_id, curso_matriz_id')
+        .select('id, curso_matriz_id')
         .eq('escola_id', escolaId)
         .eq('turma_id', turmaIdValue)
         .eq('id', turmaDisciplinaIdValue)
@@ -127,7 +127,7 @@ export async function GET(req: Request) {
       if (matrizFallback?.id) {
         const { data } = await admin
           .from('turma_disciplinas')
-          .select('id, professor_id, curso_matriz_id')
+          .select('id, curso_matriz_id')
           .eq('escola_id', escolaId)
           .eq('turma_id', turmaIdValue)
           .eq('curso_matriz_id', matrizFallback.id)
@@ -140,20 +140,16 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Disciplina não atribuída à turma' }, { status: 404 })
     }
 
-    let isProfessorAssigned = turmaDisciplina.professor_id === professorId
-    if (!isProfessorAssigned) {
-      const { data: assignment } = await admin
-        .from('turma_disciplinas_professores')
-        .select('id')
-        .eq('escola_id', escolaId)
-        .eq('turma_id', turmaIdValue)
-        .eq('disciplina_id', disciplinaIdValue)
-        .eq('professor_id', professorId)
-        .maybeSingle()
-      isProfessorAssigned = Boolean(assignment)
-    }
+    const { data: assignment } = await admin
+      .from('turma_disciplinas_professores')
+      .select('id')
+      .eq('escola_id', escolaId)
+      .eq('turma_id', turmaIdValue)
+      .eq('disciplina_id', disciplinaIdValue)
+      .eq('professor_id', professorId)
+      .maybeSingle()
 
-    if (!isProfessorAssigned) {
+    if (!assignment) {
       return NextResponse.json({ error: 'Professor não atribuído à disciplina' }, { status: 403 })
     }
 

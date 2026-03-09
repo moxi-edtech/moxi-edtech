@@ -9,8 +9,7 @@ type SlotRow = { id: string; turno_id: string | null; ordem: number | null; inic
 type TurmaRow = { id: string; nome: string | null; sala: string | null }
 type DisciplinaRow = { id: string; nome: string | null }
 type SalaRow = { id: string; nome: string | null }
-type TurmaDisciplinaRow = { turma_id: string | null; curso_matriz?: { disciplina_id?: string | null } | null }
-type LegacyAssignmentRow = { turma_id: string | null; disciplina_id: string | null }
+type AssignmentRow = { turma_id: string | null; disciplina_id: string | null }
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -37,28 +36,14 @@ export async function GET() {
 
     if (!prof?.id) return NextResponse.json({ ok: true, items: [] })
 
-    const { data: assignedRows } = await applyKf2ListInvariants(
-      supabase
-        .from('turma_disciplinas')
-        .select('turma_id, curso_matriz:curso_matriz!turma_disciplinas_curso_matriz_id_fkey(disciplina_id)')
-        .eq('escola_id', escolaId)
-        .eq('professor_id', prof.id),
-      { defaultLimit: 200 }
-    )
-
-    const { data: legacyRows } = await supabase
+    const allowedPairs = new Set<string>()
+    const { data: assignments } = await supabase
       .from('turma_disciplinas_professores')
       .select('turma_id, disciplina_id')
       .eq('escola_id', escolaId)
       .eq('professor_id', prof.id)
 
-    const allowedPairs = new Set<string>()
-    for (const row of ((assignedRows as TurmaDisciplinaRow[]) || [])) {
-      const turmaId = row.turma_id
-      const disciplinaId = row.curso_matriz?.disciplina_id ?? null
-      if (turmaId && disciplinaId) allowedPairs.add(`${turmaId}:${disciplinaId}`)
-    }
-    for (const row of ((legacyRows as LegacyAssignmentRow[]) || [])) {
+    for (const row of ((assignments as AssignmentRow[]) || [])) {
       if (row.turma_id && row.disciplina_id) allowedPairs.add(`${row.turma_id}:${row.disciplina_id}`)
     }
 

@@ -11,7 +11,7 @@ type TurmaDisciplinaRow = {
   curso_matriz_id: string | null
   curso_matriz?: { disciplina_id?: string | null; disciplina?: { id?: string | null; nome?: string | null } | null } | null
 }
-type LegacyAssignmentRow = { turma_id: string | null; disciplina_id: string | null }
+type AssignmentRow = { turma_id: string | null; disciplina_id: string | null }
 type TurmaMetaRow = {
   id: string
   nome: string | null
@@ -25,6 +25,12 @@ type CursoMatrizRow = {
   classe_id: string | null
   disciplina_id: string | null
   disciplina?: { id?: string | null; nome?: string | null } | null
+}
+type ResolvedAssignment = {
+  turma_id: string
+  curso_matriz_id: string
+  disciplina_id: string | null
+  disciplina_nome: string | null
 }
 
 // GET /api/professor/atribuicoes
@@ -51,29 +57,19 @@ export async function GET() {
     if (!professorId) return NextResponse.json({ ok: true, escola_id: escolaId, items: [] })
 
     let query = supabase
-      .from('turma_disciplinas')
-      .select('id, turma_id, curso_matriz_id, curso_matriz:curso_matriz!turma_disciplinas_curso_matriz_id_fkey(id, disciplina_id, disciplina:disciplinas_catalogo!curso_matriz_disciplina_id_fkey(id, nome))')
-      .eq('escola_id', escolaId)
-      .eq('professor_id', professorId)
-
-    query = applyKf2ListInvariants(query, { defaultLimit: 50 })
-
-    const { data: tdp, error } = await query
-    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
-
-    const { data: legacyAssignments } = await supabase
       .from('turma_disciplinas_professores')
       .select('turma_id, disciplina_id')
       .eq('escola_id', escolaId)
       .eq('professor_id', professorId)
 
-    const turmaIdsFromTdp = (tdp || [])
-      .map((r: TurmaDisciplinaRow) => r.turma_id)
-      .filter((id): id is string => Boolean(id))
-    const turmaIdsFromLegacy = (legacyAssignments || [])
-      .map((r: LegacyAssignmentRow) => r.turma_id)
-      .filter((id): id is string => Boolean(id))
-    const turmaIds = Array.from(new Set([...turmaIdsFromTdp, ...turmaIdsFromLegacy]))
+    query = applyKf2ListInvariants(query, { defaultLimit: 50 })
+
+    const { data: assignments, error } = await query
+    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
+
+    const turmaIds = Array.from(
+      new Set((assignments || []).map((r: AssignmentRow) => r.turma_id).filter((id): id is string => Boolean(id)))
+    )
 
     const turmaMetaRows = turmaIds.length
       ? await supabase
@@ -98,11 +94,7 @@ export async function GET() {
     }
 
     const disciplinaIds = Array.from(
-      new Set(
-        (legacyAssignments || [])
-          .map((r: LegacyAssignmentRow) => r.disciplina_id)
-          .filter((id): id is string => Boolean(id))
-      )
+      new Set((assignments || []).map((r: AssignmentRow) => r.disciplina_id).filter((id): id is string => Boolean(id)))
     )
     const classeIds = Array.from(
       new Set(turmaMeta.map((t: TurmaMetaRow) => t.classe_id).filter((id): id is string => Boolean(id)))
@@ -128,33 +120,33 @@ export async function GET() {
       })
     }
 
-    const legacyMatrizIds = new Set<string>()
-    const legacyResolved = (legacyAssignments || [])
-      .map((row: LegacyAssignmentRow) => {
+    const resolvedAssignments = (assignments || [])
+      .map((row: AssignmentRow) => {
         if (!row.turma_id || !row.disciplina_id) return null
         const turmaInfo = turmaMap.get(row.turma_id)
         if (!turmaInfo?.curso_id || !turmaInfo?.classe_id) return null
         const key = `${turmaInfo.curso_id}:${turmaInfo.classe_id}:${row.disciplina_id}`
         const matriz = matrizByKey.get(key)
         if (!matriz?.id) return null
-        legacyMatrizIds.add(matriz.id)
         return {
           turma_id: row.turma_id,
           curso_matriz_id: matriz.id,
+          disciplina_id: matriz.disciplinaId ?? row.disciplina_id,
+          disciplina_nome: matriz.disciplinaNome ?? null,
         }
       })
-      .filter(Boolean) as Array<{ turma_id: string; curso_matriz_id: string }>
+      .filter(Boolean) as ResolvedAssignment[]
 
-    const legacyTurmaIds = Array.from(new Set(legacyResolved.map((r) => r.turma_id)))
-    const legacyMatrizIdList = Array.from(legacyMatrizIds)
+    const resolvedTurmaIds = Array.from(new Set(resolvedAssignments.map((r) => r.turma_id)))
+    const resolvedMatrizIds = Array.from(new Set(resolvedAssignments.map((r) => r.curso_matriz_id)))
 
-    const turmaDisciplinaRows = legacyTurmaIds.length && legacyMatrizIdList.length
+    const turmaDisciplinaRows = resolvedTurmaIds.length && resolvedMatrizIds.length
       ? await supabase
           .from('turma_disciplinas')
           .select('id, turma_id, curso_matriz_id')
           .eq('escola_id', escolaId)
-          .in('turma_id', legacyTurmaIds)
-          .in('curso_matriz_id', legacyMatrizIdList)
+          .in('turma_id', resolvedTurmaIds)
+          .in('curso_matriz_id', resolvedMatrizIds)
       : { data: [] as TurmaDisciplinaRow[] }
 
     const turmaDisciplinaMap = new Map<string, { id: string; turma_id: string; curso_matriz_id: string }>()
@@ -169,64 +161,21 @@ export async function GET() {
       })
     }
 
-    const merged = new Map<string, { id: string; turma_id: string; curso_matriz_id: string; disciplina_id?: string | null; disciplina_nome?: string | null }>()
-    for (const row of (tdp || []) as TurmaDisciplinaRow[]) {
-      if (!row?.turma_id || !row?.curso_matriz_id) continue
-      merged.set(`${row.turma_id}:${row.curso_matriz_id}`, {
-        id: row.id,
-        turma_id: row.turma_id,
-        curso_matriz_id: row.curso_matriz_id,
-        disciplina_id: row?.curso_matriz?.disciplina_id ?? row?.curso_matriz?.disciplina?.id ?? null,
-        disciplina_nome: row?.curso_matriz?.disciplina?.nome ?? null,
-      })
-    }
-
-    for (const row of legacyResolved) {
-      const key = `${row.turma_id}:${row.curso_matriz_id}`
-      const turmaDisciplina = turmaDisciplinaMap.get(key)
-      if (!turmaDisciplina) continue
-      if (!merged.has(key)) {
-        merged.set(key, {
+    const items = resolvedAssignments
+      .map((r) => {
+        const key = `${r.turma_id}:${r.curso_matriz_id}`
+        const turmaDisciplina = turmaDisciplinaMap.get(key)
+        if (!turmaDisciplina) return null
+        const turmaInfo = turmaMap.get(r.turma_id)
+        return {
           id: turmaDisciplina.id,
-          turma_id: turmaDisciplina.turma_id,
-          curso_matriz_id: turmaDisciplina.curso_matriz_id,
-        })
-      }
-    }
-
-    const mergedRows = Array.from(merged.values())
-    const matrizIds = Array.from(new Set(mergedRows.map((r) => r.curso_matriz_id).filter(Boolean)))
-
-    const matrizRes = matrizIds.length
-      ? await supabase
-          .from('curso_matriz')
-          .select('id, disciplina_id, disciplina:disciplinas_catalogo(id, nome)')
-          .in('id', matrizIds)
-          .eq('escola_id', escolaId)
-      : { data: [] as CursoMatrizRow[] }
-
-    const matrizMap = new Map<string, { disciplinaId: string | null; disciplinaNome: string | null }>()
-    for (const d of ((matrizRes as { data?: CursoMatrizRow[] }).data || [])) {
-      matrizMap.set(d.id, {
-        disciplinaId: d.disciplina_id ?? d.disciplina?.id ?? null,
-        disciplinaNome: d.disciplina?.nome ?? null,
+          turma_disciplina_id: turmaDisciplina.id,
+          curso_matriz_id: r.curso_matriz_id,
+          turma: { id: r.turma_id, nome: turmaInfo?.nome ?? null, status_fecho: turmaInfo?.status_fecho ?? null },
+          disciplina: { id: r.disciplina_id ?? null, nome: r.disciplina_nome ?? null },
+        }
       })
-    }
-
-    const items = mergedRows.map((r) => {
-      const matriz = matrizMap.get(r.curso_matriz_id) || {
-        disciplinaId: r.disciplina_id ?? null,
-        disciplinaNome: r.disciplina_nome ?? null,
-      }
-      const turmaInfo = turmaMap.get(r.turma_id)
-      return {
-        id: r.id,
-        turma_disciplina_id: r.id,
-        curso_matriz_id: r.curso_matriz_id,
-        turma: { id: r.turma_id, nome: turmaInfo?.nome ?? null, status_fecho: turmaInfo?.status_fecho ?? null },
-        disciplina: { id: matriz.disciplinaId, nome: matriz.disciplinaNome },
-      }
-    })
+      .filter(Boolean)
     return NextResponse.json({ ok: true, escola_id: escolaId, items })
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)

@@ -66,25 +66,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         return NextResponse.json({ ok: false, error: 'Você não tem permissão para executar esta ação.' }, { status: 403 });
       }
 
-      const { data: turmaDisciplina } = await supabase
-        .from('turma_disciplinas')
+      const { data: tdp } = await supabase
+        .from('turma_disciplinas_professores')
         .select('id')
         .eq('escola_id', effectiveEscolaId)
         .eq('turma_id', turmaId)
         .eq('professor_id', professorId)
         .maybeSingle();
-      isProfessorAssigned = Boolean(turmaDisciplina);
-
-      if (!isProfessorAssigned) {
-        const { data: tdp } = await supabase
-          .from('turma_disciplinas_professores')
-          .select('id')
-          .eq('escola_id', effectiveEscolaId)
-          .eq('turma_id', turmaId)
-          .eq('professor_id', professorId)
-          .maybeSingle();
-        isProfessorAssigned = Boolean(tdp);
-      }
+      isProfessorAssigned = Boolean(tdp);
 
       if (!isProfessorAssigned) {
         return NextResponse.json({ ok: false, error: 'Você não tem permissão para executar esta ação.' }, { status: 403 });
@@ -173,30 +162,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         return NextResponse.json({ ok: false, error: 'Você não tem permissão para executar esta ação.' }, { status: 403 });
       }
 
-      const { data: turmaDisciplina } = await supabase
-        .from('turma_disciplinas')
+      const { data: tdp } = await supabase
+        .from('turma_disciplinas_professores')
         .select('id')
         .eq('escola_id', effectiveEscolaId)
         .eq('turma_id', turma_id)
         .eq('professor_id', professorId)
         .maybeSingle();
-      isProfessorAssigned = Boolean(turmaDisciplina);
+      isProfessorAssigned = Boolean(tdp);
 
       if (!isProfessorAssigned) {
-      const { data: tdp } = await supabase
-        .from('turma_disciplinas_professores')
-        .select('id')
-        .eq('escola_id', effectiveEscolaId)
-          .eq('turma_id', turma_id)
-          .eq('professor_id', professorId)
-          .maybeSingle();
-        isProfessorAssigned = Boolean(tdp);
+        return NextResponse.json({ ok: false, error: 'Você não tem permissão para executar esta ação.' }, { status: 403 });
       }
-
-    if (!isProfessorAssigned) {
-      return NextResponse.json({ ok: false, error: 'Você não tem permissão para executar esta ação.' }, { status: 403 });
     }
-  }
 
     // A lógica de negócio foi movida para a RPC `fechar_periodo_academico`.
     // A RPC irá travar tanto as frequências quanto as notas de forma atômica e auditada.

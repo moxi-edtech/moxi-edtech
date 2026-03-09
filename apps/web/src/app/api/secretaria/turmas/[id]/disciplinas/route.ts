@@ -38,7 +38,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     // Load assignments
     let query = supabase
       .from('turma_disciplinas')
-      .select('id, turma_id, curso_matriz_id, professor_id, carga_horaria_semanal, classificacao, periodos_ativos, entra_no_horario, avaliacao_mode, avaliacao_disciplina_id, modelo_avaliacao_id')
+      .select('id, turma_id, curso_matriz_id, carga_horaria_semanal, classificacao, periodos_ativos, entra_no_horario, avaliacao_mode, avaliacao_disciplina_id, modelo_avaliacao_id')
       .eq('escola_id', escolaId)
       .eq('turma_id', turmaId)
 
@@ -49,22 +49,14 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400, headers })
 
     const disciplinaIds = Array.from(new Set((rows || []).map((r: any) => r.curso_matriz_id).filter(Boolean)))
-    const professorIds = Array.from(new Set((rows || []).map((r: any) => r.professor_id).filter(Boolean)))
 
     // Fetch disciplina names
-    const [discRes, profRes, turmaRes] = await Promise.all([
+    const [discRes, turmaRes] = await Promise.all([
       disciplinaIds.length
         ? supabase
           .from('curso_matriz')
           .select('id, disciplina_id, carga_horaria_semanal, disciplina:disciplinas_catalogo!curso_matriz_disciplina_id_fkey(id, nome), curriculo:curso_curriculos(id, status)')
           .in('id', disciplinaIds)
-          .eq('escola_id', escolaId)
-        : Promise.resolve({ data: [] as any[] }),
-      professorIds.length
-        ? supabase
-          .from('professores')
-          .select('id, profiles!professores_profile_id_fkey ( user_id, nome, email )')
-          .in('id', professorIds)
           .eq('escola_id', escolaId)
         : Promise.resolve({ data: [] as any[] }),
       supabase
@@ -103,8 +95,37 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       }
     }
 
+    const disciplinaCatalogIds = Array.from(
+      new Set(Array.from(discMap.values()).map((d) => d.id).filter(Boolean))
+    ) as string[]
+    const { data: tdpRows } = disciplinaCatalogIds.length
+      ? await supabase
+          .from('turma_disciplinas_professores')
+          .select('turma_id, disciplina_id, professor_id')
+          .eq('escola_id', escolaId)
+          .eq('turma_id', turmaId)
+          .in('disciplina_id', disciplinaCatalogIds)
+      : { data: [] as Array<{ turma_id: string | null; disciplina_id: string | null; professor_id: string | null }> }
+
+    const professorIds = Array.from(
+      new Set((tdpRows || []).map((row) => row.professor_id).filter(Boolean))
+    ) as string[]
+    const { data: profRes } = professorIds.length
+      ? await supabase
+          .from('professores')
+          .select('id, profiles!professores_profile_id_fkey ( user_id, nome, email )')
+          .in('id', professorIds)
+          .eq('escola_id', escolaId)
+      : { data: [] as any[] }
+
     const profRowById = new Map<string, any>()
     for (const r of ((profRes as any).data || [])) profRowById.set(r.id, r)
+
+    const professorByDisciplina = new Map<string, string | null>()
+    for (const row of (tdpRows || [])) {
+      if (!row.turma_id || !row.disciplina_id) continue
+      professorByDisciplina.set(`${row.turma_id}:${row.disciplina_id}`, row.professor_id ?? null)
+    }
 
     // Simple linkage checks per assignment (prefer FK columns when available)
     const periodos = (periodosRows ?? []).map((periodo: any) => ({
@@ -118,7 +139,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     for (const row of rows || []) {
       const discInfo = discMap.get(row.curso_matriz_id)
       const disciplinaNome = discInfo?.nome ?? null
-      const profRow = profRowById.get(row.professor_id)
+      const professorId = discInfo?.id ? professorByDisciplina.get(`${turmaId}:${discInfo.id}`) ?? null : null
+      const profRow = professorId ? profRowById.get(professorId) : null
       const profile = Array.isArray(profRow?.profiles) ? profRow?.profiles?.[0] : profRow?.profiles
 
       // Check notas: try disciplina_id FK first; fallback to disciplina (texto)
@@ -136,13 +158,13 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
       // Check horário oficial SSOT (quadro_horarios + horario_slots) by turma/professor/disciplina
       let horarioOficialCount = 0
-      if (row.professor_id) {
+      if (professorId) {
         const { data: quadroRows } = await supabase
           .from('quadro_horarios')
           .select('id')
           .eq('escola_id', escolaId)
           .eq('turma_id', turmaId)
-          .eq('professor_id', row.professor_id)
+          .eq('professor_id', professorId)
           .eq('disciplina_id', discInfo?.id ?? row.curso_matriz_id)
           .limit(1)
         horarioOficialCount = (quadroRows ?? []).length
@@ -191,7 +213,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
           id: turmaRes.data?.id ?? turmaId,
           ano_letivo_id: turmaRes.data?.ano_letivo_id ?? null,
         },
-        professor: { id: row.professor_id, nome: profile?.nome ?? null, email: profile?.email ?? null },
+        professor: { id: professorId, nome: profile?.nome ?? null, email: profile?.email ?? null },
         horarios: null,
         planejamento: null,
         vinculos: {
