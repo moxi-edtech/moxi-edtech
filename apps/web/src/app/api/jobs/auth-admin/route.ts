@@ -31,6 +31,9 @@ function resolveJobToken(req: Request) {
   return req.headers.get("x-job-token") || req.headers.get("authorization")?.replace("Bearer ", "");
 }
 
+const normalizeToken = (raw?: string | null) =>
+  (raw || "").replace(/\\n/g, "").replace(/[\r\n]/g, "").trim();
+
 function getAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -39,8 +42,8 @@ function getAdminClient() {
 }
 
 export async function POST(req: Request) {
-  const token = resolveJobToken(req);
-  const expected = process.env.AUTH_ADMIN_JOB_TOKEN || process.env.CRON_SECRET;
+  const token = normalizeToken(resolveJobToken(req));
+  const expected = normalizeToken(process.env.AUTH_ADMIN_JOB_TOKEN || process.env.CRON_SECRET);
   if (!expected || token !== expected) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }

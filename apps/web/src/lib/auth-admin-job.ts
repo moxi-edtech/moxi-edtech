@@ -20,8 +20,11 @@ type AdminRequest = {
   payload: Record<string, any>;
 };
 
+const normalizeToken = (raw?: string | null) =>
+  (raw || "").replace(/\\n/g, "").replace(/[\r\n]/g, "").trim();
+
 export async function callAuthAdminJob(req: Request, action: AdminAction, payload: Record<string, any>) {
-  const token = process.env.AUTH_ADMIN_JOB_TOKEN || process.env.CRON_SECRET;
+  const token = normalizeToken(process.env.AUTH_ADMIN_JOB_TOKEN || process.env.CRON_SECRET);
   if (!token) {
     throw new Error("Missing AUTH_ADMIN_JOB_TOKEN or CRON_SECRET");
   }
