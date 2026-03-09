@@ -69,7 +69,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const [matrizQ, profByIdQ, profByUserQ, turmaQ] = await Promise.all([
       supabase
         .from('curso_matriz')
-        .select('id, escola_id')
+        .select('id, escola_id, disciplina_id')
         .eq('id', body.disciplina_id)
         .eq('escola_id', escolaId)
         .order('id', { ascending: false })
@@ -87,6 +87,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const profResolved = (profByIdQ.data || profByUserQ.data) as any | null
     if (!profResolved) return NextResponse.json({ ok: false, error: 'Professor não encontrado' }, { status: 404, headers })
     if (!turmaQ.data) return NextResponse.json({ ok: false, error: 'Turma não encontrada' }, { status: 404, headers })
+    const disciplinaCatalogoId = (matrizQ.data as { disciplina_id?: string | null }).disciplina_id
+    if (!disciplinaCatalogoId) {
+      return NextResponse.json({ ok: false, error: 'Disciplina sem catálogo associado' }, { status: 409, headers })
+    }
 
     // If exists, update; else insert (unique escola+turma+curso_matriz_id)
     const { data: existing } = await supabase
@@ -99,38 +103,29 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     const professorProfileId = profResolved.profile_id as string | null | undefined
 
-    if (existing?.id) {
-      const { error: updErr } = await supabase
+    if (!existing?.id) {
+      const { error: insErr } = await supabase
         .from('turma_disciplinas')
-        .update({ professor_id: profResolved.id })
-        .eq('id', existing.id)
-      if (updErr) return NextResponse.json({ ok: false, error: updErr.message }, { status: 400, headers })
-      if (professorProfileId) {
-        await dispatchProfessorNotificacao({
-          escolaId,
-          key: 'TURMA_ATRIBUIDA',
-          params: {
-            turmaNome: (turmaQ.data as { nome?: string | null } | null)?.nome ?? null,
-            actionUrl: `/professor/turmas/${turmaId}`,
-          },
-          recipientIds: [professorProfileId],
-          actorId: user.id,
-          actorRole: actorRole ?? 'secretaria',
-          agrupamentoTTLHoras: 12,
-        })
-      }
-      return NextResponse.json({ ok: true, mode: 'updated' }, { headers })
+        .insert({
+          escola_id: escolaId,
+          turma_id: turmaId,
+          curso_matriz_id: body.disciplina_id,
+        } as any)
+      if (insErr) return NextResponse.json({ ok: false, error: insErr.message }, { status: 400, headers })
     }
 
-    const { error: insErr } = await supabase
-      .from('turma_disciplinas')
-      .insert({
-        escola_id: escolaId,
-        turma_id: turmaId,
-        curso_matriz_id: body.disciplina_id,
-        professor_id: profResolved.id,
-      } as any)
-    if (insErr) return NextResponse.json({ ok: false, error: insErr.message }, { status: 400, headers })
+    const { error: tdpErr } = await supabase
+      .from('turma_disciplinas_professores')
+      .upsert(
+        {
+          escola_id: escolaId,
+          turma_id: turmaId,
+          disciplina_id: disciplinaCatalogoId,
+          professor_id: profResolved.id,
+        },
+        { onConflict: 'escola_id,turma_id,disciplina_id' }
+      )
+    if (tdpErr) return NextResponse.json({ ok: false, error: tdpErr.message }, { status: 400, headers })
     if (professorProfileId) {
       await dispatchProfessorNotificacao({
         escolaId,
@@ -145,7 +140,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         agrupamentoTTLHoras: 12,
       })
     }
-    return NextResponse.json({ ok: true, mode: 'created' }, { headers })
+    return NextResponse.json({ ok: true, mode: existing?.id ? 'updated' : 'created' }, { headers })
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })

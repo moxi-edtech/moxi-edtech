@@ -92,7 +92,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ matr
 
   if (turmaId) {
     const { data: professoresTurma } = await supabase
-      .from("turma_disciplinas")
+      .from("turma_disciplinas_professores")
       .select("professor_id")
       .eq("escola_id", resolvedEscolaId)
       .eq("turma_id", turmaId);

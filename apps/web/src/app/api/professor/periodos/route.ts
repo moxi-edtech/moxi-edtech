@@ -41,27 +41,15 @@ export async function GET(req: Request) {
       .maybeSingle()
     if (!turma) return NextResponse.json({ ok: false, error: 'Turma não encontrada' }, { status: 404 })
 
-    const { data: assignment } = await supabase
-      .from('turma_disciplinas')
+    const { data: tdp } = await supabase
+      .from('turma_disciplinas_professores')
       .select('id')
       .eq('escola_id', escolaId)
       .eq('turma_id', turma.id)
       .eq('professor_id', professorId)
       .maybeSingle()
 
-    let hasAccess = Boolean(assignment)
-    if (!hasAccess) {
-      const { data: tdp } = await supabase
-        .from('turma_disciplinas_professores')
-        .select('id')
-        .eq('escola_id', escolaId)
-        .eq('turma_id', turma.id)
-        .eq('professor_id', professorId)
-        .maybeSingle()
-      hasAccess = Boolean(tdp)
-    }
-
-    if (!hasAccess) {
+    if (!tdp) {
       return NextResponse.json({ ok: false, error: 'Professor não atribuído à turma' }, { status: 403 })
     }
 

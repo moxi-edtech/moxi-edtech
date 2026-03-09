@@ -111,7 +111,7 @@ export async function POST(req: Request) {
 
     const { data: turmaDisciplina } = await supabase
       .from('turma_disciplinas')
-      .select('id, professor_id')
+      .select('id')
       .eq('escola_id', escolaId)
       .eq('turma_id', body.turma_id)
       .eq('curso_matriz_id', matriz.id)
@@ -121,20 +121,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Disciplina não atribuída à turma' }, { status: 404 })
     }
 
-    let isProfessorAssigned = turmaDisciplina.professor_id === professorId
-    if (!isProfessorAssigned) {
-      const { data: assignment } = await supabase
-        .from('turma_disciplinas_professores')
-        .select('id')
-        .eq('escola_id', escolaId)
-        .eq('turma_id', body.turma_id)
-        .eq('disciplina_id', body.disciplina_id)
-        .eq('professor_id', professorId)
-        .maybeSingle()
-      isProfessorAssigned = Boolean(assignment)
-    }
+    const { data: assignment } = await supabase
+      .from('turma_disciplinas_professores')
+      .select('id')
+      .eq('escola_id', escolaId)
+      .eq('turma_id', body.turma_id)
+      .eq('disciplina_id', body.disciplina_id)
+      .eq('professor_id', professorId)
+      .maybeSingle()
 
-    if (!isProfessorAssigned) {
+    if (!assignment) {
       return NextResponse.json({ ok: false, error: 'Professor não atribuído à disciplina' }, { status: 403 })
     }
 

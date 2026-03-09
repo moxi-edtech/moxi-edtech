@@ -42,25 +42,15 @@ export async function GET(
       return NextResponse.json({ ok: false, error: "Professor não encontrado" }, { status: 403 });
     }
 
-    const { data: assignment } = await supabase
-      .from("turma_disciplinas")
+    const { data: tdp } = await supabase
+      .from("turma_disciplinas_professores")
       .select("id")
       .eq("escola_id", escolaId)
       .eq("turma_id", turmaId)
       .eq("professor_id", professorId)
       .maybeSingle();
 
-    let hasAccess = Boolean(assignment);
-    if (!hasAccess) {
-      const { data: tdp } = await supabase
-        .from("turma_disciplinas_professores")
-        .select("id")
-        .eq("escola_id", escolaId)
-        .eq("turma_id", turmaId)
-        .eq("professor_id", professorId)
-        .maybeSingle();
-      hasAccess = Boolean(tdp);
-    }
+    const hasAccess = Boolean(tdp);
 
     if (!hasAccess) {
       return NextResponse.json({ ok: false, error: "Sem permissão" }, { status: 403 });

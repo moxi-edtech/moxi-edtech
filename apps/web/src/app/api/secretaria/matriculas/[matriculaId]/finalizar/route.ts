@@ -140,7 +140,7 @@ export async function POST(
 
       if (turmaId) {
         const { data: professoresTurma } = await supabase
-          .from("turma_disciplinas")
+          .from("turma_disciplinas_professores")
           .select("professor_id")
           .eq("escola_id", escolaId)
           .eq("turma_id", turmaId);

@@ -533,7 +533,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const { data: disciplinasRows, error: discError } = await supabase
       .from("turma_disciplinas")
       .select(
-        "id, turma_id, curso_matriz_id, professor_id, carga_horaria_semanal, entra_no_horario, curso_matriz:curso_matriz_id(disciplina_id, carga_horaria_semanal, entra_no_horario, disciplina:disciplinas_catalogo!curso_matriz_disciplina_id_fkey(id, nome))"
+        "id, turma_id, curso_matriz_id, carga_horaria_semanal, entra_no_horario, curso_matriz:curso_matriz_id(disciplina_id, carga_horaria_semanal, entra_no_horario, disciplina:disciplinas_catalogo!curso_matriz_disciplina_id_fkey(id, nome))"
       )
       .eq("escola_id", escolaIdResolved)
       .eq("turma_id", body.turma_id);
@@ -541,8 +541,30 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (discError) return NextResponse.json({ ok: false, error: discError.message }, { status: 400 });
 
     const turnoLabel = mapTurnoLabel(turnoId);
+    const disciplinaCatalogIds = Array.from(
+      new Set(
+        (disciplinasRows || [])
+          .map((row: any) => row.curso_matriz?.disciplina_id ?? row.curso_matriz_id)
+          .filter(Boolean)
+      )
+    ) as string[];
+    const { data: tdpRows } = disciplinaCatalogIds.length
+      ? await supabase
+          .from("turma_disciplinas_professores")
+          .select("disciplina_id, professor_id")
+          .eq("escola_id", escolaIdResolved)
+          .eq("turma_id", body.turma_id)
+          .in("disciplina_id", disciplinaCatalogIds)
+      : { data: [] as Array<{ disciplina_id: string | null; professor_id: string | null }> };
+
+    const professorByDisciplina = new Map<string, string | null>();
+    for (const row of tdpRows || []) {
+      if (!row?.disciplina_id) continue;
+      professorByDisciplina.set(row.disciplina_id, row.professor_id ?? null);
+    }
+
     const professorIds = Array.from(
-      new Set((disciplinasRows || []).map((row: any) => row.professor_id).filter(Boolean))
+      new Set((tdpRows || []).map((row) => row.professor_id).filter(Boolean))
     ) as string[];
     const professorProfileMap = new Map<string, string>();
     const professorTurnosMap = new Map<string, string[]>();
@@ -597,7 +619,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         const entra = row.entra_no_horario ?? row.curso_matriz?.entra_no_horario ?? true;
         const requiresDouble = carga >= 3;
         const practical = isPracticalDiscipline(nome);
-        let professorId = row.professor_id ?? null;
+        let professorId = professorByDisciplina.get(disciplinaId) ?? null;
         if (professorId && turnoLabel) {
           const profileId = professorProfileMap.get(professorId) || null;
           const availableTurnos = profileId ? professorTurnosMap.get(profileId) || [] : [];
