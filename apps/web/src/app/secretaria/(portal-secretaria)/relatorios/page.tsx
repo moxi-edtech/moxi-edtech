@@ -89,6 +89,12 @@ export default async function Page(props: { searchParams?: Promise<SearchParams>
               >
                 Exportar JSON
               </a>
+              <a
+                href="/secretaria/relatorios/mapa-aproveitamento"
+                className="px-2.5 py-1 rounded-xl border border-slate-200 bg-white text-slate-700 hover:text-klasse-gold"
+              >
+                Abrir Mapa de Aproveitamento
+              </a>
             </div>
           </div>
           <form action="" className="flex gap-2 text-sm">
