@@ -12618,18 +12618,6 @@ export type Database = {
       }
       get_my_escola_id: { Args: never; Returns: string }
       get_my_escola_ids: { Args: never; Returns: string[] }
-      get_professor_atribuicoes: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          curso_matriz_id: string
-          disciplina_id: string | null
-          disciplina_nome: string | null
-          turma_disciplina_id: string
-          turma_id: string
-          turma_nome: string | null
-          turma_status_fecho: string | null
-        }[]
-      }
       get_outbox_status_summary: {
         Args: never
         Returns: {
@@ -12642,6 +12630,18 @@ export type Database = {
       get_pending_turmas_count: {
         Args: { p_escola_id: string }
         Returns: number
+      }
+      get_professor_atribuicoes: {
+        Args: never
+        Returns: {
+          curso_matriz_id: string
+          disciplina_id: string | null
+          disciplina_nome: string | null
+          turma_disciplina_id: string
+          turma_id: string
+          turma_nome: string | null
+          turma_status_fecho: string | null
+        }[]
       }
       get_profile_dependencies: {
         Args: { p_user_id: string }

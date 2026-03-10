@@ -148,36 +148,45 @@ export async function GET(req: Request) {
       disciplinaMap.set(row.id, row.nome ?? null)
     }
 
-    let matrizRows = disciplinaIds.length && classeIds.length
+    let matrizError: string | null = null
+    const { data: matrizData, error: matrizErr } = disciplinaIds.length && classeIds.length
       ? await supabase
           .from('curso_matriz')
-          .select('id, curso_id, classe_id, disciplina_id, disciplina:disciplinas_catalogo(id, nome)')
+          .select('id, curso_id, classe_id, disciplina_id, disciplina:disciplinas_catalogo!curso_matriz_disciplina_id_fkey(id, nome)')
           .eq('escola_id', escolaId)
           .eq('ativo', true)
           .in('disciplina_id', disciplinaIds)
           .in('classe_id', classeIds)
-      : { data: [] as CursoMatrizRow[] }
-    let fallbackMatrizRows: { data?: CursoMatrizRow[] } | null = null
+      : { data: [] as CursoMatrizRow[], error: null }
 
-    if ((matrizRows as { data?: CursoMatrizRow[] }).data?.length === 0 && turmaMeta.length > 0) {
+    if (matrizErr) {
+      matrizError = matrizErr.message
+    }
+
+    let matrizRows: CursoMatrizRow[] = (matrizData as CursoMatrizRow[] | null) || []
+    let fallbackMatrizError: string | null = null
+
+    if (matrizRows.length === 0 && turmaMeta.length > 0) {
       const cursoIds = Array.from(
         new Set(turmaMeta.map((t) => t.curso_id).filter((id): id is string => Boolean(id)))
       )
-      const fallbackRows = cursoIds.length && classeIds.length
+      const { data: fallbackData, error: fallbackErr } = cursoIds.length && classeIds.length
         ? await supabase
             .from('curso_matriz')
-            .select('id, curso_id, classe_id, disciplina_id, disciplina:disciplinas_catalogo(id, nome)')
+            .select('id, curso_id, classe_id, disciplina_id, disciplina:disciplinas_catalogo!curso_matriz_disciplina_id_fkey(id, nome)')
             .eq('escola_id', escolaId)
             .eq('ativo', true)
             .in('curso_id', cursoIds)
             .in('classe_id', classeIds)
-        : { data: [] as CursoMatrizRow[] }
-      fallbackMatrizRows = fallbackRows
-      matrizRows = fallbackRows
+        : { data: [] as CursoMatrizRow[], error: null }
+      if (fallbackErr) {
+        fallbackMatrizError = fallbackErr.message
+      }
+      matrizRows = (fallbackData as CursoMatrizRow[] | null) || []
     }
 
     const matrizByKey = new Map<string, { id: string; disciplinaId: string | null; disciplinaNome: string | null }>()
-    for (const row of ((matrizRows as { data?: CursoMatrizRow[] }).data || [])) {
+    for (const row of matrizRows) {
       const key = `${row.curso_id}:${row.classe_id}:${row.disciplina_id}`
       matrizByKey.set(key, {
         id: row.id,
@@ -276,8 +285,9 @@ export async function GET(req: Request) {
                 classe_ids_count: classeIds.length,
                 disciplina_ids: disciplinaIds.slice(0, 5),
                 classe_ids: classeIds.slice(0, 5),
-                matriz_rows_count: (matrizRows as { data?: CursoMatrizRow[] }).data?.length ?? 0,
-                fallback_matriz_rows_count: fallbackMatrizRows?.data?.length ?? 0,
+                matriz_rows_count: matrizRows.length,
+                matriz_error: matrizError,
+                fallback_matriz_error: fallbackMatrizError,
                 resolved_assignments_count: resolvedAssignments.length,
                 turma_disciplinas_count: (turmaDisciplinaRows as { data?: TurmaDisciplinaRow[] }).data?.length ?? 0,
                 fallback_items_count: fallbackItems.length,
@@ -301,8 +311,9 @@ export async function GET(req: Request) {
               classe_ids_count: classeIds.length,
               disciplina_ids: disciplinaIds.slice(0, 5),
               classe_ids: classeIds.slice(0, 5),
-              matriz_rows_count: (matrizRows as { data?: CursoMatrizRow[] }).data?.length ?? 0,
-              fallback_matriz_rows_count: fallbackMatrizRows?.data?.length ?? 0,
+              matriz_rows_count: matrizRows.length,
+              matriz_error: matrizError,
+              fallback_matriz_error: fallbackMatrizError,
               resolved_assignments_count: resolvedAssignments.length,
               turma_disciplinas_count: (turmaDisciplinaRows as { data?: TurmaDisciplinaRow[] }).data?.length ?? 0,
               items_count: items.length,
