@@ -107,6 +107,15 @@ export const sidebarConfig: SidebarConfig = {
     { href: "/escola/[escolaId]/secretaria/documentos-oficiais", label: "Documentos Oficiais", icon: "FileText" },
     { href: "/escola/[escolaId]/secretaria/operacoes-academicas", label: "Operações Acadêmicas", icon: "Activity" },
     { href: "/escola/[escolaId]/secretaria/importacoes", label: "Histórico de Importações", icon: "History" },
+    {
+      href: "/escola/[escolaId]/secretaria/relatorios",
+      label: "Relatórios",
+      icon: "BarChart3",
+      children: [
+        { href: "/escola/[escolaId]/secretaria/relatorios", label: "Auditoria" },
+        { href: "/escola/[escolaId]/secretaria/relatorios/mapa-aproveitamento", label: "Mapa de Aproveitamento" },
+      ],
+    },
   ],
   financeiro: [
     { href: "/financeiro", label: "Dashboard", icon: "LayoutDashboard" },
