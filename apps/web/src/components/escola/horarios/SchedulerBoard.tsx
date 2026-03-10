@@ -381,20 +381,23 @@ export function SchedulerBoard({
                                       {aula.professor.split(" ")[0]}
                                     </div>
                                   ) : (
-                                    onAssignProfessor ? (
-                                      <button
-                                        type="button"
-                                        onPointerDown={(event) => event.stopPropagation()}
-                                        onClick={(event) => {
-                                          event.stopPropagation();
-                                          setAssigningProfessor(aula);
-                                        }}
-                                        className="text-[10px] font-semibold text-rose-700 opacity-0 group-hover:opacity-100 transition-opacity"
-                                      >
-                                        Atribuir professor
-                                      </button>
-                                    ) : null
+                                    <div className="text-[10px] font-medium opacity-70 truncate leading-tight">
+                                      A definir
+                                    </div>
                                   )}
+                                  {!aula.professorId && onAssignProfessor ? (
+                                    <button
+                                      type="button"
+                                      onPointerDown={(event) => event.stopPropagation()}
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        setAssigningProfessor(aula);
+                                      }}
+                                      className="text-[10px] font-semibold text-rose-700 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                      Atribuir professor
+                                    </button>
+                                  ) : null}
                                   {effectiveTurmaSala ? (
                                     <div className="inline-block px-1.5 py-0.5 bg-white/50 rounded text-[9px] font-bold">
                                       {getSalaLabel()}
