@@ -73,7 +73,7 @@ export async function GET(req: Request) {
     const { data: assignments, error } = await query
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
 
-    const { data: rpcItems, error: rpcError } = await supabase.rpc('get_professor_atribuicoes')
+    const { data: rpcItems, error: rpcError } = await (supabase as any).rpc('get_professor_atribuicoes')
     if (rpcError) {
       return NextResponse.json({ ok: false, error: rpcError.message }, { status: 400 })
     }
@@ -152,7 +152,7 @@ export async function GET(req: Request) {
     const { data: matrizData, error: matrizErr } = disciplinaIds.length && classeIds.length
       ? await supabase
           .from('curso_matriz')
-          .select('id, curso_id, classe_id, disciplina_id, disciplina:disciplinas_catalogo!curso_matriz_disciplina_id_fkey(id, nome)')
+          .select('id, curso_id, classe_id, disciplina_id')
           .eq('escola_id', escolaId)
           .eq('ativo', true)
           .in('disciplina_id', disciplinaIds)
@@ -173,7 +173,7 @@ export async function GET(req: Request) {
       const { data: fallbackData, error: fallbackErr } = cursoIds.length && classeIds.length
         ? await supabase
             .from('curso_matriz')
-            .select('id, curso_id, classe_id, disciplina_id, disciplina:disciplinas_catalogo!curso_matriz_disciplina_id_fkey(id, nome)')
+            .select('id, curso_id, classe_id, disciplina_id')
             .eq('escola_id', escolaId)
             .eq('ativo', true)
             .in('curso_id', cursoIds)
