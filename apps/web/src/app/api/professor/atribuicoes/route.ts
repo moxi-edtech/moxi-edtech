@@ -4,6 +4,10 @@ import { applyKf2ListInvariants } from '@/lib/kf2'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import type { Database } from '~types/supabase'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+export const fetchCache = 'force-no-store'
+
 type ProfessorRow = { id: string }
 type TurmaDisciplinaRow = {
   id: string
@@ -35,8 +39,10 @@ type ResolvedAssignment = {
 
 // GET /api/professor/atribuicoes
 // Lista atribuições (turma, disciplina) para o professor logado
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const url = new URL(req.url)
+    const debug = url.searchParams.get('debug') === '1'
     const supabase = await supabaseServerTyped<Database>()
     const { data: userRes } = await supabase.auth.getUser()
     const user = userRes?.user
@@ -66,6 +72,35 @@ export async function GET() {
 
     const { data: assignments, error } = await query
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
+
+    const { data: rpcItems, error: rpcError } = await supabase.rpc('get_professor_atribuicoes')
+    if (rpcError) {
+      return NextResponse.json({ ok: false, error: rpcError.message }, { status: 400 })
+    }
+
+    if (Array.isArray(rpcItems) && rpcItems.length > 0) {
+      const items = rpcItems.map((row: any) => ({
+        id: row.turma_disciplina_id,
+        turma_disciplina_id: row.turma_disciplina_id,
+        curso_matriz_id: row.curso_matriz_id,
+        turma: {
+          id: row.turma_id,
+          nome: row.turma_nome ?? null,
+          status_fecho: row.turma_status_fecho ?? null,
+        },
+        disciplina: {
+          id: row.disciplina_id ?? null,
+          nome: row.disciplina_nome ?? null,
+        },
+      }))
+
+      return NextResponse.json({
+        ok: true,
+        escola_id: escolaId,
+        items,
+        ...(debug ? { debug: { rpc_items_count: items.length } } : {}),
+      })
+    }
 
     const turmaIds = Array.from(
       new Set((assignments || []).map((r: AssignmentRow) => r.turma_id).filter((id): id is string => Boolean(id)))
@@ -100,7 +135,20 @@ export async function GET() {
       new Set(turmaMeta.map((t: TurmaMetaRow) => t.classe_id).filter((id): id is string => Boolean(id)))
     )
 
-    const matrizRows = disciplinaIds.length && classeIds.length
+    const disciplinaRows = disciplinaIds.length
+      ? await supabase
+          .from('disciplinas_catalogo')
+          .select('id, nome')
+          .eq('escola_id', escolaId)
+          .in('id', disciplinaIds)
+      : { data: [] as Array<{ id: string; nome: string | null }> }
+
+    const disciplinaMap = new Map<string, string | null>()
+    for (const row of ((disciplinaRows as { data?: Array<{ id: string; nome: string | null }> }).data || [])) {
+      disciplinaMap.set(row.id, row.nome ?? null)
+    }
+
+    let matrizRows = disciplinaIds.length && classeIds.length
       ? await supabase
           .from('curso_matriz')
           .select('id, curso_id, classe_id, disciplina_id, disciplina:disciplinas_catalogo(id, nome)')
@@ -109,6 +157,24 @@ export async function GET() {
           .in('disciplina_id', disciplinaIds)
           .in('classe_id', classeIds)
       : { data: [] as CursoMatrizRow[] }
+    let fallbackMatrizRows: { data?: CursoMatrizRow[] } | null = null
+
+    if ((matrizRows as { data?: CursoMatrizRow[] }).data?.length === 0 && turmaMeta.length > 0) {
+      const cursoIds = Array.from(
+        new Set(turmaMeta.map((t) => t.curso_id).filter((id): id is string => Boolean(id)))
+      )
+      const fallbackRows = cursoIds.length && classeIds.length
+        ? await supabase
+            .from('curso_matriz')
+            .select('id, curso_id, classe_id, disciplina_id, disciplina:disciplinas_catalogo(id, nome)')
+            .eq('escola_id', escolaId)
+            .eq('ativo', true)
+            .in('curso_id', cursoIds)
+            .in('classe_id', classeIds)
+        : { data: [] as CursoMatrizRow[] }
+      fallbackMatrizRows = fallbackRows
+      matrizRows = fallbackRows
+    }
 
     const matrizByKey = new Map<string, { id: string; disciplinaId: string | null; disciplinaNome: string | null }>()
     for (const row of ((matrizRows as { data?: CursoMatrizRow[] }).data || [])) {
@@ -116,7 +182,7 @@ export async function GET() {
       matrizByKey.set(key, {
         id: row.id,
         disciplinaId: row.disciplina_id ?? row.disciplina?.id ?? null,
-        disciplinaNome: row.disciplina?.nome ?? null,
+        disciplinaNome: row.disciplina?.nome ?? disciplinaMap.get(row.disciplina_id ?? '') ?? null,
       })
     }
 
@@ -176,7 +242,74 @@ export async function GET() {
         }
       })
       .filter(Boolean)
-    return NextResponse.json({ ok: true, escola_id: escolaId, items })
+
+    if (items.length === 0 && resolvedAssignments.length > 0) {
+      const fallbackItems = resolvedAssignments
+        .map((r) => {
+          const turmaDisciplina = turmaDisciplinaMap.get(`${r.turma_id}:${r.curso_matriz_id}`)
+          if (!turmaDisciplina) return null
+          const turmaInfo = turmaMap.get(r.turma_id)
+          return {
+            id: turmaDisciplina.id,
+            turma_disciplina_id: turmaDisciplina.id,
+            curso_matriz_id: r.curso_matriz_id,
+            turma: { id: r.turma_id, nome: turmaInfo?.nome ?? null, status_fecho: turmaInfo?.status_fecho ?? null },
+            disciplina: {
+              id: r.disciplina_id ?? null,
+              nome: r.disciplina_nome ?? disciplinaMap.get(r.disciplina_id ?? '') ?? null,
+            },
+          }
+        })
+        .filter(Boolean)
+      return NextResponse.json({
+        ok: true,
+        escola_id: escolaId,
+        items: fallbackItems,
+        ...(debug
+          ? {
+              debug: {
+                assignments_count: (assignments || []).length,
+                assignments_sample: (assignments || []).slice(0, 3),
+                turma_meta_count: turmaMeta.length,
+                turma_meta_sample: turmaMeta.slice(0, 3),
+                disciplina_ids_count: disciplinaIds.length,
+                classe_ids_count: classeIds.length,
+                disciplina_ids: disciplinaIds.slice(0, 5),
+                classe_ids: classeIds.slice(0, 5),
+                matriz_rows_count: (matrizRows as { data?: CursoMatrizRow[] }).data?.length ?? 0,
+                fallback_matriz_rows_count: fallbackMatrizRows?.data?.length ?? 0,
+                resolved_assignments_count: resolvedAssignments.length,
+                turma_disciplinas_count: (turmaDisciplinaRows as { data?: TurmaDisciplinaRow[] }).data?.length ?? 0,
+                fallback_items_count: fallbackItems.length,
+              },
+            }
+          : {}),
+      })
+    }
+    return NextResponse.json({
+      ok: true,
+      escola_id: escolaId,
+      items,
+      ...(debug
+        ? {
+            debug: {
+              assignments_count: (assignments || []).length,
+              assignments_sample: (assignments || []).slice(0, 3),
+              turma_meta_count: turmaMeta.length,
+              turma_meta_sample: turmaMeta.slice(0, 3),
+              disciplina_ids_count: disciplinaIds.length,
+              classe_ids_count: classeIds.length,
+              disciplina_ids: disciplinaIds.slice(0, 5),
+              classe_ids: classeIds.slice(0, 5),
+              matriz_rows_count: (matrizRows as { data?: CursoMatrizRow[] }).data?.length ?? 0,
+              fallback_matriz_rows_count: fallbackMatrizRows?.data?.length ?? 0,
+              resolved_assignments_count: resolvedAssignments.length,
+              turma_disciplinas_count: (turmaDisciplinaRows as { data?: TurmaDisciplinaRow[] }).data?.length ?? 0,
+              items_count: items.length,
+            },
+          }
+        : {}),
+    })
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
