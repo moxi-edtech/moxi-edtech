@@ -65,7 +65,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: true, filtros: { turmas, periodos }, report: null });
     }
 
-    const { data: report, error: rpcError } = await supabase.rpc("gerar_mapa_aproveitamento_turma", {
+    const { data: report, error: rpcError } = await (supabase as any).rpc("gerar_mapa_aproveitamento_turma", {
       p_escola_id: escolaId,
       p_turma_id: turmaId,
       p_periodo_letivo_id: periodoId || null,
