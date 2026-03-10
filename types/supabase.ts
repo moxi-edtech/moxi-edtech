@@ -12529,6 +12529,14 @@ export type Database = {
         Args: { p_matricula_id: string }
         Returns: string
       }
+      gerar_mapa_aproveitamento_turma: {
+        Args: {
+          p_escola_id: string
+          p_turma_id: string
+          p_periodo_letivo_id?: string | null
+        }
+        Returns: Json
+      }
       gerar_mensalidades_lote:
         | {
             Args: {
@@ -12610,6 +12618,18 @@ export type Database = {
       }
       get_my_escola_id: { Args: never; Returns: string }
       get_my_escola_ids: { Args: never; Returns: string[] }
+      get_professor_atribuicoes: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          curso_matriz_id: string
+          disciplina_id: string | null
+          disciplina_nome: string | null
+          turma_disciplina_id: string
+          turma_id: string
+          turma_nome: string | null
+          turma_status_fecho: string | null
+        }[]
+      }
       get_outbox_status_summary: {
         Args: never
         Returns: {
