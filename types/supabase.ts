@@ -12597,6 +12597,7 @@ export type Database = {
         Args: { p_ano_letivo: number; p_changes?: Json; p_escola_id: string }
         Returns: Json
       }
+      get_escola_sigla: { Args: { p_escola_id: string }; Returns: string }
       get_estado_academico: {
         Args: {
           p_curriculo_id?: string
