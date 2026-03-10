@@ -1,6 +1,5 @@
 // @kf2 allow-scan
 // src/app/api/debug/generate-numero-login/route.ts (exemplo de caminho)
-import crypto from "crypto";
 import { NextResponse } from "next/server";
 
 import { supabaseServer } from "@/lib/supabaseServer";
@@ -24,8 +23,9 @@ const ROLE_START: Record<UserRole, number> = {
   encarregado: 5001,
 };
 
-const derivePrefix = (escolaId: string) => {
-  return crypto.createHash("md5").update(escolaId).digest("hex").slice(0, 3);
+const buildPrefix = (sigla: string) => {
+  const year = String(new Date().getFullYear()).slice(-2);
+  return `${sigla}-${year}-`;
 };
 
 export async function GET(req: Request) {
@@ -66,7 +66,14 @@ export async function GET(req: Request) {
     );
   }
 
-  const prefix = derivePrefix(escolaId);
+  const { data: sigla, error: siglaError } = await (s as any).rpc("get_escola_sigla", {
+    p_escola_id: escolaId,
+  });
+  if (siglaError || !sigla) {
+    return NextResponse.json({ ok: false, error: siglaError?.message || "Sigla da escola inválida" }, { status: 400 });
+  }
+
+  const prefix = buildPrefix(String(sigla));
   const start = ROLE_START[userRole];
 
   const { data, error } = await (s as any).rpc("generate_unique_numero_login", {
