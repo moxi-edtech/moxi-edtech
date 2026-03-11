@@ -1887,13 +1887,15 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string | null
-          current_escola_id: string | null
-          deleted_at: string | null
+         current_escola_id: string | null
+         deleted_at: string | null
           email: string | null
-          escola_id: string | null
-          global_role: string | null
-          nome: string
-          numero_login: string | null
+          email_auth: string | null
+          email_real: string | null
+         escola_id: string | null
+         global_role: string | null
+         nome: string
+          numero_processo_login: string | null
           onboarding_finalizado: boolean | null
           role: Database["public"]["Enums"]["user_role"]
           telefone: string | null
@@ -1903,13 +1905,15 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string | null
-          current_escola_id?: string | null
-          deleted_at?: string | null
+         current_escola_id?: string | null
+         deleted_at?: string | null
           email?: string | null
-          escola_id?: string | null
-          global_role?: string | null
-          nome: string
-          numero_login?: string | null
+          email_auth?: string | null
+          email_real?: string | null
+         escola_id?: string | null
+         global_role?: string | null
+         nome: string
+          numero_processo_login?: string | null
           onboarding_finalizado?: boolean | null
           role?: Database["public"]["Enums"]["user_role"]
           telefone?: string | null
@@ -1919,13 +1923,15 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string | null
-          current_escola_id?: string | null
-          deleted_at?: string | null
+         current_escola_id?: string | null
+         deleted_at?: string | null
           email?: string | null
-          escola_id?: string | null
-          global_role?: string | null
-          nome?: string
-          numero_login?: string | null
+          email_auth?: string | null
+          email_real?: string | null
+         escola_id?: string | null
+         global_role?: string | null
+         nome?: string
+          numero_processo_login?: string | null
           onboarding_finalizado?: boolean | null
           role?: Database["public"]["Enums"]["user_role"]
           telefone?: string | null

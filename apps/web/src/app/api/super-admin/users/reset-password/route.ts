@@ -27,11 +27,11 @@ export async function POST(request: Request) {
 
     const { data: target } = await s
       .from('profiles')
-      .select('email')
+      .select('email, email_real')
       .eq('user_id', userId)
       .maybeSingle()
 
-    const email = (target as any)?.email as string | undefined
+    const email = ((target as any)?.email_real || (target as any)?.email) as string | undefined
     if (!email) {
       return NextResponse.json({ ok: false, error: 'Email do usuário não encontrado' }, { status: 404 })
     }

@@ -82,40 +82,35 @@ export async function POST(req: Request) {
         }
 
         let email: string | null = null;
-        const numeroLoginLike = /^[A-F0-9]{3}\d{4}$/i;
+        const numeroLoginLike = /^[A-Z]{2,4}-\d{3,}$/i;
         if (numeroLoginLike.test(raw)) {
           const numero = raw.toUpperCase();
           const { data: byNumero, error } = await admin
             .from("profiles")
-            .select("email")
-            .eq("numero_login", numero)
+            .select("email_auth")
+            .eq("numero_processo_login", numero)
             .limit(1);
-          if (!error) email = (byNumero?.[0] as any)?.email || null;
+          if (!error) email = (byNumero?.[0] as any)?.email_auth || null;
         }
 
-        if (!email) {
-          const onlyDigits = /^\d{5,}$/;
-          if (onlyDigits.test(raw)) {
-            const { data: byNumero, error: e1 } = await admin
-              .from("profiles")
-              .select("email")
-              .eq("numero_login", raw)
-              .limit(1);
-            if (!e1) email = (byNumero?.[0] as any)?.email || null;
-          }
+        const onlyDigits = /^\d{5,}$/;
+        if (!email && onlyDigits.test(raw)) {
+          const { data: byNumero, error: e1 } = await admin
+            .from("profiles")
+            .select("email_auth")
+            .eq("numero_processo_login", raw)
+            .limit(1);
+          if (!e1) email = (byNumero?.[0] as any)?.email_auth || null;
         }
 
-        if (!email) {
-          const onlyDigits = /^\d{5,}$/;
-          if (onlyDigits.test(raw)) {
-            const { data: byPhone, error: e2 } = await admin
-              .from("profiles")
-              .select("email")
-              .eq("telefone", raw)
-              .order("created_at", { ascending: false })
-              .limit(1);
-            if (!e2) email = (byPhone?.[0] as any)?.email || null;
-          }
+        if (!email && onlyDigits.test(raw)) {
+          const { data: byPhone, error: e2 } = await admin
+            .from("profiles")
+            .select("email")
+            .eq("telefone", raw)
+            .order("created_at", { ascending: false })
+            .limit(1);
+          if (!e2) email = (byPhone?.[0] as any)?.email || null;
         }
 
         return NextResponse.json({ ok: true, data: { email: email ? String(email).toLowerCase() : null } });
@@ -170,7 +165,7 @@ export async function POST(req: Request) {
 
         const { data: aluno, error } = await admin
           .from("alunos")
-          .select("id, nome, escola_id, bi_numero, usuario_auth_id, profile_id, codigo_ativacao, acesso_liberado")
+          .select("id, nome, escola_id, bi_numero, numero_processo, usuario_auth_id, profile_id, codigo_ativacao, acesso_liberado")
           .eq("codigo_ativacao", code)
           .is("deleted_at", null)
           .maybeSingle();
@@ -184,23 +179,42 @@ export async function POST(req: Request) {
         }
 
         const escolaId = (aluno as any).escola_id as string;
-        const { data: matriculaRow } = await admin
-          .from("matriculas")
-          .select("numero_matricula")
-          .eq("escola_id", escolaId)
-          .eq("aluno_id", (aluno as any).id)
-          .not("numero_matricula", "is", null)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        const numeroMatriculaRaw = matriculaRow?.numero_matricula
-          ? String(matriculaRow.numero_matricula).trim()
+        let numeroProcessoRaw = (aluno as any).numero_processo
+          ? String((aluno as any).numero_processo).trim()
           : "";
-        const numeroMatricula = numeroMatriculaRaw.replace(/[^a-zA-Z0-9]/g, "");
-        const loginCandidate = (numeroMatricula
-          ? `aluno_${numeroMatricula}@escola.ao`
-          : `aluno_${(aluno as any).id}@escola.ao`
+        if (!numeroProcessoRaw) {
+          const { data: matriculaAno } = await admin
+            .from("matriculas")
+            .select("ano_letivo")
+            .eq("escola_id", escolaId)
+            .eq("aluno_id", (aluno as any).id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          const anoLetivo = matriculaAno?.ano_letivo ?? new Date().getFullYear();
+          const { data: numeroGerado } = await (admin as any).rpc("next_numero_processo", {
+            p_escola_id: escolaId,
+            p_year: anoLetivo,
+          });
+          numeroProcessoRaw = String(numeroGerado ?? "").trim();
+          if (numeroProcessoRaw) {
+            await admin
+              .from("alunos")
+              .update({ numero_processo: numeroProcessoRaw })
+              .eq("id", (aluno as any).id)
+              .eq("escola_id", escolaId);
+          }
+        }
+
+        const { data: loginLabel } = await (admin as any).rpc("build_numero_login", {
+          p_escola_id: escolaId,
+          p_numero_processo: numeroProcessoRaw,
+        });
+
+        const loginDisplay = String(loginLabel || numeroProcessoRaw).trim();
+        const loginCandidate = (loginDisplay
+          ? `${loginDisplay}@klasse.ao`
+          : `aluno_${(aluno as any).id}@klasse.ao`
         ).toLowerCase();
         let login = loginCandidate;
         let senha = crypto.randomBytes(6).toString("base64url").slice(0, 10);
@@ -217,7 +231,7 @@ export async function POST(req: Request) {
               role: "aluno",
               escola_id: escolaId,
               aluno_id: (aluno as any).id,
-              numero_matricula: numeroMatricula,
+              numero_processo: numeroProcessoRaw,
               primeiro_acesso: true,
               must_change_password: true,
             },
@@ -254,7 +268,8 @@ export async function POST(req: Request) {
             role: "aluno" as any,
             escola_id: escolaId,
             current_escola_id: escolaId,
-            numero_login: numeroMatricula || null,
+            numero_processo_login: loginDisplay || null,
+            email_auth: loginCandidate,
           } as TablesInsert<"profiles">,
           { onConflict: "user_id" }
         );
@@ -270,7 +285,8 @@ export async function POST(req: Request) {
           .eq("id", (aluno as any).id)
           .eq("escola_id", escolaId);
 
-        return NextResponse.json({ ok: true, data: { login, senha, created } });
+        const loginResposta = loginDisplay || login;
+        return NextResponse.json({ ok: true, data: { login: loginResposta, senha, created } });
       }
       case "resetStudentPassword": {
         const { userId, login } = payload as any;

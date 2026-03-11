@@ -78,7 +78,6 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
       nome: string | null
       email: string | null
       telefone: string | null
-      numero_login: string | null
       last_login: string | null
       created_at: string | null
     }>
@@ -86,7 +85,7 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
     const filtered = q
       ? list.filter((row) => {
           const term = q.toLowerCase()
-          return [row.nome, row.email, row.telefone, row.numero_login]
+          return [row.nome, row.email, row.telefone]
             .filter(Boolean)
             .some((value) => String(value).toLowerCase().includes(term))
         })
@@ -111,7 +110,6 @@ export async function GET(req: Request, context: { params: Promise<{ id: string 
         nome: row.nome,
         email: row.email,
         telefone: row.telefone,
-        numero_login: row.numero_login,
         papel: vincData?.papel ?? null,
         created_at: vincData?.created_at ?? row.created_at,
         last_login: row.last_login ?? null,

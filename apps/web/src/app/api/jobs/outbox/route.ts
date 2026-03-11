@@ -72,7 +72,7 @@ async function provisionStudent(admin: NonNullable<ReturnType<typeof getAdminCli
   const { data: aluno, error: alunoErr } = await admin
     .from("alunos")
     .select(
-      "id, nome, email, bi_numero, responsavel_contato, telefone_responsavel, encarregado_telefone, escola_id, profile_id, usuario_auth_id, codigo_ativacao"
+      "id, nome, email, bi_numero, numero_processo, responsavel_contato, telefone_responsavel, encarregado_telefone, escola_id, profile_id, usuario_auth_id, codigo_ativacao"
     )
     .eq("id", alunoId)
     .maybeSingle();
@@ -87,20 +87,13 @@ async function provisionStudent(admin: NonNullable<ReturnType<typeof getAdminCli
     .eq("id", escolaId)
     .maybeSingle();
   const escolaNome = escola?.nome ?? "Escola";
-  const { data: matriculaRow } = await admin
-    .from("matriculas")
-    .select("numero_matricula")
-    .eq("escola_id", escolaId)
-    .eq("aluno_id", aluno.id)
-    .not("numero_matricula", "is", null)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const numeroMatriculaRaw = matriculaRow?.numero_matricula
-    ? String(matriculaRow.numero_matricula).trim()
-    : "";
-  const numeroMatricula = numeroMatriculaRaw.replace(/[^a-zA-Z0-9]/g, "");
-  const login = (numeroMatricula ? `aluno_${numeroMatricula}@escola.ao` : `aluno_${aluno.id}@escola.ao`).toLowerCase();
+  const numeroProcessoRaw = aluno.numero_processo ? String(aluno.numero_processo).trim() : "";
+  const { data: loginLabel } = await (admin as any).rpc("build_numero_login", {
+    p_escola_id: escolaId,
+    p_numero_processo: numeroProcessoRaw,
+  });
+  const loginDisplay = String(loginLabel || numeroProcessoRaw || aluno.id);
+  const login = `${loginDisplay}@klasse.ao`.toLowerCase();
   const telefone = aluno.responsavel_contato || aluno.telefone_responsavel || aluno.encarregado_telefone || null;
   const token = createActivationToken({
     escola_id: escolaId,
@@ -161,7 +154,8 @@ async function provisionStudent(admin: NonNullable<ReturnType<typeof getAdminCli
       role: "aluno" as any,
       escola_id: escolaId,
       current_escola_id: escolaId,
-      numero_login: numeroMatricula || null,
+      numero_processo_login: loginDisplay || null,
+      email_auth: login,
     },
     { onConflict: "user_id" }
   );
@@ -187,7 +181,7 @@ async function provisionStudent(admin: NonNullable<ReturnType<typeof getAdminCli
     .order("created_at", { ascending: false })
     .limit(5);
 
-  const mensagem = `📚 KLASSE - ${escolaNome}\nAcesso liberado para ${aluno.nome}\nLogin: ${login}\nCódigo: ${aluno.codigo_ativacao || ""}\nAtive em: ${activationLink}`;
+  const mensagem = `📚 KLASSE - ${escolaNome}\nAcesso liberado para ${aluno.nome}\nLogin: ${loginDisplay}\nCódigo: ${aluno.codigo_ativacao || ""}\nAtive em: ${activationLink}`;
 
   for (const row of outboxRows || []) {
     await admin
@@ -196,7 +190,7 @@ async function provisionStudent(admin: NonNullable<ReturnType<typeof getAdminCli
         canal,
         destino: telefone,
         mensagem,
-        payload: { login, codigo: aluno.codigo_ativacao, aluno_nome: aluno.nome, canal },
+        payload: { login: loginDisplay, codigo: aluno.codigo_ativacao, aluno_nome: aluno.nome, canal },
       })
       .eq("id", row.id);
   }

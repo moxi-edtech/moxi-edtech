@@ -13,10 +13,8 @@ import {
   EyeIcon,
   EyeSlashIcon,
   InformationCircleIcon,
-  SparklesIcon,
   ArrowLeftIcon,
   ArrowRightIcon,
-  AcademicCapIcon,
   BuildingLibraryIcon,
   KeyIcon,
 } from "@heroicons/react/24/outline";
@@ -86,7 +84,6 @@ function CriarUsuarioForm() {
     papel: "admin_escola",
     escolaId: "",
   });
-  const [generatedNumeroLogin, setGeneratedNumeroLogin] = useState<string | null>(null);
   const [escolas, setEscolas] = useState<Escola[]>([]);
   const [loading, setLoading] = useState(false);
   const [escolasLoading, setEscolasLoading] = useState(true);
@@ -94,7 +91,6 @@ function CriarUsuarioForm() {
   const [message, setMessage] = useState<Message | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-  const [isGeneratingLogin, setIsGeneratingLogin] = useState(false);
 
   // Fetch escolas with error handling and retry
   const fetchEscolas = useCallback(async () => {
@@ -148,45 +144,6 @@ function CriarUsuarioForm() {
   useEffect(() => {
     fetchEscolas();
   }, [fetchEscolas]);
-
-  // Debounced login number generation
-  useEffect(() => {
-    const fetchNumeroLogin = async () => {
-      if (!formData.escolaId || !formData.papel) {
-        setGeneratedNumeroLogin(null);
-        return;
-      }
-
-      setIsGeneratingLogin(true);
-      try {
-        const roleEnum = ROLE_MAP[formData.papel];
-        const params = new URLSearchParams({
-          escolaId: formData.escolaId,
-          role: roleEnum,
-        });
-
-        const res = await fetch(`/api/super-admin/users/generate-login-number?${params}`);
-        
-        if (!res.ok) throw new Error('Falha na requisição');
-        
-        const json = await res.json();
-        
-        if (json.ok && json.numeroLogin) {
-          setGeneratedNumeroLogin(json.numeroLogin);
-        } else {
-          throw new Error(json.error || 'Número de login não gerado');
-        }
-      } catch (error) {
-        console.error("Erro ao gerar número de login:", error);
-        setGeneratedNumeroLogin(null);
-      } finally {
-        setIsGeneratingLogin(false);
-      }
-    };
-
-    const timeoutId = setTimeout(fetchNumeroLogin, 300);
-    return () => clearTimeout(timeoutId);
-  }, [formData.escolaId, formData.papel]);
 
   // Handlers
   const handleInputChange = (field: keyof FormData, value: string) => {
@@ -251,7 +208,7 @@ function CriarUsuarioForm() {
       
       setMessage({
         type: "success",
-        text: `✅ Usuário criado com sucesso! Senha temporária: ${tempPasswordText}. Número de Login: ${json.numeroLogin || generatedNumeroLogin || '(não gerado)'}`,
+        text: `✅ Usuário criado com sucesso! Senha temporária: ${tempPasswordText}.`,
       });
 
       // Reset form on success
@@ -263,7 +220,6 @@ function CriarUsuarioForm() {
         papel: "admin_escola",
         escolaId: "",
       });
-      setGeneratedNumeroLogin(null);
       setCurrentStep(1);
 
     } catch (error) {
@@ -388,8 +344,6 @@ function CriarUsuarioForm() {
               escolas={escolas}
               escolasLoading={escolasLoading}
               escolasError={escolasError}
-              generatedNumeroLogin={generatedNumeroLogin}
-              isGeneratingLogin={isGeneratingLogin}
               onInputChange={handleInputChange}
               onRetryEscolas={fetchEscolas}
             />
@@ -400,7 +354,6 @@ function CriarUsuarioForm() {
             <Step3
               formData={formData}
               loading={loading}
-              generatedNumeroLogin={generatedNumeroLogin}
               selectedEscolaName={getSelectedEscolaName()}
               showPassword={showPassword}
               onInputChange={handleInputChange}
@@ -524,8 +477,6 @@ function Step2({
   escolas,
   escolasLoading,
   escolasError,
-  generatedNumeroLogin,
-  isGeneratingLogin,
   onInputChange,
   onRetryEscolas,
 }: {
@@ -534,8 +485,6 @@ function Step2({
   escolas: Escola[];
   escolasLoading: boolean;
   escolasError: string | null;
-  generatedNumeroLogin: string | null;
-  isGeneratingLogin: boolean;
   onInputChange: (field: keyof FormData, value: string) => void;
   onRetryEscolas: () => void;
 }) {
@@ -612,22 +561,14 @@ function Step2({
         </div>
       </div>
 
-      {/* Generated Login Number */}
       <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
         <div className="flex items-center gap-2 mb-2">
-          <SparklesIcon className="w-5 h-5 text-slate-600" />
-          <span className="font-medium text-slate-900">Número de Login Gerado</span>
-          {isGeneratingLogin && (
-            <div className="w-4 h-4 border-2 border-slate-600 border-t-transparent rounded-full animate-spin" />
-          )}
+          <InformationCircleIcon className="w-5 h-5 text-slate-600" />
+          <span className="font-medium text-slate-900">Credenciais do Portal</span>
         </div>
-        <input
-          className="w-full bg-white border border-slate-300 rounded-lg p-3 text-slate-900 font-mono text-sm disabled:bg-slate-50 disabled:cursor-not-allowed"
-          value={generatedNumeroLogin || 'Selecione escola e papel para gerar...'}
-          disabled
-        />
-        <p className="text-slate-700 text-xs mt-2">
-          Gerado automaticamente com base na escola e papel selecionados
+        <p className="text-slate-700 text-sm">
+          Para alunos, o login oficial é o número de processo com a sigla da escola e é
+          gerado na matrícula. Para outros papéis, o acesso é feito com o e-mail informado.
         </p>
       </div>
     </div>
@@ -637,7 +578,6 @@ function Step2({
 function Step3({
   formData,
   loading,
-  generatedNumeroLogin,
   selectedEscolaName,
   showPassword,
   onInputChange,
@@ -645,7 +585,6 @@ function Step3({
 }: {
   formData: FormData;
   loading: boolean;
-  generatedNumeroLogin: string | null;
   selectedEscolaName: string;
   showPassword: boolean;
   onInputChange: (field: keyof FormData, value: string) => void;
@@ -674,11 +613,6 @@ function Step3({
             value={ROLE_DISPLAY_NAMES[formData.papel] || formData.papel} 
           />
           <ReviewItem label="Escola" value={selectedEscolaName} />
-          <ReviewItem 
-            label="Número de Login" 
-            value={generatedNumeroLogin || "Não gerado"} 
-            mono
-          />
         </div>
       </div>
 
@@ -826,7 +760,7 @@ function QuickTips() {
         Dicas Rápidas
       </h3>
       <ul className="text-slate-800 text-sm space-y-2">
-        <li>• O número de login é gerado automaticamente baseado na escola e papel</li>
+        <li>• Alunos usam número de processo como login no portal</li>
         <li>• Se não definir senha, o sistema gerará uma automaticamente</li>
         <li>• O usuário receberá instruções de acesso por email</li>
         <li>• Você pode editar essas informações posteriormente</li>

@@ -27,7 +27,7 @@ export const alunoListItemSchema = z.object({
   telefone_responsavel: z.string().nullable().optional(),
   status: z.string().nullable().optional(),
   created_at: z.string().nullable().optional(),
-  numero_login: z.string().nullable().optional(),
+  numero_processo_login: z.string().nullable().optional(),
   numero_processo: z.string().nullable().optional(),
   turma_nome: z.string().nullable().optional(),
   turma_id: z.string().nullable().optional(),

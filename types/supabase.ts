@@ -8047,12 +8047,14 @@ export type Database = {
           data_nascimento: string | null
           deleted_at: string | null
           email: string | null
+          email_auth: string | null
+          email_real: string | null
           encarregado_relacao: string | null
           escola_id: string | null
           global_role: string | null
           naturalidade: string | null
           nome: string
-          numero_login: string | null
+          numero_processo_login: string | null
           onboarding_finalizado: boolean | null
           provincia: string | null
           role: Database["public"]["Enums"]["user_role"]
@@ -8069,12 +8071,14 @@ export type Database = {
           data_nascimento?: string | null
           deleted_at?: string | null
           email?: string | null
+          email_auth?: string | null
+          email_real?: string | null
           encarregado_relacao?: string | null
           escola_id?: string | null
           global_role?: string | null
           naturalidade?: string | null
           nome: string
-          numero_login?: string | null
+          numero_processo_login?: string | null
           onboarding_finalizado?: boolean | null
           provincia?: string | null
           role?: Database["public"]["Enums"]["user_role"]
@@ -8091,12 +8095,14 @@ export type Database = {
           data_nascimento?: string | null
           deleted_at?: string | null
           email?: string | null
+          email_auth?: string | null
+          email_real?: string | null
           encarregado_relacao?: string | null
           escola_id?: string | null
           global_role?: string | null
           naturalidade?: string | null
           nome?: string
-          numero_login?: string | null
+          numero_processo_login?: string | null
           onboarding_finalizado?: boolean | null
           provincia?: string | null
           role?: Database["public"]["Enums"]["user_role"]
@@ -11717,7 +11723,7 @@ export type Database = {
           email: string
           escola_id: string
           nome: string
-          numero_login: string
+          numero_processo_login: string
           role: string
           telefone: string
           user_id: string
@@ -11843,6 +11849,19 @@ export type Database = {
         }
         Returns: Json
       }
+      build_numero_login:
+        | {
+            Args: {
+              p_ano_letivo: number
+              p_escola_id: string
+              p_numero: number
+            }
+            Returns: string
+          }
+        | {
+            Args: { p_escola_id: string; p_numero_processo: string }
+            Returns: string
+          }
       calcular_media_trimestral: {
         Args: { p_notas: Json; p_regras: Json }
         Returns: number
@@ -12529,14 +12548,6 @@ export type Database = {
         Args: { p_matricula_id: string }
         Returns: string
       }
-      gerar_mapa_aproveitamento_turma: {
-        Args: {
-          p_escola_id: string
-          p_turma_id: string
-          p_periodo_letivo_id?: string | null
-        }
-        Returns: Json
-      }
       gerar_mensalidades_lote:
         | {
             Args: {
@@ -12636,12 +12647,12 @@ export type Database = {
         Args: never
         Returns: {
           curso_matriz_id: string
-          disciplina_id: string | null
-          disciplina_nome: string | null
+          disciplina_id: string
+          disciplina_nome: string
           turma_disciplina_id: string
           turma_id: string
-          turma_nome: string | null
-          turma_status_fecho: string | null
+          turma_nome: string
+          turma_status_fecho: string
         }[]
       }
       get_profile_dependencies: {
@@ -13294,8 +13305,8 @@ export type Database = {
           email: string
           id: string
           nome: string
-          numero_login: string
           numero_processo: string
+          numero_processo_login: string
           origem: string
           responsavel: string
           status: string
@@ -13325,7 +13336,7 @@ export type Database = {
           escola_id: string
           last_login: string
           nome: string
-          numero_login: string
+          numero_processo_login: string
           role: string
           telefone: string
           user_id: string

@@ -76,22 +76,22 @@ export async function POST(
       );
     }
 
-    // 1) Tentar reaproveitar numero_login existente (se o aluno já tiver matrícula)
+    // 1) Tentar reaproveitar numero_processo_login existente (se o aluno já tiver matrícula)
     let numeroLogin: string | null = null;
     try {
       const { data: existing } = await s
         .from("profiles" as any)
-        .select("numero_login")
+        .select("numero_processo_login")
         .eq("email", email)
         .eq("escola_id", escolaId)
         .limit(1);
 
-      numeroLogin = (existing?.[0] as any)?.numero_login ?? null;
+      numeroLogin = (existing?.[0] as any)?.numero_processo_login ?? null;
     } catch {
       // best-effort
     }
 
-    // ❌ NÃO GERAMOS mais numero_login aqui.
+    // ❌ NÃO GERAMOS mais numero_processo_login aqui.
     // Ele passa a ser responsabilidade da função create_or_confirm_matricula
     // (via next_matricula_number) quando a matrícula for criada/confirmada.
 
@@ -135,7 +135,7 @@ export async function POST(
             user_id: userId,
             email,
             nome,
-            numero_login: numeroLogin ?? null, // se já havia matrícula anterior, reaproveita; senão fica null
+            numero_processo_login: numeroLogin ?? null, // se já havia matrícula anterior, reaproveita; senão fica null
             role: "aluno" as any,
             escola_id: escolaId,
             current_escola_id: escolaId,
@@ -161,7 +161,7 @@ export async function POST(
         // best-effort
       }
     } else {
-      // Usuário já existe: garante role/escola e mantém (ou reaproveita) numero_login
+      // Usuário já existe: garante role/escola e mantém (ou reaproveita) numero_processo_login
       try {
         await s
           .from("profiles")
@@ -169,7 +169,7 @@ export async function POST(
           role: "aluno" as any,
           escola_id: escolaId,
           current_escola_id: escolaId,
-          // numero_login: numeroLogin ?? undefined, // só atualizamos se já houver
+          // numero_processo_login: numeroLogin ?? undefined, // só atualizamos se já houver
         })
           .eq("user_id", userId);
       } catch {
@@ -237,11 +237,11 @@ export async function POST(
       acao: "ALUNO_CONVIDADO",
       entity: "aluno",
       entityId: alunoId ?? userId!,
-      details: { email, invited, numero_login: numeroLogin },
+      details: { email, invited, numero_processo_login: numeroLogin },
     }).catch(() => null);
 
     // 6) E-mail com credenciais
-    // Mantemos a lógica: só envia email "com credenciais" se já houver numero_login.
+    // Mantemos a lógica: só envia email "com credenciais" se já houver numero_processo_login.
     // Caso contrário, o fluxo será:
     // - ele recebe o email padrão do Supabase (invite)
     // - e depois, quando matriculado, pode receber outro email com as credenciais completas.
@@ -259,7 +259,7 @@ export async function POST(
         const mail = buildCredentialsEmail({
           nome,
           email,
-          numero_login: numeroLogin,
+          numero_processo_login: numeroLogin,
           escolaNome,
           loginUrl,
         });

@@ -45,7 +45,7 @@ type Aluno = {
   telefone_responsavel?: string | null;
   status?: string | null;
   created_at: string;
-  numero_login?: string | null;
+  numero_processo_login?: string | null;
   numero_processo?: string | null;
   origem?: "aluno" | "candidatura" | null;
   candidatura_id?: string | null;
@@ -70,7 +70,7 @@ type AlunoDetail = {
   email?: string | null;
   telefone?: string | null;
   status?: string | null;
-  numero_login?: string | null;
+  numero_processo_login?: string | null;
   turma_id?: string | null;
   turma_nome?: string | null;
   turma_curso?: string | null;
@@ -1209,7 +1209,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
       "responsavel",
       "telefone_responsavel",
       "status",
-      "numero_login",
+      "numero_processo_login",
       "numero_processo",
       "origem",
       "created_at",
@@ -1579,8 +1579,8 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
                     const isLead = aluno.origem === "candidatura";
                     const id = aluno.numero_processo
                       ? `Proc. ${aluno.numero_processo}`
-                      : aluno.numero_login
-                        ? `Login ${aluno.numero_login}`
+                      : aluno.numero_processo_login
+                        ? `Login ${aluno.numero_processo_login}`
                         : null;
 
                     return (

@@ -158,13 +158,12 @@ export async function POST(req: NextRequest) {
         continue
       }
 
-      // 6) Antes: gerava numero_login para admin.
-      // Agora, no modelo novo, numero_login é exclusivo do fluxo de matrícula (alunos).
+      // 6) Login de aluno agora usa numero_processo_login; não geramos para admin.
       // Mantemos apenas o log/ação, sem gerar nada.
       if (!dryRun) {
-        actions.push('numero_login não gerado para admin (modelo novo)')
+        actions.push('login de aluno não gerado para admin')
       } else {
-        actions.push('DRY-RUN: verificaria numero_login (sem gerar para admin)')
+        actions.push('DRY-RUN: verificaria login de aluno (sem gerar para admin)')
       }
 
       results.push({ escolaId, escolaNome, status: 'ok', actions })

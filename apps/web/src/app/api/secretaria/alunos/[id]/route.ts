@@ -50,7 +50,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
     let alunoQuery = s
       .from('alunos')
-      .select('id, nome, email, telefone, data_nascimento, sexo, bi_numero, naturalidade, responsavel, responsavel_nome, responsavel_contato, encarregado_nome, encarregado_telefone, telefone_responsavel, status, created_at, profile_id, escola_id, profiles:profiles!alunos_profile_id_fkey(user_id, email, nome, telefone, data_nascimento, sexo, bi_numero, naturalidade, provincia, encarregado_relacao, numero_login)')
+      .select('id, nome, email, telefone, data_nascimento, sexo, bi_numero, naturalidade, responsavel, responsavel_nome, responsavel_contato, encarregado_nome, encarregado_telefone, telefone_responsavel, status, created_at, profile_id, escola_id, profiles:profiles!alunos_profile_id_fkey(user_id, email_real, email_auth, nome, telefone, data_nascimento, sexo, bi_numero, naturalidade, provincia, encarregado_relacao, numero_processo_login)')
       .eq('id', alunoId)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -111,7 +111,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         profile_id: (aluno as any).profile_id,
         escola_id: alunoEscolaId,
         email: (aluno as any).email ?? profObj?.email ?? null,
-        numero_login: profObj?.numero_login ?? null,
+        numero_processo_login: profObj?.numero_processo_login ?? null,
         telefone: (aluno as any).telefone ?? profObj?.telefone ?? null,
         data_nascimento: (aluno as any).data_nascimento ?? profObj?.data_nascimento ?? null,
         sexo: (aluno as any).sexo ?? profObj?.sexo ?? null,

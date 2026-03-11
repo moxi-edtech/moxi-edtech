@@ -169,7 +169,7 @@ export async function listAlunos(
       telefone_responsavel: row.telefone_responsavel ?? null,
       status: row.status ?? null,
       created_at: row.created_at ?? null,
-      numero_login: row.numero_login ?? null,
+      numero_processo_login: row.numero_processo_login ?? null,
       numero_processo: row.numero_processo ?? null,
     }));
 

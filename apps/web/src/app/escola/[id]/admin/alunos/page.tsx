@@ -28,7 +28,7 @@ type Aluno = {
   id:                  string;
   nome:                string | null;
   email:               string | null;
-  numero_login:        string | null;
+  numero_processo_login:        string | null;
   numero_processo?:    string | null;
   created_at:          string;
   status?:             string | null;
@@ -1308,9 +1308,9 @@ export default function AlunosPage({ params }: { params: Promise<{ id: string }>
 
                         {/* Nº Processo */}
                         <td className="px-4 py-3.5">
-                          {aluno.numero_login || aluno.numero_processo
+                          {aluno.numero_processo_login || aluno.numero_processo
                             ? <span className="font-mono text-sm font-semibold text-slate-700">
-                                {aluno.numero_login || aluno.numero_processo}
+                                {aluno.numero_processo_login || aluno.numero_processo}
                               </span>
                             : <span className="text-xs text-slate-300">—</span>
                           }

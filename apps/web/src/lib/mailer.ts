@@ -111,14 +111,14 @@ export function buildBillingEmail(args: { escolaNome: string; destinatarioEmail:
   return { subject, html, text }
 }
 
-export function buildCredentialsEmail(args: { nome?: string | null; email: string; numero_login?: string | null; senha_temp?: string | null; escolaNome?: string | null; loginUrl?: string | null }) {
-  const { nome, email, numero_login, senha_temp, escolaNome, loginUrl } = args
+export function buildCredentialsEmail(args: { nome?: string | null; email: string; numero_processo_login?: string | null; senha_temp?: string | null; escolaNome?: string | null; loginUrl?: string | null }) {
+  const { nome, email, numero_processo_login, senha_temp, escolaNome, loginUrl } = args
   const brand = getBranding()
   const subject = `${brand.name} • Seus dados de acesso${escolaNome ? ` • ${escolaNome}` : ''}`
   const text = [
     nome ? `Olá, ${nome}.` : `Olá,`,
     `Suas credenciais foram configuradas no ${brand.name}${escolaNome ? ` para a escola "${escolaNome}"` : ''}.`,
-    numero_login ? `Número de login: ${numero_login}` : '',
+    numero_processo_login ? `Número de processo (login): ${numero_processo_login}` : '',
     senha_temp ? `Senha temporária: ${senha_temp}` : '',
     loginUrl ? `Acesse: ${loginUrl}` : '',
     senha_temp ? `Por segurança, altere sua senha após o primeiro acesso.` : '',
@@ -133,7 +133,7 @@ export function buildCredentialsEmail(args: { nome?: string | null; email: strin
     <h2 style="margin:0 0 12px 0; font-size:20px;">Seus dados de acesso</h2>
     ${nome ? `<p style=\"margin:0 0 8px 0;\">Olá, <strong>${escapeHtml(nome)}</strong>.</p>` : ''}
     <p style="margin:0 0 8px 0;">Suas credenciais foram configuradas${escolaNome ? ` para a escola <strong>${escapeHtml(escolaNome)}</strong>` : ''}.</p>
-    ${numero_login ? `<p style=\"margin:0 0 8px 0;\">Número de login: <strong>${escapeHtml(numero_login)}</strong></p>` : ''}
+    ${numero_processo_login ? `<p style=\"margin:0 0 8px 0;\">Número de processo (login): <strong>${escapeHtml(numero_processo_login)}</strong></p>` : ''}
     ${senha_temp ? `<p style=\"margin:0 0 8px 0;\">Senha temporária: <strong>${escapeHtml(senha_temp)}</strong></p>` : ''}
     ${loginUrl ? `<p style=\"margin:0 0 8px 0;\"><a href=\"${loginUrl}\" style=\"display:inline-block; background:${brand.primaryColor}; color:#fff; text-decoration:none; padding:10px 16px; border-radius:8px; font-weight:600;\">Acessar o sistema</a></p>` : ''}
     ${senha_temp ? `<p style=\"margin:16px 0 0 0; font-size:13px; color:#334155;\">Por segurança, altere sua senha após o primeiro acesso.</p>` : ''}

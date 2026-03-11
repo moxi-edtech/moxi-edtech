@@ -98,7 +98,7 @@ export async function GET(req: Request) {
       return `"${escaped}"`
     }
     
-    const header = ['ID', 'User ID', 'Nome', 'Email', 'Telefone', 'Cargo', 'Número Login', 'Data Criação']
+    const header = ['ID', 'User ID', 'Nome', 'Email', 'Telefone', 'Cargo', 'Data Criação']
     const csv = [
       header.map(csvEscape).join(','), 
       ...rows.map((r) => {
@@ -119,7 +119,6 @@ export async function GET(req: Request) {
           r.email || '',
           r.telefone || '',
           cargoLabel,
-          r.numero_login || '',
           createdAt
         ].map(csvEscape).join(',')
       })

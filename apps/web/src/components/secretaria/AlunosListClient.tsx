@@ -41,7 +41,7 @@ type Aluno = {
   created_at: string;
 
   // Identifiers
-  numero_login?: string | null; // existe quando virou aluno/matricula
+  numero_processo_login?: string | null; // login oficial do aluno
   numero_processo?: string | null; // pode existir se vocês mantiveram "processo" em alunos
 
   // Lead/origem
@@ -447,10 +447,10 @@ export default function AlunosListClient() {
 
                     const isLead = aluno.origem === "candidatura";
                     const identificador =
-                      aluno.numero_processo || aluno.numero_login || "—";
+                      aluno.numero_processo_login || aluno.numero_processo || "—";
                     const identificadorLabel = aluno.numero_processo
                       ? "Proc."
-                      : aluno.numero_login
+                      : aluno.numero_processo_login
                         ? "Login"
                         : "—";
 

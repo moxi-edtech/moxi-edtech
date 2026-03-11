@@ -5,7 +5,6 @@ import { isSuperAdminRole } from '@/lib/auth/requireSuperAdminAccess'
 
 type UsuarioItem = {
   id: string
-  numero_login: string | null
   nome: string | null
   email: string
   telefone: string | null
@@ -158,7 +157,6 @@ export async function GET() {
 
       items.push({
         id: String(u.user_id),
-        numero_login: u.numero_login ?? null,
         nome: u.nome ?? null,
         email: String(u.email ?? ''),
         telefone: u.telefone ?? null,

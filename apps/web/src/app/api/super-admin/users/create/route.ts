@@ -170,7 +170,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // 4) Create / upsert profile (sem numero_login aqui)
+    // 4) Create / upsert profile
     const { error: profileError } = await supabase
       .from("profiles" as any)
       .upsert(
@@ -183,7 +183,6 @@ export async function POST(request: Request) {
             role: roleEnum,
             escola_id: escolaId,
             current_escola_id: escolaId,
-            // numero_login: null // se for aluno, será preenchido pela matricula
           },
         ] as any,
         { onConflict: "user_id" },
@@ -233,10 +232,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // ❌ 6) NÃO geramos numero_login aqui.
-    // numero_login agora é exclusivo do fluxo de matrícula (create_or_confirm_matricula + next_matricula_number).
-    const numeroLogin: string | null = null;
-
     // Auditoria: usuário criado pelo Super Admin
     recordAuditServer({
       escolaId,
@@ -255,7 +250,6 @@ export async function POST(request: Request) {
       ok: true,
       userId: authUser!.user.id,
       tempPassword: createdNewAuthUser ? password : null,
-      numeroLogin, // sempre null aqui; se for aluno, ele ganha via matrícula
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
