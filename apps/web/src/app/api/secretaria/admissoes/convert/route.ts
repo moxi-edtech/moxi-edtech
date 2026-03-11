@@ -106,6 +106,11 @@ export async function POST(request: Request) {
     }).catch(() => null)
 
     const matriculaId = typeof data === 'string' ? data : null
+    try {
+      await (supabase as any).rpc('refresh_mv_turmas_para_matricula')
+    } catch (refreshError) {
+      console.warn('[admissoes/convert] refresh_mv_turmas_para_matricula failed:', refreshError)
+    }
     let comprovante: { ok: boolean; printUrl?: string; error?: string } | null = null
     if (matriculaId) {
       const comprovanteResult = await emitirComprovanteMatricula({
