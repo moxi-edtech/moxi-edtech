@@ -50,7 +50,7 @@ function mapAuthError(err: any): { status: number; message: string } {
   return { status: status >= 400 && status < 600 ? status : 401, message };
 }
 
-// ---------- Resolver identificador (numero_login / telefone → email) ----------
+// ---------- Resolver identificador (numero_processo_login / telefone → email) ----------
 
 async function resolveIdentifierToEmail(req: NextRequest, identifier: string): Promise<string | null> {
   if (identifier.includes("@")) return null;
@@ -103,12 +103,12 @@ export async function POST(req: NextRequest) {
     // Se o identificador não é email e não há service role, retorne um erro claro
     const isEmail = rawIdentifier.includes("@");
     console.log('[login] rawIdentifier:', rawIdentifier);
-    // Tenta resolver identificador numérico / numero_login / telefone para email
+    // Tenta resolver identificador numérico / numero_processo_login / telefone para email
     const translatedEmail = isEmail ? null : await resolveIdentifierToEmail(req, rawIdentifier);
     console.log('[login] translatedEmail:', translatedEmail);
 
     if (!isEmail && !translatedEmail) {
-      // Não foi possível mapear numero_login/telefone → email
+      // Não foi possível mapear numero_processo_login/telefone → email
       return new NextResponse(
         JSON.stringify({ ok: false, error: "Credenciais inválidas." }),
         { status: 401, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } }

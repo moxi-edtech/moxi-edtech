@@ -14,7 +14,6 @@ export async function POST(request: Request) {
       email: string | null
       telefone: string | null
       role: Database['public']['Enums']['user_role'] | string | null
-      numero_login: string | null
       escola_id: string | null
       papel_escola: string | null
     }>
@@ -38,7 +37,6 @@ export async function POST(request: Request) {
     if (updates.email !== undefined) profilePatch.email = updates.email?.toString().trim().toLowerCase() ?? null
     if (updates.telefone !== undefined) profilePatch.telefone = updates.telefone
     if (updates.role !== undefined && updates.role !== null) profilePatch.role = updates.role as any
-    if (updates.numero_login !== undefined) profilePatch.numero_login = updates.numero_login
     if (updates.escola_id !== undefined) profilePatch.escola_id = updates.escola_id
 
     if (Object.keys(profilePatch).length > 0) {

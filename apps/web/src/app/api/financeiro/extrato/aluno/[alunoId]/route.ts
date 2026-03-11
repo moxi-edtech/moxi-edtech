@@ -37,7 +37,7 @@ interface MensalidadeRow {
 }
 
 interface ProfileRow {
-  numero_login?: string | null;
+  numero_processo_login?: string | null;
 }
 
 interface TurmaRow {

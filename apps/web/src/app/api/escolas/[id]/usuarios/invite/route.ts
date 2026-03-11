@@ -112,12 +112,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     // -------------------------------
     const { data: prof } = await supabase
       .from('profiles')
-      .select('user_id, numero_login')
+      .select('user_id, numero_processo_login')
       .eq('email', email)
       .limit(1)
 
     let userId = prof?.[0]?.user_id as string | undefined
-    let existingNumeroLogin = prof?.[0]?.numero_login ?? null
+    let existingNumeroLogin = prof?.[0]?.numero_processo_login ?? null
 
     // -------------------------------
     // 6) Invite user if new
@@ -149,13 +149,13 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     if (!userId) {
       const { data: adminProfile } = await supabase
         .from('profiles')
-        .select('user_id, numero_login')
+        .select('user_id, numero_processo_login')
         .eq('email', email)
         .limit(1)
 
       if (adminProfile?.[0]?.user_id) {
         userId = adminProfile[0].user_id as string
-        existingNumeroLogin = adminProfile[0].numero_login ?? existingNumeroLogin
+        existingNumeroLogin = adminProfile[0].numero_processo_login ?? existingNumeroLogin
       }
     }
 
@@ -248,14 +248,14 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         email,
         papel,
         role: roleEnum,
-        numero_login: existingNumeroLogin,
+        numero_processo_login: existingNumeroLogin,
       }
     }).catch(() => null)
 
     return NextResponse.json({
       ok: true,
       userId,
-      numero_login: existingNumeroLogin,
+      numero_processo_login: existingNumeroLogin,
       senha_temp: tempPassword,
     })
   } catch (err) {

@@ -18,7 +18,7 @@ type Funcionario = {
   nome: string | null;
   email: string | null;
   telefone: string | null;
-  numero_login: string | null;
+  numero_processo_login?: string | null;
   papel: string | null;
   created_at: string | null;
   last_login: string | null;
@@ -155,7 +155,7 @@ export default function FuncionariosPage({ embedded = false }: { embedded?: bool
                     <td className="p-3">
                       <div className="font-semibold text-slate-900">{item.nome || "Sem nome"}</div>
                       <div className="text-xs text-slate-400">
-                        Login: {item.numero_login || "—"}
+                        Login: {item.email || "—"}
                       </div>
                     </td>
                     <td className="p-3 text-slate-600">

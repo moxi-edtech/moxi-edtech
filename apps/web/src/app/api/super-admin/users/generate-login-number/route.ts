@@ -3,30 +3,7 @@
 import { NextResponse } from "next/server";
 
 import { supabaseServer } from "@/lib/supabaseServer";
-import type { Database } from "~types/supabase";
 import { isSuperAdminRole } from "@/lib/auth/requireSuperAdminAccess";
-
-type UserRole = Database["public"]["Enums"]["user_role"];
-
-const ROLE_START: Record<UserRole, number> = {
-  admin: 1,
-  admin_escola: 1,
-  staff_admin: 1,
-  admin_financeiro: 1,
-  super_admin: 1,
-  global_admin: 1,
-  aluno: 1001,
-  professor: 2001,
-  secretaria: 3001,
-  secretaria_financeiro: 3001,
-  financeiro: 4001,
-  encarregado: 5001,
-};
-
-const buildPrefix = (sigla: string) => {
-  const year = String(new Date().getFullYear()).slice(-2);
-  return `${sigla}-${year}-`;
-};
 
 export async function GET(req: Request) {
   const s = await supabaseServer();
@@ -57,47 +34,10 @@ export async function GET(req: Request) {
     );
   }
 
-  const userRole = roleParam as UserRole;
+  const info =
+    roleParam === "aluno"
+      ? "Login do aluno é definido na matrícula (numero_processo)."
+      : "Usuários não-aluno autenticam com email; não há login numérico.";
 
-  if (!Object.prototype.hasOwnProperty.call(ROLE_START, userRole)) {
-    return NextResponse.json(
-      { ok: false, error: `Role inválida: ${roleParam}` },
-      { status: 400 }
-    );
-  }
-
-  const { data: sigla, error: siglaError } = await (s as any).rpc("get_escola_sigla", {
-    p_escola_id: escolaId,
-  });
-  if (siglaError || !sigla) {
-    return NextResponse.json({ ok: false, error: siglaError?.message || "Sigla da escola inválida" }, { status: 400 });
-  }
-
-  const prefix = buildPrefix(String(sigla));
-  const start = ROLE_START[userRole];
-
-  const { data, error } = await (s as any).rpc("generate_unique_numero_login", {
-    p_escola_id: escolaId,
-    p_role: userRole,
-    p_prefix: prefix,
-    p_start: start,
-  });
-
-  if (error) {
-    return NextResponse.json(
-      { ok: false, error: error.message },
-      { status: 500 }
-    );
-  }
-
-  const numeroLogin = typeof data === "string" ? data : String(data ?? "");
-
-  if (!numeroLogin) {
-    return NextResponse.json(
-      { ok: false, error: "Número de login não gerado" },
-      { status: 500 }
-    );
-  }
-
-  return NextResponse.json({ ok: true, numeroLogin });
+  return NextResponse.json({ ok: false, error: info }, { status: 400 });
 }

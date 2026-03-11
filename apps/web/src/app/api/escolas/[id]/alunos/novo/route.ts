@@ -198,7 +198,7 @@ export async function POST(
     return NextResponse.json({
       ok: true,
       id: created.id,
-      numero_login: null, // Será gerado na matrícula
+      numero_processo_login: null, // Será gerado na matrícula
     })
 
   } catch (err) {

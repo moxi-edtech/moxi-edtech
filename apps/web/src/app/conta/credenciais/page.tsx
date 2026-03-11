@@ -14,12 +14,12 @@ export default async function CredenciaisPage() {
 
   const { data: profile } = await s
     .from('profiles')
-    .select('email, nome, numero_login, escola_id')
+    .select('email, email_real, email_auth, nome, numero_processo_login, escola_id')
     .eq('user_id', user.id)
     .maybeSingle();
-  const email = (profile as any)?.email ?? user.email ?? null;
+  const email = (profile as any)?.email_real ?? (profile as any)?.email ?? user.email ?? null;
   const nome = (profile as any)?.nome ?? null;
-  const numero = (profile as any)?.numero_login ?? null;
+  const numero = (profile as any)?.numero_processo_login ?? null;
   const escolaId = (profile as any)?.escola_id ?? null;
   let escolaNome: string | null = null;
   if (escolaId) {
@@ -42,7 +42,7 @@ export default async function CredenciaisPage() {
         <div className="text-sm text-gray-600">E-mail</div>
         <div className="text-gray-800">{email ?? '—'}</div>
         <div className="h-px bg-gray-100 my-2" />
-        <div className="text-sm text-gray-600">Número de login</div>
+        <div className="text-sm text-gray-600">Número de processo (login)</div>
         <div className="flex items-center justify-between">
           <div className="text-gray-800">{numero ?? '—'}</div>
           {numero && (
@@ -55,7 +55,7 @@ export default async function CredenciaisPage() {
         <div className="text-sm text-gray-600">Escola</div>
         <div className="text-gray-800">{escolaNome ?? escolaId ?? '—'}</div>
       </div>
-      <p className="text-xs text-gray-500 mt-3">Use seu e-mail ou número de login na tela de acesso.</p>
+      <p className="text-xs text-gray-500 mt-3">Use o número de processo na tela de acesso.</p>
     </main>
   );
 }

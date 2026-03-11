@@ -10,7 +10,7 @@ export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
 // Lista alunos (portal secretaria)
-// Agora trazendo numero_login via relacionamento alunos -> profiles
+// Agora trazendo numero_processo_login via relacionamento alunos -> profiles
 export async function GET(req: Request) {
   try {
     const supabase = await createRouteClient();

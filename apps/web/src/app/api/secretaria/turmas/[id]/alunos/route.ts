@@ -12,7 +12,7 @@ type AlunoTurmaRow = {
   status_matricula: string | null;
 
   aluno_nome: string | null;
-  numero_login: string | null;
+  numero_processo_login: string | null;
   bi_numero: string | null;
   data_nascimento: string | null;
   naturalidade: string | null;
@@ -86,7 +86,7 @@ export async function GET(
           encarregado_relacao,
           profiles:profiles!alunos_profile_id_fkey (
             user_id,
-            numero_login,
+            numero_processo_login,
             nome
           )
         )
@@ -160,7 +160,7 @@ export async function GET(
         status_matricula: mat.status ?? null,
 
         aluno_nome: aluno?.nome ?? null,
-        numero_login: profile?.numero_login ?? null,
+        numero_processo_login: profile?.numero_processo_login ?? null,
         bi_numero: aluno?.bi_numero ?? null,
         data_nascimento: aluno?.data_nascimento ?? null,
         naturalidade: aluno?.naturalidade ?? null,

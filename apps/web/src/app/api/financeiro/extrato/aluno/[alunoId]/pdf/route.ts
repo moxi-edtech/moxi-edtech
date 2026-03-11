@@ -29,7 +29,7 @@ interface MensalidadeRow {
 }
 
 interface ProfileRow {
-  numero_login?: string | null;
+  numero_processo_login?: string | null;
 }
 
 interface TurmaRow {
@@ -136,7 +136,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ alunoId
         escola_id,
         profiles:profiles!alunos_profile_id_fkey (
           id,
-          numero_login
+          numero_processo_login
         ),
         matriculas:matriculas (
           id,
@@ -330,8 +330,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ alunoId
 
         draw("Dados do aluno", { bold: true, size: 12 });
         draw(`Nome: ${aluno.nome ?? "—"}`);
-        if (profile?.numero_login) {
-          draw(`Número de aluno: ${profile.numero_login}`);
+        if (profile?.numero_processo_login) {
+          draw(`Número de processo: ${profile.numero_processo_login}`);
         }
         if (aluno.bi_numero) {
           draw(`Documento: ${aluno.bi_numero}`);

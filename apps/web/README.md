@@ -92,15 +92,11 @@ Open http://localhost:3000 and try the login flow.
   - Builds the onboarding email (subject/html/text) without sending.
   - If `adminEmail` is omitted, tries to resolve the first admin of the escola.
 
-## DB migration: numero_login as TEXT
+## DB migration: login do aluno
 
-- The login number (`profiles.numero_login`) accepts alphanumeric prefixes (first 3 chars of the escola UUID).
-- Ensure the column is `TEXT/VARCHAR` in Postgres. Run the SQL file:
-  - Open Supabase Dashboard → SQL Editor.
-  - Paste and run `docs/db/2025-09-26-numero_login-text.sql` (path is at repo root).
-- This migration:
-  - Adds the column if missing and sets its type to `TEXT`.
-  - Optionally adds a unique index on `(escola_id, numero_login)` to prevent duplicates.
+- O login oficial do aluno é `profiles.numero_processo_login` (sigla + número de processo).
+- O email usado no Auth é `profiles.email_auth`, gerado com `@klasse.ao` e nunca exposto na UI.
+- Garanta que as migrações de login foram aplicadas no Supabase antes de liberar acesso.
 
 ## DB migration: configuracoes_escola (onboarding preferences)
 

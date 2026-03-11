@@ -15,7 +15,6 @@ import RequireSuperAdmin from "@/app/(guards)/RequireSuperAdmin";
 
 type Usuario = {
   id: string;
-  numero_login: string | null;
   nome: string | null;
   email: string;
   telefone: string | null;
@@ -173,7 +172,7 @@ function ListaUsuarios() {
     setEditingId(u.id);
     setEditForm({ nome: u.nome, email: u.email, telefone: u.telefone,
       role: u.role, escola_id: u.escola_id, papel_escola: u.papel_escola,
-      numero_login: u.numero_login });
+      });
   };
   const handleCancel = () => { setEditingId(null); setEditForm({}); setErro(null); };
 
@@ -367,15 +366,7 @@ function ListaUsuarios() {
 
                       {/* Nº Login */}
                       <td className="py-3.5 px-4">
-                        {isEditing ? (
-                          <input type="text" value={editForm.numero_login || ""}
-                            onChange={e => handleInputChange("numero_login", e.target.value)}
-                            className={inputCls} placeholder="Nº login" />
-                        ) : (
-                          <span className="font-mono text-xs font-bold text-[#E3B23C]">
-                            {u.numero_login ?? "—"}
-                          </span>
-                        )}
+                        <span className="text-xs text-slate-600">—</span>
                       </td>
 
                       {/* Nome */}

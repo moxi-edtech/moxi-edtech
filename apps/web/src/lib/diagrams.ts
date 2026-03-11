@@ -80,7 +80,7 @@ export const fluxoCriacaoAdmin = `flowchart TD
     %% CRIAÇÃO DO ADMIN
     %% ================
     C3 --> U1[Definir e-mail obrigatório]
-    C3 --> U2[Gerar numero_login: Prefixo + 7 dígitos (ex: 1230001)]
+    C3 --> U2[Gerar numero_processo_login: SIGLA + numero_processo (ex: CSJ-00234)]
     C3 --> U3[Definir senha manual OU enviar convite]
     U1 --> DB[(profiles)]
     U2 --> DB
@@ -91,7 +91,7 @@ export const fluxoCriacaoAdmin = `flowchart TD
     %% ================
     L[Usuário Admin] --> L1[/login]
     L1 -->|E-mail + Senha| AUTH[Autenticação]
-    L1 -->|Numero_login (ex: 1230001) + Senha| AUTH
+    L1 -->|Numero_processo_login (ex: CSJ-00234) + Senha| AUTH
     AUTH -->|Validação OK| DASH[Dashboard da Escola]
 
     %% ================

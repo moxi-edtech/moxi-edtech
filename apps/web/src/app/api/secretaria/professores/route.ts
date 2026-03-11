@@ -86,7 +86,7 @@ export async function GET(req: Request) {
       nome: string | null
       email: string | null
       telefone: string | null
-      numero_login: string | null
+      numero_processo_login: string | null
       created_at: string | null
       last_login: string | null
     }>
@@ -407,7 +407,7 @@ export async function GET(req: Request) {
         carga_horaria_real: cargaRealByProfile.get(p.user_id) ?? null,
         compliance_status: complianceStatus,
         pendencias_total: pendenciasTotal,
-        profiles: { numero_login: p.numero_login }
+        profiles: { numero_processo_login: p.numero_processo_login }
       }
     })
     const total = filtered.length

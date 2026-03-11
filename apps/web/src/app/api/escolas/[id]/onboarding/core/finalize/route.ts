@@ -273,9 +273,8 @@ export async function POST(
       try {
         const roleEnum = mapPapelToGlobalRole(inv.papel)
         // Check if exists
-        const { data: prof } = await sserver.from('profiles').select('user_id, numero_login').eq('email', inv.email).limit(1)
+        const { data: prof } = await sserver.from('profiles').select('user_id').eq('email', inv.email).limit(1)
         const userId = (prof?.[0] as any)?.user_id as string | undefined
-        const numeroLogin: string | null = (prof?.[0] as any)?.numero_login ?? null
         const invited = false
 
         if (!userId) {
@@ -291,11 +290,7 @@ export async function POST(
           tempPassword = null
         }
 
-        // ❗ numero_login:
-        // Agora não geramos mais aqui. Se já existia (ex: usuário-aluno previamente matriculado e promovido),
-        // reaproveitamos. Caso contrário, fica null e será criado via fluxo de matrícula (quando aplicável).
-
-        // Ensure profile (não pisa no numero_login existente se estiver null aqui)
+        // Ensure profile
         const profilePayload: any = {
           user_id: userId,
           email: inv.email,
@@ -303,9 +298,6 @@ export async function POST(
           role: roleEnum as any,
           escola_id: escolaIdResolved,
           current_escola_id: escolaIdResolved,
-        }
-        if (numeroLogin) {
-          profilePayload.numero_login = numeroLogin
         }
 
         try {
@@ -336,12 +328,11 @@ export async function POST(
               papel: inv.papel,
               role: roleEnum,
               via: 'onboarding',
-              numero_login: numeroLogin,
             },
           })
         } catch {}
 
-        // Envia email de credenciais (inclui numero_login só se já existir)
+        // Envia email de credenciais
         try {
           const { data: esc2 } = await sserver.from('escolas' as any).select('nome').eq('id', escolaIdResolved).maybeSingle()
           const escolaNome = (esc2 as any)?.nome ?? null
@@ -349,7 +340,7 @@ export async function POST(
           const mail = buildCredentialsEmail({
             nome: inv.nome ?? inv.papel,
             email: inv.email,
-            numero_login: numeroLogin ?? undefined,
+            numero_processo_login: undefined,
             senha_temp: tempPassword ?? undefined,
             escolaNome,
             loginUrl,

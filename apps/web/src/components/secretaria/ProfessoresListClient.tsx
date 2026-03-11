@@ -28,7 +28,7 @@ type Professor = {
   telefone: string | null;
   cargo: string | null;
   created_at: string;
-  profiles?: { numero_login?: string | null } | Array<{ numero_login?: string | null }>;
+  profiles?: { numero_processo_login?: string | null } | Array<{ numero_processo_login?: string | null }>;
 };
 
 export default function ProfessoresListClient() {
@@ -324,8 +324,8 @@ export default function ProfessoresListClient() {
                 rowVirtualizer.getVirtualItems().map((virtualRow) => {
                   const professor = items[virtualRow.index];
                   const numeroLogin = Array.isArray(professor.profiles)
-                    ? (professor.profiles?.[0]?.numero_login ?? null)
-                    : (professor.profiles?.numero_login ?? null);
+                    ? (professor.profiles?.[0]?.numero_processo_login ?? null)
+                    : (professor.profiles?.numero_processo_login ?? null);
 
                   return (
                     <tr

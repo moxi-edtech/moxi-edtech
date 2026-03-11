@@ -33,7 +33,6 @@ export default function NovoFuncionarioPage({ embedded = false }: { embedded?: b
   const [credentials, setCredentials] = useState<null | {
     email: string;
     senha?: string | null;
-    numero_login?: string | null;
   }>(null);
   const [copied, setCopied] = useState(false);
 
@@ -74,12 +73,11 @@ export default function NovoFuncionarioPage({ embedded = false }: { embedded?: b
       const json = await res.json().catch(() => null);
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao criar funcionário");
 
-      const { numero_login, senha_temp } = json as { numero_login?: string; senha_temp?: string };
+      const { senha_temp } = json as { senha_temp?: string };
 
       setCredentials({
         email: form.email.trim().toLowerCase(),
         senha: senha_temp,
-        numero_login,
       });
       setMsg({ ok: true, text: "Funcionário criado com sucesso!" });
       // Não redireciona automaticamente para permitir copiar credenciais
@@ -211,13 +209,13 @@ export default function NovoFuncionarioPage({ embedded = false }: { embedded?: b
               <div className="mt-2 space-y-1">
                 <div>Email: {credentials.email}</div>
                 <div>Senha temporária: {credentials.senha || "—"}</div>
-                <div>Número de login: {credentials.numero_login || "—"}</div>
+                <div>Número de login: —</div>
               </div>
               <button
                 type="button"
                 className="mt-3 rounded-lg border border-klasse-green/30 bg-white px-3 py-1 text-xs font-semibold text-klasse-green"
                 onClick={async () => {
-                  const payload = `Email: ${credentials.email}\nSenha temporária: ${credentials.senha || ""}\nNúmero de login: ${credentials.numero_login || ""}`.trim();
+                  const payload = `Email: ${credentials.email}\nSenha temporária: ${credentials.senha || ""}`.trim();
                   try {
                     await navigator.clipboard.writeText(payload);
                     setCopied(true);
