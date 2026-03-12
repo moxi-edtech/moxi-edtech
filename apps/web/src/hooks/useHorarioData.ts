@@ -136,6 +136,36 @@ export function useHorarioBaseData(escolaId?: string, refreshToken?: number) {
     const controller = new AbortController();
     const requestId = ++requestRef.current;
     const anoAtual = new Date().getFullYear();
+    const cacheKey = `horarios:base:${escolaId}`;
+    const now = Date.now();
+
+    setState((prev) => ({ ...prev, loading: true }));
+
+    if (typeof window !== "undefined") {
+      try {
+        const cachedRaw = window.sessionStorage.getItem(cacheKey);
+        if (cachedRaw) {
+          const cached = JSON.parse(cachedRaw) as {
+            storedAt: number;
+            slots: SchedulerSlot[];
+            slotLookup: Record<string, string>;
+            salas: Array<{ id: string; nome: string }>;
+            turmas: BaseDataState["turmas"];
+          };
+          if (cached?.storedAt && now - cached.storedAt < 5 * 60 * 1000) {
+            setState((prev) => ({
+              ...prev,
+              slots: cached.slots ?? prev.slots,
+              slotLookup: cached.slotLookup ?? prev.slotLookup,
+              salas: cached.salas ?? prev.salas,
+              turmas: cached.turmas ?? prev.turmas,
+              loading: false,
+              error: null,
+            }));
+          }
+        }
+      } catch {}
+    }
 
 
     Promise.all([
@@ -160,7 +190,7 @@ export function useHorarioBaseData(escolaId?: string, refreshToken?: number) {
               sala: turma.sala ?? previous?.sala ?? null,
             };
           });
-          return {
+          const nextState = {
             slots,
             slotLookup,
             salas: salasPayload,
@@ -168,6 +198,15 @@ export function useHorarioBaseData(escolaId?: string, refreshToken?: number) {
             loading: false,
             error: null,
           };
+          if (typeof window !== "undefined") {
+            try {
+              window.sessionStorage.setItem(
+                cacheKey,
+                JSON.stringify({ storedAt: now, ...nextState })
+              );
+            } catch {}
+          }
+          return nextState;
         });
       })
       .catch((error) => {
@@ -239,6 +278,8 @@ export function useHorarioTurmaData({
       turma_id: currentTurmaId,
     });
 
+
+    setState((prev) => ({ ...prev, loading: true }));
 
     Promise.all([
       fetchJson(
