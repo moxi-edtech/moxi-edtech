@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Check, Wallet } from "lucide-react";
+import { Check, Filter, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { PaymentDrawer } from "@/components/aluno/financeiro-portal/PaymentDrawer";
 import { usePortalSWR } from "@/components/aluno/usePortalSWR";
@@ -22,14 +22,31 @@ function normalizeStatus(value: string): Item["status"] {
 export function TabFinanceiro() {
   const searchParams = useSearchParams();
   const studentId = useMemo(() => searchParams?.get("aluno") ?? null, [searchParams]);
+  const currentYear = new Date().getFullYear();
+
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Item[]>([]);
   const [selected, setSelected] = useState<Item | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [fromAno, setFromAno] = useState(currentYear - 4);
+  const [toAno, setToAno] = useState(currentYear);
 
-  const query = studentId ? `?studentId=${studentId}` : "";
+  const years = useMemo(() => {
+    const list: number[] = [];
+    for (let year = currentYear + 1; year >= currentYear - 12; year -= 1) list.push(year);
+    return list;
+  }, [currentYear]);
+
+  const query = useMemo(() => {
+    const params = new URLSearchParams();
+    if (studentId) params.set("studentId", studentId);
+    params.set("fromAno", String(fromAno));
+    params.set("toAno", String(toAno));
+    return `?${params.toString()}`;
+  }, [studentId, fromAno, toAno]);
+
   const req = usePortalSWR({
-    key: `financeiro-${studentId ?? "default"}`,
+    key: `financeiro-${studentId ?? "default"}-${fromAno}-${toAno}`,
     url: `/api/aluno/financeiro${query}`,
     intervalMs: 30000,
     parse: (payload) => (((payload as ApiResponse).mensalidades ?? []).map((m) => ({ ...m, status: normalizeStatus(m.status) }))),
@@ -62,6 +79,40 @@ export function TabFinanceiro() {
         >
           {refreshing ? "A atualizar..." : "Atualizar"}
         </button>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <label htmlFor="fromAno" className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-slate-400">De</label>
+            <select
+              id="fromAno"
+              value={fromAno}
+              onChange={(e) => setFromAno(Number(e.target.value))}
+              className="min-h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-[#E3B23C] focus:outline-none focus:ring-4 focus:ring-[#E3B23C]/20"
+            >
+              {years.map((year) => (
+                <option key={`from-${year}`} value={year}>{year}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="toAno" className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-slate-400">Até</label>
+            <select
+              id="toAno"
+              value={toAno}
+              onChange={(e) => setToAno(Number(e.target.value))}
+              className="min-h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 focus:border-[#E3B23C] focus:outline-none focus:ring-4 focus:ring-[#E3B23C]/20"
+            >
+              {years.map((year) => (
+                <option key={`to-${year}`} value={year}>{year}</option>
+              ))}
+            </select>
+          </div>
+          <Button tone="secondary" size="sm" className="min-h-10" onClick={refresh}>
+            <Filter className="h-4 w-4" /> Aplicar filtro
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -102,6 +153,7 @@ export function TabFinanceiro() {
                 )}
               </li>
             ))}
+            {!sorted.length ? <li className="rounded-xl border border-slate-100 p-4 text-sm text-slate-500">Sem mensalidades no intervalo selecionado.</li> : null}
           </ul>
         )}
       </section>
