@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { AlertCircle, ArrowRight, Wallet, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import KpiSection      from "./KpiSection";
 import NoticesSection  from "./NoticesSection";
-import EventsSection   from "./EventsSection";
+import OperationalFeedSection from "./OperationalFeedSection";
 import AcademicSection from "./AcademicSection";
 import QuickActionsSection from "./QuickActionsSection";
 import ChartsSection   from "./ChartsSection";
@@ -18,7 +18,6 @@ import type {
   KpiStats,
   SetupStatus,
   Aviso,
-  Evento,
   CurriculoPendencias,
   DashboardCharts,
   InadimplenciaTopRow,
@@ -34,7 +33,6 @@ type Props = {
   loading?:             boolean;
   error?:               string | null;
   notices?:             Aviso[];
-  events?:              Evento[];
   charts?:              DashboardCharts;
   stats:                KpiStats;
   pendingTurmasCount?:  number | null;
@@ -158,7 +156,6 @@ export default function EscolaAdminDashboardContent({
   loading,
   error,
   notices            = [],
-  events             = [],
   charts,
   stats,
   pendingTurmasCount,
@@ -456,7 +453,7 @@ export default function EscolaAdminDashboardContent({
             missingPricingCount={missingPricingCount}
             financeiroHref={financeiroHref}
           />
-          <EventsSection events={events} />
+          <OperationalFeedSection escolaId={escolaId} />
         </div>
       </div>
 
