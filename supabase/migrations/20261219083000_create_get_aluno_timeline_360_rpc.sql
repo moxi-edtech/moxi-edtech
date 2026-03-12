@@ -95,28 +95,30 @@ academico AS (
     ) AS disciplinas_chave
   FROM public.historico_anos ha
   LEFT JOIN LATERAL (
-    SELECT AVG(hd.nota_final) AS nota_media_ano
+    SELECT AVG(hd.media_final) AS nota_media_ano
     FROM public.historico_disciplinas hd
     WHERE hd.historico_ano_id = ha.id
   ) hd ON TRUE
   LEFT JOIN LATERAL (
     SELECT
       hdx.disciplina_id,
-      hdx.disciplina_nome,
-      ROUND(hdx.nota_final::numeric, 2) AS media_final,
-      hdx.status_final AS resultado,
-      COALESCE(hdx.nota_final, 0) < 10 OR COALESCE(LOWER(hdx.status_final), '') LIKE '%reprov%' AS em_risco,
+      dc.nome AS disciplina_nome,
+      ROUND(hdx.media_final::numeric, 2) AS media_final,
+      hdx.resultado AS resultado,
+      COALESCE(hdx.media_final, 0) < 10 OR COALESCE(LOWER(hdx.resultado), '') LIKE '%reprov%' AS em_risco,
       CASE
-        WHEN LOWER(COALESCE(hdx.disciplina_nome, '')) LIKE '%portug%' THEN 1
-        WHEN LOWER(COALESCE(hdx.disciplina_nome, '')) LIKE '%matem%' THEN 2
-        WHEN LOWER(COALESCE(hdx.disciplina_nome, '')) LIKE '%fisic%' THEN 3
-        WHEN LOWER(COALESCE(hdx.disciplina_nome, '')) LIKE '%quim%' THEN 4
-        WHEN LOWER(COALESCE(hdx.disciplina_nome, '')) LIKE '%biolog%' THEN 5
+        WHEN LOWER(COALESCE(dc.nome, '')) LIKE '%portug%' THEN 1
+        WHEN LOWER(COALESCE(dc.nome, '')) LIKE '%matem%' THEN 2
+        WHEN LOWER(COALESCE(dc.nome, '')) LIKE '%fisic%' THEN 3
+        WHEN LOWER(COALESCE(dc.nome, '')) LIKE '%quim%' THEN 4
+        WHEN LOWER(COALESCE(dc.nome, '')) LIKE '%biolog%' THEN 5
         ELSE 99
       END AS prioridade
     FROM public.historico_disciplinas hdx
+    LEFT JOIN public.disciplinas_catalogo dc
+      ON dc.id = hdx.disciplina_id
     WHERE hdx.historico_ano_id = ha.id
-    ORDER BY prioridade, hdx.nota_final DESC NULLS LAST, hdx.disciplina_nome
+    ORDER BY prioridade, hdx.media_final DESC NULLS LAST, dc.nome
     LIMIT 8
   ) kd ON TRUE
   WHERE ha.escola_id = p_escola_id

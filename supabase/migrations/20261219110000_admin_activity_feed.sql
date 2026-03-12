@@ -186,7 +186,7 @@ select
   nullif(coalesce(e.payload->>'aluno_nome', a.nome_completo, a.nome), '') as aluno_nome,
   e.payload
 from public.admin_activity_events e
-left join public.profiles p on p.id = e.actor_id
+left join public.profiles p on p.user_id = e.actor_id
 left join auth.users au on au.id = e.actor_id
 left join public.alunos a on a.id::text = coalesce(e.payload->>'aluno_id', e.entity_id)
 left join public.turmas t on t.id::text = coalesce(e.payload->>'turma_id', e.payload#>>'{turma,id}');
