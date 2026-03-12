@@ -68,7 +68,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       console.error('Error fetching ocupacao:', ocupacaoError);
       return NextResponse.json({ ok: false, error: 'Erro ao buscar ocupação' }, { status: 500 });
     }
-    const ocupacao = Number(ocupacaoRow?.ocupacao_atual ?? 0);
+    const ocupacaoFallback = Array.isArray(alunosData) ? alunosData.length : 0;
+    const ocupacao = Number(ocupacaoRow?.ocupacao_atual ?? ocupacaoFallback ?? 0);
 
     // 3. Buscar diretor separadamente para evitar problemas de relacionamento
     let diretor: { id: string; nome: string; email: string } | null = null;
