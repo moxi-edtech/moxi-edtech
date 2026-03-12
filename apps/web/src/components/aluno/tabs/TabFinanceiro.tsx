@@ -109,7 +109,7 @@ export function TabFinanceiro() {
               ))}
             </select>
           </div>
-          <Button tone="secondary" size="sm" className="min-h-10" onClick={refresh}>
+          <Button tone="gray" size="sm" className="min-h-10" onClick={refresh}>
             <Filter className="h-4 w-4" /> Aplicar filtro
           </Button>
         </div>
