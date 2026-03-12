@@ -135,7 +135,6 @@ export default function QuadroHorariosPage() {
     const stored = typeof window !== "undefined" ? window.sessionStorage.getItem(key) : null;
     if (stored) {
       setVersaoId(stored);
-      return;
     }
 
     let active = true;
@@ -149,6 +148,9 @@ export default function QuadroHorariosPage() {
             window.sessionStorage.setItem(key, versaoPreferida);
           }
           setVersaoId(versaoPreferida);
+          return;
+        }
+        if (stored) {
           return;
         }
         if (typeof window !== "undefined") {
