@@ -10,7 +10,6 @@ import type {
   KpiStats,
   SetupStatus,
   Aviso,
-  Evento,
   CurriculoPendencias,
   DashboardCharts,
   InadimplenciaTopRow,
@@ -244,7 +243,6 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
     const inadimplenciaTop = (inadimplenciaTopRes as any)?.data  as InadimplenciaTopRow[] ?? [];
     const pagamentosRecentes = (pagamentosRecentesRes as any)?.data as PagamentoRecenteRow[] ?? [];
     const avisos: Aviso[]  = [];
-    const eventos: Evento[] = [];
 
     return (
       <EscolaAdminDashboardContent
@@ -256,7 +254,6 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
         stats={stats}
         pendingTurmasCount={pendingTurmasCount}
         notices={avisos}
-        events={eventos}
         charts={charts}
         setupStatus={setupStatus}
         missingPricingCount={missingPricingCount}
@@ -281,7 +278,6 @@ export default async function EscolaAdminDashboardData({ escolaId, escolaNome }:
         stats={emptyKpis}
         pendingTurmasCount={0}
         notices={[]}
-        events={[]}
         charts={undefined}
         setupStatus={emptySetupStatus}
         missingPricingCount={0}
