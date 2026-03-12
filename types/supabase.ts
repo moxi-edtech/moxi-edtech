@@ -11849,19 +11849,10 @@ export type Database = {
         }
         Returns: Json
       }
-      build_numero_login:
-        | {
-            Args: {
-              p_ano_letivo: number
-              p_escola_id: string
-              p_numero: number
-            }
-            Returns: string
-          }
-        | {
-            Args: { p_escola_id: string; p_numero_processo: string }
-            Returns: string
-          }
+      build_numero_login: {
+        Args: { p_escola_id: string; p_numero_processo: string }
+        Returns: string
+      }
       calcular_media_trimestral: {
         Args: { p_notas: Json; p_regras: Json }
         Returns: number
@@ -11946,17 +11937,15 @@ export type Database = {
         Returns: Json
       }
       confirmar_matricula: { Args: { p_matricula_id: string }; Returns: number }
-      confirmar_matricula_core:
-        | {
-            Args: {
-              p_aluno_id: string
-              p_ano_letivo: number
-              p_matricula_id?: string
-              p_turma_id?: string
-            }
-            Returns: number
-          }
-        | { Args: { p_candidatura_id: string }; Returns: string }
+      confirmar_matricula_core: {
+        Args: {
+          p_aluno_id: string
+          p_ano_letivo: number
+          p_matricula_id?: string
+          p_turma_id?: string
+        }
+        Returns: number
+      }
       create_audit_event: {
         Args: {
           p_action: string
@@ -13202,6 +13191,7 @@ export type Database = {
         Returns: number
       }
       retry_outbox_event: { Args: { p_event_id: string }; Returns: undefined }
+      safe_auth_uid: { Args: never; Returns: string }
       search_alunos_global: {
         Args: { p_escola_id: string; p_limit?: number; p_query: string }
         Returns: {

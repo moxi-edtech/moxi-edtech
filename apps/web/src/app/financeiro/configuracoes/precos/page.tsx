@@ -1,5 +1,5 @@
 import AuditPageView from "@/components/audit/AuditPageView"
-import PrecosClient from "@/app/escola/[id]/financeiro/configuracoes/precos/PrecosClient"
+import PrecosClient from "@/app/escola/[id]/(portal)/financeiro/configuracoes/precos/PrecosClient"
 import { supabaseServer } from "@/lib/supabaseServer"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 import { GerarMensalidadesModal } from "@/components/financeiro/GerarMensalidadesModal"

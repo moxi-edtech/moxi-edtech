@@ -3,7 +3,7 @@
 import { useParams, usePathname } from "next/navigation";
 import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
 import { buildConfigMenuItems } from "../_shared/menuItems";
-import PrecosClient from "@/app/escola/[id]/financeiro/configuracoes/precos/PrecosClient";
+import PrecosClient from "@/app/escola/[id]/(portal)/financeiro/configuracoes/precos/PrecosClient";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/feedback/FeedbackSystem";
