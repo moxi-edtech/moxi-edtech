@@ -3,6 +3,8 @@ import { CheckCircle2, FileText, TrendingDown, Wallet } from "lucide-react";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { formatDate, formatKwanza, monthName } from "@/lib/formatters";
 import type { AlunoNormalizado, DossierMensalidade } from "@/lib/aluno/types";
+import type { DossierRole } from "@/components/aluno/DossierAcoes";
+import { DossierHistoricoTimelineSection } from "@/components/aluno/DossierHistoricoTimelineSection";
 
 export function DossierPerfilSection({ aluno }: { aluno: AlunoNormalizado }) {
   const p = aluno.perfil;
@@ -190,43 +192,17 @@ export function DossierFinanceiroSection({ aluno }: { aluno: AlunoNormalizado })
   );
 }
 
-export function DossierHistoricoSection({ aluno }: { aluno: AlunoNormalizado }) {
-  if (!aluno.historico.length) {
-    return <div className="text-center py-6 text-slate-400">Sem histórico de matrículas.</div>;
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Histórico de matrículas</p>
-        <div className="space-y-3">
-          {aluno.historico.map((mat, idx) => (
-            <div
-              key={mat.numero_matricula ?? idx}
-              className={`rounded-xl border p-4 ${
-                mat.is_atual ? "border-[#1F6B3B]/20 bg-[#1F6B3B]/5" : "border-slate-200"
-              }`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-bold text-slate-900">{mat.ano_letivo}</p>
-                  <p className="text-sm text-slate-700">{mat.turma}</p>
-                </div>
-                <StatusPill status={mat.status} variant="matricula" size="xs" />
-              </div>
-              <div className="mt-2 text-xs text-slate-500">
-                {mat.curso ? `${mat.curso} · ` : ""}
-                {mat.classe ? `${mat.classe} · ` : ""}
-                <span>
-                  Turno: {mat.turno ? mat.turno : <span className="text-slate-400 italic">Não preenchido</span>}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+export function DossierHistoricoSection({
+  alunoId,
+  role,
+  escolaId,
+}: {
+  aluno: AlunoNormalizado;
+  alunoId: string;
+  role: DossierRole;
+  escolaId?: string | null;
+}) {
+  return <DossierHistoricoTimelineSection alunoId={alunoId} role={role} escolaId={escolaId} />;
 }
 
 export function DossierDocumentosSection({ alunoId }: { alunoId: string }) {

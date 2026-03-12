@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabaseClient";
 import StatusPill from "./StatusPill";
 
 type Mensalidade = {
@@ -21,8 +20,13 @@ export function MensalidadesTable() {
     let mounted = true;
     (async () => {
       try {
+
+        const currentYear = new Date().getFullYear();
+        const fromAno = currentYear - 4;
+        const toAno = currentYear;
+        const params = new URLSearchParams({ fromAno: String(fromAno), toAno: String(toAno) });
         setLoading(true);
-        const res = await fetch('/api/aluno/financeiro', { cache: 'no-store' });
+        const res = await fetch(`/api/aluno/financeiro?${params.toString()}`, { cache: 'no-store' });
         const json = await res.json();
         if (!res.ok || !json?.ok) throw new Error(json?.error || 'Falha ao carregar mensalidades');
         if (mounted) setRows(json.mensalidades || []);
