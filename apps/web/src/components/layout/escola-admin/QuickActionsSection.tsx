@@ -5,11 +5,11 @@ import Link from "next/link";
 import { useState } from "react";
 import { PlusCircle, UserPlus, Users, FileText, Megaphone, Calendar, X } from "lucide-react";
 import type { SetupStatus } from "./setupStatus";
-import AvisosNovoPage from "@/app/escola/[id]/admin/avisos/novo/page";
-import EventosPage from "@/app/escola/[id]/eventos/page";
-import NovoFuncionarioPage from "@/app/escola/[id]/funcionarios/novo/page";
-import FuncionariosPage from "@/app/escola/[id]/funcionarios/page";
-import ProfessoresPage from "@/app/escola/[id]/professores/page";
+import AvisosNovoPage from "@/app/escola/[id]/(portal)/admin/avisos/novo/page";
+import EventosPage from "@/app/escola/[id]/(portal)/eventos/page";
+import NovoFuncionarioPage from "@/app/escola/[id]/(portal)/funcionarios/novo/page";
+import FuncionariosPage from "@/app/escola/[id]/(portal)/funcionarios/page";
+import ProfessoresPage from "@/app/escola/[id]/(portal)/professores/page";
 import AcaoRapidaCard from "@/components/shared/AcaoRapidaCard";
 import { useEscolaId } from "@/hooks/useEscolaId";
 

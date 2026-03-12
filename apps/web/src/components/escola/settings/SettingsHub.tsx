@@ -48,31 +48,31 @@ function PanelLoading() {
 
 // ─── Dynamic panels ───────────────────────────────────────────────────────────
 const CalendarioPanel = dynamic(
-  () => import("@/app/escola/[id]/admin/configuracoes/calendario/page"),
+  () => import("@/app/escola/[id]/(portal)/admin/configuracoes/calendario/page"),
   { ssr: false, loading: () => <PanelLoading /> }
 );
 const AvaliacoesPanel = dynamic(
-  () => import("@/app/escola/[id]/admin/configuracoes/avaliacao/page"),
+  () => import("@/app/escola/[id]/(portal)/admin/configuracoes/avaliacao/page"),
   { ssr: false, loading: () => <PanelLoading /> }
 );
 const TurmasPanel = dynamic(
-  () => import("@/app/escola/[id]/admin/configuracoes/turmas/page"),
+  () => import("@/app/escola/[id]/(portal)/admin/configuracoes/turmas/page"),
   { ssr: false, loading: () => <PanelLoading /> }
 );
 const FinanceiroPanel = dynamic(
-  () => import("@/app/escola/[id]/admin/configuracoes/financeiro/page"),
+  () => import("@/app/escola/[id]/(portal)/admin/configuracoes/financeiro/page"),
   { ssr: false, loading: () => <PanelLoading /> }
 );
 const MensalidadesPanel = dynamic(
-  () => import("@/app/escola/[id]/admin/configuracoes/mensalidades/page"),
+  () => import("@/app/escola/[id]/(portal)/admin/configuracoes/mensalidades/page"),
   { ssr: false, loading: () => <PanelLoading /> }
 );
 const FluxosPanel = dynamic(
-  () => import("@/app/escola/[id]/admin/configuracoes/fluxos/page"),
+  () => import("@/app/escola/[id]/(portal)/admin/configuracoes/fluxos/page"),
   { ssr: false, loading: () => <PanelLoading /> }
 );
 const AvancadoPanel = dynamic(
-  () => import("@/app/escola/[id]/admin/configuracoes/avancado/page"),
+  () => import("@/app/escola/[id]/(portal)/admin/configuracoes/avancado/page"),
   { ssr: false, loading: () => <PanelLoading /> }
 );
 const ExcecoesPanel = dynamic(
