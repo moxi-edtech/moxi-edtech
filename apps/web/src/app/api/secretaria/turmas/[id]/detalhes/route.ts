@@ -68,8 +68,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       console.error('Error fetching ocupacao:', ocupacaoError);
       return NextResponse.json({ ok: false, error: 'Erro ao buscar ocupação' }, { status: 500 });
     }
-    const ocupacaoFallback = Array.isArray(alunosData) ? alunosData.length : 0;
-    const ocupacao = Number(ocupacaoRow?.ocupacao_atual ?? ocupacaoFallback ?? 0);
+    const ocupacao = Number(ocupacaoRow?.ocupacao_atual ?? 0);
 
     // 3. Buscar diretor separadamente para evitar problemas de relacionamento
     let diretor: { id: string; nome: string; email: string } | null = null;
@@ -260,6 +259,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       }));
     }
 
+    const alunos = (alunosData || []).map(m => ({
+      matricula_id: m.id,
+      numero: m.numero_chamada,
+      aluno_id: m.alunos?.id || '',
+      nome: m.alunos?.nome || 'Nome Desconhecido',
+      bi: m.alunos?.bi_numero || 'N/A',
+      foto: m.alunos?.profiles?.avatar_url || undefined,
+      numero_matricula: m.numero_matricula,
+      status_matricula: m.status || m.alunos?.status || 'desconhecido',
+    }));
+
+    const ocupacaoFinal = Number.isFinite(ocupacao) && ocupacao > 0 ? ocupacao : alunos.length;
+
     // 6. Montar resposta final
     const turma = {
       id: turmaResult.id,
@@ -272,22 +284,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       turno: turmaResult.turno,
       sala: turmaResult.sala || '',
       capacidade: turmaResult.capacidade_maxima,
-      ocupacao: ocupacao ?? 0,
+      ocupacao: ocupacaoFinal ?? 0,
       diretor: diretor,
       curso_nome: turmaResult.cursos?.nome || null,
       curso_tipo: turmaResult.cursos?.tipo || null,
     };
-
-    const alunos = (alunosData || []).map(m => ({
-      matricula_id: m.id,
-      numero: m.numero_chamada,
-      aluno_id: m.alunos?.id || '',
-      nome: m.alunos?.nome || 'Nome Desconhecido',
-      bi: m.alunos?.bi_numero || 'N/A',
-      foto: m.alunos?.profiles?.avatar_url || undefined,
-      numero_matricula: m.numero_matricula,
-      status_matricula: m.status || m.alunos?.status || 'desconhecido',
-    }));
 
     const disciplinas = (disciplinasData || []).map(td => ({
       id: td.syllabi?.id || td.disciplina?.id || td.disciplina_id || '',
