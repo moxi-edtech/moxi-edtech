@@ -78,10 +78,26 @@ export function Dashboard({
       action_href: "/secretaria/notas",
     };
   }, [nowMs, recentes?.fecho_trimestre]);
+  const avisoImportacao = useMemo(() => {
+    const pendencias = recentes?.pendencias ?? counts?.pendencias ?? 0;
+    if (pendencias > 0) return null;
+    if (!counts) return null;
+    const semDados = (counts.alunos ?? 0) === 0 && (counts.turmas ?? 0) === 0;
+    if (!semDados) return null;
+    return {
+      id: "importacao-inicial",
+      titulo: "Importar dados da escola",
+      resumo: "Faça a migração inicial de alunos e turmas para começar a operação.",
+      data: new Date().toISOString(),
+      action_label: "Iniciar importação",
+      action_href: "/secretaria/migracao/alunos",
+    };
+  }, [counts, recentes?.pendencias]);
   const avisos = useMemo(() => {
     const base = recentes?.avisos_recentes ?? [];
-    return avisoFechoTrimestre ? [avisoFechoTrimestre, ...base] : base;
-  }, [avisoFechoTrimestre, recentes?.avisos_recentes]);
+    const extras = [avisoFechoTrimestre, avisoImportacao].filter(Boolean);
+    return extras.length > 0 ? [...(extras as typeof base), ...base] : base;
+  }, [avisoFechoTrimestre, avisoImportacao, recentes?.avisos_recentes]);
   const alerts = useMemo(() => {
     const items: OperationalAlert[] = [];
     const pendencias = recentes?.pendencias ?? counts?.pendencias ?? 0;
