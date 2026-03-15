@@ -36,7 +36,7 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 
 /* ── URGENCY BAR ─────────────────────────────────────────── */
 .ubar{background:var(--g);padding:10px 0;text-align:center;position:relative;z-index:200}
-.ubar p{font-size:12px;font-weight:600;color:#fff;letter-spacing:.03em;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
+.ubar p{font-size:12px;font-weight:600;color:#fff;letter-spacing:.03em;display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;line-height:1.4;padding:0 12px;text-align:center}
 .ubar strong{color:var(--gold)}
 .ubar-badge{background:rgba(0,0,0,.25);padding:3px 10px;border-radius:100px;font-size:11px;font-weight:700;color:var(--gold)}
 #vagas-count{font-weight:800;font-size:14px}
@@ -203,7 +203,8 @@ nav.scrolled .hamburger span{background:var(--t2)}
 .product-step-desc{font-size:13px;color:var(--t2);line-height:1.6}
 
 .section-bg{position:relative;overflow:hidden;background:var(--s1)}
-.section-accent{position:relative;border-top:2px solid transparent;border-image:linear-gradient(90deg,#2B6044,#C8902A) 1}
+.section-accent{position:relative}
+.section-accent::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:min(1120px,calc(100% - 48px));height:2px;background:linear-gradient(90deg,#2B6044,#C8902A)}
 .section-bg::before{content:'';position:absolute;inset:0;background-position:center;background-size:cover;background-repeat:no-repeat;opacity:.18;pointer-events:none}
 .section-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(245,240,232,.9) 0%,rgba(245,240,232,.95) 60%,rgba(245,240,232,1) 100%);pointer-events:none}
 .section-bg > .container{position:relative;z-index:1}
@@ -441,6 +442,7 @@ footer{padding:40px 0;border-top:1px solid var(--bd)}
   .steps,.num-grid{grid-template-columns:1fr 1fr}
   .problema-grid,.faq-grid{grid-template-columns:1fr}
   .nav-links{display:none}
+  .nav-actions .btn-s{display:none}
   .hamburger{display:flex}
   .oferta-inner{padding:40px 28px}
   .feat-tabs{overflow-x:auto;justify-content:flex-start}
@@ -449,6 +451,7 @@ footer{padding:40px 0;border-top:1px solid var(--bd)}
   .precos-grid{grid-template-columns:1fr}
 }
 @media(max-width:600px){
+  .ubar p{font-size:11px}
   .steps,.num-grid{grid-template-columns:1fr}
   .hero{padding:120px 0 60px}
   .hero h1{font-size:36px}
