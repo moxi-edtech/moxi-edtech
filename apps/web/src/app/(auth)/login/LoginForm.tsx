@@ -32,17 +32,18 @@ export default function LoginForm() {
 
       <form action={formAction} className="space-y-4">
         <div>
-          <label className="text-sm font-medium text-slate-700">Email</label>
+          <label className="text-sm font-medium text-slate-700">Identificador de acesso</label>
           <input
             name="email"
-            type="email"
-            autoComplete="email"
+            type="text"
+            autoComplete="username"
             required
             className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3
                        text-slate-900 placeholder:text-slate-400
                        focus:outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold"
-            placeholder="seuemail@escola.co.ao"
+            placeholder="Email ou número de processo"
           />
+          <p className="mt-1 text-xs text-slate-500">Alunos podem usar o número de processo.</p>
         </div>
 
         <div>
@@ -66,18 +67,12 @@ export default function LoginForm() {
 
         <div className="flex items-center justify-end">
           <a href="/forgot-password" className="text-sm font-medium text-klasse-gold-500 hover:underline">
-            Esqueceu a senha?
+            Recuperar acesso
           </a>
         </div>
 
         <SubmitButton />
 
-        <div className="pt-2 text-center text-sm text-slate-600">
-          Ainda não tem uma conta?{" "}
-          <a href="/signup" className="font-semibold text-klasse-green hover:underline">
-            Criar conta
-          </a>
-        </div>
       </form>
     </div>
   );
