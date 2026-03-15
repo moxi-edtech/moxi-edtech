@@ -11,8 +11,8 @@ import { BillingRenewalEmail } from '@/emails/BillingRenewalEmail'
 type SendArgs = {
   to: string
   subject: string
-  html: string
-  text?: string
+  html: string | Promise<string>
+  text?: string | Promise<string>
 }
 
 export async function sendMail({ to, subject, html, text }: SendArgs): Promise<{ ok: true } | { ok: false; error: string }> {
@@ -23,13 +23,14 @@ export async function sendMail({ to, subject, html, text }: SendArgs): Promise<{
 
   try {
     const resend = getResendClient(config.apiKey)
-    const payloadText = text || htmlToText(html)
+    const resolvedHtml = await Promise.resolve(html)
+    const resolvedText = text ? await Promise.resolve(text) : htmlToText(resolvedHtml)
     const { error } = await resend.emails.send({
       from: config.from,
       to: [to],
       subject,
-      html,
-      text: payloadText,
+      html: resolvedHtml,
+      text: resolvedText,
     })
     if (error) return { ok: false, error: error.message }
     return { ok: true }
@@ -48,6 +49,66 @@ export function buildOnboardingEmail(args: { escolaNome: string; onboardingUrl: 
   })
   const html = render(element)
   const text = render(element, { plainText: true })
+  return { subject, html, text }
+}
+
+export function buildInviteEmail(args: {
+  escolaNome: string
+  onboardingUrl: string
+  convidadoEmail: string
+  convidadoNome?: string | null
+  papel?: string | null
+}) {
+  const { escolaNome, onboardingUrl, convidadoEmail, convidadoNome, papel } = args
+  const brand = getBranding()
+  const subject = `Convite ${brand.name} • ${escolaNome}`
+  const text = [
+    convidadoNome ? `Olá, ${convidadoNome}.` : 'Olá,',
+    `Você foi convidado para aceder ao ${brand.name} da escola "${escolaNome}".`,
+    papel ? `Perfil: ${papel}.` : '',
+    onboardingUrl ? `Aceitar convite: ${onboardingUrl}` : '',
+  ].filter(Boolean).join('\n')
+
+  const html = `
+  <div style="font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif; line-height:1.6; color:#0f172a;">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+      ${brand.logoUrl ? `<img src="${brand.logoUrl}" alt="${escapeHtml(brand.name)}" style="height:28px;" />` : ''}
+      <span style="font-size:18px; font-weight:700;">${escapeHtml(brand.name)}</span>
+    </div>
+    <h2 style="margin:0 0 12px 0; font-size:20px;">Convite para ${escapeHtml(escolaNome)}</h2>
+    ${convidadoNome ? `<p style=\"margin:0 0 8px 0;\">Olá, <strong>${escapeHtml(convidadoNome)}</strong>.</p>` : ''}
+    <p style="margin:0 0 8px 0;">Você foi convidado para aceder ao ${escapeHtml(brand.name)} da escola <strong>${escapeHtml(escolaNome)}</strong>.</p>
+    ${papel ? `<p style=\"margin:0 0 8px 0;\">Perfil: <strong>${escapeHtml(papel)}</strong></p>` : ''}
+    ${onboardingUrl ? `<p style=\"margin:16px 0 0 0;\"><a href=\"${onboardingUrl}\" style=\"display:inline-block; background:${brand.primaryColor}; color:#fff; text-decoration:none; padding:10px 16px; border-radius:8px; font-weight:600;\">Aceitar convite</a></p>` : ''}
+    <p style="margin:24px 0 8px 0; font-size:12px; color:#64748b;">Este e-mail foi enviado para ${escapeHtml(convidadoEmail)}.</p>
+    ${brand.supportEmail ? `<p style=\"margin:8px 0 0 0; font-size:12px; color:#64748b;\">Suporte: <a href=\"mailto:${escapeHtml(brand.supportEmail)}\">${escapeHtml(brand.supportEmail)}</a></p>` : ''}
+  </div>
+  `
+  return { subject, html, text }
+}
+
+export function buildResetPasswordEmail(args: { resetUrl: string; expiresEm?: string | null }) {
+  const { resetUrl, expiresEm } = args
+  const brand = getBranding()
+  const subject = `Redefinição de senha ${brand.name}`
+  const text = [
+    `Recebemos um pedido para redefinir sua senha no ${brand.name}.`,
+    resetUrl ? `Redefinir senha: ${resetUrl}` : '',
+    expiresEm ? `Este link expira em ${expiresEm}.` : '',
+  ].filter(Boolean).join('\n')
+
+  const html = `
+  <div style="font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif; line-height:1.6; color:#0f172a;">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+      ${brand.logoUrl ? `<img src="${brand.logoUrl}" alt="${escapeHtml(brand.name)}" style="height:28px;" />` : ''}
+      <span style="font-size:18px; font-weight:700;">${escapeHtml(brand.name)}</span>
+    </div>
+    <h2 style="margin:0 0 12px 0; font-size:20px;">Redefinir senha</h2>
+    <p style="margin:0 0 8px 0;">Recebemos um pedido para redefinir sua senha no ${escapeHtml(brand.name)}.</p>
+    ${resetUrl ? `<p style=\"margin:16px 0 0 0;\"><a href=\"${resetUrl}\" style=\"display:inline-block; background:${brand.primaryColor}; color:#fff; text-decoration:none; padding:10px 16px; border-radius:8px; font-weight:600;\">Redefinir senha</a></p>` : ''}
+    ${expiresEm ? `<p style=\"margin:16px 0 0 0; font-size:13px; color:#475569;\">Este link expira em ${escapeHtml(expiresEm)}.</p>` : ''}
+  </div>
+  `
   return { subject, html, text }
 }
 

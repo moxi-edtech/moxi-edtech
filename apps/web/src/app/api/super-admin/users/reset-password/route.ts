@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { supabaseServer } from '@/lib/supabaseServer'
 import { recordAuditServer } from '@/lib/audit'
 import { isSuperAdminRole } from '@/lib/auth/requireSuperAdminAccess'
+import { callAuthAdminJob } from '@/lib/auth-admin-job'
+import { buildResetPasswordEmail, sendMail } from '@/lib/mailer'
 
 export async function POST(request: Request) {
   try {
@@ -37,12 +39,32 @@ export async function POST(request: Request) {
     }
 
     const origin = new URL(request.url).origin
-    const { error } = await s.auth.resetPasswordForEmail(email, {
-      redirectTo: `${origin}/reset-password`,
-    })
+    const redirectTo = `${origin}/reset-password`
+    let sentViaResend = false
+    try {
+      const linkDataRaw = await callAuthAdminJob(request, 'generateLink', {
+        type: 'recovery',
+        email,
+        options: { redirectTo },
+      })
+      const linkData = linkDataRaw as { properties?: { action_link?: string | null }; action_link?: string | null } | null
+      const actionLink = linkData?.properties?.action_link || linkData?.action_link || null
+      if (actionLink) {
+        const mail = buildResetPasswordEmail({ resetUrl: actionLink, expiresEm: '1 hora' })
+        const sent = await sendMail({ to: email, subject: mail.subject, html: mail.html, text: mail.text })
+        sentViaResend = sent.ok
+      }
+    } catch {
+      sentViaResend = false
+    }
 
-    if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
+    if (!sentViaResend) {
+      const { error } = await s.auth.resetPasswordForEmail(email, {
+        redirectTo,
+      })
+      if (error) {
+        return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
+      }
     }
 
     recordAuditServer({
@@ -54,7 +76,7 @@ export async function POST(request: Request) {
       details: { email },
     }).catch(() => null)
 
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true, sentViaResend })
   } catch (error) {
     return NextResponse.json(
       { ok: false, error: error instanceof Error ? error.message : 'Erro ao redefinir senha' },

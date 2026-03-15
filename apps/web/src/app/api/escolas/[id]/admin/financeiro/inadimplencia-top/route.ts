@@ -46,7 +46,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
 
     const limit = Math.min(Math.max(Number(parsed.data.limit ?? 5), 1), 50);
 
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("vw_financeiro_inadimplencia_top")
       .select("aluno_id, aluno_nome, valor_em_atraso, dias_em_atraso")
       .eq("escola_id", resolvedEscolaId)

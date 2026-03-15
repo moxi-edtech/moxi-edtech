@@ -240,7 +240,7 @@ export function Dashboard({
             <div className="grid lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-6">
                 <div className="flex items-center justify-between mb-4">
-                  <SecaoLabel>Atenção Necessária</SecaoLabel>
+                  <SecaoLabel>Matrículas recentes</SecaoLabel>
                   <Link
                     href="/secretaria/admissoes"
                     className="text-xs font-semibold text-[#1F6B3B] hover:underline"

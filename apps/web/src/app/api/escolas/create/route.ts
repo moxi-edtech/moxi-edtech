@@ -96,7 +96,7 @@ export async function POST(request: Request) {
     const payload = (typeof data === 'string' ? safeParseJSON(data) : data) as CreateEscolaPayload
 
     const origin = new URL(request.url).origin
-    const actionLink = `${origin}/login`
+    const actionLink = `${origin}`
     const escolaNome = payload?.escolaNome || payload?.escola_nome || body.nome
     const escolaPlano = body.plano ? parsePlanTier(body.plano) : null
 

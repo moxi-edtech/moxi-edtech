@@ -14,6 +14,76 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_activity_events: {
+        Row: {
+          actor_id: string | null
+          actor_role: string | null
+          created_at: string
+          dedupe_key: string | null
+          entity_id: string | null
+          entity_type: string | null
+          escola_id: string
+          event_family: string
+          event_type: string
+          id: string
+          occurred_at: string
+          payload: Json
+          source_audit_log_id: number | null
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_role?: string | null
+          created_at?: string
+          dedupe_key?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          escola_id: string
+          event_family: string
+          event_type: string
+          id?: string
+          occurred_at?: string
+          payload?: Json
+          source_audit_log_id?: number | null
+        }
+        Update: {
+          actor_id?: string | null
+          actor_role?: string | null
+          created_at?: string
+          dedupe_key?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          escola_id?: string
+          event_family?: string
+          event_type?: string
+          id?: string
+          occurred_at?: string
+          payload?: Json
+          source_audit_log_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_activity_events_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_activity_events_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_activity_events_source_audit_log_id_fkey"
+            columns: ["source_audit_log_id"]
+            isOneToOne: false
+            referencedRelation: "audit_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       aggregates_financeiro: {
         Row: {
           aluno_id: string | null
@@ -8054,6 +8124,7 @@ export type Database = {
           global_role: string | null
           naturalidade: string | null
           nome: string
+          numero_login: string | null
           numero_processo_login: string | null
           onboarding_finalizado: boolean | null
           provincia: string | null
@@ -8078,6 +8149,7 @@ export type Database = {
           global_role?: string | null
           naturalidade?: string | null
           nome: string
+          numero_login?: string | null
           numero_processo_login?: string | null
           onboarding_finalizado?: boolean | null
           provincia?: string | null
@@ -8102,6 +8174,7 @@ export type Database = {
           global_role?: string | null
           naturalidade?: string | null
           nome?: string
+          numero_login?: string | null
           numero_processo_login?: string | null
           onboarding_finalizado?: boolean | null
           provincia?: string | null
@@ -9960,6 +10033,38 @@ export type Database = {
           total_aberto: number | null
         }
         Relationships: []
+      }
+      vw_admin_activity_feed_enriched: {
+        Row: {
+          actor_name: string | null
+          aluno_nome: string | null
+          amount_kz: number | null
+          escola_id: string | null
+          event_family: string | null
+          event_type: string | null
+          headline: string | null
+          id: string | null
+          occurred_at: string | null
+          payload: Json | null
+          subline: string | null
+          turma_nome: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_activity_events_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_activity_events_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vw_admin_dashboard_counts: {
         Row: {
@@ -11849,10 +11954,19 @@ export type Database = {
         }
         Returns: Json
       }
-      build_numero_login: {
-        Args: { p_escola_id: string; p_numero_processo: string }
-        Returns: string
-      }
+      build_numero_login:
+        | {
+            Args: {
+              p_ano_letivo: number
+              p_escola_id: string
+              p_numero: number
+            }
+            Returns: string
+          }
+        | {
+            Args: { p_escola_id: string; p_numero_processo: string }
+            Returns: string
+          }
       calcular_media_trimestral: {
         Args: { p_notas: Json; p_regras: Json }
         Returns: number
@@ -12585,6 +12699,10 @@ export type Database = {
         Args: { p_aluno_id: string; p_escola_id: string }
         Returns: Json
       }
+      get_aluno_timeline_360: {
+        Args: { p_aluno_id: string; p_escola_id: string }
+        Returns: Json
+      }
       get_classes_sem_preco: {
         Args: { p_ano_letivo: number; p_escola_id: string }
         Returns: {
@@ -12835,32 +12953,19 @@ export type Database = {
       is_staff_escola: { Args: { escola_uuid: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
       is_super_or_global_admin: { Args: never; Returns: boolean }
-      lancar_notas_batch:
-        | {
-            Args: {
-              p_disciplina_id: string
-              p_escola_id: string
-              p_notas: Json
-              p_tipo_avaliacao: string
-              p_trimestre: number
-              p_turma_disciplina_id: string
-              p_turma_id: string
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_disciplina_id: string
-              p_escola_id: string
-              p_is_isento?: boolean
-              p_notas: Json
-              p_tipo_avaliacao: string
-              p_trimestre: number
-              p_turma_disciplina_id: string
-              p_turma_id: string
-            }
-            Returns: Json
-          }
+      lancar_notas_batch: {
+        Args: {
+          p_disciplina_id: string
+          p_escola_id: string
+          p_is_isento?: boolean
+          p_notas: Json
+          p_tipo_avaliacao: string
+          p_trimestre: number
+          p_turma_disciplina_id: string
+          p_turma_id: string
+        }
+        Returns: Json
+      }
       liberar_acesso_alunos_v2: {
         Args: { p_aluno_ids: string[]; p_canal?: string; p_escola_id: string }
         Returns: {
@@ -12888,6 +12993,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      map_admin_activity_family: { Args: { p_action: string }; Returns: string }
       mark_outbox_event_failed: {
         Args: { p_error: string; p_event_id: string }
         Returns: undefined

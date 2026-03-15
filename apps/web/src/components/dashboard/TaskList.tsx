@@ -41,7 +41,7 @@ function TaskItem({
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-medium text-slate-900 truncate">Matrícula pendente de aprovação</p>
+          <p className="text-sm font-medium text-slate-900 truncate">Matrícula registada</p>
           <span className="text-[11px] text-slate-400 whitespace-nowrap">
             {new Date(item.created_at).toLocaleDateString()}
           </span>

@@ -4,9 +4,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { 
-  ChevronDown, 
-  ChevronLeft, 
+import {
+  ChevronDown,
+  ChevronLeft,
   HelpCircle,
   LayoutDashboard,
   HeartPulse,
@@ -32,6 +32,7 @@ import {
   BadgeDollarSign
 } from "lucide-react";
 import type { NavItem } from "@/lib/sidebarNav";
+import { KlasseSidebarIcon } from "@/components/icons/KlasseSidebarIcon";
 
 // Mapa estático de ícones para performance máxima e estabilidade de build
 const ICON_MAP: Record<string, any> = {
@@ -124,7 +125,7 @@ export default function Sidebar({
       <div className="flex items-center justify-between px-4 py-4 border-b border-slate-800/80">
         <Link href="/app" className="flex items-center gap-3 min-w-0">
           <div className="h-10 w-10 rounded-xl bg-klasse-gold/15 ring-1 ring-klasse-gold/30 flex items-center justify-center">
-            <span className="text-klasse-gold font-semibold">K</span>
+            <KlasseSidebarIcon className="h-5 w-5 text-klasse-gold" />
           </div>
 
           {!collapsed && (

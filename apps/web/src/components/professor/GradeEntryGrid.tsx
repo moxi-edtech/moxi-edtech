@@ -96,6 +96,7 @@ export function GradeEntryGrid({
   showIsento = false,
 }: GradeEntryGridProps) {
   const [data, setData] = useState<StudentGradeRow[]>(initialData)
+  const dataRef = useRef<StudentGradeRow[]>(initialData)
   const [isSaving, setIsSaving] = useState(false)
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({})
   const pendingIdsRef = useRef<Set<string>>(new Set())
@@ -104,6 +105,10 @@ export function GradeEntryGrid({
   useEffect(() => {
     setData(initialData)
   }, [initialData])
+
+  useEffect(() => {
+    dataRef.current = data
+  }, [data])
 
   const onDataChangeRef = useRef(onDataChange)
 
@@ -119,7 +124,7 @@ export function GradeEntryGrid({
     if (!onSave || pendingIdsRef.current.size === 0) return
     const ids = Array.from(pendingIdsRef.current)
     pendingIdsRef.current.clear()
-    const payload = data.filter((row) => ids.includes(row.id))
+    const payload = dataRef.current.filter((row) => ids.includes(row.id))
     if (payload.length === 0) return
 
     setIsSaving(true)
@@ -149,7 +154,7 @@ export function GradeEntryGrid({
     } finally {
       setIsSaving(false)
     }
-  }, [data, onSave])
+  }, [onSave])
 
   const scheduleSave = useCallback(() => {
     if (!onSave) return
