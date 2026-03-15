@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/Button";
+import BrandPanel from "../login/BrandPanel";
 
 type Status = "loading" | "ready" | "invalid";
 
@@ -127,81 +128,82 @@ export default function ResetPasswordPage() {
     }
   };
 
-  if (status === "invalid") {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 space-y-4">
-          <h1 className="text-xl font-semibold text-slate-900">Link inválido</h1>
-          <p className="text-sm text-slate-600">
-            O link de redefinição expirou ou já foi utilizado. Solicite um novo envio.
-          </p>
-          <Button onClick={() => router.replace("/login")} className="w-full">
-            Voltar ao login
-          </Button>
-        </div>
-      </main>
-    );
-  }
-
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-teal-500 to-sky-600 px-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 space-y-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-semibold text-moxinexa-dark">Definir nova senha</h1>
-          <p className="text-sm text-gray-600 mt-1">Crie uma senha segura para acessar a plataforma.</p>
+    <div className="min-h-screen w-full grid grid-cols-1 md:grid-cols-2">
+      <BrandPanel />
+      <div className="flex items-center justify-center p-6">
+        <div className="w-full max-w-[420px] bg-white rounded-2xl border border-slate-200 shadow-sm p-8 space-y-6">
+          {status === "invalid" ? (
+            <div className="space-y-4">
+              <h1 className="text-xl font-semibold text-slate-900">Link inválido</h1>
+              <p className="text-sm text-slate-600">
+                O link de redefinição expirou ou já foi utilizado. Solicite um novo envio.
+              </p>
+              <Button onClick={() => router.replace("/login")} className="w-full">
+                Voltar ao login
+              </Button>
+            </div>
+          ) : (
+            <>
+              <div>
+                <h1 className="text-2xl font-semibold text-slate-900">Definir nova senha</h1>
+                <p className="text-sm text-slate-600 mt-1">Crie uma senha segura para acessar a plataforma.</p>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">E-mail</label>
+                  <input
+                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 bg-slate-50"
+                    value={email}
+                    disabled
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">Nova senha</label>
+                  <input
+                    type="password"
+                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                    value={nextPwd}
+                    onChange={(e) => setNextPwd(e.target.value)}
+                    required
+                    disabled={status !== "ready"}
+                  />
+                  {nextPwd && (
+                    <PasswordStrength
+                      score={strengthInfo.score}
+                      label={strengthInfo.label}
+                      color={strengthInfo.color}
+                      rules={strengthInfo.rules}
+                    />
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">Confirmar nova senha</label>
+                  <input
+                    type="password"
+                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                    value={confirm}
+                    onChange={(e) => setConfirm(e.target.value)}
+                    required
+                    disabled={status !== "ready"}
+                  />
+                </div>
+
+                {error && <p className="text-center text-sm text-red-500 font-medium">{error}</p>}
+                {ok && <p className="text-center text-sm text-green-600 font-medium">{ok}</p>}
+
+                <Button type="submit" disabled={loading || status !== "ready"} className="w-full">
+                  {loading ? "Salvando..." : "Salvar nova senha"}
+                </Button>
+              </form>
+            </>
+          )}
         </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700">E-mail</label>
-            <input
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 bg-slate-50"
-              value={email}
-              disabled
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700">Nova senha</label>
-            <input
-              type="password"
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-              value={nextPwd}
-              onChange={(e) => setNextPwd(e.target.value)}
-              required
-              disabled={status !== "ready"}
-            />
-            {nextPwd && (
-              <PasswordStrength
-                score={strengthInfo.score}
-                label={strengthInfo.label}
-                color={strengthInfo.color}
-                rules={strengthInfo.rules}
-              />
-            )}
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700">Confirmar nova senha</label>
-            <input
-              type="password"
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              required
-              disabled={status !== "ready"}
-            />
-          </div>
-
-          {error && <p className="text-center text-sm text-red-500 font-medium">{error}</p>}
-          {ok && <p className="text-center text-sm text-green-600 font-medium">{ok}</p>}
-
-          <Button type="submit" disabled={loading || status !== "ready"} className="w-full">
-            {loading ? "Salvando..." : "Salvar nova senha"}
-          </Button>
-        </form>
       </div>
-    </main>
+    </div>
   );
 }
 

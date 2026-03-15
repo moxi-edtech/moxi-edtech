@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/Button";
+import BrandPanel from "../login/BrandPanel";
 
 export default function ForgotPasswordPage() {
   const supabase = createClient();
@@ -30,46 +31,49 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 space-y-5">
-        <div className="text-center">
-          <h1 className="text-2xl font-semibold text-slate-900">Esqueceu a senha?</h1>
-          <p className="text-sm text-slate-600 mt-1">
-            Informe seu email. Se estiver cadastrado, enviaremos um link de redefinição.
-          </p>
-          <p className="text-xs text-slate-500 mt-2">
-            Sem email? Solicite a redefinição na secretaria.
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="min-h-screen w-full grid grid-cols-1 md:grid-cols-2">
+      <BrandPanel />
+      <div className="flex items-center justify-center p-6">
+        <div className="w-full max-w-[420px] bg-white rounded-2xl border border-slate-200 shadow-sm p-8 space-y-5">
           <div>
-            <label className="block text-sm font-medium text-slate-700">Email</label>
-            <input
-              type="email"
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="seuemail@escola.co.ao"
-              required
-            />
+            <h1 className="text-2xl font-semibold text-slate-900">Recuperar acesso</h1>
+            <p className="text-sm text-slate-600 mt-1">
+              Informe seu email. Se estiver cadastrado, enviaremos um link de redefinição.
+            </p>
+            <p className="text-xs text-slate-500 mt-2">
+              Sem email? Solicite a redefinição na secretaria.
+            </p>
           </div>
 
-          {message && <p className="text-center text-sm text-green-600 font-medium">{message}</p>}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700">Email</label>
+              <input
+                type="email"
+                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="seuemail@escola.co.ao"
+                required
+              />
+            </div>
 
-          <Button type="submit" disabled={loading} className="w-full">
-            {loading ? "Enviando..." : "Enviar link"}
-          </Button>
-        </form>
+            {message && <p className="text-center text-sm text-green-600 font-medium">{message}</p>}
 
-        <button
-          type="button"
-          onClick={() => router.replace("/login")}
-          className="w-full text-sm font-medium text-klasse-gold-600 hover:underline"
-        >
-          Voltar ao login
-        </button>
+            <Button type="submit" disabled={loading} className="w-full">
+              {loading ? "Enviando..." : "Enviar link"}
+            </Button>
+          </form>
+
+          <button
+            type="button"
+            onClick={() => router.replace("/login")}
+            className="w-full text-sm font-medium text-klasse-gold-600 hover:underline"
+          >
+            Voltar ao login
+          </button>
+        </div>
       </div>
-    </main>
+    </div>
   );
 }
