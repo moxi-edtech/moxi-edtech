@@ -42,7 +42,7 @@ export function Navbar({ appUrl, links, primaryCta, secondaryCta, onMenuToggle }
               </a>
             ))}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }} className="z">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }} className="z nav-actions">
             <a href={secondaryCta.href} className="btn-s" style={{ padding: '8px 18px', fontSize: 13 }}>
               {secondaryCta.label}
             </a>
