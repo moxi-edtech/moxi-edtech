@@ -31,7 +31,6 @@ export function ProductSection() {
         <div className="product-steps">
           {productSteps.map((step, index) => (
             <div key={step.title} className="product-step">
-              <span className="feature-bg-number">0{index + 1}</span>
               <div className="product-step-number">0{index + 1}</div>
               <div>
                 <h3 className="product-step-title">{step.title}</h3>
