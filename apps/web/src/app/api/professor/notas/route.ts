@@ -57,6 +57,7 @@ export async function POST(req: Request) {
       p_trimestre: body.trimestre ?? 1,
       p_tipo_avaliacao: body.tipo_avaliacao || 'MAC',
       p_notas: body.notas,
+      p_is_isento: false,
     });
 
     if (error) {

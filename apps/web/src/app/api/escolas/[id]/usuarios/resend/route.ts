@@ -5,6 +5,7 @@ import { recordAuditServer } from '@/lib/audit'
 import { hasPermission } from '@/lib/permissions'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { callAuthAdminJob } from '@/lib/auth-admin-job'
+import { buildInviteEmail, sendMail } from '@/lib/mailer'
 
 const BodySchema = z.object({ email: z.string().email() })
 
@@ -38,13 +39,64 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     const user = list?.users?.find((u: any) => (u.email || '').toLowerCase() === lower)
     if (!user) return NextResponse.json({ ok: false, error: 'Usuário não encontrado' }, { status: 404 })
 
+    let emailStatus: { attempted: boolean; ok: boolean; error?: string | null; via?: 'resend' | 'supabase' } = { attempted: false, ok: true }
+
     // resend only if not confirmed yet
     if (!user.email_confirmed_at) {
-      await callAuthAdminJob(req, 'inviteUserByEmail', { email: lower })
+      const origin = new URL(req.url).origin
+      const redirectTo = `${origin}/redirect`
+      let actionLink: string | null = null
+      try {
+        const linkDataRaw = await callAuthAdminJob(req, 'generateLink', {
+          type: 'invite',
+          email: lower,
+          options: { redirectTo },
+        })
+        const linkData = linkDataRaw as { properties?: { action_link?: string | null }; action_link?: string | null } | null
+        actionLink = linkData?.properties?.action_link || linkData?.action_link || null
+      } catch {}
+
+      try {
+        const { data: escolaRow } = await supabase
+          .from('escolas')
+          .select('nome')
+          .eq('id', escolaId)
+          .maybeSingle()
+        const { data: profileRow } = await supabase
+          .from('profiles')
+          .select('nome')
+          .eq('user_id', user.id)
+          .maybeSingle()
+        const { data: membershipRow } = await supabase
+          .from('escola_users')
+          .select('papel')
+          .eq('escola_id', escolaId)
+          .eq('user_id', user.id)
+          .maybeSingle()
+        const escolaNome = (escolaRow as any)?.nome ?? 'sua escola'
+        const adminNome = (profileRow as any)?.nome ?? undefined
+        const papel = (membershipRow as any)?.papel ?? null
+        const { subject, html, text } = buildInviteEmail({
+          escolaNome,
+          onboardingUrl: actionLink || redirectTo,
+          convidadoEmail: lower,
+          convidadoNome: adminNome,
+          papel,
+        })
+        const sent = await sendMail({ to: lower, subject, html: String(html), text: String(text) })
+        emailStatus = { attempted: true, ok: sent.ok, error: sent.ok ? null : sent.error, via: 'resend' }
+      } catch (error) {
+        emailStatus = { attempted: true, ok: false, error: error instanceof Error ? error.message : String(error), via: 'resend' }
+      }
+
+      if (!emailStatus.ok) {
+        await callAuthAdminJob(req, 'inviteUserByEmail', { email: lower, options: { redirectTo } })
+        emailStatus = { attempted: true, ok: true, via: 'supabase' }
+      }
     }
 
-    recordAuditServer({ escolaId, portal: 'admin_escola', acao: 'USUARIO_REINVITE', entity: 'usuario', entityId: user.id, details: { email: lower } }).catch(() => null)
-    return NextResponse.json({ ok: true })
+    recordAuditServer({ escolaId, portal: 'admin_escola', acao: 'USUARIO_REINVITE', entity: 'usuario', entityId: user.id, details: { email: lower, emailStatus } }).catch(() => null)
+    return NextResponse.json({ ok: true, emailStatus })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })

@@ -40,7 +40,7 @@ export async function GET(request: Request) {
 
     const limit = Math.min(Math.max(Number(parsed.data.limit ?? 5), 1), 20);
 
-    const radarQuery = supabase
+    const radarQuery = (supabase as any)
       .from("vw_financeiro_inadimplencia_top")
       .select("aluno_id, aluno_nome, valor_em_atraso, dias_em_atraso")
       .eq("escola_id", escolaId)

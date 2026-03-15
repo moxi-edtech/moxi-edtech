@@ -47,7 +47,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const adminNome = (p?.[0] as any)?.nome as string | undefined
     if (!adminEmail) return NextResponse.json({ ok: false, error: 'Não foi possível determinar o e-mail do admin.' }, { status: 400 })
 
-    const actionLink = `${origin}/login`
+    const actionLink = `${origin}`
     const { subject, html, text } = buildOnboardingEmail({
       escolaNome: escolaNome || 'sua escola',
       onboardingUrl: actionLink,

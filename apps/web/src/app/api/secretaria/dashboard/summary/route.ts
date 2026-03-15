@@ -57,7 +57,12 @@ export async function GET() {
     }
 
     const nowIso = new Date().toISOString();
-    const [countsRes, recentesRes, escolaRes, anoLetivoRes] = await Promise.all([
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(startOfDay);
+    endOfDay.setDate(endOfDay.getDate() + 1);
+
+    const [countsRes, recentesRes, escolaRes, anoLetivoRes, matriculasHojeRes] = await Promise.all([
       supabase
         .from("vw_secretaria_dashboard_counts")
         .select("alunos_ativos, matriculas_total, turmas_total")
@@ -81,6 +86,12 @@ export async function GET() {
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle(),
+      supabase
+        .from("matriculas")
+        .select("id", { count: "exact", head: true })
+        .eq("escola_id", escolaId)
+        .gte("created_at", startOfDay.toISOString())
+        .lt("created_at", endOfDay.toISOString()),
     ]);
 
     if (countsRes.error) {
@@ -94,6 +105,9 @@ export async function GET() {
     }
     if (anoLetivoRes.error) {
       return NextResponse.json({ ok: false, error: anoLetivoRes.error.message }, { status: 500 });
+    }
+    if (matriculasHojeRes.error) {
+      return NextResponse.json({ ok: false, error: matriculasHojeRes.error.message }, { status: 500 });
     }
 
     const resumoStatus = Array.isArray(recentesRes.data?.resumo_status)
@@ -125,7 +139,7 @@ export async function GET() {
       ok: true,
       counts: {
         alunos: countsRes.data?.alunos_ativos ?? 0,
-        matriculas: countsRes.data?.matriculas_total ?? 0,
+        matriculas: matriculasHojeRes.count ?? 0,
         turmas: countsRes.data?.turmas_total ?? 0,
         pendencias,
       },

@@ -3,6 +3,7 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { callAuthAdminJob } from "@/lib/auth-admin-job";
 import { recordAuditServer } from "@/lib/audit";
 import { assertPortalAccess } from "@/lib/portalAccess";
+import { buildCredentialsEmail, sendMail } from "@/lib/mailer";
 
 export async function POST(req: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -104,6 +105,33 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
 
     const data = await callAuthAdminJob(req, "resetStudentPassword", { userId, login });
     const response = { ok: true, login: data?.login ?? login, senha: data?.senha };
+
+    try {
+      const { data: prof } = await s
+        .from("profiles")
+        .select("email, nome")
+        .eq("user_id", userId)
+        .maybeSingle();
+      const email = (prof as any)?.email as string | undefined;
+      if (email && response.senha) {
+        const { data: esc } = await s
+          .from("escolas")
+          .select("nome")
+          .eq("id", alunoEscolaId)
+          .maybeSingle();
+        const escolaNome = (esc as any)?.nome ?? null;
+        const loginUrl = process.env.NEXT_PUBLIC_BASE_URL ? `${process.env.NEXT_PUBLIC_BASE_URL}/login` : null;
+        const mail = buildCredentialsEmail({
+          nome: (prof as any)?.nome ?? null,
+          email,
+          numero_processo_login: response.login,
+          senha_temp: response.senha,
+          escolaNome,
+          loginUrl,
+        });
+        await sendMail({ to: email, subject: mail.subject, html: mail.html, text: mail.text });
+      }
+    } catch {}
 
     try {
       await recordAuditServer({

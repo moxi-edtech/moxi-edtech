@@ -14,15 +14,34 @@ type RealtimeState = "live" | "polling";
 
 const POLLING_MS = 15_000;
 const WS_TIMEOUT_MS = 12_000;
+const REALTIME_THROTTLE_MS = 2_000;
+
+const parseEnvMs = (value: string | undefined, fallback: number) => {
+  const parsed = Number.parseInt((value ?? "").trim(), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
 
 export function useAdminActivityFeed(escolaId: string, limit = 20) {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [items, setItems] = useState<ActivityFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [realtimeState, setRealtimeState] = useState<RealtimeState>("live");
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
   const wsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastRealtimeFetchRef = useRef(0);
+  const pollingMs = useMemo(
+    () => parseEnvMs(process.env.NEXT_PUBLIC_ACTIVITY_FEED_POLL_MS, POLLING_MS),
+    []
+  );
+  const wsTimeoutMs = useMemo(
+    () => parseEnvMs(process.env.NEXT_PUBLIC_ACTIVITY_FEED_WS_TIMEOUT_MS, WS_TIMEOUT_MS),
+    []
+  );
+  const realtimeThrottleMs = useMemo(
+    () => parseEnvMs(process.env.NEXT_PUBLIC_ACTIVITY_FEED_THROTTLE_MS, REALTIME_THROTTLE_MS),
+    []
+  );
 
   const feedUrl = useMemo(
     () => `/api/escola/${escolaId}/admin/activity-feed?limit=${Math.min(Math.max(limit, 1), 50)}`,
@@ -47,6 +66,13 @@ export function useAdminActivityFeed(escolaId: string, limit = 20) {
     await fetchBootstrap();
   }, [fetchBootstrap]);
 
+  const handleRealtimeUpdate = useCallback(async () => {
+    const now = Date.now();
+    if (now - lastRealtimeFetchRef.current < realtimeThrottleMs) return;
+    lastRealtimeFetchRef.current = now;
+    await fetchBootstrap();
+  }, [fetchBootstrap, realtimeThrottleMs]);
+
   useEffect(() => {
     void fetchBootstrap();
   }, [fetchBootstrap]);
@@ -65,15 +91,15 @@ export function useAdminActivityFeed(escolaId: string, limit = 20) {
         () => {
           setRealtimeState("live");
           if (wsTimeoutRef.current) clearTimeout(wsTimeoutRef.current);
-          wsTimeoutRef.current = setTimeout(() => setRealtimeState("polling"), WS_TIMEOUT_MS);
-          void fetchBootstrap();
+          wsTimeoutRef.current = setTimeout(() => setRealtimeState("polling"), wsTimeoutMs);
+          void handleRealtimeUpdate();
         }
       )
       .subscribe((status) => {
         if (status === "SUBSCRIBED") {
           setRealtimeState("live");
           if (wsTimeoutRef.current) clearTimeout(wsTimeoutRef.current);
-          wsTimeoutRef.current = setTimeout(() => setRealtimeState("polling"), WS_TIMEOUT_MS);
+          wsTimeoutRef.current = setTimeout(() => setRealtimeState("polling"), wsTimeoutMs);
           return;
         }
         if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
@@ -85,7 +111,7 @@ export function useAdminActivityFeed(escolaId: string, limit = 20) {
       if (wsTimeoutRef.current) clearTimeout(wsTimeoutRef.current);
       supabase.removeChannel(channel);
     };
-  }, [escolaId, fetchBootstrap, supabase]);
+  }, [escolaId, handleRealtimeUpdate, supabase, wsTimeoutMs]);
 
   useEffect(() => {
     if (realtimeState !== "polling") {
@@ -98,7 +124,7 @@ export function useAdminActivityFeed(escolaId: string, limit = 20) {
 
     pollingRef.current = setInterval(() => {
       void pollIncremental();
-    }, POLLING_MS);
+    }, pollingMs);
 
     return () => {
       if (pollingRef.current) {
@@ -106,7 +132,7 @@ export function useAdminActivityFeed(escolaId: string, limit = 20) {
         pollingRef.current = null;
       }
     };
-  }, [pollIncremental, realtimeState]);
+  }, [pollIncremental, realtimeState, pollingMs]);
 
   return {
     items,

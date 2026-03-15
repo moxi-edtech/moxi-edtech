@@ -45,13 +45,30 @@ export async function GET() {
     }
 
     const kpisStart = shouldLog ? performance.now() : 0;
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(startOfDay);
+    endOfDay.setDate(endOfDay.getDate() + 1);
+
     const countsQuery = supabase
       .from('vw_secretaria_dashboard_counts')
       .select('alunos_ativos, matriculas_total, turmas_total')
       .eq('escola_id', escolaId)
       .maybeSingle();
+    const matriculasHojeQuery = supabase
+      .from('matriculas')
+      .select('id', { count: 'exact', head: true })
+      .eq('escola_id', escolaId)
+      .gte('created_at', startOfDay.toISOString())
+      .lt('created_at', endOfDay.toISOString());
+
     const queryStart = shouldLog ? performance.now() : 0;
-    const { data: countsRow, error: countsError } = await countsQuery;
+    const [countsResult, matriculasHojeResult] = await Promise.all([
+      countsQuery,
+      matriculasHojeQuery,
+    ]);
+    const { data: countsRow, error: countsError } = countsResult;
+    const { error: matriculasHojeError } = matriculasHojeResult;
     if (shouldLog) {
       log('kpis.query', performance.now() - queryStart);
       log('kpis', performance.now() - kpisStart);
@@ -59,12 +76,15 @@ export async function GET() {
     if (countsError) {
       return NextResponse.json({ ok: false, error: countsError.message }, { status: 500 });
     }
+    if (matriculasHojeError) {
+      return NextResponse.json({ ok: false, error: matriculasHojeError.message }, { status: 500 });
+    }
 
     const response = NextResponse.json({
       ok: true,
       counts: {
         alunos: countsRow?.alunos_ativos ?? 0,
-        matriculas: countsRow?.matriculas_total ?? 0,
+        matriculas: matriculasHojeResult.count ?? 0,
         turmas: countsRow?.turmas_total ?? 0,
         pendencias: 0,
       },
