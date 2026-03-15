@@ -1,0 +1,20 @@
+{
+  "name": "landing",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm_config_registry=https://registry.npmjs.org/ npm_config_workspace= npm_config_workspaces= next dev",
+    "build": "npm_config_registry=https://registry.npmjs.org/ npm_config_workspace= npm_config_workspaces= next build",
+    "start": "npm_config_registry=https://registry.npmjs.org/ npm_config_workspace= npm_config_workspaces= next start",
+    "lint": "npm_config_registry=https://registry.npmjs.org/ npm_config_workspace= npm_config_workspaces= eslint . --max-warnings 10000"
+  },
+  "dependencies": {
+    "next": "15.5.7",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.2",
+    "typescript": "5.9.3"
+  }
+}
