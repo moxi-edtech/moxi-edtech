@@ -44,7 +44,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     // resend only if not confirmed yet
     if (!user.email_confirmed_at) {
       const origin = new URL(req.url).origin
-      const redirectTo = `${origin}/redirect`
+      const redirectTo = `${origin}/reset-password`
       let actionLink: string | null = null
       try {
         const linkDataRaw = await callAuthAdminJob(req, 'generateLink', {
