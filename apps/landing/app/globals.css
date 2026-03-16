@@ -28,11 +28,13 @@
   --bg-portals:none;
   --bg-audience:none;
 }
-html{scroll-behavior:smooth}
-body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t1);overflow-x:hidden;-webkit-font-smoothing:antialiased}
+html,body{height:100%}
+html{scroll-behavior:smooth;scroll-snap-type:y mandatory;scroll-padding-top:110px}
+body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t1);overflow-x:hidden;-webkit-font-smoothing:antialiased;scroll-snap-type:y mandatory}
 body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");pointer-events:none;z-index:0}
 .z{position:relative;z-index:1}
 .container{max-width:1120px;margin:0 auto;padding:0 24px}
+.snap-section{scroll-snap-align:start;scroll-snap-stop:always;scroll-margin-top:110px;min-height:100vh}
 
 /* ── URGENCY BAR ─────────────────────────────────────────── */
 .ubar{background:var(--g);padding:10px 0;text-align:center;position:relative;z-index:200}
@@ -207,7 +209,8 @@ nav.scrolled .hamburger span{background:var(--t2)}
 
 .section-bg{position:relative;overflow:hidden;background:var(--s1)}
 .section-accent{position:relative}
-.section-accent::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:min(1120px,calc(100% - 48px));height:2px;background:linear-gradient(90deg,#2B6044,#C8902A)}
+.section-accent::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:min(1120px,calc(100% - 48px));height:1px;background:linear-gradient(90deg,#2B6044,#C8902A);opacity:.9;pointer-events:none}
+.section-accent:first-of-type::before{display:none}
 .section-bg::before{content:'';position:absolute;inset:0;background-position:center;background-size:cover;background-repeat:no-repeat;opacity:.18;pointer-events:none}
 .section-bg::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(245,240,232,.9) 0%,rgba(245,240,232,.95) 60%,rgba(245,240,232,1) 100%);pointer-events:none}
 .section-bg > .container{position:relative;z-index:1}
