@@ -3,9 +3,19 @@ import { pricingPlans } from '../../../data/landing'
 interface PricingSectionProps {
   intro: string
   note: string
+  appUrl: string
 }
 
-export function PricingSection({ intro, note }: PricingSectionProps) {
+export function PricingSection({ intro, note, appUrl }: PricingSectionProps) {
+  const normalizedAppUrl = appUrl.endsWith('/') ? appUrl.slice(0, -1) : appUrl
+  const resolveHref = (ctaHref: string) => {
+    if (ctaHref.startsWith('http') || ctaHref.startsWith('#')) {
+      return ctaHref
+    }
+    const normalizedCta = ctaHref.startsWith('/') ? ctaHref : `/${ctaHref}`
+    return `${normalizedAppUrl}${normalizedCta}`
+  }
+
   const variants = {
     basic: {
       card: 'pricing-card pricing-card--basic',
@@ -43,12 +53,27 @@ export function PricingSection({ intro, note }: PricingSectionProps) {
         <div className="precos-grid precos-grid-dark">
           {pricingPlans.map((plan) => {
             const variant = variants[plan.slug]
+            const planHref = resolveHref(plan.ctaHref)
             const capacityValues = plan.slug === 'enterprise'
               ? { alunos: '∞', utilizadores: '∞', storage: '∞' }
               : plan.capacity
 
             return (
-              <div key={plan.name} className={variant.card}>
+              <div
+                key={plan.name}
+                className={variant.card}
+                role="link"
+                tabIndex={0}
+                onClick={() => {
+                  window.location.href = planHref
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    window.location.href = planHref
+                  }
+                }}
+              >
                 <div className={variant.badge}>{plan.name}</div>
                 <h3 className="pricing-name">{plan.name}</h3>
                 <p className="pricing-desc">{plan.description}</p>
@@ -94,7 +119,7 @@ export function PricingSection({ intro, note }: PricingSectionProps) {
                   ))}
                 </div>
 
-                <a href={plan.ctaHref} className={variant.cta}>
+                <a href={planHref} className={variant.cta}>
                   {plan.cta}
                 </a>
 

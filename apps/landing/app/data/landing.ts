@@ -6,12 +6,12 @@ export const navLinks = [
 ]
 
 export const hero = {
-  eyebrow: 'Sistema de gestão escolar feito para Angola',
+  eyebrow: 'Sistema de gestão escolar feito para sua escola',
   titleLines: ['A escola que você gere', 'merece um sistema claro', 'e feito para si'],
   subtitle:
     'Estamos a lançar em Angola com um sistema de gestão escolar pensado para a nossa realidade e acompanhamos cada escola de perto.',
-  primaryCta: 'Quero começar com o formulário',
-  secondaryCta: 'Quero falar primeiro',
+  primaryCta: 'Quero testar por 2 meses gratis.',
+  secondaryCta: 'Fale connosco',
   note: 'Sem compromisso · Acompanhamento pessoal da equipa',
 }
 
