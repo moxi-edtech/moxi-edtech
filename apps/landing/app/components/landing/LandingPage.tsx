@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 
-import { footerLinks, hero, heroMockup, navLinks, pricingNote, pricingIntro } from '../../data/landing'
+import { footerLinks, hero, navLinks, pricingNote, pricingIntro } from '../../data/landing'
 import { useRevealOnScroll } from '../../hooks/useRevealOnScroll'
 
 import { AudienceSection } from './sections/AudienceSection'
@@ -55,13 +55,12 @@ export function LandingPage() {
         primaryCta={primaryCta}
         secondaryCta={secondaryCta}
         note={hero.note}
-        mockup={heroMockup}
       />
       <WaveDivider />
       <ProductSection />
       <AudienceSection />
       <PortalsSection />
-      <PricingSection intro={pricingIntro} note={pricingNote} />
+      <PricingSection intro={pricingIntro} note={pricingNote} appUrl={appUrl} />
       <PilotSection />
       <FinalCtaSection primaryCta={primaryCta} secondaryCta={secondaryCta} />
       <FooterSection links={footerLinks} />
