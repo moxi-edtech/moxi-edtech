@@ -3,7 +3,7 @@ import { useEffect } from 'react'
 export function useSnapScroll(sectionSelector = '.snap-section') {
   useEffect(() => {
     const sections = Array.from(document.querySelectorAll<HTMLElement>(sectionSelector))
-    if (sections.length === 0) return
+    if (sections.length < 2) return
 
     let isLocked = false
     let touchStartY = 0
