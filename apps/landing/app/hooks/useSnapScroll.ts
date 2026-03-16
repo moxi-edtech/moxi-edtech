@@ -1,33 +1,38 @@
 import { useEffect } from 'react'
 
-export function useSnapScroll(sectionSelector = '.snap-section') {
+export function useSnapScroll(sectionSelector = 'section, footer') {
   useEffect(() => {
-    const sections = Array.from(document.querySelectorAll<HTMLElement>(sectionSelector))
+    const sections = Array.from(document.querySelectorAll<HTMLElement>(sectionSelector)).filter(
+      (section) => section.offsetHeight > 0
+    )
+
     if (sections.length < 2) return
+    if (window.matchMedia('(pointer: coarse)').matches) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
 
     let isLocked = false
-    let touchStartY = 0
-    let scrollTimeout: number | undefined
     let lockUntil = 0
-    const isCoarsePointer = window.matchMedia('(pointer: coarse)').matches
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    let scrollTimeout: number | undefined
+    let wheelAccumulator = 0
 
     const scrollToIndex = (index: number) => {
       const target = sections[Math.max(0, Math.min(sections.length - 1, index))]
       if (!target) return
       isLocked = true
-      lockUntil = Date.now() + 900
+      lockUntil = Date.now() + 820
       target.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
 
     const getCurrentIndex = () => {
-      const scrollTop = window.scrollY + window.innerHeight * 0.25
+      const scrollTop = window.scrollY + window.innerHeight * 0.35
       let currentIndex = 0
+
       sections.forEach((section, index) => {
         if (section.offsetTop <= scrollTop) {
           currentIndex = index
         }
       })
+
       return currentIndex
     }
 
@@ -36,34 +41,41 @@ export function useSnapScroll(sectionSelector = '.snap-section') {
       scrollTimeout = window.setTimeout(() => {
         if (Date.now() >= lockUntil) {
           isLocked = false
+          wheelAccumulator = 0
         }
-      }, 520)
+      }, 420)
     }
 
     const handleWheel = (event: WheelEvent) => {
-      if (isLocked) return
-      if (Math.abs(event.deltaY) < 10) return
+      if (event.ctrlKey) return
+      if (isLocked) {
+        event.preventDefault()
+        return
+      }
+
+      wheelAccumulator += event.deltaY
+      if (Math.abs(wheelAccumulator) < 30) return
+
       event.preventDefault()
       const currentIndex = getCurrentIndex()
-      const direction = event.deltaY > 0 ? 1 : -1
+      const direction = wheelAccumulator > 0 ? 1 : -1
+      wheelAccumulator = 0
       scrollToIndex(currentIndex + direction)
     }
 
     const handleScroll = () => {
-      if (!isLocked) return
-      releaseLock()
+      if (isLocked) {
+        releaseLock()
+      }
     }
 
-    if (!isCoarsePointer && isLocalhost) {
-      window.addEventListener('wheel', handleWheel, { passive: false })
-      window.addEventListener('scroll', handleScroll, { passive: true })
-    }
+    window.addEventListener('wheel', handleWheel, { passive: false })
+    window.addEventListener('scroll', handleScroll, { passive: true })
 
     return () => {
-      if (!isCoarsePointer && isLocalhost) {
-        window.removeEventListener('wheel', handleWheel)
-        window.removeEventListener('scroll', handleScroll)
-      }
+      window.removeEventListener('wheel', handleWheel)
+      window.removeEventListener('scroll', handleScroll)
+      if (scrollTimeout) window.clearTimeout(scrollTimeout)
     }
   }, [sectionSelector])
 }

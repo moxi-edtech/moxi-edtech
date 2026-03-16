@@ -50,7 +50,7 @@ export function PricingSection({ intro, note, appUrl }: PricingSectionProps) {
           </h2>
           <p className="precos-intro">{intro}</p>
         </div>
-        <div className="precos-grid precos-grid-dark">
+        <div className="precos-grid precos-grid-dark precos-grid-mobile-snap">
           {pricingPlans.map((plan) => {
             const variant = variants[plan.slug]
             const planHref = resolveHref(plan.ctaHref)
