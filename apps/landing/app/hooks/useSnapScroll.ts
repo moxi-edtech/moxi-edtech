@@ -9,6 +9,8 @@ export function useSnapScroll(sectionSelector = '.snap-section') {
     let touchStartY = 0
     let scrollTimeout: number | undefined
     let lockUntil = 0
+    const isCoarsePointer = window.matchMedia('(pointer: coarse)').matches
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
 
     const scrollToIndex = (index: number) => {
       const target = sections[Math.max(0, Math.min(sections.length - 1, index))]
@@ -47,36 +49,21 @@ export function useSnapScroll(sectionSelector = '.snap-section') {
       scrollToIndex(currentIndex + direction)
     }
 
-    const handleTouchStart = (event: TouchEvent) => {
-      touchStartY = event.touches[0]?.clientY ?? 0
-    }
-
-    const handleTouchEnd = (event: TouchEvent) => {
-      if (isLocked) return
-      const touchEndY = event.changedTouches[0]?.clientY ?? 0
-      const delta = touchStartY - touchEndY
-      if (Math.abs(delta) < 40) return
-      event.preventDefault()
-      const currentIndex = getCurrentIndex()
-      const direction = delta > 0 ? 1 : -1
-      scrollToIndex(currentIndex + direction)
-    }
-
     const handleScroll = () => {
       if (!isLocked) return
       releaseLock()
     }
 
-    window.addEventListener('wheel', handleWheel, { passive: false })
-    window.addEventListener('touchstart', handleTouchStart, { passive: true })
-    window.addEventListener('touchend', handleTouchEnd, { passive: false })
-    window.addEventListener('scroll', handleScroll, { passive: true })
+    if (!isCoarsePointer && isLocalhost) {
+      window.addEventListener('wheel', handleWheel, { passive: false })
+      window.addEventListener('scroll', handleScroll, { passive: true })
+    }
 
     return () => {
-      window.removeEventListener('wheel', handleWheel)
-      window.removeEventListener('touchstart', handleTouchStart)
-      window.removeEventListener('touchend', handleTouchEnd)
-      window.removeEventListener('scroll', handleScroll)
+      if (!isCoarsePointer && isLocalhost) {
+        window.removeEventListener('wheel', handleWheel)
+        window.removeEventListener('scroll', handleScroll)
+      }
     }
   }, [sectionSelector])
 }
