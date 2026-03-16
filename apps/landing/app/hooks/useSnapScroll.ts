@@ -8,11 +8,13 @@ export function useSnapScroll(sectionSelector = '.snap-section') {
     let isLocked = false
     let touchStartY = 0
     let scrollTimeout: number | undefined
+    let lockUntil = 0
 
     const scrollToIndex = (index: number) => {
       const target = sections[Math.max(0, Math.min(sections.length - 1, index))]
       if (!target) return
       isLocked = true
+      lockUntil = Date.now() + 900
       target.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
 
@@ -30,8 +32,10 @@ export function useSnapScroll(sectionSelector = '.snap-section') {
     const releaseLock = () => {
       if (scrollTimeout) window.clearTimeout(scrollTimeout)
       scrollTimeout = window.setTimeout(() => {
-        isLocked = false
-      }, 160)
+        if (Date.now() >= lockUntil) {
+          isLocked = false
+        }
+      }, 520)
     }
 
     const handleWheel = (event: WheelEvent) => {
