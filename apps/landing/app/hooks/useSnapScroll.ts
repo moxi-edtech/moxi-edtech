@@ -56,6 +56,7 @@ export function useSnapScroll(sectionSelector = '.snap-section') {
       const touchEndY = event.changedTouches[0]?.clientY ?? 0
       const delta = touchStartY - touchEndY
       if (Math.abs(delta) < 40) return
+      event.preventDefault()
       const currentIndex = getCurrentIndex()
       const direction = delta > 0 ? 1 : -1
       scrollToIndex(currentIndex + direction)
@@ -68,7 +69,7 @@ export function useSnapScroll(sectionSelector = '.snap-section') {
 
     window.addEventListener('wheel', handleWheel, { passive: false })
     window.addEventListener('touchstart', handleTouchStart, { passive: true })
-    window.addEventListener('touchend', handleTouchEnd, { passive: true })
+    window.addEventListener('touchend', handleTouchEnd, { passive: false })
     window.addEventListener('scroll', handleScroll, { passive: true })
 
     return () => {
