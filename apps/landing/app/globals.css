@@ -31,11 +31,13 @@
 }
 html,body{height:100%}
 html{scroll-behavior:smooth;scroll-snap-type:y mandatory;scroll-padding-top:var(--snap-offset)}
-body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t1);overflow-x:hidden;overflow-y:auto;-webkit-font-smoothing:antialiased;scroll-snap-type:y mandatory;touch-action:pan-y}
+html{scroll-behavior:smooth;scroll-padding-top:var(--snap-offset)}
+body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t1);overflow-x:hidden;overflow-y:auto;-webkit-font-smoothing:antialiased;touch-action:pan-y}
 body::after{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");pointer-events:none;z-index:0}
 .z{position:relative;z-index:1}
 .container{max-width:1120px;margin:0 auto;padding:0 24px}
-.snap-section{scroll-snap-align:start;scroll-snap-stop:always;scroll-margin-top:var(--snap-offset);min-height:100vh}
+section,footer{scroll-snap-align:start;scroll-snap-stop:always;scroll-margin-top:var(--snap-offset)}
+.snap-section{min-height:100vh}
 
 /* ── URGENCY BAR ─────────────────────────────────────────── */
 .ubar{background:var(--g);padding:10px 0;text-align:center;position:relative;z-index:200}
@@ -446,6 +448,7 @@ footer{padding:40px 0;border-top:1px solid var(--bd)}
 /* ── RESPONSIVE ──────────────────────────────────────────── */
 @media(max-width:900px){
   :root{--snap-offset:112px}
+  html{scroll-snap-type:y proximity}
   .hero-grid,.feat-panel,.oferta-grid,.dep-grid,.precos-grid,.portais-top,.portais-bottom{grid-template-columns:1fr}
   .steps,.num-grid{grid-template-columns:1fr 1fr}
   .problema-grid,.faq-grid{grid-template-columns:1fr}
@@ -457,6 +460,8 @@ footer{padding:40px 0;border-top:1px solid var(--bd)}
   .product-features{grid-template-columns:1fr 1fr}
   .product-steps{grid-template-columns:1fr}
   .precos-grid{grid-template-columns:1fr}
+  .precos-grid-mobile-snap{max-height:calc(100svh - var(--snap-offset) - 8px);overflow-y:auto;overscroll-behavior-y:contain;scroll-snap-type:y mandatory;padding-right:4px}
+  .precos-grid-mobile-snap .pricing-card{min-height:calc(100svh - var(--snap-offset) - 24px);max-height:calc(100svh - var(--snap-offset) - 24px);overflow-y:auto;scroll-snap-align:start;scroll-snap-stop:always}
 }
 @media(max-width:600px){
   :root{--snap-offset:124px}
