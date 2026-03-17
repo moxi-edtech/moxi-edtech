@@ -6,17 +6,10 @@ export function ProductSection() {
       <div className="container">
         <div className="product-intro">
           <div className="sec-eyebrow">O produto</div>
-          <h2 className="sec-title product-title-main">
-            Um sistema simples,
-            <br />
-            feito para a realidade da sua escola
-          </h2>
+          <h2 className="sec-title product-title-main">Tudo o que a secretaria faz hoje, em segundos.</h2>
           <p className="sec-sub">
             O KLASSE resolve o dia-a-dia da secretaria e dá ao director uma visão clara do que está a acontecer.
           </p>
-          <div className="quote-block">
-            Estamos a lançar em Angola. As primeiras escolas têm acompanhamento directo da equipa.
-          </div>
         </div>
 
         <div className="product-features">

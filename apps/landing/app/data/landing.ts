@@ -6,13 +6,13 @@ export const navLinks = [
 ]
 
 export const hero = {
-  eyebrow: 'Sistema de gestão escolar feito para sua escola',
-  titleLines: ['A escola que você gere', 'merece um sistema claro', 'e feito para si'],
+  eyebrow: 'Sistema de gestão escolar para a sua secretaria',
+  titleLines: ['A secretaria que a sua escola', 'merecia desde sempre.'],
   subtitle:
-    'Estamos a lançar em Angola com um sistema de gestão escolar pensado para a nossa realidade e acompanhamos cada escola de perto.',
-  primaryCta: 'Quero testar por 2 meses gratis.',
+    'Matrículas, propinas, notas e documentos MED — num só lugar. Sem papel, sem Excel, sem confusão.',
+  primaryCta: 'Quero testar 2 meses grátis',
   secondaryCta: 'Fale connosco',
-  note: 'Sem compromisso · Acompanhamento pessoal da equipa',
+  note: 'Sem compromisso. A nossa equipa configura tudo consigo.',
 }
 
 export const heroMockup = {
@@ -35,24 +35,20 @@ export const heroMockup = {
 
 export const productCards = [
   {
-    title: 'Gestão completa num só lugar',
-    description:
-      'Controlo de propinas, alunos e documentos MED num sistema simples para a secretaria escolar digital.',
+    title: 'Secretaria sem filas',
+    description: 'Matrículas, documentos MED e pagamentos num único ecrã.',
   },
   {
-    title: 'Fluxo claro do início ao fim',
-    description:
-      'Da matrícula escolar digital ao relatório mensal, tudo segue um fluxo lógico que evita erros e retrabalho.',
+    title: 'Financeiro sempre visível',
+    description: 'Propinas pagas, pendentes e em atraso — sem abrir um caderno.',
   },
   {
-    title: 'Acompanhamento na implementação',
-    description:
-      'A equipa KLASSE acompanha a sua escola nos primeiros passos para garantir que o sistema escolar em Angola fica bem configurado.',
+    title: 'Director com visão real',
+    description: 'Relatórios em tempo real para decidir hoje, não na semana que vem.',
   },
   {
-    title: 'Direcção com visão real da escola',
-    description:
-      'O director vê o estado da escola em tempo real e decide com confiança, sem esperar relatórios manuais.',
+    title: 'Implementação acompanhada',
+    description: 'Configuramos o sistema consigo para a escola não ficar sozinha.',
   },
 ]
 
