@@ -54,7 +54,7 @@ export function PortalsSection() {
   return (
     <section className="portais reveal section-accent" id="portais">
       <div className="container">
-        <div style={{ maxWidth: 520, marginBottom: 56 }}>
+        <div className="portais-intro">
           <div className="sec-label">O sistema</div>
           <h2 className="sec-h">Um portal para cada pessoa na escola</h2>
           <p className="sec-p" style={{ marginTop: 12 }}>
