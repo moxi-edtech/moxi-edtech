@@ -53,6 +53,10 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 .seo-card-title{font-size:14px;font-weight:700;color:var(--t1);margin-bottom:8px}
 .seo-card-text{font-size:13px;line-height:1.6;color:var(--t2);font-weight:300}
 .seo-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:20px}
+.seo-faq{display:flex;flex-direction:column;gap:18px;margin-top:20px}
+.seo-faq-item{background:var(--s1);border:1px solid var(--bd);border-radius:16px;padding:20px 22px}
+.seo-faq-question{font-size:14px;font-weight:700;color:var(--t1);margin-bottom:6px}
+.seo-faq-answer{font-size:13px;line-height:1.65;color:var(--t2);font-weight:300}
 
 /* ── URGENCY BAR ─────────────────────────────────────────── */
 .ubar{background:var(--g);padding:10px 0;text-align:center;position:relative;z-index:200}
