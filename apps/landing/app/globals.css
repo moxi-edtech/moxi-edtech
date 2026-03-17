@@ -38,8 +38,8 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 .panel-stack{height:100vh;overflow-y:scroll;overflow-x:hidden;scroll-snap-type:y mandatory;scroll-padding-top:var(--nav-h);overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y}
 .panel{height:100vh;scroll-snap-align:start;scroll-snap-stop:always;box-sizing:border-box}
 .panel--hero{background:var(--dk)}
-.panel--portals{overflow:hidden}
-.panel--portals .portais{height:100%;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.panel--portals{height:auto;min-height:100vh;overflow:visible;scroll-snap-stop:normal}
+.panel--portals .portais{height:auto;overflow:visible}
 .panel--pricing-desktop{overflow:hidden}
 .panel--pricing-desktop .precos{height:100%;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
 .panel--pricing-mobile{display:none}
