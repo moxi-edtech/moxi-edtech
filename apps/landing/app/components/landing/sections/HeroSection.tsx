@@ -11,7 +11,7 @@ interface HeroSectionProps {
 
 export function HeroSection({ titleLines, eyebrow, subtitle, primaryCta, secondaryCta, note }: HeroSectionProps) {
   return (
-    <section className="hero z section-accent snap-section">
+    <section className="hero z section-accent">
       <div className="container">
         <div className="hero-content">
           <div className="hero-copy">

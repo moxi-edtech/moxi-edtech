@@ -15,16 +15,32 @@ interface NavbarProps {
 
 export function Navbar({ appUrl, links, primaryCta, secondaryCta, onMenuToggle }: NavbarProps) {
   useEffect(() => {
+    const navbar = document.getElementById('navbar')
+    const panelStack = document.querySelector<HTMLElement>('.panel-stack')
+    if (!navbar) return
+
     const handleScroll = () => {
-      const navbar = document.getElementById('navbar')
-      if (navbar) {
-        navbar.classList.toggle('scrolled', window.scrollY > 50)
-      }
+      const scrollTop = panelStack ? panelStack.scrollTop : window.scrollY
+      navbar.classList.toggle('scrolled', scrollTop > 50)
+    }
+
+    const updateNavHeight = () => {
+      document.documentElement.style.setProperty('--nav-h', `${navbar.offsetHeight}px`)
     }
 
     handleScroll()
+    updateNavHeight()
+    panelStack?.addEventListener('scroll', handleScroll)
     window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
+
+    const resizeObserver = new ResizeObserver(() => updateNavHeight())
+    resizeObserver.observe(navbar)
+
+    return () => {
+      panelStack?.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('scroll', handleScroll)
+      resizeObserver.disconnect()
+    }
   }, [])
 
   return (
