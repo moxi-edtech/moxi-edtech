@@ -52,6 +52,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="pt-AO">
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <SchemaMarkup />
       </head>
       <body>{children}</body>
