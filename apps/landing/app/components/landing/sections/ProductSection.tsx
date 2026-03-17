@@ -13,7 +13,7 @@ export function ProductSection() {
         </div>
 
         <div className="product-features">
-          {productCards.map((card, index) => (
+          {productCards.map((card) => (
             <div key={card.title} className="product-feature">
               <h3 className="product-title">{card.title}</h3>
               <p className="product-desc">{card.description}</p>
