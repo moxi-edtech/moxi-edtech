@@ -54,34 +54,31 @@ export const productCards = [
 
 export const audienceCards = [
   {
-    title: 'Director que precisa de visão clara',
-    description:
-      'Quer tomar decisões com dados certos, sem esperar dias por relatórios manuais.',
+    title: 'Director',
+    description: 'Quer saber o estado da escola sem esperar relatório.',
   },
   {
-    title: 'Secretaria sobrecarregada',
-    description:
-      'Precisa de reduzir filas, organizar documentos do MED e ganhar tempo no atendimento com secretaria escolar digital.',
+    title: 'Secretaria',
+    description: 'Responde às mesmas perguntas e procura papéis.',
   },
   {
     title: 'Escola em crescimento',
-    description:
-      'A base está pronta, mas precisa de controlo real para crescer com segurança.',
+    description: 'Excel funcionava com 100 alunos, com 400 já não.',
   },
 ]
 
 export const productSteps = [
   {
-    title: 'Preenche o formulário',
-    description: 'Conte-nos sobre a sua escola, turmas e número de alunos.',
+    title: 'Conta-nos sobre a escola',
+    description: 'Partilhe turmas, número de alunos e o processo atual da secretaria.',
   },
   {
-    title: 'Configuramos o sistema',
-    description: 'A nossa equipa monta tudo e valida consigo.',
+    title: 'Configuramos tudo',
+    description: 'Montamos o sistema e validamos consigo antes do arranque.',
   },
   {
-    title: 'Importamos os alunos',
-    description: 'Recebe o modelo Excel e ajudamos na importação.',
+    title: 'A escola começa a usar',
+    description: 'com os alunos importados e a equipa treinada.',
   },
 ]
 
@@ -94,21 +91,15 @@ export const pricingNote =
 export const portals = [
   {
     id: 'director',
-    title: 'Portal do Director',
-    description:
-      'Visão completa da escola. Aprova turmas, vê relatórios financeiros e académicos, acompanha o estado em tempo real.',
-    items: [
-      'Dashboard com indicadores chave',
-      'Aprovação de turmas e matrículas',
-      'Relatórios mensais automáticos',
-    ],
+    title: 'Director',
+    description: 'Vê indicadores, turmas e alertas sem esperar relatório.',
+    items: ['Indicadores em tempo real', 'Aprovação de turmas', 'Visão académica e financeira'],
   },
   {
     id: 'secretaria',
-    title: 'Portal da Secretaria',
-    description:
-      'Balcão de atendimento inteligente. Matricula alunos, regista pagamentos e emite documentos sem sair do mesmo ecrã.',
-    items: ['Pesquisa rápida de alunos', 'Registo de pagamentos', 'Emissão de documentos MED'],
+    title: 'Secretaria',
+    description: 'Atende, matricula e emite documentos no mesmo ecrã.',
+    items: ['Matrículas rápidas', 'Documentos MED', 'Pagamentos no balcão'],
   },
   {
     id: 'professor',
@@ -119,10 +110,9 @@ export const portals = [
   },
   {
     id: 'financeiro',
-    title: 'Portal Financeiro',
-    description:
-      'Controlo completo das receitas. Propinas, matrículas e serviços — com alertas automáticos de cobranças em atraso.',
-    items: ['Controlo de propinas em tempo real', 'Relatórios de receita mensal', 'Alertas de cobranças em atraso'],
+    title: 'Financeiro',
+    description: 'Controla propinas, pendências e cobranças em atraso.',
+    items: ['Propinas por estado', 'Cobranças em atraso', 'Receita mensal'],
   },
   {
     id: 'aluno',
@@ -135,49 +125,47 @@ export const portals = [
 
 export const portalHighlights = {
   professor: {
-    badge: 'Portal do Professor',
-    title: ['O professor lança.', 'O director vê na hora.'],
-    description:
-      'Sem papel para recolher, sem notas para transcrever. O professor abre o telemóvel, selecciona a turma e regista presenças ou notas em segundos.',
+    badge: 'Professor',
+    title: ['Professor', 'Tudo em poucos toques.'],
+    description: 'Lança tudo da turma no telemóvel.',
     features: [
       {
-        title: 'Lista de turma',
-        description: 'Todos os alunos com foto, número de processo e histórico de presenças.',
+        title: 'Presenças',
+        description: 'Marca faltas em segundos.',
       },
       {
-        title: 'Registo de presenças',
-        description: 'Um toque por aluno. Presente, falta justificada ou injustificada.',
+        title: 'Notas',
+        description: 'Regista avaliações por período.',
       },
       {
-        title: 'Lançamento de notas',
-        description: 'Por disciplina e período. O sistema calcula médias automaticamente.',
+        title: 'Turma',
+        description: 'Consulta a lista da turma.',
       },
     ],
-    hint: 'Optimizado para telemóvel — o professor não precisa de computador',
+    hint: 'Optimizado para telemóvel',
   },
   aluno: {
-    badge: 'Portal do Aluno',
-    title: ['O aluno acompanha', 'o seu próprio percurso.'],
-    description:
-      'Cada aluno tem acesso ao seu portal com notas, presenças e situação financeira. O encarregado acompanha também.',
+    badge: 'Aluno',
+    title: ['Aluno', 'Tudo claro no portal.'],
+    description: 'Acompanha o percurso sem ir à escola.',
     features: [
       {
-        title: 'Notas e pautas',
-        description: 'Resultados por período. O aluno sabe onde está sem esperar pela pauta em papel.',
+        title: 'Notas',
+        description: 'Vê resultados por período.',
       },
       {
-        title: 'Registo de presenças',
-        description: 'Histórico completo de faltas por disciplina antes de atingir o limite.',
+        title: 'Presenças',
+        description: 'Confirma faltas por disciplina.',
       },
       {
-        title: 'Situação financeira',
-        description: 'Propinas pagas, pendentes e datas de vencimento sempre visíveis.',
+        title: 'Financeiro',
+        description: 'Consulta pagamentos e pendências.',
       },
     ],
     loginHint: {
       label: 'Login do aluno',
       code: 'CSJ-00234',
-      sub: 'Número de processo · sem email necessário',
+      sub: 'Número de processo · sem email',
     },
   },
 }

@@ -56,11 +56,7 @@ export function PortalsSection() {
       <div className="container">
         <div className="portais-intro">
           <div className="sec-label">O sistema</div>
-          <h2 className="sec-h">Um portal para cada pessoa na escola</h2>
-          <p className="sec-p" style={{ marginTop: 12 }}>
-            Cada utilizador vê só o que precisa. A secretária não vê as notas. O professor não vê as finanças. O
-            director vê tudo.
-          </p>
+          <h2 className="sec-h">Cada pessoa vê o que precisa.</h2>
         </div>
         <div className="portais-top">
           {topPortals.map((portal) => (
@@ -86,11 +82,7 @@ export function PortalsSection() {
             <div className="portal-icon portal-icon-inline" style={{ background: '#2B6044', color: '#F5F0E8' }}>
               {portalIcons.professor}
             </div>
-            <h3 className="portal-highlight-title">
-              O professor lança.
-              <br />
-              O director vê <em>na hora</em>.
-            </h3>
+            <h3 className="portal-highlight-title">Professor</h3>
             <p className="portal-highlight-desc">{portalHighlights.professor.description}</p>
             <div className="portal-highlight-list">
               {portalHighlights.professor.features.map((feature) => (
@@ -110,11 +102,7 @@ export function PortalsSection() {
             <div className="portal-icon portal-icon-inline" style={{ background: '#F5F0E8', color: '#1d4430' }}>
               {portalIcons.aluno}
             </div>
-            <h3 className="portal-highlight-title portal-highlight-title-light">
-              O aluno acompanha
-              <br />
-              o seu próprio <em>percurso</em>.
-            </h3>
+            <h3 className="portal-highlight-title portal-highlight-title-light">Aluno</h3>
             <p className="portal-highlight-desc portal-highlight-desc-light">{portalHighlights.aluno.description}</p>
             <div className="portal-highlight-list">
               {portalHighlights.aluno.features.map((feature) => (
@@ -136,6 +124,10 @@ export function PortalsSection() {
             </div>
           </div>
         </div>
+
+        <p className="sec-p" style={{ marginTop: 16 }}>
+          A secretária não vê as notas. O professor não vê as finanças. O director vê tudo.
+        </p>
       </div>
     </section>
   )
