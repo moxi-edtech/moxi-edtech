@@ -2,22 +2,22 @@ import type { Metadata } from 'next'
 
 const faqItems = [
   {
-    question: 'O KLASSE funciona para escolas públicas e privadas?'
+    question: 'O KLASSE funciona para escolas públicas e privadas?',
     answer:
       'Sim. O KLASSE é pensado para a realidade angolana, incluindo escolas públicas e privadas com diferentes tamanhos e processos.',
   },
   {
-    question: 'Preciso de instalar algum software na escola?'
+    question: 'Preciso de instalar algum software na escola?',
     answer:
       'Não. O KLASSE é uma plataforma online com acesso seguro por navegador e telemóvel, sem instalação local.',
   },
   {
-    question: 'O sistema ajuda com propinas e documentos MED?'
+    question: 'O sistema ajuda com propinas e documentos MED?',
     answer:
       'Sim. Há controlo de pagamentos, emissão de documentos e relatórios essenciais para a gestão escolar.',
   },
   {
-    question: 'Como é feita a implementação do sistema?'
+    question: 'Como é feita a implementação do sistema?',
     answer:
       'A equipa KLASSE acompanha a configuração, importação de alunos e formação da equipa escolar.',
   },
