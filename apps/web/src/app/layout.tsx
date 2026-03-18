@@ -10,6 +10,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="pt" className="h-full">
       <head>
         <link rel="manifest" href="/manifest.json" />
+        <link rel="icon" href="/logo-klasse.png" type="image/png" />
         <meta name="theme-color" content="#1F6B3B" />
         {shouldLoadGoogleFonts && (
           <link
