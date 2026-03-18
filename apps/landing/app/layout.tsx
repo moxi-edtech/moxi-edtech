@@ -6,9 +6,8 @@ import { SchemaMarkup } from './components/landing/SchemaMarkup'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'KLASSE — Sistema de Gestão Escolar para Angola',
-  description:
-    'Controlo de propinas, matrículas, documentos MED e portais para director, secretaria, professores e alunos. Feito para escolas angolanas.',
+  title: 'KLASSE — Gestão Escolar do Futuro',
+  description: 'Propinas controladas. Documentos prontos. Director com visibilidade real.',
   keywords: [
     'gestão escolar angola',
     'sistema escolar angola',
@@ -18,8 +17,8 @@ export const metadata: Metadata = {
     'matrícula digital angola',
   ],
   openGraph: {
-    title: 'KLASSE — Gestão Escolar para Angola',
-    description: 'A escola bem gerida começa aqui.',
+    title: 'KLASSE — Gestão Escolar do Futuro',
+    description: 'Propinas controladas. Documentos prontos. Director com visibilidade real.',
     url: 'https://klasse.ao',
     siteName: 'KLASSE',
     locale: 'pt_AO',
@@ -35,8 +34,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'KLASSE — Gestão Escolar para Angola',
-    description: 'A escola bem gerida começa aqui.',
+    title: 'KLASSE — Gestão Escolar do Futuro',
+    description: 'Propinas controladas. Documentos prontos. Director com visibilidade real.',
     images: ['https://klasse.ao/og-image.png'],
   },
   robots: {
