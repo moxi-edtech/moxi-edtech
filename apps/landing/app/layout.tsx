@@ -54,6 +54,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link rel="icon" href="/logo-klasse.png" type="image/png" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
         <SchemaMarkup />
       </head>
       <body>{children}</body>
