@@ -2,8 +2,12 @@ import BrandPanel from "./BrandPanel";
 import LoginForm from "./LoginForm";
 
 export const metadata = {
-  title: "Login • Klasse",
-  description: "Acesse sua conta Klasse.",
+  title: "Área de acesso KLASSE",
+  description: "Página de login da KLASSE para clientes e equipas já ativas. Esta rota é secundária na aquisição e não compete com a homepage comercial.",
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default function LoginPage() {

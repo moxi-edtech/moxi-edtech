@@ -106,7 +106,7 @@ async function provisionStudent(admin: NonNullable<ReturnType<typeof getAdminCli
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
-  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://portal.klasse.ao").replace(/\/$/, "");
+  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://app.klasse.ao").replace(/\/$/, "");
   const activationQuery = new URLSearchParams();
   if (aluno.codigo_ativacao) activationQuery.set("codigo", aluno.codigo_ativacao);
   if (token) activationQuery.set("token", token);
