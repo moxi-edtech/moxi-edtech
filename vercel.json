@@ -10,6 +10,17 @@
       ],
       "destination": "https://klasse.ao/:path*",
       "permanent": true
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "app.klasse.ao"
+        }
+      ],
+      "destination": "/redirect",
+      "permanent": false
     }
   ]
 }
