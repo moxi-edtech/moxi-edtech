@@ -7,12 +7,8 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: ["/", "/redes-escolares"],
+        allow: ["/", "/login", "/forgot-password", "/reset-password", "/mudar-senha"],
         disallow: [
-          "/login",
-          "/forgot-password",
-          "/reset-password",
-          "/mudar-senha",
           "/admin",
           "/secretaria",
           "/financeiro",

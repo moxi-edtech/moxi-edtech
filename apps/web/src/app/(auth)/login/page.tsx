@@ -8,7 +8,7 @@ const appSiteUrl = process.env.NEXT_PUBLIC_APP_SITE_URL ?? "https://app.klasse.a
 
 export const metadata = {
   title: "Área de acesso KLASSE",
-  description: "Página de login da KLASSE para clientes e equipas já ativas. Esta rota pertence ao domínio da aplicação e não compete com a homepage comercial.",
+  description: "Página de login da KLASSE para clientes e equipas já ativas. Esta rota é secundária na aquisição e não compete com a homepage comercial.",
   robots: {
     index: false,
     follow: false,
