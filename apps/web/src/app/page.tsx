@@ -26,6 +26,11 @@ export const metadata: Metadata = {
   title: "Sistema de gestão escolar em Angola para escolas e redes escolares modernas",
   description:
     "KLASSE é a plataforma de gestão escolar em Angola para propinas, matrículas, notas e presenças com operação moderna, multi-escola e foco em execução real.",
+
+export const metadata: Metadata = {
+  title: "Sistema de gestão escolar em Angola, software de gestão escolar e plataforma escolar",
+  description:
+    "KLASSE é um sistema de gestão escolar em Angola e software de gestão escolar para propinas, matrículas, notas e presenças numa plataforma escolar única.",
   alternates: {
     canonical: "/",
   },
@@ -33,6 +38,9 @@ export const metadata: Metadata = {
     title: "KLASSE — plataforma escolar moderna para escolas e redes em Angola",
     description:
       "Sistema de gestão escolar em Angola para direção, secretaria, financeiro e professores com foco em controlo, velocidade e multi-escola.",
+    title: "KLASSE — Sistema de gestão escolar em Angola e plataforma escolar para crescer com controlo",
+    description:
+      "Software de gestão escolar para escolas em Angola com gestão de propinas, matrículas, notas e presenças numa plataforma escolar única.",
     url: "/",
     images: [
       {
@@ -40,6 +48,7 @@ export const metadata: Metadata = {
         width: 1536,
         height: 1024,
         alt: "KLASSE — plataforma escolar moderna em Angola",
+        alt: "KLASSE — sistema de gestão escolar em Angola",
       },
     ],
   },
@@ -47,6 +56,9 @@ export const metadata: Metadata = {
     title: "KLASSE — plataforma escolar moderna em Angola",
     description:
       "Software de gestão escolar com propinas, matrículas, notas, presenças e operação multi-escola.",
+    title: "KLASSE — Sistema de gestão escolar em Angola",
+    description:
+      "Software de gestão escolar para propinas, matrículas, notas e presenças numa plataforma escolar única.",
     images: [socialImage],
   },
 };
@@ -65,6 +77,23 @@ const differentiators = [
   {
     title: "Escala multi-escola",
     description: "Uma plataforma para uma escola ou para uma rede inteira, com estrutura pronta para crescer com controlo.",
+const keywordBlocks = [
+  {
+    title: "Sistema de gestão escolar em Angola",
+    description:
+      "Uma operação escolar mais disciplinada para direção, secretaria, financeiro e professores, sem depender de processos manuais dispersos.",
+    icon: LayoutDashboard,
+  },
+  {
+    title: "Software de gestão escolar",
+    description:
+      "KLASSE liga fluxo académico e financeiro numa única base para escolas que precisam de controlo, rastreabilidade e execução séria.",
+    icon: Library,
+  },
+  {
+    title: "Plataforma escolar",
+    description:
+      "A plataforma escolar organiza propinas, matrículas, notas e presenças com clareza operacional para cada equipa.",
     icon: BarChart3,
   },
 ];
@@ -73,21 +102,25 @@ const productAreas = [
   {
     title: "Gestão de propinas",
     description: "Cobrança, atrasos, pagamentos e previsibilidade financeira com menos improviso.",
+    description: "Cobranças, atrasos, pagamentos e visibilidade financeira sem folhas soltas.",
     icon: Wallet,
   },
   {
     title: "Matrículas",
     description: "Admissões, rematrículas, documentos e confirmação de vagas com mais velocidade operacional.",
+    description: "Admissões, vagas, rematrículas e confirmação documental num fluxo mais previsível.",
     icon: UsersRound,
   },
   {
     title: "Notas",
     description: "Avaliações e histórico académico com menos retrabalho entre secretaria e professores.",
+    description: "Avaliações, pautas e histórico académico com menos retrabalho entre secretaria e professores.",
     icon: ClipboardCheck,
   },
   {
     title: "Presenças",
     description: "Frequência e faltas com leitura rápida para ação pedagógica e gestão diária.",
+    description: "Frequência e faltas com leitura rápida para equipa pedagógica e direção.",
     icon: CalendarCheck,
   },
 ];
@@ -98,6 +131,7 @@ const personas = [
     icon: Shield,
     items: [
       "Mais controlo sobre a escola ou grupo escolar sem depender de relatórios manuais.",
+      "Mais controlo institucional sobre operação académica e financeira.",
       "Melhor leitura de gargalos antes de virarem crise operacional.",
     ],
   },
@@ -105,43 +139,43 @@ const personas = [
     title: "Secretaria",
     icon: Users,
     items: [
-      "Fluxos de matrícula, rematrícula e documentos com menos retrabalho.",
-      "Histórico e operação diária mais organizados e previsíveis.",
+      "Matrículas, documentos e histórico com menos duplicação manual.",
+      "Fluxo diário mais rápido e menos dependente de planilhas paralelas.",
     ],
   },
   {
     title: "Financeiro",
     icon: Wallet,
     items: [
-      "Gestão de propinas com mais visibilidade e menos ruído entre cobrança e secretaria.",
-      "Base melhor para acompanhar pagamentos e inadimplência com disciplina.",
+      "Gestão de propinas com mais previsibilidade e menos ruído operacional.",
+      "Base melhor para cobrança, reconciliação e acompanhamento de inadimplência.",
     ],
   },
   {
     title: "Professores",
     icon: UserCheck,
     items: [
-      "Notas e presenças sem fricção com o resto da operação escolar.",
-      "Mais rapidez para lançar informação e menos dependência de rotinas informais.",
+      "Lançamento de notas e presenças sem fricção informal com secretaria.",
+      "Turmas e disciplinas mais organizadas para a rotina pedagógica.",
     ],
   },
 ];
 
-const objections = [
+const faqs = [
   {
-    question: "Já temos sistema. Porque trocar?",
+    question: "KLASSE é um sistema de gestão escolar em Angola?",
     answer:
-      "Ter sistema não significa ter controlo. Se a escola ainda vive de planilhas, confirmações manuais e retrabalho entre áreas, o problema continua em aberto.",
+      "Sim. A proposta comercial e o copy da homepage foram alinhados para responder diretamente à procura por sistema de gestão escolar em Angola.",
   },
   {
-    question: "O nosso maior problema é financeiro. KLASSE resolve isso?",
+    question: "É software de gestão escolar só para académico?",
     answer:
-      "Sim. O posicionamento do KLASSE não é só académico. A plataforma foi pensada para ligar propinas, pagamentos, matrícula e operação de secretaria na mesma base.",
+      "Não. A plataforma escolar cobre gestão de propinas, matrículas, notas e presenças, ligando operação académica e financeira.",
   },
   {
-    question: "Serve para uma rede escolar ou só para uma escola?",
+    question: "O login compete com a homepage pelas mesmas keywords?",
     answer:
-      "Serve para os dois cenários. O KLASSE já entra no mercado com narrativa e estrutura para multi-escola, sem sacrificar clareza operacional por unidade.",
+      "Não. O /login continua marcado como página secundária de acesso, com metadata não indexável para evitar canibalização.",
   },
 ];
 
@@ -154,7 +188,11 @@ const jsonLd = {
       url: siteUrl,
       logo: `${siteUrl}/logo-klasse.png`,
       image: socialImage,
-      areaServed: { "@type": "Country", name: "Angola" },
+      areaServed: {
+        "@type": "Country",
+        name: "Angola",
+      },
+      sameAs: [siteUrl],
     },
     {
       "@type": "SoftwareApplication",
@@ -165,16 +203,36 @@ const jsonLd = {
       url: siteUrl,
       image: socialImage,
       description:
-        "Plataforma de gestão escolar em Angola para propinas, matrículas, notas, presenças e operação multi-escola com experiência moderna.",
-      areaServed: { "@type": "Country", name: "Angola" },
+        "Sistema de gestão escolar em Angola para gestão de propinas, matrículas, notas e presenças numa plataforma escolar única.",
+      areaServed: {
+        "@type": "Country",
+        name: "Angola",
+      },
+      audience: {
+        "@type": "Audience",
+        geographicArea: {
+          "@type": "Country",
+          name: "Angola",
+        },
+      },
       featureList: [
         "Gestão de propinas",
         "Matrículas",
         "Notas",
         "Presenças",
-        "Secretaria escolar",
-        "Gestão multi-escola",
+        "Operação académica",
+        "Operação financeira",
       ],
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "AOA",
+        availability: "https://schema.org/InStock",
+      },
+      brand: {
+        "@type": "Brand",
+        name: "KLASSE",
+      },
     },
   ],
 };
@@ -198,22 +256,22 @@ export default async function Page() {
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.24em] text-klasse-gold">KLASSE</p>
                 <p className="mt-2 max-w-2xl text-sm text-slate-300">
-                  Plataforma SaaS de gestão escolar para escolas privadas e redes escolares que querem crescer com mais controlo e menos caos.
+                  Software de gestão escolar para escolas que querem crescer com mais controlo e menos improviso operacional.
                 </p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <Link
-                  href={demoHref}
+                  href={appHref}
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-klasse-gold px-5 py-3 text-sm font-semibold text-white transition hover:brightness-95"
                 >
-                  Agendar demo
+                  {appLabel}
                   <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link
-                  href={appHref}
+                  href="mailto:demo@klasse.ao?subject=Pedido%20de%20demo%20KLASSE"
                   className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:border-klasse-gold hover:text-klasse-green"
                 >
-                  {appLabel}
+                  Pedir demo
                 </Link>
               </div>
             </header>
@@ -221,30 +279,32 @@ export default async function Page() {
             <div className="grid gap-10 py-16 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
               <div className="space-y-8">
                 <div className="inline-flex items-center rounded-full border border-klasse-gold/30 bg-klasse-gold/10 px-4 py-2 text-sm font-medium text-klasse-gold">
-                  Sistema de gestão escolar em Angola para quem quer sair de processos manuais e operar com velocidade real.
+                  Sistema de gestão escolar em Angola com foco comercial e execução operacional séria.
                 </div>
                 <div className="space-y-6">
                   <h1 className="max-w-5xl text-4xl font-bold tracking-tight text-white md:text-5xl lg:text-6xl">
-                    KLASSE é a plataforma escolar moderna para escolas e redes em Angola que querem controlar propinas, matrículas, notas e presenças sem sistemas pesados e fluxos antiquados.
+                    KLASSE é o sistema de gestão escolar em Angola que funciona como software de gestão escolar e plataforma escolar para propinas, matrículas, notas e presenças.
                   </h1>
                   <p className="max-w-3xl text-lg leading-8 text-slate-300">
-                    Se a sua operação ainda depende de confirmações manuais, interfaces que travam a equipa e processos quebrados entre secretaria e financeiro, o problema não é falta de esforço. É falta de plataforma certa.
+                    Se a sua escola ainda opera com Excel, WhatsApp e confirmações manuais, você está a perder margem.
+                    KLASSE posiciona-se como plataforma escolar para dar previsibilidade à direção, velocidade à secretaria,
+                    disciplina ao financeiro e fluidez aos professores.
                   </p>
                 </div>
 
                 <div className="flex flex-col gap-4 sm:flex-row">
                   <Link
-                    href={demoHref}
+                    href="mailto:demo@klasse.ao?subject=Pedido%20de%20demo%20KLASSE"
                     className="inline-flex items-center justify-center gap-2 rounded-xl bg-klasse-gold px-6 py-4 text-sm font-semibold text-white shadow-sm transition hover:brightness-95"
                   >
-                    Ver KLASSE na prática
+                    Pedir demo
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                   <Link
-                    href="/redes-escolares"
+                    href={appHref}
                     className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-6 py-4 text-sm font-semibold text-slate-950 transition hover:border-klasse-gold hover:text-klasse-green"
                   >
-                    Ver solução multi-escola
+                    {appLabel}
                   </Link>
                 </div>
               </div>
@@ -252,12 +312,18 @@ export default async function Page() {
               <div className="rounded-xl border border-white/10 bg-slate-900/80 p-6 shadow-sm">
                 <div className="flex items-center gap-3 text-klasse-gold">
                   <BookOpen className="h-5 w-5" />
-                  <span className="text-sm font-semibold uppercase tracking-[0.24em]">Porque KLASSE ganha</span>
+                  <span className="text-sm font-semibold uppercase tracking-[0.24em]">Proposta comercial</span>
                 </div>
                 <div className="mt-6 space-y-4 text-sm leading-6 text-slate-300">
-                  <p>Mais moderno do que sistemas que ainda parecem pesados, manuais e lentos para a equipa.</p>
-                  <p>Mais disciplinado na ligação entre direção, secretaria, financeiro e professores.</p>
-                  <p>Mais preparado para uma escola ou uma rede inteira, sem perder clareza operacional.</p>
+                  <p>
+                    Sistema de gestão escolar em Angola para escolas privadas e equipas que precisam de mais rigor operacional.
+                  </p>
+                  <p>
+                    Software de gestão escolar com foco em propinas, matrículas, notas e presenças numa operação conectada.
+                  </p>
+                  <p>
+                    Plataforma escolar que reduz ruído entre direção, secretaria, financeiro e professores.
+                  </p>
                 </div>
               </div>
             </div>
@@ -266,23 +332,23 @@ export default async function Page() {
 
         <section className="mx-auto max-w-7xl px-6 py-16 lg:px-10">
           <div className="max-w-3xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-klasse-gold">Posicionamento competitivo</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-klasse-gold">Intenção de pesquisa</p>
             <h2 className="mt-4 text-3xl font-bold text-white md:text-4xl">
-              O KLASSE não quer ser só mais um sistema escolar. Quer ser a opção mais moderna e mais séria para executar operação real.
+              Headings e copy visível alinhados com as pesquisas comerciais que queremos ganhar.
             </h2>
           </div>
 
           <div className="mt-10 grid gap-6 md:grid-cols-3">
-            {differentiators.map((item) => {
-              const Icon = item.icon;
+            {keywordBlocks.map((block) => {
+              const Icon = block.icon;
 
               return (
-                <article key={item.title} className="rounded-xl border border-white/10 bg-slate-900/70 p-6 shadow-sm">
+                <article key={block.title} className="rounded-xl border border-white/10 bg-slate-900/70 p-6 shadow-sm">
                   <div className="flex items-center gap-3 text-klasse-gold">
                     <Icon className="h-5 w-5" />
-                    <h3 className="text-xl font-semibold text-white">{item.title}</h3>
+                    <h3 className="text-xl font-semibold text-white">{block.title}</h3>
                   </div>
-                  <p className="mt-4 text-sm leading-7 text-slate-300">{item.description}</p>
+                  <p className="mt-4 text-sm leading-7 text-slate-300">{block.description}</p>
                 </article>
               );
             })}
@@ -292,9 +358,9 @@ export default async function Page() {
         <section className="border-y border-white/10 bg-slate-900/60">
           <div className="mx-auto max-w-7xl px-6 py-16 lg:px-10">
             <div className="max-w-3xl">
-              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-klasse-gold">Módulos críticos</p>
+              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-klasse-gold">Módulos com intenção comercial</p>
               <h2 className="mt-4 text-3xl font-bold text-white md:text-4xl">
-                É aqui que as escolas sentem o custo do caos — e é aqui que o KLASSE precisa vencer.
+                O software de gestão escolar precisa mostrar claramente o que resolve.
               </h2>
             </div>
 
@@ -318,9 +384,9 @@ export default async function Page() {
 
         <section className="mx-auto max-w-7xl px-6 py-16 lg:px-10">
           <div className="max-w-3xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-klasse-gold">Página por persona</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-klasse-gold">Benefícios por persona</p>
             <h2 className="mt-4 text-3xl font-bold text-white md:text-4xl">
-              O KLASSE precisa vender para quem decide e para quem executa todos os dias.
+              A homepage precisa vender para quem decide e para quem executa.
             </h2>
           </div>
 
@@ -350,58 +416,19 @@ export default async function Page() {
           </div>
         </section>
 
-        <section className="border-t border-white/10 bg-slate-950/90">
-          <div className="mx-auto max-w-7xl px-6 py-16 lg:px-10">
-            <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-klasse-gold">Redes escolares</p>
-                <h2 className="mt-4 text-3xl font-bold text-white md:text-4xl">
-                  Se o KLASSE quer vencer o mercado, precisa dominar a conversa de multi-escola antes dos outros.
-                </h2>
-                <p className="mt-4 max-w-3xl text-base leading-7 text-slate-300">
-                  O ângulo mais forte para bater sistemas antigos e plataformas genéricas é mostrar que o KLASSE foi desenhado para escalar com controlo — por escola, por unidade e por grupo.
-                </p>
-              </div>
-              <div className="rounded-xl border border-white/10 bg-slate-900/70 p-6 shadow-sm">
-                <div className="flex items-center gap-3 text-klasse-gold">
-                  <UsersRound className="h-5 w-5" />
-                  <h3 className="text-lg font-semibold text-white">Próximo passo comercial</h3>
-                </div>
-                <p className="mt-4 text-sm leading-7 text-slate-300">
-                  Criámos a página dedicada para redes escolares e grupos com várias unidades. Esse é o flanco onde o KLASSE pode parecer mais moderno, mais sério e mais escalável do que a concorrência.
-                </p>
-                <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                  <Link
-                    href="/redes-escolares"
-                    className="inline-flex items-center justify-center rounded-xl bg-klasse-gold px-5 py-3 text-sm font-semibold text-white transition hover:brightness-95"
-                  >
-                    Abrir página multi-escola
-                  </Link>
-                  <Link
-                    href={demoHref}
-                    className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-950 transition hover:border-klasse-gold hover:text-klasse-green"
-                  >
-                    Falar com comercial
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="mx-auto max-w-5xl px-6 pb-20 pt-16 lg:px-10">
+        <section className="mx-auto max-w-5xl px-6 pb-20 lg:px-10">
           <div className="max-w-3xl">
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-klasse-gold">Objeções</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-klasse-gold">FAQ</p>
             <h2 className="mt-4 text-3xl font-bold text-white md:text-4xl">
-              Quando o mercado hesita, o KLASSE precisa responder com clareza e sem rodeios.
+              FAQ para reforçar relevância e evitar canibalização entre homepage e login.
             </h2>
           </div>
 
           <div className="mt-10 space-y-4">
-            {objections.map((item) => (
-              <article key={item.question} className="rounded-xl border border-white/10 bg-slate-900/70 p-6 shadow-sm">
-                <h3 className="text-lg font-semibold text-white">{item.question}</h3>
-                <p className="mt-3 text-sm leading-7 text-slate-300">{item.answer}</p>
+            {faqs.map((faq) => (
+              <article key={faq.question} className="rounded-xl border border-white/10 bg-slate-900/70 p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-white">{faq.question}</h3>
+                <p className="mt-3 text-sm leading-7 text-slate-300">{faq.answer}</p>
               </article>
             ))}
           </div>
