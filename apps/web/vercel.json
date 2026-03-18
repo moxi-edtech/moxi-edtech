@@ -1,0 +1,15 @@
+{
+  "redirects": [
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "app.klasse.ao"
+        }
+      ],
+      "destination": "/redirect",
+      "permanent": false
+    }
+  ]
+}
