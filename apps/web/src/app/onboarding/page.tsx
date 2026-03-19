@@ -79,10 +79,28 @@ const CLASSES_INICIAL: ClasseConfig[] = [
   { id: "9",   nome: "9ª Classe", nivel: "ESG", activa: true },
 ];
 
-const MUNICIPIOS = [
-  "Belas","Cazenga","Icolo e Bengo","Kilamba Kiaxi","Luanda",
-  "Maianga","Mumbwa","Quissama","Rangel","Talatona","Viana","Outro",
-];
+const MUNICIPIOS_POR_PROVINCIA: Record<string, string[]> = {
+  "Bengo": ["Ambriz", "Bula Atumba", "Dande", "Dembos", "Nambuangongo", "Pango Aluquém"],
+  "Benguela": ["Balombo", "Baía Farta", "Benguela", "Bocoio", "Catumbela", "Chongorói", "Cubal", "Ganda", "Lobito"],
+  "Bié": ["Andulo", "Camacupa", "Catabola", "Chinguar", "Chitembo", "Cuemba", "Cunhinga", "Kuito", "Nharea"],
+  "Cabinda": ["Belize", "Buco-Zau", "Cabinda", "Cacongo"],
+  "Cuando Cubango": ["Calai", "Cuangar", "Cuchi", "Cuito Cuanavale", "Dirico", "Mavinga", "Menongue", "Nancova", "Rivungo"],
+  "Cuanza Norte": ["Ambaca", "Banga", "Bolongongo", "Cambambe", "Cazengo", "Golungo Alto", "Lucala", "Ngonguembo", "Quiculungo", "Samba Caju"],
+  "Cuanza Sul": ["Amboim", "Cassongue", "Cela", "Conda", "Ebo", "Libolo", "Mussende", "Porto Amboim", "Quibala", "Quilenda", "Seles", "Sumbe"],
+  "Cunene": ["Cahama", "Cuanhama", "Curoca", "Cuvelai", "Namacunde", "Ombadja"],
+  "Huambo": ["Bailundo", "Caála", "Catchiungo", "Ecunha", "Huambo", "Londuimbali", "Longonjo", "Mungo", "Tchicala Tcholoanga", "Tchindjenje", "Ukuma"],
+  "Huíla": ["Caconda", "Cacula", "Caluquembe", "Chiange", "Chibia", "Chicomba", "Chipindo", "Cuvango", "Humpata", "Jamba", "Lubango", "Matala", "Quilengues", "Quipungo"],
+  "Luanda": ["Belas", "Cacuaco", "Cazenga", "Icolo e Bengo", "Kilamba Kiaxi", "Luanda", "Maianga", "Quissama", "Rangel", "Talatona", "Viana"],
+  "Lunda Norte": ["Cambulo", "Capenda Camulemba", "Caungula", "Chitato", "Cuango", "Cuilo", "Lubalo", "Lucapa", "Lóvua", "Xá-Muteba"],
+  "Lunda Sul": ["Cacolo", "Dala", "Muconda", "Saurimo"],
+  "Malanje": ["Cacuso", "Calandula", "Cambundi-Catembo", "Cangandala", "Caombo", "Cuaba Nzogo", "Cunda-dia-Baze", "Kiwaba Nzoji", "Luquembo", "Malanje", "Marimba", "Massango", "Mucari", "Quela", "Quirima"],
+  "Moxico": ["Camanongue", "Cameia", "Cazombo", "Luau", "Luena", "Luchazes", "Lumbala N'guimbo", "Léua"],
+  "Namibe": ["Bibala", "Camucuio", "Moçâmedes", "Tombwa", "Virei"],
+  "Uíge": ["Alto Cauale", "Ambuila", "Bembe", "Buengas", "Bungo", "Damba", "Maquela do Zombo", "Mucaba", "Negage", "Puri", "Quimbele", "Quitexe", "Songo", "Uíge"],
+  "Zaire": ["Cuimba", "M'Banza Kongo", "Noqui", "Nzeto", "Soyo", "Tomboco"],
+};
+
+const PROVINCIAS = Object.keys(MUNICIPIOS_POR_PROVINCIA);
 
 const FAIXAS_PROPINA = [
   { value: "ate_5k", label: "Até 5.000 Kz / mês" },
@@ -429,21 +447,35 @@ export default function OnboardingPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
+                  <Label required>Província</Label>
+                  <Select
+                    value={form.escola_provincia}
+                    onChange={e => {
+                      update("escola_provincia", e.target.value);
+                      update("escola_municipio", "");
+                    }}
+                  >
+                    <option value="">Seleccionar...</option>
+                    {PROVINCIAS.map((provincia) => (
+                      <option key={provincia} value={provincia}>
+                        {provincia}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div>
                   <Label required>Município</Label>
                   <Select
                     value={form.escola_municipio}
                     onChange={e => update("escola_municipio", e.target.value)}
                   >
                     <option value="">Seleccionar...</option>
-                    {MUNICIPIOS.map(m => <option key={m}>{m}</option>)}
+                    {(MUNICIPIOS_POR_PROVINCIA[form.escola_provincia] ?? []).map((municipio) => (
+                      <option key={municipio} value={municipio}>
+                        {municipio}
+                      </option>
+                    ))}
                   </Select>
-                </div>
-                <div>
-                  <Label>Província</Label>
-                  <Input
-                    value={form.escola_provincia}
-                    onChange={e => update("escola_provincia", e.target.value)}
-                  />
                 </div>
               </div>
 

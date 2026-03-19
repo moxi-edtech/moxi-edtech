@@ -9,11 +9,10 @@ interface NavbarProps {
   appUrl: string
   links: NavLink[]
   primaryCta: { label: string; href: string }
-  secondaryCta: { label: string; href: string }
   onMenuToggle: () => void
 }
 
-export function Navbar({ appUrl, links, primaryCta, secondaryCta, onMenuToggle }: NavbarProps) {
+export function Navbar({ appUrl, links, primaryCta, onMenuToggle }: NavbarProps) {
   useEffect(() => {
     const navbar = document.getElementById('navbar')
     const panelStack = document.querySelector<HTMLElement>('.panel-stack')
@@ -59,9 +58,6 @@ export function Navbar({ appUrl, links, primaryCta, secondaryCta, onMenuToggle }
             ))}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }} className="z nav-actions">
-            <a href={secondaryCta.href} className="btn-s" style={{ padding: '8px 18px', fontSize: 13 }}>
-              {secondaryCta.label}
-            </a>
             <a href={primaryCta.href} className="nav-cta">
               {primaryCta.label}
             </a>

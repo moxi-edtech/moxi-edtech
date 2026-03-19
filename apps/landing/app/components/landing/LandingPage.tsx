@@ -6,11 +6,11 @@ import { footerLinks, hero, navLinks, pricingNote, pricingIntro, pricingPlans } 
 import { useRevealOnScroll } from '../../hooks/useRevealOnScroll'
 
 import { AudienceSection } from './sections/AudienceSection'
-import { FinalCtaSection } from './sections/FinalCtaSection'
 import { FooterSection } from './sections/FooterSection'
 import { HeroSection } from './sections/HeroSection'
 import { MobileMenu } from './sections/MobileMenu'
 import { Navbar } from './sections/Navbar'
+import { OnboardingLeadSection } from './sections/OnboardingLeadSection'
 import { PilotSection } from './sections/PilotSection'
 import { PortalsSection } from './sections/PortalsSection'
 import { ProductSection } from './sections/ProductSection'
@@ -24,12 +24,11 @@ export function LandingPage() {
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.klasse.ao'
   const scheduleUrl =
-    process.env.NEXT_PUBLIC_SCHEDULE_URL ?? 'https://wa.me/19981682877?text=Quero%20saber%20mais%20sobre%20o%20KLASSE'
+    process.env.NEXT_PUBLIC_SCHEDULE_URL ?? 'https://wa.me/244933349106?text=Quero%20saber%20mais%20sobre%20o%20KLASSE'
 
-  const primaryCta = { label: hero.primaryCta, href: `${appUrl}/onboarding` }
+  const primaryCta = { label: hero.primaryCta, href: '#onboarding' }
   const navPrimaryCta = { label: 'Começar', href: primaryCta.href }
   const mobilePrimaryCta = { label: 'Começar agora', href: primaryCta.href }
-  const secondaryCta = { label: hero.secondaryCta, href: scheduleUrl }
 
   return (
     <>
@@ -37,14 +36,12 @@ export function LandingPage() {
         appUrl={appUrl}
         links={navLinks}
         primaryCta={navPrimaryCta}
-        secondaryCta={secondaryCta}
         onMenuToggle={() => setIsMenuOpen((prev) => !prev)}
       />
       <MobileMenu
         isOpen={isMenuOpen}
         links={navLinks}
         primaryCta={mobilePrimaryCta}
-        secondaryCta={secondaryCta}
         loginHref={`${appUrl}/login`}
         onClose={() => setIsMenuOpen(false)}
       />
@@ -55,7 +52,6 @@ export function LandingPage() {
             eyebrow={hero.eyebrow}
             subtitle={hero.subtitle}
             primaryCta={primaryCta}
-            secondaryCta={secondaryCta}
             note={hero.note}
           />
         </div>
@@ -63,7 +59,7 @@ export function LandingPage() {
           <WaveDivider />
           <ProductSection />
         </div>
-        <div className="panel">
+        <div className="panel panel--audience">
           <AudienceSection />
         </div>
         <div className="panel panel--portals">
@@ -87,9 +83,11 @@ export function LandingPage() {
         <div className="panel">
           <PilotSection />
         </div>
-        <div className="panel">
-          <FinalCtaSection primaryCta={primaryCta} secondaryCta={secondaryCta} />
-          <FooterSection links={footerLinks} />
+        <div className="panel panel--onboarding">
+          <OnboardingLeadSection scheduleUrl={scheduleUrl} />
+          <div className="panel-footer">
+            <FooterSection links={footerLinks} />
+          </div>
         </div>
       </div>
     </>

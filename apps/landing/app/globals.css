@@ -38,11 +38,26 @@ body::after{content:'';position:fixed;inset:0;background-image:url("data:image/s
 .panel-stack{height:100vh;overflow-y:scroll;overflow-x:hidden;scroll-snap-type:y mandatory;scroll-padding-top:var(--nav-h);overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y}
 .panel{height:100vh;scroll-snap-align:start;scroll-snap-stop:always;box-sizing:border-box}
 .panel--hero{background:var(--dk)}
-.panel--portals{height:auto;min-height:100vh;overflow:visible;scroll-snap-stop:normal}
-.panel--portals .portais{height:auto;overflow:visible}
+.panel--portals{height:100vh;scroll-snap-stop:always}
+.panel--portals .portais{height:100%}
 .panel--pricing-desktop{overflow:hidden}
 .panel--pricing-desktop .precos{height:100%;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
 .panel--pricing-mobile{display:none}
+.panel--audience{height:100vh;scroll-snap-stop:always}
+.panel--onboarding{display:flex;flex-direction:column;height:auto;min-height:100vh;scroll-snap-stop:normal;overflow:visible}
+.panel--onboarding .onboarding-lead{flex:1}
+.panel--onboarding .panel-footer{margin-top:auto;flex-shrink:0}
+.onboarding-lead{padding:clamp(64px,12vh,120px) 0;background:var(--s1)}
+.onboarding-lead__header{max-width:600px;margin-bottom:32px}
+.onboarding-lead__form{background:var(--bg);border:1px solid var(--bd);border-radius:20px;padding:32px}
+.onboarding-lead__grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.onboarding-lead__field{display:flex;flex-direction:column;gap:8px}
+.onboarding-lead__field span{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--t3)}
+.onboarding-lead__field--full{grid-column:1 / -1}
+.onboarding-lead__field--honeypot{position:absolute;left:-10000px;top:auto;width:1px;height:1px;overflow:hidden}
+.lead-input{width:100%;padding:14px 16px;border:1px solid var(--bd);border-radius:12px;font-size:14px;font-family:'Manrope',sans-serif;color:var(--t1);background:#fff;outline:none;transition:border-color .2s,box-shadow .2s}
+.lead-input:focus{border-color:var(--g);box-shadow:0 0 0 4px rgba(43,96,68,.12)}
+.onboarding-lead__actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
 .seo-page{padding:clamp(96px,18vh,140px) 0 clamp(64px,12vh,120px)}
 .seo-header{max-width:680px}
 .seo-block{margin-top:clamp(32px,6vh,56px);max-width:760px}

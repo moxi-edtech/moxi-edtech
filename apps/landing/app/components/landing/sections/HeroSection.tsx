@@ -5,11 +5,10 @@ interface HeroSectionProps {
   eyebrow: string
   subtitle: string
   primaryCta: { label: string; href: string }
-  secondaryCta: { label: string; href: string }
   note: string
 }
 
-export function HeroSection({ titleLines, eyebrow, subtitle, primaryCta, secondaryCta, note }: HeroSectionProps) {
+export function HeroSection({ titleLines, eyebrow, subtitle, primaryCta, note }: HeroSectionProps) {
   return (
     <section className="hero z section-accent">
       <div className="container">
@@ -28,9 +27,6 @@ export function HeroSection({ titleLines, eyebrow, subtitle, primaryCta, seconda
             <div className="hero-ctas">
               <a href={primaryCta.href} className="btn-p">
                 {primaryCta.label}
-              </a>
-              <a href={secondaryCta.href} className="btn-s">
-                {secondaryCta.label}
               </a>
             </div>
             <div className="hero-proof">
