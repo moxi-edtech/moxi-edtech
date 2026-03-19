@@ -32,16 +32,16 @@ const faqSchema = {
 }
 
 export const metadata: Metadata = {
-  title: 'Sistema de Gestão Escolar em Angola | KLASSE',
+  title: 'Sistema de Gestão Escolar | KLASSE',
   description:
-    'O KLASSE é um sistema de gestão escolar desenvolvido para escolas em Angola. Controle alunos, notas, turmas, horários e pagamentos numa única plataforma.',
+    'O KLASSE é um sistema de gestão escolar focado em controlo operacional. Controle alunos, notas, turmas, horários e pagamentos numa única plataforma.',
   alternates: {
     canonical: 'https://klasse.ao/sistema-de-gestao-escolar',
   },
   openGraph: {
-    title: 'Sistema de Gestão Escolar em Angola | KLASSE',
+    title: 'Sistema de Gestão Escolar | KLASSE',
     description:
-      'Gestão escolar completa para Angola: alunos, notas, turmas, horários e pagamentos numa única plataforma.',
+      'Gestão escolar completa: alunos, notas, turmas, horários e pagamentos numa única plataforma.',
     url: 'https://klasse.ao/sistema-de-gestao-escolar',
     siteName: 'KLASSE',
     locale: 'pt_AO',
@@ -57,9 +57,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Sistema de Gestão Escolar em Angola | KLASSE',
+    title: 'Sistema de Gestão Escolar | KLASSE',
     description:
-      'Gestão escolar completa para Angola: alunos, notas, turmas, horários e pagamentos numa única plataforma.',
+      'Gestão escolar completa: alunos, notas, turmas, horários e pagamentos numa única plataforma.',
     images: ['https://klasse.ao/og-image.png'],
   },
 }
@@ -73,13 +73,13 @@ export default function SistemaGestaoEscolarPage() {
           <div className="sec-eyebrow">KLASSE</div>
           <h1 className="sec-title">Software de gestão escolar para escolas que querem crescer com mais controlo e menos improviso operacional.</h1>
           <p className="sec-sub">
-            Sistema de gestão escolar em Angola com foco comercial e execução operacional séria.
+            Sistema de gestão escolar para escolas em Angola com foco comercial e execução operacional séria.
           </p>
           <div className="seo-actions">
             <a className="btn-p" href="/login">
               Aceder ao sistema
             </a>
-            <a className="btn-s" href="/#contato">
+            <a className="btn-s" href="/#contacto">
               Pedir demo
             </a>
           </div>
@@ -91,6 +91,7 @@ export default function SistemaGestaoEscolarPage() {
             escolar para propinas, matrículas, notas e presenças. Se a sua escola ainda opera com Excel, WhatsApp e
             confirmações manuais, você está a perder margem. KLASSE posiciona-se como plataforma escolar para dar
             previsibilidade à direção, velocidade à secretaria, disciplina ao financeiro e fluidez aos professores.
+            É uma resposta direta à realidade escolar angolana.
           </p>
         </div>
 
@@ -114,7 +115,7 @@ export default function SistemaGestaoEscolarPage() {
             </div>
           </div>
           <div className="seo-actions">
-            <a className="btn-p" href="/#contato">
+            <a className="btn-p" href="/#contacto">
               Pedir demo
             </a>
             <a className="btn-s" href="/login">

@@ -7,12 +7,11 @@ interface MobileMenuProps {
   isOpen: boolean
   links: NavLink[]
   primaryCta: { label: string; href: string }
-  secondaryCta: { label: string; href: string }
   loginHref: string
   onClose: () => void
 }
 
-export function MobileMenu({ isOpen, links, primaryCta, secondaryCta, loginHref, onClose }: MobileMenuProps) {
+export function MobileMenu({ isOpen, links, primaryCta, loginHref, onClose }: MobileMenuProps) {
   return (
     <div className={`mobile-menu${isOpen ? ' open' : ''}`} id="mobileMenu">
       <button className="close-btn" onClick={onClose} type="button">
@@ -25,9 +24,6 @@ export function MobileMenu({ isOpen, links, primaryCta, secondaryCta, loginHref,
       ))}
       <a href={primaryCta.href} className="btn-p" onClick={onClose}>
         {primaryCta.label}
-      </a>
-      <a href={secondaryCta.href} className="btn-s" onClick={onClose}>
-        {secondaryCta.label}
       </a>
       <a href={loginHref} className="btn-s" onClick={onClose}>
         Entrar
