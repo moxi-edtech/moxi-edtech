@@ -20,7 +20,7 @@ export default function SecretariaEscolarPage() {
             Matrículas, documentos e histórico organizados para reduzir improviso e acelerar o fluxo diário.
           </p>
           <div className="seo-actions">
-            <a className="btn-p" href="/#contato">
+            <a className="btn-p" href="/#contacto">
               Pedir demo
             </a>
             <a className="btn-s" href="/login">

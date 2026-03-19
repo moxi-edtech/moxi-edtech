@@ -140,8 +140,12 @@ function PricingIntro({ intro }: { intro: string }) {
 
 export function PricingPanel({ plan, intro, note, appUrl, showIntro, showNote }: PricingPanelProps) {
   const sectionId = showIntro ? 'precos' : undefined
+  const centerPanel = !showIntro
   return (
-    <section className="precos precos-dark z reveal section-accent" id={sectionId}>
+    <section
+      className={`precos precos-dark z reveal section-accent${centerPanel ? ' precos--center' : ''}`}
+      id={sectionId}
+    >
       <div className="container">
         {showIntro && <PricingIntro intro={intro} />}
         <div className="precos-grid precos-grid-dark">

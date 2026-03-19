@@ -20,7 +20,7 @@ export default function MatriculasEscolaresPage() {
             Admissões, vagas e rematrículas num fluxo disciplinado para secretarias que precisam de previsibilidade.
           </p>
           <div className="seo-actions">
-            <a className="btn-p" href="/#contato">
+            <a className="btn-p" href="/#contacto">
               Pedir demo
             </a>
             <a className="btn-s" href="/login">

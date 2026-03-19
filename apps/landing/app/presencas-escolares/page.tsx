@@ -20,7 +20,7 @@ export default function PresencasEscolaresPage() {
             Frequência organizada para professores, secretaria e direção, sem relatórios manuais dispersos.
           </p>
           <div className="seo-actions">
-            <a className="btn-p" href="/#contato">
+            <a className="btn-p" href="/#contacto">
               Pedir demo
             </a>
             <a className="btn-s" href="/login">
