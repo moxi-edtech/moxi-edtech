@@ -5,12 +5,64 @@ import {
   type PostFiscalDocumentoInput,
   postFiscalDocumentoSchema,
 } from "@/lib/schemas/fiscal-documento.schema";
+import { signFiscalCanonicalString } from "@/lib/fiscal/kmsSigner";
+import type { Database, Json } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
 type JsonRecord = Record<string, unknown>;
+
+type FiscalEmitirDocumentoArgs = {
+  p_empresa_id: string;
+  p_serie_id: string;
+  p_tipo_documento: string;
+  p_prefixo_serie: string;
+  p_origem_documento: string;
+  p_cliente: Json;
+  p_documento_origem_id?: string;
+  p_rectifica_documento_id?: string;
+  p_invoice_date: string;
+  p_moeda: string;
+  p_taxa_cambio_aoa?: number;
+  p_itens: Json;
+  p_metadata?: Json;
+  p_assinatura_base64?: string;
+};
+
+type FiscalEmitirDocumentoResult = {
+  ok: boolean;
+  documento_id: string;
+  numero: number;
+  numero_formatado: string;
+  hash_control: string;
+  key_version: number;
+  status?: string;
+  canonical_string?: string;
+};
+
+type FiscalFinalizarAssinaturaArgs = {
+  p_documento_id: string;
+  p_assinatura_base64: string;
+  p_hash_control: string;
+  p_canonical_string: string;
+};
+
+type FiscalDatabase = Database & {
+  public: {
+    Functions: Database["public"]["Functions"] & {
+      fiscal_emitir_documento: {
+        Args: FiscalEmitirDocumentoArgs;
+        Returns: FiscalEmitirDocumentoResult;
+      };
+      fiscal_finalizar_assinatura: {
+        Args: FiscalFinalizarAssinaturaArgs;
+        Returns: FiscalEmitirDocumentoResult;
+      };
+    };
+  };
+};
 
 type FiscalSerieLookup = {
   id: string;
@@ -38,6 +90,19 @@ function jsonError(status: number, code: string, message: string, details?: Json
   );
 }
 
+function mapRpcError(message: string) {
+  if (message.startsWith("AUTH:")) {
+    return { status: 403, code: "FISCAL_FORBIDDEN" };
+  }
+  if (message.startsWith("STATE:")) {
+    return { status: 409, code: "FISCAL_STATE_CONFLICT" };
+  }
+  if (message.startsWith("DATA:")) {
+    return { status: 400, code: "FISCAL_DATA_INVALID" };
+  }
+  return { status: 500, code: "FISCAL_RPC_FAILED" };
+}
+
 async function parseRequestBody(req: Request) {
   try {
     return await req.json();
@@ -60,7 +125,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const supabase = await supabaseRouteClient<any>();
+    const supabase = await supabaseRouteClient<FiscalDatabase>();
     const {
       data: { user },
       error: authError,
@@ -72,7 +137,7 @@ export async function POST(req: Request) {
       });
     }
 
-    const escolaId = await resolveEscolaIdForUser(supabase as any, user.id);
+    const escolaId = await resolveEscolaIdForUser(supabase, user.id);
     const authz = await requireFiscalAccess({
       supabase,
       userId: user.id,
@@ -104,29 +169,117 @@ export async function POST(req: Request) {
       );
     }
 
-    const activeKey = await resolveChaveActiva({
-      supabase,
-      empresaId: parsed.data.empresa_id,
-      requestId,
-    });
+    const rpcParams: FiscalEmitirDocumentoArgs = {
+      p_empresa_id: parsed.data.empresa_id,
+      p_serie_id: semanticSeries.data.id,
+      p_tipo_documento: parsed.data.tipo_documento,
+      p_prefixo_serie: parsed.data.prefixo_serie,
+      p_origem_documento: parsed.data.origem_documento,
+      p_cliente: parsed.data.cliente as Json,
+      p_invoice_date: parsed.data.invoice_date,
+      p_moeda: parsed.data.moeda,
+      p_itens: parsed.data.itens as Json,
+      p_assinatura_base64: "",
+    };
 
-    if (!activeKey.ok) {
-      return jsonError(activeKey.status, activeKey.code, activeKey.message, activeKey.details);
+    if (parsed.data.metadata) {
+      rpcParams.p_metadata = parsed.data.metadata as Json;
     }
 
-    return jsonError(
-      501,
-      "FISCAL_EMISSAO_ATOMICA_PENDENTE",
-      "A emissão fiscal permanece bloqueada até a introdução da RPC atómica que una reserva de número, assinatura e persistência sem risco de buracos na sequência.",
-      {
-        request_id: requestId,
-        empresa_id: parsed.data.empresa_id,
-        serie_id: semanticSeries.data.id,
-        tipo_documento: parsed.data.tipo_documento,
-        prefixo_serie: parsed.data.prefixo_serie,
-        origem_documento: parsed.data.origem_documento,
-        key_version: activeKey.data.key_version,
+    if (parsed.data.documento_origem_id) {
+      rpcParams.p_documento_origem_id = parsed.data.documento_origem_id;
+    }
+
+    if (parsed.data.rectifica_documento_id) {
+      rpcParams.p_rectifica_documento_id = parsed.data.rectifica_documento_id;
+    }
+
+    if (parsed.data.taxa_cambio_aoa != null) {
+      rpcParams.p_taxa_cambio_aoa = parsed.data.taxa_cambio_aoa;
+    }
+
+    const { data: rpcData, error: rpcError } = await supabase.rpc(
+      "fiscal_emitir_documento",
+      rpcParams
+    );
+
+    if (rpcError) {
+      const mapped = mapRpcError(rpcError.message ?? "Falha ao emitir documento fiscal.");
+      return jsonError(
+        mapped.status,
+        mapped.code,
+        rpcError.message || "Falha ao emitir documento fiscal.",
+        {
+          request_id: requestId,
+          empresa_id: parsed.data.empresa_id,
+          serie_id: semanticSeries.data.id,
+        }
+      );
+    }
+
+    if (!rpcData?.ok) {
+      return jsonError(
+        500,
+        "FISCAL_RPC_INCONSISTENTE",
+        "Resposta inesperada ao emitir documento fiscal.",
+        { request_id: requestId }
+      );
+    }
+
+    if (rpcData.status === "pendente_assinatura" && rpcData.canonical_string) {
+      const assinatura = await signFiscalCanonicalString(rpcData.canonical_string);
+      const { data: finalizeData, error: finalizeError } = await supabase.rpc(
+        "fiscal_finalizar_assinatura",
+        {
+          p_documento_id: rpcData.documento_id,
+          p_assinatura_base64: assinatura,
+          p_hash_control: rpcData.hash_control,
+          p_canonical_string: rpcData.canonical_string,
+        }
+      );
+
+      if (finalizeError) {
+        const mapped = mapRpcError(
+          finalizeError.message ?? "Falha ao finalizar assinatura fiscal."
+        );
+        return jsonError(
+          mapped.status,
+          mapped.code,
+          finalizeError.message || "Falha ao finalizar assinatura fiscal.",
+          {
+            request_id: requestId,
+            empresa_id: parsed.data.empresa_id,
+            documento_id: rpcData.documento_id,
+          }
+        );
       }
+
+      if (!finalizeData?.ok) {
+        return jsonError(
+          500,
+          "FISCAL_FINALIZE_INCONSISTENTE",
+          "Resposta inesperada ao finalizar assinatura fiscal.",
+          { request_id: requestId }
+        );
+      }
+
+      return NextResponse.json(
+        {
+          ok: true,
+          data: finalizeData,
+          request_id: requestId,
+        },
+        { status: 201 }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        ok: true,
+        data: rpcData,
+        request_id: requestId,
+      },
+      { status: 201 }
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro interno ao preparar emissão fiscal.";
@@ -282,41 +435,4 @@ async function resolveSerieSemantica({
   return { ok: true as const, data: rows[0] };
 }
 
-async function resolveChaveActiva({
-  supabase,
-  empresaId,
-  requestId,
-}: {
-  supabase: any;
-  empresaId: string;
-  requestId: string;
-}) {
-  const { data, error } = await supabase
-    .from("fiscal_chaves")
-    .select("key_version, status, private_key_ref")
-    .eq("empresa_id", empresaId)
-    .eq("status", "active")
-    .maybeSingle();
-
-  if (error) {
-    return {
-      ok: false as const,
-      status: 500,
-      code: "CHAVE_LOOKUP_FAILED",
-      message: error.message || "Falha ao localizar a chave fiscal activa.",
-      details: { request_id: requestId, empresa_id: empresaId },
-    };
-  }
-
-  if (!data) {
-    return {
-      ok: false as const,
-      status: 409,
-      code: "CHAVE_FISCAL_INDISPONIVEL",
-      message: "A empresa não possui chave fiscal activa para emissão.",
-      details: { request_id: requestId, empresa_id: empresaId },
-    };
-  }
-
-  return { ok: true as const, data };
-}
+// A validação de chave fiscal activa ocorre na RPC atómica.
