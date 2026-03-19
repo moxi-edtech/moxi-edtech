@@ -20,7 +20,7 @@ export default function NotasEscolaresPage() {
             Avaliações, pautas e histórico académico ligados ao fluxo real da escola, sem retrabalho informal.
           </p>
           <div className="seo-actions">
-            <a className="btn-p" href="/#contato">
+            <a className="btn-p" href="/#contacto">
               Pedir demo
             </a>
             <a className="btn-s" href="/login">

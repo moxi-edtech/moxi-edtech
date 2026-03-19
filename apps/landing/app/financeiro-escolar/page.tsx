@@ -20,7 +20,7 @@ export default function FinanceiroEscolarPage() {
             Gestão de propinas conectada ao fluxo académico para reduzir ruído e melhorar a cobrança.
           </p>
           <div className="seo-actions">
-            <a className="btn-p" href="/#contato">
+            <a className="btn-p" href="/#contacto">
               Pedir demo
             </a>
             <a className="btn-s" href="/login">
