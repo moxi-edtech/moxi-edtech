@@ -60,31 +60,39 @@ Preparar a emissão fiscal no padrão híbrido do KLASSE:
 
 ## Estado actual
 
-A rota foi criada em modo **guarded merge-ready**:
+A rota opera em modo **atómico**:
 
 - valida o request;
 - autentica o utilizador;
 - verifica membership fiscal;
 - confirma vínculo `escola -> empresa fiscal` quando existir contexto escolar;
 - resolve semanticamente a série activa;
-- verifica existência de chave fiscal activa;
-- responde `501 FISCAL_EMISSAO_ATOMICA_PENDENTE` até existir uma RPC atómica de emissão.
+- delega a emissão para a RPC transaccional `fiscal_emitir_documento`.
 
-## Porque a emissão está bloqueada
+## Notas de assinatura
 
-Emitir directamente pela route, sem uma RPC transaccional única, abre o risco de:
-
-- reservar número e falhar antes de persistir o documento;
-- criar buracos indevidos na sequência fiscal;
-- quebrar o encadeamento entre reserva, assinatura e insert.
-
-Em fiscal, isso é inaceitável.
+- `canonical_string` é gerada no backend para garantir determinismo.
+- `hash_control` é calculado via SHA256 da canonical string.
+- Assinatura RSA é feita via AWS KMS no backend.
 
 ## Respostas previstas
 
 ### 201 Created
 
-Reservado para quando a RPC atómica existir.
+```json
+{
+  "ok": true,
+  "data": {
+    "ok": true,
+    "documento_id": "uuid",
+    "numero": 42,
+    "numero_formatado": "2026-000042",
+    "hash_control": "...",
+    "key_version": 1
+  },
+  "request_id": "uuid"
+}
+```
 
 ### 400 INVALID_PAYLOAD
 
@@ -158,25 +166,6 @@ Reservado para quando a RPC atómica existir.
 }
 ```
 
-### 501 FISCAL_EMISSAO_ATOMICA_PENDENTE
-
-```json
-{
-  "ok": false,
-  "error": {
-    "code": "FISCAL_EMISSAO_ATOMICA_PENDENTE",
-    "message": "A emissão fiscal permanece bloqueada até a introdução da RPC atómica que una reserva de número, assinatura e persistência sem risco de buracos na sequência."
-  }
-}
-```
-
 ## Próximo passo obrigatório
 
-Criar uma RPC/fluxo atómico de emissão fiscal que una, na mesma operação lógica:
-
-1. reserva do número;
-2. cálculo do encadeamento;
-3. assinatura server-side/KMS;
-4. insert de `fiscal_documentos`;
-5. insert de `fiscal_documento_itens`;
-6. insert de `fiscal_documentos_eventos`.
+Integrar assinatura RSA real (KMS/HSM) e idempotência por `hash_control`.

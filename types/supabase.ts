@@ -4232,6 +4232,525 @@ export type Database = {
           },
         ]
       }
+      fiscal_chaves: {
+        Row: {
+          activated_at: string | null
+          algorithm: string
+          created_at: string
+          empresa_id: string
+          id: string
+          key_fingerprint: string
+          key_version: number
+          metadata: Json
+          private_key_ref: string | null
+          public_key_pem: string
+          retired_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          activated_at?: string | null
+          algorithm?: string
+          created_at?: string
+          empresa_id: string
+          id?: string
+          key_fingerprint: string
+          key_version: number
+          metadata?: Json
+          private_key_ref?: string | null
+          public_key_pem: string
+          retired_at?: string | null
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          activated_at?: string | null
+          algorithm?: string
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          key_fingerprint?: string
+          key_version?: number
+          metadata?: Json
+          private_key_ref?: string | null
+          public_key_pem?: string
+          retired_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_chaves_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fiscal_documento_itens: {
+        Row: {
+          created_at: string
+          descricao: string
+          documento_id: string
+          empresa_id: string
+          id: string
+          linha_no: number
+          preco_unit: number
+          quantidade: number
+          taxa_iva: number
+          total_bruto_aoa: number
+          total_impostos_aoa: number
+          total_liquido_aoa: number
+        }
+        Insert: {
+          created_at?: string
+          descricao: string
+          documento_id: string
+          empresa_id: string
+          id?: string
+          linha_no: number
+          preco_unit: number
+          quantidade: number
+          taxa_iva: number
+          total_bruto_aoa: number
+          total_impostos_aoa: number
+          total_liquido_aoa: number
+        }
+        Update: {
+          created_at?: string
+          descricao?: string
+          documento_id?: string
+          empresa_id?: string
+          id?: string
+          linha_no?: number
+          preco_unit?: number
+          quantidade?: number
+          taxa_iva?: number
+          total_bruto_aoa?: number
+          total_impostos_aoa?: number
+          total_liquido_aoa?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_documento_itens_documento_id_fkey"
+            columns: ["documento_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_documentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_documento_itens_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fiscal_documentos: {
+        Row: {
+          assinatura_base64: string | null
+          canonical_string: string | null
+          cliente_id: string | null
+          cliente_nif: string | null
+          cliente_nome: string
+          created_at: string
+          created_by: string | null
+          documento_origem_id: string | null
+          empresa_id: string
+          hash_anterior: string | null
+          hash_control: string
+          id: string
+          invoice_date: string
+          key_version: number
+          moeda: string
+          numero: number
+          numero_formatado: string
+          payload: Json
+          pdf_storage_path: string | null
+          rectifica_documento_id: string | null
+          serie_id: string
+          status: string
+          system_entry: string
+          taxa_cambio_aoa: number | null
+          tipo_documento: string
+          total_bruto_aoa: number
+          total_impostos_aoa: number
+          total_liquido_aoa: number
+          xml_storage_path: string | null
+        }
+        Insert: {
+          assinatura_base64?: string | null
+          canonical_string?: string | null
+          cliente_id?: string | null
+          cliente_nif?: string | null
+          cliente_nome: string
+          created_at?: string
+          created_by?: string | null
+          documento_origem_id?: string | null
+          empresa_id: string
+          hash_anterior?: string | null
+          hash_control: string
+          id?: string
+          invoice_date: string
+          key_version: number
+          moeda?: string
+          numero: number
+          numero_formatado: string
+          payload?: Json
+          pdf_storage_path?: string | null
+          rectifica_documento_id?: string | null
+          serie_id: string
+          status: string
+          system_entry?: string
+          taxa_cambio_aoa?: number | null
+          tipo_documento: string
+          total_bruto_aoa: number
+          total_impostos_aoa: number
+          total_liquido_aoa: number
+          xml_storage_path?: string | null
+        }
+        Update: {
+          assinatura_base64?: string | null
+          canonical_string?: string | null
+          cliente_id?: string | null
+          cliente_nif?: string | null
+          cliente_nome?: string
+          created_at?: string
+          created_by?: string | null
+          documento_origem_id?: string | null
+          empresa_id?: string
+          hash_anterior?: string | null
+          hash_control?: string
+          id?: string
+          invoice_date?: string
+          key_version?: number
+          moeda?: string
+          numero?: number
+          numero_formatado?: string
+          payload?: Json
+          pdf_storage_path?: string | null
+          rectifica_documento_id?: string | null
+          serie_id?: string
+          status?: string
+          system_entry?: string
+          taxa_cambio_aoa?: number | null
+          tipo_documento?: string
+          total_bruto_aoa?: number
+          total_impostos_aoa?: number
+          total_liquido_aoa?: number
+          xml_storage_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_documentos_documento_origem_fk"
+            columns: ["documento_origem_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_documentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_documentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_documentos_fk_key_version"
+            columns: ["empresa_id", "key_version"]
+            isOneToOne: false
+            referencedRelation: "fiscal_chaves"
+            referencedColumns: ["empresa_id", "key_version"]
+          },
+          {
+            foreignKeyName: "fiscal_documentos_rectifica_documento_id_fkey"
+            columns: ["rectifica_documento_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_documentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_documentos_serie_id_fkey"
+            columns: ["serie_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_series"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fiscal_documentos_eventos: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          documento_id: string
+          empresa_id: string
+          id: string
+          payload: Json
+          tipo_evento: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          documento_id: string
+          empresa_id: string
+          id?: string
+          payload?: Json
+          tipo_evento: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          documento_id?: string
+          empresa_id?: string
+          id?: string
+          payload?: Json
+          tipo_evento?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_documentos_eventos_documento_id_fkey"
+            columns: ["documento_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_documentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_documentos_eventos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fiscal_empresa_users: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          id?: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_empresa_users_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fiscal_empresas: {
+        Row: {
+          certificado_agt_numero: string | null
+          created_at: string
+          endereco: string | null
+          id: string
+          metadata: Json
+          nif: string
+          nome: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          certificado_agt_numero?: string | null
+          created_at?: string
+          endereco?: string | null
+          id?: string
+          metadata?: Json
+          nif: string
+          nome: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          certificado_agt_numero?: string | null
+          created_at?: string
+          endereco?: string | null
+          id?: string
+          metadata?: Json
+          nif?: string
+          nome?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      fiscal_escola_bindings: {
+        Row: {
+          created_at: string
+          effective_from: string
+          effective_to: string | null
+          empresa_id: string
+          escola_id: string
+          id: string
+          is_primary: boolean
+          metadata: Json
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          empresa_id: string
+          escola_id: string
+          id?: string
+          is_primary?: boolean
+          metadata?: Json
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          empresa_id?: string
+          escola_id?: string
+          id?: string
+          is_primary?: boolean
+          metadata?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_escola_bindings_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_escola_bindings_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_escola_bindings_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fiscal_saft_exports: {
+        Row: {
+          arquivo_storage_path: string
+          checksum_sha256: string
+          created_at: string
+          created_by: string | null
+          empresa_id: string
+          id: string
+          metadata: Json
+          periodo_fim: string
+          periodo_inicio: string
+          status: string
+          xsd_version: string
+        }
+        Insert: {
+          arquivo_storage_path: string
+          checksum_sha256: string
+          created_at?: string
+          created_by?: string | null
+          empresa_id: string
+          id?: string
+          metadata?: Json
+          periodo_fim: string
+          periodo_inicio: string
+          status?: string
+          xsd_version: string
+        }
+        Update: {
+          arquivo_storage_path?: string
+          checksum_sha256?: string
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string
+          id?: string
+          metadata?: Json
+          periodo_fim?: string
+          periodo_inicio?: string
+          status?: string
+          xsd_version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_saft_exports_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fiscal_series: {
+        Row: {
+          ativa: boolean
+          created_at: string
+          descontinuada_em: string | null
+          empresa_id: string
+          id: string
+          metadata: Json
+          origem_documento: string
+          prefixo: string
+          tipo_documento: string
+          ultimo_numero: number
+          updated_at: string
+        }
+        Insert: {
+          ativa?: boolean
+          created_at?: string
+          descontinuada_em?: string | null
+          empresa_id: string
+          id?: string
+          metadata?: Json
+          origem_documento: string
+          prefixo: string
+          tipo_documento: string
+          ultimo_numero?: number
+          updated_at?: string
+        }
+        Update: {
+          ativa?: boolean
+          created_at?: string
+          descontinuada_em?: string | null
+          empresa_id?: string
+          id?: string
+          metadata?: Json
+          origem_documento?: string
+          prefixo?: string
+          tipo_documento?: string
+          ultimo_numero?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_series_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       frequencia_status_periodo: {
         Row: {
           abaixo_minimo: boolean
@@ -12139,6 +12658,7 @@ export type Database = {
         }
       }
       current_escola_id: { Args: never; Returns: string }
+      current_tenant_empresa_id: { Args: never; Returns: string }
       current_tenant_escola_id: { Args: never; Returns: string }
       current_user_id: { Args: never; Returns: string }
       current_user_role: { Args: never; Returns: string }
@@ -12600,6 +13120,79 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      fiscal_emitir_documento:
+        | {
+            Args: {
+              p_cliente: Json
+              p_documento_origem_id: string
+              p_empresa_id: string
+              p_invoice_date: string
+              p_itens: Json
+              p_metadata: Json
+              p_moeda: string
+              p_origem_documento: string
+              p_prefixo_serie: string
+              p_rectifica_documento_id: string
+              p_serie_id: string
+              p_taxa_cambio_aoa: number
+              p_tipo_documento: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_assinatura_base64: string
+              p_cliente: Json
+              p_documento_origem_id: string
+              p_empresa_id: string
+              p_invoice_date: string
+              p_itens: Json
+              p_metadata: Json
+              p_moeda: string
+              p_origem_documento: string
+              p_prefixo_serie: string
+              p_rectifica_documento_id: string
+              p_serie_id: string
+              p_taxa_cambio_aoa: number
+              p_tipo_documento: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_assinatura_base64?: string
+              p_cliente: Json
+              p_documento_origem_id?: string
+              p_empresa_id: string
+              p_invoice_date: string
+              p_itens: Json
+              p_metadata?: Json
+              p_moeda: string
+              p_origem_documento: string
+              p_prefixo_serie: string
+              p_rectifica_documento_id?: string
+              p_serie_id: string
+              p_taxa_cambio_aoa?: number
+              p_tipo_documento: string
+            }
+            Returns: Json
+          }
+      fiscal_finalizar_assinatura: {
+        Args: {
+          p_assinatura_base64: string
+          p_canonical_string: string
+          p_documento_id: string
+          p_hash_control: string
+        }
+        Returns: Json
+      }
+      fiscal_reservar_numero_serie: {
+        Args: { p_serie_id: string }
+        Returns: {
+          numero: number
+          numero_formatado: string
+        }[]
       }
       fn_transitar_alunos: {
         Args: {
@@ -13531,6 +14124,10 @@ export type Database = {
           p_versao_id: string
         }
         Returns: Json
+      }
+      user_has_role_in_empresa: {
+        Args: { p_empresa_id: string; p_roles: string[] }
+        Returns: boolean
       }
       user_has_role_in_school: {
         Args: { p_escola_id: string; p_roles: string[] }
