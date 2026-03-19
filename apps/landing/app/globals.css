@@ -510,6 +510,17 @@ footer{padding:40px 0;border-top:1px solid var(--bd)}
   .portal-card,.pd-card,.preco-card,.product-step{padding:24px;border-radius:16px}
   .product-title,.portal-title,.pd-feat-title{font-size:16px}
   .product-desc,.portal-desc,.pd-feat-desc{font-size:14px}
+  .sec-title{font-size:clamp(22px,6vw,32px)}
+  .sec-sub{font-size:14px}
+  .onboarding-lead__form{padding:24px}
+  .onboarding-lead__grid{grid-template-columns:1fr;gap:14px}
+  .onboarding-lead__actions{flex-direction:column;align-items:stretch}
+  .onboarding-lead__actions .btn-p,.onboarding-lead__actions .btn-s{width:100%;justify-content:center}
+  .pricing-card{padding:20px;gap:12px}
+  .pricing-features{gap:10px}
+  .portal-card-compact{padding:20px 18px}
+  .portal-card-destaque{padding:24px 20px;gap:12px}
+  .portais-top,.portais-bottom{gap:1px}
 }
 @media(max-width:480px){
   .nav-logo-sub{display:none}
@@ -517,6 +528,10 @@ footer{padding:40px 0;border-top:1px solid var(--bd)}
   .hero-ctas{flex-direction:column;align-items:stretch}
   .hero-ctas a{justify-content:center;width:100%}
   .hero-sub{font-size:16px}
+  .portal-highlight-title{font-size:clamp(20px,6vw,26px)}
+  .portal-highlight-desc{font-size:13px}
+  .pricing-name{font-size:20px}
+  .pricing-price-value{font-size:34px}
 }
 @media(max-width:360px){
   .nav-inner{padding:14px 0}
@@ -527,6 +542,8 @@ footer{padding:40px 0;border-top:1px solid var(--bd)}
   .btn-p,.btn-s{min-height:48px}
   .product-title,.portal-title,.pd-feat-title{font-size:15px}
   .product-desc,.portal-desc,.pd-feat-desc{font-size:13px}
+  .pricing-price-value{font-size:30px}
+  .portal-card-destaque{padding:20px 16px}
 }
 @media(max-height:700px){
   .hero h1{font-size:clamp(32px,4.5vw,48px);margin-bottom:16px}
