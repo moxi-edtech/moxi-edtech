@@ -169,3 +169,10 @@ A rota opera em modo **atómico**:
 ## Próximo passo obrigatório
 
 Integrar assinatura RSA real (KMS/HSM) e idempotência por `hash_control`.
+
+## Smoke tests executados (remoto)
+
+> Todos os testes foram executados com `ROLLBACK`.
+
+- Emissão fiscal com assinatura fornecida (`status = emitido`).
+- Emissão fiscal sem assinatura, seguida de `fiscal_finalizar_assinatura`.

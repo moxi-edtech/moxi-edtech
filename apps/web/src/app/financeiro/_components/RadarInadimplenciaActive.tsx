@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import {
   Loader2,
   Filter,
@@ -14,7 +14,7 @@ import {
 
 // --- Tipos vindos da API (view vw_radar_inadimplencia) ---
 type RadarRowFromApi = {
-  mensalidade_id: string;
+  mensalidade_id: string | null;
   aluno_id: string;
   nome_aluno: string;
   numero_matricula?: string | null;
@@ -28,12 +28,21 @@ type RadarRowFromApi = {
   dias_em_atraso: number | null;
   status_risco: "critico" | "atencao" | "recente";
   status_mensalidade: string;
+  mensalidades?: Array<{
+    mensalidade_id: string | null;
+    data_vencimento: string | null;
+    dias_em_atraso: number | null;
+    valor_em_atraso: number | null;
+    valor_previsto: number | null;
+    status_mensalidade: string;
+  }>;
 };
 
 // --- Tipos usados no componente ---
-type RadarEntry = {
+export type RadarEntry = {
   id: string;
   aluno_id: string;
+  mensalidade_id?: string | null;
   nome_aluno: string;
   numero_matricula: string | null;
   responsavel: string;
@@ -44,6 +53,14 @@ type RadarEntry = {
   status: "critico" | "atencao" | "recente";
   ultimo_contato: string | null;
   ultimo_contato_data?: Date;
+  mensalidades: Array<{
+    mensalidade_id: string | null;
+    data_vencimento: string | null;
+    dias_em_atraso: number | null;
+    valor_em_atraso: number | null;
+    valor_previsto: number | null;
+    status_mensalidade: string;
+  }>;
 };
 
 type Relatorio = {
@@ -113,7 +130,7 @@ type TemplateArgs = {
 
 const MensagensTemplates = {
   cobrancaSimples: ({ nomeAluno, responsavel, valor, diasAtraso }: TemplateArgs) =>
-    `Olá ${responsavel}! 😊 Lembramos que a mensalidade do(a) ${nomeAluno} está em atraso há ${diasAtraso} dias no valor de ${valor.toLocaleString(
+    `Olá ${responsavel}! Lembramos que a mensalidade do(a) ${nomeAluno} está em atraso há ${diasAtraso} dias no valor de ${valor.toLocaleString(
       "pt-AO"
     )} Kz. Podemos ajudar com alguma questão?`,
 
@@ -123,12 +140,20 @@ const MensagensTemplates = {
     )} Kz). Entre em contacto connosco para regularizar. Obrigado!`,
 
   lembreteAmigavel: ({ nomeAluno, responsavel, valor }: TemplateArgs) =>
-    `Olá ${responsavel}! 🤗 Apenas um lembrete amigável sobre a mensalidade do(a) ${nomeAluno} no valor de ${valor.toLocaleString(
+    `Olá ${responsavel}! Apenas um lembrete amigável sobre a mensalidade do(a) ${nomeAluno} no valor de ${valor.toLocaleString(
       "pt-AO"
     )} Kz. Precisando de ajuda, estamos aqui!`,
 };
 
-export default function RadarInadimplenciaActive() {
+type RadarInadimplenciaActiveProps = {
+  onSelectionChange?: (entries: RadarEntry[]) => void;
+  disableActions?: boolean;
+};
+
+export default function RadarInadimplenciaActive({
+  onSelectionChange,
+  disableActions = false,
+}: RadarInadimplenciaActiveProps) {
   const [dados, setDados] = useState<RadarEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [resumo, setResumo] = useState<{
@@ -145,6 +170,7 @@ export default function RadarInadimplenciaActive() {
     pendentes: { total: 0 },
   });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [filtroTexto, setFiltroTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [mostrarRelatorio, setMostrarRelatorio] = useState(false);
@@ -180,8 +206,9 @@ export default function RadarInadimplenciaActive() {
           const json = await radarRes.json();
           const rows: RadarRowFromApi[] = json.items ?? json.data ?? [];
           const mapped: RadarEntry[] = rows.map((row) => ({
-            id: row.mensalidade_id,
+            id: row.aluno_id,
             aluno_id: row.aluno_id,
+            mensalidade_id: row.mensalidade_id ?? null,
             nome_aluno: row.nome_aluno,
             numero_matricula: row.numero_matricula ?? null,
             responsavel: row.responsavel ?? "—",
@@ -194,6 +221,7 @@ export default function RadarInadimplenciaActive() {
             status: row.status_risco,
             ultimo_contato: null,
             ultimo_contato_data: undefined,
+            mensalidades: row.mensalidades ?? [],
           }));
           setDados(mapped);
         }
@@ -234,6 +262,12 @@ export default function RadarInadimplenciaActive() {
     fetchDados();
   }, []);
 
+  useEffect(() => {
+    if (!onSelectionChange) return;
+    const selectedEntries = dados.filter((d) => selectedIds.has(d.id));
+    onSelectionChange(selectedEntries);
+  }, [dados, onSelectionChange, selectedIds]);
+
   // Lógica de Seleção
   const toggleSelect = (id: string) => {
     const newSet = new Set(selectedIds);
@@ -248,6 +282,16 @@ export default function RadarInadimplenciaActive() {
     } else {
       setSelectedIds(new Set(dados.map((d) => d.id)));
     }
+  };
+
+  const toggleExpanded = (id: string) => {
+    const updated = new Set(expandedIds);
+    if (updated.has(id)) {
+      updated.delete(id);
+    } else {
+      updated.add(id);
+    }
+    setExpandedIds(updated);
   };
 
   const carregarResumoCobrancas = async () => {
@@ -267,7 +311,7 @@ export default function RadarInadimplenciaActive() {
   };
 
   const registrarCobrancas = async (
-    entries: Array<{ aluno_id: string; id: string; mensagem: string }>,
+    entries: Array<{ aluno_id: string; id: string; mensagem: string; mensalidade_id?: string | null }>,
     status: "enviada" | "falha"
   ) => {
     if (entries.length === 0) return;
@@ -277,7 +321,7 @@ export default function RadarInadimplenciaActive() {
       body: JSON.stringify({
         items: entries.map((entry) => ({
           aluno_id: entry.aluno_id,
-          mensalidade_id: entry.id,
+          mensalidade_id: entry.mensalidade_id ?? null,
           canal: "whatsapp",
           status,
           mensagem: entry.mensagem,
@@ -289,6 +333,7 @@ export default function RadarInadimplenciaActive() {
 
   // --- INTEGRAÇÃO WHATSAPP (demo/front) ---
   const handleCobrancaMassa = async () => {
+    if (disableActions) return;
     if (selectedIds.size === 0) return;
 
     setEnviando(true);
@@ -324,7 +369,7 @@ export default function RadarInadimplenciaActive() {
         telefone: item.telefone,
         mensagem: template(args),
         aluno_id: item.aluno_id,
-        mensalidade_id: item.id,
+        mensalidade_id: item.mensalidade_id ?? null,
       };
     });
 
@@ -334,29 +379,31 @@ export default function RadarInadimplenciaActive() {
       await registrarCobrancas(
         mensagens.map((msg) => ({
           aluno_id: msg.aluno_id,
-          id: msg.mensalidade_id,
+          id: msg.aluno_id,
           mensagem: msg.mensagem,
+          mensalidade_id: msg.mensalidade_id,
         })),
         resultado.falhas > 0 ? "falha" : "enviada"
       );
       await carregarResumoCobrancas();
 
       alert(
-        `✅ ${resultado.sucesso} mensagens enviadas com sucesso!\n` +
-          `💰 Potencial de recuperação: ${Math.floor(
+        `${resultado.sucesso} mensagens enviadas com sucesso.\n` +
+          `Potencial de recuperação: ${Math.floor(
             totalRecuperavel * 0.4
           ).toLocaleString("pt-AO")} Kz`
       );
 
       setSelectedIds(new Set());
     } catch (error) {
-      alert("❌ Erro ao enviar mensagens. Tente novamente.");
+      alert("Erro ao enviar mensagens. Tente novamente.");
     } finally {
       setEnviando(false);
     }
   };
 
   const handleCobrancaIndividual = async (item: RadarEntry) => {
+    if (disableActions) return;
     let template:
       | typeof MensagensTemplates.cobrancaUrgente
       | typeof MensagensTemplates.cobrancaSimples
@@ -387,6 +434,7 @@ export default function RadarInadimplenciaActive() {
             aluno_id: item.aluno_id,
             id: item.id,
             mensagem,
+            mensalidade_id: item.mensalidade_id ?? null,
           },
         ],
         "enviada"
@@ -418,29 +466,29 @@ export default function RadarInadimplenciaActive() {
   const potencialRecuperacao = Math.floor(totalEmRisco * 0.7); // 70% estimado
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-6 p-6 bg-slate-50 rounded-xl">
+    <div className="w-full max-w-6xl mx-auto space-y-6">
       {/* --- HEADER COM MÉTRICAS --- */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <div className="text-2xl font-bold text-moxinexa-navy">
+          <div className="text-2xl font-bold text-slate-900">
             {resumo.inadimplencia.total}
           </div>
           <div className="text-sm text-slate-500">Alunos Pendentes</div>
         </div>
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <div className="text-2xl font-bold text-orange-600">
+          <div className="text-2xl font-bold text-[#7A5200]">
             {totalEmRisco.toLocaleString("pt-AO")} Kz
           </div>
           <div className="text-sm text-slate-500">Total em Risco</div>
         </div>
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <div className="text-2xl font-bold text-moxinexa-teal">
+          <div className="text-2xl font-bold text-[#1F6B3B]">
             {potencialRecuperacao.toLocaleString("pt-AO")} Kz
           </div>
           <div className="text-sm text-slate-500">Potencial Recuperação</div>
         </div>
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-          <div className="text-2xl font-bold text-green-600">
+          <div className="text-2xl font-bold text-slate-900">
             {resumo.matriculados.total}
           </div>
           <div className="text-sm text-slate-500">Matriculados</div>
@@ -450,8 +498,8 @@ export default function RadarInadimplenciaActive() {
       {/* --- HEADER DE AÇÃO --- */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
         <div>
-          <h1 className="text-2xl font-bold text-moxinexa-navy flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-[#E3B23C] animate-pulse" />
             Radar de Inadimplência
           </h1>
           <p className="text-sm text-slate-500 mt-1">
@@ -470,8 +518,8 @@ export default function RadarInadimplenciaActive() {
 
           <button
             onClick={handleCobrancaMassa}
-            disabled={selectedIds.size === 0 || enviando}
-            className="inline-flex items-center gap-2 rounded-lg bg-moxinexa-teal px-5 py-3 text-sm font-bold text-white hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-teal-900/20 transition-all active:scale-95 transform hover:-translate-y-0.5"
+            disabled={selectedIds.size === 0 || enviando || disableActions}
+            className="inline-flex items-center gap-2 rounded-lg bg-[#1F6B3B] px-5 py-3 text-sm font-bold text-white hover:brightness-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#1F6B3B]/20 transition-all active:scale-95 transform hover:-translate-y-0.5"
           >
             {enviando ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -490,48 +538,44 @@ export default function RadarInadimplenciaActive() {
       {/* --- RELATÓRIO EXPANDIDO --- */}
       {mostrarRelatorio && (
         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-          <h3 className="text-lg font-bold text-moxinexa-navy mb-4 flex items-center gap-2">
-            <Zap className="h-5 w-5 text-green-500" />
+          <h3 className="text-lg font-bold text-slate-900 mb-4">
             Eficácia das Cobranças
           </h3>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="text-center p-4 bg-slate-50 rounded-lg">
-              <div className="text-2xl font-bold text-slate-600">
+              <div className="text-2xl font-bold text-slate-700">
                 {relatorio.totalEnviadas}
               </div>
-              <div className="text-sm text-slate-700">Mensagens Enviadas</div>
+              <div className="text-sm text-slate-600">Mensagens Enviadas</div>
             </div>
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <div className="text-2xl font-bold text-green-600">
+            <div className="text-center p-4 bg-[#1F6B3B]/10 rounded-lg">
+              <div className="text-2xl font-bold text-[#1F6B3B]">
                 {relatorio.taxaResposta}%
               </div>
-              <div className="text-sm text-green-700">Taxa de Resposta</div>
+              <div className="text-sm text-[#1F6B3B]">Taxa de Resposta</div>
             </div>
             <div className="text-center p-4 bg-slate-50 rounded-lg">
-              <div className="text-2xl font-bold text-slate-600">
+              <div className="text-2xl font-bold text-slate-700">
                 {relatorio.taxaConversao}%
               </div>
-              <div className="text-sm text-slate-700">Taxa de Pagamento</div>
+              <div className="text-sm text-slate-600">Taxa de Pagamento</div>
             </div>
-            <div className="text-center p-4 bg-teal-50 rounded-lg">
-              <div className="text-2xl font-bold text-moxinexa-teal">
+            <div className="text-center p-4 bg-[#E3B23C]/10 rounded-lg">
+              <div className="text-2xl font-bold text-[#7A5200]">
                 {relatorio.valorRecuperado.toLocaleString("pt-AO")} Kz
               </div>
-              <div className="text-sm text-teal-700">Valor Recuperado</div>
+              <div className="text-sm text-[#7A5200]">Valor Recuperado</div>
             </div>
           </div>
 
-          <div className="text-sm text-slate-600">
-            <p>
-              📊 <strong>Performance:</strong> A cada 10 mensagens, em média 6
-              recebem resposta e 4 resultam em pagamento.
-            </p>
-            <p className="mt-2">
-              💡 <strong>Insight:</strong> Cobranças enviadas às terças-feiras
-              têm 15% mais respostas.
-            </p>
-          </div>
+          {relatorio.totalEnviadas > 0 && (
+            <div className="text-sm text-slate-600">
+              <p>
+                <strong>Performance:</strong> {relatorio.taxaResposta.toFixed(1)}% das mensagens recebem resposta e {relatorio.taxaConversao.toFixed(1)}% resultam em pagamento.
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -542,7 +586,7 @@ export default function RadarInadimplenciaActive() {
           <input
             type="text"
             placeholder="Buscar por aluno ou responsável..."
-            className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-moxinexa-teal"
+            className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#E3B23C]/40"
             value={filtroTexto}
             onChange={(e) => setFiltroTexto(e.target.value)}
           />
@@ -561,7 +605,7 @@ export default function RadarInadimplenciaActive() {
                 <th className="px-4 py-4 text-left w-10">
                   <input
                     type="checkbox"
-                    className="rounded border-gray-300 text-moxinexa-teal focus:ring-moxinexa-teal h-4 w-4 cursor-pointer"
+                    className="rounded border-slate-300 text-[#1F6B3B] focus:ring-[#1F6B3B] h-4 w-4 cursor-pointer"
                     checked={dados.length > 0 && selectedIds.size === dados.length}
                     onChange={toggleSelectAll}
                   />
@@ -584,7 +628,7 @@ export default function RadarInadimplenciaActive() {
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-200">
               {loading ? (
                 <tr>
                   <td colSpan={6} className="p-8 text-center text-slate-500">
@@ -600,24 +644,22 @@ export default function RadarInadimplenciaActive() {
                 </tr>
               ) : (
                 dadosFiltrados.map((item) => (
-                  <tr
-                    key={item.id}
-                    className={`transition-colors ${
-                      selectedIds.has(item.id)
-                        ? "bg-teal-50/50"
-                        : "hover:bg-slate-50"
-                    }`}
-                  >
+                  <Fragment key={item.id}>
+                    <tr
+                      className={`transition-colors ${
+                        selectedIds.has(item.id) ? "bg-[#1F6B3B]/5" : "hover:bg-slate-50"
+                      }`}
+                    >
                     <td className="px-4 py-4">
                       <input
                         type="checkbox"
-                        className="rounded border-gray-300 text-moxinexa-teal focus:ring-moxinexa-teal h-4 w-4 cursor-pointer"
+                        className="rounded border-slate-300 text-[#1F6B3B] focus:ring-[#1F6B3B] h-4 w-4 cursor-pointer"
                         checked={selectedIds.has(item.id)}
                         onChange={() => toggleSelect(item.id)}
                       />
                     </td>
                     <td className="px-4 py-3 text-slate-900">
-                      <div className="font-bold text-moxinexa-navy">
+                      <div className="font-bold text-slate-900">
                         {item.nome_aluno}
                       </div>
                       <div className="text-xs text-slate-500 flex items-center gap-1">
@@ -630,18 +672,18 @@ export default function RadarInadimplenciaActive() {
                     </td>
                     <td className="px-4 py-3">
                       {item.status === "critico" && (
-                        <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-bold text-red-700">
-                          ⚠️ Crítico
+                        <span className="inline-flex items-center rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-bold text-rose-700 border border-rose-200">
+                          Crítico
                         </span>
                       )}
                       {item.status === "atencao" && (
-                        <span className="inline-flex items-center rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-bold text-orange-700">
-                          ✋ Atenção
+                        <span className="inline-flex items-center rounded-full bg-[#E3B23C]/15 px-2.5 py-0.5 text-xs font-bold text-[#7A5200] border border-[#E3B23C]/30">
+                          Atenção
                         </span>
                       )}
                       {item.status === "recente" && (
-                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-700">
-                          🆕 Recente
+                        <span className="inline-flex items-center rounded-full bg-slate-50 px-2.5 py-0.5 text-xs font-bold text-slate-600 border border-slate-200">
+                          Recente
                         </span>
                       )}
                       {item.ultimo_contato && (
@@ -651,13 +693,7 @@ export default function RadarInadimplenciaActive() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <div
-                        className={`font-bold ${
-                          item.dias_atraso > 30
-                            ? "text-red-600"
-                            : "text-slate-600"
-                        }`}
-                      >
+                      <div className="font-bold text-slate-700">
                         {item.dias_atraso} dias
                       </div>
                     </td>
@@ -672,7 +708,8 @@ export default function RadarInadimplenciaActive() {
                       <div className="flex justify-center gap-1">
                         <button
                           onClick={() => handleCobrancaIndividual(item)}
-                          className="text-moxinexa-teal hover:text-white hover:bg-moxinexa-teal p-2 rounded-lg transition-all"
+                          disabled={disableActions}
+                          className="p-2 rounded-lg text-[#1F6B3B] hover:bg-[#1F6B3B]/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                           title="Enviar Cobrança via WhatsApp"
                         >
                           <MessageSquare className="w-4 h-4" />
@@ -681,14 +718,73 @@ export default function RadarInadimplenciaActive() {
                           onClick={() =>
                             window.open(`tel:${item.telefone}`, "_blank")
                           }
-                          className="text-green-600 hover:text-white hover:bg-green-600 p-2 rounded-lg transition-all"
+                          disabled={disableActions}
+                          className="p-2 rounded-lg text-[#1F6B3B] hover:bg-[#1F6B3B]/10 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                           title="Ligar"
                         >
                           <Phone className="w-4 h-4" />
                         </button>
+                        <button
+                          onClick={() => toggleExpanded(item.id)}
+                          className="px-2 py-1 text-xs font-semibold rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+                        >
+                          {expandedIds.has(item.id) ? "Ocultar" : "Detalhes"}
+                        </button>
                       </div>
                     </td>
-                  </tr>
+                    </tr>
+                    {expandedIds.has(item.id) && (
+                      <tr className="bg-slate-50/60">
+                        <td colSpan={6} className="px-4 py-4">
+                          <div className="text-xs font-semibold text-slate-600 mb-2">
+                            Mensalidades em atraso
+                          </div>
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full text-xs">
+                              <thead>
+                                <tr className="text-left text-slate-500">
+                                  <th className="py-1">Vencimento</th>
+                                  <th className="py-1">Dias atraso</th>
+                                  <th className="py-1">Valor previsto</th>
+                                  <th className="py-1">Valor em atraso</th>
+                                  <th className="py-1">Status</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {(item.mensalidades ?? []).map((mensalidade, index) => (
+                                  <tr key={mensalidade.mensalidade_id ?? `${item.id}-${index}`}>
+                                    <td className="py-1 pr-4">
+                                      {mensalidade.data_vencimento
+                                        ? new Date(mensalidade.data_vencimento).toLocaleDateString()
+                                        : "—"}
+                                    </td>
+                                    <td className="py-1 pr-4">
+                                      {mensalidade.dias_em_atraso ?? 0}
+                                    </td>
+                                    <td className="py-1 pr-4">
+                                      {(mensalidade.valor_previsto ?? 0).toLocaleString("pt-AO", {
+                                        style: "currency",
+                                        currency: "AOA",
+                                        maximumFractionDigits: 0,
+                                      })}
+                                    </td>
+                                    <td className="py-1 pr-4">
+                                      {(mensalidade.valor_em_atraso ?? 0).toLocaleString("pt-AO", {
+                                        style: "currency",
+                                        currency: "AOA",
+                                        maximumFractionDigits: 0,
+                                      })}
+                                    </td>
+                                    <td className="py-1">{mensalidade.status_mensalidade}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 ))
               )}
             </tbody>

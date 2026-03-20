@@ -1,17 +1,22 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
-import { Plus } from "lucide-react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import { Plus, X } from "lucide-react";
 import { useToast } from "@/components/feedback/FeedbackSystem";
+import RadarInadimplenciaActive, {
+  type RadarEntry,
+} from "@/app/financeiro/_components/RadarInadimplenciaActive";
 
+// --- TIPAGENS ---
 type Campanha = {
   id: string;
-  titulo: string;
-  canal: string;
+  nome: string;
+  canal: "whatsapp" | "sms" | "email" | "push";
   template_id?: string | null;
   agendada_em?: string | null;
-  status: "rascunho" | "ativa" | "pausada" | "finalizada";
+  status: "rascunho" | "agendada" | "enviando" | "concluida" | "pausada";
   criado_por?: string;
+  created_at?: string | null;
 };
 
 type TemplateMensagem = {
@@ -21,221 +26,216 @@ type TemplateMensagem = {
   corpo: string;
 };
 
-type Aluno = {
-  id: string;
-  nome: string;
-  telefone?: string | null;
-  email?: string | null;
-  turma?: string | null;
+// --- HELPERS ESTÁTICOS (Fora do render) ---
+const getCanalNome = (canal: string) => {
+  const canais: Record<string, string> = {
+    whatsapp: "WhatsApp",
+    sms: "SMS",
+    email: "Email",
+    push: "Push",
+  };
+  return canais[canal] || canal;
 };
 
 export default function SistemaCobrancas() {
-  const [campanhas, setCampanhas] = useState<Campanha[]>([]);
-  const [templates, setTemplates] = useState<TemplateMensagem[]>([]);
-  const [alunos, setAlunos] = useState<Aluno[]>([]);
-
-  const [loadingCampanhas, setLoadingCampanhas] = useState(true);
-  const [loadingTemplates, setLoadingTemplates] = useState(true);
-  const [loadingAlunos, setLoadingAlunos] = useState(true);
-
-  const [mostrarCriarCampanha, setMostrarCriarCampanha] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const hasFetched = useRef(false);
   const { success, error } = useToast();
 
+  // --- ESTADOS ---
+  const [campanhas, setCampanhas] = useState<Campanha[]>([]);
+  const [templates, setTemplates] = useState<TemplateMensagem[]>([]);
+  const [selecionadosRadar, setSelecionadosRadar] = useState<RadarEntry[]>([]);
+  
+  const [loadingCampanhas, setLoadingCampanhas] = useState(true);
+  const [loadingTemplates, setLoadingTemplates] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [mostrarCriarCampanha, setMostrarCriarCampanha] = useState(false);
+
   const [novaCampanha, setNovaCampanha] = useState<Partial<Campanha>>({
-    titulo: "",
+    nome: "",
     canal: "whatsapp",
     template_id: undefined,
   });
 
-  const getCanalNome = (canal: string) => {
-    switch (canal) {
-      case "whatsapp":
-        return "WhatsApp";
-      case "sms":
-        return "SMS";
-      case "email":
-        return "Email";
-      case "push":
-        return "Push";
-      default:
-        return canal;
-    }
-  };
-
+  // --- FETCHING ---
   const fetchCampanhas = useCallback(async () => {
     setLoadingCampanhas(true);
     try {
       const res = await fetch("/api/financeiro/cobrancas/campanhas");
-      if (!res.ok) throw new Error("Falha ao buscar campanhas");
+      if (!res.ok) throw new Error("Falha ao buscar campanhas.");
       const json = await res.json();
       setCampanhas(Array.isArray(json) ? json : json.data ?? []);
-    } catch (err: any) {
-      console.error("fetchCampanhas:", err);
-      error(err?.message ?? "Erro ao carregar campanhas");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro desconhecido";
+      error(message);
     } finally {
       setLoadingCampanhas(false);
     }
-  }, []);
+  }, [error]);
 
   const fetchTemplates = useCallback(async () => {
     setLoadingTemplates(true);
     try {
       const res = await fetch("/api/financeiro/cobrancas/templates");
-      if (!res.ok) throw new Error("Falha ao buscar templates");
+      if (!res.ok) throw new Error("Falha ao buscar templates.");
       const json = await res.json();
       setTemplates(Array.isArray(json) ? json : json.data ?? []);
-    } catch (err: any) {
-      console.error("fetchTemplates:", err);
-      error(err?.message ?? "Erro ao carregar templates");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro desconhecido";
+      error(message);
     } finally {
       setLoadingTemplates(false);
     }
-  }, []);
-
-  const fetchAlunos = useCallback(async () => {
-    setLoadingAlunos(true);
-    try {
-      const res = await fetch("/api/financeiro/cobrancas/alunos");
-      if (!res.ok) throw new Error("Falha ao buscar alunos");
-      const json = await res.json();
-      setAlunos(Array.isArray(json) ? json : json.data ?? []);
-    } catch (err: any) {
-      console.error("fetchAlunos:", err);
-      error(err?.message ?? "Erro ao carregar alunos");
-    } finally {
-      setLoadingAlunos(false);
-    }
-  }, []);
+  }, [error]);
 
   useEffect(() => {
+    if (hasFetched.current) return;
+    hasFetched.current = true;
     fetchCampanhas();
     fetchTemplates();
-    fetchAlunos();
-  }, [fetchCampanhas, fetchTemplates, fetchAlunos]);
+  }, [fetchCampanhas, fetchTemplates]);
 
-  const handleCreateSubmit = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!novaCampanha.titulo || !novaCampanha.canal) {
-      error("Título e canal são obrigatórios");
+  // --- ACTIONS ---
+  const handleCreateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!novaCampanha.nome || !novaCampanha.canal) {
+      error("Título e canal são obrigatórios.");
       return;
     }
+    
+    if (selecionadosRadar.length === 0) {
+      error("Selecione pelo menos um aluno no radar para criar a campanha.");
+      return;
+    }
+
     setSubmitting(true);
     try {
+      const alunosSelecionados = Array.from(
+        new Set(selecionadosRadar.map((entry) => entry.aluno_id))
+      );
+      
       const payload = {
-        nome: novaCampanha.titulo,
+        nome: novaCampanha.nome,
         canal: novaCampanha.canal,
         templateId: novaCampanha.template_id ?? null,
-        // se houver, envie data de agendamento no formato ISO
-        dataAgendamento: (novaCampanha as any).dataAgendamento
-          ? new Date((novaCampanha as any).dataAgendamento).toISOString()
-          : undefined,
-        // destinatariosTipo / turmaId / diasAtrasoMinimo podem ser adicionados aqui quando suportados
+        destinatariosTipo: "selecionados",
+        destinatariosIds: alunosSelecionados,
+        dataAgendamento: new Date().toISOString(),
       };
+
       const res = await fetch("/api/financeiro/cobrancas/campanhas/nova", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
       });
+      
       const json = await res.json();
       if (!res.ok) {
-        throw new Error(json?.error || json?.message || "Erro ao criar campanha");
+        throw new Error(json?.error || json?.message || "Erro ao criar campanha.");
       }
-      success("Campanha criada.");
+
+      success("Campanha criada com sucesso.");
       setMostrarCriarCampanha(false);
-      // update local state with the created campaign returned by the API
-      const created = (json as any).campaign ?? (json as any).data ?? null;
+      
+      const created = json.campaign ?? json.data;
       if (created) {
         setCampanhas((prev) => [created, ...prev]);
       } else {
-        // fallback: re-fetch list
-        fetchCampanhas();
+        fetchCampanhas(); // Fallback
       }
-      setNovaCampanha({ titulo: "", canal: "whatsapp", template_id: undefined });
-    } catch (err: any) {
-      console.error("criarNovaCampanha:", err);
-      error(err?.message ?? "Erro ao criar campanha");
+      
+      // Reset form
+      setNovaCampanha({ nome: "", canal: "whatsapp", template_id: undefined });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro desconhecido";
+      error(message);
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <main className="flex-1 p-4 md:p-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
+    <div className="min-h-screen bg-slate-50 font-sora text-slate-900">
+      <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto space-y-6">
+        
+        {/* HEADER */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">Sistema de Cobranças</h1>
-            <p className="text-slate-600">Automatize cobranças por WhatsApp, SMS e Email</p>
+            <h1 className="text-2xl font-bold text-slate-900">Sistema de Cobranças</h1>
+            <p className="text-sm text-slate-500 mt-1">
+              Automatize cobranças por WhatsApp, SMS e Email
+            </p>
           </div>
-
-          <div className="mt-4 md:mt-0 flex items-center space-x-2">
-            <button
-              onClick={() => setMostrarCriarCampanha(true)}
-              className="flex items-center space-x-2 bg-klasse-gold-400 hover:brightness-95 text-white px-4 py-2 rounded-xl"
-            >
-              <Plus className="h-5 w-5" />
-              <span>Nova Campanha</span>
-            </button>
-          </div>
+          <button
+            onClick={() => setMostrarCriarCampanha(true)}
+            className="flex items-center gap-2 bg-[#E3B23C] hover:brightness-95 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm"
+          >
+            <Plus className="h-4 w-4" />
+            Nova Campanha
+          </button>
         </div>
 
-        <section className="space-y-4">
-          <div className="bg-white p-4 rounded-xl shadow-sm">
-            <h2 className="font-medium text-lg mb-3">Campanhas</h2>
-
-            {loadingCampanhas ? (
-              <div className="text-slate-500">Carregando campanhas...</div>
-            ) : campanhas.length === 0 ? (
-              <div className="text-slate-500">Nenhuma campanha encontrada.</div>
-            ) : (
-              <ul className="space-y-2">
-                {campanhas.map((c) => (
-                  <li key={c.id} className="flex items-center justify-between p-3 rounded-md hover:bg-slate-50">
-                    <div>
-                      <div className="font-medium">{c.titulo}</div>
-                      <div className="text-xs text-slate-500">
-                        {getCanalNome(c.canal)} • {c.status}
-                      </div>
-                    </div>
-                    <div className="text-sm text-slate-500">{c.agendada_em ? new Date(c.agendada_em).toLocaleString() : "-"}</div>
-                  </li>
-                ))}
-              </ul>
-            )}
+        {/* CONTEÚDO */}
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* COLUNA ESQUERDA - Radar (Ocupa 2/3 em telas grandes) */}
+          <div className="lg:col-span-2 space-y-6">
+            <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+              <div className="mb-4">
+                <h2 className="font-semibold text-lg text-slate-900">Radar de Inadimplência</h2>
+                <p className="text-sm text-slate-500">
+                  Selecione alunos em atraso para criar campanhas de cobrança.
+                </p>
+              </div>
+            <RadarInadimplenciaActive
+              onSelectionChange={setSelecionadosRadar}
+            />
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-white p-4 rounded-xl shadow-sm">
-              <h3 className="font-medium text-lg mb-3">Templates</h3>
-              {loadingTemplates ? (
-                <div className="text-slate-500">Carregando templates...</div>
-              ) : templates.length === 0 ? (
-                <div className="text-slate-500">Nenhum template.</div>
-              ) : (
-                <ul className="space-y-2">
-                  {templates.map((t) => (
-                    <li key={t.id} className="p-2 rounded-md border">
-                      <div className="font-medium">{t.nome}</div>
-                      <div className="text-xs text-slate-500">{getCanalNome(t.canal)}</div>
-                    </li>
-                  ))}
-                </ul>
-              )}
+          {/* COLUNA DIREITA - Sidebar de Status */}
+          <div className="space-y-6">
+            
+            {/* Box de Seleção Atual */}
+            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+              <h3 className="font-semibold text-sm text-slate-900 mb-2 uppercase tracking-wide">
+                Público Alvo
+              </h3>
+              <p className="text-sm text-slate-600">
+                {selecionadosRadar.length > 0 ? (
+                  <span className="font-medium text-[#1F6B3B]">
+                    {selecionadosRadar.length} aluno(s) selecionado(s)
+                  </span>
+                ) : (
+                  "Nenhum aluno selecionado."
+                )}
+              </p>
             </div>
 
-            <div className="bg-white p-4 rounded-xl shadow-sm">
-              <h3 className="font-medium text-lg mb-3">Alunos</h3>
-              {loadingAlunos ? (
-                <div className="text-slate-500">Carregando alunos...</div>
-              ) : alunos.length === 0 ? (
-                <div className="text-slate-500">Nenhum aluno encontrado.</div>
+            {/* Lista de Campanhas */}
+            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+              <h3 className="font-semibold text-sm text-slate-900 mb-4 uppercase tracking-wide">
+                Últimas Campanhas
+              </h3>
+              {loadingCampanhas ? (
+                <p className="text-sm text-slate-400">A carregar...</p>
+              ) : campanhas.length === 0 ? (
+                <p className="text-sm text-slate-400">Nenhuma campanha encontrada.</p>
               ) : (
-                <ul className="space-y-2">
-                  {alunos.map((a) => (
-                    <li key={a.id} className="p-2 rounded-md border">
-                      <div className="font-medium">{a.nome}</div>
-                      <div className="text-xs text-slate-500">{a.telefone || a.email || "-"}</div>
+                <ul className="space-y-3">
+                  {campanhas.slice(0, 5).map((c) => (
+                    <li key={c.id} className="flex flex-col p-3 rounded-xl border border-slate-200 bg-slate-50">
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="font-semibold text-sm truncate">{c.nome}</span>
+                        <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-200 text-slate-600">
+                          {c.status}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs text-slate-500">
+                        <span>{getCanalNome(c.canal)}</span>
+                        <span>{c.created_at ? new Date(c.created_at).toLocaleDateString() : "-"}</span>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -244,69 +244,79 @@ export default function SistemaCobrancas() {
           </div>
         </section>
 
+        {/* MODAL NOVA CAMPANHA */}
         {mostrarCriarCampanha && (
-          <div className="fixed inset-0 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl shadow-lg p-6 max-w-lg w-full">
-              <h2 className="text-lg font-medium mb-4">Nova Campanha</h2>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200 border border-slate-200 shadow-xl">
+              <div className="flex justify-between items-center p-5 border-b border-slate-200 bg-slate-50/50">
+                <h2 className="text-lg font-bold text-slate-900">Nova Campanha</h2>
+                <button 
+                  onClick={() => setMostrarCriarCampanha(false)}
+                  className="text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
-              <form onSubmit={handleCreateSubmit} className="space-y-4">
+              <form onSubmit={handleCreateSubmit} className="p-5 space-y-5">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Título</label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Título da Campanha</label>
                   <input
                     type="text"
-                    value={novaCampanha.titulo}
-                    onChange={(e) => setNovaCampanha({ ...novaCampanha, titulo: e.target.value })}
-                    className="w-full p-3 border rounded-md focus:ring-1 focus:ring-klasse-gold-400 focus:outline-none"
-                    placeholder="Digite o título da campanha"
+                    value={novaCampanha.nome}
+                    onChange={(e) => setNovaCampanha({ ...novaCampanha, nome: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20 transition-all"
+                    placeholder="Ex: Cobrança Mensalidade Março"
                     required
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Canal</label>
-                  <select
-                    value={novaCampanha.canal}
-                    onChange={(e) => setNovaCampanha({ ...novaCampanha, canal: e.target.value })}
-                    className="w-full p-3 border rounded-md focus:ring-1 focus:ring-klasse-gold-400 focus:outline-none"
-                    required
-                  >
-                    <option value="whatsapp">WhatsApp</option>
-                    <option value="sms">SMS</option>
-                    <option value="email">Email</option>
-                    <option value="push">Push</option>
-                  </select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Canal</label>
+                    <select
+                      value={novaCampanha.canal}
+                      onChange={(e) => setNovaCampanha({ ...novaCampanha, canal: e.target.value as Campanha['canal'] })}
+                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20 transition-all"
+                      required
+                    >
+                      <option value="whatsapp">WhatsApp</option>
+                      <option value="sms">SMS</option>
+                      <option value="email">Email</option>
+                      <option value="push">Push</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Template</label>
+                    <select
+                      value={novaCampanha.template_id ?? ""}
+                      onChange={(e) => setNovaCampanha({ ...novaCampanha, template_id: e.target.value })}
+                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:border-[#E3B23C] focus:ring-4 focus:ring-[#E3B23C]/20 transition-all"
+                    >
+                      <option value="">Selecione...</option>
+                      {templates.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.nome}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Template</label>
-                  <select
-                    value={novaCampanha.template_id ?? ""}
-                    onChange={(e) => setNovaCampanha({ ...novaCampanha, template_id: e.target.value })}
-                    className="w-full p-3 border rounded-md focus:ring-1 focus:ring-klasse-gold-400 focus:outline-none"
-                  >
-                    <option value="">Selecione um template</option>
-                    {templates.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.nome}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex justify-end gap-2">
-                  <button
-                    onClick={() => setMostrarCriarCampanha(false)}
-                    className="flex-1 px-4 py-2 bg-slate-200 rounded-md hover:bg-slate-300 transition-colors"
-                  >
-                    Cancelar
-                  </button>
+                <div className="pt-2">
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="flex-1 px-4 py-2 bg-klasse-gold-400 text-white rounded-md hover:bg-klasse-gold-500 transition-colors"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#E3B23C] text-white text-sm font-bold rounded-xl hover:brightness-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   >
-                    {submitting ? "Criando..." : "Criar Campanha"}
+                    {submitting ? "A criar campanha..." : "Disparar Campanha"}
                   </button>
+                  {selecionadosRadar.length === 0 && (
+                    <p className="text-center text-xs text-rose-600 mt-2 font-medium">
+                      Aviso: Selecione alunos no radar antes de disparar.
+                    </p>
+                  )}
                 </div>
               </form>
             </div>

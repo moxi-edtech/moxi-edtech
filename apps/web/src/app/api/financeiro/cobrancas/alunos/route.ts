@@ -35,11 +35,14 @@ export async function GET(request: Request) {
 
     // A better implementation would be a dedicated VIEW or RPC in the database
     // For now, fetching and aggregating in JS
+    const today = new Date().toISOString().slice(0, 10);
+
     let mensalidadesQuery = supabase
       .from('mensalidades')
       .select('*, aluno:alunos(*, matriculas!inner(turma:turmas(nome)))')
       .eq('escola_id', escolaId)
-      .in('status', ['pendente', 'atrasada'])
+      .in('status', ['pendente', 'pago_parcial'])
+      .lte('data_vencimento', today)
 
     mensalidadesQuery = applyKf2ListInvariants(mensalidadesQuery, {
       defaultLimit: 50,

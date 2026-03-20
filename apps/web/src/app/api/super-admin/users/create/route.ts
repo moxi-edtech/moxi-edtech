@@ -113,6 +113,7 @@ export async function POST(request: Request) {
     }
 
     let createdNewAuthUser = false;
+    let forcedPasswordReset = false;
     let authUser = null as null | { user: { id: string } };
 
     // 3) Create auth user (ou reaproveita se já existir)
@@ -168,6 +169,14 @@ export async function POST(request: Request) {
         createdNewAuthUser = true;
         authUser = { user: { id: data.user.id } };
       }
+    }
+
+    if (!createdNewAuthUser && tempPassword) {
+      await callAuthAdminJob(request, "updateUserById", {
+        userId: authUser!.user.id,
+        attributes: { password, email_confirm: true },
+      });
+      forcedPasswordReset = true;
     }
 
     // 4) Create / upsert profile
@@ -249,7 +258,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       userId: authUser!.user.id,
-      tempPassword: createdNewAuthUser ? password : null,
+      tempPassword: createdNewAuthUser || forcedPasswordReset ? password : null,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

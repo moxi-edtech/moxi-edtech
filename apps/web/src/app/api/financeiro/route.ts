@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { findClassesSemPreco } from "@/lib/financeiro/missing-pricing";
-import { applyKf2ListInvariants } from "@/lib/kf2";
 
 export async function GET(req: NextRequest) {
   const s = await supabaseServer();
@@ -18,9 +17,7 @@ export async function GET(req: NextRequest) {
     kpiQuery = kpiQuery.eq("escola_id", escolaId);
   }
 
-  kpiQuery = applyKf2ListInvariants(kpiQuery, { defaultLimit: 1 });
-
-  const { data: kpiData, error: kpiError } = await kpiQuery.maybeSingle();
+  const { data: kpiData, error: kpiError } = await kpiQuery.limit(1).maybeSingle();
   if (kpiError) {
     console.error("❌ Erro ao carregar KPIs financeiros:", kpiError.message);
     return NextResponse.json(
