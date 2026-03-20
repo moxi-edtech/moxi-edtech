@@ -299,7 +299,7 @@ export default async function FinanceiroDashboardPage({
               <section className="space-y-4">
                 <h2 className="text-lg font-semibold text-slate-900">Acessos rápidos</h2>
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                  <QuickLink href="/financeiro/radar" title="Radar de Inadimplência" description="Cobranças e risco por aluno." icon={<Radar className="h-6 w-6" />} />
+                  <QuickLink href="/financeiro/cobrancas" title="Cobranças" description="Cobranças e risco por aluno." icon={<Radar className="h-6 w-6" />} />
                   <QuickLink href="/financeiro/cobrancas" title="Histórico de Cobranças" description="Mensagens, respostas e pagamentos." icon={<Receipt className="h-6 w-6" />} />
                   <QuickLink href="/financeiro/conciliacao" title="Conciliação TPA" description="Concilie Multicaixa/TPA sem ruído." icon={<Scale className="h-6 w-6" />} />
                   <QuickLink href="/financeiro/relatorios" title="Relatórios Financeiros" description="Análise completa para decisão." icon={<BarChart3 className="h-6 w-6" />} />

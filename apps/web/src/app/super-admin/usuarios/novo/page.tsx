@@ -46,6 +46,8 @@ const ROLE_MAP: Record<string, Database["public"]["Enums"]["user_role"]> = {
   staff_admin: "admin",
   financeiro: "financeiro",
   secretaria: "secretaria",
+  secretaria_financeiro: "secretaria_financeiro",
+  admin_financeiro: "admin_financeiro",
   professor: "professor",
   aluno: "aluno",
 };
@@ -55,6 +57,8 @@ const ROLE_DISPLAY_NAMES: Record<string, string> = {
   admin: "Administrador",
   financeiro: "Financeiro",
   secretaria: "Secretário",
+  secretaria_financeiro: "Secretário + Financeiro",
+  admin_financeiro: "Admin + Financeiro",
   professor: "Professor",
   aluno: "Aluno",
 };

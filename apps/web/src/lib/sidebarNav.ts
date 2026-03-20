@@ -126,7 +126,7 @@ export const sidebarConfig: SidebarConfig = {
       icon: "Wallet",
       children: [
         { href: "/financeiro/pagamentos", label: "Lista" },
-        { href: "/financeiro/radar", label: "Radar" },
+        { href: "/financeiro/cobrancas", label: "Cobranças" },
         { href: "/financeiro/fecho", label: "Fecho de Caixa" },
         { href: "/financeiro/conciliacao", label: "Conciliação" },
       ],
@@ -141,7 +141,6 @@ export const sidebarConfig: SidebarConfig = {
         { href: "/financeiro/tabelas-mensalidade", label: "Mensalidades" },
       ],
     },
-    { href: "/financeiro/cobrancas", label: "Cobranças", icon: "BadgeDollarSign" },
     {
       href: "/financeiro/relatorios",
       label: "Relatórios",

@@ -11,6 +11,7 @@ const NovaCampanhaSchema = z.object({
   canal: z.enum(['whatsapp', 'sms', 'email', 'push']),
   templateId: z.string().uuid('Template inválido').optional().nullable(),
   destinatariosTipo: z.enum(['todos', 'turma', 'selecionados', 'atraso']),
+  destinatariosIds: z.array(z.string().uuid()).optional(),
   turmaId: z.string().uuid().optional().nullable(),
   diasAtrasoMinimo: z.number().int().min(0).optional(),
   dataAgendamento: z.string().datetime('Data de agendamento inválida.'), // ISO string
@@ -37,7 +38,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: parsedBody.error.issues }, { status: 400 });
     }
 
-    const { nome, canal, templateId, dataAgendamento } = parsedBody.data;
+    const {
+      nome,
+      canal,
+      templateId,
+      dataAgendamento,
+      destinatariosTipo,
+      destinatariosIds,
+    } = parsedBody.data;
+
+    const destinatariosStats = {
+      tipo: destinatariosTipo,
+      total: destinatariosIds?.length ?? 0,
+      alunos_ids: destinatariosIds ?? [],
+    };
 
     const { data: campaign, error } = await supabase
       .from('financeiro_campanhas_cobranca')
@@ -49,7 +63,8 @@ export async function POST(request: Request) {
         data_agendamento: new Date(dataAgendamento).toISOString(),
         status: 'agendada', // New campaigns are always 'agendada' initially
         criado_por: user.id,
-        // destinatarios_stats and data_envio will be updated later
+        destinatarios_stats: destinatariosStats,
+        // data_envio will be updated later
       })
       .select('*')
       .single();

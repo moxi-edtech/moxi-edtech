@@ -9,6 +9,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}))
     const userId = String(body?.userId || '')
+    const providedPassword = String(body?.tempPassword || body?.password || '').trim()
     if (!userId) return NextResponse.json({ ok: false, error: 'userId ausente' }, { status: 400 })
 
     const s = await supabaseServer()
@@ -36,6 +37,61 @@ export async function POST(request: Request) {
     const email = ((target as any)?.email_real || (target as any)?.email) as string | undefined
     if (!email) {
       return NextResponse.json({ ok: false, error: 'Email do usuário não encontrado' }, { status: 404 })
+    }
+
+    const isStrongPassword = (pwd: string) => {
+      return (
+        typeof pwd === 'string' &&
+        pwd.length >= 8 &&
+        /[A-Z]/.test(pwd) &&
+        /[a-z]/.test(pwd) &&
+        /\d/.test(pwd) &&
+        /[^A-Za-z0-9]/.test(pwd)
+      )
+    }
+
+    const generateStrongPassword = (len = 12) => {
+      const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+      const lower = 'abcdefghijklmnopqrstuvwxyz'
+      const nums = '0123456789'
+      const special = '!@#$%^&*()-_=+[]{};:,.?'
+      const all = upper + lower + nums + special
+      const pick = (set: string) => set[Math.floor(Math.random() * set.length)]
+      let pwd = pick(upper) + pick(lower) + pick(nums) + pick(special)
+      for (let i = pwd.length; i < len; i++) pwd += pick(all)
+      return pwd
+        .split('')
+        .sort(() => Math.random() - 0.5)
+        .join('')
+    }
+
+    if (providedPassword) {
+      if (!isStrongPassword(providedPassword)) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              'Senha temporária não atende aos requisitos: mínimo 8 caracteres, com maiúscula, minúscula, número e caractere especial.',
+          },
+          { status: 400 },
+        )
+      }
+
+      await callAuthAdminJob(request, 'updateUserById', {
+        userId,
+        attributes: { password: providedPassword, email_confirm: true },
+      })
+
+      recordAuditServer({
+        escolaId: null,
+        portal: 'super_admin',
+        acao: 'RESET_PASSWORD_FORCADO',
+        entity: 'usuario',
+        entityId: userId,
+        details: { email },
+      }).catch(() => null)
+
+      return NextResponse.json({ ok: true, tempPassword: providedPassword, sentViaResend: false })
     }
 
     const origin = new URL(request.url).origin
@@ -76,7 +132,7 @@ export async function POST(request: Request) {
       details: { email },
     }).catch(() => null)
 
-    return NextResponse.json({ ok: true, sentViaResend })
+    return NextResponse.json({ ok: true, sentViaResend, tempPassword: null })
   } catch (error) {
     return NextResponse.json(
       { ok: false, error: error instanceof Error ? error.message : 'Erro ao redefinir senha' },

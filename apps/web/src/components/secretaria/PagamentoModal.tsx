@@ -169,7 +169,7 @@ export function PagamentoModal({
                   if (passo.id === "emitir_recibo" && escolaParam) {
                     router.push(`/escola/${escolaParam}/financeiro/pagamentos`);
                   } else if (passo.id === "ver_atrasos" && escolaParam) {
-                    router.push(`/escola/${escolaParam}/financeiro/radar`);
+                    router.push(`/financeiro/cobrancas`);
                   } else if (passo.id === "novo_pagamento") {
                     handleClose();
                   }

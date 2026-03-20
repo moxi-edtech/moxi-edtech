@@ -61,6 +61,7 @@ export async function GET() {
         { column: "data_vencimento", ascending: false },
         { column: "mensalidade_id", ascending: false },
       ],
+      tieBreakerColumn: "mensalidade_id",
     });
 
     const { data, error } = await query;
@@ -70,10 +71,66 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
     }
 
-    const items = data ?? [];
+    const items = (data ?? []) as any[];
+    const riscoPeso: Record<string, number> = {
+      critico: 3,
+      atencao: 2,
+      recente: 1,
+    };
+
+    const agrupados = new Map<string, any>();
+
+    for (const row of items) {
+      if (!row.aluno_id) continue;
+      const key = row.aluno_id as string;
+      const valorLinha = Number(row.valor_em_atraso ?? row.valor_previsto ?? 0);
+      const diasLinha = Number(row.dias_em_atraso ?? 0);
+      const riscoLinha = row.status_risco as string;
+      const detalhe = {
+        mensalidade_id: row.mensalidade_id,
+        data_vencimento: row.data_vencimento,
+        dias_em_atraso: diasLinha,
+        valor_em_atraso: valorLinha,
+        valor_previsto: row.valor_previsto,
+        status_mensalidade: row.status_mensalidade,
+      };
+
+      if (!agrupados.has(key)) {
+        agrupados.set(key, {
+          aluno_id: row.aluno_id,
+          mensalidade_id: null,
+          nome_aluno: row.nome_aluno,
+          responsavel: row.responsavel,
+          telefone: row.telefone,
+          nome_turma: row.nome_turma,
+          valor_previsto: row.valor_previsto,
+          valor_pago_total: row.valor_pago_total,
+          valor_em_atraso: valorLinha,
+          data_vencimento: row.data_vencimento,
+          dias_em_atraso: diasLinha,
+          status_risco: riscoLinha,
+          status_mensalidade: row.status_mensalidade,
+          mensalidades: [detalhe],
+        });
+        continue;
+      }
+
+      const current = agrupados.get(key);
+      current.valor_em_atraso = Number(current.valor_em_atraso ?? 0) + valorLinha;
+      current.mensalidades.push(detalhe);
+      if (diasLinha > Number(current.dias_em_atraso ?? 0)) {
+        current.dias_em_atraso = diasLinha;
+        current.data_vencimento = row.data_vencimento;
+      }
+      if ((riscoPeso[riscoLinha] ?? 0) > (riscoPeso[current.status_risco] ?? 0)) {
+        current.status_risco = riscoLinha;
+      }
+    }
+
+    const agrupadosList = Array.from(agrupados.values());
 
     const alunoIds = Array.from(
-      new Set((items as any[]).map((i) => i.aluno_id).filter(Boolean))
+      new Set(agrupadosList.map((i) => i.aluno_id).filter(Boolean))
     );
 
     const numeroPorAluno: Record<string, string | null> = {};
@@ -99,7 +156,7 @@ export async function GET() {
       }
     }
 
-    const enriched = (items as any[]).map((item) => ({
+    const enriched = agrupadosList.map((item) => ({
       ...item,
       numero_matricula: item.numero_matricula ?? numeroPorAluno[item.aluno_id] ?? null,
     }));
