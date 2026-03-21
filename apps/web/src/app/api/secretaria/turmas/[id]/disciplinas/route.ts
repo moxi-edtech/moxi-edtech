@@ -61,18 +61,29 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
         : Promise.resolve({ data: [] as any[] }),
       supabase
         .from('turmas')
-        .select('id, ano_letivo_id')
+        .select('id, ano_letivo_id, ano_letivo')
         .eq('escola_id', escolaId)
         .eq('id', turmaId)
         .maybeSingle(),
     ])
 
-    const { data: periodosRows } = turmaRes.data?.ano_letivo_id
+    let anoLetivoId = turmaRes.data?.ano_letivo_id ?? null
+    if (!anoLetivoId && turmaRes.data?.ano_letivo) {
+      const { data: anoRow } = await supabase
+        .from('anos_letivos')
+        .select('id')
+        .eq('escola_id', escolaId)
+        .eq('ano', turmaRes.data.ano_letivo)
+        .maybeSingle()
+      anoLetivoId = anoRow?.id ?? null
+    }
+
+    const { data: periodosRows } = anoLetivoId
       ? await supabase
           .from('periodos_letivos')
           .select('id, numero, dt_inicio, dt_fim')
           .eq('escola_id', escolaId)
-          .eq('ano_letivo_id', turmaRes.data.ano_letivo_id)
+          .eq('ano_letivo_id', anoLetivoId)
           .order('numero', { ascending: true })
       : { data: [] as any[] };
 
@@ -128,12 +139,20 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     }
 
     // Simple linkage checks per assignment (prefer FK columns when available)
-    const periodos = (periodosRows ?? []).map((periodo: any) => ({
+    let periodos = (periodosRows ?? []).map((periodo: any) => ({
       id: periodo.id,
       numero: periodo.numero,
       dt_inicio: periodo.dt_inicio,
       dt_fim: periodo.dt_fim,
     }))
+    if (periodos.length === 0) {
+      periodos = [1, 2, 3].map((numero) => ({
+        id: `fallback-${numero}`,
+        numero,
+        dt_inicio: null,
+        dt_fim: null,
+      }))
+    }
 
     const items = [] as any[]
     for (const row of rows || []) {
