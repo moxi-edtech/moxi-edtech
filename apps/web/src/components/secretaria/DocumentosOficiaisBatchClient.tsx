@@ -252,13 +252,13 @@ export default function DocumentosOficiaisBatchClient() {
     switch (tipo) {
       case "boletim_trimestral":
         return {
-          title: "Emissão de Boletim Trimestral",
-          subtitle: "Gere os boletins de notas para entrega aos encarregados.",
-          action: "Gerar Boletim Trimestral",
-          processing: "A gerar boletim trimestral...",
-          success: "Boletim trimestral gerado com sucesso!",
-          zipName: "BoletimTrimestral.zip",
-          history: "Histórico de Boletim Trimestral",
+          title: "Emissão de Declaração com Notas",
+          subtitle: "Gere as declarações com notas para transferências.",
+          action: "Gerar Declaração com Notas",
+          processing: "A gerar declaração com notas...",
+          success: "Declaração com notas gerada com sucesso!",
+          zipName: "DeclaracaoComNotas.zip",
+          history: "Histórico de Declaração com Notas",
         };
       case "certificado":
         return {
@@ -447,7 +447,7 @@ export default function DocumentosOficiaisBatchClient() {
           >
             <option value="trimestral">Pauta Trimestral</option>
             <option value="anual">Pauta Anual</option>
-            <option value="boletim_trimestral">Boletim Trimestral</option>
+            <option value="boletim_trimestral">Declaração com Notas</option>
             <option value="certificado">Certificado</option>
           </select>
           <button

@@ -55,9 +55,18 @@ export async function GET(req: Request) {
       ? await listAllAlunos(supabase, escolaId, filters, { includeFinanceiro: true, includeResumo: true })
       : (await listAlunos(supabase, escolaId, filters, { includeFinanceiro: true, includeResumo: true })).items;
 
-    const csv = toCsv(items);
+    const sorted = [...items].sort((a, b) => {
+      const nomeA = (a.nome ?? "").toLocaleLowerCase("pt-AO");
+      const nomeB = (b.nome ?? "").toLocaleLowerCase("pt-AO");
+      const compare = nomeA.localeCompare(nomeB, "pt-AO", { sensitivity: "base" });
+      if (compare !== 0) return compare;
+      return (a.id ?? "").localeCompare(b.id ?? "");
+    });
+
+    const csv = toCsv(sorted);
     const status = filters.status ?? "ativo";
-    const filename = `alunos-${status}-${exportAll ? "todos" : "pagina"}-${Date.now()}.csv`;
+    const segmento = filters.situacaoFinanceira === "em_atraso" ? "inadimplentes" : status;
+    const filename = `alunos-${segmento}-${exportAll ? "todos" : "pagina"}-${Date.now()}.csv`;
 
     return new NextResponse(csv, {
       headers: {

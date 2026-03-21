@@ -24,6 +24,7 @@ export type DocumentoEmitido = {
   escola_id: string;
   tipo: string;
   created_at: string;
+  hash_validacao?: string | null;
   dados_snapshot: DocumentoSnapshot;
 };
 
@@ -38,7 +39,7 @@ export async function getDocumentoEmitido(docId: string) {
 
   const { data: doc, error } = await supabase
     .from("documentos_emitidos")
-    .select("id, public_id, escola_id, tipo, created_at, dados_snapshot, numero_sequencial")
+    .select("id, public_id, escola_id, tipo, created_at, dados_snapshot, numero_sequencial, hash_validacao")
     .eq("id", docId)
     .single();
 
@@ -51,12 +52,18 @@ export async function getDocumentoEmitido(docId: string) {
     return { error: "Sem permissão" } as const;
   }
 
+  const { data: escolaInfo } = await supabase
+    .from("vw_escola_info" as any)
+    .select("nome")
+    .eq("escola_id", doc.escola_id)
+    .maybeSingle();
   const { data: escola } = await supabase
     .from("escolas")
-    .select("nome, validation_base_url")
+    .select("validation_base_url, logo_url")
     .eq("id", doc.escola_id)
     .maybeSingle();
-  const escolaRow = escola as { nome?: string | null; validation_base_url?: string | null } | null;
+  const escolaInfoRow = escolaInfo as { nome?: string | null } | null;
+  const escolaRow = escola as { validation_base_url?: string | null; logo_url?: string | null } | null;
   const rawSnapshot = doc.dados_snapshot;
   const snapshot =
     rawSnapshot && typeof rawSnapshot === "object" && !Array.isArray(rawSnapshot)
@@ -70,12 +77,15 @@ export async function getDocumentoEmitido(docId: string) {
       escola_id: doc.escola_id,
       tipo: doc.tipo,
       created_at: doc.created_at,
+      hash_validacao: doc.hash_validacao ?? null,
       dados_snapshot: {
         ...snapshot,
+        hash_validacao: snapshot.hash_validacao ?? doc.hash_validacao ?? null,
         numero_sequencial: doc.numero_sequencial ?? snapshot.numero_sequencial ?? null,
       },
     },
-    escolaNome: escolaRow?.nome ?? "Escola",
+    escolaNome: escolaInfoRow?.nome ?? "Escola",
     validationBaseUrl: escolaRow?.validation_base_url ?? null,
+    logoUrl: escolaRow?.logo_url ?? null,
   } as const;
 }

@@ -18,7 +18,7 @@ export default async function DeclaracaoFrequenciaPrintPage({
     return <div className="p-8">{data.error}</div>;
   }
 
-  const { doc, escolaNome, validationBaseUrl } = data;
+  const { doc, escolaNome, validationBaseUrl, logoUrl } = data;
   if (doc.tipo !== "declaracao_frequencia") {
     return <div className="p-8">Documento inválido para esta página.</div>;
   }
@@ -42,11 +42,18 @@ export default async function DeclaracaoFrequenciaPrintPage({
       <div className={`${styles.sheet} shadow-lg`}>
         <div className="space-y-8">
           <header className="text-center space-y-2">
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+            <div className="flex justify-center">
+              <img
+                src={logoUrl ?? "/insignia_med.png"}
+                alt="Insígnia da República de Angola"
+                className="h-20 w-20 max-h-20 max-w-20 object-contain"
+              />
+            </div>
+            <p className="text-xs font-semibold uppercase text-slate-500">
               República de Angola · Ministério da Educação
             </p>
             <h1 className="text-2xl font-semibold">{escolaNome}</h1>
-            <p className="text-sm font-semibold uppercase tracking-[0.2em]">
+            <p className="text-sm font-semibold uppercase">
               Ficha de Declaração de Frequência
             </p>
             <p className="text-xs text-slate-500">Data: {hoje}</p>

@@ -90,8 +90,19 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       .limit(1)
       .maybeSingle()
 
+    const { data: candidatura } = await s
+      .from('candidaturas')
+      .select('nome_candidato, dados_candidato, created_at')
+      .eq('aluno_id', alunoId)
+      .eq('escola_id', alunoEscolaId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
     const turma = Array.isArray((matricula as any)?.turmas) ? (matricula as any)?.turmas?.[0] : (matricula as any)?.turmas
     const curso = Array.isArray((turma as any)?.cursos) ? (turma as any)?.cursos?.[0] : (turma as any)?.cursos
+    const dadosCandidato = (candidatura as any)?.dados_candidato ?? {}
+    const profileEmail = profObj?.email ?? profObj?.email_real ?? profObj?.email_auth ?? null
     const responsavelNome =
       (aluno as any).responsavel || (aluno as any).responsavel_nome || (aluno as any).encarregado_nome || null
     const responsavelTelefone =
@@ -104,21 +115,21 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       ok: true,
       item: {
         id: (aluno as any).id,
-        nome: (aluno as any).nome,
-        responsavel: responsavelNome,
-        telefone_responsavel: responsavelTelefone,
+        nome: (aluno as any).nome ?? profObj?.nome ?? (candidatura as any)?.nome_candidato ?? null,
+        responsavel: responsavelNome ?? dadosCandidato?.responsavel_nome ?? null,
+        telefone_responsavel: responsavelTelefone ?? dadosCandidato?.responsavel_contato ?? null,
         status: (aluno as any).status,
         profile_id: (aluno as any).profile_id,
         escola_id: alunoEscolaId,
-        email: (aluno as any).email ?? profObj?.email ?? null,
+        email: (aluno as any).email ?? profileEmail ?? dadosCandidato?.email ?? null,
         numero_processo_login: profObj?.numero_processo_login ?? null,
-        telefone: (aluno as any).telefone ?? profObj?.telefone ?? null,
-        data_nascimento: (aluno as any).data_nascimento ?? profObj?.data_nascimento ?? null,
-        sexo: (aluno as any).sexo ?? profObj?.sexo ?? null,
-        bi_numero: (aluno as any).bi_numero ?? profObj?.bi_numero ?? null,
-        naturalidade: (aluno as any).naturalidade ?? profObj?.naturalidade ?? null,
-        provincia: profObj?.provincia ?? null,
-        encarregado_relacao: profObj?.encarregado_relacao ?? null,
+        telefone: (aluno as any).telefone ?? profObj?.telefone ?? dadosCandidato?.telefone ?? null,
+        data_nascimento: (aluno as any).data_nascimento ?? profObj?.data_nascimento ?? dadosCandidato?.data_nascimento ?? null,
+        sexo: (aluno as any).sexo ?? profObj?.sexo ?? dadosCandidato?.sexo ?? null,
+        bi_numero: (aluno as any).bi_numero ?? profObj?.bi_numero ?? dadosCandidato?.bi_numero ?? null,
+        naturalidade: (aluno as any).naturalidade ?? profObj?.naturalidade ?? dadosCandidato?.naturalidade ?? null,
+        provincia: profObj?.provincia ?? dadosCandidato?.provincia ?? null,
+        encarregado_relacao: profObj?.encarregado_relacao ?? dadosCandidato?.encarregado_relacao ?? null,
         turma_id: (matricula as any)?.turma_id ?? null,
         turma_nome: (turma as any)?.nome ?? null,
         turma_curso: (curso as any)?.nome ?? null,

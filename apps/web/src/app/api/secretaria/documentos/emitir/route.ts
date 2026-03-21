@@ -26,7 +26,7 @@ const payloadSchema = z.object({
 
 type TipoDocumento = z.infer<typeof payloadSchema>["tipoDocumento"];
 
-const FINAL_DOCUMENT_TYPES: TipoDocumento[] = ["boletim_trimestral", "historico", "certificado", "comprovante_matricula", "declaracao_notas"];
+const FINAL_DOCUMENT_TYPES: TipoDocumento[] = ["historico", "certificado", "comprovante_matricula", "declaracao_notas"];
 const FINAL_DOC_BACKEND_TYPE: Record<TipoDocumento, string> = {
   boletim_trimestral: "boletim_trimestral",
   historico: "historico",
@@ -108,7 +108,11 @@ export async function POST(request: Request) {
     }
 
     // Lógica para documentos baseados na matrícula ativa
-    const { data: matricula, error: matriculaError } = await supabase
+    if (tipoDocumento === "boletim_trimestral" && !ano_letivo) {
+      return NextResponse.json({ ok: false, error: "O ano letivo é obrigatório para este tipo de documento." }, { status: 400 });
+    }
+
+    let matriculaQuery = supabase
       .from("matriculas")
       .select(`
         id, aluno_id, turma_id, ano_letivo, status,
@@ -119,8 +123,13 @@ export async function POST(request: Request) {
       .eq("aluno_id", alunoId)
       .in("status", ["ativa", "ativo"])
       .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(1);
+
+    if (tipoDocumento === "boletim_trimestral" && ano_letivo) {
+      matriculaQuery = matriculaQuery.eq("ano_letivo", ano_letivo);
+    }
+
+    const { data: matricula, error: matriculaError } = await matriculaQuery.maybeSingle();
 
     if (matriculaError || !matricula) {
       return NextResponse.json({ ok: false, error: "Matrícula ativa não encontrada" }, { status: 404 });

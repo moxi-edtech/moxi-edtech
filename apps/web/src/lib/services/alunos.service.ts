@@ -77,6 +77,7 @@ export function parseAlunoListFilters(url: URL): AlunoListFilters {
     cursorId: url.searchParams.get("cursor_id") || cursorId || undefined,
     situacaoFinanceira: url.searchParams.get("situacao_financeira") || undefined,
     statusMatricula: url.searchParams.get("status_matricula") || undefined,
+    orderBy: url.searchParams.get("order_by") || undefined,
     includeResumo: url.searchParams.get("includeResumo") === "1" || undefined,
   });
 

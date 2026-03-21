@@ -46,6 +46,26 @@ export async function GET(
     return NextResponse.json({ ok: false, error: "not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ ok: true, documento: row }, { status: 200 });
-}
+  const payload = (row.payload ?? {}) as Record<string, unknown>;
+  const alunoNome =
+    (payload.aluno_nome as string | undefined) ??
+    (payload.alunoNome as string | undefined) ??
+    null;
+  const escolaNome =
+    (payload.escola_nome as string | undefined) ??
+    (payload.escolaNome as string | undefined) ??
+    null;
 
+  return NextResponse.json(
+    {
+      ok: true,
+      valid: true,
+      tipo: row.tipo ?? null,
+      escola: escolaNome,
+      aluno: alunoNome,
+      created_at: row.emitted_at ?? null,
+      documento: row,
+    },
+    { status: 200 }
+  );
+}

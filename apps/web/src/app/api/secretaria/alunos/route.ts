@@ -2,7 +2,7 @@
 import { createRouteClient } from "@/lib/supabase/route-client";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
-import { listAlunos, parseAlunoListFilters } from "@/lib/services/alunos.service";
+import { listAllAlunos, listAlunos, parseAlunoListFilters } from "@/lib/services/alunos.service";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -35,9 +35,46 @@ export async function GET(req: Request) {
     if (roleError) return roleError;
 
     const filters = parseAlunoListFilters(url);
+    const includeResumo = filters.includeResumo;
+
+    if (filters.orderBy === "nome_asc") {
+      const allItems = await listAllAlunos(supabase, escolaId, filters, {
+        includeFinanceiro: true,
+        includeResumo,
+      });
+      const sorted = [...allItems].sort((a, b) => {
+        const nomeA = (a.nome ?? "").toLocaleLowerCase("pt-AO");
+        const nomeB = (b.nome ?? "").toLocaleLowerCase("pt-AO");
+        const compare = nomeA.localeCompare(nomeB, "pt-AO", { sensitivity: "base" });
+        if (compare !== 0) return compare;
+        return (a.id ?? "").localeCompare(b.id ?? "");
+      });
+      const limit = Math.min(filters.limit ?? 20, 50);
+      const pageIndex = Math.max(filters.page ?? 1, 1);
+      const start = (pageIndex - 1) * limit;
+      const end = start + limit;
+      const items = sorted.slice(start, end);
+      const hasMore = end < sorted.length;
+
+      return NextResponse.json({
+        ok: true,
+        data: items,
+        items,
+        total: sorted.length,
+        page: {
+          limit,
+          offset: start,
+          nextOffset: hasMore ? end : null,
+          hasMore,
+          nextCursor: null,
+          total: sorted.length,
+        },
+      });
+    }
+
     const { items, page } = await listAlunos(supabase, escolaId, filters, {
       includeFinanceiro: true,
-      includeResumo: filters.includeResumo,
+      includeResumo,
     });
 
     return NextResponse.json({

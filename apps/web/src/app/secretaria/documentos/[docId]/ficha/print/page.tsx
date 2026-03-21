@@ -18,7 +18,7 @@ export default async function FichaInscricaoPrintPage({
     return <div className="p-8">{data.error}</div>;
   }
 
-  const { doc, escolaNome, validationBaseUrl } = data;
+  const { doc, escolaNome, validationBaseUrl, logoUrl } = data;
   if (String(doc.tipo) !== "ficha_inscricao") {
     return <div className="p-8">Documento inválido para esta página.</div>;
   }
@@ -42,6 +42,13 @@ export default async function FichaInscricaoPrintPage({
       <div className={`${styles.sheet} shadow-lg`}>
         <div className="space-y-6">
           <header className="text-center space-y-2">
+            <div className="flex justify-center">
+              <img
+                src={logoUrl ?? "/insignia_med.png"}
+                alt="Insígnia da República de Angola"
+                className="h-20 w-20 max-h-20 max-w-20 object-contain"
+              />
+            </div>
             <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
               {escolaNome}
             </p>

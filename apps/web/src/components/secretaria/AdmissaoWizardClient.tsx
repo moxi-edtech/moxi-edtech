@@ -106,6 +106,9 @@ type CandidaturaDraft = {
     sexo?: string | null;
     nif?: string | null;
     endereco?: string | null;
+    naturalidade?: string | null;
+    provincia?: string | null;
+    encarregado_relacao?: string | null;
     responsavel_nome?: string | null;
     responsavel_contato?: string | null;
     encarregado_email?: string | null;
@@ -183,6 +186,9 @@ type DraftIdentificacao = {
   sexo?: string;
   nif?: string;
   endereco?: string;
+  naturalidade?: string;
+  provincia?: string;
+  encarregado_relacao?: string;
   responsavel_nome?: string;
   responsavel_contato?: string;
   encarregado_email?: string;
@@ -213,6 +219,9 @@ function Step1Identificacao(props: {
     sexo: "",
     nif: "",
     endereco: "",
+    naturalidade: "",
+    provincia: "",
+    encarregado_relacao: "",
     responsavel_nome: "",
     responsavel_contato: "",
     encarregado_email: "",
@@ -246,6 +255,9 @@ function Step1Identificacao(props: {
       sexo: initialData.dados_candidato?.sexo ?? "",
       nif: initialData.dados_candidato?.nif ?? "",
       endereco: initialData.dados_candidato?.endereco ?? "",
+      naturalidade: initialData.dados_candidato?.naturalidade ?? "",
+      provincia: initialData.dados_candidato?.provincia ?? "",
+      encarregado_relacao: initialData.dados_candidato?.encarregado_relacao ?? "",
       responsavel_nome: initialData.dados_candidato?.responsavel_nome ?? "",
       responsavel_contato: initialData.dados_candidato?.responsavel_contato ?? "",
       encarregado_email: initialData.dados_candidato?.encarregado_email ?? "",
@@ -283,6 +295,9 @@ function Step1Identificacao(props: {
       form.sexo,
       form.nif,
       form.endereco,
+      form.naturalidade,
+      form.provincia,
+      form.encarregado_relacao,
       form.responsavel_nome,
       form.responsavel_contato,
       form.encarregado_email,
@@ -292,6 +307,9 @@ function Step1Identificacao(props: {
     form.sexo,
     form.nif,
     form.endereco,
+    form.naturalidade,
+    form.provincia,
+    form.encarregado_relacao,
     form.responsavel_nome,
     form.responsavel_contato,
     form.encarregado_email,
@@ -667,6 +685,24 @@ function Step1Identificacao(props: {
             </select>
             <input
               type="text"
+              name="naturalidade"
+              value={form.naturalidade ?? ""}
+              onChange={onChange}
+              placeholder="Naturalidade"
+              disabled={!canEditDraft}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+            />
+            <input
+              type="text"
+              name="provincia"
+              value={form.provincia ?? ""}
+              onChange={onChange}
+              placeholder="Província"
+              disabled={!canEditDraft}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+            />
+            <input
+              type="text"
               name="responsavel_nome"
               value={form.responsavel_nome ?? ""}
               onChange={onChange}
@@ -680,6 +716,15 @@ function Step1Identificacao(props: {
               value={form.responsavel_contato ?? ""}
               onChange={onChange}
               placeholder="Contacto do encarregado"
+              disabled={!canEditDraft}
+              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
+            />
+            <input
+              type="text"
+              name="encarregado_relacao"
+              value={form.encarregado_relacao ?? ""}
+              onChange={onChange}
+              placeholder="Relação com o aluno"
               disabled={!canEditDraft}
               className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-klasse-gold/20 focus:border-klasse-gold disabled:opacity-60"
             />

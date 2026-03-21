@@ -33,8 +33,8 @@ const TIPOS: Array<{
   },
   {
     id: "boletim_trimestral",
-    title: "Boletim Trimestral",
-    description: "Aproveitamento escolar para transferência.",
+    title: "Declaração com Notas",
+    description: "Notas e aproveitamento para transferências.",
     icon: BookOpen,
   },
   {
