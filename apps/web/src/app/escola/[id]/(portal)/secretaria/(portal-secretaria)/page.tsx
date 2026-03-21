@@ -1,6 +1,5 @@
 import SecretariaDashboardPage from "@/app/secretaria/(portal-secretaria)/page";
 import FinanceiroDashboardPage from "@/app/financeiro/page";
-import KlasseSecretariaUnificada from "@/components/secretaria/KlasseSecretariaUnificada";
 import { supabaseServer } from "@/lib/supabaseServer";
 
 export default async function SecretariaLandingPage({
@@ -29,12 +28,7 @@ export default async function SecretariaLandingPage({
   const papel = (vinculo?.papel ?? null) as string | null;
 
   if (papel === "secretaria_financeiro") {
-    return (
-      <KlasseSecretariaUnificada
-        balcaoContent={<SecretariaDashboardPage />}
-        financeiroContent={<FinanceiroDashboardPage searchParams={Promise.resolve(sp ?? {})} />}
-      />
-    );
+    return <SecretariaDashboardPage />;
   }
 
   if (papel === "financeiro") {
