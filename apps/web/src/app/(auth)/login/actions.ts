@@ -106,13 +106,13 @@ export async function loginAction(_: unknown, formData: FormData) {
         redirect("/financeiro");
       } else if (papelNormalizado === "secretaria_financeiro") {
         if (escola_id) {
-          redirect(`/escola/${escolaParam ?? escola_id}/secretaria?modo=balcao`);
+          redirect(`/escola/${escolaParam ?? escola_id}/secretaria`);
         } else {
           redirect("/secretaria");
         }
       } else if (papelNormalizado === "admin_financeiro") {
         if (escola_id) {
-          redirect(`/escola/${escolaParam ?? escola_id}/admin/dashboard?tab=financeiro`);
+          redirect(`/escola/${escolaParam ?? escola_id}/admin/dashboard`);
         } else {
           redirect("/admin");
         }
