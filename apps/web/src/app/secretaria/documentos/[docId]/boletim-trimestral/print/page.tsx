@@ -8,27 +8,11 @@ import { supabaseServerTyped } from "@/lib/supabaseServer";
 export const dynamic = "force-dynamic";
 
 type NotaLinha = {
+  disciplina_id: string | null;
   disciplina_nome: string | null;
-  notas_por_tipo: Record<string, number | string | null> | null;
+  trimestre: number | null;
+  nota_final: number | null;
 };
-
-const TRIM_KEYS = {
-  t1: ["I_TRIM", "TRIMESTRE_1", "T1", "1TRI"],
-  t2: ["II_TRIM", "TRIMESTRE_2", "T2", "2TRI"],
-  t3: ["III_TRIM", "TRIMESTRE_3", "T3", "3TRI"],
-};
-
-function pickNota(payload: Record<string, number | string | null> | null | undefined, keys: string[]) {
-  if (!payload) return null;
-  for (const key of keys) {
-    const value = payload[key];
-    if (typeof value === "number") return value;
-    if (typeof value === "string" && value.trim() !== "" && !Number.isNaN(Number(value))) {
-      return Number(value);
-    }
-  }
-  return null;
-}
 
 function formatNota(value: number | null) {
   if (value === null || Number.isNaN(value)) return "-";
@@ -47,7 +31,7 @@ export default async function BoletimTrimestralPrintPage({
     return <div className="p-8">{data.error}</div>;
   }
 
-  const { doc, escolaNome, validationBaseUrl } = data;
+  const { doc, escolaNome, validationBaseUrl, logoUrl } = data;
   const tipoDocumento = String(doc.tipo);
   if (tipoDocumento !== "boletim_trimestral") {
     return <div className="p-8">Documento inválido para esta página.</div>;
@@ -67,11 +51,53 @@ export default async function BoletimTrimestralPrintPage({
   const supabase = await supabaseServerTyped();
   const { data: notasRows } = await supabase
     .from("vw_boletim_por_matricula")
-    .select("disciplina_nome, notas_por_tipo")
+    .select("disciplina_id, disciplina_nome, trimestre, nota_final")
     .eq("matricula_id", typeof snapshot.matricula_id === "string" ? snapshot.matricula_id : "")
     .order("disciplina_nome", { ascending: true });
 
   const linhas = (notasRows || []) as NotaLinha[];
+  const notasByDisciplina = new Map<string, { nome: string; t1?: number | null; t2?: number | null; t3?: number | null }>();
+  linhas.forEach((row, index) => {
+    const key = row.disciplina_id ?? row.disciplina_nome ?? `disc-${index}`;
+    const existing = notasByDisciplina.get(key) ?? {
+      nome: row.disciplina_nome ?? "—",
+    };
+    if (row.trimestre === 1) existing.t1 = row.nota_final ?? null;
+    if (row.trimestre === 2) existing.t2 = row.nota_final ?? null;
+    if (row.trimestre === 3) existing.t3 = row.nota_final ?? null;
+    notasByDisciplina.set(key, existing);
+  });
+
+  let disciplinas: Array<{ key: string; nome: string; t1?: number | null; t2?: number | null; t3?: number | null }> = [];
+  if (typeof snapshot.turma_id === "string") {
+    const { data: turmaDisciplinas } = await supabase
+      .from("turma_disciplinas")
+      .select("id, curso_matriz(disciplina_id, disciplinas_catalogo(nome))")
+      .eq("escola_id", doc.escola_id)
+      .eq("turma_id", snapshot.turma_id);
+    disciplinas = (turmaDisciplinas || []).map((row) => {
+      const disciplinaId = (row as any)?.curso_matriz?.disciplina_id ?? row.id;
+      const nome = (row as any)?.curso_matriz?.disciplinas_catalogo?.nome ?? "Disciplina";
+      const notas = notasByDisciplina.get(String(disciplinaId));
+      return {
+        key: String(disciplinaId),
+        nome,
+        t1: notas?.t1 ?? null,
+        t2: notas?.t2 ?? null,
+        t3: notas?.t3 ?? null,
+      };
+    });
+  }
+
+  if (disciplinas.length === 0) {
+    disciplinas = Array.from(notasByDisciplina.entries()).map(([key, notas]) => ({
+      key,
+      nome: notas.nome,
+      t1: notas.t1 ?? null,
+      t2: notas.t2 ?? null,
+      t3: notas.t3 ?? null,
+    }));
+  }
   const hoje = new Date().toLocaleDateString("pt-PT");
 
   return (
@@ -80,12 +106,19 @@ export default async function BoletimTrimestralPrintPage({
       <div className={`${styles.sheet} shadow-lg`}>
         <div className="space-y-8">
           <header className="text-center space-y-2">
+            <div className="flex justify-center">
+              <img
+                src={logoUrl ?? "/insignia_med.png"}
+                alt="Insígnia da República de Angola"
+                className="h-20 w-20 max-h-20 max-w-20 object-contain"
+              />
+            </div>
             <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
               República de Angola · Ministério da Educação
             </p>
             <h1 className="text-2xl font-semibold">{escolaNome}</h1>
             <p className="text-sm font-semibold uppercase tracking-[0.2em]">
-              Boletim Trimestral Oficial
+              Declaração com Notas
             </p>
             <p className="text-xs text-slate-500">Data: {hoje}</p>
             {numero ? (
@@ -101,7 +134,7 @@ export default async function BoletimTrimestralPrintPage({
               <strong> {typeof snapshot.turma_nome === "string" ? snapshot.turma_nome : "—"}</strong>, Turno
               <strong> {typeof snapshot.turma_turno === "string" ? snapshot.turma_turno : "—"}</strong>, no ano letivo
               <strong> {typeof snapshot.ano_letivo === "string" || typeof snapshot.ano_letivo === "number" ? String(snapshot.ano_letivo) : "—"}</strong>, tendo obtido o seguinte aproveitamento
-              pedagógico até a presente data:
+              pedagógico:
             </p>
           </section>
 
@@ -117,27 +150,26 @@ export default async function BoletimTrimestralPrintPage({
                 </tr>
               </thead>
               <tbody>
-                {linhas.length === 0 ? (
+                {disciplinas.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-3 py-3 text-center text-slate-500">
                       Sem notas lançadas até o momento.
                     </td>
                   </tr>
                 ) : (
-                  linhas.map((row, index) => {
-                    const notas = row.notas_por_tipo || {};
-                    const t1 = pickNota(notas, TRIM_KEYS.t1);
-                    const t2 = pickNota(notas, TRIM_KEYS.t2);
-                    const t3 = pickNota(notas, TRIM_KEYS.t3);
+                  disciplinas.map((row, index) => {
+                    const t1 = row.t1 ?? null;
+                    const t2 = row.t2 ?? null;
+                    const t3 = row.t3 ?? null;
                     const media =
                       t1 !== null && t2 !== null && t3 !== null
                         ? (t1 + t2 + t3) / 3
                         : null;
 
                     return (
-                      <tr key={`${row.disciplina_nome || "disc"}-${index}`}>
+                      <tr key={`${row.key}-${index}`}>
                         <td className="border border-slate-200 px-2 py-2 text-left">
-                          {row.disciplina_nome || "—"}
+                          {row.nome || "—"}
                         </td>
                         <td className="border border-slate-200 px-2 py-2 text-center">
                           {formatNota(t1)}

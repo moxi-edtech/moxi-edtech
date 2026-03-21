@@ -11,9 +11,10 @@ type Payload = {
   ativo: boolean;
 };
 
-export async function GET(_req: Request, context: { params: { id?: string } }) {
+export async function GET(_req: Request, context: { params: Promise<{ id?: string }> }) {
   try {
-    const { supabase, escolaId } = await resolveEscolaIdFromRequest(context.params?.id ?? null);
+    const { id } = await context.params;
+    const { supabase, escolaId } = await resolveEscolaIdFromRequest(id ?? null);
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 403 });
     }
@@ -50,9 +51,10 @@ async function resolveEscolaIdFromRequest(requestedId: string | null) {
   return { supabase, escolaId };
 }
 
-export async function POST(req: Request, context: { params: { id?: string } }) {
+export async function POST(req: Request, context: { params: Promise<{ id?: string }> }) {
   try {
-    const { supabase, escolaId } = await resolveEscolaIdFromRequest(context.params?.id ?? null);
+    const { id } = await context.params;
+    const { supabase, escolaId } = await resolveEscolaIdFromRequest(id ?? null);
     if (!escolaId) {
       return NextResponse.json({ ok: false, error: "Escola não encontrada" }, { status: 403 });
     }

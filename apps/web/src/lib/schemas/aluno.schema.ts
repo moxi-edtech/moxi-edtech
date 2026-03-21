@@ -12,6 +12,7 @@ export const alunoListFiltersSchema = z.object({
   cursorId: z.string().uuid().optional(),
   situacaoFinanceira: z.string().trim().min(1).optional(),
   statusMatricula: z.string().trim().min(1).optional(),
+  orderBy: z.enum(["nome_asc"]).optional(),
   includeResumo: z.boolean().optional(),
 });
 

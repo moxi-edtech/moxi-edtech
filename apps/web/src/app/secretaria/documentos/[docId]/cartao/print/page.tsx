@@ -18,7 +18,7 @@ export default async function CartaoEstudantePrintPage({
     return <div className="p-8">{data.error}</div>;
   }
 
-  const { doc, escolaNome, validationBaseUrl } = data;
+  const { doc, escolaNome, validationBaseUrl, logoUrl } = data;
   if (String(doc.tipo) !== "cartao_estudante") {
     return <div className="p-8">Documento inválido para esta página.</div>;
   }
@@ -40,6 +40,13 @@ export default async function CartaoEstudantePrintPage({
       <div className={`${styles.sheet} shadow-lg`}>
         <div className="max-w-md border border-slate-200 rounded-xl p-6 space-y-4">
           <header className="text-center space-y-1">
+          <div className="flex justify-center">
+            <img
+              src={logoUrl ?? "/insignia_med.png"}
+              alt="Insígnia da República de Angola"
+              className="h-12 w-12 max-h-12 max-w-12 object-contain"
+            />
+          </div>
             <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Cartão de Estudante</p>
             <h1 className="text-lg font-semibold">{escolaNome}</h1>
             {numero ? (

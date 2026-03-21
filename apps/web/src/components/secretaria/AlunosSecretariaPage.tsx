@@ -33,7 +33,7 @@ import {
   X,
 } from "lucide-react";
 
-type TabStatus = "leads" | "ativos" | "inativos" | "arquivados";
+type TabStatus = "leads" | "ativos" | "inadimplentes" | "inativos" | "arquivados";
 type SituacaoFinanceira = "em_dia" | "em_atraso" | "sem_registo";
 type MetodoPagamento = "numerario" | "transferencia" | "multicaixa" | "referencia";
 
@@ -134,6 +134,12 @@ const TABS: TabDef[] = [
     label: "Activos",
     icon: <UserCheck size={13} />,
     color: "bg-[#1F6B3B]/10 text-[#1F6B3B]",
+  },
+  {
+    id: "inadimplentes",
+    label: "Inadimplentes",
+    icon: <DollarSign size={13} />,
+    color: "bg-rose-100 text-rose-600",
   },
   {
     id: "inativos",
@@ -1027,6 +1033,7 @@ function SkeletonRow() {
 const TAB_TO_STATUS: Record<TabStatus, string> = {
   leads: "pendente",
   ativos: "ativo",
+  inadimplentes: "ativo",
   inativos: "inativo",
   arquivados: "arquivado",
 };
@@ -1066,8 +1073,15 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showExport, setShowExport] = useState(false);
 
+  const isInadimplentesTab = (value: TabStatus) => value === "inadimplentes";
+
   const load = useCallback(
-    async (currentPage: number, currentTab: TabStatus, currentQ: string, currentFilters: Filters) => {
+    async (
+      currentPage: number,
+      currentTab: TabStatus,
+      currentQ: string,
+      currentFilters: Filters
+    ) => {
     setLoading(true);
     setFetchError(null);
 
@@ -1087,6 +1101,10 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
       if (currentFilters.turmaId) {
         params.set("turma_id", currentFilters.turmaId);
       }
+      if (isInadimplentesTab(currentTab)) {
+        params.set("situacao_financeira", "em_atraso");
+      }
+      params.set("order_by", "nome_asc");
       if (cursor) {
         params.set("cursor_created_at", cursor.created_at);
         params.set("cursor_id", cursor.id);
@@ -1243,6 +1261,10 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
     if (escolaId) params.set("escolaId", escolaId);
     if (filters.ano) params.set("ano", filters.ano);
     if (filters.turmaId) params.set("turma_id", filters.turmaId);
+    if (isInadimplentesTab(tab)) {
+      params.set("situacao_financeira", "em_atraso");
+    }
+    params.set("order_by", "nome_asc");
     if (mode === "page") {
       params.set("page", String(page));
     } else {
@@ -1477,6 +1499,7 @@ export default function AlunosSecretariaPage({ escolaId }: { escolaId?: string |
                 </div>
               )}
             </div>
+
 
             <div className="ml-auto flex items-center gap-2">
               {!loading && (

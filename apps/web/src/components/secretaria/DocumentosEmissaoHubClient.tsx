@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BookOpen, FileText, RefreshCw, Search, User } from "lucide-react";
 
@@ -42,8 +42,8 @@ const TIPOS: Array<{
   },
   {
     id: "boletim_trimestral",
-    title: "Boletim Trimestral",
-    description: "Aproveitamento escolar para transferência.",
+    title: "Declaração com Notas",
+    description: "Notas e aproveitamento para transferências.",
     icon: BookOpen,
   },
   {
@@ -82,10 +82,14 @@ export default function DocumentosEmissaoHubClient({
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [servicos, setServicos] = useState<ServicoItem[]>([]);
   const [loadingServicos, setLoadingServicos] = useState(false);
-  const [metodo, setMetodo] = useState<"cash" | "tpa" | "transfer" | "mcx" | "kiwk">("cash");
+  const [metodo, setMetodo] = useState<"cash" | "tpa" | "transfer">("tpa");
   const [reference, setReference] = useState("");
   const [evidenceUrl, setEvidenceUrl] = useState("");
   const [printQueue, setPrintQueue] = useState<Array<{ label: string; url: string }>>([]);
+  const referenceInputRef = useRef<HTMLInputElement | null>(null);
+  const [anoLetivoOptions, setAnoLetivoOptions] = useState<Array<{ id: string; nome: string; ano_letivo: number; status: string }>>([]);
+  const [anoLetivoSelecionado, setAnoLetivoSelecionado] = useState<number | null>(null);
+  const [loadingAnoLetivo, setLoadingAnoLetivo] = useState(false);
   const alunoIdParam = alunoId ?? searchParams?.get("alunoId");
   const tipoParam = (defaultTipo ?? (searchParams?.get("tipo") as DocumentoTipo | null)) ?? null;
 
@@ -102,6 +106,7 @@ export default function DocumentosEmissaoHubClient({
     }, 300);
     return () => clearTimeout(handler);
   }, [query]);
+
 
   useEffect(() => {
     if (!alunoIdParam || selectedAluno) return;
@@ -129,6 +134,25 @@ export default function DocumentosEmissaoHubClient({
       setTipo(tipoParam);
     }
   }, [tipoParam]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem("documentos_emissao_metodo");
+    if (stored === "cash" || stored === "tpa" || stored === "transfer") {
+      setMetodo(stored);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("documentos_emissao_metodo", metodo);
+  }, [metodo]);
+
+  useEffect(() => {
+    if (metodo === "tpa") {
+      referenceInputRef.current?.focus();
+    }
+  }, [metodo]);
 
   useEffect(() => {
     let active = true;
@@ -196,16 +220,64 @@ export default function DocumentosEmissaoHubClient({
     };
   }, [escolaParam]);
 
+  useEffect(() => {
+    let active = true;
+    const loadAnoLetivo = async () => {
+      if (!escolaParam) return;
+      setLoadingAnoLetivo(true);
+      try {
+        const res = await fetch(`/api/secretaria/school-sessions?escolaId=${encodeURIComponent(escolaParam)}`, {
+          cache: "no-store",
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao carregar anos letivos");
+        const items = Array.isArray(json.data) ? json.data : [];
+        const mapped = items
+          .filter((item) => Number.isFinite(item?.ano_letivo))
+          .map((item) => ({
+            id: String(item.id),
+            nome: String(item.nome ?? item.ano_letivo),
+            ano_letivo: Number(item.ano_letivo),
+            status: String(item.status ?? ""),
+          }));
+        if (active) {
+          setAnoLetivoOptions(mapped);
+          if (!anoLetivoSelecionado && mapped.length > 0) {
+            const ativo = mapped.find((item) => item.status === "ativa") ?? mapped[0];
+            setAnoLetivoSelecionado(ativo.ano_letivo);
+          }
+        }
+      } catch {
+        if (active) setAnoLetivoOptions([]);
+      } finally {
+        if (active) setLoadingAnoLetivo(false);
+      }
+    };
+
+    loadAnoLetivo();
+    return () => {
+      active = false;
+    };
+  }, [escolaParam, anoLetivoSelecionado]);
+
   const normalizedResults = useMemo(() => results.slice(0, 6), [results]);
 
   const selectedServico = useMemo(() => {
     if (!tipo) return null;
-    const normalized = tipo.replace("declaracao_", "decl");
-    const tokens = [tipo, normalized].flatMap((value) => value.split("_"));
+    const normalizeText = (value: string) =>
+      value
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+    const normalized = tipo.replace("declaracao_", "decl_");
+    const tokens = [tipo, normalized]
+      .flatMap((value) => value.split("_"))
+      .map(normalizeText)
+      .filter(Boolean);
     return (
       servicos.find((servico) => {
-        const haystack = `${servico.codigo} ${servico.nome} ${servico.descricao ?? ""}`.toLowerCase();
-        return tokens.some((token) => token && haystack.includes(token));
+        const haystack = normalizeText(`${servico.codigo} ${servico.nome} ${servico.descricao ?? ""}`);
+        return tokens.some((token) => haystack.includes(token));
       }) ?? null
     );
   }, [servicos, tipo]);
@@ -235,6 +307,10 @@ export default function DocumentosEmissaoHubClient({
 
       if (isPago && metodo === "transfer" && !evidenceUrl.trim()) {
         throw new Error("Comprovativo obrigatório para Transferência.");
+      }
+
+      if (tipo === "boletim_trimestral" && !anoLetivoSelecionado) {
+        throw new Error("Selecione o ano letivo para emitir o boletim.");
       }
 
       let pedidoId: string | null = null;
@@ -297,7 +373,12 @@ export default function DocumentosEmissaoHubClient({
       const res = await fetch("/api/secretaria/documentos/emitir", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ alunoId: selectedAluno.id, tipoDocumento: tipo, escolaId }),
+        body: JSON.stringify({
+          alunoId: selectedAluno.id,
+          tipoDocumento: tipo,
+          escolaId,
+          ano_letivo: tipo === "boletim_trimestral" ? anoLetivoSelecionado : undefined,
+        }),
       });
       const json = (await res.json().catch(() => ({}))) as DocumentoResponse;
       if (!res.ok || !json.ok || !json.docId) {
@@ -417,56 +498,84 @@ export default function DocumentosEmissaoHubClient({
         })}
       </section>
 
-      {isPago && selectedServico && (
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-          <div>
-            <h3 className="text-sm font-semibold text-slate-900">Checkout rápido</h3>
-            <p className="text-xs text-slate-500">Documento pago · {valorBase} Kz</p>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-            {[
-              { id: "cash", label: "Cash" },
-              { id: "tpa", label: "TPA" },
-              { id: "transfer", label: "Transfer" },
-              { id: "mcx", label: "MCX" },
-              { id: "kiwk", label: "KIWK" },
-            ].map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setMetodo(item.id as typeof metodo)}
-                className={`rounded-lg border px-3 py-2 text-xs font-semibold ${
-                  metodo === item.id
-                    ? "border-klasse-gold bg-klasse-gold-50 text-klasse-gold"
-                    : "border-slate-200 text-slate-600"
-                }`}
-              >
-                {item.label}
-              </button>
+      {tipo === "boletim_trimestral" && (
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-2">
+          <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+            Ano letivo
+          </label>
+          <select
+            value={anoLetivoSelecionado ?? ""}
+            onChange={(event) => setAnoLetivoSelecionado(Number(event.target.value))}
+            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+            disabled={loadingAnoLetivo || anoLetivoOptions.length === 0}
+          >
+            <option value="" disabled>
+              {loadingAnoLetivo ? "A carregar..." : "Selecione o ano letivo"}
+            </option>
+            {anoLetivoOptions.map((item) => (
+              <option key={item.id} value={item.ano_letivo}>
+                {item.nome}
+              </option>
             ))}
-          </div>
-          {metodo === "tpa" && (
-            <div>
-              <label className="text-xs font-semibold text-slate-600">Referência</label>
-              <input
-                value={reference}
-                onChange={(event) => setReference(event.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-              />
-            </div>
-          )}
-          {metodo === "transfer" && (
-            <div>
-              <label className="text-xs font-semibold text-slate-600">Comprovativo (URL)</label>
-              <input
-                value={evidenceUrl}
-                onChange={(event) => setEvidenceUrl(event.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-              />
-            </div>
-          )}
+          </select>
         </section>
       )}
+
+      <section
+        className={`overflow-hidden transition-all duration-300 ease-out ${
+          isPago && selectedServico ? "max-h-[420px] opacity-100" : "max-h-0 opacity-0"
+        }`}
+      >
+        {isPago && selectedServico && (
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-sm space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900">Checkout rápido</h3>
+              <p className="text-sm font-semibold text-slate-900">Total a pagar: {valorBase} Kz</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { id: "tpa", label: "TPA" },
+                { id: "transfer", label: "Transferência" },
+                { id: "cash", label: "Numerário" },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setMetodo(item.id as typeof metodo)}
+                  className={`rounded-full border px-4 py-2 text-xs font-semibold transition ${
+                    metodo === item.id
+                      ? "border-klasse-gold bg-klasse-gold-50 text-klasse-gold"
+                      : "border-slate-200 bg-white text-slate-600"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            {metodo === "tpa" && (
+              <div>
+                <label className="text-xs font-semibold text-slate-600">Referência do Pagamento</label>
+                <input
+                  ref={referenceInputRef}
+                  value={reference}
+                  onChange={(event) => setReference(event.target.value)}
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                />
+              </div>
+            )}
+            {metodo === "transfer" && (
+              <div>
+                <label className="text-xs font-semibold text-slate-600">Comprovativo (URL)</label>
+                <input
+                  value={evidenceUrl}
+                  onChange={(event) => setEvidenceUrl(event.target.value)}
+                  className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                />
+              </div>
+            )}
+          </div>
+        )}
+      </section>
 
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -500,7 +609,7 @@ export default function DocumentosEmissaoHubClient({
           className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {submitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : null}
-          {isPago ? "Pagar e Emitir" : "Emitir e Imprimir"}
+          {isPago ? "Pagar e Emitir Documento" : "Emitir e Imprimir"}
         </button>
       </div>
     </main>

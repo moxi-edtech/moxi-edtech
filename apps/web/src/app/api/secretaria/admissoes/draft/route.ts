@@ -71,6 +71,24 @@ const draftPayloadSchema = z
       .max(200)
       .optional(),
 
+    naturalidade: z
+      .string()
+      .trim()
+      .max(120)
+      .optional(),
+
+    provincia: z
+      .string()
+      .trim()
+      .max(120)
+      .optional(),
+
+    encarregado_relacao: z
+      .string()
+      .trim()
+      .max(120)
+      .optional(),
+
     responsavel_nome: z
       .string()
       .trim()

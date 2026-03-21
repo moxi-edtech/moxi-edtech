@@ -5,7 +5,7 @@ import RequireSecretaria from "@/app/(guards)/RequireSecretaria";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-export default function SecretariaLayout({ children }: { children: React.ReactNode }) {
+function SecretariaShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -25,9 +25,18 @@ export default function SecretariaLayout({ children }: { children: React.ReactNo
 
   return (
     <RequireSecretaria>
-      <AppShell>
-        {children}
-      </AppShell>
+      <AppShell>{children}</AppShell>
     </RequireSecretaria>
   );
+}
+
+export default function SecretariaLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isPrintView = pathname?.includes("/print");
+
+  if (isPrintView) {
+    return <RequireSecretaria>{children}</RequireSecretaria>;
+  }
+
+  return <SecretariaShell>{children}</SecretariaShell>;
 }

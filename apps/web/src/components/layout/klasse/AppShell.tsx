@@ -223,6 +223,11 @@ export default function AppShell({
   }
 
   const topbarLabels = inferredRole ? TOPBAR_LABELS[inferredRole] : null;
+  const isPrintView = safePathname.includes("/print");
+
+  if (isPrintView) {
+    return <div className="min-h-screen bg-white">{children}</div>;
+  }
   
   return (
     <div className="min-h-screen bg-slate-50">
