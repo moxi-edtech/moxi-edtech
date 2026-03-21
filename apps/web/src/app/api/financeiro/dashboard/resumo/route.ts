@@ -90,7 +90,14 @@ export async function GET(request: Request) {
       .eq("escola_id", escolaId)
       .maybeSingle();
 
-    const alunosInadimplentesCount = Number(dashboardRow?.alunos_inadimplentes ?? 0);
+    const { count: inadimplentesCount } = await supabase
+      .from("vw_financeiro_inadimplencia_top")
+      .select("aluno_id", { count: "exact", head: true })
+      .eq("escola_id", escolaId);
+
+    const alunosInadimplentesCount = Number(
+      inadimplentesCount ?? dashboardRow?.alunos_inadimplentes ?? 0
+    );
     const alunosEmDia = Number(dashboardRow?.alunos_em_dia ?? 0);
 
     return NextResponse.json({
