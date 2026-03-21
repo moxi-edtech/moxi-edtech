@@ -142,12 +142,7 @@ export default function RedirectPage() {
               break;
             case "secretaria_financeiro": {
               if (escolaParam) {
-                let modo = 'balcao'
-                try {
-                  const saved = localStorage.getItem('klasse_modo_secretaria')
-                  if (saved === 'balcao' || saved === 'financeiro') modo = saved
-                } catch {}
-                router.replace(`/escola/${escolaParam}/secretaria?modo=${modo}`)
+                router.replace(`/escola/${escolaParam}/secretaria`)
               } else {
                 router.replace('/secretaria')
               }
@@ -155,7 +150,7 @@ export default function RedirectPage() {
             }
             case "admin_financeiro":
               if (escolaParam) {
-                router.replace(`/escola/${escolaParam}/admin/dashboard?tab=financeiro`)
+                router.replace(`/escola/${escolaParam}/admin/dashboard`)
               } else {
                 router.replace('/admin')
               }

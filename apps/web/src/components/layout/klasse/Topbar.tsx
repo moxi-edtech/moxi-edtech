@@ -5,6 +5,7 @@ import { ChevronDown } from "lucide-react";
 import SignOutButton from "@/components/auth/SignOutButton";
 import { CommandPalette } from "@/components/CommandPalette";
 import { NotificacoesDropdown } from "@/components/ui/NotificacoesDropdown";
+import ModuleSwitcher from "@/components/layout/klasse/ModuleSwitcher";
 
 function cn(...c: Array<string | false | null | undefined>) {
   return c.filter(Boolean).join(" ");
@@ -48,6 +49,7 @@ export default function Topbar({
         </div>
 
         <div className="ml-auto flex items-center gap-2">
+          <ModuleSwitcher />
           <NotificacoesDropdown />
 
           <div className="relative">

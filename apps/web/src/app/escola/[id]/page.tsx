@@ -42,11 +42,11 @@ export default async function EscolaIdPage({ params }: { params: Promise<{ id: s
   }
 
   if (escolaUsuario.papel === 'secretaria_financeiro') {
-    return redirect(`/escola/${escolaParam}/secretaria?modo=balcao`);
+    return redirect(`/escola/${escolaParam}/secretaria`);
   }
 
   if (escolaUsuario.papel === 'admin_financeiro') {
-    return redirect(`/escola/${escolaParam}/admin/dashboard?tab=financeiro`);
+    return redirect(`/escola/${escolaParam}/admin/dashboard`);
   }
 
   if (escolaUsuario.papel === 'professor') {

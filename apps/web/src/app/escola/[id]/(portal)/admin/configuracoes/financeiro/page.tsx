@@ -136,7 +136,7 @@ export default function FinanceiroConfiguracoesPage() {
       subtitle="Defina as regras globais de pagamentos, multas e restrições."
       menuItems={menuItems}
       embedded
-      backHref={`${base}?tab=financeiro`}
+      backHref={base}
       prevHref={`${base}/turmas`}
       nextHref={`${base}/fluxos`}
       testHref={`${base}/sandbox`}
