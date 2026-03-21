@@ -1,5 +1,5 @@
 import QRCode from "react-qr-code";
-import { getRequestOrigin } from "@/lib/serverUrl";
+import { getRequestOrigin, normalizeValidationBaseUrl } from "@/lib/serverUrl";
 import PrintTrigger from "@/app/secretaria/documentos/_print/PrintTrigger";
 import styles from "@/app/secretaria/documentos/_print/print.module.css";
 import { getDocumentoEmitido } from "@/app/secretaria/documentos/_print/getDocumento";
@@ -38,10 +38,11 @@ export default async function BoletimTrimestralPrintPage({
   }
 
   const snapshot = (doc.dados_snapshot || {}) as Record<string, unknown>;
-  const baseUrl =
+  const baseUrl = normalizeValidationBaseUrl(
     process.env.NEXT_PUBLIC_VALIDATION_BASE_URL ??
-    validationBaseUrl ??
-    (await getRequestOrigin());
+      validationBaseUrl ??
+      (await getRequestOrigin())
+  );
   const hash = typeof snapshot.hash_validacao === "string" ? snapshot.hash_validacao : "";
   const numero = typeof snapshot.numero_sequencial === "number" ? snapshot.numero_sequencial : null;
   const urlValidacao = hash

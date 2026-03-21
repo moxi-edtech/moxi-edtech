@@ -21,6 +21,18 @@ export async function getRequestOrigin(): Promise<string> {
   return "http://localhost:3000";
 }
 
+export function normalizeValidationBaseUrl(value: string): string {
+  try {
+    const url = new URL(value);
+    if (url.hostname === "klasse.ao" || url.hostname === "www.klasse.ao") {
+      return "https://app.klasse.ao";
+    }
+  } catch {
+    return value;
+  }
+  return value;
+}
+
 export async function getAbsoluteUrlServer(path: string): Promise<string> {
   const base = (await getRequestOrigin()).replace(/\/$/, "");
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;

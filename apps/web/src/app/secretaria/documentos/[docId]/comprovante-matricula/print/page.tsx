@@ -2,7 +2,7 @@ import QRCode from "react-qr-code";
 import PrintTrigger from "@/app/secretaria/documentos/_print/PrintTrigger";
 import { getDocumentoEmitido } from "@/app/secretaria/documentos/_print/getDocumento";
 import styles from "@/app/secretaria/documentos/_print/print.module.css";
-import { getRequestOrigin } from "@/lib/serverUrl";
+import { getRequestOrigin, normalizeValidationBaseUrl } from "@/lib/serverUrl";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +24,9 @@ export default async function ComprovanteMatriculaPrintPage({
   }
 
   const snapshot = (doc.dados_snapshot || {}) as Record<string, unknown>;
-  const baseUrl = process.env.NEXT_PUBLIC_VALIDATION_BASE_URL ?? validationBaseUrl ?? (await getRequestOrigin());
+  const baseUrl = normalizeValidationBaseUrl(
+    process.env.NEXT_PUBLIC_VALIDATION_BASE_URL ?? validationBaseUrl ?? (await getRequestOrigin())
+  );
   const hash = typeof snapshot.hash_validacao === "string" ? snapshot.hash_validacao : "";
   const numero = typeof snapshot.numero_sequencial === "number" ? snapshot.numero_sequencial : null;
   const urlValidacao = hash ? `${String(baseUrl).replace(/\/$/, "")}/documentos/${doc.public_id}?hash=${hash}` : null;

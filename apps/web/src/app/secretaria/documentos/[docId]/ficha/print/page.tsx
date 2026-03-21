@@ -1,5 +1,5 @@
 import QRCode from "react-qr-code";
-import { getRequestOrigin } from "@/lib/serverUrl";
+import { getRequestOrigin, normalizeValidationBaseUrl } from "@/lib/serverUrl";
 import PrintTrigger from "@/app/secretaria/documentos/_print/PrintTrigger";
 import styles from "@/app/secretaria/documentos/_print/print.module.css";
 import { getDocumentoEmitido } from "@/app/secretaria/documentos/_print/getDocumento";
@@ -24,10 +24,11 @@ export default async function FichaInscricaoPrintPage({
   }
 
   const snapshot = doc.dados_snapshot || {};
-  const baseUrl =
+  const baseUrl = normalizeValidationBaseUrl(
     process.env.NEXT_PUBLIC_VALIDATION_BASE_URL ??
-    validationBaseUrl ??
-    (await getRequestOrigin());
+      validationBaseUrl ??
+      (await getRequestOrigin())
+  );
   const hash = snapshot.hash_validacao || "";
   const numero = snapshot.numero_sequencial;
   const urlValidacao = hash
