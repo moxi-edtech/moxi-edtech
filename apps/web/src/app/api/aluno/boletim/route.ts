@@ -62,14 +62,21 @@ export async function GET(request: Request) {
 
     const [{ data: aluno }, { data: matricula }] = await Promise.all([
       supabase.from("alunos").select("nome").eq("id", alunoId).eq("escola_id", ctx.escolaId).maybeSingle(),
-      supabase
-        .from("matriculas")
-        .select("id, ano_letivo")
-        .eq("aluno_id", alunoId)
-        .eq("escola_id", ctx.escolaId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
+      alunoId === ctx.alunoId && ctx.matriculaId
+        ? supabase
+            .from("matriculas")
+            .select("id, ano_letivo")
+            .eq("id", ctx.matriculaId)
+            .eq("escola_id", ctx.escolaId)
+            .maybeSingle()
+        : supabase
+            .from("matriculas")
+            .select("id, ano_letivo")
+            .eq("aluno_id", alunoId)
+            .eq("escola_id", ctx.escolaId)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle(),
     ]);
 
     if (!matricula?.id || !matricula.ano_letivo) {

@@ -191,7 +191,14 @@ export default function Page() {
               <a href="/professor/frequencias" className="text-xs text-klasse-gold">Registrar presenças</a>
             </div>
             {loading ? (
-              <div className="text-sm text-slate-500">Carregando turmas...</div>
+              <div className="grid gap-3 sm:grid-cols-2 animate-pulse">
+                {Array.from({ length: 4 }).map((_, idx) => (
+                  <div key={`turma-skeleton-${idx}`} className="rounded-xl border border-slate-200 p-3 sm:p-4 space-y-2">
+                    <div className="h-4 w-28 rounded-md bg-slate-200" />
+                    <div className="h-3 w-36 rounded-md bg-slate-200" />
+                  </div>
+                ))}
+              </div>
             ) : turmaMap.length === 0 ? (
               <div className="text-sm text-slate-500">Nenhuma turma atribuída.</div>
             ) : (
@@ -213,7 +220,17 @@ export default function Page() {
               <a href="/professor/fluxos" className="text-xs text-klasse-gold">Ver fluxos</a>
             </div>
             {loading ? (
-              <div className="text-sm text-slate-500">Carregando agenda...</div>
+              <div className="space-y-3 animate-pulse">
+                {Array.from({ length: 4 }).map((_, idx) => (
+                  <div key={`agenda-skeleton-${idx}`} className="space-y-2">
+                    <div className="h-3 w-20 rounded-md bg-slate-200" />
+                    <div className="rounded-lg border border-slate-200 px-3 py-2 space-y-1">
+                      <div className="h-3 w-28 rounded-md bg-slate-200" />
+                      <div className="h-3 w-36 rounded-md bg-slate-200" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : agenda.length === 0 ? (
               <div className="text-sm text-slate-500">Nenhuma aula programada.</div>
             ) : (

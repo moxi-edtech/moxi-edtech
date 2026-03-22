@@ -17,6 +17,15 @@ type Options<T> = {
 
 export function usePortalSWR<T>({ key, url, intervalMs = 45000, minGapMs = 1200, parse, onData, onError }: Options<T>) {
   const abortRef = useRef<AbortController | null>(null);
+  const parseRef = useRef(parse);
+  const onDataRef = useRef(onData);
+  const onErrorRef = useRef(onError);
+
+  useEffect(() => {
+    parseRef.current = parse;
+    onDataRef.current = onData;
+    onErrorRef.current = onError;
+  }, [parse, onData, onError]);
 
   const fetchNow = useCallback(
     async (force = false) => {
@@ -38,14 +47,14 @@ export function usePortalSWR<T>({ key, url, intervalMs = 45000, minGapMs = 1200,
 
       try {
         const payload = await run;
-        onData(parse(payload));
+        onDataRef.current(parseRef.current(payload));
       } catch (e) {
         if (controller.signal.aborted) return;
         const message = e instanceof Error ? e.message : "Falha ao atualizar";
-        onError?.(message);
+        onErrorRef.current?.(message);
       }
     },
-    [key, minGapMs, onData, onError, parse, url],
+    [key, minGapMs, url],
   );
 
   useEffect(() => {

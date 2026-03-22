@@ -173,7 +173,7 @@ export function NotificacoesDropdown() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-11 z-50 w-80 rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/50 overflow-hidden animate-in slide-in-from-top-2 duration-150">
+        <div className="absolute left-1/2 top-11 z-50 w-[calc(100vw-2rem)] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/50 overflow-hidden animate-in slide-in-from-top-2 duration-150 sm:left-auto sm:right-0 sm:w-80 sm:translate-x-0">
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100">
             <div className="flex items-center gap-2">
               <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">Notificações</h3>

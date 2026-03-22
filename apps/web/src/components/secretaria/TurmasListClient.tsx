@@ -14,6 +14,7 @@ import { recordAuditClient } from "@/lib/auditClient";
 import TurmaForm from "./TurmaForm";
 import { useEscolaId } from "@/hooks/useEscolaId";
 import { buildEscolaUrl } from "@/lib/escola/url";
+import { formatTurmaNomeHumano } from "@/utils/formatters";
 import type { TurmaItem } from "~/types/turmas";
 
 // ─── Design tokens (single source of truth) ───────────────────────────────────
@@ -370,6 +371,7 @@ function SecretaryCardView({
               const pct    = Math.min(Math.round((atual / max) * 100), 100);
               const signal = computeHealth(turma, null);
               const isDraft = turma.status_validacao === "rascunho";
+              const displayNome = formatTurmaNomeHumano(turma.nome ?? turma.turma_codigo, turma.curso_nome);
 
               return (
                 <div key={turma.id} className={`
@@ -379,7 +381,7 @@ function SecretaryCardView({
                   {/* Card header */}
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-bold text-slate-900 truncate">{turma.nome || "Sem nome"}</p>
+                      <p className="text-sm font-bold text-slate-900 truncate">{displayNome}</p>
                       <p className="text-xs text-slate-400 truncate mt-0.5">
                         {turma.curso_nome || "Ensino Geral"} · {turma.classe_nome || "—"}
                       </p>
@@ -449,7 +451,7 @@ function TurmaRow({
   detailHrefBase: string;
   financeiro?:    FinanceiroTurmaStat | null;
 }) {
-  const safeNome  = turma.nome || "Sem Nome";
+  const safeNome  = formatTurmaNomeHumano(turma.nome ?? turma.turma_codigo, turma.curso_nome);
   const iniciais  = safeNome.substring(0, 2).toUpperCase();
   const isDraft   = turma.status_validacao === "rascunho";
   const signal    = computeHealth(turma, financeiro);

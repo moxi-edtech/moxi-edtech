@@ -76,7 +76,7 @@ export function TabHome() {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Resumo</p>
         <button
@@ -119,7 +119,7 @@ export function TabHome() {
       </section>
 
       {loadingAlert ? (
-        <div className="h-16 animate-pulse rounded-2xl bg-klasse-gold-100" />
+        <div className="h-14 sm:h-16 animate-pulse rounded-2xl bg-klasse-gold-100" />
       ) : alert ? (
         <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-klasse-gold-200 bg-klasse-gold-50 p-4">
           <div>
@@ -141,7 +141,7 @@ export function TabHome() {
           <span className="text-xs text-slate-400">Últimas avaliações</span>
         </div>
         {loadingGrades ? (
-          <div className="mt-4 h-28 animate-pulse rounded-xl bg-slate-100" />
+          <div className="mt-4 h-24 sm:h-28 animate-pulse rounded-xl bg-slate-100" />
         ) : grades.length === 0 ? (
           <p className="mt-4 text-sm text-slate-500">Sem avaliações recentes.</p>
         ) : (

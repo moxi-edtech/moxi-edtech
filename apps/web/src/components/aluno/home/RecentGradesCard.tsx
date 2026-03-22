@@ -17,7 +17,7 @@ function shortDate(value: string | null) {
 }
 
 export function RecentGradesCard({ loading, items }: Props) {
-  if (loading) return <div className="h-48 animate-pulse rounded-xl bg-slate-100" />;
+  if (loading) return <div className="h-36 sm:h-48 animate-pulse rounded-xl bg-slate-100" />;
 
   return (
     <section className="rounded-xl bg-white p-4 shadow-sm">

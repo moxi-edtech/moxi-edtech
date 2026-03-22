@@ -3,6 +3,9 @@ import { createRouteClient } from '@/lib/supabase/route-client'
 import type { Database } from '~types/supabase'
 import { isSuperAdminRole } from '@/lib/auth/requireSuperAdminAccess'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 type UsuarioItem = {
   id: string
   nome: string | null
@@ -160,7 +163,7 @@ export async function GET() {
         nome: u.nome ?? null,
         email: String(u.email ?? ''),
         telefone: u.telefone ?? null,
-        role: String(u.role ?? ''),
+        role: String(papelEscola ?? u.role ?? ''),
         escola_id: escolaId,
         escola_nome: escolaNome,
         papel_escola: papelEscola,

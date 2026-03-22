@@ -149,10 +149,11 @@ export async function GET() {
           .from('mensalidades')
           .select('status')
           .eq('escola_id', escolaId)
-          .eq('aluno_id', matriculaData.aluno_id);
+          .eq('aluno_id', matriculaData.aluno_id)
+          .not('status', 'in', '(pago,isento,cancelado)');
         if (matriculaId) mensalidadesQuery = mensalidadesQuery.eq('matricula_id', matriculaId);
         if (typeof anoLetivo === 'number') {
-          mensalidadesQuery = mensalidadesQuery.or(`ano_referencia.eq.${anoLetivo},ano_letivo.eq.${anoLetivo}`);
+          mensalidadesQuery = mensalidadesQuery.or(`ano_letivo.eq.${anoLetivo},ano_referencia.eq.${anoLetivo}`);
         }
 
 

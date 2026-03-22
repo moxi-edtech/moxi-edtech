@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   try {
     const { supabase, ctx } = await getAlunoContext();
     if (!ctx?.escolaId || !ctx.userId) {
-      return NextResponse.json({ ok: true, alert: null });
+      return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     }
 
     const { data: userRes } = await supabase.auth.getUser();
@@ -35,6 +35,7 @@ export async function GET(request: Request) {
       .select("id, valor_previsto, data_vencimento, ano_referencia, mes_referencia, status")
       .eq("aluno_id", alunoId)
       .eq("escola_id", ctx.escolaId)
+      .neq("status", "pago")
       .lt("data_vencimento", hoje)
       .order("data_vencimento", { ascending: true })
       .limit(1);

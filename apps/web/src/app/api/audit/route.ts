@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabaseServer } from '@/lib/supabaseServer'
+import { supabaseRouteClient } from '@/lib/supabaseServer'
 import { headers } from 'next/headers'
 
 export async function POST(req: Request) {
@@ -11,11 +11,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Missing entity or acao' }, { status: 400 })
     }
 
-    const s = await supabaseServer()
+    const s = await supabaseRouteClient()
     const h = await headers()
     
     // Auth context
     const { data: { user } } = await s.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
+    }
     
     // IP and User Agent detection
     const ip = h.get('x-forwarded-for')?.split(',')[0] || h.get('x-real-ip') || 'unknown'
@@ -30,8 +33,8 @@ export async function POST(req: Request) {
       entity: entity,
       entity_id: entityId || null,
       details: details || {},
-      user_id: user?.id || null,
-      actor_id: user?.id || null,
+      user_id: user.id,
+      actor_id: user.id,
       ip: ip,
       user_agent: ua
     }

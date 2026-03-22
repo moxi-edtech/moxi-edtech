@@ -39,7 +39,9 @@ export function MensalidadesTable() {
     return () => { mounted = false };
   }, []);
 
-  if (loading) return <div>Carregando mensalidades…</div>;
+  if (loading) {
+    return <div className="h-20 sm:h-24 animate-pulse rounded-xl bg-slate-100" />;
+  }
   if (!rows.length) return <div className="text-sm text-gray-600">Nenhuma mensalidade encontrada.</div>;
 
   return (

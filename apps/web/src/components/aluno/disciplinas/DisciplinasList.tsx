@@ -29,7 +29,7 @@ export function DisciplinasList() {
     };
   }, []);
 
-  if (loading) return <div className="h-24 animate-pulse rounded-2xl bg-slate-100" />;
+  if (loading) return <div className="h-20 sm:h-24 animate-pulse rounded-2xl bg-slate-100" />;
 
   if (!disciplinas.length) return <div className="text-sm text-slate-500">Nenhuma disciplina encontrada.</div>;
 

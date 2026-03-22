@@ -8,7 +8,7 @@ type Props = {
 
 export function StudentStatusCard({ loading, nome, classe, turma, estadoAcademico }: Props) {
   if (loading) {
-    return <div className="h-28 animate-pulse rounded-xl bg-slate-100" />;
+    return <div className="h-24 sm:h-28 animate-pulse rounded-xl bg-slate-100" />;
   }
 
   return (
