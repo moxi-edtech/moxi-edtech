@@ -250,7 +250,17 @@ export async function POST(request: Request) {
       rpcArgs.p_dados_candidato = candidateData;
     }
 
-    const { data, error } = await supabase.rpc("admissao_upsert_draft", rpcArgs);
+    let { data, error } = await supabase.rpc("admissao_upsert_draft", rpcArgs);
+
+    if (error) {
+      const message = String(error.message ?? "");
+      if (message.includes("Candidatura não encontrada")) {
+        const retryArgs = { ...rpcArgs, p_candidatura_id: null };
+        const retry = await supabase.rpc("admissao_upsert_draft", retryArgs);
+        data = retry.data;
+        error = retry.error;
+      }
+    }
 
     if (error) throw error;
 
