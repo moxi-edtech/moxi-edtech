@@ -14,7 +14,9 @@ type NotaComAvaliacao = {
 export async function GET(request: Request) {
   try {
     const { supabase, ctx } = await getAlunoContext();
-    if (!ctx?.escolaId || !ctx.userId) return NextResponse.json({ ok: true, items: [] });
+    if (!ctx?.escolaId || !ctx.userId) {
+      return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+    }
 
     const { data: userRes } = await supabase.auth.getUser();
     const authorizedIds = await resolveAuthorizedStudentIds({
@@ -28,21 +30,25 @@ export async function GET(request: Request) {
     const alunoId = resolveSelectedStudentId({ selectedId, authorizedIds, fallbackId: ctx.alunoId });
     if (!alunoId) return NextResponse.json({ ok: true, items: [] });
 
-    const { data: matricula } = await supabase
-      .from("matriculas")
-      .select("id")
-      .eq("aluno_id", alunoId)
-      .eq("escola_id", ctx.escolaId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    let matriculaId = ctx.matriculaId;
+    if (!matriculaId || (selectedId && selectedId !== ctx.alunoId)) {
+      const { data: matricula } = await supabase
+        .from("matriculas")
+        .select("id")
+        .eq("aluno_id", alunoId)
+        .eq("escola_id", ctx.escolaId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      matriculaId = matricula?.id ?? null;
+    }
 
-    if (!matricula?.id) return NextResponse.json({ ok: true, items: [] });
+    if (!matriculaId) return NextResponse.json({ ok: true, items: [] });
 
     const { data } = await supabase
       .from("notas")
       .select("valor, created_at, avaliacao:avaliacoes(nome, tipo, created_at)")
-      .eq("matricula_id", matricula.id)
+      .eq("matricula_id", matriculaId)
       .eq("escola_id", ctx.escolaId)
       .order("created_at", { ascending: false })
       .limit(3);

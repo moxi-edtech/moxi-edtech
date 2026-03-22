@@ -39,7 +39,9 @@ export async function GET(_req: Request, context: { params: Promise<{ id: string
           .maybeSingle()
       : { data: null };
 
-    return NextResponse.json({ plano, limites: limites ?? null });
+    const limitesNormalizados = limites ? { ...limites, fin_recibo_pdf: true } : null;
+
+    return NextResponse.json({ plano, limites: limitesNormalizados });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ plano: null, error: message }, { status: 200 });

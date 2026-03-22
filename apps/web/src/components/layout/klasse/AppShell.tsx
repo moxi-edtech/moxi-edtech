@@ -55,6 +55,7 @@ export default function AppShell({
     if (safePathname.startsWith("/super-admin")) return "superadmin";
     if (safePathname.startsWith("/admin")) return "admin";
     if (safePathname.startsWith("/secretaria")) return "secretaria";
+    if (safePathname.startsWith("/financeiro")) return "financeiro";
     if (safePathname.includes("/escola/") && safePathname.includes("/admin")) return "admin";
     if (safePathname.includes("/escola/") && safePathname.includes("/secretaria")) return "secretaria";
     if (safePathname.includes("/escola/") && safePathname.includes("/professores")) return "admin";

@@ -1,4 +1,4 @@
-import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { supabaseRouteClient } from "@/lib/supabaseServer";
 import type { Database } from "~types/supabase";
 import { ACTIVE_MATRICULA_STATUSES } from "@/lib/matriculas/status";
 
@@ -12,7 +12,7 @@ export type AlunoContext = {
 };
 
 export async function getAlunoContext() {
-  const supabase = await supabaseServerTyped<Database>();
+  const supabase = await supabaseRouteClient<Database>();
   const { data: userRes } = await supabase.auth.getUser();
   const user = userRes?.user;
   if (!user) return { supabase, ctx: null as null };

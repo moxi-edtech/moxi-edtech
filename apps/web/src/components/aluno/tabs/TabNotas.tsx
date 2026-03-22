@@ -76,7 +76,7 @@ export function TabNotas() {
       <div className="space-y-3">
         <SectionTitle>Notas</SectionTitle>
         {loading ? (
-          <div className="h-40 animate-pulse rounded-xl bg-slate-100" />
+          <div className="h-28 sm:h-40 animate-pulse rounded-xl bg-slate-100" />
         ) : (
           <section className="rounded-xl bg-white p-4 shadow-sm">
             <h2 className="text-sm font-semibold text-slate-900">Desempenho por disciplina</h2>
@@ -125,7 +125,7 @@ export function TabNotas() {
       <div className="space-y-3">
         <SectionTitle>Disciplinas</SectionTitle>
         {loadingLista ? (
-          <div className="h-24 animate-pulse rounded-xl bg-slate-100" />
+          <div className="h-20 sm:h-24 animate-pulse rounded-xl bg-slate-100" />
         ) : listaDisciplinas.length === 0 ? (
           <AlunoCard>
             <p className="text-sm text-slate-500">Nenhuma disciplina encontrada.</p>

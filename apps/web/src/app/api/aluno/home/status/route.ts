@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   try {
     const { supabase, ctx } = await getAlunoContext();
     if (!ctx?.userId || !ctx.escolaId) {
-      return NextResponse.json({ ok: true, status: null });
+      return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
     }
 
     const { data: userRes } = await supabase.auth.getUser();
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
       supabase.from("alunos").select("id, nome").eq("id", alunoId).eq("escola_id", ctx.escolaId).maybeSingle(),
       supabase
         .from("matriculas")
-        .select("id, status, turma_id")
+        .select("id, status, turma:turmas(nome, classe:classes(nome))")
         .eq("aluno_id", alunoId)
         .eq("escola_id", ctx.escolaId)
         .order("created_at", { ascending: false })
@@ -37,28 +37,8 @@ export async function GET(request: Request) {
         .maybeSingle(),
     ]);
 
-    let turmaNome: string | null = null;
-    let classeNome: string | null = null;
-
-    if (matricula?.turma_id) {
-      const { data: turma } = await supabase
-        .from("turmas")
-        .select("nome, classe_id")
-        .eq("id", matricula.turma_id)
-        .eq("escola_id", ctx.escolaId)
-        .maybeSingle();
-      turmaNome = turma?.nome ?? null;
-
-      if (turma?.classe_id) {
-        const { data: classe } = await supabase
-          .from("classes")
-          .select("nome")
-          .eq("id", turma.classe_id)
-          .eq("escola_id", ctx.escolaId)
-          .maybeSingle();
-        classeNome = classe?.nome ?? null;
-      }
-    }
+    const turmaNome = matricula?.turma?.nome ?? null;
+    const classeNome = matricula?.turma?.classe?.nome ?? null;
 
     const estadoAcademico = ["ativo", "ativa", "active"].includes(matricula?.status ?? "")
       ? "Em curso"

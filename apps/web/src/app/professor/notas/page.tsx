@@ -31,6 +31,7 @@ export default function ProfessorNotasPage() {
   const searchParams = useSearchParams()
   const highlightAlunoId = searchParams?.get("alunoId") ?? null
   const [atribs, setAtribs] = useState<Atrib[]>([])
+  const [loadingAtribs, setLoadingAtribs] = useState(true)
   const [turmaId, setTurmaId] = useState("")
   const [disciplinaId, setDisciplinaId] = useState("")
   const [turmaDisciplinaId, setTurmaDisciplinaId] = useState<string | null>(null)
@@ -49,10 +50,15 @@ export default function ProfessorNotasPage() {
   useEffect(() => {
     let active = true
     const load = async () => {
-      const res = await fetch("/api/professor/atribuicoes", { cache: "no-store" })
-      const json = await res.json().catch(() => null)
-      if (!active) return
-      if (res.ok && json?.ok) setAtribs(json.items || [])
+      setLoadingAtribs(true)
+      try {
+        const res = await fetch("/api/professor/atribuicoes", { cache: "no-store" })
+        const json = await res.json().catch(() => null)
+        if (!active) return
+        if (res.ok && json?.ok) setAtribs(json.items || [])
+      } finally {
+        if (active) setLoadingAtribs(false)
+      }
     }
     load()
     return () => {
@@ -308,7 +314,7 @@ export default function ProfessorNotasPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="max-w-6xl mx-auto p-4 md:p-6 space-y-6">
+      <div className="max-w-6xl mx-auto px-4 py-5 sm:p-6 space-y-4 sm:space-y-6">
         <div>
           <h1 className="text-2xl font-semibold text-klasse-green">Lançamento de notas</h1>
           <p className="text-sm text-slate-500">
@@ -316,142 +322,163 @@ export default function ProfessorNotasPage() {
           </p>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-          <aside className="space-y-4 relative z-10 overflow-visible">
-            <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3 overflow-visible">
-              <div className="text-sm font-semibold text-slate-900">Turma e disciplina</div>
-              <select
-                value={turmaId}
-                onChange={(event) => {
-                  setTurmaId(event.target.value)
-                  setDisciplinaId("")
-                  setTurmaDisciplinaId(null)
-                  setDisciplinaNome(null)
-                  setPauta([])
-                }}
-                className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
-                required
-              >
-                <option value="">Turma</option>
-                {Array.from(new Set(atribs.map((a) => a.turma.id))).map((tid) => (
-                  <option key={tid} value={tid}>
-                    {atribs.find((a) => a.turma.id === tid)?.turma.nome || tid}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={disciplinaId}
-                onChange={(event) => {
-                  const nextId = event.target.value
-                  setDisciplinaId(nextId)
-                  const atrib = (atribsByTurma.get(turmaId) || []).find((a) => a.disciplina.id === nextId)
-                  setTurmaDisciplinaId(atrib?.turma_disciplina_id ?? null)
-                  setDisciplinaNome(atrib?.disciplina.nome ?? null)
-                }}
-                className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
-                required
-                disabled={!turmaId}
-              >
-                <option value="">Disciplina</option>
-                {(atribsByTurma.get(turmaId) || [])
-                  .filter((a) => a.disciplina.id)
-                  .map((a) => (
-                    <option key={a.disciplina.id} value={a.disciplina.id || ""}>
-                      {a.disciplina.nome || a.disciplina.id}
-                    </option>
-                  ))}
-              </select>
-              <select
-                value={trimestreSelecionado}
-                onChange={(event) => setTrimestreSelecionado(Number(event.target.value) as 1 | 2 | 3)}
-                className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
-                disabled={!turmaId || periodosAtivos.length === 0}
-              >
-                {periodosAtivos.length === 0 && <option value={trimestreSelecionado}>Sem períodos</option>}
-                {periodosAtivos.map((periodo) => (
-                  <option key={periodo} value={periodo}>
-                    {`Trimestre ${periodo}`}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2 text-sm text-slate-600">
-              <div className="font-semibold text-slate-900">Ações</div>
-              <button
-                type="button"
-                onClick={handleExportMiniPauta}
-                disabled={!turmaId || !disciplinaId || pauta.length === 0 || exporting || !!turmaFechada}
-                className="w-full rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
-              >
-                {exporting ? "Gerando PDF..." : "Exportar mini‑pauta"}
-              </button>
-            </div>
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-[320px_1fr]">
+          <aside className="space-y-3 sm:space-y-4 relative z-10 overflow-visible">
+            {loadingAtribs ? (
+              <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 space-y-3 animate-pulse">
+                <div className="h-4 w-32 rounded-md bg-slate-200" />
+                <div className="h-9 w-full rounded-xl bg-slate-100" />
+                <div className="h-9 w-full rounded-xl bg-slate-100" />
+                <div className="h-9 w-full rounded-xl bg-slate-100" />
+                <div className="h-10 w-full rounded-xl bg-klasse-gold/20" />
+              </div>
+            ) : (
+              <>
+                <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 space-y-3 overflow-visible">
+                  <div className="text-sm font-semibold text-slate-900">Turma e disciplina</div>
+                  <select
+                    value={turmaId}
+                    onChange={(event) => {
+                      setTurmaId(event.target.value)
+                      setDisciplinaId("")
+                      setTurmaDisciplinaId(null)
+                      setDisciplinaNome(null)
+                      setPauta([])
+                    }}
+                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                    required
+                  >
+                    <option value="">Turma</option>
+                    {Array.from(new Set(atribs.map((a) => a.turma.id))).map((tid) => (
+                      <option key={tid} value={tid}>
+                        {atribs.find((a) => a.turma.id === tid)?.turma.nome || tid}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={disciplinaId}
+                    onChange={(event) => {
+                      const nextId = event.target.value
+                      setDisciplinaId(nextId)
+                      const atrib = (atribsByTurma.get(turmaId) || []).find((a) => a.disciplina.id === nextId)
+                      setTurmaDisciplinaId(atrib?.turma_disciplina_id ?? null)
+                      setDisciplinaNome(atrib?.disciplina.nome ?? null)
+                    }}
+                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                    required
+                    disabled={!turmaId}
+                  >
+                    <option value="">Disciplina</option>
+                    {(atribsByTurma.get(turmaId) || [])
+                      .filter((a) => a.disciplina.id)
+                      .map((a) => (
+                        <option key={a.disciplina.id} value={a.disciplina.id || ""}>
+                          {a.disciplina.nome || a.disciplina.id}
+                        </option>
+                      ))}
+                  </select>
+                  <select
+                    value={trimestreSelecionado}
+                    onChange={(event) => setTrimestreSelecionado(Number(event.target.value) as 1 | 2 | 3)}
+                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                    disabled={!turmaId || periodosAtivos.length === 0}
+                  >
+                    {periodosAtivos.length === 0 && <option value={trimestreSelecionado}>Sem períodos</option>}
+                    {periodosAtivos.map((periodo) => (
+                      <option key={periodo} value={periodo}>
+                        {`Trimestre ${periodo}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 space-y-2 text-sm text-slate-600">
+                  <div className="font-semibold text-slate-900">Ações</div>
+                  <button
+                    type="button"
+                    onClick={handleExportMiniPauta}
+                    disabled={!turmaId || !disciplinaId || pauta.length === 0 || exporting || !!turmaFechada}
+                    className="w-full rounded-xl bg-klasse-gold px-4 py-2 text-sm font-semibold text-white hover:brightness-95 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                  >
+                    {exporting ? "Gerando PDF..." : "Exportar mini‑pauta"}
+                  </button>
+                </div>
+              </>
+            )}
           </aside>
 
           <section>
-            <div className="md:hidden sticky top-0 z-20 mb-4 rounded-xl border border-slate-200 bg-white/95 p-4 shadow-sm backdrop-blur">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <select
-                  value={turmaId}
-                  onChange={(event) => {
-                    setTurmaId(event.target.value)
-                    setDisciplinaId("")
-                    setTurmaDisciplinaId(null)
-                    setDisciplinaNome(null)
-                    setPauta([])
-                  }}
-                  className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
-                >
-                  <option value="">Turma</option>
-                  {Array.from(new Set(atribs.map((a) => a.turma.id))).map((tid) => (
-                    <option key={tid} value={tid}>
-                      {atribs.find((a) => a.turma.id === tid)?.turma.nome || tid}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={disciplinaId}
-                  onChange={(event) => {
-                    const nextId = event.target.value
-                    setDisciplinaId(nextId)
-                    const atrib = (atribsByTurma.get(turmaId) || []).find((a) => a.disciplina.id === nextId)
-                    setTurmaDisciplinaId(atrib?.turma_disciplina_id ?? null)
-                    setDisciplinaNome(atrib?.disciplina.nome ?? null)
-                  }}
-                  className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
-                  disabled={!turmaId}
-                >
-                  <option value="">Disciplina</option>
-                  {(atribsByTurma.get(turmaId) || [])
-                    .filter((a) => a.disciplina.id)
-                    .map((a) => (
-                      <option key={a.disciplina.id} value={a.disciplina.id || ""}>
-                        {a.disciplina.nome || a.disciplina.id}
+            <div className="md:hidden sticky top-0 z-20 mb-3 sm:mb-4 rounded-xl border border-slate-200 bg-white/95 p-3 sm:p-4 shadow-sm backdrop-blur">
+              {loadingAtribs ? (
+                <div className="grid gap-3 sm:grid-cols-2 animate-pulse">
+                  <div className="h-10 rounded-xl bg-slate-100" />
+                  <div className="h-10 rounded-xl bg-slate-100" />
+                  <div className="h-10 rounded-xl bg-slate-100" />
+                  <div className="h-10 rounded-xl bg-slate-200" />
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <select
+                    value={turmaId}
+                    onChange={(event) => {
+                      setTurmaId(event.target.value)
+                      setDisciplinaId("")
+                      setTurmaDisciplinaId(null)
+                      setDisciplinaNome(null)
+                      setPauta([])
+                    }}
+                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                  >
+                    <option value="">Turma</option>
+                    {Array.from(new Set(atribs.map((a) => a.turma.id))).map((tid) => (
+                      <option key={tid} value={tid}>
+                        {atribs.find((a) => a.turma.id === tid)?.turma.nome || tid}
                       </option>
                     ))}
-                </select>
-                <select
-                  value={trimestreSelecionado}
-                  onChange={(event) => setTrimestreSelecionado(Number(event.target.value) as 1 | 2 | 3)}
-                  className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
-                  disabled={!turmaId || periodosAtivos.length === 0}
-                >
-                  {periodosAtivos.length === 0 && <option value={trimestreSelecionado}>Sem períodos</option>}
-                  {periodosAtivos.map((periodo) => (
-                    <option key={periodo} value={periodo}>
-                      {`Trimestre ${periodo}`}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={handleSaveNow}
-                  disabled={!turmaId || !disciplinaId || pauta.length === 0 || savingNow || !!turmaFechada}
-                  className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
-                >
-                  {savingNow ? "Salvando..." : "Salvar agora"}
-                </button>
-              </div>
+                  </select>
+                  <select
+                    value={disciplinaId}
+                    onChange={(event) => {
+                      const nextId = event.target.value
+                      setDisciplinaId(nextId)
+                      const atrib = (atribsByTurma.get(turmaId) || []).find((a) => a.disciplina.id === nextId)
+                      setTurmaDisciplinaId(atrib?.turma_disciplina_id ?? null)
+                      setDisciplinaNome(atrib?.disciplina.nome ?? null)
+                    }}
+                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                    disabled={!turmaId}
+                  >
+                    <option value="">Disciplina</option>
+                    {(atribsByTurma.get(turmaId) || [])
+                      .filter((a) => a.disciplina.id)
+                      .map((a) => (
+                        <option key={a.disciplina.id} value={a.disciplina.id || ""}>
+                          {a.disciplina.nome || a.disciplina.id}
+                        </option>
+                      ))}
+                  </select>
+                  <select
+                    value={trimestreSelecionado}
+                    onChange={(event) => setTrimestreSelecionado(Number(event.target.value) as 1 | 2 | 3)}
+                    className="w-full cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm outline-none focus:border-klasse-gold focus:ring-4 focus:ring-klasse-gold/20"
+                    disabled={!turmaId || periodosAtivos.length === 0}
+                  >
+                    {periodosAtivos.length === 0 && <option value={trimestreSelecionado}>Sem períodos</option>}
+                    {periodosAtivos.map((periodo) => (
+                      <option key={periodo} value={periodo}>
+                        {`Trimestre ${periodo}`}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleSaveNow}
+                    disabled={!turmaId || !disciplinaId || pauta.length === 0 || savingNow || !!turmaFechada}
+                    className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                  >
+                    {savingNow ? "Salvando..." : "Salvar agora"}
+                  </button>
+                </div>
+              )}
               {!online && (
                 <div className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
                   Offline: as notas serão sincronizadas quando a conexão voltar.
@@ -459,7 +486,11 @@ export default function ProfessorNotasPage() {
               )}
             </div>
             {loading ? (
-              <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">Carregando pauta...</div>
+              <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 animate-pulse space-y-2">
+                <div className="h-4 w-40 rounded-md bg-slate-200" />
+                <div className="h-3 w-full rounded-md bg-slate-200" />
+                <div className="h-3 w-5/6 rounded-md bg-slate-200" />
+              </div>
             ) : data.length === 0 ? (
               <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">
                 Selecione a turma e disciplina para carregar os alunos.

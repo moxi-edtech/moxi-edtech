@@ -103,15 +103,19 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
     const professorProfileId = profResolved.profile_id as string | null | undefined
 
-    if (!existing?.id) {
-      const { error: insErr } = await supabase
-        .from('turma_disciplinas')
-        .insert({
+    const { error: turmaDisciplinaErr } = await supabase
+      .from('turma_disciplinas')
+      .upsert(
+        {
           escola_id: escolaId,
           turma_id: turmaId,
           curso_matriz_id: body.disciplina_id,
-        } as any)
-      if (insErr) return NextResponse.json({ ok: false, error: insErr.message }, { status: 400, headers })
+          professor_id: profResolved.id,
+        } as any,
+        { onConflict: 'escola_id,turma_id,curso_matriz_id' }
+      )
+    if (turmaDisciplinaErr) {
+      return NextResponse.json({ ok: false, error: turmaDisciplinaErr.message }, { status: 400, headers })
     }
 
     const { error: tdpErr } = await supabase

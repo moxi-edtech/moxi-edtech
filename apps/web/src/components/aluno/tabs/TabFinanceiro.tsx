@@ -129,7 +129,7 @@ export function TabFinanceiro() {
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="text-sm font-semibold text-slate-900">Mensalidades</h2>
         {loading ? (
-          <div className="mt-3 h-36 animate-pulse rounded-xl bg-slate-100" />
+          <div className="mt-3 h-28 sm:h-36 animate-pulse rounded-xl bg-slate-100" />
         ) : (
           <ul className="mt-3 space-y-2">
             {sorted.map((item) => (

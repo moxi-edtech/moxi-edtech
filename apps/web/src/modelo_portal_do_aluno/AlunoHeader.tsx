@@ -1,7 +1,10 @@
 // src/components/aluno/layout/AlunoHeader.tsx
 'use client';
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import { createClient } from "@/lib/supabaseClient";
 import type { Educando, TabId } from "../types";
 import { shortSchoolName } from "../utils";
 
@@ -31,6 +34,20 @@ export function AlunoHeader({
   onBack,
 }: AlunoHeaderProps) {
   const isHome = tabActiva === "home";
+  const router = useRouter();
+  const supabase = createClient();
+  const [signingOut, setSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    if (signingOut) return;
+    try {
+      setSigningOut(true);
+      await supabase.auth.signOut();
+      router.replace("/login");
+    } finally {
+      setSigningOut(false);
+    }
+  };
 
   return (
     <header style={{
@@ -64,29 +81,51 @@ export function AlunoHeader({
           </div>
         </div>
 
-        {/* Student switcher — só aparece se houver mais de 1 */}
-        {educandos.length > 1 && (
-          <div style={{ display: "flex", gap: 6 }}>
-            {educandos.map(a => (
-              <button
-                key={a.id}
-                onClick={() => onSwitchAluno(a)}
-                style={{
-                  width: 34, height: 34, borderRadius: 10,
-                  background: alunoActivo.id === a.id ? `${a.cor}22` : "#0f1a12",
-                  border: `2px solid ${alunoActivo.id === a.id ? a.cor : "#1a2e1e"}`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 10, fontWeight: 800,
-                  color: alunoActivo.id === a.id ? a.cor : "#4b5563",
-                  cursor: "pointer", transition: "all 0.15s",
-                  fontFamily: "'DM Sans', system-ui",
-                }}
-              >
-                {a.avatar}
-              </button>
-            ))}
-          </div>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {/* Student switcher — só aparece se houver mais de 1 */}
+          {educandos.length > 1 && (
+            <div style={{ display: "flex", gap: 6 }}>
+              {educandos.map(a => (
+                <button
+                  key={a.id}
+                  onClick={() => onSwitchAluno(a)}
+                  style={{
+                    width: 34, height: 34, borderRadius: 10,
+                    background: alunoActivo.id === a.id ? `${a.cor}22` : "#0f1a12",
+                    border: `2px solid ${alunoActivo.id === a.id ? a.cor : "#1a2e1e"}`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 10, fontWeight: 800,
+                    color: alunoActivo.id === a.id ? a.cor : "#4b5563",
+                    cursor: "pointer", transition: "all 0.15s",
+                    fontFamily: "'DM Sans', system-ui",
+                  }}
+                >
+                  {a.avatar}
+                </button>
+              ))}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={handleSignOut}
+            disabled={signingOut}
+            aria-label="Sair"
+            style={{
+              padding: "6px 10px",
+              borderRadius: 10,
+              border: "1px solid #1a2e1e",
+              background: "#0f1a12",
+              color: "#9ca3af",
+              fontSize: 11,
+              fontWeight: 700,
+              cursor: signingOut ? "not-allowed" : "pointer",
+              opacity: signingOut ? 0.6 : 1,
+              fontFamily: "'DM Sans', system-ui",
+            }}
+          >
+            Sair
+          </button>
+        </div>
       </div>
 
       {/* Contexto da tab — só aparece fora da home */}

@@ -67,7 +67,11 @@ export default function ProfessorPerfilPage() {
         </div>
 
         {loading ? (
-          <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-500">Carregando perfil...</div>
+          <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 animate-pulse space-y-2">
+            <div className="h-4 w-40 rounded-md bg-slate-200" />
+            <div className="h-3 w-full rounded-md bg-slate-200" />
+            <div className="h-3 w-5/6 rounded-md bg-slate-200" />
+          </div>
         ) : (
           <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
             <section className="rounded-xl border border-slate-200 bg-white p-5 space-y-4">

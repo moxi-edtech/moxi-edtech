@@ -98,23 +98,23 @@ export default function DashboardLoader() {
 
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         <AlunoCard className="bg-gradient-to-br from-[#0d1f12] via-[#12321d] to-[#1f4028] text-white border-[#1f4028]">
           <div className="h-3 w-32 rounded-full bg-white/20" />
           <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
             <div className="space-y-3">
-              <div className="h-6 w-48 rounded-full bg-white/20" />
+              <div className="h-5 sm:h-6 w-44 rounded-full bg-white/20" />
               <div className="flex flex-wrap gap-2">
-                <div className="h-6 w-24 rounded-full bg-white/20" />
-                <div className="h-6 w-28 rounded-full bg-white/20" />
-                <div className="h-6 w-28 rounded-full bg-white/20" />
+                <div className="h-5 sm:h-6 w-24 rounded-full bg-white/20" />
+                <div className="h-5 sm:h-6 w-28 rounded-full bg-white/20" />
+                <div className="h-5 sm:h-6 w-28 rounded-full bg-white/20" />
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3">
               {[0, 1, 2].map((idx) => (
                 <div key={idx} className="rounded-xl bg-white/10 px-3 py-2 text-center">
                   <div className="h-3 w-20 rounded-full bg-white/20 mx-auto" />
-                  <div className="mt-2 h-5 w-12 rounded-full bg-white/20 mx-auto" />
+                  <div className="mt-2 h-4 sm:h-5 w-12 rounded-full bg-white/20 mx-auto" />
                 </div>
               ))}
             </div>

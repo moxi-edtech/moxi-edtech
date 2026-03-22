@@ -7,7 +7,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { ReciboImprimivel } from "@/components/financeiro/ReciboImprimivel";
-import { usePlanFeature } from "@/hooks/usePlanFeature";
 import { useToast } from "@/components/feedback/FeedbackSystem";
 import { FluxoPosAccao, ConfirmacaoContextual, Passo } from "@/components/harmonia";
 import { useRouter } from "next/navigation";
@@ -533,7 +532,7 @@ export function ModalPagamentoRapido({
   const [escolaNome, setEscolaNome] = useState<string | null>(null);
 
   const confirmBtnRef = useRef<HTMLButtonElement | null>(null);
-  const { isEnabled: canEmitirRecibo } = usePlanFeature("fin_recibo_pdf");
+  const canEmitirRecibo = true;
 
   // ── Derivados ────────────────────────────────────────────────────────────
   const valorNum   = useMemo(() => safeNumber(valor), [valor]);

@@ -8,7 +8,7 @@ type Props = {
 const kwanza = new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 });
 
 export function FinanceAlertBanner({ loading, alert }: Props) {
-  if (loading) return <div className="h-16 animate-pulse rounded-xl bg-klasse-gold-100" />;
+  if (loading) return <div className="h-14 sm:h-16 animate-pulse rounded-xl bg-klasse-gold-100" />;
   if (!alert) return null;
 
   return (

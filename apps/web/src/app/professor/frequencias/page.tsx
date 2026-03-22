@@ -98,11 +98,11 @@ export default function ProfessorFrequenciasPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <h1 className="text-2xl font-semibold mb-4 text-klasse-green">Frequências</h1>
-      <form onSubmit={onSubmit} className="grid gap-6 lg:grid-cols-[320px_1fr]">
-        <aside className="space-y-4">
-          <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+    <div className="max-w-6xl mx-auto px-4 py-5 sm:p-6">
+      <h1 className="text-2xl font-semibold mb-3 sm:mb-4 text-klasse-green">Frequências</h1>
+      <form onSubmit={onSubmit} className="grid gap-4 sm:gap-6 lg:grid-cols-[320px_1fr]">
+        <aside className="space-y-3 sm:space-y-4">
+          <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 space-y-3">
             <div className="text-sm font-semibold text-slate-900">Turma e disciplina</div>
             <select
               value={turmaId}
@@ -142,7 +142,7 @@ export default function ProfessorFrequenciasPage() {
               required
             />
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2 text-sm text-slate-600">
+          <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 space-y-2 text-sm text-slate-600">
             <div className="font-semibold text-slate-900">Status</div>
             {submitStatus === 'saved' && <div>Presenças sincronizadas.</div>}
             {submitStatus === 'pending' && <div>Presenças pendentes (offline).</div>}

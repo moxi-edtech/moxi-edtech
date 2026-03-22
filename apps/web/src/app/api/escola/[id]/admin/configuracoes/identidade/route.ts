@@ -81,6 +81,8 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
           .maybeSingle()
       : { data: null };
 
+    const limitesNormalizados = limites ? { ...limites, fin_recibo_pdf: true } : null;
+
     const { data: assinatura } = await supabase
       .from("assinaturas")
       .select("valor_kz, ciclo, status")
@@ -90,7 +92,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       .maybeSingle();
 
     return withNoStore(
-      NextResponse.json({ ok: true, data, limites: limites ?? null, assinatura: assinatura ?? null }),
+      NextResponse.json({ ok: true, data, limites: limitesNormalizados, assinatura: assinatura ?? null }),
       start
     );
   } catch (e) {

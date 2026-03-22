@@ -39,14 +39,6 @@ export async function POST(request: Request) {
     if (updates.role !== undefined && updates.role !== null) profilePatch.role = updates.role as any
     if (updates.escola_id !== undefined) profilePatch.escola_id = updates.escola_id
 
-    if (Object.keys(profilePatch).length > 0) {
-      const { error: upErr } = await (s as any)
-        .from('profiles' as any)
-        .update(profilePatch)
-        .eq('user_id', userId)
-      if (upErr) return NextResponse.json({ ok: false, error: upErr.message }, { status: 400 })
-    }
-
     // Manter vínculo com escola e papel
     // Helper: normalize papel_escola to match DB constraint and validate
     const normalizePapel = (p: string | null | undefined): string | null => {
@@ -63,10 +55,18 @@ export async function POST(request: Request) {
 
     if (updates.escola_id !== undefined) {
       const escolaId = updates.escola_id
-      const papel = normalizePapel(updates.papel_escola) ?? null
+      const normalizedRole = normalizePapel(updates.role as string | null | undefined)
+      const papel =
+        normalizePapel(updates.papel_escola) ??
+        (normalizedRole && allowedPapeis.has(normalizedRole) ? normalizedRole : null)
       if (papel && !allowedPapeis.has(papel)) {
         return NextResponse.json({ ok: false, error: `Papel inválido: ${papel}` }, { status: 400 })
       }
+      if (escolaId && !papel) {
+        return NextResponse.json({ ok: false, error: 'Papel da escola é obrigatório.' }, { status: 400 })
+      }
+
+      if (papel) profilePatch.role = papel as any
 
       // Busca vínculos existentes
       const { data: vincs, error: vErr } = await (s as any)
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
           const { error: delV } = await (s as any).from('escola_users' as any).delete().eq('user_id', userId)
           if (delV) return NextResponse.json({ ok: false, error: delV.message }, { status: 400 })
         }
-        await (s as any).from('profiles' as any).update({ escola_id: null as any }).eq('user_id', userId)
+        profilePatch.escola_id = null as any
       } else {
         const hasSame = (vincs || []).some((v: any) => String(v.escola_id) === String(escolaId))
         // Remove vínculos de outras escolas, mantendo/ajustando apenas a atual
@@ -108,10 +108,15 @@ export async function POST(request: Request) {
         }
 
         // Garante escola_id no profile
-        await (s as any).from('profiles' as any).update({ escola_id: escolaId } as any).eq('user_id', userId)
+        profilePatch.escola_id = escolaId as any
       }
     } else if (updates.papel_escola !== undefined) {
       // Se apenas papel mudar, tenta aplicar no vínculo atual (se existir)
+      const normalizedRole = normalizePapel(updates.role as string | null | undefined)
+      const papelFromPayload = normalizePapel(updates.papel_escola)
+      const papelToUse =
+        papelFromPayload ?? (normalizedRole && allowedPapeis.has(normalizedRole) ? normalizedRole : null)
+
       const { data: vinc, error: vErr } = await (s as any)
         .from('escola_users' as any)
         .select('escola_id')
@@ -120,17 +125,25 @@ export async function POST(request: Request) {
       if (vErr) return NextResponse.json({ ok: false, error: vErr.message }, { status: 400 })
       const escolaId = vinc?.[0]?.escola_id
       if (escolaId) {
-        const papel = normalizePapel(updates.papel_escola)
-        if (papel && !allowedPapeis.has(papel)) {
-          return NextResponse.json({ ok: false, error: `Papel inválido: ${papel}` }, { status: 400 })
+        if (papelToUse && !allowedPapeis.has(papelToUse)) {
+          return NextResponse.json({ ok: false, error: `Papel inválido: ${papelToUse}` }, { status: 400 })
         }
+        if (papelToUse) profilePatch.role = papelToUse as any
         const { error: upV } = await (s as any)
           .from('escola_users' as any)
-          .update({ papel })
+          .update({ papel: papelToUse })
           .eq('user_id', userId)
           .eq('escola_id', escolaId)
         if (upV) return NextResponse.json({ ok: false, error: upV.message }, { status: 400 })
       }
+    }
+
+    if (Object.keys(profilePatch).length > 0) {
+      const { error: upErr } = await (s as any)
+        .from('profiles' as any)
+        .update(profilePatch)
+        .eq('user_id', userId)
+      if (upErr) return NextResponse.json({ ok: false, error: upErr.message }, { status: 400 })
     }
 
     recordAuditServer({

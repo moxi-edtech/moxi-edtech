@@ -12473,19 +12473,10 @@ export type Database = {
         }
         Returns: Json
       }
-      build_numero_login:
-        | {
-            Args: {
-              p_ano_letivo: number
-              p_escola_id: string
-              p_numero: number
-            }
-            Returns: string
-          }
-        | {
-            Args: { p_escola_id: string; p_numero_processo: string }
-            Returns: string
-          }
+      build_numero_login: {
+        Args: { p_escola_id: string; p_numero_processo: string }
+        Returns: string
+      }
       calcular_media_trimestral: {
         Args: { p_notas: Json; p_regras: Json }
         Returns: number

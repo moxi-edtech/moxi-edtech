@@ -121,16 +121,16 @@ export function DossierHistoricoTimelineSection({
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 shadow-sm">
         <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">Percurso académico 360º</p>
         <div className="space-y-3">
           {[1, 2, 3].map((item) => (
-            <div key={item} className="animate-pulse rounded-xl border border-slate-200 p-4">
+            <div key={item} className="animate-pulse rounded-xl border border-slate-200 p-3 sm:p-4">
               <div className="mb-3 h-4 w-32 rounded-full bg-slate-200" />
               <div className="grid gap-2 md:grid-cols-3">
-                <div className="h-16 rounded-xl bg-slate-100" />
-                <div className="h-16 rounded-xl bg-slate-100" />
-                <div className="h-16 rounded-xl bg-slate-100" />
+                <div className="h-12 sm:h-16 rounded-xl bg-slate-100" />
+                <div className="h-12 sm:h-16 rounded-xl bg-slate-100" />
+                <div className="h-12 sm:h-16 rounded-xl bg-slate-100" />
               </div>
             </div>
           ))}

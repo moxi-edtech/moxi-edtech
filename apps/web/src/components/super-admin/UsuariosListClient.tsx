@@ -34,6 +34,12 @@ const ROLE_META: Record<string, { bg: string; border: string; text: string; dot:
   super_admin:  { bg: "bg-green-50",   border: "border-green-200", text: "text-[#1F6B3B]", dot: "bg-[#1F6B3B]", label: "Super Admin"  },
   global_admin: { bg: "bg-amber-50",   border: "border-amber-200", text: "text-[#E3B23C]", dot: "bg-[#E3B23C]", label: "Global Admin" },
   admin:        { bg: "bg-slate-100",  border: "border-slate-200", text: "text-slate-700", dot: "bg-slate-500", label: "Admin"        },
+  admin_escola: { bg: "bg-slate-100",  border: "border-slate-200", text: "text-slate-700", dot: "bg-slate-500", label: "Admin"        },
+  staff_admin:  { bg: "bg-slate-100",  border: "border-slate-200", text: "text-slate-700", dot: "bg-slate-500", label: "Admin"        },
+  secretaria:   { bg: "bg-blue-50",    border: "border-blue-200",  text: "text-blue-700", dot: "bg-blue-500",  label: "Secretaria"   },
+  financeiro:   { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700", dot: "bg-emerald-500", label: "Financeiro" },
+  secretaria_financeiro: { bg: "bg-indigo-50", border: "border-indigo-200", text: "text-indigo-700", dot: "bg-indigo-500", label: "Sec. + Fin" },
+  admin_financeiro: { bg: "bg-indigo-50", border: "border-indigo-200", text: "text-indigo-700", dot: "bg-indigo-500", label: "Admin + Fin" },
   user:         { bg: "bg-white",      border: "border-slate-200", text: "text-slate-500", dot: "bg-slate-300", label: "User"         },
 };
 
@@ -58,6 +64,11 @@ const PAPEL_OPTIONS = [
   "admin_financeiro",
   "professor",
 ];
+
+const mapPapelToRole = (papel?: string | null) => {
+  if (!papel) return "";
+  return papel;
+};
 
 // ─── Helpers Visuais ──────────────────────────────────────────────────────────
 
@@ -145,8 +156,8 @@ function ListaUsuarios() {
         
         // Simulação API
         const [usersRes, escolasRes] = await Promise.all([
-          fetch("/api/super-admin/users/list"),
-          fetch("/api/super-admin/escolas/list"),
+          fetch("/api/super-admin/users/list", { cache: "no-store" }),
+          fetch("/api/super-admin/escolas/list", { cache: "no-store" }),
         ]);
         
         if (!usersRes.ok || !escolasRes.ok) throw new Error("Falha na comunicação com os servidores KLASSE.");
@@ -179,16 +190,26 @@ function ListaUsuarios() {
     setEditingId(u.id);
     setEditForm({ 
       nome: u.nome, email: u.email, telefone: u.telefone,
-      role: u.role, escola_id: u.escola_id, papel_escola: u.papel_escola 
+      role: u.escola_id ? (u.papel_escola ?? u.role) : u.role,
+      escola_id: u.escola_id,
+      papel_escola: u.papel_escola,
     });
   };
 
   const handleSave = async (uid: string) => {
     try {
       setSaving(uid);
+      const updates: Partial<Usuario> = { ...editForm };
+
+      if (updates.escola_id) {
+        if (!updates.papel_escola && updates.role) {
+          updates.papel_escola = updates.role;
+        }
+        delete (updates as Partial<Usuario>).role;
+      }
       const res = await fetch("/api/super-admin/users/update", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: uid, updates: editForm }),
+        body: JSON.stringify({ userId: uid, updates }),
       });
       if (!res.ok) throw new Error("Falha ao gravar.");
       
@@ -339,15 +360,26 @@ function ListaUsuarios() {
                       {/* Acesso Global */}
                       <td className="py-4 px-6">
                         {isEditing ? (
-                          <select value={editForm.role || ""} onChange={e => setEditForm({...editForm, role: e.target.value})} className={inputCls}>
-                            <option value="user">User Normal</option>
-                            <option value="admin">Admin</option>
-                            <option value="financeiro">Financeiro</option>
-                            <option value="secretaria_financeiro">Secretário + Financeiro</option>
-                            <option value="admin_financeiro">Admin + Financeiro</option>
-                            <option value="global_admin">Global Admin</option>
-                            <option value="super_admin">Super Admin (Perigoso)</option>
-                          </select>
+                          editForm.escola_id ? (
+                            <div className="space-y-1">
+                              <RoleBadge role={mapPapelToRole(editForm.papel_escola) || "user"} />
+                              <p className="text-[10px] text-slate-500 uppercase tracking-wider">Derivado do papel da escola</p>
+                            </div>
+                          ) : (
+                            <select
+                              value={editForm.role || ""}
+                              onChange={e => setEditForm({ ...editForm, role: e.target.value })}
+                              className={inputCls}
+                            >
+                              <option value="user">User Normal</option>
+                              <option value="admin">Admin</option>
+                              <option value="financeiro">Financeiro</option>
+                              <option value="secretaria_financeiro">Secretário + Financeiro</option>
+                              <option value="admin_financeiro">Admin + Financeiro</option>
+                              <option value="global_admin">Global Admin</option>
+                              <option value="super_admin">Super Admin (Perigoso)</option>
+                            </select>
+                          )
                         ) : (
                           <RoleBadge role={u.role} />
                         )}
@@ -357,11 +389,25 @@ function ListaUsuarios() {
                       <td className="py-4 px-6">
                         {isEditing ? (
                           <div className="space-y-2">
-                            <select value={editForm.escola_id || ""} onChange={e => setEditForm({...editForm, escola_id: e.target.value})} className={inputCls}>
+                            <select
+                              value={editForm.escola_id || ""}
+                              onChange={e => setEditForm({ ...editForm, escola_id: e.target.value })}
+                              className={inputCls}
+                            >
                               <option value="">— Órfão (Sem Escola) —</option>
                               {escolas.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
                             </select>
-                            <select value={editForm.papel_escola || ""} onChange={e => setEditForm({...editForm, papel_escola: e.target.value})} className={inputCls}>
+                            <select
+                              value={editForm.papel_escola || ""}
+                              onChange={e =>
+                                setEditForm({
+                                  ...editForm,
+                                  papel_escola: e.target.value,
+                                  role: editForm.escola_id ? mapPapelToRole(e.target.value) : editForm.role,
+                                })
+                              }
+                              className={inputCls}
+                            >
                               <option value="">— Papel (Escola) —</option>
                               {PAPEL_OPTIONS.map((papel) => (
                                 <option key={papel} value={papel}>
