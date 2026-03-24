@@ -6,7 +6,11 @@ import { SchemaMarkup } from './components/landing/SchemaMarkup'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'KLASSE — Gestão Escolar do Futuro',
+  metadataBase: new URL('https://klasse.ao'),
+  title: {
+    default: 'KLASSE — Gestão Escolar do Futuro',
+    template: '%s | KLASSE',
+  },
   description: 'Propinas controladas. Documentos prontos. Director com visibilidade real.',
   keywords: [
     'gestão escolar angola',
@@ -42,6 +46,11 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+  verification: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+    ? {
+        google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
+      }
+    : undefined,
   alternates: {
     canonical: 'https://klasse.ao',
   },

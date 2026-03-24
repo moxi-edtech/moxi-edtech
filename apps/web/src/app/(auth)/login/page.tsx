@@ -1,9 +1,14 @@
+import type { Metadata } from "next";
 import BrandPanel from "./BrandPanel";
 import LoginForm from "./LoginForm";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Login • Klasse",
   description: "Acesse sua conta Klasse.",
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default function LoginPage() {
