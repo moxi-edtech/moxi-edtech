@@ -50,6 +50,8 @@
 - Fuzz/property tests (fase inicial):
   - `apps/web/tests/unit/fuzz-migracao-utils.spec.ts`
   - `apps/web/tests/unit/fuzz-read-json-with-limit.spec.ts`
+  - `apps/web/tests/unit/fuzz-auth-login.spec.ts`
+  - helper auth extraído para teste: `apps/web/src/lib/auth/loginHardening.ts`
   - script: `pnpm -C apps/web run test:unit:fuzz`
-  - resultado atual: 6 testes passados
+  - resultado atual: 9 testes passados
 - Verificação de compilação: `pnpm -C apps/web exec tsc --noEmit --pretty false` (OK).

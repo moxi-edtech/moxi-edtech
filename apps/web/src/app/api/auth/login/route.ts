@@ -4,26 +4,13 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import type { Database } from "~types/supabase";
 import { callAuthAdminJob } from "@/lib/auth-admin-job";
 import { PayloadLimitError, readJsonWithLimit } from "@/lib/http/readJsonWithLimit";
-import { z } from "zod";
+import { extractLoginCredentials, mapAuthError } from "@/lib/auth/loginHardening";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 const LOGIN_MAX_JSON_BYTES = 16 * 1024; // 16KB
-const LoginBodySchema = z.object({
-  email: z.string().optional(),
-  password: z.string().optional(),
-});
 type AuthAdminFindByEmailResult = { user?: { id?: string } } | null;
 type AuthAdminResolveIdentifierResult = { email?: string } | null;
-
-function getErrorMessage(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  if (typeof err === "object" && err !== null && "message" in err) {
-    const message = (err as { message?: unknown }).message;
-    if (typeof message === "string") return message;
-  }
-  return "Credenciais inválidas.";
-}
 
 // ---------- Helpers de env (deferidos para tempo de execução) ----------
 function getSupabaseEnv() {
@@ -48,30 +35,6 @@ function parseAnonKeyInfo(key: string | undefined) {
   } catch {
     return null;
   }
-}
-
-// Map common auth errors to user-friendly messages/status
-function mapAuthError(err: unknown): { status: number; message: string } {
-  const message = getErrorMessage(err);
-  const lower = message.toLowerCase();
-  const status =
-    typeof err === "object" &&
-    err !== null &&
-    "status" in err &&
-    Number.isFinite(Number((err as { status?: unknown }).status))
-      ? Number((err as { status?: unknown }).status)
-      : 401;
-
-  if (lower.includes("confirm") || lower.includes("not confirmed")) {
-    return { status: 403, message: "E-mail não confirmado. Verifique sua caixa de entrada." };
-  }
-  if (lower.includes("invalid login") || lower.includes("invalid email") || lower.includes("invalid credentials")) {
-    return { status: 401, message: "Credenciais inválidas." };
-  }
-  if (status === 429 || lower.includes("too many") || lower.includes("rate")) {
-    return { status: 429, message: "Muitas tentativas. Tente novamente em alguns minutos." };
-  }
-  return { status: status >= 400 && status < 600 ? status : 401, message };
 }
 
 // ---------- Resolver identificador (numero_processo_login / telefone → email) ----------
@@ -123,9 +86,7 @@ export async function POST(req: NextRequest) {
       }
       return {};
     });
-    const parsedBody = LoginBodySchema.safeParse(body);
-    const rawIdentifier = String(parsedBody.success ? parsedBody.data.email ?? "" : "").trim();
-    const password = String(parsedBody.success ? parsedBody.data.password ?? "" : "");
+    const { rawIdentifier, password } = extractLoginCredentials(body);
 
     if (!rawIdentifier || !password) {
       return new NextResponse(
