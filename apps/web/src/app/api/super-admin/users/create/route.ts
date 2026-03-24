@@ -5,15 +5,42 @@ import { recordAuditServer } from "@/lib/audit";
 import { supabaseServerTyped } from "@/lib/supabaseServer";
 import { callAuthAdminJob } from "@/lib/auth-admin-job";
 import { allowedPapeisSet } from "@/lib/roles";
+import { PayloadLimitError, readJsonWithLimit } from "@/lib/http/readJsonWithLimit";
+import { z } from "zod";
 // ❌ REMOVIDO: import { generateNumeroLogin } from "@/lib/generateNumeroLogin";
 
 // top-level não deve criar client
+const SUPER_ADMIN_USERS_CREATE_MAX_JSON_BYTES = 64 * 1024; // 64KB
+const CreateUserBodySchema = z.object({
+  nome: z.string().min(1),
+  email: z.string().email(),
+  telefone: z.string().optional().nullable(),
+  papel: z.string().min(1),
+  escolaId: z.string().uuid(),
+  roleEnum: z.custom<Database["public"]["Enums"]["user_role"]>((value) =>
+    typeof value === "string",
+  ),
+  tempPassword: z.string().optional().nullable(),
+});
+type CreateAuthUserResult = { user?: { id: string } } | null;
+type FindUserByEmailResult = { user?: { id?: string } } | null;
+type UpdateUserByIdResult = { user?: { id: string } } | null;
+type EscolaUserPapel = Exclude<Database["public"]["Tables"]["escola_users"]["Insert"]["papel"], null | undefined>;
 
 export async function POST(request: Request) {
   const supabase = await supabaseServerTyped<Database>();
 
   try {
-    const body = await request.json();
+    const rawBody = await readJsonWithLimit(request, {
+      maxBytes: SUPER_ADMIN_USERS_CREATE_MAX_JSON_BYTES,
+    });
+    const parsedBody = CreateUserBodySchema.safeParse(rawBody);
+    if (!parsedBody.success) {
+      return NextResponse.json(
+        { ok: false, error: parsedBody.error.issues[0]?.message ?? "Payload inválido" },
+        { status: 400 },
+      );
+    }
     const {
       nome,
       email,
@@ -22,33 +49,17 @@ export async function POST(request: Request) {
       escolaId,
       roleEnum,
       tempPassword,
-    }: {
-      nome: string;
-      email: string;
-      telefone?: string | null;
-      papel: string;
-      escolaId: string;
-      roleEnum: Database["public"]["Enums"]["user_role"];
-      tempPassword?: string | null;
-    } = body;
+    } = parsedBody.data;
 
     // Normalize and validate papel against DB constraint
-    const normalizePapel = (
-      p: string,
-    ): Database["public"]["Tables"]["escola_users"]["Row"] extends {
-      papel: infer T;
-    }
-      ? T extends string
-        ? T
-        : string
-      : string => {
+    const normalizePapel = (p: string): EscolaUserPapel => {
       const legacyMap: Record<string, string> = {
         diretor: "admin_escola",
         administrador: "admin",
         secretario: "secretaria",
       };
       const mapped = legacyMap[p] || p;
-      return mapped as any;
+      return mapped as EscolaUserPapel;
     };
 
     const allowedPapeis = allowedPapeisSet;
@@ -118,10 +129,10 @@ export async function POST(request: Request) {
 
     // 3) Create auth user (ou reaproveita se já existir)
     {
-      let data: any = null;
-      let error: any = null;
+      let data: CreateAuthUserResult = null;
+      let error: unknown = null;
       try {
-        data = await callAuthAdminJob(request, "createUser", {
+        data = (await callAuthAdminJob(request, "createUser", {
           email: email.trim().toLowerCase(),
           password,
           email_confirm: true,
@@ -131,13 +142,13 @@ export async function POST(request: Request) {
             must_change_password: true,
           },
           app_metadata: { role: roleEnum, escola_id: escolaId },
-        });
+        })) as CreateAuthUserResult;
       } catch (err) {
         error = err;
       }
 
       if (!data?.user) {
-        const msg = (error?.message || "").toLowerCase();
+        const msg = error instanceof Error ? error.message.toLowerCase() : "";
         const looksLikeExisting =
           /already been registered|already registered|user exists|email exists/.test(
             msg,
@@ -145,11 +156,12 @@ export async function POST(request: Request) {
 
         if (looksLikeExisting) {
           try {
-            const found = await callAuthAdminJob(request, "findUserByEmail", {
+            const found = (await callAuthAdminJob(request, "findUserByEmail", {
               email: email.trim().toLowerCase(),
-            });
-            if ((found as any)?.user?.id) {
-              authUser = { user: { id: String((found as any).user.id) } };
+            })) as FindUserByEmailResult;
+            const foundUserId = found?.user?.id;
+            if (foundUserId) {
+              authUser = { user: { id: String(foundUserId) } };
             }
           } catch (_) {
             // ignore
@@ -160,7 +172,7 @@ export async function POST(request: Request) {
           return NextResponse.json(
             {
               ok: false,
-              error: error?.message || "Falha ao criar usuário no Auth",
+              error: error instanceof Error ? error.message : "Falha ao criar usuário no Auth",
             },
             { status: 400 },
           );
@@ -172,16 +184,16 @@ export async function POST(request: Request) {
     }
 
     if (!createdNewAuthUser && tempPassword) {
-      await callAuthAdminJob(request, "updateUserById", {
+      await (callAuthAdminJob(request, "updateUserById", {
         userId: authUser!.user.id,
         attributes: { password, email_confirm: true },
-      });
+      }) as Promise<UpdateUserByIdResult>);
       forcedPasswordReset = true;
     }
 
     // 4) Create / upsert profile
     const { error: profileError } = await supabase
-      .from("profiles" as any)
+      .from("profiles")
       .upsert(
         [
           {
@@ -193,7 +205,7 @@ export async function POST(request: Request) {
             escola_id: escolaId,
             current_escola_id: escolaId,
           },
-        ] as any,
+        ],
         { onConflict: "user_id" },
       );
     if (profileError) {
@@ -212,7 +224,7 @@ export async function POST(request: Request) {
 
     // 5) Link to school in escola_users
     const { error: vinculoError } = await supabase
-      .from("escola_users" as any)
+      .from("escola_users")
       .upsert(
         [
           {
@@ -220,14 +232,14 @@ export async function POST(request: Request) {
             user_id: authUser!.user.id,
             papel: papelDb,
           },
-        ] as any,
+        ],
         { onConflict: "escola_id,user_id" },
       );
     if (vinculoError) {
       if (createdNewAuthUser) {
         try {
           await supabase
-            .from("profiles" as any)
+            .from("profiles")
             .delete()
             .eq("user_id", authUser!.user.id);
           await callAuthAdminJob(request, "deleteUser", { userId: authUser!.user.id });
@@ -261,6 +273,12 @@ export async function POST(request: Request) {
       tempPassword: createdNewAuthUser || forcedPasswordReset ? password : null,
     });
   } catch (err) {
+    if (err instanceof PayloadLimitError) {
+      return NextResponse.json(
+        { ok: false, error: err.message },
+        { status: err.status },
+      );
+    }
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json(
       { ok: false, error: message },
