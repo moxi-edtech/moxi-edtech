@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseRouteClient } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import {
@@ -73,6 +74,7 @@ type FiscalSerieLookup = {
   ativa: boolean;
   descontinuada_em: string | null;
 };
+type FiscalSupabaseClient = SupabaseClient<FiscalDatabase>;
 
 const ALLOWED_FISCAL_ROLES = ["owner", "admin", "operator"] as const;
 
@@ -296,7 +298,7 @@ async function requireFiscalAccess({
   empresaId,
   escolaId,
 }: {
-  supabase: any;
+  supabase: FiscalSupabaseClient;
   userId: string;
   empresaId: string;
   escolaId: string | null;
@@ -367,7 +369,7 @@ async function resolveSerieSemantica({
   escolaId,
   requestId,
 }: {
-  supabase: any;
+  supabase: FiscalSupabaseClient;
   input: PostFiscalDocumentoInput;
   escolaId: string | null;
   requestId: string;
