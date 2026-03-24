@@ -33,3 +33,15 @@ supabase db pull --db-url "$DB_URL"
 Observações:
 - A baseline vigente é `supabase/migrations/20251231163837_baseline.sql` (idempotente, com extensões `uuid-ossp`, `pg_trgm`, `pgcrypto`).
 - Se surgir um `remote_schema` quebrado, reverta o ID (`supabase migration repair --status reverted <id>`) e remova o arquivo local correspondente antes de novo `db pull`.
+
+## Deploy Vercel (monorepo)
+
+Use os scripts abaixo para garantir deploy no projeto correto:
+
+- `pnpm deploy:web` → deploy de `apps/web` no projeto vinculado em `apps/web/.vercel/project.json`.
+- `pnpm deploy:landing` → deploy de `apps/landing` no projeto vinculado em `apps/landing/.vercel/project.json`.
+- `pnpm deploy:prod` → executa web e landing em sequência.
+
+Notas:
+- Cada script força `--cwd` da app alvo, evitando deploy cruzado a partir da raiz do monorepo.
+- Se `.vercel/project.json` da app não existir, o script falha com instrução para executar `vercel link`.
