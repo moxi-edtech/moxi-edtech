@@ -380,6 +380,7 @@ export type Database = {
           email: string | null
           encarregado_email: string | null
           encarregado_nome: string | null
+          encarregado_relacao: string | null
           encarregado_telefone: string | null
           escola_id: string
           id: string
@@ -392,6 +393,7 @@ export type Database = {
           numero_processo: string | null
           numero_processo_legado: string | null
           profile_id: string | null
+          provincia: string | null
           responsavel: string | null
           responsavel_contato: string | null
           responsavel_nome: string | null
@@ -418,6 +420,7 @@ export type Database = {
           email?: string | null
           encarregado_email?: string | null
           encarregado_nome?: string | null
+          encarregado_relacao?: string | null
           encarregado_telefone?: string | null
           escola_id: string
           id?: string
@@ -430,6 +433,7 @@ export type Database = {
           numero_processo?: string | null
           numero_processo_legado?: string | null
           profile_id?: string | null
+          provincia?: string | null
           responsavel?: string | null
           responsavel_contato?: string | null
           responsavel_nome?: string | null
@@ -456,6 +460,7 @@ export type Database = {
           email?: string | null
           encarregado_email?: string | null
           encarregado_nome?: string | null
+          encarregado_relacao?: string | null
           encarregado_telefone?: string | null
           escola_id?: string
           id?: string
@@ -468,6 +473,7 @@ export type Database = {
           numero_processo?: string | null
           numero_processo_legado?: string | null
           profile_id?: string | null
+          provincia?: string | null
           responsavel?: string | null
           responsavel_contato?: string | null
           responsavel_nome?: string | null
@@ -1120,6 +1126,7 @@ export type Database = {
           curso_id: string | null
           dados_candidato: Json | null
           escola_id: string
+          expires_at: string | null
           id: string
           matricula_id: string | null
           matriculado_em: string | null
@@ -1140,6 +1147,7 @@ export type Database = {
           curso_id?: string | null
           dados_candidato?: Json | null
           escola_id: string
+          expires_at?: string | null
           id?: string
           matricula_id?: string | null
           matriculado_em?: string | null
@@ -1160,6 +1168,7 @@ export type Database = {
           curso_id?: string | null
           dados_candidato?: Json | null
           escola_id?: string
+          expires_at?: string | null
           id?: string
           matricula_id?: string | null
           matriculado_em?: string | null
