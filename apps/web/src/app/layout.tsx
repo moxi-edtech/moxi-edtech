@@ -1,9 +1,23 @@
+import type { Metadata } from "next";
 import "./globals.css";
 import { ServiceWorkerRegister } from "@/components/system/ServiceWorkerRegister";
 import { OfflineSyncRegister } from "@/components/system/OfflineSyncRegister";
 import { ToastProvider } from "@/components/feedback/FeedbackSystem";
 
 const shouldLoadGoogleFonts = process.env.NEXT_FONT_GOOGLE_FONTS_DISABLE !== "1";
+
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+    },
+  },
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
