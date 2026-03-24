@@ -1,26 +1,30 @@
 import { revalidatePath } from 'next/cache'
 import { NextResponse } from 'next/server'
-import { supabaseServer } from '@/lib/supabaseServer'
+import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { recordAuditServer } from '@/lib/audit'
 import { isSuperAdminRole } from '@/lib/auth/requireSuperAdminAccess'
+import { PayloadLimitError, readJsonWithLimit } from '@/lib/http/readJsonWithLimit'
+import type { Database } from '~types/supabase'
+import { z } from 'zod'
+
+const SUPER_ADMIN_USERS_DELETE_MAX_JSON_BYTES = 64 * 1024 // 64KB
+const DeleteBodySchema = z.object({ userId: z.string().uuid() })
+type RpcErrorLike = { message?: string } | null
+type RpcResult<T> = { data: T | null; error: RpcErrorLike }
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    const userId = String(body?.userId || '')
-    
-    if (!userId) {
-      return NextResponse.json({ ok: false, error: 'userId ausente' }, { status: 400 })
+    const rawBody = await readJsonWithLimit(request, {
+      maxBytes: SUPER_ADMIN_USERS_DELETE_MAX_JSON_BYTES,
+    })
+    const parsedBody = DeleteBodySchema.safeParse(rawBody)
+    if (!parsedBody.success) {
+      return NextResponse.json({ ok: false, error: parsedBody.error.issues[0]?.message ?? 'Payload inválido' }, { status: 400 })
     }
-
-    // Validação do UUID
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-    if (!uuidRegex.test(userId)) {
-      return NextResponse.json({ ok: false, error: 'userId inválido' }, { status: 400 })
-    }
+    const { userId } = parsedBody.data
 
     // AuthZ: somente super_admin
-    const s = await supabaseServer()
+    const s = await supabaseServerTyped<Database>()
     const { data: { user: currentUser }, error: authError } = await s.auth.getUser()
     
     if (authError || !currentUser) {
@@ -45,7 +49,8 @@ export async function POST(request: Request) {
     console.log(`[Super Admin] Iniciando exclusão do usuário: ${userId}`)
 
     // 0. Opcional: obter export dos dados via RPC antes de qualquer modificação
-    const { data: exportData, error: exportError } = await (s as any).rpc('get_user_export_json', { p_user_id: userId }) as { data: any, error: any }
+    const { data: exportData, error: exportError } =
+      (await s.rpc('get_user_export_json', { p_user_id: userId })) as unknown as RpcResult<unknown>
 
     if (exportError) {
       console.error('[Super Admin] Erro ao exportar dados do usuário:', exportError.message ?? exportError)
@@ -72,7 +77,11 @@ export async function POST(request: Request) {
     }
 
     // 1. Arquivar profile no DB (move para profiles_archive + marca deleted_at)
-    const { error: archiveError } = await (s as any).rpc('move_profile_to_archive', { p_user_id: userId, p_performed_by: currentUser.id }) as { error: any }
+    const { error: archiveError } =
+      (await s.rpc('move_profile_to_archive', {
+        p_user_id: userId,
+        p_performed_by: currentUser.id,
+      })) as unknown as RpcResult<unknown>
 
     if (archiveError) {
       console.error('[Super Admin] Erro ao arquivar profile:', archiveError.message ?? archiveError)
@@ -84,7 +93,7 @@ export async function POST(request: Request) {
     // 2. Limpeza de dados dependentes (mantive a sequência que tinhas)
     // 2.1 atribuicoes_prof
     try {
-      const { error: atribuicoesError } = await (s as any)
+      const { error: atribuicoesError } = await s
         .from('atribuicoes_prof')
         .delete()
         .eq('professor_user_id', userId)
@@ -99,7 +108,7 @@ export async function POST(request: Request) {
 
     // 2.2 rotinas
     try {
-      const { error: rotinasError } = await (s as any)
+      const { error: rotinasError } = await s
         .from('rotinas')
         .delete()
         .eq('professor_user_id', userId)
@@ -114,7 +123,7 @@ export async function POST(request: Request) {
 
     // 3. Remover de escola_users (se existir)
     try {
-      const { error: escolaUsuariosError } = await (s as any)
+      const { error: escolaUsuariosError } = await s
         .from('escola_users')
         .delete()
         .eq('user_id', userId)
@@ -180,6 +189,12 @@ export async function POST(request: Request) {
     })
 
   } catch (error) {
+    if (error instanceof PayloadLimitError) {
+      return NextResponse.json(
+        { ok: false, error: error.message },
+        { status: error.status }
+      )
+    }
     console.error(`[Super Admin] Erro inesperado ao processar exclusão:`, error)
     
     return NextResponse.json(

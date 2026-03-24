@@ -14,14 +14,56 @@ const escolaSlugCache = new Map<string, { id: string; slug: string; expiresAt: n
 const LIMITS = {
   STRICT: { count: 5, windowMs: 60 * 1000 }, // 5 reqs por minuto
   PUBLIC: { count: 30, windowMs: 60 * 1000 }, // 30 reqs por minuto
+  OPERATIONAL: { count: 120, windowMs: 60 * 1000 }, // 120 reqs por minuto para APIs operacionais autenticadas
 };
 
 const ESCOLA_SLUG_TTL_MS = 5 * 60 * 1000;
+const UPSTASH_REDIS_REST_URL = process.env.UPSTASH_REDIS_REST_URL;
+const UPSTASH_REDIS_REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+const CORS_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS ?? '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
-function isRateLimited(ip: string, limitKey: keyof typeof LIMITS) {
+async function isRateLimited(ip: string, limitKey: keyof typeof LIMITS) {
   const now = Date.now();
   const limit = LIMITS[limitKey];
-  const record = rateLimitMap.get(`${ip}:${limitKey}`) || { count: 0, lastReset: now };
+  const redisEnabled = Boolean(UPSTASH_REDIS_REST_URL && UPSTASH_REDIS_REST_TOKEN);
+  const key = `${ip}:${limitKey}`;
+
+  if (redisEnabled) {
+    try {
+      const redisKey = `rl:${key}`;
+      const encodedKey = encodeURIComponent(redisKey);
+      const incrRes = await fetch(`${UPSTASH_REDIS_REST_URL}/incr/${encodedKey}`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${UPSTASH_REDIS_REST_TOKEN}`,
+        },
+      });
+
+      if (incrRes.ok) {
+        const incrJson = await incrRes.json() as { result?: number };
+        const count = Number(incrJson?.result ?? 0);
+
+        if (count === 1) {
+          const ttlSeconds = Math.ceil(limit.windowMs / 1000);
+          await fetch(`${UPSTASH_REDIS_REST_URL}/expire/${encodedKey}/${ttlSeconds}`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${UPSTASH_REDIS_REST_TOKEN}`,
+            },
+          });
+        }
+
+        return count > limit.count;
+      }
+    } catch {
+      // fallback para memória local caso Redis esteja indisponível
+    }
+  }
+
+  const record = rateLimitMap.get(key) || { count: 0, lastReset: now };
 
   if (now - record.lastReset > limit.windowMs) {
     record.count = 1;
@@ -30,8 +72,53 @@ function isRateLimited(ip: string, limitKey: keyof typeof LIMITS) {
     record.count++;
   }
 
-  rateLimitMap.set(`${ip}:${limitKey}`, record);
+  rateLimitMap.set(key, record);
   return record.count > limit.count;
+}
+
+function isOperationalApiPath(pathname: string) {
+  return (
+    pathname.startsWith('/api/financeiro/') ||
+    pathname.startsWith('/api/secretaria/') ||
+    pathname.startsWith('/api/professor/') ||
+    pathname.startsWith('/api/aluno/')
+  );
+}
+
+function isApiPath(pathname: string) {
+  return pathname.startsWith('/api/');
+}
+
+function resolveAllowedOrigin(request: NextRequest, origin: string | null) {
+  if (!origin) return null;
+  const allowed = new Set<string>([request.nextUrl.origin, ...CORS_ALLOWED_ORIGINS]);
+  return allowed.has(origin) ? origin : null;
+}
+
+function applyCorsHeaders(response: NextResponse, allowedOrigin: string | null) {
+  if (!allowedOrigin) return;
+  response.headers.set('Access-Control-Allow-Origin', allowedOrigin);
+  response.headers.set('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+  response.headers.set('Access-Control-Allow-Headers', 'Authorization,Content-Type,X-Requested-With');
+  response.headers.set('Access-Control-Allow-Credentials', 'true');
+  response.headers.set('Vary', 'Origin');
+}
+
+function applySecurityHeaders(request: NextRequest, response: NextResponse) {
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('X-Frame-Options', 'SAMEORIGIN');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  response.headers.set('X-DNS-Prefetch-Control', 'off');
+  if (request.nextUrl.protocol === 'https:') {
+    response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+}
+
+function finalizeResponse(request: NextRequest, response: NextResponse, allowedOrigin: string | null) {
+  applyCorsHeaders(response, allowedOrigin);
+  applySecurityHeaders(request, response);
+  return response;
 }
 
 const PORTAL_RULES: Array<{ prefix: string; roles: string[] }> = [
@@ -180,10 +267,32 @@ async function resolveEscolaSlugMapping(
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const apiPath = isApiPath(pathname);
+  const origin = request.headers.get('origin');
+  const allowedOrigin = resolveAllowedOrigin(request, origin);
   
   // Obtém o IP de forma segura para o TypeScript e compatível com Edge/Vercel
   const forwardedFor = request.headers.get('x-forwarded-for');
   const ip = forwardedFor ? forwardedFor.split(',')[0] : '127.0.0.1';
+
+  if (apiPath && request.method === 'OPTIONS') {
+    if (origin && !allowedOrigin) {
+      return finalizeResponse(
+        request,
+        NextResponse.json({ error: 'Origin not allowed' }, { status: 403 }),
+        null
+      );
+    }
+    return finalizeResponse(request, new NextResponse(null, { status: 204 }), allowedOrigin);
+  }
+
+  if (apiPath && origin && !allowedOrigin) {
+    return finalizeResponse(
+      request,
+      NextResponse.json({ error: 'Origin not allowed' }, { status: 403 }),
+      null
+    );
+  }
 
   // 1. Rate Limiting para Endpoints Críticos (STRICT)
   if (
@@ -191,20 +300,42 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith('/api/auth/login') ||
     pathname.startsWith('/api/alunos/ativar-acesso')
   ) {
-    if (isRateLimited(ip, 'STRICT')) {
-      return new NextResponse(
-        JSON.stringify({ error: 'Too many requests. Please try again later.' }),
-        { status: 429, headers: { 'Content-Type': 'application/json' } }
+    if (await isRateLimited(ip, 'STRICT')) {
+      return finalizeResponse(
+        request,
+        new NextResponse(
+          JSON.stringify({ error: 'Too many requests. Please try again later.' }),
+          { status: 429, headers: { 'Content-Type': 'application/json' } }
+        ),
+        allowedOrigin
       );
     }
   }
 
   // 2. Rate Limiting para Acesso Público (PUBLIC)
   if (pathname.startsWith('/api/public/documentos')) {
-    if (isRateLimited(ip, 'PUBLIC')) {
-      return new NextResponse(
-        JSON.stringify({ error: 'Too many requests. Please try again later.' }),
-        { status: 429, headers: { 'Content-Type': 'application/json' } }
+    if (await isRateLimited(ip, 'PUBLIC')) {
+      return finalizeResponse(
+        request,
+        new NextResponse(
+          JSON.stringify({ error: 'Too many requests. Please try again later.' }),
+          { status: 429, headers: { 'Content-Type': 'application/json' } }
+        ),
+        allowedOrigin
+      );
+    }
+  }
+
+  // 3. Rate Limiting para APIs operacionais (OPERATIONAL)
+  if (isOperationalApiPath(pathname)) {
+    if (await isRateLimited(ip, 'OPERATIONAL')) {
+      return finalizeResponse(
+        request,
+        new NextResponse(
+          JSON.stringify({ error: 'Too many requests. Please try again later.' }),
+          { status: 429, headers: { 'Content-Type': 'application/json' } }
+        ),
+        allowedOrigin
       );
     }
   }
@@ -222,12 +353,12 @@ export async function middleware(request: NextRequest) {
       if (resolved) {
         const tenant = await resolveUserTenant(request, response);
         if (!tenant) {
-          return createForbiddenResponse(response, isApi);
+          return finalizeResponse(request, createForbiddenResponse(response, isApi), allowedOrigin);
         }
 
         if (tenant.role !== 'global_admin') {
           if (!tenant.escolaId || tenant.escolaId !== resolved.id) {
-            return createForbiddenResponse(response, isApi);
+            return finalizeResponse(request, createForbiddenResponse(response, isApi), allowedOrigin);
           }
         }
 
@@ -236,7 +367,7 @@ export async function middleware(request: NextRequest) {
           redirectUrl.pathname = `/escola/${resolved.slug}${suffix}`;
           const redirectResponse = NextResponse.redirect(redirectUrl, 301);
           applyResponseCookies(response, redirectResponse);
-          return redirectResponse;
+          return finalizeResponse(request, redirectResponse, allowedOrigin);
         }
 
         if (!isEscolaUuid(escolaParam)) {
@@ -245,29 +376,29 @@ export async function middleware(request: NextRequest) {
           rewrittenUrl.pathname = `${prefix}/${resolved.id}${suffix}`;
           const rewriteResponse = NextResponse.rewrite(rewrittenUrl);
           applyResponseCookies(response, rewriteResponse);
-          return rewriteResponse;
+          return finalizeResponse(request, rewriteResponse, allowedOrigin);
         }
       }
     }
   }
 
   const portalRule = PORTAL_RULES.find((rule) => pathname.startsWith(rule.prefix));
-  if (!portalRule) return response;
+  if (!portalRule) return finalizeResponse(request, response, allowedOrigin);
 
   const role = await resolveUserRole(request, response);
   if (!role) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = '/login';
-    return NextResponse.redirect(loginUrl);
+    return finalizeResponse(request, NextResponse.redirect(loginUrl), allowedOrigin);
   }
 
   if (!portalRule.roles.includes(String(role))) {
     const deniedUrl = request.nextUrl.clone();
     deniedUrl.pathname = '/login';
-    return NextResponse.redirect(deniedUrl);
+    return finalizeResponse(request, NextResponse.redirect(deniedUrl), allowedOrigin);
   }
 
-  return response;
+  return finalizeResponse(request, response, allowedOrigin);
 }
 
 // Configuração para aplicar o middleware apenas em rotas de API sensíveis
@@ -284,5 +415,9 @@ export const config = {
     '/api/auth/login/:path*',
     '/api/alunos/ativar-acesso/:path*',
     '/api/public/documentos/:path*',
+    '/api/financeiro/:path*',
+    '/api/secretaria/:path*',
+    '/api/professor/:path*',
+    '/api/aluno/:path*',
   ],
 };

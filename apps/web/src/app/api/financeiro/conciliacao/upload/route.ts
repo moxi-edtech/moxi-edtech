@@ -9,6 +9,7 @@ import type { Database } from '~types/supabase';
 type FinanceiroTransacaoInsert = Database["public"]["Tables"]["financeiro_transacoes_importadas"]["Insert"];
 type ParsedRow = Array<string | number | null | undefined>;
 type ParsedRecord = Record<string, unknown>;
+const MAX_UPLOAD_SIZE_BYTES = 12 * 1024 * 1024; // 12MB
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +38,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Banco não informado.' }, { status: 400 });
     }
     // Conta can be optional if not all banks provide it
+
+    if (file.size > MAX_UPLOAD_SIZE_BYTES) {
+      return NextResponse.json(
+        { error: 'Arquivo excede o limite permitido de 12MB.' },
+        { status: 413 }
+      );
+    }
 
     const fileBuffer = Buffer.from(await file.arrayBuffer());
     const importId = crypto.randomUUID();

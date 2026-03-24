@@ -3,9 +3,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import type { Database } from "~types/supabase";
 import { callAuthAdminJob } from "@/lib/auth-admin-job";
+import { PayloadLimitError, readJsonWithLimit } from "@/lib/http/readJsonWithLimit";
+import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+const LOGIN_MAX_JSON_BYTES = 16 * 1024; // 16KB
+const LoginBodySchema = z.object({
+  email: z.string().optional(),
+  password: z.string().optional(),
+});
+type AuthAdminFindByEmailResult = { user?: { id?: string } } | null;
+type AuthAdminResolveIdentifierResult = { email?: string } | null;
+
+function getErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === "object" && err !== null && "message" in err) {
+    const message = (err as { message?: unknown }).message;
+    if (typeof message === "string") return message;
+  }
+  return "Credenciais inválidas.";
+}
 
 // ---------- Helpers de env (deferidos para tempo de execução) ----------
 function getSupabaseEnv() {
@@ -33,10 +51,16 @@ function parseAnonKeyInfo(key: string | undefined) {
 }
 
 // Map common auth errors to user-friendly messages/status
-function mapAuthError(err: any): { status: number; message: string } {
-  const message = (err?.message || "Credenciais inválidas.") as string;
+function mapAuthError(err: unknown): { status: number; message: string } {
+  const message = getErrorMessage(err);
   const lower = message.toLowerCase();
-  const status = Number(err?.status) || 401;
+  const status =
+    typeof err === "object" &&
+    err !== null &&
+    "status" in err &&
+    Number.isFinite(Number((err as { status?: unknown }).status))
+      ? Number((err as { status?: unknown }).status)
+      : 401;
 
   if (lower.includes("confirm") || lower.includes("not confirmed")) {
     return { status: 403, message: "E-mail não confirmado. Verifique sua caixa de entrada." };
@@ -55,8 +79,10 @@ function mapAuthError(err: any): { status: number; message: string } {
 async function resolveIdentifierToEmail(req: NextRequest, identifier: string): Promise<string | null> {
   if (identifier.includes("@")) return null;
   try {
-    const result = await callAuthAdminJob(req, "resolveIdentifierToEmail", { identifier });
-    return (result as any)?.email ? String((result as any).email).toLowerCase() : null;
+    const result = (await callAuthAdminJob(req, "resolveIdentifierToEmail", {
+      identifier,
+    })) as AuthAdminResolveIdentifierResult;
+    return result?.email ? String(result.email).toLowerCase() : null;
   } catch (error) {
     console.error("[login] resolveIdentifierToEmail error:", error);
     return null;
@@ -89,9 +115,17 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const body = await req.json().catch(() => ({} as any));
-    const rawIdentifier = String(body?.email ?? "").trim();
-    const password = String(body?.password ?? "");
+    const body = await readJsonWithLimit(req, {
+      maxBytes: LOGIN_MAX_JSON_BYTES,
+    }).catch((error) => {
+      if (error instanceof PayloadLimitError) {
+        throw error;
+      }
+      return {};
+    });
+    const parsedBody = LoginBodySchema.safeParse(body);
+    const rawIdentifier = String(parsedBody.success ? parsedBody.data.email ?? "" : "").trim();
+    const password = String(parsedBody.success ? parsedBody.data.password ?? "" : "");
 
     if (!rawIdentifier || !password) {
       return new NextResponse(
@@ -159,16 +193,18 @@ export async function POST(req: NextRequest) {
       const canAdmin = Boolean(isDev);
       if (canAdmin && (mapped.message?.toLowerCase?.() || "").includes("e-mail não confirmado")) {
         try {
-          const found = await callAuthAdminJob(req, "findUserByEmail", { email });
-          const uid = (found as any)?.user?.id as string | undefined;
+          const found = (await callAuthAdminJob(req, "findUserByEmail", {
+            email,
+          })) as AuthAdminFindByEmailResult;
+          const uid = found?.user?.id;
           if (uid) {
             try {
               await callAuthAdminJob(req, "updateUserById", { userId: uid, attributes: { email_confirm: true } });
             } catch {}
             // Retry sign in after confirming
             const retry = await supabase.auth.signInWithPassword({ email, password });
-            data = retry.data as any;
-            error = retry.error as any;
+            data = retry.data;
+            error = retry.error;
           }
         } catch (e) {
           // ignore and fall through to error response
@@ -199,8 +235,8 @@ export async function POST(req: NextRequest) {
       console.log('[login] profile lookup error:', profileError);
 
       if (!profileError && profile) {
-        role = (profile as any)?.role ?? null;
-        escola_id = (profile as any)?.escola_id ?? null;
+        role = profile.role ?? null;
+        escola_id = profile.escola_id ?? null;
       }
     } catch (e) {
       console.warn("[login] profile lookup failed:", e);
@@ -216,9 +252,7 @@ export async function POST(req: NextRequest) {
           email: data.user.email,
           role,
           escola_id,
-          must_change_password: Boolean(
-            (data.user as any)?.user_metadata?.must_change_password
-          ),
+          must_change_password: Boolean((data.user.user_metadata as Record<string, unknown> | null | undefined)?.must_change_password),
         },
       },
       {
@@ -227,6 +261,12 @@ export async function POST(req: NextRequest) {
       }
     );
   } catch (err) {
+    if (err instanceof PayloadLimitError) {
+      return new NextResponse(
+        JSON.stringify({ ok: false, error: err.message }),
+        { status: err.status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } }
+      );
+    }
     const message = err instanceof Error ? err.message : String(err);
     console.error("[login] 500 error:", err);
     return new NextResponse(

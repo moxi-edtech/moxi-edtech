@@ -4,10 +4,15 @@ import { recordAuditServer } from '@/lib/audit'
 import { isSuperAdminRole } from '@/lib/auth/requireSuperAdminAccess'
 import { callAuthAdminJob } from '@/lib/auth-admin-job'
 import { buildResetPasswordEmail, sendMail } from '@/lib/mailer'
+import { PayloadLimitError, readJsonWithLimit } from '@/lib/http/readJsonWithLimit'
+
+const SUPER_ADMIN_USERS_RESET_PASSWORD_MAX_JSON_BYTES = 64 * 1024 // 64KB
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json().catch(() => ({}))
+    const body = await readJsonWithLimit(request, {
+      maxBytes: SUPER_ADMIN_USERS_RESET_PASSWORD_MAX_JSON_BYTES,
+    }) as Record<string, unknown>
     const userId = String(body?.userId || '')
     const providedPassword = String(body?.tempPassword || body?.password || '').trim()
     if (!userId) return NextResponse.json({ ok: false, error: 'userId ausente' }, { status: 400 })
@@ -23,7 +28,7 @@ export async function POST(request: Request) {
       .eq('user_id', current.id)
       .order('created_at', { ascending: false })
       .limit(1)
-    const role = (rows?.[0] as any)?.role as string | undefined
+    const role = rows?.[0]?.role as string | undefined
     if (!isSuperAdminRole(role)) {
       return NextResponse.json({ ok: false, error: 'Somente Super Admin' }, { status: 403 })
     }
@@ -34,7 +39,7 @@ export async function POST(request: Request) {
       .eq('user_id', userId)
       .maybeSingle()
 
-    const email = ((target as any)?.email_real || (target as any)?.email) as string | undefined
+    const email = target?.email_real || target?.email || undefined
     if (!email) {
       return NextResponse.json({ ok: false, error: 'Email do usuário não encontrado' }, { status: 404 })
     }
@@ -134,6 +139,12 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true, sentViaResend, tempPassword: null })
   } catch (error) {
+    if (error instanceof PayloadLimitError) {
+      return NextResponse.json(
+        { ok: false, error: error.message },
+        { status: error.status }
+      )
+    }
     return NextResponse.json(
       { ok: false, error: error instanceof Error ? error.message : 'Erro ao redefinir senha' },
       { status: 500 }
