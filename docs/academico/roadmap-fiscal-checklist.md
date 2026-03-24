@@ -27,7 +27,7 @@ Data: 2026-03-19
 - [x] Serviço de canonical string.
 - [x] Serviço de assinatura (RSA).
 - [x] Emissão transaccional `POST /api/fiscal/documentos`.
-- [ ] Guarda de idempotência por `hash_control`.
+- [x] Guarda de idempotência por `hash_control`.
 - [x] Encadeamento de hash (`hash_anterior`).
 
 ### Requisitos de infraestrutura
@@ -35,8 +35,8 @@ Data: 2026-03-19
 - [ ] IAM role com permissão `kms:Sign` aplicada no backend.
 
 ## Fase 4 — Operações fiscais
-- [ ] Rectificação e anulação por API.
-- [ ] Geração de eventos fiscais (ledger de eventos).
+- [x] Rectificação e anulação por API.
+- [x] Geração de eventos fiscais (ledger de eventos).
 - [ ] Exportação SAF-T(AO).
 - [ ] Indexação para consultas operacionais e auditoria.
 
