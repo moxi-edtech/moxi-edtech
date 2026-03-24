@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { recordAuditServer } from "@/lib/audit";
 import { postFiscalEmpresaSchema } from "@/lib/schemas/fiscal-setup.schema";
@@ -11,6 +12,7 @@ export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
 type JsonRecord = Record<string, unknown>;
+type RouteSupabase = SupabaseClient<Database>;
 
 function jsonError(status: number, code: string, message: string, details?: JsonRecord) {
   return NextResponse.json(
@@ -34,7 +36,7 @@ async function parseRequestBody(req: Request) {
   }
 }
 
-async function checkSuperAdmin(supabase: any) {
+async function checkSuperAdmin(supabase: RouteSupabase) {
   try {
     const { data, error } = await supabase.rpc("check_super_admin_role");
     if (error) return false;
