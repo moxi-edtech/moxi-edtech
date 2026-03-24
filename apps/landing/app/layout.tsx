@@ -1,9 +1,24 @@
 import type { Metadata } from 'next'
+import { Manrope, Sora } from 'next/font/google'
 import type { ReactNode } from 'react'
 
 import { SchemaMarkup } from './components/landing/SchemaMarkup'
 
 import './globals.css'
+
+const manrope = Manrope({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  display: 'swap',
+  variable: '--font-manrope',
+})
+
+const sora = Sora({
+  subsets: ['latin'],
+  weight: ['700', '800'],
+  display: 'swap',
+  variable: '--font-sora',
+})
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://klasse.ao'),
@@ -58,10 +73,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="pt-AO">
+    <html lang="pt-AO" className={`${manrope.variable} ${sora.variable}`}>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link rel="icon" href="/logo-klasse.png" type="image/png" />
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <SchemaMarkup />
