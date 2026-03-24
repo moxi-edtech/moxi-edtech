@@ -18,5 +18,5 @@ export VERCEL_PROJECT_ID="$(
   node -e "const fs=require('fs'); const p=JSON.parse(fs.readFileSync(process.argv[1], 'utf8')); process.stdout.write(p.projectId);" "$PROJECT_FILE"
 )"
 
-echo "Deploy LANDING -> org=$VERCEL_ORG_ID project=$VERCEL_PROJECT_ID cwd=$APP_DIR"
-exec vercel deploy --prod --yes --scope moxinexas-projects --cwd "$APP_DIR" "$@"
+echo "Deploy LANDING -> org=$VERCEL_ORG_ID project=$VERCEL_PROJECT_ID cwd=$ROOT_DIR"
+exec vercel deploy --prod --yes --scope moxinexas-projects --cwd "$ROOT_DIR" "$@"
