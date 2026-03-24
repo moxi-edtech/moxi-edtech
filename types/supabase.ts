@@ -13121,6 +13121,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      fiscal_anular_documento: {
+        Args: { p_documento_id: string; p_metadata?: Json; p_motivo: string }
+        Returns: Json
+      }
       fiscal_emitir_documento:
         | {
             Args: {
@@ -13185,6 +13189,10 @@ export type Database = {
           p_documento_id: string
           p_hash_control: string
         }
+        Returns: Json
+      }
+      fiscal_rectificar_documento: {
+        Args: { p_documento_id: string; p_metadata?: Json; p_motivo: string }
         Returns: Json
       }
       fiscal_reservar_numero_serie: {
