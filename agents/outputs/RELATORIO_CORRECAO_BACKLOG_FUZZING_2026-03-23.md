@@ -56,10 +56,14 @@ contexto: Avaliação de robustez contra entradas malformadas, payloads abusivos
   - suíte inicial de fuzz/property tests adicionada:
     - `apps/web/tests/unit/fuzz-migracao-utils.spec.ts`
     - `apps/web/tests/unit/fuzz-read-json-with-limit.spec.ts`
+    - `apps/web/tests/unit/fuzz-auth-login.spec.ts`
+  - extração de lógica de hardening auth para módulo testável:
+    - `apps/web/src/lib/auth/loginHardening.ts`
+    - `apps/web/src/app/api/auth/login/route.ts` atualizado para usar helper
   - script dedicado:
     - `apps/web/package.json` → `test:unit:fuzz`
   - execução local:
-    - `pnpm -C apps/web run test:unit:fuzz` ✅ (6/6)
+    - `pnpm -C apps/web run test:unit:fuzz` ✅ (9/9)
 - Validação técnica:
   - `pnpm -C apps/web exec tsc --noEmit --pretty false` ✅
 
@@ -164,7 +168,7 @@ contexto: Avaliação de robustez contra entradas malformadas, payloads abusivos
 - **aceite:** pipeline com casos randômicos reprodutíveis (seed fixa) e thresholds de falha.
 - **owner sugerido:** QA + backend
 - **esforço estimado:** M/L
-- **status:** PARCIAL (fase 1 entregue em 2026-03-24: parsers de migração + guardrail JSON)
+- **status:** PARCIAL (fase 1.1 entregue em 2026-03-24: parsers de migração + guardrail JSON + auth login hardening)
 
 ### BL-FZ-007 — Telemetria e alertas de abuso
 - **escopo:** métricas de `429`, payload rejeitado, latência p95/p99 por endpoint.
