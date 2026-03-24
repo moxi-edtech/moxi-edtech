@@ -5,6 +5,7 @@
 `POST /api/fiscal/documentos`
 `POST /api/fiscal/documentos/{documentoId}/rectificar`
 `POST /api/fiscal/documentos/{documentoId}/anular`
+`POST /api/fiscal/saft/export`
 
 ## Objetivo
 
@@ -183,9 +184,11 @@ As rotas operam em modo **atómico**:
 }
 ```
 
-## Próximo passo obrigatório
+## Estado de integração SAF-T(AO)
 
-Integrar fluxo de SAF-T(AO) e indexação operacional para auditoria.
+- Exportação operacional disponível em `POST /api/fiscal/saft/export`.
+- Registo de export em `fiscal_saft_exports`.
+- Trilha de auditoria de export por documento em `fiscal_documentos_eventos` (`SAFT_EXPORTADO`).
 
 ## Smoke tests executados (remoto)
 

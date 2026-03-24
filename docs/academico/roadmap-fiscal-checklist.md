@@ -37,8 +37,8 @@ Data: 2026-03-19
 ## Fase 4 — Operações fiscais
 - [x] Rectificação e anulação por API.
 - [x] Geração de eventos fiscais (ledger de eventos).
-- [ ] Exportação SAF-T(AO).
-- [ ] Indexação para consultas operacionais e auditoria.
+- [x] Exportação SAF-T(AO).
+- [x] Indexação para consultas operacionais e auditoria.
 
 ## Fase 5 — Integração e UI
 - [ ] UI fiscal no portal financeiro.
@@ -54,5 +54,6 @@ Data: 2026-03-19
 ## Referências
 - `docs/api/fiscal-documentos.md`
 - `docs/api/fiscal-setup.md`
+- `docs/api/fiscal-saft.md`
 - `agents/outputs/RELATORIO_INVENTARIO_MODULO_FISCAL_2026-03-19.md`
 - `agents/outputs/KLASSE_FISCAL_PHASE0_PHASE1_2026-03-19.md`
