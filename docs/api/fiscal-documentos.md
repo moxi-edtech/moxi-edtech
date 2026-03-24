@@ -1,17 +1,19 @@
 # API — Fiscal / Documentos
 
-## Endpoint
+## Endpoints
 
 `POST /api/fiscal/documentos`
+`POST /api/fiscal/documentos/{documentoId}/rectificar`
+`POST /api/fiscal/documentos/{documentoId}/anular`
 
 ## Objetivo
 
-Preparar a emissão fiscal no padrão híbrido do KLASSE:
+Operar emissão e ciclo de vida fiscal no padrão híbrido do KLASSE:
 
 - contrato público semântico na API;
 - resolução interna de `serie_id`;
 - guarda de acesso fiscal por `empresa_id`;
-- bloqueio explícito da emissão até existir uma RPC atómica que evite buracos na sequência.
+- transições formais de status fiscal (`emitido -> rectificado|anulado`) com trilho de eventos.
 
 ## Contrato público
 
@@ -60,7 +62,7 @@ Preparar a emissão fiscal no padrão híbrido do KLASSE:
 
 ## Estado actual
 
-A rota opera em modo **atómico**:
+As rotas operam em modo **atómico**:
 
 - valida o request;
 - autentica o utilizador;
@@ -68,6 +70,9 @@ A rota opera em modo **atómico**:
 - confirma vínculo `escola -> empresa fiscal` quando existir contexto escolar;
 - resolve semanticamente a série activa;
 - delega a emissão para a RPC transaccional `fiscal_emitir_documento`.
+- rectificação via RPC `fiscal_rectificar_documento`;
+- anulação via RPC `fiscal_anular_documento`;
+- registo de eventos fiscais no ledger (`RECTIFICADO` e `ANULADO`).
 
 ## Notas de assinatura
 
@@ -166,9 +171,21 @@ A rota opera em modo **atómico**:
 }
 ```
 
+### 409 FISCAL_STATE_CONFLICT
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "FISCAL_STATE_CONFLICT",
+    "message": "A transição de estado fiscal não é permitida para o documento."
+  }
+}
+```
+
 ## Próximo passo obrigatório
 
-Integrar assinatura RSA real (KMS/HSM) e idempotência por `hash_control`.
+Integrar fluxo de SAF-T(AO) e indexação operacional para auditoria.
 
 ## Smoke tests executados (remoto)
 

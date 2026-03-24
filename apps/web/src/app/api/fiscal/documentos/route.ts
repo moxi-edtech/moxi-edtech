@@ -91,6 +91,9 @@ function jsonError(status: number, code: string, message: string, details?: Json
 }
 
 function mapRpcError(message: string) {
+  if (message.toLowerCase().includes("duplicate key value violates unique constraint")) {
+    return { status: 409, code: "FISCAL_IDEMPOTENCY_CONFLICT" };
+  }
   if (message.startsWith("AUTH:")) {
     return { status: 403, code: "FISCAL_FORBIDDEN" };
   }

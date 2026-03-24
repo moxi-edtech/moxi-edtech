@@ -70,4 +70,10 @@ export const postFiscalDocumentoSchema = z
     }
   });
 
+export const fiscalDocumentoActionSchema = z.object({
+  motivo: z.string().trim().min(3).max(1000),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
+
 export type PostFiscalDocumentoInput = z.infer<typeof postFiscalDocumentoSchema>;
+export type FiscalDocumentoActionInput = z.infer<typeof fiscalDocumentoActionSchema>;
