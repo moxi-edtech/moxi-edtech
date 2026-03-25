@@ -32,14 +32,14 @@ const faqSchema = {
 }
 
 export const metadata: Metadata = {
-  title: 'Sistema de Gestão Escolar | KLASSE',
+  title: 'Sistema de Gestão Escolar',
   description:
     'O KLASSE é um sistema de gestão escolar focado em controlo operacional. Controle alunos, notas, turmas, horários e pagamentos numa única plataforma.',
   alternates: {
     canonical: 'https://klasse.ao/sistema-de-gestao-escolar',
   },
   openGraph: {
-    title: 'Sistema de Gestão Escolar | KLASSE',
+    title: 'Sistema de Gestão Escolar',
     description:
       'Gestão escolar completa: alunos, notas, turmas, horários e pagamentos numa única plataforma.',
     url: 'https://klasse.ao/sistema-de-gestao-escolar',
@@ -57,7 +57,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Sistema de Gestão Escolar | KLASSE',
+    title: 'Sistema de Gestão Escolar',
     description:
       'Gestão escolar completa: alunos, notas, turmas, horários e pagamentos numa única plataforma.',
     images: ['https://klasse.ao/og-image.png'],

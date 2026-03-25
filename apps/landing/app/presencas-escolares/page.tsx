@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Presenças Escolares com Leitura Rápida | KLASSE',
+  title: 'Presenças Escolares com Leitura Rápida',
   description:
     'Presenças escolares com visibilidade rápida para secretaria e direção, garantindo disciplina pedagógica.',
   alternates: {
