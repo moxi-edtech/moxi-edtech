@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Secretaria Escolar com Fluxo Disciplinado | KLASSE',
+  title: 'Secretaria Escolar com Fluxo Disciplinado',
   description:
     'Secretaria escolar com matrículas, documentos e histórico centralizados para reduzir duplicação manual.',
   alternates: {

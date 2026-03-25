@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Gestão de Propinas Escolar | KLASSE',
+  title: 'Gestão de Propinas Escolar',
   description:
     'Gestão de propinas com previsibilidade, cobranças e rastreio financeiro para escolas que precisam de controlo real.',
   alternates: {

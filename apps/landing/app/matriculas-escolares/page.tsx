@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Matrículas Escolares com Fluxo Controlado | KLASSE',
+  title: 'Matrículas Escolares com Fluxo Controlado',
   description:
     'Matrículas com confirmação documental, vagas e rematrículas num fluxo previsível para secretarias escolares.',
   alternates: {

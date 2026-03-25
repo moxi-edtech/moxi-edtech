@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Financeiro Escolar com Previsibilidade | KLASSE',
+  title: 'Financeiro Escolar com Previsibilidade',
   description:
     'Financeiro escolar com propinas organizadas, previsibilidade de entrada e menos ruído operacional.',
   alternates: {

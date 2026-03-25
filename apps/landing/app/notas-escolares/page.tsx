@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Notas Escolares com Menos Retrabalho | KLASSE',
+  title: 'Notas Escolares com Menos Retrabalho',
   description:
     'Notas escolares e pautas com fluxo claro entre professores, secretaria e direção, sem fricção operacional.',
   alternates: {
