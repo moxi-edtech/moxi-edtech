@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { supabaseServerTyped } from "@/lib/supabaseServer";
+import { supabaseRouteClient } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
 
 export async function GET() {
   try {
-    const supabase = await supabaseServerTyped<Database>();
+    const supabase = await supabaseRouteClient<Database>();
     const { data: userRes } = await supabase.auth.getUser();
     const user = userRes?.user;
     if (!user) return NextResponse.json({ ok: false, error: "Não autenticado" }, { status: 401 });
