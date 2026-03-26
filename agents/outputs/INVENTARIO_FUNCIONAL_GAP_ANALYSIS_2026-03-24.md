@@ -1,7 +1,10 @@
 # 📘 KLASSE — Inventário Funcional + GAP Analysis (lista do fundador)
 
 Data: 2026-03-24
-Escopo: `apps/web`, `supabase/migrations`, componentes e APIs.
+Escopo: `apps/web`, `supabase/migrations`, componentes, APIs e documentação de referência:
+- `docs/api/fiscal-saft.md`
+- `docs/api/fiscal-documentos.md`
+- `docs/academico/roadmap-fiscal-checklist.md`
 Método: somente com evidência de código (UI/API/DB). Sem evidência = 🟡 ou ❌.
 
 ---

@@ -303,6 +303,7 @@ export default async function FinanceiroDashboardPage({
                   <QuickLink href="/financeiro/cobrancas" title="Histórico de Cobranças" description="Mensagens, respostas e pagamentos." icon={<Receipt className="h-6 w-6" />} />
                   <QuickLink href="/financeiro/conciliacao" title="Conciliação TPA" description="Concilie Multicaixa/TPA sem ruído." icon={<Scale className="h-6 w-6" />} />
                   <QuickLink href="/financeiro/relatorios" title="Relatórios Financeiros" description="Análise completa para decisão." icon={<BarChart3 className="h-6 w-6" />} />
+                  <QuickLink href="/financeiro/fiscal" title="Fiscal & Compliance" description="Operação fiscal, SAF-T e auditoria interna." icon={<ClipboardCheck className="h-6 w-6" />} />
                 </div>
               </section>
             </>

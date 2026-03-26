@@ -17,6 +17,11 @@ export const fiscalDocumentoItemSchema = z.object({
   taxa_iva: z.coerce.number().min(0).max(100),
 });
 
+export const fiscalDocumentoUiItemSchema = z.object({
+  descricao: z.string().trim().min(1).max(500),
+  valor: z.coerce.number().positive(),
+});
+
 export const fiscalDocumentoClienteSchema = z.object({
   id: z.string().uuid().optional(),
   nome: z.string().trim().min(1).max(255),
@@ -70,10 +75,25 @@ export const postFiscalDocumentoSchema = z
     }
   });
 
+export const postFiscalDocumentoUiSchema = z.object({
+  ano_fiscal: z.coerce.number().int().min(2024).max(2100),
+  tipo_documento: z.enum(["FT", "FR"]),
+  cliente_nome: z.string().trim().min(1).max(255),
+  itens: z.array(fiscalDocumentoUiItemSchema).min(1).max(500),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
+
+export const postFiscalDocumentoRequestSchema = z.union([
+  postFiscalDocumentoSchema,
+  postFiscalDocumentoUiSchema,
+]);
+
 export const fiscalDocumentoActionSchema = z.object({
   motivo: z.string().trim().min(3).max(1000),
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type PostFiscalDocumentoInput = z.infer<typeof postFiscalDocumentoSchema>;
+export type PostFiscalDocumentoUiInput = z.infer<typeof postFiscalDocumentoUiSchema>;
+export type PostFiscalDocumentoRequestInput = z.infer<typeof postFiscalDocumentoRequestSchema>;
 export type FiscalDocumentoActionInput = z.infer<typeof fiscalDocumentoActionSchema>;

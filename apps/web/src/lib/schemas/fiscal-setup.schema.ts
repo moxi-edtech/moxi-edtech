@@ -52,7 +52,13 @@ export const postFiscalChaveSchema = z.object({
   empresa_id: z.string().uuid(),
   key_version: z.coerce.number().int().positive(),
   public_key_pem: z.string().trim().min(1),
-  private_key_ref: z.string().trim().min(1).optional(),
+  private_key_ref: z
+    .string()
+    .trim()
+    .regex(/^(kms:\/\/.+|arn:aws:kms:.+)$/, {
+      message: "private_key_ref deve usar formato kms://... ou arn:aws:kms:...",
+    })
+    .optional(),
   key_fingerprint: z.string().trim().min(8).max(128),
   status: z.enum(FISCAL_CHAVE_STATUS).default("active"),
   metadata: z.record(z.string(), z.unknown()).optional(),
