@@ -47,7 +47,7 @@ export function Navbar({ appUrl, links, primaryCta, onMenuToggle }: NavbarProps)
       <div className="container">
         <div className="nav-inner">
           <a href="#" className="nav-logo z">
-            KLASSE<span>.</span>
+            KLASSE
             <span className="nav-logo-sub">Gestão Escolar</span>
           </a>
           <div className="nav-links z">

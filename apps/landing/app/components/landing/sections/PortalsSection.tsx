@@ -1,133 +1,239 @@
-import type { ReactElement } from 'react'
+import { useMemo, useState } from 'react'
 
-import { portalHighlights, portals } from '../../../data/landing'
-
-const portalIcons: Record<string, ReactElement> = {
-  director: (
-    <svg viewBox="0 0 24 24">
-      <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-      <polyline points="9 22 9 12 15 12 15 22" />
-    </svg>
-  ),
-  secretaria: (
-    <svg viewBox="0 0 24 24">
-      <rect x="2" y="3" width="20" height="14" rx="2" />
-      <line x1="8" y1="21" x2="16" y2="21" />
-      <line x1="12" y1="17" x2="12" y2="21" />
-    </svg>
-  ),
-  professor: (
-    <svg viewBox="0 0 24 24">
-      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M23 21v-2a4 4 0 00-3-3.87" />
-      <path d="M16 3.13a4 4 0 010 7.75" />
-    </svg>
-  ),
-  financeiro: (
-    <svg viewBox="0 0 24 24">
-      <line x1="12" y1="1" x2="12" y2="23" />
-      <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" />
-    </svg>
-  ),
-  aluno: (
-    <svg viewBox="0 0 24 24">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <polyline points="14 2 14 8 20 8" />
-      <line x1="16" y1="13" x2="8" y2="13" />
-      <line x1="16" y1="17" x2="8" y2="17" />
-    </svg>
-  ),
+type PortalSlide = {
+  id: 'aluno' | 'encarregado' | 'academico'
+  tab: string
+  badge: string
+  title: string
+  description: string
+  points: string[]
 }
 
-const portalIconStyles: Record<string, { background: string; border: string; color: string }> = {
-  director: { background: '#2B6044', border: 'rgba(43,96,68,0.35)', color: '#F5F0E8' },
-  secretaria: { background: '#1d4430', border: 'rgba(29,68,48,0.35)', color: '#F5F0E8' },
-  financeiro: { background: '#C8902A', border: 'rgba(200,144,42,0.4)', color: '#1a1a1a' },
-  professor: { background: '#2B6044', border: 'rgba(43,96,68,0.35)', color: '#F5F0E8' },
-  aluno: { background: '#F5F0E8', border: 'rgba(43,96,68,0.2)', color: '#1d4430' },
+const slides: PortalSlide[] = [
+  {
+    id: 'aluno',
+    tab: 'Aluno',
+    badge: 'Portal do Aluno',
+    title: 'O seu filho na palma da mao.',
+    description: 'Notas, presencas e propinas em tempo real.',
+    points: ['Notas por disciplina em segundos', 'Presencas com historico claro', 'Propinas visiveis sem ir a secretaria'],
+  },
+  {
+    id: 'encarregado',
+    tab: 'Encarregado',
+    badge: 'Portal do Encarregado',
+    title: 'Propinas e notas, sem filas.',
+    description: 'Tudo visivel para o encarregado no mesmo painel.',
+    points: ['Estado financeiro do aluno', 'Proximos pagamentos e pendencias', 'Acompanhamento academico continuo'],
+  },
+  {
+    id: 'academico',
+    tab: 'Academico',
+    badge: 'Portal Academico',
+    title: 'Notas em tempo real.',
+    description: 'O aluno acompanha o proprio percurso sem friccao.',
+    points: ['Disciplinas e desempenho por trimestre', 'Resumo rapido de progresso', 'Proxima aula e rotina organizada'],
+  },
+]
+
+function DeviceMock({ activeId }: { activeId: PortalSlide['id'] }) {
+  if (activeId === 'aluno') {
+    return (
+      <div className="device-stage device-stage--aluno">
+        <div className="portais-device-head">
+          <span className="post-brand">KLASSE</span>
+          <span className="post-headline">Portal do Aluno</span>
+        </div>
+        <div className="phone">
+          <div className="phone-shell">
+            <div className="phone-notch" />
+            <div className="phone-screen">
+              <div className="ph-status"><span>07:00</span><span>5G 87%</span></div>
+              <div className="ph-header">
+                <div className="ph-logo">KL</div>
+                <div className="ph-header-text">
+                  <div className="ph-portal-lbl">Portal do Aluno</div>
+                  <div className="ph-escola">Colegio Nova Geracao</div>
+                </div>
+              </div>
+              <div className="ph-student-bar"><span className="alvid-pill">Mbemba Neto</span></div>
+              <div className="ph-hero-card">
+                <div className="ph-ano">Ano Lectivo 2025-2026</div>
+                <div className="ph-name">Mbemba Lopes da Costa Neto</div>
+                <div className="ph-pills">
+                  <span className="pill pill-white">8.a Classe</span>
+                  <span className="pill pill-dark">Turma 8A</span>
+                </div>
+                <div className="ph-stats">
+                  <div className="ph-stat"><div className="ph-stat-lbl">Ultima Nota</div><div className="ph-stat-val">14</div></div>
+                  <div className="ph-stat"><div className="ph-stat-lbl">Propinas</div><div className="ph-stat-val ph-stat-warn">0</div></div>
+                  <div className="ph-stat"><div className="ph-stat-lbl">Proxima Aula</div><div className="ph-stat-val ph-stat-time">08:00</div></div>
+                </div>
+              </div>
+              <div className="ph-section-hd"><span>Notas Recentes</span><span>Ver todas</span></div>
+              <div className="ph-note-card"><div className="ph-note-row"><span>Matematica</span><strong>14</strong></div><div className="ph-bar"><i style={{ width: '70%' }} /></div></div>
+              <div className="ph-note-card"><div className="ph-note-row"><span>Portugues</span><strong>17</strong></div><div className="ph-bar"><i style={{ width: '85%' }} /></div></div>
+              <div className="ph-note-card"><div className="ph-note-row"><span>Fisica</span><strong className="warn">12</strong></div><div className="ph-bar"><i className="warn" style={{ width: '60%' }} /></div></div>
+              <div className="ph-nav"><span className="active">Inicio</span><span>Academico</span><span>Financeiro</span><span>Docs</span><span>Avisos</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (activeId === 'encarregado') {
+    return (
+      <div className="device-stage device-stage--encarregado">
+        <div className="portais-device-head light">
+          <span className="post-brand">KLASSE</span>
+          <span className="post-headline">Portal do Encarregado</span>
+        </div>
+        <div className="tablet-shell">
+          <div className="tablet-frame">
+            <div className="tablet-screen">
+              <div className="tab-status"><span>07:00</span><span>WiFi - Colegio Nova Geracao</span></div>
+              <div className="tab-header">
+                <div className="ph-logo">KL</div>
+                <div className="ph-header-text">
+                  <div className="ph-portal-lbl">Portal do Aluno - Colegio Nova Geracao</div>
+                  <div className="ph-escola">Mbemba Neto - 5.a Classe - Turma 5B</div>
+                </div>
+                <span className="alvid-pill">Mbemba Neto</span>
+              </div>
+              <div className="tab-layout">
+                <div className="tab-col">
+                  <div className="tab-col-title">Financeiro</div>
+                  <div className="fin-card paid"><small>Pago em 2026</small><strong>Kz 230.000</strong></div>
+                  <div className="fin-card pend"><small>Pendente</small><strong>Kz 46.000</strong></div>
+                  <div className="mens-title">Mensalidades</div>
+                  <div className="mens-row"><span>Marco 2026</span><b>Pagar</b></div>
+                  <div className="mens-row"><span>Abril 2026</span><b>Pagar</b></div>
+                </div>
+                <div className="tab-col">
+                  <div className="tab-col-title">Notas - 1.o Trimestre</div>
+                  <div className="tab-note-card"><div className="ph-note-row"><span>Matematica</span><strong>16</strong></div><div className="ph-bar"><i style={{ width: '80%' }} /></div></div>
+                  <div className="tab-note-card"><div className="ph-note-row"><span>Portugues</span><strong>18</strong></div><div className="ph-bar"><i style={{ width: '90%' }} /></div></div>
+                  <div className="tab-note-card"><div className="ph-note-row"><span>Ciencias</span><strong className="warn">13</strong></div><div className="ph-bar"><i className="warn" style={{ width: '65%' }} /></div></div>
+                  <div className="tab-note-card"><div className="ph-note-row"><span>Historia</span><strong>15</strong></div><div className="ph-bar"><i style={{ width: '75%' }} /></div></div>
+                </div>
+              </div>
+              <div className="tab-nav"><span>Inicio</span><span>Academico</span><span className="active">Financeiro</span><span>Docs</span><span>Avisos</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="device-stage device-stage--academico">
+      <div className="portais-device-head">
+        <span className="post-brand">KLASSE</span>
+        <span className="post-headline">Portal Academico</span>
+      </div>
+      <div className="float-stat top"><strong>14.8</strong><small>Media geral</small></div>
+      <div className="float-stat bottom"><strong>7</strong><small>Disciplinas</small></div>
+      <div className="android-shell">
+        <div className="android-frame">
+          <div className="android-screen">
+            <div className="and-status"><span>07:00</span><span>4G - 87%</span></div>
+            <div className="and-header">
+              <div className="ph-logo">KL</div>
+              <div className="ph-header-text">
+                <div className="ph-portal-lbl">Portal do Aluno</div>
+                <div className="ph-escola">Colegio Nova Geracao</div>
+              </div>
+            </div>
+            <div className="and-student-bar"><span className="alvid-pill">Mbemba Neto</span></div>
+            <div className="and-content">
+              <div className="and-section-lbl">Desempenho por disciplina</div>
+              <div className="disc-item"><span>Biologia</span><strong className="warn">12</strong></div>
+              <div className="disc-item"><span>Ed. Moral e Civica</span><strong>16</strong></div>
+              <div className="disc-item"><span>Educacao Fisica</span><strong>18</strong></div>
+              <div className="disc-item"><span>Fisica</span><strong className="warn">11</strong></div>
+              <div className="and-section-lbl and-section-lbl-tight">Resumo do trimestre</div>
+              <div className="and-meta-grid">
+                <div className="and-meta-card"><small>Media</small><strong>14.8</strong></div>
+                <div className="and-meta-card"><small>Presenca</small><strong>96%</strong></div>
+              </div>
+              <div className="and-next-class"><span>Proxima aula</span><strong>Matematica - 08:00</strong></div>
+            </div>
+            <div className="and-nav"><span>Inicio</span><span className="active">Academico</span><span>Financeiro</span><span>Docs</span><span>Avisos</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export function PortalsSection() {
-  const topPortals = portals.filter((portal) => ['director', 'secretaria', 'financeiro'].includes(portal.id))
+  const [activeId, setActiveId] = useState<PortalSlide['id']>('aluno')
+  const [visibleId, setVisibleId] = useState<PortalSlide['id']>('aluno')
+  const [isFading, setIsFading] = useState(false)
+
+  const activeSlide = useMemo(() => slides.find((slide) => slide.id === visibleId) ?? slides[0], [visibleId])
+
+  const handleSwap = (nextId: PortalSlide['id']) => {
+    if (nextId === visibleId || isFading) return
+    setActiveId(nextId)
+    setIsFading(true)
+    window.setTimeout(() => {
+      setVisibleId(nextId)
+      setIsFading(false)
+    }, 140)
+  }
 
   return (
     <section className="portais reveal section-accent" id="portais">
       <div className="container">
-        <div className="portais-intro">
+        <div className="portais-device-intro">
           <div className="sec-label">O sistema</div>
-          <h2 className="sec-h">Cada pessoa vê o que precisa.</h2>
-        </div>
-        <div className="portais-top">
-          {topPortals.map((portal) => (
-            <div key={portal.id} className="portal-card-compact">
-              <div
-                className="portal-icon"
-                style={{
-                  background: portalIconStyles[portal.id]?.background,
-                  borderColor: portalIconStyles[portal.id]?.border,
-                  color: portalIconStyles[portal.id]?.color,
-                }}
-              >
-                {portalIcons[portal.id]}
-              </div>
-              <h3 className="portal-title">{portal.title}</h3>
-              <p className="portal-desc">{portal.description}</p>
-            </div>
-          ))}
+          <h2 className="sec-h">Cada pessoa ve o que precisa.</h2>
+          <p className="sec-p">Uma experiencia unica por dispositivo, com conteudo que muda por perfil.</p>
         </div>
 
-        <div className="portais-bottom">
-          <div className="portal-card-destaque portal-card-professor">
-            <div className="portal-icon portal-icon-inline" style={{ background: '#2B6044', color: '#F5F0E8' }}>
-              {portalIcons.professor}
-            </div>
-            <h3 className="portal-highlight-title">Professor</h3>
-            <p className="portal-highlight-desc">{portalHighlights.professor.description}</p>
-            <div className="portal-highlight-list">
-              {portalHighlights.professor.features.map((feature) => (
-                <div key={feature.title} className="portal-highlight-item">
-                  <span className="portal-highlight-dot" />
-                  <div>
-                    <div className="portal-highlight-item-title">{feature.title}</div>
-                    <div className="portal-highlight-item-desc">{feature.description}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="portal-mobile-badge">Optimizado para telemóvel</div>
+        <div className="portais-swap" aria-label="Portais KLASSE com troca de perfil">
+          <div className={`portais-swap-media portais-swap-media--${activeSlide.id}${isFading ? ' is-fading' : ''}`}>
+            <DeviceMock activeId={activeSlide.id} />
           </div>
 
-          <div className="portal-card-destaque portal-card-aluno">
-            <div className="portal-icon portal-icon-inline" style={{ background: '#F5F0E8', color: '#1d4430' }}>
-              {portalIcons.aluno}
+          <div className={`portais-swap-panel${isFading ? ' is-fading' : ''}`}>
+            <div className="portais-swap-tabs" role="tablist" aria-label="Trocar perfil">
+              {slides.map((slide) => {
+                const isActive = slide.id === activeId
+                return (
+                  <button
+                    key={slide.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    className={`portais-swap-tab${isActive ? ' is-active' : ''}`}
+                    onClick={() => handleSwap(slide.id)}
+                  >
+                    {slide.tab}
+                  </button>
+                )
+              })}
             </div>
-            <h3 className="portal-highlight-title portal-highlight-title-light">Aluno</h3>
-            <p className="portal-highlight-desc portal-highlight-desc-light">{portalHighlights.aluno.description}</p>
-            <div className="portal-highlight-list">
-              {portalHighlights.aluno.features.map((feature) => (
-                <div key={feature.title} className="portal-highlight-item">
-                  <span className="portal-highlight-dot" />
-                  <div>
-                    <div className="portal-highlight-item-title portal-highlight-item-title-light">{feature.title}</div>
-                    <div className="portal-highlight-item-desc portal-highlight-item-desc-light">
-                      {feature.description}
-                    </div>
-                  </div>
-                </div>
-              ))}
+
+            <div className="portais-swap-content" role="tabpanel">
+              <h3>{activeSlide.title}</h3>
+              <p>{activeSlide.description}</p>
+              <ul>
+                {activeSlide.points.map((point) => (
+                  <li key={point}>{point}</li>
+                ))}
+              </ul>
             </div>
-            <div className="portal-login-hint">
-              <div className="portal-login-label">{portalHighlights.aluno.loginHint.label}</div>
-              <div className="portal-login-code">{portalHighlights.aluno.loginHint.code}</div>
-              <div className="portal-login-sub">{portalHighlights.aluno.loginHint.sub}</div>
+
+            <div className="portais-swap-actions">
+              <a className="btn-p" href="#onboarding">
+                Pedir demo guiada
+              </a>
             </div>
           </div>
         </div>
-
-        <p className="sec-p" style={{ marginTop: 16 }}>
-          A secretária não vê as notas. O professor não vê as finanças. O director vê tudo.
-        </p>
       </div>
     </section>
   )
