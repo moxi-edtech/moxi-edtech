@@ -4,7 +4,9 @@ import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { buildSaftAoXml } from "@/lib/fiscal/saftAo";
+import { validateSaftXmlWithXsd } from "@/lib/fiscal/saftXsdValidator";
 import { readJsonWithLimit } from "@/lib/http/readJsonWithLimit";
+import { recordAuditServer } from "@/lib/audit";
 import {
   postFiscalSaftExportSchema,
   type PostFiscalSaftExportInput,
@@ -190,6 +192,8 @@ export async function POST(req: Request) {
     }
 
     const escolaId = await resolveEscolaIdForUser(supabase, user.id);
+    const auditEscolaId = escolaId;
+
     const access = await requireFiscalAccess({
       supabase,
       userId: user.id,
@@ -311,6 +315,30 @@ export async function POST(req: Request) {
     };
 
     const { xml, summary } = buildSaftAoXml(saftInput);
+    const xsdValidation = await validateSaftXmlWithXsd({
+      xml,
+      xsdVersion: body.xsd_version,
+    });
+
+    if (!xsdValidation.ok) {
+      const status =
+        xsdValidation.code === "XSD_VALIDATION_FAILED"
+          ? 422
+          : xsdValidation.code === "XSD_VALIDATOR_UNAVAILABLE"
+            ? 503
+            : 400;
+      return jsonError(
+        status,
+        "FISCAL_SAFT_XSD_INVALID",
+        xsdValidation.message,
+        {
+          request_id: requestId,
+          empresa_id: body.empresa_id,
+          xsd_validation: xsdValidation,
+        }
+      );
+    }
+
     const checksumSha256 = createHash("sha256").update(xml).digest("hex");
     const arquivoStoragePath = [
       "fiscal",
@@ -403,12 +431,31 @@ export async function POST(req: Request) {
       }
     }
 
+    if (auditEscolaId) {
+      recordAuditServer({
+        escolaId: auditEscolaId,
+        portal: "financeiro",
+        acao: "FISCAL_SAFT_EXPORTADO",
+        entity: "fiscal_saft_exports",
+        entityId: saftExport.id,
+        details: {
+          request_id: requestId,
+          empresa_id: body.empresa_id,
+          periodo_inicio: body.periodo_inicio,
+          periodo_fim: body.periodo_fim,
+          documentos_total: documentoRows.length,
+          status: saftExport.status,
+        },
+      }).catch(() => null);
+    }
+
     return NextResponse.json(
       {
         ok: true,
         data: {
           exportacao: saftExport,
           summary,
+          xsd_validation: xsdValidation,
           saft_xml: xml,
           content_type: "application/xml",
         },

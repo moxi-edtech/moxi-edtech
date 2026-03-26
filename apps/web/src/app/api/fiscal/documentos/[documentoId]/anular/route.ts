@@ -5,7 +5,9 @@ import {
   fiscalDocumentoActionSchema,
   type FiscalDocumentoActionInput,
 } from "@/lib/schemas/fiscal-documento.schema";
+import { recordAuditServer } from "@/lib/audit";
 import { supabaseRouteClient } from "@/lib/supabaseServer";
+import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database, Json } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
@@ -117,6 +119,31 @@ export async function POST(
       });
     }
 
+    const { data: documento, error: docError } = await supabase
+      .from("fiscal_documentos")
+      .select("id, empresa_id")
+      .eq("id", parsedParams.data.documentoId)
+      .maybeSingle();
+
+    if (docError) {
+      return jsonError(
+        500,
+        "FISCAL_DOCUMENTO_LOOKUP_FAILED",
+        docError.message || "Falha ao obter documento fiscal.",
+        { request_id: requestId, documento_id: parsedParams.data.documentoId }
+      );
+    }
+
+    if (!documento) {
+      return jsonError(404, "FISCAL_DOCUMENTO_NOT_FOUND", "Documento fiscal não encontrado.", {
+        request_id: requestId,
+        documento_id: parsedParams.data.documentoId,
+      });
+    }
+
+    const escolaId = await resolveEscolaIdForUser(supabase, user.id);
+    const auditEscolaId = escolaId;
+
     const rpcArgs: FiscalAnularDocumentoArgs = {
       p_documento_id: parsedParams.data.documentoId,
       p_motivo: body.motivo,
@@ -140,6 +167,22 @@ export async function POST(
         "Resposta inesperada ao anular documento fiscal.",
         { request_id: requestId }
       );
+    }
+
+    if (auditEscolaId) {
+      recordAuditServer({
+        escolaId: auditEscolaId,
+        portal: "financeiro",
+        acao: "FISCAL_DOCUMENTO_ANULADO",
+        entity: "fiscal_documentos",
+        entityId: data.documento_id,
+        details: {
+          request_id: requestId,
+          empresa_id: data.empresa_id,
+          motivo: body.motivo,
+          status: data.status,
+        },
+      }).catch(() => null);
     }
 
     return NextResponse.json(

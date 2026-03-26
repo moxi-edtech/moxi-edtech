@@ -5,7 +5,10 @@
 `POST /api/fiscal/documentos`
 `POST /api/fiscal/documentos/{documentoId}/rectificar`
 `POST /api/fiscal/documentos/{documentoId}/anular`
+`POST /api/fiscal/documentos/{documentoId}/submeter`
+`GET /api/fiscal/documentos/{documentoId}/pdf`
 `POST /api/fiscal/saft/export`
+`GET /api/fiscal/compliance/status`
 
 ## Objetivo
 
@@ -18,7 +21,7 @@ Operar emissão e ciclo de vida fiscal no padrão híbrido do KLASSE:
 
 ## Contrato público
 
-### Request
+### Request (legado)
 
 ```json
 {
@@ -50,10 +53,30 @@ Operar emissão e ciclo de vida fiscal no padrão híbrido do KLASSE:
 }
 ```
 
+### Request (canónico UI)
+
+```json
+{
+  "ano_fiscal": 2026,
+  "tipo_documento": "FT",
+  "cliente_nome": "Consumidor Final",
+  "itens": [
+    {
+      "descricao": "Mensalidade Março",
+      "valor": 25000
+    }
+  ]
+}
+```
+
 ### Regras
 
 - `origem_documento` é opcional no cliente, mas no backend assume `interno` por default.
 - A API nunca expõe `serie_id` como argumento público.
+- A API aceita dois formatos de payload em `POST /api/fiscal/documentos`:
+  - formato legado completo (`empresa_id`, `prefixo_serie`, `cliente`, `invoice_date`, etc.);
+  - formato canónico UI (`ano_fiscal`, `tipo_documento`, `cliente_nome`, `itens[{descricao,valor}]`).
+- No formato canónico UI, o backend normaliza internamente para o contrato fiscal completo e resolve `empresa_id` pelo contexto do utilizador.
 - A lookup semântica usa:
   - `empresa_id`
   - `tipo_documento`
@@ -73,13 +96,21 @@ As rotas operam em modo **atómico**:
 - delega a emissão para a RPC transaccional `fiscal_emitir_documento`.
 - rectificação via RPC `fiscal_rectificar_documento`;
 - anulação via RPC `fiscal_anular_documento`;
+- submissão para aprovação/auditoria interna via evento `SUBMETIDO`;
 - registo de eventos fiscais no ledger (`RECTIFICADO` e `ANULADO`).
+- auditoria de operações fiscais em `audit_logs`:
+  - `FISCAL_DOCUMENTO_EMITIDO`
+  - `FISCAL_DOCUMENTO_RECTIFICADO`
+  - `FISCAL_DOCUMENTO_ANULADO`
+  - `FISCAL_DOCUMENTO_SUBMETIDO`
+  - `FISCAL_SAFT_EXPORTADO`
 
 ## Notas de assinatura
 
 - `canonical_string` é gerada no backend para garantir determinismo.
 - `hash_control` é calculado via SHA256 da canonical string.
 - Assinatura RSA é feita via AWS KMS no backend.
+- A assinatura prioriza `fiscal_chaves.private_key_ref` (por `empresa_id` + `key_version`) e usa `AWS_KMS_KEY_ID` como fallback.
 
 ## Respostas previstas
 
@@ -132,6 +163,18 @@ As rotas operam em modo **atómico**:
   "error": {
     "code": "FORBIDDEN",
     "message": "Sem acesso fiscal à empresa informada."
+  }
+}
+```
+
+### 409 FISCAL_PREVIEW_NOT_ALLOWED (PDF)
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "FISCAL_PREVIEW_NOT_ALLOWED",
+    "message": "Documento ainda não assinado. Impressão/preview fiscal não permitido."
   }
 }
 ```
@@ -190,9 +233,40 @@ As rotas operam em modo **atómico**:
 - Registo de export em `fiscal_saft_exports`.
 - Trilha de auditoria de export por documento em `fiscal_documentos_eventos` (`SAFT_EXPORTADO`).
 
+## Estado de compliance operacional
+
+- Dashboard fiscal disponível em `/financeiro/fiscal`.
+- Probe de infraestrutura KMS/IAM disponível em `GET /api/fiscal/compliance/status?probe=1`.
+- Sem bloqueio de plano nas operações fiscais; o controle é por autenticação + acesso fiscal à empresa.
+- UI de retificação operacional em `/financeiro/fiscal/retificar/[id]`.
+- PDF fiscal disponível em `GET /api/fiscal/documentos/{documentoId}/pdf` com:
+  - 4 caracteres da assinatura no output;
+  - menção “Processado por programa validado n.º.../AGT”;
+  - menção “Este documento não serve de factura” para documentos fora de `FT/FR`;
+  - bloqueio de preview para documentos em `pendente_assinatura`.
+
 ## Smoke tests executados (remoto)
 
 > Todos os testes foram executados com `ROLLBACK`.
 
 - Emissão fiscal com assinatura fornecida (`status = emitido`).
 - Emissão fiscal sem assinatura, seguida de `fiscal_finalizar_assinatura`.
+
+## Validação operacional (2026-03-25)
+
+Resultado dos testes manuais via `curl` no ambiente local:
+
+- `GET /api/fiscal/compliance/status?probe=1`:
+  - resposta: `401 UNAUTHENTICATED`
+  - causa: sessão não autenticada no `curl` (cookie placeholder)
+- `POST /api/fiscal/documentos`:
+  - payload inicial inválido corrigido para o schema atual:
+    - usa `prefixo_serie` (não `serie_id`)
+    - usa `invoice_date` obrigatório
+    - usa `itens[].preco_unit` e `itens[].taxa_iva`
+  - após correção do payload, resposta atual: `401 UNAUTHENTICATED`
+  - causa: sessão não autenticada no `curl` (cookie placeholder)
+
+Conclusão:
+- Infra KMS/IAM está aplicada e documentada.
+- Fecho funcional da API depende apenas de repetir os dois testes com cookie/token real de sessão.

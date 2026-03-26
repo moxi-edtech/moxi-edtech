@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseRouteClient } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { recordAuditServer } from "@/lib/audit";
 import {
+  type PostFiscalDocumentoRequestInput,
   type PostFiscalDocumentoInput,
-  postFiscalDocumentoSchema,
+  postFiscalDocumentoRequestSchema,
 } from "@/lib/schemas/fiscal-documento.schema";
 import { signFiscalCanonicalString } from "@/lib/fiscal/kmsSigner";
 import type { Database, Json } from "~types/supabase";
@@ -74,7 +76,20 @@ type FiscalSerieLookup = {
   ativa: boolean;
   descontinuada_em: string | null;
 };
+
+type FiscalKmsKeyLookup = {
+  private_key_ref: string | null;
+};
 type FiscalSupabaseClient = SupabaseClient<FiscalDatabase>;
+
+type EmpresaContext = {
+  empresaId: string | null;
+  source: "binding" | "membership" | "none";
+};
+
+type NormalizeResult =
+  | { ok: true; data: PostFiscalDocumentoInput }
+  | { ok: false; status: number; code: string; message: string; details?: JsonRecord };
 
 const ALLOWED_FISCAL_ROLES = ["owner", "admin", "operator"] as const;
 
@@ -116,10 +131,196 @@ async function parseRequestBody(req: Request) {
   }
 }
 
+async function resolveEmpresaContext({
+  supabase,
+  userId,
+  escolaId,
+}: {
+  supabase: FiscalSupabaseClient;
+  userId: string;
+  escolaId: string | null;
+}): Promise<EmpresaContext> {
+  if (escolaId) {
+    const { data: binding } = await supabase
+      .from("fiscal_escola_bindings")
+      .select("empresa_id, is_primary, effective_from")
+      .eq("escola_id", escolaId)
+      .is("effective_to", null)
+      .order("is_primary", { ascending: false })
+      .order("effective_from", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (binding?.empresa_id) {
+      return { empresaId: binding.empresa_id, source: "binding" };
+    }
+  }
+
+  const { data: membership } = await supabase
+    .from("fiscal_empresa_users")
+    .select("empresa_id, created_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (membership?.empresa_id) {
+    return { empresaId: membership.empresa_id, source: "membership" };
+  }
+
+  return { empresaId: null, source: "none" };
+}
+
+function normalizePostInput({
+  input,
+  empresaId,
+}: {
+  input: PostFiscalDocumentoRequestInput;
+  empresaId: string | null;
+}): NormalizeResult {
+  if ("empresa_id" in input) {
+    return { ok: true, data: input };
+  }
+
+  if (!empresaId) {
+    return {
+      ok: false,
+      status: 403,
+      code: "FISCAL_EMPRESA_CONTEXT_REQUIRED",
+      message:
+        "Não foi possível identificar a empresa fiscal ativa para emissão. Verifique os vínculos fiscais.",
+    };
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  return {
+    ok: true,
+    data: {
+      empresa_id: empresaId,
+      tipo_documento: input.tipo_documento,
+      prefixo_serie: String(input.ano_fiscal),
+      origem_documento: "interno",
+      cliente: {
+        nome: input.cliente_nome,
+        nif: "000000000",
+      },
+      invoice_date: today,
+      moeda: "AOA",
+      itens: input.itens.map((item) => ({
+        descricao: item.descricao,
+        quantidade: 1,
+        preco_unit: item.valor,
+        taxa_iva: 14,
+      })),
+      metadata: {
+        ...(input.metadata ?? {}),
+        origem_payload: "ui_canonico",
+        ano_fiscal: input.ano_fiscal,
+      },
+    },
+  };
+}
+
+export async function GET() {
+  const requestId = crypto.randomUUID();
+
+  try {
+    const supabase = await supabaseRouteClient<FiscalDatabase>();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return jsonError(401, "UNAUTHENTICATED", "Utilizador não autenticado.", {
+        request_id: requestId,
+      });
+    }
+
+    const escolaId = await resolveEscolaIdForUser(supabase, user.id);
+    const ctx = await resolveEmpresaContext({ supabase, userId: user.id, escolaId });
+
+    if (!ctx.empresaId) {
+      return NextResponse.json({
+        ok: true,
+        data: {
+          empresa_id: null,
+          source: ctx.source,
+          docs: [],
+        },
+        request_id: requestId,
+      });
+    }
+
+    const authz = await requireFiscalAccess({
+      supabase,
+      userId: user.id,
+      empresaId: ctx.empresaId,
+      escolaId,
+    });
+
+    if (!authz.ok) {
+      return jsonError(authz.status, authz.code, authz.message, {
+        request_id: requestId,
+        empresa_id: ctx.empresaId,
+        escola_id: escolaId,
+      });
+    }
+
+    const { data, error } = await supabase
+      .from("fiscal_documentos")
+      .select(
+        "id, numero_formatado, invoice_date, created_at, cliente_nome, total_bruto_aoa, hash_control, key_version, status"
+      )
+      .eq("empresa_id", ctx.empresaId)
+      .order("invoice_date", { ascending: false })
+      .order("numero", { ascending: false })
+      .limit(100);
+
+    if (error) {
+      return jsonError(
+        500,
+        "FISCAL_DOCUMENTOS_LIST_FAILED",
+        error.message || "Falha ao listar documentos fiscais.",
+        {
+          request_id: requestId,
+          empresa_id: ctx.empresaId,
+        }
+      );
+    }
+
+    const docs = (data ?? []).map((row) => ({
+      id: row.id,
+      numero: row.numero_formatado ?? "Sem número",
+      emitido_em: row.created_at ?? row.invoice_date,
+      cliente_nome: row.cliente_nome ?? "Consumidor Final",
+      total_aoa: Number(row.total_bruto_aoa ?? 0),
+      hash_control: row.hash_control ?? "",
+      key_version: String(row.key_version ?? "1"),
+      status:
+        row.status === "anulado" ? "ANULADO" : row.status === "rectificado" ? "RETIFICADO" : "EMITIDO",
+    }));
+
+    return NextResponse.json({
+      ok: true,
+      data: {
+        empresa_id: ctx.empresaId,
+        source: ctx.source,
+        docs,
+      },
+      request_id: requestId,
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Erro interno ao listar documentos fiscais.";
+    return jsonError(500, "FISCAL_ROUTE_INTERNAL_ERROR", message, { request_id: requestId });
+  }
+}
+
 export async function POST(req: Request) {
   const requestId = crypto.randomUUID();
   const body = await parseRequestBody(req);
-  const parsed = postFiscalDocumentoSchema.safeParse(body);
+  const parsed = postFiscalDocumentoRequestSchema.safeParse(body);
 
   if (!parsed.success) {
     return jsonError(400, "INVALID_PAYLOAD", "O corpo da requisição é inválido.", {
@@ -143,24 +344,40 @@ export async function POST(req: Request) {
     }
 
     const escolaId = await resolveEscolaIdForUser(supabase, user.id);
+    const ctx = await resolveEmpresaContext({ supabase, userId: user.id, escolaId });
+    const normalized = normalizePostInput({
+      input: parsed.data,
+      empresaId: ctx.empresaId,
+    });
+
+    if (!normalized.ok) {
+      return jsonError(normalized.status, normalized.code, normalized.message, {
+        request_id: requestId,
+        ...normalized.details,
+      });
+    }
+
+    const input = normalized.data;
+    const auditEscolaId = escolaId;
+
     const authz = await requireFiscalAccess({
       supabase,
       userId: user.id,
-      empresaId: parsed.data.empresa_id,
+      empresaId: input.empresa_id,
       escolaId,
     });
 
     if (!authz.ok) {
       return jsonError(authz.status, authz.code, authz.message, {
         request_id: requestId,
-        empresa_id: parsed.data.empresa_id,
+        empresa_id: input.empresa_id,
         escola_id: escolaId,
       });
     }
 
     const semanticSeries = await resolveSerieSemantica({
       supabase,
-      input: parsed.data,
+      input,
       escolaId,
       requestId,
     });
@@ -175,32 +392,32 @@ export async function POST(req: Request) {
     }
 
     const rpcParams: FiscalEmitirDocumentoArgs = {
-      p_empresa_id: parsed.data.empresa_id,
+      p_empresa_id: input.empresa_id,
       p_serie_id: semanticSeries.data.id,
-      p_tipo_documento: parsed.data.tipo_documento,
-      p_prefixo_serie: parsed.data.prefixo_serie,
-      p_origem_documento: parsed.data.origem_documento,
-      p_cliente: parsed.data.cliente as Json,
-      p_invoice_date: parsed.data.invoice_date,
-      p_moeda: parsed.data.moeda,
-      p_itens: parsed.data.itens as Json,
+      p_tipo_documento: input.tipo_documento,
+      p_prefixo_serie: input.prefixo_serie,
+      p_origem_documento: input.origem_documento,
+      p_cliente: input.cliente as Json,
+      p_invoice_date: input.invoice_date,
+      p_moeda: input.moeda,
+      p_itens: input.itens as Json,
       p_assinatura_base64: "",
     };
 
-    if (parsed.data.metadata) {
-      rpcParams.p_metadata = parsed.data.metadata as Json;
+    if (input.metadata) {
+      rpcParams.p_metadata = input.metadata as Json;
     }
 
-    if (parsed.data.documento_origem_id) {
-      rpcParams.p_documento_origem_id = parsed.data.documento_origem_id;
+    if (input.documento_origem_id) {
+      rpcParams.p_documento_origem_id = input.documento_origem_id;
     }
 
-    if (parsed.data.rectifica_documento_id) {
-      rpcParams.p_rectifica_documento_id = parsed.data.rectifica_documento_id;
+    if (input.rectifica_documento_id) {
+      rpcParams.p_rectifica_documento_id = input.rectifica_documento_id;
     }
 
-    if (parsed.data.taxa_cambio_aoa != null) {
-      rpcParams.p_taxa_cambio_aoa = parsed.data.taxa_cambio_aoa;
+    if (input.taxa_cambio_aoa != null) {
+      rpcParams.p_taxa_cambio_aoa = input.taxa_cambio_aoa;
     }
 
     const { data: rpcData, error: rpcError } = await supabase.rpc(
@@ -216,7 +433,7 @@ export async function POST(req: Request) {
         rpcError.message || "Falha ao emitir documento fiscal.",
         {
           request_id: requestId,
-          empresa_id: parsed.data.empresa_id,
+          empresa_id: input.empresa_id,
           serie_id: semanticSeries.data.id,
         }
       );
@@ -232,7 +449,45 @@ export async function POST(req: Request) {
     }
 
     if (rpcData.status === "pendente_assinatura" && rpcData.canonical_string) {
-      const assinatura = await signFiscalCanonicalString(rpcData.canonical_string);
+      const keyRefLookup = await resolveKmsPrivateKeyRef({
+        supabase,
+        empresaId: input.empresa_id,
+        keyVersion: rpcData.key_version,
+      });
+
+      if (!keyRefLookup.ok) {
+        return jsonError(
+          keyRefLookup.status,
+          keyRefLookup.code,
+          keyRefLookup.message,
+          {
+            request_id: requestId,
+            empresa_id: input.empresa_id,
+            key_version: rpcData.key_version,
+          }
+        );
+      }
+
+      let assinatura: string;
+      try {
+        assinatura = await signFiscalCanonicalString(rpcData.canonical_string, {
+          privateKeyRef: keyRefLookup.privateKeyRef,
+        });
+      } catch (error) {
+        return jsonError(
+          500,
+          "FISCAL_KMS_SIGN_FAILED",
+          error instanceof Error
+            ? error.message
+            : "Falha ao assinar documento fiscal via AWS KMS.",
+          {
+            request_id: requestId,
+            empresa_id: input.empresa_id,
+            key_version: rpcData.key_version,
+          }
+        );
+      }
+
       const { data: finalizeData, error: finalizeError } = await supabase.rpc(
         "fiscal_finalizar_assinatura",
         {
@@ -253,7 +508,7 @@ export async function POST(req: Request) {
           finalizeError.message || "Falha ao finalizar assinatura fiscal.",
           {
             request_id: requestId,
-            empresa_id: parsed.data.empresa_id,
+            empresa_id: input.empresa_id,
             documento_id: rpcData.documento_id,
           }
         );
@@ -268,6 +523,23 @@ export async function POST(req: Request) {
         );
       }
 
+      if (auditEscolaId) {
+        recordAuditServer({
+          escolaId: auditEscolaId,
+          portal: "financeiro",
+          acao: "FISCAL_DOCUMENTO_EMITIDO",
+          entity: "fiscal_documentos",
+          entityId: finalizeData.documento_id,
+          details: {
+            request_id: requestId,
+            empresa_id: input.empresa_id,
+            tipo_documento: input.tipo_documento,
+            numero_formatado: finalizeData.numero_formatado,
+            status: finalizeData.status ?? "emitido",
+          },
+        }).catch(() => null);
+      }
+
       return NextResponse.json(
         {
           ok: true,
@@ -276,6 +548,23 @@ export async function POST(req: Request) {
         },
         { status: 201 }
       );
+    }
+
+    if (auditEscolaId) {
+      recordAuditServer({
+        escolaId: auditEscolaId,
+        portal: "financeiro",
+        acao: "FISCAL_DOCUMENTO_EMITIDO",
+        entity: "fiscal_documentos",
+        entityId: rpcData.documento_id,
+        details: {
+          request_id: requestId,
+          empresa_id: input.empresa_id,
+          tipo_documento: input.tipo_documento,
+          numero_formatado: rpcData.numero_formatado,
+          status: rpcData.status ?? "emitido",
+        },
+      }).catch(() => null);
     }
 
     return NextResponse.json(
@@ -441,3 +730,34 @@ async function resolveSerieSemantica({
 }
 
 // A validação de chave fiscal activa ocorre na RPC atómica.
+
+async function resolveKmsPrivateKeyRef({
+  supabase,
+  empresaId,
+  keyVersion,
+}: {
+  supabase: FiscalSupabaseClient;
+  empresaId: string;
+  keyVersion: number;
+}) {
+  const { data, error } = await supabase
+    .from("fiscal_chaves")
+    .select("private_key_ref")
+    .eq("empresa_id", empresaId)
+    .eq("key_version", keyVersion)
+    .maybeSingle<FiscalKmsKeyLookup>();
+
+  if (error) {
+    return {
+      ok: false as const,
+      status: 500,
+      code: "FISCAL_CHAVE_LOOKUP_FAILED",
+      message: error.message || "Falha ao obter referência de chave privada fiscal.",
+    };
+  }
+
+  return {
+    ok: true as const,
+    privateKeyRef: data?.private_key_ref ?? null,
+  };
+}

@@ -153,6 +153,7 @@ export const sidebarConfig: SidebarConfig = {
         { href: "/financeiro/relatorios/detalhados", label: "Detalhados" },
       ],
     },
+    { href: "/financeiro/fiscal", label: "Fiscal & Compliance", icon: "BadgeDollarSign" },
   ],
   aluno: [
     { href: "/aluno/dashboard", label: "Dashboard", icon: "LayoutDashboard" },

@@ -32,28 +32,40 @@ Data: 2026-03-19
 
 ### Requisitos de infraestrutura
 - [x] Integração com AWS KMS (`AWS_REGION`, `AWS_KMS_KEY_ID`).
-- [ ] IAM role com permissão `kms:Sign` aplicada no backend.
+- [x] IAM role com permissão `kms:Sign` aplicada no backend.
+- [x] Endpoint de readiness/probe para validar KMS/IAM (`GET /api/fiscal/compliance/status?probe=1`).
 
 ## Fase 4 — Operações fiscais
 - [x] Rectificação e anulação por API.
 - [x] Geração de eventos fiscais (ledger de eventos).
 - [x] Exportação SAF-T(AO).
+- [x] Validação automática SAF-T(AO) contra XSD com evidência de execução.
 - [x] Indexação para consultas operacionais e auditoria.
 
 ## Fase 5 — Integração e UI
-- [ ] UI fiscal no portal financeiro.
-- [ ] Fluxos de aprovação e auditoria interna.
-- [ ] Alertas de falha/pendência fiscal.
-- [ ] Dashboards de compliance fiscal.
+- [x] UI fiscal no portal financeiro.
+- [x] Fluxo UI de retificação (`/financeiro/fiscal/retificar/[id]`).
+- [x] Fluxos de aprovação e auditoria interna.
+- [x] Alertas de falha/pendência fiscal.
+- [x] Dashboards de compliance fiscal.
 
 ## Riscos pendentes
 - [ ] Definição da estratégia de chave privada (KMS/HSM/secret manager).
 - [ ] Processo de rotação de chaves e versionamento.
 - [ ] Política de retenção e acesso ao ledger fiscal.
 
+## Fase 6 — Infra e Governança (backlog actual)
+- [x] Backlog de execução documentado (`docs/academico/backlog-fiscal-fase6-infra-governanca.md`).
+- [x] IAM role com `kms:Sign` aplicada em produção.
+- [x] Regras AGT no PDF fiscal implementadas (menções obrigatórias + bloqueio de prévia sem assinatura).
+- [ ] Validação de probe com sessão autenticada (`/api/fiscal/compliance/status?probe=1`).
+- [ ] Política de rotação/versionamento de chaves publicada.
+- [ ] Política de retenção e acesso ao ledger aprovada.
+
 ## Referências
 - `docs/api/fiscal-documentos.md`
 - `docs/api/fiscal-setup.md`
 - `docs/api/fiscal-saft.md`
+- `docs/academico/backlog-fiscal-fase6-infra-governanca.md`
 - `agents/outputs/RELATORIO_INVENTARIO_MODULO_FISCAL_2026-03-19.md`
 - `agents/outputs/KLASSE_FISCAL_PHASE0_PHASE1_2026-03-19.md`
