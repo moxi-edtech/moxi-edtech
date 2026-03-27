@@ -1,6 +1,8 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
 import { useToast } from "@/components/feedback/FeedbackSystem";
@@ -49,6 +51,7 @@ function formatDate(iso: string) {
 }
 
 export default function FiscalRetificarPage({ params }: FiscalRetificarPageProps) {
+  const router = useRouter();
   const [docId, setDocId] = useState<string>("");
   const [doc, setDoc] = useState<FiscalDoc | null>(null);
   const [loading, setLoading] = useState(true);
@@ -141,7 +144,8 @@ export default function FiscalRetificarPage({ params }: FiscalRetificarPageProps
       }
 
       success("Documento retificado.");
-      window.location.assign("/financeiro/fiscal");
+      router.push("/financeiro/fiscal");
+      router.refresh();
     } catch {
       error("Erro interno. Tente novamente.");
     } finally {
@@ -165,13 +169,14 @@ export default function FiscalRetificarPage({ params }: FiscalRetificarPageProps
   return (
     <main className="min-h-screen space-y-4 bg-slate-50 p-4 md:p-6">
       <section className="rounded-xl border border-slate-200 bg-white p-4">
-        <a
+        <Link
+          prefetch
           href="/financeiro/fiscal"
           className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-50"
         >
           <ArrowLeft className="h-4 w-4" />
           Voltar ao ledger
-        </a>
+        </Link>
       </section>
 
       {errorMessage ? (
