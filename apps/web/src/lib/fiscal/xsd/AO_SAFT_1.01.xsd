@@ -7,17 +7,17 @@
           <xs:complexType>
             <xs:sequence>
               <xs:element name="AuditFileVersion" type="xs:string"/>
+              <xs:element name="ProductID" type="xs:string"/>
               <xs:element name="CompanyID" type="xs:string"/>
               <xs:element name="TaxRegistrationNumber" type="xs:string"/>
               <xs:element name="CompanyName" type="xs:string"/>
               <xs:element name="CompanyAddress" type="xs:string"/>
               <xs:element name="BusinessName" type="xs:string"/>
               <xs:element name="TaxAccountingBasis" type="xs:string"/>
-              <xs:element name="CertificateNumber" type="xs:string"/>
+              <xs:element name="SoftwareCertificateNumber" type="xs:string"/>
               <xs:element name="DateCreated" type="xs:date"/>
               <xs:element name="StartDate" type="xs:date"/>
               <xs:element name="EndDate" type="xs:date"/>
-              <xs:element name="CurrencyCode" type="xs:string"/>
             </xs:sequence>
           </xs:complexType>
         </xs:element>
@@ -61,10 +61,21 @@
                           <xs:element name="CustomerID" type="xs:string"/>
                           <xs:element name="DocumentStatus" type="xs:string"/>
                           <xs:element name="Hash" type="xs:string"/>
+                          <xs:element name="PaymentMechanism" type="xs:string" minOccurs="0"/>
+                          <xs:element name="Currency" minOccurs="0">
+                            <xs:complexType>
+                              <xs:sequence>
+                                <xs:element name="CurrencyCode" type="xs:string"/>
+                                <xs:element name="ExchangeRate" type="xs:decimal"/>
+                              </xs:sequence>
+                            </xs:complexType>
+                          </xs:element>
                           <xs:element name="Line" minOccurs="0" maxOccurs="unbounded">
                             <xs:complexType>
                               <xs:sequence>
                                 <xs:element name="LineNumber" type="xs:integer"/>
+                                <xs:element name="ProductCode" type="xs:string"/>
+                                <xs:element name="ProductNumberCode" type="xs:string"/>
                                 <xs:element name="ProductDescription" type="xs:string"/>
                                 <xs:element name="Quantity" type="xs:decimal"/>
                                 <xs:element name="UnitPrice" type="xs:decimal"/>

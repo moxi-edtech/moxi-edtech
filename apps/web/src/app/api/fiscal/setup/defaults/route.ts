@@ -119,6 +119,10 @@ export async function GET() {
     const envRegion = process.env.AWS_REGION?.trim() || "";
     const envKeyId = process.env.AWS_KMS_KEY_ID?.trim() || "";
     const envPrivateKeyRef = envRegion && envKeyId ? `kms://${envRegion}/${envKeyId}` : envKeyId;
+    const saftProductId = process.env.SAFT_PRODUCT_ID?.trim() || "KLASSE/MoxiNexa";
+    const saftSoftwareCertificateNumber =
+      process.env.SAFT_SOFTWARE_CERTIFICATE_NUMBER?.trim() || "0";
+    const saftTaxAccountingBasis = process.env.SAFT_TAX_ACCOUNTING_BASIS?.trim() || "F";
 
     return NextResponse.json({
       ok: true,
@@ -133,6 +137,9 @@ export async function GET() {
         private_key_ref_default: chave?.private_key_ref ?? envPrivateKeyRef ?? "",
         public_key_pem_default: chave?.public_key_pem ?? "",
         key_fingerprint_default: chave?.key_fingerprint ?? "",
+        saft_product_id_default: saftProductId,
+        saft_software_certificate_number_default: saftSoftwareCertificateNumber,
+        saft_tax_accounting_basis_default: saftTaxAccountingBasis,
       },
     });
   } catch (error) {
@@ -141,4 +148,3 @@ export async function GET() {
     return jsonError(500, "FISCAL_SETUP_DEFAULTS_FAILED", message, { request_id: requestId });
   }
 }
-

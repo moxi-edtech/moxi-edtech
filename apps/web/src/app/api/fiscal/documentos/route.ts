@@ -31,6 +31,7 @@ type FiscalEmitirDocumentoArgs = {
   p_taxa_cambio_aoa?: number;
   p_itens: Json;
   p_metadata?: Json;
+  p_payment_mechanism?: string | null;
   p_assinatura_base64?: string;
 };
 
@@ -92,6 +93,25 @@ type NormalizeResult =
   | { ok: false; status: number; code: string; message: string; details?: JsonRecord };
 
 const ALLOWED_FISCAL_ROLES = ["owner", "admin", "operator"] as const;
+const CONSUMIDOR_FINAL_NIF = "999999999";
+const CONSUMIDOR_FINAL_NOME = "Consumidor final";
+const DESCONHECIDO = "Desconhecido";
+
+function normalizeClienteAddressField(value: string | undefined): string {
+  const trimmed = value?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : DESCONHECIDO;
+}
+
+function toProductCode(descricao: string, index: number): string {
+  const normalized = descricao
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  const safe = normalized.length > 0 ? normalized.slice(0, 48) : `ITEM_${index + 1}`;
+  return `SERV_${safe}`;
+}
 
 function jsonError(status: number, code: string, message: string, details?: JsonRecord) {
   return NextResponse.json(
@@ -179,7 +199,48 @@ function normalizePostInput({
   empresaId: string | null;
 }): NormalizeResult {
   if ("empresa_id" in input) {
-    return { ok: true, data: input };
+    const clienteNome = input.cliente.nome.trim();
+    const clienteNif = input.cliente.nif?.trim();
+    const isConsumidorFinal = !clienteNif;
+    const normalizedAddressDetail = isConsumidorFinal
+      ? DESCONHECIDO
+      : normalizeClienteAddressField(input.cliente.address_detail);
+    const normalizedCity = isConsumidorFinal
+      ? DESCONHECIDO
+      : normalizeClienteAddressField(input.cliente.city);
+    const normalizedPostalCode = isConsumidorFinal
+      ? DESCONHECIDO
+      : normalizeClienteAddressField(input.cliente.postal_code);
+    const normalizedCountry = isConsumidorFinal
+      ? DESCONHECIDO
+      : normalizeClienteAddressField(input.cliente.country);
+    return {
+      ok: true,
+      data: {
+        ...input,
+        cliente: {
+          ...input.cliente,
+          nome: isConsumidorFinal ? CONSUMIDOR_FINAL_NOME : clienteNome,
+          nif: isConsumidorFinal ? CONSUMIDOR_FINAL_NIF : clienteNif,
+          address_detail: normalizedAddressDetail,
+          city: normalizedCity,
+          postal_code: normalizedPostalCode,
+          country: normalizedCountry,
+        },
+        itens: input.itens.map((item, index) => {
+          const productCode = item.product_code.trim();
+          const productNumberCode = item.product_number_code?.trim();
+          return {
+            ...item,
+            product_code: productCode,
+            product_number_code:
+              productNumberCode && productNumberCode.length > 0
+                ? productNumberCode
+                : productCode || toProductCode(item.descricao, index),
+          };
+        }),
+      },
+    };
   }
 
   if (!empresaId) {
@@ -201,12 +262,18 @@ function normalizePostInput({
       prefixo_serie: String(input.ano_fiscal),
       origem_documento: "interno",
       cliente: {
-        nome: input.cliente_nome,
-        nif: "000000000",
+        nome: CONSUMIDOR_FINAL_NOME,
+        nif: CONSUMIDOR_FINAL_NIF,
+        address_detail: DESCONHECIDO,
+        city: DESCONHECIDO,
+        postal_code: DESCONHECIDO,
+        country: DESCONHECIDO,
       },
       invoice_date: today,
       moeda: "AOA",
-      itens: input.itens.map((item) => ({
+      itens: input.itens.map((item, index) => ({
+        product_code: toProductCode(item.descricao, index),
+        product_number_code: toProductCode(item.descricao, index),
         descricao: item.descricao,
         quantidade: 1,
         preco_unit: item.valor,
@@ -401,6 +468,7 @@ export async function POST(req: Request) {
       p_invoice_date: input.invoice_date,
       p_moeda: input.moeda,
       p_itens: input.itens as Json,
+      p_payment_mechanism: input.payment_mechanism ?? null,
       p_assinatura_base64: "",
     };
 

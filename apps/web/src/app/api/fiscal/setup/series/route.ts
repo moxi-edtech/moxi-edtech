@@ -109,7 +109,7 @@ export async function POST(req: Request) {
       prefixo: parsed.data.prefixo,
       origem_documento: parsed.data.origem_documento,
       ativa: parsed.data.ativa ?? true,
-      metadata: (parsed.data.metadata ?? null) as Json | null,
+      metadata: (parsed.data.metadata ?? {}) as Json,
     };
 
     const { data: serie, error: serieError } = await supabase

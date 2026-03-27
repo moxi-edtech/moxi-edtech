@@ -9,6 +9,8 @@ type SaftEmpresa = {
 type SaftDocumentoItem = {
   linha_no: number;
   descricao: string;
+  product_code: string;
+  product_number_code: string | null;
   quantidade: number;
   preco_unit: number;
   taxa_iva: number;
@@ -26,6 +28,13 @@ type SaftDocumento = {
   system_entry: string;
   cliente_nome: string;
   cliente_nif: string | null;
+  address_detail: string | null;
+  city: string | null;
+  postal_code: string | null;
+  country: string | null;
+  moeda: string;
+  taxa_cambio_aoa: number | null;
+  payment_mechanism: "NU" | "TB" | "CC" | "MB" | null;
   total_liquido_aoa: number;
   total_impostos_aoa: number;
   total_bruto_aoa: number;
@@ -34,11 +43,27 @@ type SaftDocumento = {
   itens: SaftDocumentoItem[];
 };
 
+type SaftCustomer = {
+  nome: string;
+  nif: string | null;
+  address_detail: string | null;
+  city: string | null;
+  postal_code: string | null;
+  country: string | null;
+};
+
+const CONSUMIDOR_FINAL_NIF = "999999999";
+const DESCONHECIDO = "Desconhecido";
+
 type BuildSaftAoXmlInput = {
   empresa: SaftEmpresa;
   periodoInicio: string;
   periodoFim: string;
-  xsdVersion: string;
+  header: {
+    productId: string;
+    taxAccountingBasis: "F" | "C";
+    softwareCertificateNumber: string;
+  };
   generatedAtIso: string;
   documentos: SaftDocumento[];
 };
@@ -54,6 +79,8 @@ type BuildSaftAoXmlOutput = {
   };
 };
 
+const SAFT_AO_NAMESPACE = "urn:OECD:StandardAuditFile-Tax:AO_1.01_01";
+
 function escapeXml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
@@ -67,19 +94,66 @@ function formatMoney(value: number): string {
   return value.toFixed(4);
 }
 
+function formatExchangeRate(value: number): string {
+  return value.toFixed(8);
+}
+
 export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput {
+  const empresaNif = input.empresa.nif.trim();
+  if (empresaNif.length < 10 || empresaNif.length > 15) {
+    throw new Error(
+      `SAFT_BUILD_ERROR: TaxRegistrationNumber inválido para Header (esperado 10-15 chars, recebido ${empresaNif.length}).`
+    );
+  }
+
+  const fiscalYear = Number.parseInt(input.periodoInicio.slice(0, 4), 10);
+  if (!Number.isFinite(fiscalYear) || fiscalYear < 2000 || fiscalYear > 9999) {
+    throw new Error(`SAFT_BUILD_ERROR: FiscalYear inválido a partir de StartDate ${input.periodoInicio}.`);
+  }
+
+  const companyAddressDetail = input.empresa.endereco?.trim() || DESCONHECIDO;
+  const softwareValidationNumber = /^\d+\/AGT\/\d{4}$|^0$/.test(input.header.softwareCertificateNumber)
+    ? input.header.softwareCertificateNumber
+    : "0";
+
   let totalItens = 0;
   let totalLiquidoAoa = 0;
   let totalImpostosAoa = 0;
   let totalBrutoAoa = 0;
 
-  const customerRows = new Map<string, { nome: string; nif: string | null }>();
+  const customerRows = new Map<string, SaftCustomer>();
+  const normalizeAddress = (value: string | null): string => {
+    const trimmed = value?.trim();
+    return trimmed && trimmed.length > 0 ? trimmed : DESCONHECIDO;
+  };
+  const resolveAddress = (customer: SaftCustomer) => {
+    const isConsumidorFinal = (customer.nif ?? "").trim() === CONSUMIDOR_FINAL_NIF;
+    if (isConsumidorFinal) {
+      return {
+        addressDetail: DESCONHECIDO,
+        city: DESCONHECIDO,
+        postalCode: DESCONHECIDO,
+        country: DESCONHECIDO,
+      };
+    }
+    return {
+      addressDetail: normalizeAddress(customer.address_detail),
+      city: normalizeAddress(customer.city),
+      postalCode: normalizeAddress(customer.postal_code),
+      country: normalizeAddress(customer.country),
+    };
+  };
+
   for (const doc of input.documentos) {
     const key = `${doc.cliente_nif ?? "SEM_NIF"}::${doc.cliente_nome}`;
     if (!customerRows.has(key)) {
       customerRows.set(key, {
         nome: doc.cliente_nome,
         nif: doc.cliente_nif,
+        address_detail: doc.address_detail,
+        city: doc.city,
+        postal_code: doc.postal_code,
+        country: doc.country,
       });
     }
 
@@ -92,12 +166,21 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
   const customersXml = Array.from(customerRows.values())
     .map((customer) => {
       const customerId = customer.nif ? `NIF-${customer.nif}` : `NM-${customer.nome}`;
+      const address = resolveAddress(customer);
       return [
-        "      <Customer>",
-        `        <CustomerID>${escapeXml(customerId)}</CustomerID>`,
-        `        <CompanyName>${escapeXml(customer.nome)}</CompanyName>`,
-        `        <TaxRegistrationNumber>${escapeXml(customer.nif ?? "999999999")}</TaxRegistrationNumber>`,
-        "      </Customer>",
+        "    <Customer>",
+        `      <CustomerID>${escapeXml(customerId)}</CustomerID>`,
+        "      <AccountID>Desconhecido</AccountID>",
+        `      <CustomerTaxID>${escapeXml(customer.nif ?? CONSUMIDOR_FINAL_NIF)}</CustomerTaxID>`,
+        `      <CompanyName>${escapeXml(customer.nome)}</CompanyName>`,
+        "      <BillingAddress>",
+        `        <AddressDetail>${escapeXml(address.addressDetail)}</AddressDetail>`,
+        `        <City>${escapeXml(address.city)}</City>`,
+        `        <PostalCode>${escapeXml(address.postalCode)}</PostalCode>`,
+        `        <Country>${escapeXml(address.country)}</Country>`,
+        "      </BillingAddress>",
+        "      <SelfBillingIndicator>0</SelfBillingIndicator>",
+        "    </Customer>",
       ].join("\n");
     })
     .join("\n");
@@ -105,10 +188,17 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
   const invoicesXml = input.documentos
     .map((doc) => {
       const linesXml = doc.itens
-        .map((item) =>
-          [
+        .map((item) => {
+          const productCode = item.product_code.trim();
+          if (!productCode) {
+            throw new Error("SAFT_BUILD_ERROR: ProductCode obrigatório em todas as linhas.");
+          }
+          const productNumberCode = item.product_number_code?.trim() || productCode;
+          return [
             "          <Line>",
             `            <LineNumber>${item.linha_no}</LineNumber>`,
+            `            <ProductCode>${escapeXml(productCode)}</ProductCode>`,
+            `            <ProductNumberCode>${escapeXml(productNumberCode)}</ProductNumberCode>`,
             `            <ProductDescription>${escapeXml(item.descricao)}</ProductDescription>`,
             `            <Quantity>${item.quantidade}</Quantity>`,
             `            <UnitPrice>${formatMoney(item.preco_unit)}</UnitPrice>`,
@@ -118,13 +208,49 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
             "            </Tax>",
             `            <CreditAmount>${formatMoney(item.total_bruto_aoa)}</CreditAmount>`,
             "          </Line>",
-          ].join("\n")
-        )
+          ].join("\n");
+        })
         .join("\n");
 
       const customerId = doc.cliente_nif
         ? `NIF-${doc.cliente_nif}`
         : `NM-${doc.cliente_nome}`;
+      const billingAddress = resolveAddress({
+        nome: doc.cliente_nome,
+        nif: doc.cliente_nif,
+        address_detail: doc.address_detail,
+        city: doc.city,
+        postal_code: doc.postal_code,
+        country: doc.country,
+      });
+
+      const currencyXml =
+        doc.moeda.toUpperCase() === "AOA"
+          ? ""
+          : [
+              "          <Currency>",
+              `            <CurrencyCode>${escapeXml(doc.moeda.toUpperCase())}</CurrencyCode>`,
+              `            <ExchangeRate>${formatExchangeRate(Number(doc.taxa_cambio_aoa ?? 0))}</ExchangeRate>`,
+              "          </Currency>",
+            ].join("\n");
+
+      if (doc.moeda.toUpperCase() !== "AOA" && (!doc.taxa_cambio_aoa || Number(doc.taxa_cambio_aoa) <= 0)) {
+        throw new Error(
+          `SAFT_BUILD_ERROR: ExchangeRate obrigatório e positivo para documento ${doc.numero_formatado}.`
+        );
+      }
+
+      const paymentMechanismXml =
+        doc.tipo_documento === "RC"
+          ? (() => {
+              if (!doc.payment_mechanism) {
+                throw new Error(
+                  `SAFT_BUILD_ERROR: PaymentMechanism obrigatório para recibo ${doc.numero_formatado}.`
+                );
+              }
+              return `          <PaymentMechanism>${escapeXml(doc.payment_mechanism)}</PaymentMechanism>`;
+            })()
+          : "";
 
       return [
         "        <Invoice>",
@@ -133,8 +259,16 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
         `          <SystemEntryDate>${doc.system_entry}</SystemEntryDate>`,
         `          <InvoiceType>${escapeXml(doc.tipo_documento)}</InvoiceType>`,
         `          <CustomerID>${escapeXml(customerId)}</CustomerID>`,
+        "          <BillingAddress>",
+        `            <AddressDetail>${escapeXml(billingAddress.addressDetail)}</AddressDetail>`,
+        `            <City>${escapeXml(billingAddress.city)}</City>`,
+        `            <PostalCode>${escapeXml(billingAddress.postalCode)}</PostalCode>`,
+        `            <Country>${escapeXml(billingAddress.country)}</Country>`,
+        "          </BillingAddress>",
         `          <DocumentStatus>${escapeXml(doc.status)}</DocumentStatus>`,
         `          <Hash>${escapeXml(doc.hash_control)}</Hash>`,
+        paymentMechanismXml,
+        currencyXml,
         linesXml,
         "          <DocumentTotals>",
         `            <TaxPayable>${formatMoney(doc.total_impostos_aoa)}</TaxPayable>`,
@@ -148,25 +282,32 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
 
   const xml = [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    "<AuditFile>",
+    `<AuditFile xmlns="${SAFT_AO_NAMESPACE}">`,
     "  <Header>",
-    "    <AuditFileVersion>1.04_01</AuditFileVersion>",
+    "    <AuditFileVersion>1.01_01</AuditFileVersion>",
     `    <CompanyID>${escapeXml(input.empresa.id)}</CompanyID>`,
-    `    <TaxRegistrationNumber>${escapeXml(input.empresa.nif)}</TaxRegistrationNumber>`,
+    `    <TaxRegistrationNumber>${escapeXml(empresaNif)}</TaxRegistrationNumber>`,
+    `    <TaxAccountingBasis>${escapeXml(input.header.taxAccountingBasis)}</TaxAccountingBasis>`,
     `    <CompanyName>${escapeXml(input.empresa.nome)}</CompanyName>`,
-    `    <CompanyAddress>${escapeXml(input.empresa.endereco ?? "")}</CompanyAddress>`,
     `    <BusinessName>${escapeXml(input.empresa.nome)}</BusinessName>`,
-    `    <TaxAccountingBasis>${escapeXml(input.xsdVersion)}</TaxAccountingBasis>`,
-    `    <CertificateNumber>${escapeXml(input.empresa.certificadoAgtNumero ?? "")}</CertificateNumber>`,
-    `    <DateCreated>${input.generatedAtIso.slice(0, 10)}</DateCreated>`,
+    "    <CompanyAddress>",
+    `      <AddressDetail>${escapeXml(companyAddressDetail)}</AddressDetail>`,
+    `      <City>${escapeXml(DESCONHECIDO)}</City>`,
+    "      <Country>AO</Country>",
+    "    </CompanyAddress>",
+    `    <FiscalYear>${fiscalYear}</FiscalYear>`,
     `    <StartDate>${input.periodoInicio}</StartDate>`,
     `    <EndDate>${input.periodoFim}</EndDate>`,
     "    <CurrencyCode>AOA</CurrencyCode>",
+    `    <DateCreated>${input.generatedAtIso.slice(0, 10)}</DateCreated>`,
+    "    <TaxEntity>Global</TaxEntity>",
+    `    <ProductCompanyTaxID>${escapeXml(empresaNif)}</ProductCompanyTaxID>`,
+    `    <SoftwareValidationNumber>${escapeXml(softwareValidationNumber)}</SoftwareValidationNumber>`,
+    `    <ProductID>${escapeXml(input.header.productId)}</ProductID>`,
+    "    <ProductVersion>1.0.0</ProductVersion>",
     "  </Header>",
     "  <MasterFiles>",
-    "    <CustomerList>",
     customersXml,
-    "    </CustomerList>",
     "  </MasterFiles>",
     "  <SourceDocuments>",
     "    <SalesInvoices>",
