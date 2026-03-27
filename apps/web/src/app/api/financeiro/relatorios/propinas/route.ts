@@ -5,6 +5,21 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 
 export const dynamic = "force-dynamic";
 
+function isMissingReadModelError(error: unknown): boolean {
+  const code = typeof error === "object" && error !== null && "code" in error
+    ? String((error as { code?: unknown }).code ?? "")
+    : "";
+  const message = typeof error === "object" && error !== null && "message" in error
+    ? String((error as { message?: unknown }).message ?? "")
+    : "";
+
+  return (
+    code === "42P01" ||
+    code === "PGRST205" ||
+    /does not exist|relation .* does not exist|schema cache|Could not find .* in the schema cache/i.test(message)
+  );
+}
+
 export async function GET(req: Request) {
   try {
     const supabase = await supabaseServerTyped<any>();
@@ -64,6 +79,19 @@ export async function GET(req: Request) {
     const { data: mensal, error: mensalError } = await mensalQuery;
 
     if (mensalError) {
+      if (isMissingReadModelError(mensalError)) {
+        return NextResponse.json(
+          {
+            ok: true,
+            anoLetivo,
+            mensal: [],
+            porTurma: [],
+            warning: "Read model de propinas indisponível; retornado vazio.",
+          },
+          { status: 200 }
+        );
+      }
+
       console.error("[financeiro/relatorios/propinas] mensalError", mensalError);
       return NextResponse.json(
         {
@@ -109,6 +137,19 @@ export async function GET(req: Request) {
     const { data: porTurma, error: turmaError } = await turmaQuery;
 
     if (turmaError) {
+      if (isMissingReadModelError(turmaError)) {
+        return NextResponse.json(
+          {
+            ok: true,
+            anoLetivo,
+            mensal: [],
+            porTurma: [],
+            warning: "Read model de propinas por turma indisponível; retornado vazio.",
+          },
+          { status: 200 }
+        );
+      }
+
       console.error("[financeiro/relatorios/propinas] turmaError", turmaError);
       return NextResponse.json(
         {

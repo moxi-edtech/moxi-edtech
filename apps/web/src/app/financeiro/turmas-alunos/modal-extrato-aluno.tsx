@@ -16,7 +16,7 @@ interface ModalExtratoAlunoProps {
     anoReferencia: number;
     valor: number;
     status: "pendente" | "paga" | "atrasada" | "cancelada";
-    dataVencimento: Date | null;
+    dataVencimento: Date | string | null;
     diasAtraso?: number;
   }>;
   onClose: () => void;
@@ -37,8 +37,13 @@ const statusTone = (status: ModalExtratoAlunoProps["mensalidades"][number]["stat
 };
 
 const formatVencimento = (mensalidade: ModalExtratoAlunoProps["mensalidades"][number]) => {
-  if (!mensalidade.dataVencimento) return "—";
-  return mensalidade.dataVencimento.toLocaleDateString("pt-AO");
+  const raw = mensalidade.dataVencimento;
+  if (!raw) return "—";
+
+  const date = raw instanceof Date ? raw : new Date(raw);
+  if (Number.isNaN(date.getTime())) return "—";
+
+  return date.toLocaleDateString("pt-AO");
 };
 
 const formatMoney = (valor: number) =>
