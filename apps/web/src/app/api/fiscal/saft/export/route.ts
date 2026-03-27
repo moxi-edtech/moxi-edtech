@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { buildSaftAoXml } from "@/lib/fiscal/saftAo";
-import { validateSaftXmlWithXsd } from "@/lib/fiscal/saftXsdValidator";
+import { SaftXsdValidationError, validateSaftXmlWithXsd } from "@/lib/fiscal/saftXsdValidator";
 import { readJsonWithLimit } from "@/lib/http/readJsonWithLimit";
 import { recordAuditServer } from "@/lib/audit";
 import {
@@ -21,44 +21,97 @@ export const fetchCache = "force-no-store";
 
 type JsonRecord = Record<string, unknown>;
 type RouteSupabase = SupabaseClient<Database>;
+type SaftHeaderConfig = {
+  productId: string;
+  taxAccountingBasis: "F" | "C";
+  softwareCertificateNumber: string;
+};
 
 const ALLOWED_FISCAL_ROLES = ["owner", "admin", "operator"] as const;
 const SAFT_EXPORT_STATUS_CONFLICT = "FISCAL_SAFT_EXPORT_ALREADY_EXISTS";
+const AGT_PAYMENT_MECHANISMS = new Set(["NU", "TB", "CC", "MB"]);
 
 type FiscalEmpresaRow = Pick<
   Database["public"]["Tables"]["fiscal_empresas"]["Row"],
   "id" | "nome" | "nif" | "endereco" | "certificado_agt_numero"
 >;
 
-type FiscalDocumentoRow = Pick<
-  Database["public"]["Tables"]["fiscal_documentos"]["Row"],
-  | "id"
-  | "numero"
-  | "numero_formatado"
-  | "tipo_documento"
-  | "invoice_date"
-  | "system_entry"
-  | "cliente_nome"
-  | "cliente_nif"
-  | "total_liquido_aoa"
-  | "total_impostos_aoa"
-  | "total_bruto_aoa"
-  | "hash_control"
-  | "status"
->;
+type FiscalDocumentoRow = {
+  id: string;
+  numero: number;
+  numero_formatado: string;
+  tipo_documento: string;
+  invoice_date: string;
+  system_entry: string;
+  cliente_nome: string;
+  cliente_nif: string | null;
+  payload: Json | null;
+  moeda: string;
+  taxa_cambio_aoa: number | null;
+  payment_mechanism: string | null;
+  total_liquido_aoa: number;
+  total_impostos_aoa: number;
+  total_bruto_aoa: number;
+  hash_control: string;
+  status: string;
+};
 
-type FiscalDocumentoItemRow = Pick<
-  Database["public"]["Tables"]["fiscal_documento_itens"]["Row"],
-  | "documento_id"
-  | "linha_no"
-  | "descricao"
-  | "quantidade"
-  | "preco_unit"
-  | "taxa_iva"
-  | "total_liquido_aoa"
-  | "total_impostos_aoa"
-  | "total_bruto_aoa"
->;
+type ClienteAddressFromPayload = {
+  address_detail: string | null;
+  city: string | null;
+  postal_code: string | null;
+  country: string | null;
+};
+
+function parseClienteAddressFromPayload(payload: Json | null): ClienteAddressFromPayload {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return {
+      address_detail: null,
+      city: null,
+      postal_code: null,
+      country: null,
+    };
+  }
+
+  const payloadRecord = payload as Record<string, unknown>;
+  const cliente = payloadRecord["cliente"];
+  if (!cliente || typeof cliente !== "object" || Array.isArray(cliente)) {
+    return {
+      address_detail: null,
+      city: null,
+      postal_code: null,
+      country: null,
+    };
+  }
+
+  const clienteRecord = cliente as Record<string, unknown>;
+  const normalize = (value: unknown): string | null => {
+    if (typeof value !== "string") return null;
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  };
+
+  return {
+    address_detail: normalize(clienteRecord["address_detail"]),
+    city: normalize(clienteRecord["city"]),
+    postal_code: normalize(clienteRecord["postal_code"]),
+    country: normalize(clienteRecord["country"]),
+  };
+}
+
+type FiscalDocumentoItemRow = {
+  documento_id: string;
+  linha_no: number;
+  descricao: string;
+  product_code: string;
+  product_number_code: string | null;
+  quantidade: number;
+  preco_unit: number;
+  taxa_iva: number;
+  total_liquido_aoa: number;
+  total_impostos_aoa: number;
+  total_bruto_aoa: number;
+};
 
 type FiscalSaftExportRow = Pick<
   Database["public"]["Tables"]["fiscal_saft_exports"]["Row"],
@@ -85,6 +138,40 @@ function jsonError(status: number, code: string, message: string, details?: Json
     },
     { status }
   );
+}
+
+function resolveSaftHeaderConfig(): SaftHeaderConfig {
+  const productIdRaw = (process.env.SAFT_PRODUCT_ID ?? "").trim();
+  const taxAccountingBasisRaw = (process.env.SAFT_TAX_ACCOUNTING_BASIS ?? "F").trim().toUpperCase();
+  const softwareCertificateNumberRaw = (process.env.SAFT_SOFTWARE_CERTIFICATE_NUMBER ?? "0").trim();
+
+  if (!productIdRaw || !productIdRaw.includes("/")) {
+    throw new Error(
+      "SAFT_PRODUCT_ID inválido. Use o formato 'NomeAplicacao/NomeProdutorSoftware'."
+    );
+  }
+
+  if (taxAccountingBasisRaw !== "F" && taxAccountingBasisRaw !== "C") {
+    throw new Error("SAFT_TAX_ACCOUNTING_BASIS inválido. Use 'F' (Facturação) ou 'C' (Contabilidade).");
+  }
+
+  if (!/^\d+$/.test(softwareCertificateNumberRaw)) {
+    throw new Error("SAFT_SOFTWARE_CERTIFICATE_NUMBER inválido. Use apenas dígitos (ex.: 0).");
+  }
+
+  return {
+    productId: productIdRaw,
+    taxAccountingBasis: taxAccountingBasisRaw,
+    softwareCertificateNumber: softwareCertificateNumberRaw,
+  };
+}
+
+function parsePaymentMechanism(value: string | null) {
+  if (!value) return null;
+  const normalized = value.trim().toUpperCase();
+  return AGT_PAYMENT_MECHANISMS.has(normalized)
+    ? (normalized as "NU" | "TB" | "CC" | "MB")
+    : null;
 }
 
 async function parseRequestBody(req: Request): Promise<PostFiscalSaftExportInput | null> {
@@ -233,7 +320,8 @@ export async function POST(req: Request) {
     const { data: documentos, error: documentosError } = await supabase
       .from("fiscal_documentos")
       .select(
-        "id, numero, numero_formatado, tipo_documento, invoice_date, system_entry, cliente_nome, cliente_nif, total_liquido_aoa, total_impostos_aoa, total_bruto_aoa, hash_control, status"
+        "id, numero, numero_formatado, tipo_documento, invoice_date, system_entry, cliente_nome, cliente_nif, payload, total_liquido_aoa, total_impostos_aoa, total_bruto_aoa, hash_control, status"
+        + ", moeda, taxa_cambio_aoa, payment_mechanism"
       )
       .eq("empresa_id", body.empresa_id)
       .gte("invoice_date", body.periodo_inicio)
@@ -261,6 +349,7 @@ export async function POST(req: Request) {
         .from("fiscal_documento_itens")
         .select(
           "documento_id, linha_no, descricao, quantidade, preco_unit, taxa_iva, total_liquido_aoa, total_impostos_aoa, total_bruto_aoa"
+          + ", product_code, product_number_code"
         )
         .in("documento_id", documentoIds)
         .order("documento_id", { ascending: true })
@@ -283,6 +372,7 @@ export async function POST(req: Request) {
       }
     }
 
+    const headerConfig = resolveSaftHeaderConfig();
     const generatedAtIso = new Date().toISOString();
     const saftInput = {
       empresa: {
@@ -294,13 +384,16 @@ export async function POST(req: Request) {
       },
       periodoInicio: body.periodo_inicio,
       periodoFim: body.periodo_fim,
-      xsdVersion: body.xsd_version,
+      header: headerConfig,
       generatedAtIso,
       documentos: documentoRows.map((doc) => ({
+        ...parseClienteAddressFromPayload(doc.payload),
         ...doc,
         itens:
           itemMap.get(doc.id)?.map((item) => ({
             ...item,
+            product_code: String(item.product_code ?? ""),
+            product_number_code: item.product_number_code ? String(item.product_number_code) : null,
             quantidade: Number(item.quantidade),
             preco_unit: Number(item.preco_unit),
             taxa_iva: Number(item.taxa_iva),
@@ -308,6 +401,10 @@ export async function POST(req: Request) {
             total_impostos_aoa: Number(item.total_impostos_aoa),
             total_bruto_aoa: Number(item.total_bruto_aoa),
           })) ?? [],
+        moeda: String(doc.moeda ?? "AOA").toUpperCase(),
+        taxa_cambio_aoa:
+          doc.taxa_cambio_aoa == null ? null : Number(doc.taxa_cambio_aoa),
+        payment_mechanism: parsePaymentMechanism(doc.payment_mechanism),
         total_liquido_aoa: Number(doc.total_liquido_aoa),
         total_impostos_aoa: Number(doc.total_impostos_aoa),
         total_bruto_aoa: Number(doc.total_bruto_aoa),
@@ -315,28 +412,42 @@ export async function POST(req: Request) {
     };
 
     const { xml, summary } = buildSaftAoXml(saftInput);
-    const xsdValidation = await validateSaftXmlWithXsd({
-      xml,
-      xsdVersion: body.xsd_version,
-    });
-
-    if (!xsdValidation.ok) {
-      const status =
-        xsdValidation.code === "XSD_VALIDATION_FAILED"
-          ? 422
-          : xsdValidation.code === "XSD_VALIDATOR_UNAVAILABLE"
-            ? 503
-            : 400;
-      return jsonError(
-        status,
-        "FISCAL_SAFT_XSD_INVALID",
-        xsdValidation.message,
-        {
-          request_id: requestId,
-          empresa_id: body.empresa_id,
-          xsd_validation: xsdValidation,
-        }
-      );
+    let xsdValidation: Awaited<ReturnType<typeof validateSaftXmlWithXsd>>;
+    try {
+      xsdValidation = await validateSaftXmlWithXsd({
+        xml,
+        xsdVersion: body.xsd_version,
+      });
+    } catch (error) {
+      if (error instanceof SaftXsdValidationError) {
+        const status =
+          error.code === "XSD_VALIDATION_FAILED"
+            ? 422
+            : error.code === "XSD_VALIDATOR_UNAVAILABLE"
+              ? 503
+              : error.code === "XSD_SCHEMA_NOT_FOUND"
+                ? 500
+                : 400;
+        return jsonError(
+          status,
+          "FISCAL_SAFT_XSD_INVALID",
+          error.message,
+          {
+            request_id: requestId,
+            empresa_id: body.empresa_id,
+            xsd_validation: {
+              code: error.code,
+              validator: error.validator,
+              xsdVersion: error.xsdVersion,
+              xsdPath: error.xsdPath,
+              validatedAt: error.validatedAt,
+              output: error.output,
+              failures: error.failures,
+            },
+          }
+        );
+      }
+      throw error;
     }
 
     const checksumSha256 = createHash("sha256").update(xml).digest("hex");

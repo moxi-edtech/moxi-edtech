@@ -9,12 +9,17 @@ export const FISCAL_ORIGENS_DOCUMENTO = [
 ] as const;
 
 export const FISCAL_TIPOS_DOCUMENTO = ["FR", "FT", "NC", "ND", "RC"] as const;
+export const FISCAL_PAYMENT_MECHANISM_CODES = ["NU", "TB", "CC", "MB"] as const;
 
 export const fiscalDocumentoItemSchema = z.object({
   descricao: z.string().trim().min(1).max(500),
+  product_code: z.string().trim().min(1).max(64),
+  product_number_code: z.string().trim().min(1).max(64).optional(),
   quantidade: z.coerce.number().positive(),
   preco_unit: z.coerce.number().min(0),
   taxa_iva: z.coerce.number().min(0).max(100),
+  tax_exemption_code: z.string().trim().min(1).max(64).optional(),
+  tax_exemption_reason: z.string().trim().min(1).max(500).optional(),
 });
 
 export const fiscalDocumentoUiItemSchema = z.object({
@@ -30,6 +35,10 @@ export const fiscalDocumentoClienteSchema = z.object({
     .trim()
     .regex(/^\d{9,20}$/)
     .optional(),
+  address_detail: z.string().trim().min(1).max(255).optional(),
+  city: z.string().trim().min(1).max(120).optional(),
+  postal_code: z.string().trim().min(1).max(40).optional(),
+  country: z.string().trim().min(1).max(80).optional(),
 });
 
 export const postFiscalDocumentoSchema = z
@@ -44,6 +53,7 @@ export const postFiscalDocumentoSchema = z
     invoice_date: z.string().date(),
     moeda: z.string().trim().length(3).transform((value) => value.toUpperCase()),
     taxa_cambio_aoa: z.coerce.number().positive().nullable().optional(),
+    payment_mechanism: z.enum(FISCAL_PAYMENT_MECHANISM_CODES).optional(),
     itens: z.array(fiscalDocumentoItemSchema).min(1).max(500),
     metadata: z.record(z.string(), z.unknown()).optional(),
   })
@@ -73,6 +83,25 @@ export const postFiscalDocumentoSchema = z
         message: "rectifica_documento_id é obrigatório para nota de crédito",
       });
     }
+
+    if (data.tipo_documento === "RC" && !data.payment_mechanism) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["payment_mechanism"],
+        message: "payment_mechanism é obrigatório para recibos (RC).",
+      });
+    }
+
+    data.itens.forEach((item, index) => {
+      if (item.taxa_iva === 0 && (!item.tax_exemption_code || !item.tax_exemption_reason)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["itens", index],
+          message:
+            "Quando taxa_iva = 0, tax_exemption_code e tax_exemption_reason são obrigatórios.",
+        });
+      }
+    });
   });
 
 export const postFiscalDocumentoUiSchema = z.object({

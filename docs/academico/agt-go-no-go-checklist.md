@@ -31,8 +31,8 @@ Status global: **NO-GO**
 - [x] Exportação SAF-T(AO) operacional.
   Evidência: `apps/web/src/app/api/fiscal/saft/export/route.ts`, `apps/web/src/lib/fiscal/saftAo.ts`.
 
-- [x] Validação automática SAF-T contra XSD com evidência de execução.
-  Evidência: `apps/web/src/lib/fiscal/saftXsdValidator.ts`, `agents/outputs/SAFT_XSD_VALIDATION_EVIDENCE_20260326T000801Z.md`.
+- [x] Validação automática SAF-T contra XSD oficial com evidência de execução.
+  Evidência: `apps/web/src/lib/fiscal/saftXsdValidator.ts`, `apps/web/src/lib/fiscal/xsd/SAF-T-AO1.01_01.xsd`, `agents/outputs/SAFT_XSD_OFICIAL_EVIDENCIA_20260326.md`.
 
 - [x] Regras visuais AGT no PDF fiscal (menção AGT, 4 chars da assinatura, frase para não-fatura).
   Evidência: `apps/web/src/app/api/fiscal/documentos/[documentoId]/pdf/route.ts`.
@@ -40,8 +40,8 @@ Status global: **NO-GO**
 - [x] Bloqueio de prévia/impressão fiscal antes da assinatura.
   Evidência: `409 FISCAL_PREVIEW_NOT_ALLOWED` em `apps/web/src/app/api/fiscal/documentos/[documentoId]/pdf/route.ts`.
 
-- [ ] Smoke test autenticado E2E (`probe`, emissão, retificação, anulação, exportação).
-  Evidência esperada: output de execução autenticada em ambiente alvo.
+- [x] Smoke test autenticado E2E (`probe`, emissão FT padrão/isenta, emissão RC, retificação, anulação, PDF, exportação).
+  Evidência: `agents/outputs/FISCAL_SMOKE_BROWSER_FULL_PASS_20260326.md`.
 
 ## P1 — Governança (bloqueante para submissão)
 
@@ -61,6 +61,5 @@ Status global: **NO-GO**
 
 ## Próximos passos imediatos
 
-1. Executar e registrar smoke test autenticado E2E.
-2. Aprovar formalmente política de retenção/acesso ao ledger (P1).
-3. Encerrar submissão administrativa AGT (P2).
+1. Aprovar formalmente política de retenção/acesso ao ledger (P1).
+2. Encerrar submissão administrativa AGT (P2).
