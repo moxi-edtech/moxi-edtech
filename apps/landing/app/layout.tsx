@@ -75,8 +75,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="pt-AO" className={`${manrope.variable} ${sora.variable}`}>
       <head>
-        <link rel="icon" href="/logo-klasse.png" type="image/png" />
-        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href="/logo-klasse.png?v=20260326" type="image/png" sizes="32x32" />
+        <link rel="apple-touch-icon" href="/logo-klasse.png?v=20260326" />
         <SchemaMarkup />
       </head>
       <body>{children}</body>
