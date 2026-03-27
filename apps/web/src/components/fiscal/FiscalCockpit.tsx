@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Download, Loader2 } from "lucide-react";
 
 import { SAFTExportModal } from "@/components/fiscal/SAFTExportModal";
+import { FiscalSaftHistory } from "@/components/fiscal/FiscalSaftHistory";
 import type { ComplianceStatus } from "@/components/fiscal/types";
 
 type FiscalCockpitProps = {
@@ -27,6 +28,7 @@ export function FiscalCockpit({ empresaId }: FiscalCockpitProps) {
   const [loadingExport, setLoadingExport] = useState(false);
   const [loadingHealth, setLoadingHealth] = useState(true);
   const [health, setHealth] = useState<ComplianceStatus | null>(null);
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -122,11 +124,14 @@ export function FiscalCockpit({ empresaId }: FiscalCockpitProps) {
         )}
       </div>
 
+      <FiscalSaftHistory empresaId={empresaId} refreshKey={historyRefreshKey} />
+
       {openSaftModal ? (
         <SAFTExportModal
           empresaId={empresaId}
           onClose={() => setOpenSaftModal(false)}
           onSubmittingChange={setLoadingExport}
+          onSuccess={() => setHistoryRefreshKey((prev) => prev + 1)}
         />
       ) : null}
     </section>
