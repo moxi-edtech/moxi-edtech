@@ -4306,7 +4306,11 @@ export type Database = {
           id: string
           linha_no: number
           preco_unit: number
+          product_code: string | null
+          product_number_code: string | null
           quantidade: number
+          tax_exemption_code: string | null
+          tax_exemption_reason: string | null
           taxa_iva: number
           total_bruto_aoa: number
           total_impostos_aoa: number
@@ -4320,7 +4324,11 @@ export type Database = {
           id?: string
           linha_no: number
           preco_unit: number
+          product_code?: string | null
+          product_number_code?: string | null
           quantidade: number
+          tax_exemption_code?: string | null
+          tax_exemption_reason?: string | null
           taxa_iva: number
           total_bruto_aoa: number
           total_impostos_aoa: number
@@ -4334,7 +4342,11 @@ export type Database = {
           id?: string
           linha_no?: number
           preco_unit?: number
+          product_code?: string | null
+          product_number_code?: string | null
           quantidade?: number
+          tax_exemption_code?: string | null
+          tax_exemption_reason?: string | null
           taxa_iva?: number
           total_bruto_aoa?: number
           total_impostos_aoa?: number
@@ -4377,6 +4389,7 @@ export type Database = {
           numero: number
           numero_formatado: string
           payload: Json
+          payment_mechanism: string | null
           pdf_storage_path: string | null
           rectifica_documento_id: string | null
           serie_id: string
@@ -4408,6 +4421,7 @@ export type Database = {
           numero: number
           numero_formatado: string
           payload?: Json
+          payment_mechanism?: string | null
           pdf_storage_path?: string | null
           rectifica_documento_id?: string | null
           serie_id: string
@@ -4439,6 +4453,7 @@ export type Database = {
           numero?: number
           numero_formatado?: string
           payload?: Json
+          payment_mechanism?: string | null
           pdf_storage_path?: string | null
           rectifica_documento_id?: string | null
           serie_id?: string
@@ -13182,6 +13197,30 @@ export type Database = {
             }
             Returns: Json
           }
+        | {
+            Args: {
+              p_assinatura_base64?: string
+              p_cliente: Json
+              p_documento_origem_id?: string
+              p_empresa_id: string
+              p_invoice_date: string
+              p_itens: Json
+              p_metadata?: Json
+              p_moeda: string
+              p_origem_documento: string
+              p_payment_mechanism?: string
+              p_prefixo_serie: string
+              p_rectifica_documento_id?: string
+              p_serie_id: string
+              p_taxa_cambio_aoa?: number
+              p_tipo_documento: string
+            }
+            Returns: Json
+          }
+      fiscal_empresa_has_members: {
+        Args: { p_empresa_id: string }
+        Returns: boolean
+      }
       fiscal_finalizar_assinatura: {
         Args: {
           p_assinatura_base64: string
