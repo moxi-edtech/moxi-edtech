@@ -148,7 +148,7 @@ export default function FinanceiroFiscalPage() {
       ) : (
         <>
           <FiscalCockpit empresaId={empresaId} />
-          <FiscalLedgerTable docs={docs} />
+          <FiscalLedgerTable docs={docs} onRefresh={() => void loadFiscalData()} />
         </>
       )}
 

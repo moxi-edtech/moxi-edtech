@@ -1,10 +1,13 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 import type { FiscalDoc, FiscalDocStatus } from "@/components/fiscal/types";
 import { FiscalRowActions } from "@/components/fiscal/FiscalRowActions";
 
 type FiscalLedgerTableProps = {
   docs: FiscalDoc[];
+  onRefresh: () => void;
 };
 
 const kwanza = new Intl.NumberFormat("pt-AO", {
@@ -44,7 +47,9 @@ function formatDate(iso: string) {
   return dateFormat.format(value);
 }
 
-export function FiscalLedgerTable({ docs }: FiscalLedgerTableProps) {
+export function FiscalLedgerTable({ docs, onRefresh }: FiscalLedgerTableProps) {
+  const router = useRouter();
+
   return (
     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white">
       <div className="overflow-x-auto">
@@ -92,7 +97,13 @@ export function FiscalLedgerTable({ docs }: FiscalLedgerTableProps) {
                       <FiscalStatusBadge status={doc.status} />
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <FiscalRowActions doc={doc} onRefresh={() => window.location.reload()} />
+                      <FiscalRowActions
+                        doc={doc}
+                        onRefresh={() => {
+                          onRefresh();
+                          router.refresh();
+                        }}
+                      />
                     </td>
                   </tr>
                 );
