@@ -4677,7 +4677,7 @@ export type Database = {
       }
       fiscal_saft_exports: {
         Row: {
-          arquivo_storage_path: string
+          arquivo_storage_path: string | null
           checksum_sha256: string
           created_at: string
           created_by: string | null
@@ -4690,7 +4690,7 @@ export type Database = {
           xsd_version: string
         }
         Insert: {
-          arquivo_storage_path: string
+          arquivo_storage_path?: string | null
           checksum_sha256: string
           created_at?: string
           created_by?: string | null
@@ -4703,7 +4703,7 @@ export type Database = {
           xsd_version: string
         }
         Update: {
-          arquivo_storage_path?: string
+          arquivo_storage_path?: string | null
           checksum_sha256?: string
           created_at?: string
           created_by?: string | null

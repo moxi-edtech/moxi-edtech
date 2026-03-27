@@ -9,6 +9,7 @@ type SAFTExportModalProps = {
   empresaId: string | null;
   onClose: () => void;
   onSubmittingChange?: (loading: boolean) => void;
+  onSuccess?: () => void;
 };
 
 type ApiResponse = {
@@ -43,7 +44,7 @@ function toMonthRange(year: number, month: number) {
   };
 }
 
-export function SAFTExportModal({ empresaId, onClose, onSubmittingChange }: SAFTExportModalProps) {
+export function SAFTExportModal({ empresaId, onClose, onSubmittingChange, onSuccess }: SAFTExportModalProps) {
   const now = new Date();
   const [ano, setAno] = useState(now.getUTCFullYear());
   const [mes, setMes] = useState(now.getUTCMonth() + 1);
@@ -91,8 +92,9 @@ export function SAFTExportModal({ empresaId, onClose, onSubmittingChange }: SAFT
 
       if (response.status === 202 || response.status === 201) {
         success(
-          "Exportação iniciada. O ficheiro SAF-T será enviado por email quando estiver pronto."
+          "Exportação enfileirada com sucesso. Acompanhe o estado no histórico abaixo."
         );
+        onSuccess?.();
         onClose();
         return;
       }
