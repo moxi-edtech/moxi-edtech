@@ -6,6 +6,21 @@ import type { Database } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
 
+function isMissingReadModelError(error: unknown): boolean {
+  const code = typeof error === "object" && error !== null && "code" in error
+    ? String((error as { code?: unknown }).code ?? "")
+    : "";
+  const message = typeof error === "object" && error !== null && "message" in error
+    ? String((error as { message?: unknown }).message ?? "")
+    : "";
+
+  return (
+    code === "42P01" ||
+    code === "PGRST205" ||
+    /does not exist|relation .* does not exist|schema cache|Could not find .* in the schema cache/i.test(message)
+  );
+}
+
 export async function GET(_req: Request) {
   try {
     const supabase = await supabaseServerTyped<Database>();
@@ -41,6 +56,9 @@ export async function GET(_req: Request) {
     const { data, error } = await query;
 
     if (error) {
+      if (isMissingReadModelError(error)) {
+        return NextResponse.json({ ok: true, escolaId, series: [], warning: "Read model de fluxo de caixa indisponível; retornado vazio." }, { status: 200 });
+      }
       return NextResponse.json(
         { ok: false, error: "Erro ao carregar fluxo de caixa diário", details: error.message },
         { status: 500 }
