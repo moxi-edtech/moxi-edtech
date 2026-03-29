@@ -20,6 +20,26 @@ type SaftExportRow = Pick<
   "id" | "empresa_id" | "periodo_inicio" | "periodo_fim" | "arquivo_storage_path" | "status" | "created_at"
 >;
 
+function normalizeStoragePath(path: string) {
+  const trimmed = path.trim();
+  if (trimmed.length === 0) return "";
+  return trimmed.replace(/^\/+/, "").replace(new RegExp(`^${SAFT_BUCKET}/`), "");
+}
+
+function resolveStoragePathCandidates(rawPath: string) {
+  const primary = normalizeStoragePath(rawPath);
+  const candidates = new Set<string>();
+  if (primary.length > 0) candidates.add(primary);
+
+  const withoutLeadingSlash = rawPath.trim().replace(/^\/+/, "");
+  if (withoutLeadingSlash.length > 0) candidates.add(withoutLeadingSlash);
+
+  const withoutBucketPrefix = withoutLeadingSlash.replace(new RegExp(`^${SAFT_BUCKET}/`), "");
+  if (withoutBucketPrefix.length > 0) candidates.add(withoutBucketPrefix);
+
+  return [...candidates];
+}
+
 function jsonError(status: number, code: string, message: string, details?: Record<string, unknown>) {
   return NextResponse.json(
     {
@@ -202,18 +222,47 @@ export async function GET(
     }
 
     const supabaseAdmin = getSupabaseAdmin();
-    const { data: signed, error: signedError } = await supabaseAdmin.storage
-      .from(SAFT_BUCKET)
-      .createSignedUrl(exportRow.arquivo_storage_path, SIGNED_URL_TTL_SECONDS);
+    const candidates = resolveStoragePathCandidates(exportRow.arquivo_storage_path);
+    let signedUrl: string | null = null;
+    let signErrorMessage: string | null = null;
+    let resolvedPath: string | null = null;
 
-    if (signedError || !signed?.signedUrl) {
+    for (const pathCandidate of candidates) {
+      const { data: signed, error: signedError } = await supabaseAdmin.storage
+        .from(SAFT_BUCKET)
+        .createSignedUrl(pathCandidate, SIGNED_URL_TTL_SECONDS);
+
+      if (signed?.signedUrl && !signedError) {
+        signedUrl = signed.signedUrl;
+        resolvedPath = pathCandidate;
+        break;
+      }
+
+      signErrorMessage = signedError?.message || null;
+    }
+
+    if (!signedUrl) {
+      if (signErrorMessage?.toLowerCase().includes("object not found")) {
+        return jsonError(
+          409,
+          "FISCAL_SAFT_FILE_NOT_FOUND",
+          "Ficheiro SAF-T não encontrado no storage. Regera a exportação para este período.",
+          {
+            request_id: requestId,
+            export_id: exportId,
+            storage_path: exportRow.arquivo_storage_path,
+          }
+        );
+      }
+
       return jsonError(
         500,
         "FISCAL_SAFT_DOWNLOAD_SIGN_FAILED",
-        signedError?.message || "Falha ao gerar URL assinada de download.",
+        signErrorMessage || "Falha ao gerar URL assinada de download.",
         {
           request_id: requestId,
           export_id: exportId,
+          storage_path: exportRow.arquivo_storage_path,
         }
       );
     }
@@ -223,7 +272,8 @@ export async function GET(
         ok: true,
         data: {
           exportacao: exportRow,
-          download_url: signed.signedUrl,
+          download_url: signedUrl,
+          storage_path: resolvedPath,
           expires_in_seconds: SIGNED_URL_TTL_SECONDS,
         },
         request_id: requestId,
