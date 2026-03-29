@@ -176,11 +176,11 @@ export async function POST(
       });
     }
 
-    if (!["validated", "failed", "submitted"].includes(exportRow.status)) {
+    if (!["queued", "generated", "validated", "failed", "submitted"].includes(exportRow.status)) {
       return jsonError(
         409,
         "FISCAL_SAFT_RETRY_NOT_ALLOWED",
-        "Regeração permitida apenas para exportações validadas, submetidas ou falhadas.",
+        "Regeração permitida apenas para exportações queued, generated, validadas, submetidas ou falhadas.",
         {
           request_id: requestId,
           export_id: exportId,
