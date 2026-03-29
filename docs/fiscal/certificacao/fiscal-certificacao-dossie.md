@@ -38,21 +38,21 @@ Centralizar evidências técnicas e operacionais para submissão e auditoria de 
 6. Validação XSD automática:
 `apps/web/src/lib/fiscal/saftXsdValidator.ts`
 `apps/web/src/lib/fiscal/xsd/AO_SAFT_1.01.xsd`
-`agents/outputs/SAFT_XSD_VALIDATION_EVIDENCE_20260326T000801Z.md`
+`agents/outputs/fiscal/SAFT_XSD_VALIDATION_EVIDENCE_20260326T000801Z.md`
 
 7. Regras visuais AGT em PDF e bloqueio de prévia:
 `apps/web/src/app/api/fiscal/documentos/[documentoId]/pdf/route.ts`
 
 8. Infra KMS/IAM:
-`docs/academico/aws-fiscal-kms-apply.md`
+`docs/fiscal/operacao/aws-fiscal-kms-apply.md`
 
 ## Governança e políticas
 
 - Política de rotação/versionamento:
-`docs/academico/politica-fiscal-rotacao-versionamento-chaves.md`
+`docs/fiscal/politicas/politica-fiscal-rotacao-versionamento-chaves.md`
 
 - Política de retenção/acesso:
-`docs/academico/politica-fiscal-retencao-acesso-ledger.md`
+`docs/fiscal/politicas/politica-fiscal-retencao-acesso-ledger.md`
 
 ## Checklist operacional de fecho (go-live certificação)
 
@@ -62,6 +62,6 @@ Centralizar evidências técnicas e operacionais para submissão e auditoria de 
 
 ## Referências de acompanhamento
 
-- `docs/academico/agt-go-no-go-checklist.md`
-- `docs/academico/roadmap-fiscal-checklist.md`
-- `docs/academico/backlog-fiscal-fase6-infra-governanca.md`
+- `docs/fiscal/certificacao/agt-go-no-go-checklist.md`
+- `docs/fiscal/certificacao/roadmap-fiscal-checklist.md`
+- `docs/fiscal/certificacao/backlog-fiscal-fase6-infra-governanca.md`

@@ -1,0 +1,97 @@
+{
+  "summary": {
+    "tool": "verify-signature",
+    "total_documentos": 7,
+    "assinatura_ok": 7,
+    "assinatura_fail": 0,
+    "blockers": 0,
+    "signature_nao_persistida": 0,
+    "status": "PASS"
+  },
+  "resultados": [
+    {
+      "documento_id": "ba07ae26-8258-4fe0-8c1c-81ebd466e56a",
+      "numero_formatado": "FR-000001",
+      "status_documento": "emitido",
+      "key_version": 1,
+      "algorithm": "RSASSA_PSS_SHA_256",
+      "canonical_ok": true,
+      "signature_persisted": true,
+      "signature_ok": true,
+      "blocker": false,
+      "detalhe": null
+    },
+    {
+      "documento_id": "de3064d7-bb0c-4b9a-b93b-a93ca9abc96d",
+      "numero_formatado": "FR-000002",
+      "status_documento": "emitido",
+      "key_version": 1,
+      "algorithm": "RSASSA_PSS_SHA_256",
+      "canonical_ok": true,
+      "signature_persisted": true,
+      "signature_ok": true,
+      "blocker": false,
+      "detalhe": null
+    },
+    {
+      "documento_id": "0838d015-b322-4382-b76c-5e83724d36ad",
+      "numero_formatado": "FR-000003",
+      "status_documento": "rectificado",
+      "key_version": 1,
+      "algorithm": "RSASSA_PSS_SHA_256",
+      "canonical_ok": true,
+      "signature_persisted": true,
+      "signature_ok": true,
+      "blocker": false,
+      "detalhe": null
+    },
+    {
+      "documento_id": "682961dd-bbef-4191-83fa-a825657f9e23",
+      "numero_formatado": "FR-000004",
+      "status_documento": "anulado",
+      "key_version": 1,
+      "algorithm": "RSASSA_PSS_SHA_256",
+      "canonical_ok": true,
+      "signature_persisted": true,
+      "signature_ok": true,
+      "blocker": false,
+      "detalhe": null
+    },
+    {
+      "documento_id": "2950a1ad-75e5-47f9-a6db-be632f1f6af7",
+      "numero_formatado": "RC-000001",
+      "status_documento": "emitido",
+      "key_version": 1,
+      "algorithm": "RSASSA_PSS_SHA_256",
+      "canonical_ok": true,
+      "signature_persisted": true,
+      "signature_ok": true,
+      "blocker": false,
+      "detalhe": null
+    },
+    {
+      "documento_id": "17c37ffa-9229-43b7-99fd-1f3b7f1eb144",
+      "numero_formatado": "RC-000002",
+      "status_documento": "emitido",
+      "key_version": 1,
+      "algorithm": "RSASSA_PSS_SHA_256",
+      "canonical_ok": true,
+      "signature_persisted": true,
+      "signature_ok": true,
+      "blocker": false,
+      "detalhe": null
+    },
+    {
+      "documento_id": "737129b1-4375-42db-b775-e1f188c658af",
+      "numero_formatado": "RC-000003",
+      "status_documento": "emitido",
+      "key_version": 1,
+      "algorithm": "RSASSA_PSS_SHA_256",
+      "canonical_ok": true,
+      "signature_persisted": true,
+      "signature_ok": true,
+      "blocker": false,
+      "detalhe": null
+    }
+  ]
+}

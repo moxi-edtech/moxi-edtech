@@ -1,0 +1,89 @@
+{
+  "summary": {
+    "tool": "verify-hash-control",
+    "total_documentos": 7,
+    "hash_ok": 7,
+    "hash_fail": 0,
+    "canonical_ausente": 0,
+    "status": "PASS"
+  },
+  "resultados": [
+    {
+      "documento_id": "ba07ae26-8258-4fe0-8c1c-81ebd466e56a",
+      "numero_formatado": "FR-000001",
+      "serie_id": "172c872d-dee2-41c5-bdbd-fa2ec328e869",
+      "status": "emitido",
+      "canonical_present": true,
+      "hash_esperado": "881e94b9837f98fa824ceaf31ca3feef6286aa5d1b381becf81ea1bb15252387",
+      "hash_atual": "881e94b9837f98fa824ceaf31ca3feef6286aa5d1b381becf81ea1bb15252387",
+      "hash_ok": true,
+      "detalhe": null
+    },
+    {
+      "documento_id": "de3064d7-bb0c-4b9a-b93b-a93ca9abc96d",
+      "numero_formatado": "FR-000002",
+      "serie_id": "172c872d-dee2-41c5-bdbd-fa2ec328e869",
+      "status": "emitido",
+      "canonical_present": true,
+      "hash_esperado": "acf550cdd54b1e74f7aba6d21e994464741a90adb581f45cc1026dd870ffee53",
+      "hash_atual": "acf550cdd54b1e74f7aba6d21e994464741a90adb581f45cc1026dd870ffee53",
+      "hash_ok": true,
+      "detalhe": null
+    },
+    {
+      "documento_id": "0838d015-b322-4382-b76c-5e83724d36ad",
+      "numero_formatado": "FR-000003",
+      "serie_id": "172c872d-dee2-41c5-bdbd-fa2ec328e869",
+      "status": "rectificado",
+      "canonical_present": true,
+      "hash_esperado": "08e3882ae399f62ee624216fae2a898d67c649a9b3efe08293556faaf68b586f",
+      "hash_atual": "08e3882ae399f62ee624216fae2a898d67c649a9b3efe08293556faaf68b586f",
+      "hash_ok": true,
+      "detalhe": null
+    },
+    {
+      "documento_id": "682961dd-bbef-4191-83fa-a825657f9e23",
+      "numero_formatado": "FR-000004",
+      "serie_id": "172c872d-dee2-41c5-bdbd-fa2ec328e869",
+      "status": "anulado",
+      "canonical_present": true,
+      "hash_esperado": "3ee1ddff71f7ce4e0c8af6cc9a137b4517fcd403e4e11914f6325b9c101195ac",
+      "hash_atual": "3ee1ddff71f7ce4e0c8af6cc9a137b4517fcd403e4e11914f6325b9c101195ac",
+      "hash_ok": true,
+      "detalhe": null
+    },
+    {
+      "documento_id": "2950a1ad-75e5-47f9-a6db-be632f1f6af7",
+      "numero_formatado": "RC-000001",
+      "serie_id": "248ed4cf-1e20-4f50-a63c-321cedae8525",
+      "status": "emitido",
+      "canonical_present": true,
+      "hash_esperado": "ce4ca367cdb963e76b15fd8edceff25f8f4d410b3b756addfb5e520a2ee60552",
+      "hash_atual": "ce4ca367cdb963e76b15fd8edceff25f8f4d410b3b756addfb5e520a2ee60552",
+      "hash_ok": true,
+      "detalhe": null
+    },
+    {
+      "documento_id": "17c37ffa-9229-43b7-99fd-1f3b7f1eb144",
+      "numero_formatado": "RC-000002",
+      "serie_id": "248ed4cf-1e20-4f50-a63c-321cedae8525",
+      "status": "emitido",
+      "canonical_present": true,
+      "hash_esperado": "d905fa2ff3cdb6aa5c93bf7ec09bbe18ac3d801788980947bdb7662b562a232e",
+      "hash_atual": "d905fa2ff3cdb6aa5c93bf7ec09bbe18ac3d801788980947bdb7662b562a232e",
+      "hash_ok": true,
+      "detalhe": null
+    },
+    {
+      "documento_id": "737129b1-4375-42db-b775-e1f188c658af",
+      "numero_formatado": "RC-000003",
+      "serie_id": "248ed4cf-1e20-4f50-a63c-321cedae8525",
+      "status": "emitido",
+      "canonical_present": true,
+      "hash_esperado": "4f33c91eba03480c1d92b0e63cab5dec3d3e425874f1c9f6cb31e3c2847798f6",
+      "hash_atual": "4f33c91eba03480c1d92b0e63cab5dec3d3e425874f1c9f6cb31e3c2847798f6",
+      "hash_ok": true,
+      "detalhe": null
+    }
+  ]
+}

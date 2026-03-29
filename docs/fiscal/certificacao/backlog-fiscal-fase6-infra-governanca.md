@@ -42,10 +42,10 @@ Fechar pendências de infraestrutura KMS/IAM e governança operacional do ledger
 ## Operação e Governança (P1)
 
 - [x] Política de rotação/versionamento de chaves publicada.
-  Evidência: `docs/academico/politica-fiscal-rotacao-versionamento-chaves.md`.
+  Evidência: `docs/fiscal/politicas/politica-fiscal-rotacao-versionamento-chaves.md`.
 
 - [x] Política de retenção e acesso ao ledger fiscal publicada.
-  Evidência: `docs/academico/politica-fiscal-retencao-acesso-ledger.md`.
+  Evidência: `docs/fiscal/politicas/politica-fiscal-retencao-acesso-ledger.md`.
 
 - [ ] Checklist operacional de auditoria revisado com Financeiro + Segurança.
   Evidência esperada: ticket/ata de aprovação.
@@ -58,10 +58,10 @@ Fechar pendências de infraestrutura KMS/IAM e governança operacional do ledger
 ## Evidências técnicas já recolhidas
 
 - Validação XSD automática integrada no fluxo SAF-T(AO).
-  Evidência: `agents/outputs/SAFT_XSD_VALIDATION_EVIDENCE_20260326T000801Z.md`.
+  Evidência: `agents/outputs/fiscal/SAFT_XSD_VALIDATION_EVIDENCE_20260326T000801Z.md`.
 
 - Dossiê fiscal consolidado para certificação.
-  Evidência: `docs/academico/fiscal-certificacao-dossie.md`.
+  Evidência: `docs/fiscal/certificacao/fiscal-certificacao-dossie.md`.
 
 - Bootstrap fiscal mínimo aplicado no remoto.
   Evidência: empresa/série/chave/membership/binding criados e ativos.

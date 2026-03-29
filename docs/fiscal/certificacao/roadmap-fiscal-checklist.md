@@ -55,7 +55,7 @@ Data: 2026-03-19
 - [ ] Política de retenção e acesso ao ledger fiscal.
 
 ## Fase 6 — Infra e Governança (backlog actual)
-- [x] Backlog de execução documentado (`docs/academico/backlog-fiscal-fase6-infra-governanca.md`).
+- [x] Backlog de execução documentado (`docs/fiscal/certificacao/backlog-fiscal-fase6-infra-governanca.md`).
 - [x] IAM role com `kms:Sign` aplicada em produção.
 - [x] Regras AGT no PDF fiscal implementadas (menções obrigatórias + bloqueio de prévia sem assinatura).
 - [ ] Validação de probe com sessão autenticada (`/api/fiscal/compliance/status?probe=1`).
@@ -63,9 +63,9 @@ Data: 2026-03-19
 - [ ] Política de retenção e acesso ao ledger aprovada.
 
 ## Referências
-- `docs/api/fiscal-documentos.md`
-- `docs/api/fiscal-setup.md`
-- `docs/api/fiscal-saft.md`
-- `docs/academico/backlog-fiscal-fase6-infra-governanca.md`
-- `agents/outputs/RELATORIO_INVENTARIO_MODULO_FISCAL_2026-03-19.md`
-- `agents/outputs/KLASSE_FISCAL_PHASE0_PHASE1_2026-03-19.md`
+- `docs/fiscal/api/fiscal-documentos.md`
+- `docs/fiscal/api/fiscal-setup.md`
+- `docs/fiscal/api/fiscal-saft.md`
+- `docs/fiscal/certificacao/backlog-fiscal-fase6-infra-governanca.md`
+- `agents/outputs/fiscal/RELATORIO_INVENTARIO_MODULO_FISCAL_2026-03-19.md`
+- `agents/outputs/fiscal/KLASSE_FISCAL_PHASE0_PHASE1_2026-03-19.md`

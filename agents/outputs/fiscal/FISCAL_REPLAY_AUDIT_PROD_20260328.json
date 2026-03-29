@@ -1,0 +1,12 @@
+{
+  "summary": {
+    "tool": "replay-audit",
+    "empresa_id": "11a6aba6-3315-4732-a0b1-383202cf4f9d",
+    "serie_id": null,
+    "total_documentos": 7,
+    "total_issues": 0,
+    "total_blockers": 0,
+    "status": "PASS"
+  },
+  "issues": []
+}

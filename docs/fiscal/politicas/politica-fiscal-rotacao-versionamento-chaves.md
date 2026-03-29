@@ -75,6 +75,6 @@ Passos:
 
 ## Referências
 
-- `docs/academico/aws-fiscal-kms-apply.md`
-- `docs/academico/backlog-fiscal-fase6-infra-governanca.md`
-- `docs/api/fiscal-documentos.md`
+- `docs/fiscal/operacao/aws-fiscal-kms-apply.md`
+- `docs/fiscal/certificacao/backlog-fiscal-fase6-infra-governanca.md`
+- `docs/fiscal/api/fiscal-documentos.md`
