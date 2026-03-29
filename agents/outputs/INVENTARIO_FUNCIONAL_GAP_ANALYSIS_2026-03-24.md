@@ -2,9 +2,9 @@
 
 Data: 2026-03-24
 Escopo: `apps/web`, `supabase/migrations`, componentes, APIs e documentação de referência:
-- `docs/api/fiscal-saft.md`
-- `docs/api/fiscal-documentos.md`
-- `docs/academico/roadmap-fiscal-checklist.md`
+- `docs/fiscal/api/fiscal-saft.md`
+- `docs/fiscal/api/fiscal-documentos.md`
+- `docs/fiscal/certificacao/roadmap-fiscal-checklist.md`
 Método: somente com evidência de código (UI/API/DB). Sem evidência = 🟡 ou ❌.
 
 ---

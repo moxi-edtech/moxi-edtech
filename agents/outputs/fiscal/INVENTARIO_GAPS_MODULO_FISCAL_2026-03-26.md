@@ -12,8 +12,8 @@ Status: **NO-GO controlado**
 - Emissão fiscal (FT/RC), retificação, anulação, PDF e exportação SAF-T operacionais em ambiente local autenticado.
 
 Evidências principais:
-- `agents/outputs/FISCAL_SMOKE_BROWSER_FULL_PASS_20260326.md`
-- `agents/outputs/SAFT_XSD_OFICIAL_EVIDENCIA_20260326.md`
+- `agents/outputs/fiscal/FISCAL_SMOKE_BROWSER_FULL_PASS_20260326.md`
+- `agents/outputs/fiscal/SAFT_XSD_OFICIAL_EVIDENCIA_20260326.md`
 
 ## Gaps abertos
 

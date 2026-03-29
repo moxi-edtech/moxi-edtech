@@ -90,4 +90,4 @@ scripts/fiscal-saft-xsd-evidence.sh /caminho/arquivo.xml AO_SAFT_1.01
 
 Evidência já gerada nesta implementação:
 
-- `agents/outputs/SAFT_XSD_VALIDATION_EVIDENCE_20260326T000801Z.md`
+- `agents/outputs/fiscal/SAFT_XSD_VALIDATION_EVIDENCE_20260326T000801Z.md`

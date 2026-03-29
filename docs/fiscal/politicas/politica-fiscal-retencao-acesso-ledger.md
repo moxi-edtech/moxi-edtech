@@ -60,6 +60,6 @@ Observação:
 
 ## Referências
 
-- `docs/api/fiscal-documentos.md`
-- `docs/api/fiscal-saft.md`
-- `docs/academico/backlog-fiscal-fase6-infra-governanca.md`
+- `docs/fiscal/api/fiscal-documentos.md`
+- `docs/fiscal/api/fiscal-saft.md`
+- `docs/fiscal/certificacao/backlog-fiscal-fase6-infra-governanca.md`
