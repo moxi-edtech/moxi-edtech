@@ -340,7 +340,7 @@ export function FiscalSaftHistory({ empresaId, refreshKey = 0 }: FiscalSaftHisto
           <tbody>
             {items.map((item) => {
               const canDownload = ["validated", "submitted", "generated"].includes(item.status);
-              const canRetry = ["validated", "failed"].includes(item.status);
+              const canRetry = ["validated", "failed", "submitted"].includes(item.status);
 
               return (
                 <tr key={item.id} className="border-t border-slate-100 text-slate-700">
