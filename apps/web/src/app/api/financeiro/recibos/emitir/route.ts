@@ -124,29 +124,57 @@ export async function POST(req: NextRequest) {
       cookieHeader,
     });
 
-    await supabase
+    const pendingPayload = {
+      escola_id: escolaId,
+      empresa_id: empresaFiscalId,
+      origem_tipo: "financeiro_recibos_emitir",
+      origem_id: mensalidadeId,
+      fiscal_documento_id: null,
+      status: "pending",
+      idempotency_key: `financeiro_recibos_emitir:${idempotencyKey}`,
+      payload_snapshot: {
+        origem_operacao: "financeiro_recibos_emitir",
+        mensalidade_id: mensalidadeId,
+        aluno_id: mensalidade.aluno_id ?? null,
+        valor: valorRecibo,
+      } as Json,
+      fiscal_error: null,
+    };
+
+    const { error: lockError } = await supabase
       .from("financeiro_fiscal_links")
-      .upsert(
-        {
-          escola_id: escolaId,
-          empresa_id: empresaFiscalId,
-          origem_tipo: "financeiro_recibos_emitir",
-          origem_id: mensalidadeId,
-          fiscal_documento_id: null,
-          status: "pending",
-          idempotency_key: `financeiro_recibos_emitir:${idempotencyKey}`,
-          payload_snapshot: {
-            origem_operacao: "financeiro_recibos_emitir",
-            mensalidade_id: mensalidadeId,
-            aluno_id: mensalidade.aluno_id ?? null,
-            valor: valorRecibo,
-          } as Json,
-          fiscal_error: null,
-        },
-        { onConflict: "origem_tipo,origem_id" }
-      )
-      .select("id")
-      .maybeSingle();
+      .insert(pendingPayload);
+
+    if (lockError) {
+      if (lockError.code === "23505") {
+        const { data: existingLink } = await supabase
+          .from("financeiro_fiscal_links")
+          .select("status, fiscal_documento_id, fiscal_error")
+          .eq("origem_tipo", "financeiro_recibos_emitir")
+          .eq("origem_id", mensalidadeId)
+          .maybeSingle();
+
+        return NextResponse.json(
+          {
+            ok: false,
+            error: "Emissão fiscal já em processamento para esta mensalidade.",
+            code: "FISCAL_ORIGEM_LOCKED",
+            details: {
+              origem_tipo: "financeiro_recibos_emitir",
+              origem_id: mensalidadeId,
+              status: existingLink?.status ?? null,
+              fiscal_documento_id: existingLink?.fiscal_documento_id ?? null,
+            },
+          },
+          { status: 409 }
+        );
+      }
+
+      return NextResponse.json(
+        { ok: false, error: lockError.message, code: "FISCAL_LINK_CREATE_FAILED" },
+        { status: 500 }
+      );
+    }
     let fiscal:
       | Awaited<ReturnType<typeof emitirDocumentoFiscalViaAdapter>>
       | null = null;
@@ -176,25 +204,18 @@ export async function POST(req: NextRequest) {
     if (!fiscal) {
       await supabase
         .from("financeiro_fiscal_links")
-        .upsert(
-          {
-            escola_id: escolaId,
-            empresa_id: empresaFiscalId,
-            origem_tipo: "financeiro_recibos_emitir",
-            origem_id: mensalidadeId,
-            fiscal_documento_id: null,
-            status: "failed",
-            idempotency_key: `financeiro_recibos_emitir:${idempotencyKey}`,
-            payload_snapshot: {
-              origem_operacao: "financeiro_recibos_emitir",
-              erro: fiscalErrorMessage,
-            } as Json,
-            fiscal_error: fiscalErrorMessage,
-          },
-          { onConflict: "origem_tipo,origem_id" }
-        )
-        .select("id")
-        .maybeSingle();
+        .update({
+          empresa_id: empresaFiscalId,
+          fiscal_documento_id: null,
+          status: "failed",
+          payload_snapshot: {
+            origem_operacao: "financeiro_recibos_emitir",
+            erro: fiscalErrorMessage,
+          } as Json,
+          fiscal_error: fiscalErrorMessage,
+        })
+        .eq("origem_tipo", "financeiro_recibos_emitir")
+        .eq("origem_id", mensalidadeId);
 
       await supabase
         .from("mensalidades")
@@ -217,22 +238,15 @@ export async function POST(req: NextRequest) {
 
     await supabase
       .from("financeiro_fiscal_links")
-      .upsert(
-        {
-          escola_id: escolaId,
-          empresa_id: fiscal.empresa_id,
-          origem_tipo: "financeiro_recibos_emitir",
-          origem_id: mensalidadeId,
-          fiscal_documento_id: fiscal.documento_id,
-          status: "ok",
-          idempotency_key: `financeiro_recibos_emitir:${idempotencyKey}`,
-          payload_snapshot: fiscal.payload_snapshot as Json,
-          fiscal_error: null,
-        },
-        { onConflict: "origem_tipo,origem_id" }
-      )
-      .select("id")
-      .maybeSingle();
+      .update({
+        empresa_id: fiscal.empresa_id,
+        fiscal_documento_id: fiscal.documento_id,
+        status: "ok",
+        payload_snapshot: fiscal.payload_snapshot as Json,
+        fiscal_error: null,
+      })
+      .eq("origem_tipo", "financeiro_recibos_emitir")
+      .eq("origem_id", mensalidadeId);
 
     await supabase
       .from("mensalidades")

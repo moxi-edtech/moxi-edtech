@@ -5,6 +5,7 @@ import { Download, Loader2 } from "lucide-react";
 
 import { SAFTExportModal } from "@/components/fiscal/SAFTExportModal";
 import { FiscalSaftHistory } from "@/components/fiscal/FiscalSaftHistory";
+import { FiscalPendingReprocessCard } from "@/components/fiscal/FiscalPendingReprocessCard";
 import type { ComplianceStatus } from "@/components/fiscal/types";
 
 type FiscalCockpitProps = {
@@ -123,6 +124,8 @@ export function FiscalCockpit({ empresaId }: FiscalCockpitProps) {
           </div>
         )}
       </div>
+
+      <FiscalPendingReprocessCard empresaId={empresaId} />
 
       <FiscalSaftHistory empresaId={empresaId} refreshKey={historyRefreshKey} />
 
