@@ -5,6 +5,11 @@ import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { requireRoleInSchool } from "@/lib/authz";
 import { recordAuditServer } from "@/lib/audit";
 import { emitirEvento } from "@/lib/eventos/emitirEvento";
+import {
+  emitirDocumentoFiscalViaAdapter,
+  resolveEmpresaFiscalAtiva,
+} from "@/lib/fiscal/financeiroFiscalAdapter";
+import type { Json } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
 
@@ -152,6 +157,205 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
     }
 
+    const origin = new URL(req.url).origin;
+    const cookieHeader = req.headers.get("cookie");
+    const pagamentoId = (pagamento as { id?: string } | null)?.id ?? null;
+    const origemId = String((pagamento as { id?: string } | null)?.id ?? idempotencyKey);
+    const empresaFiscalId = await resolveEmpresaFiscalAtiva({
+      origin,
+      escolaId,
+      cookieHeader,
+    });
+
+    await supabase
+      .from("financeiro_fiscal_links")
+      .upsert(
+        {
+          escola_id: escolaId,
+          empresa_id: empresaFiscalId,
+          origem_tipo: "financeiro_pagamentos_registrar",
+          origem_id: origemId,
+          fiscal_documento_id: null,
+          status: "pending",
+          idempotency_key: `financeiro_pagamentos_registrar:${idempotencyKey}`,
+          payload_snapshot: {
+            origem_operacao: "financeiro_pagamentos_registrar",
+            pagamento_id: pagamentoId,
+            mensalidade_id: mensalidade?.id ?? null,
+            valor,
+            metodo,
+          } as Json,
+          fiscal_error: null,
+        },
+        { onConflict: "origem_tipo,origem_id" }
+      )
+      .select("id")
+      .maybeSingle();
+
+    let fiscalResult:
+      | {
+          ok: true;
+          empresa_id: string;
+          tipo_documento: "FR" | "FT" | "RC";
+          documento_id: string;
+          numero_formatado: string;
+          hash_control: string;
+          key_version: number;
+          payload_snapshot: Record<string, unknown>;
+        }
+      | {
+          ok: false;
+          error: string;
+        } = { ok: false, error: "Fiscal pendente." };
+
+    try {
+      const fiscal = await emitirDocumentoFiscalViaAdapter({
+        tipoFluxoFinanceiro: "immediate_payment",
+        origemOperacao: "financeiro_pagamentos_registrar",
+        origemId,
+        descricaoPrincipal: "Pagamento de mensalidade",
+        itens: [
+          {
+            descricao: mensalidade?.id
+              ? `Pagamento mensalidade ${mensalidade.id}`
+              : "Pagamento financeiro direto",
+            valor,
+          },
+        ],
+        cliente: {
+          nome: null,
+          nif: null,
+        },
+        escolaId,
+        origin,
+        cookieHeader,
+        metadata: {
+          pagamento_id: (pagamento as { id?: string } | null)?.id ?? null,
+          mensalidade_id: mensalidade?.id ?? null,
+        },
+      });
+
+      fiscalResult = {
+        ok: true,
+        empresa_id: fiscal.empresa_id,
+        tipo_documento: fiscal.tipo_documento,
+        documento_id: fiscal.documento_id,
+        numero_formatado: fiscal.numero_formatado,
+        hash_control: fiscal.hash_control,
+        key_version: fiscal.key_version,
+        payload_snapshot: fiscal.payload_snapshot,
+      };
+    } catch (fiscalError) {
+      const fiscalMessage =
+        fiscalError instanceof Error ? fiscalError.message : "Falha ao emitir documento fiscal.";
+
+      fiscalResult = {
+        ok: false,
+        error: fiscalMessage,
+      };
+
+      recordAuditServer({
+        escolaId,
+        portal: "financeiro",
+        acao: "PAGAMENTO_FISCAL_PENDENTE",
+        entity: "pagamento",
+        entityId: (pagamento as { id?: string } | null)?.id ?? null,
+        details: {
+          valor,
+          metodo,
+          mensalidade_id: mensalidade?.id ?? null,
+          fiscal_error: fiscalMessage,
+        },
+      }).catch(() => null);
+    }
+
+    if (fiscalResult.ok) {
+      await supabase
+        .from("financeiro_fiscal_links")
+        .upsert(
+          {
+            escola_id: escolaId,
+            empresa_id: fiscalResult.empresa_id,
+            origem_tipo: "financeiro_pagamentos_registrar",
+            origem_id: origemId,
+            fiscal_documento_id: fiscalResult.documento_id,
+            status: "ok",
+            idempotency_key: `financeiro_pagamentos_registrar:${idempotencyKey}`,
+            payload_snapshot: fiscalResult.payload_snapshot as Json,
+            fiscal_error: null,
+          },
+          { onConflict: "origem_tipo,origem_id" }
+        )
+        .select("id")
+        .maybeSingle();
+
+      if (pagamentoId) {
+        await supabase
+          .from("pagamentos")
+          .update({
+            status_fiscal: "ok",
+            fiscal_documento_id: fiscalResult.documento_id,
+            fiscal_error: null,
+          })
+          .eq("id", pagamentoId);
+      }
+
+      if (mensalidade?.id) {
+        await supabase
+          .from("mensalidades")
+          .update({
+            status_fiscal: "ok",
+            fiscal_documento_id: fiscalResult.documento_id,
+            fiscal_error: null,
+          })
+          .eq("id", mensalidade.id);
+      }
+    } else {
+      await supabase
+        .from("financeiro_fiscal_links")
+        .upsert(
+          {
+            escola_id: escolaId,
+            empresa_id: empresaFiscalId,
+            origem_tipo: "financeiro_pagamentos_registrar",
+            origem_id: origemId,
+            fiscal_documento_id: null,
+            status: "failed",
+            idempotency_key: `financeiro_pagamentos_registrar:${idempotencyKey}`,
+            payload_snapshot: {
+              origem_operacao: "financeiro_pagamentos_registrar",
+              pagamento_id: pagamentoId,
+              mensalidade_id: mensalidade?.id ?? null,
+              erro: fiscalResult.error,
+            } as Json,
+            fiscal_error: fiscalResult.error,
+          },
+          { onConflict: "origem_tipo,origem_id" }
+        )
+        .select("id")
+        .maybeSingle();
+
+      if (pagamentoId) {
+        await supabase
+          .from("pagamentos")
+          .update({
+            status_fiscal: "pending",
+            fiscal_error: fiscalResult.error,
+          })
+          .eq("id", pagamentoId);
+      }
+
+      if (mensalidade?.id) {
+        await supabase
+          .from("mensalidades")
+          .update({
+            status_fiscal: "pending",
+            fiscal_error: fiscalResult.error,
+          })
+          .eq("id", mensalidade.id);
+      }
+    }
+
     recordAuditServer({
       escolaId,
       portal: "financeiro",
@@ -194,7 +398,12 @@ export async function POST(req: Request) {
       console.warn("[pagamentos.registrar] falha ao emitir evento:", eventError);
     }
 
-    return NextResponse.json({ ok: true, data: pagamento });
+    return NextResponse.json({
+      ok: true,
+      data: pagamento,
+      fiscal: fiscalResult,
+      status_fiscal: fiscalResult.ok ? "ok" : "pending",
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

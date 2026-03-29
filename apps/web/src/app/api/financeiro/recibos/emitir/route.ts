@@ -5,7 +5,11 @@ import { HttpError } from "@/lib/errors";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import { recordAuditServer } from "@/lib/audit";
 import { requireFeature } from "@/lib/plan/requireFeature";
-import type { Database } from "~types/supabase";
+import {
+  emitirDocumentoFiscalViaAdapter,
+  resolveEmpresaFiscalAtiva,
+} from "@/lib/fiscal/financeiroFiscalAdapter";
+import type { Database, Json } from "~types/supabase";
 
 const PayloadSchema = z.object({
   mensalidadeId: z.string().uuid(),
@@ -15,6 +19,11 @@ type ReciboResponse = {
   ok: true;
   doc_id: string;
   url_validacao: string | null;
+  fiscal: {
+    numero_formatado: string;
+    hash_control: string;
+    key_version: number;
+  };
 };
 
 export async function POST(req: NextRequest) {
@@ -86,49 +95,163 @@ export async function POST(req: NextRequest) {
       throw err;
     }
 
-    const { data, error } = await supabase.rpc("emitir_recibo", {
-      p_mensalidade_id: mensalidadeId,
-    });
+    const { data: mensalidade, error: mensalidadeError } = await supabase
+      .from("mensalidades")
+      .select("id, valor, valor_previsto, aluno_id")
+      .eq("id", mensalidadeId)
+      .maybeSingle();
 
-    if (error) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+    if (mensalidadeError || !mensalidade) {
+      return NextResponse.json(
+        { ok: false, error: mensalidadeError?.message || "Mensalidade não encontrada." },
+        { status: 404 }
+      );
     }
 
-    const dataPayload = data as { ok?: boolean; erro?: string; public_id?: string; doc_id?: string } | null;
-    if (!dataPayload || dataPayload?.ok === false) {
+    const valorRecibo = Number(mensalidade.valor_previsto ?? mensalidade.valor ?? 0);
+    if (!Number.isFinite(valorRecibo) || valorRecibo <= 0) {
       return NextResponse.json(
-        { ok: false, error: dataPayload?.erro || "Falha ao emitir recibo." },
+        { ok: false, error: "Valor inválido para emissão fiscal do recibo." },
         { status: 400 }
       );
     }
 
-    const publicId = String(dataPayload.public_id || "");
-    if (!publicId) {
+    const origin = new URL(req.url).origin;
+    const cookieHeader = req.headers.get("cookie");
+    const empresaFiscalId = await resolveEmpresaFiscalAtiva({
+      origin,
+      escolaId,
+      cookieHeader,
+    });
+
+    await supabase
+      .from("financeiro_fiscal_links")
+      .upsert(
+        {
+          escola_id: escolaId,
+          empresa_id: empresaFiscalId,
+          origem_tipo: "financeiro_recibos_emitir",
+          origem_id: mensalidadeId,
+          fiscal_documento_id: null,
+          status: "pending",
+          idempotency_key: `financeiro_recibos_emitir:${idempotencyKey}`,
+          payload_snapshot: {
+            origem_operacao: "financeiro_recibos_emitir",
+            mensalidade_id: mensalidadeId,
+            aluno_id: mensalidade.aluno_id ?? null,
+            valor: valorRecibo,
+          } as Json,
+          fiscal_error: null,
+        },
+        { onConflict: "origem_tipo,origem_id" }
+      )
+      .select("id")
+      .maybeSingle();
+    let fiscal:
+      | Awaited<ReturnType<typeof emitirDocumentoFiscalViaAdapter>>
+      | null = null;
+    let fiscalErrorMessage: string | null = null;
+
+    try {
+      fiscal = await emitirDocumentoFiscalViaAdapter({
+        tipoFluxoFinanceiro: "immediate_payment",
+        origemOperacao: "financeiro_recibos_emitir",
+        origemId: mensalidadeId,
+        descricaoPrincipal: "Recebimento de mensalidade",
+        itens: [{ descricao: `Recebimento mensalidade ${mensalidadeId}`, valor: valorRecibo }],
+        cliente: { nome: null, nif: null },
+        escolaId,
+        origin,
+        cookieHeader,
+        metadata: {
+          mensalidade_id: mensalidadeId,
+          aluno_id: mensalidade.aluno_id ?? null,
+        },
+      });
+    } catch (fiscalError) {
+      fiscalErrorMessage =
+        fiscalError instanceof Error ? fiscalError.message : "Falha ao emitir documento fiscal.";
+    }
+
+    if (!fiscal) {
+      await supabase
+        .from("financeiro_fiscal_links")
+        .upsert(
+          {
+            escola_id: escolaId,
+            empresa_id: empresaFiscalId,
+            origem_tipo: "financeiro_recibos_emitir",
+            origem_id: mensalidadeId,
+            fiscal_documento_id: null,
+            status: "failed",
+            idempotency_key: `financeiro_recibos_emitir:${idempotencyKey}`,
+            payload_snapshot: {
+              origem_operacao: "financeiro_recibos_emitir",
+              erro: fiscalErrorMessage,
+            } as Json,
+            fiscal_error: fiscalErrorMessage,
+          },
+          { onConflict: "origem_tipo,origem_id" }
+        )
+        .select("id")
+        .maybeSingle();
+
+      await supabase
+        .from("mensalidades")
+        .update({
+          status_fiscal: "pending",
+          fiscal_error: fiscalErrorMessage,
+        })
+        .eq("id", mensalidadeId);
+
       return NextResponse.json(
-        { ok: false, error: "Recibo emitido sem identificador público." },
-        { status: 500 }
+        {
+          ok: false,
+          error: fiscalErrorMessage ?? "Falha ao emitir documento fiscal.",
+          code: "FISCAL_ADAPTER_EMIT_FAILED",
+          status_fiscal: "pending",
+        },
+        { status: 502 }
       );
     }
 
-    const baseUrlEnv = process.env.NEXT_PUBLIC_VALIDATION_BASE_URL ?? null;
-    let baseUrl = baseUrlEnv;
-    if (!baseUrlEnv) {
-      const { data: escola } = await supabase
-        .from("escolas")
-        .select("validation_base_url")
-        .eq("id", escolaId)
-        .maybeSingle();
-      baseUrl = (escola as { validation_base_url?: string | null } | null)?.validation_base_url ?? null;
-    }
+    await supabase
+      .from("financeiro_fiscal_links")
+      .upsert(
+        {
+          escola_id: escolaId,
+          empresa_id: fiscal.empresa_id,
+          origem_tipo: "financeiro_recibos_emitir",
+          origem_id: mensalidadeId,
+          fiscal_documento_id: fiscal.documento_id,
+          status: "ok",
+          idempotency_key: `financeiro_recibos_emitir:${idempotencyKey}`,
+          payload_snapshot: fiscal.payload_snapshot as Json,
+          fiscal_error: null,
+        },
+        { onConflict: "origem_tipo,origem_id" }
+      )
+      .select("id")
+      .maybeSingle();
 
-    const urlValidacao = baseUrl
-      ? `${String(baseUrl).replace(/\/$/, "")}/documentos/${publicId}`
-      : null;
+    await supabase
+      .from("mensalidades")
+      .update({
+        status_fiscal: "ok",
+        fiscal_documento_id: fiscal.documento_id,
+        fiscal_error: null,
+      })
+      .eq("id", mensalidadeId);
 
     const response: ReciboResponse = {
       ok: true,
-      doc_id: String(dataPayload.doc_id),
-      url_validacao: urlValidacao,
+      doc_id: fiscal.documento_id,
+      url_validacao: null,
+      fiscal: {
+        numero_formatado: fiscal.numero_formatado,
+        hash_control: fiscal.hash_control,
+        key_version: fiscal.key_version,
+      },
     };
 
     await supabaseAny.from("idempotency_keys").upsert(
@@ -145,9 +268,9 @@ export async function POST(req: NextRequest) {
       escolaId,
       portal: "financeiro",
       acao: "RECIBO_EMITIDO",
-      entity: "documentos_emitidos",
-      entityId: String(dataPayload.doc_id),
-      details: { mensalidade_id: mensalidadeId, public_id: publicId },
+      entity: "fiscal_documentos",
+      entityId: fiscal.documento_id,
+      details: { mensalidade_id: mensalidadeId, numero_formatado: fiscal.numero_formatado },
     }).catch(() => null);
 
     return NextResponse.json(response, { status: 200 });

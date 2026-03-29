@@ -4725,6 +4725,80 @@ export type Database = {
           },
         ]
       }
+      financeiro_fiscal_links: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          escola_id: string
+          fiscal_documento_id: string | null
+          fiscal_error: string | null
+          id: string
+          idempotency_key: string
+          origem_id: string
+          origem_tipo: string
+          payload_snapshot: Json
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          escola_id: string
+          fiscal_documento_id?: string | null
+          fiscal_error?: string | null
+          id?: string
+          idempotency_key: string
+          origem_id: string
+          origem_tipo: string
+          payload_snapshot?: Json
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          escola_id?: string
+          fiscal_documento_id?: string | null
+          fiscal_error?: string | null
+          id?: string
+          idempotency_key?: string
+          origem_id?: string
+          origem_tipo?: string
+          payload_snapshot?: Json
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_fiscal_links_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_fiscal_links_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_fiscal_links_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_fiscal_links_fiscal_documento_id_fkey"
+            columns: ["fiscal_documento_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fiscal_series: {
         Row: {
           ativa: boolean
@@ -6855,6 +6929,8 @@ export type Database = {
           data_vencimento: string
           desconto_aplicado: number | null
           escola_id: string | null
+          fiscal_documento_id: string | null
+          fiscal_error: string | null
           id: string
           matricula_id: string | null
           mes_referencia: number | null
@@ -6862,6 +6938,7 @@ export type Database = {
           observacao: string | null
           observacoes: string | null
           status: string | null
+          status_fiscal: string | null
           tabela_id: string | null
           turma_id: string | null
           updated_at: string
@@ -6880,6 +6957,8 @@ export type Database = {
           data_vencimento: string
           desconto_aplicado?: number | null
           escola_id?: string | null
+          fiscal_documento_id?: string | null
+          fiscal_error?: string | null
           id?: string
           matricula_id?: string | null
           mes_referencia?: number | null
@@ -6887,6 +6966,7 @@ export type Database = {
           observacao?: string | null
           observacoes?: string | null
           status?: string | null
+          status_fiscal?: string | null
           tabela_id?: string | null
           turma_id?: string | null
           updated_at?: string
@@ -6905,6 +6985,8 @@ export type Database = {
           data_vencimento?: string
           desconto_aplicado?: number | null
           escola_id?: string | null
+          fiscal_documento_id?: string | null
+          fiscal_error?: string | null
           id?: string
           matricula_id?: string | null
           mes_referencia?: number | null
@@ -6912,6 +6994,7 @@ export type Database = {
           observacao?: string | null
           observacoes?: string | null
           status?: string | null
+          status_fiscal?: string | null
           tabela_id?: string | null
           turma_id?: string | null
           updated_at?: string
@@ -6922,6 +7005,13 @@ export type Database = {
           valor_previsto?: number | null
         }
         Relationships: [
+          {
+            foreignKeyName: "mensalidades_fiscal_documento_id_fkey"
+            columns: ["fiscal_documento_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_documentos"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "mensalidades_aluno_id_fkey"
             columns: ["aluno_id"]
@@ -7965,6 +8055,8 @@ export type Database = {
           day_key: string
           escola_id: string
           evidence_url: string | null
+          fiscal_documento_id: string | null
+          fiscal_error: string | null
           gateway_ref: string | null
           id: string
           mensalidade_id: string | null
@@ -7976,6 +8068,7 @@ export type Database = {
           settled_at: string | null
           settled_by: string | null
           status: string
+          status_fiscal: string | null
           telemovel_origem: string | null
           transacao_id_externo: string | null
           updated_at: string | null
@@ -7990,6 +8083,8 @@ export type Database = {
           day_key?: string
           escola_id: string
           evidence_url?: string | null
+          fiscal_documento_id?: string | null
+          fiscal_error?: string | null
           gateway_ref?: string | null
           id?: string
           mensalidade_id?: string | null
@@ -8001,6 +8096,7 @@ export type Database = {
           settled_at?: string | null
           settled_by?: string | null
           status?: string
+          status_fiscal?: string | null
           telemovel_origem?: string | null
           transacao_id_externo?: string | null
           updated_at?: string | null
@@ -8015,6 +8111,8 @@ export type Database = {
           day_key?: string
           escola_id?: string
           evidence_url?: string | null
+          fiscal_documento_id?: string | null
+          fiscal_error?: string | null
           gateway_ref?: string | null
           id?: string
           mensalidade_id?: string | null
@@ -8026,12 +8124,20 @@ export type Database = {
           settled_at?: string | null
           settled_by?: string | null
           status?: string
+          status_fiscal?: string | null
           telemovel_origem?: string | null
           transacao_id_externo?: string | null
           updated_at?: string | null
           valor_pago?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "pagamentos_fiscal_documento_id_fkey"
+            columns: ["fiscal_documento_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_documentos"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pagamentos_mensalidade_id_fkey"
             columns: ["mensalidade_id"]
