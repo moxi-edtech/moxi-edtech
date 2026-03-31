@@ -107,6 +107,24 @@ function formatExchangeRate(value: number): string {
   return value.toFixed(8);
 }
 
+function resolveSaftInvoiceNo(doc: SaftDocumento): string {
+  const raw = doc.numero_formatado.trim();
+  const alreadyValidPattern = /^[^ ]+ [^/^ ]+\/[0-9]+$/.test(raw);
+  if (alreadyValidPattern) return raw;
+
+  const tipo = doc.tipo_documento.trim().toUpperCase() || "FT";
+  const serieMatch = raw.match(/^([A-Za-z0-9._-]+)/);
+  const rawSerie = serieMatch?.[1] ?? "SERIE";
+  const serie = rawSerie.replace(/[^A-Za-z0-9._-]/g, "") || "SERIE";
+
+  const numeroFromRaw = raw.match(/(\d+)(?!.*\d)/)?.[1];
+  const numeroResolved = Number.isFinite(doc.numero) && doc.numero > 0
+    ? String(doc.numero)
+    : (numeroFromRaw ?? "1");
+
+  return `${tipo} ${serie}/${numeroResolved}`;
+}
+
 export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput {
   const empresaNif = input.empresa.nif.trim();
   if (empresaNif.length < 10 || empresaNif.length > 15) {
@@ -288,7 +306,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
 
       return [
         "        <Invoice>",
-        `          <InvoiceNo>${escapeXml(doc.numero_formatado)}</InvoiceNo>`,
+        `          <InvoiceNo>${escapeXml(resolveSaftInvoiceNo(doc))}</InvoiceNo>`,
         `          <InvoiceDate>${doc.invoice_date}</InvoiceDate>`,
         `          <SystemEntryDate>${doc.system_entry}</SystemEntryDate>`,
         `          <InvoiceType>${escapeXml(doc.tipo_documento)}</InvoiceType>`,
