@@ -22,8 +22,8 @@ COOKIE="next-auth.session-token=..."
 
 ## P7 — Documento com desconto de linha e desconto global
 
-Status atual: `BLOQUEADO PARCIAL`  
-Motivo: API atual não expõe campo de desconto explícito por linha/cabeçalho; `SettlementAmount` não está serializado no builder.
+Status atual: `EXECUTÁVEL PARCIAL`  
+Motivo: `settlement_amount` por linha está suportado e serializado no builder; desconto global ainda depende de fechamento no motor para cobertura total AGT.
 
 Payload técnico base (para emissão de 2 linhas com decimais):
 
@@ -46,6 +46,7 @@ curl -sS -X POST "$BASE_URL/api/fiscal/documentos" \
         "product_code": "SERV_DECIMAL_01",
         "quantidade": 100,
         "preco_unit": 0.55,
+        "settlement_amount": 4.84,
         "taxa_iva": 14
       },
       {
@@ -59,7 +60,7 @@ curl -sS -X POST "$BASE_URL/api/fiscal/documentos" \
   }'
 ```
 
-Nota: após implementação de descontos no motor, repetir este ponto com campos de desconto e validar `SettlementAmount`.
+Nota: para fechar AGT ponto 7, incluir também cenário de desconto global e validar reconciliação final do `SettlementAmount`.
 
 ## P8 — Documento em moeda estrangeira
 
@@ -136,13 +137,13 @@ Repete P9 com outro cliente lógico (nome diferente) e total livre.
 
 ## P3/P4/P5/P11/P12/P13/P14/P15
 
-Status atual: `BLOQUEADO DE ENGINE`  
+Status atual: `PARCIALMENTE DESTRAVADO`  
 Motivo técnico (estado do código):
 
-- tipos não aceitos na API/schema atual: `PP`, `GR/GT`, `FG`;
-- builder SAF-T não serializa `OrderReferences`;
-- builder SAF-T não serializa `SettlementAmount`;
+- tipos aceitos no schema/API: `PP`, `GR/GT`, `FG`;
+- builder SAF-T serializa `OrderReferences` quando há referência de origem;
+- builder SAF-T serializa `SettlementAmount` por linha;
 - `SelfBillingIndicator` fixo em `0`.
 
 Conclusão:
-- estes pontos exigem implementação de engine antes de geração definitiva de evidências AGT.
+- estes pontos exigem execução operacional guiada + evidência (e ajuste de auto-faturação para ponto 13) antes da geração definitiva do pacote AGT.

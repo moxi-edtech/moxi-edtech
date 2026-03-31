@@ -40,6 +40,8 @@ type FiscalDocumentoRow = {
   total_bruto_aoa: number;
   hash_control: string;
   status: string;
+  documento_origem_id: string | null;
+  rectifica_documento_id: string | null;
 };
 
 type FiscalDocumentoItemRow = {
@@ -55,6 +57,28 @@ type FiscalDocumentoItemRow = {
   total_impostos_aoa: number;
   total_bruto_aoa: number;
 };
+
+type OrderReference = {
+  reference: string;
+  origin_invoice_date?: string;
+};
+
+function parseSettlementAmountsFromPayload(payload: Json | null): Map<number, number> {
+  const result = new Map<number, number>();
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return result;
+  const payloadRecord = payload as Record<string, unknown>;
+  const itens = payloadRecord["itens"];
+  if (!Array.isArray(itens)) return result;
+
+  itens.forEach((item, index) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return;
+    const raw = (item as Record<string, unknown>)["settlement_amount"];
+    if (typeof raw !== "number" || !Number.isFinite(raw) || raw < 0) return;
+    result.set(index + 1, raw);
+  });
+
+  return result;
+}
 
 type FiscalSaftExportRow = Pick<
   Database["public"]["Tables"]["fiscal_saft_exports"]["Row"],
@@ -231,7 +255,7 @@ export const fiscalSaftExport = inngest.createFunction(
         supabase
           .from("fiscal_documentos")
           .select(
-            "id, numero, numero_formatado, tipo_documento, invoice_date, system_entry, cliente_nome, cliente_nif, payload, total_liquido_aoa, total_impostos_aoa, total_bruto_aoa, hash_control, status"
+            "id, numero, numero_formatado, tipo_documento, invoice_date, system_entry, cliente_nome, cliente_nif, payload, total_liquido_aoa, total_impostos_aoa, total_bruto_aoa, hash_control, status, documento_origem_id, rectifica_documento_id"
             + ", moeda, taxa_cambio_aoa, payment_mechanism"
           )
           .eq("empresa_id", exportRow.empresa_id)
@@ -275,6 +299,37 @@ export const fiscalSaftExport = inngest.createFunction(
 
       const headerConfig = resolveSaftHeaderConfig();
       const generatedAtIso = new Date().toISOString();
+      const documentoNumeroById = new Map(
+        documentoRows.map((doc) => [doc.id, { numero_formatado: doc.numero_formatado, invoice_date: doc.invoice_date }])
+      );
+      const referencedIds = Array.from(
+        new Set(
+          documentoRows
+            .map((doc) => doc.documento_origem_id ?? doc.rectifica_documento_id)
+            .filter((value): value is string => Boolean(value))
+        )
+      ).filter((id) => !documentoNumeroById.has(id));
+
+      if (referencedIds.length > 0) {
+        const { data: referencedDocs, error: referencedDocsError } = await supabase
+          .from("fiscal_documentos")
+          .select("id, numero_formatado, invoice_date")
+          .in("id", referencedIds)
+          .eq("empresa_id", exportRow.empresa_id);
+
+        if (referencedDocsError) {
+          throw new Error(referencedDocsError.message || "Falha ao obter documentos de referência para SAF-T.");
+        }
+
+        for (const ref of referencedDocs ?? []) {
+          if (!ref?.id || !ref?.numero_formatado || !ref?.invoice_date) continue;
+          documentoNumeroById.set(ref.id, {
+            numero_formatado: String(ref.numero_formatado),
+            invoice_date: String(ref.invoice_date),
+          });
+        }
+      }
+
       const saftInput = {
         empresa: {
           id: empresa.id,
@@ -290,18 +345,39 @@ export const fiscalSaftExport = inngest.createFunction(
         documentos: documentoRows.map((doc) => ({
           ...parseClienteAddressFromPayload(doc.payload),
           ...doc,
+          ...(function () {
+            const settlements = parseSettlementAmountsFromPayload(doc.payload);
+            return {
           itens:
-            itemMap.get(doc.id)?.map((item) => ({
-              ...item,
-              product_code: String(item.product_code ?? ""),
-              product_number_code: item.product_number_code ? String(item.product_number_code) : null,
-              quantidade: Number(item.quantidade),
-              preco_unit: Number(item.preco_unit),
-              taxa_iva: Number(item.taxa_iva),
-              total_liquido_aoa: Number(item.total_liquido_aoa),
-              total_impostos_aoa: Number(item.total_impostos_aoa),
-              total_bruto_aoa: Number(item.total_bruto_aoa),
-            })) ?? [],
+            itemMap.get(doc.id)?.map((item) => {
+              const settlementAmount = settlements.get(Number(item.linha_no)) ?? null;
+              return {
+                ...item,
+                product_code: String(item.product_code ?? ""),
+                product_number_code: item.product_number_code ? String(item.product_number_code) : null,
+                quantidade: Number(item.quantidade),
+                preco_unit: Number(item.preco_unit),
+                taxa_iva: Number(item.taxa_iva),
+                total_liquido_aoa: Number(item.total_liquido_aoa),
+                total_impostos_aoa: Number(item.total_impostos_aoa),
+                total_bruto_aoa: Number(item.total_bruto_aoa),
+                settlement_amount: settlementAmount,
+              };
+            }) ?? [],
+            };
+          })(),
+          order_references: (() => {
+            const refs: OrderReference[] = [];
+            const sourceId = doc.documento_origem_id ?? doc.rectifica_documento_id;
+            if (!sourceId) return refs;
+            const source = documentoNumeroById.get(sourceId);
+            if (!source) return refs;
+            refs.push({
+              reference: source.numero_formatado,
+              origin_invoice_date: source.invoice_date,
+            });
+            return refs;
+          })(),
           moeda: String(doc.moeda ?? "AOA").toUpperCase(),
           taxa_cambio_aoa: doc.taxa_cambio_aoa == null ? null : Number(doc.taxa_cambio_aoa),
           payment_mechanism: parsePaymentMechanism(doc.payment_mechanism),
