@@ -17,6 +17,14 @@ type SaftDocumentoItem = {
   total_liquido_aoa: number;
   total_impostos_aoa: number;
   total_bruto_aoa: number;
+  settlement_amount?: number | null;
+};
+
+type SaftOrderReference = {
+  reference: string;
+  reason?: string | null;
+  origin_document_id?: string | null;
+  origin_invoice_date?: string | null;
 };
 
 type SaftDocumento = {
@@ -40,6 +48,7 @@ type SaftDocumento = {
   total_bruto_aoa: number;
   hash_control: string;
   status: string;
+  order_references?: SaftOrderReference[];
   itens: SaftDocumentoItem[];
 };
 
@@ -194,6 +203,10 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
             throw new Error("SAFT_BUILD_ERROR: ProductCode obrigatório em todas as linhas.");
           }
           const productNumberCode = item.product_number_code?.trim() || productCode;
+          const settlementAmountXml =
+            typeof item.settlement_amount === "number" && Number.isFinite(item.settlement_amount)
+              ? `            <SettlementAmount>${formatMoney(Math.max(0, item.settlement_amount))}</SettlementAmount>`
+              : "";
           return [
             "          <Line>",
             `            <LineNumber>${item.linha_no}</LineNumber>`,
@@ -207,6 +220,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
             `              <TaxAmount>${formatMoney(item.total_impostos_aoa)}</TaxAmount>`,
             "            </Tax>",
             `            <CreditAmount>${formatMoney(item.total_bruto_aoa)}</CreditAmount>`,
+            settlementAmountXml,
             "          </Line>",
           ].join("\n");
         })
@@ -252,6 +266,26 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
             })()
           : "";
 
+      const orderReferencesXml =
+        Array.isArray(doc.order_references) && doc.order_references.length > 0
+          ? doc.order_references
+              .map((ref) => {
+                const reference = ref.reference?.trim();
+                if (!reference) return "";
+                const orderDate = ref.origin_invoice_date?.trim();
+                return [
+                  "          <OrderReferences>",
+                  `            <OriginatingON>${escapeXml(reference)}</OriginatingON>`,
+                  orderDate ? `            <OrderDate>${escapeXml(orderDate)}</OrderDate>` : "",
+                  "          </OrderReferences>",
+                ]
+                  .filter(Boolean)
+                  .join("\n");
+              })
+              .filter(Boolean)
+              .join("\n")
+          : "";
+
       return [
         "        <Invoice>",
         `          <InvoiceNo>${escapeXml(doc.numero_formatado)}</InvoiceNo>`,
@@ -268,6 +302,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
         `          <DocumentStatus>${escapeXml(doc.status)}</DocumentStatus>`,
         `          <Hash>${escapeXml(doc.hash_control)}</Hash>`,
         paymentMechanismXml,
+        orderReferencesXml,
         currencyXml,
         linesXml,
         "          <DocumentTotals>",

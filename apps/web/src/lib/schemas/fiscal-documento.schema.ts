@@ -8,7 +8,7 @@ export const FISCAL_ORIGENS_DOCUMENTO = [
   "contingencia",
 ] as const;
 
-export const FISCAL_TIPOS_DOCUMENTO = ["FR", "FT", "NC", "ND", "RC"] as const;
+export const FISCAL_TIPOS_DOCUMENTO = ["FR", "FT", "NC", "ND", "RC", "PP", "GR", "GT", "FG"] as const;
 export const FISCAL_PAYMENT_MECHANISM_CODES = ["NU", "TB", "CC", "MB"] as const;
 
 export const fiscalDocumentoItemSchema = z.object({
@@ -17,6 +17,7 @@ export const fiscalDocumentoItemSchema = z.object({
   product_number_code: z.string().trim().min(1).max(64).optional(),
   quantidade: z.coerce.number().positive(),
   preco_unit: z.coerce.number().min(0),
+  settlement_amount: z.coerce.number().min(0).optional(),
   taxa_iva: z.coerce.number().min(0).max(100),
   tax_exemption_code: z.string().trim().min(1).max(64).optional(),
   tax_exemption_reason: z.string().trim().min(1).max(500).optional(),

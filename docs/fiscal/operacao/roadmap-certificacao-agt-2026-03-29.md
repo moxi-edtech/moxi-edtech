@@ -50,16 +50,17 @@ Entregar um pacote de evidências auditável com:
 
 Estado atual do motor fiscal: cobertura parcial para os cenários do ofício AGT.
 
-Itens a implementar antes de submissão:
+Itens ainda pendentes para submissão:
 
-1. Tipologias documentais não suportadas na API/schema atual:
+1. Tipologias documentais adicionadas no contrato, mas sem evidência AGT final no pacote:
 - `PP` (pró-forma)
 - `GR`/`GT` (guia de remessa/transporte)
 - `FG` (fatura global)
 
-2. Nós XML obrigatórios ainda não serializados:
+2. Nós XML já serializados, pendendo validação operacional final:
 - `OrderReferences` (pontos 4 e 5)
-- `SettlementAmount` (ponto 7)
+- `SettlementAmount` por linha (ponto 7)
+- desconto global (ponto 7) ainda pendente de fechamento completo
 
 3. Parametrização de comportamento fiscal ainda fixa:
 - `SelfBillingIndicator` atualmente fixo em `0` (deve ser parametrizável para cenários de auto-faturação).
@@ -161,8 +162,9 @@ Objetivo: fechar gaps de tipologia/XML antes da rodada final de evidências.
 - Ajustar validações Zod e contratos de emissão.
 
 2. Sprint B (D2-D4)
-- Implementar `OrderReferences` no builder SAF-T (pontos 4 e 5).
-- Implementar `SettlementAmount` (linha/cabeçalho) com precisão decimal exigida.
+- Implementado: `OrderReferences` no builder SAF-T (pontos 4 e 5).
+- Implementado: `SettlementAmount` por linha no builder SAF-T.
+- Pendente: fechar modelagem de desconto global com precisão decimal exigida.
 
 3. Sprint C (D4-D5)
 - Parametrizar `SelfBillingIndicator` e cobrir cenário de auto-faturação.
