@@ -24,6 +24,16 @@ Entregar um pacote de evidências auditável com:
 | F4 - Pré-submissão | D8-D10 | Simulação de auditoria interna e correções finais |
 | F5 - Submissão | D10-D15 | Envio oficial + protocolo + contingência |
 
+### Atualização de execução — 2026-04-01
+
+- PDF fiscal do módulo foi migrado para template React-PDF dedicado (`FiscalDocumentV1`) com dados reais do ledger.
+- Menção legal AGT e assinatura curta (4 caracteres) foram padronizadas no rodapé.
+- Mapeamento fechado de tipos documentais no PDF: `FT`, `FR`, `NC`, `ND`, `RC`, `PP`, `FG`, `GF`, `GR`, `GT`.
+- Fallback de pré-certificação aplicado no PDF para número AGT: `0/AGT`.
+- Formatação monetária foi tornada determinística para reduzir divergências entre ambientes.
+
+Impacto: este passo destrava a frente documental (PDF) para os pontos 1, 2, 6, 8, 9, 10, 11, 12 e 14, pendendo apenas geração de evidência operacional e validação final ponto a ponto.
+
 ## 3. Matriz operacional AGT (1..17)
 
 | Ponto AGT | Exigência | Status | Evidência esperada | Observação |

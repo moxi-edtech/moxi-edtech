@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
+import { createElement, type ReactElement } from "react";
 
 import { supabaseRouteClient } from "@/lib/supabaseServer";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
+import { FiscalDocumentV1 } from "@/templates/pdf/fiscal/FiscalDocumentV1";
 import type { Database } from "~types/supabase";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +19,8 @@ const paramsSchema = z.object({
 });
 
 const ALLOWED_FISCAL_ROLES = ["owner", "admin", "operator"] as const;
-const FATURA_TYPES = new Set(["FT", "FR"]);
+const CONSUMIDOR_FINAL_NIF = "999999999";
+const DESCONHECIDO = "Desconhecido";
 
 function jsonError(status: number, code: string, message: string, details?: JsonRecord) {
   return NextResponse.json(
@@ -104,8 +107,50 @@ async function requireFiscalAccess({
   return { ok: true as const };
 }
 
-function drawLine(page: ReturnType<PDFDocument["addPage"]>, text: string, x: number, y: number, size = 11) {
-  page.drawText(text, { x, y, size, color: rgb(0.15, 0.15, 0.15) });
+function normalizeString(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function resolveHash4(hashControl: string | null | undefined): string {
+  const normalized = (hashControl ?? "").replace(/[^A-Za-z0-9]/g, "");
+  if (normalized.length >= 31) {
+    return `${normalized[0]}${normalized[10]}${normalized[20]}${normalized[30]}`;
+  }
+  if (normalized.length >= 4) return normalized.slice(0, 4);
+  return "0000";
+}
+
+function resolveAgtNumber(raw: string | null | undefined): string {
+  const value = (raw ?? "").trim();
+  if (!value) return "0";
+  return /^\d+$/.test(value) ? value : "0";
+}
+
+function resolvePdfStatus(status: string | null | undefined): "DRAFT" | "ASSINADO" | "ANULADO" {
+  const normalized = (status ?? "").trim().toLowerCase();
+  if (normalized === "anulado") return "ANULADO";
+  if (normalized === "pendente_assinatura") return "DRAFT";
+  return "ASSINADO";
+}
+
+function resolveClienteFallback({
+  nome,
+  nif,
+  morada,
+}: {
+  nome: string | null;
+  nif: string | null;
+  morada: string | null;
+}) {
+  const safeNif = normalizeString(nif) ?? CONSUMIDOR_FINAL_NIF;
+  const isConsumidorFinal = safeNif === CONSUMIDOR_FINAL_NIF;
+  return {
+    nome: isConsumidorFinal ? "Consumidor final" : (normalizeString(nome) ?? "Cliente"),
+    nif: safeNif,
+    morada: isConsumidorFinal ? DESCONHECIDO : (normalizeString(morada) ?? DESCONHECIDO),
+  };
 }
 
 export async function GET(
@@ -139,7 +184,7 @@ export async function GET(
     const { data: doc, error: docError } = await supabase
       .from("fiscal_documentos")
       .select(
-        "id, empresa_id, numero_formatado, tipo_documento, invoice_date, cliente_nome, total_bruto_aoa, assinatura_base64, status"
+        "id, empresa_id, numero_formatado, tipo_documento, invoice_date, cliente_nome, cliente_nif, total_bruto_aoa, total_impostos_aoa, total_liquido_aoa, hash_control, status, payload, moeda"
       )
       .eq("id", parsedParams.data.documentoId)
       .maybeSingle();
@@ -188,58 +233,84 @@ export async function GET(
       });
     }
 
-    const { data: empresa } = await supabase
+    const [{ data: empresa }, { data: itens, error: itensError }] = await Promise.all([
+      supabase
       .from("fiscal_empresas")
-      .select("nome, nif, certificado_agt_numero")
+      .select("nome, nif, certificado_agt_numero, endereco")
       .eq("id", doc.empresa_id)
-      .maybeSingle();
+      .maybeSingle(),
+      supabase
+        .from("fiscal_documento_itens")
+        .select("id, descricao, quantidade, preco_unit, taxa_iva, total_bruto_aoa, product_code, tax_exemption_code")
+        .eq("documento_id", doc.id)
+        .order("linha_no", { ascending: true }),
+    ]);
 
-    const agtNumero = empresa?.certificado_agt_numero?.trim() || "...";
-    const assinatura4 = (doc.assinatura_base64 ?? "").slice(0, 4) || "----";
+    if (itensError) {
+      return jsonError(
+        500,
+        "FISCAL_DOCUMENTO_ITEMS_LOOKUP_FAILED",
+        itensError.message || "Falha ao obter itens do documento fiscal.",
+        { request_id: requestId, documento_id: doc.id }
+      );
+    }
 
-    const pdfDoc = await PDFDocument.create();
-    const page = pdfDoc.addPage([595, 842]);
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-
-    page.drawText("Documento Fiscal", {
-      x: 48,
-      y: 790,
-      size: 18,
-      font: fontBold,
-      color: rgb(0.1, 0.1, 0.1),
+    const payload = (doc.payload ?? null) as JsonRecord | null;
+    const clientePayload = (payload?.cliente ?? null) as JsonRecord | null;
+    const clienteNomePayload = normalizeString(clientePayload?.nome);
+    const clienteNifPayload = normalizeString(clientePayload?.nif);
+    const clienteMoradaPayload = normalizeString(clientePayload?.address_detail);
+    const cliente = resolveClienteFallback({
+      nome: clienteNomePayload ?? doc.cliente_nome,
+      nif: clienteNifPayload ?? doc.cliente_nif,
+      morada: clienteMoradaPayload,
     });
 
-    const lines: string[] = [
-      `Documento: ${doc.numero_formatado ?? doc.id}`,
-      `Tipo: ${doc.tipo_documento}`,
-      `Data: ${doc.invoice_date}`,
-      `Cliente: ${doc.cliente_nome ?? "Consumidor Final"}`,
-      `Total (AOA): ${Number(doc.total_bruto_aoa ?? 0).toLocaleString("pt-AO")}`,
-      `Assinatura (4): ${assinatura4}`,
-      `NIF Emitente: ${empresa?.nif ?? "-"}`,
-      `Emitente: ${empresa?.nome ?? "-"}`,
-    ];
+    const itensSafe = (itens ?? []).map((item, index) => {
+      const taxExemptionCode = normalizeString(item.tax_exemption_code);
+      return {
+        id: item.id,
+        codigo: normalizeString(item.product_code) ?? `ITEM-${index + 1}`,
+        descricao: item.descricao ?? "Item fiscal",
+        precoUnitario: Number(item.preco_unit ?? 0),
+        quantidade: Number(item.quantidade ?? 0),
+        taxaIva: Number(item.taxa_iva ?? 0),
+        motivoIsencaoCode: taxExemptionCode ?? undefined,
+        total: Number(item.total_bruto_aoa ?? 0),
+      };
+    });
 
-    let y = 750;
-    for (const line of lines) {
-      page.drawText(line, { x: 48, y, size: 11, font, color: rgb(0.15, 0.15, 0.15) });
-      y -= 22;
-    }
+    const agtNumero = resolveAgtNumber(empresa?.certificado_agt_numero);
+    const assinatura4 = resolveHash4(doc.hash_control);
+    const statusPdf = resolvePdfStatus(doc.status);
+    const tipoDocumento = normalizeString(doc.tipo_documento) ?? "FT";
+    const moeda = (normalizeString(doc.moeda) ?? "AOA").toUpperCase();
 
-    drawLine(
-      page,
-      `Processado por programa validado n.º ${agtNumero}/AGT`,
-      48,
-      88,
-      10
-    );
+    const element = createElement(FiscalDocumentV1, {
+      documento: {
+        tipoDocumento,
+        numeroDocumento: doc.numero_formatado ?? doc.id,
+        dataEmissao: String(doc.invoice_date),
+        status: statusPdf,
+        empresa: {
+          nome: empresa?.nome ?? "-",
+          nif: empresa?.nif ?? "-",
+          morada: normalizeString(empresa?.endereco) ?? DESCONHECIDO,
+        },
+        cliente,
+        itens: itensSafe,
+        totais: {
+          incidencia: Number(doc.total_liquido_aoa ?? 0),
+          imposto: Number(doc.total_impostos_aoa ?? 0),
+          totalGeral: Number(doc.total_bruto_aoa ?? 0),
+        },
+        moeda,
+      },
+      assinaturaCurta: assinatura4,
+      agtNumber: agtNumero,
+    }) as unknown as ReactElement<DocumentProps>;
 
-    if (!FATURA_TYPES.has(doc.tipo_documento ?? "")) {
-      drawLine(page, "Este documento não serve de factura", 48, 68, 10);
-    }
-
-    const pdfBytes = await pdfDoc.save();
+    const pdfBytes = await renderToBuffer(element);
     const pdfBody = Buffer.from(pdfBytes) as unknown as BodyInit;
 
     return new NextResponse(pdfBody, {

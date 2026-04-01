@@ -12,6 +12,10 @@ Objetivo: centralizar os artefatos de resposta ao ofício AGT (Ref: 0000498/0118
   - checklist de execução diária e pré-submissão
 - `PAYLOADS_EXECUCAO_AGT_2026-03-30.md`
   - payloads/curls operacionais e bloqueios técnicos por ponto AGT
+- `PDF engine fiscal (2026-04-01)`
+  - endpoint oficial: `/api/fiscal/documentos/[documentoId]/pdf`
+  - template: `apps/web/src/templates/pdf/fiscal/FiscalDocumentV1.tsx`
+  - status: integrado com menção AGT, assinatura curta e fallback `0/AGT`
 - `PDFS_AGT/`
   - PDFs finais por ponto AGT
 - `SAFT_AGT_UNICO_2026-03.xml`

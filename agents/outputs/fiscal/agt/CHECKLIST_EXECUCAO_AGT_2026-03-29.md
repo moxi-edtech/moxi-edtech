@@ -9,6 +9,7 @@ Janela alvo: 2026-03-29 a 2026-04-15
 - [ ] Congelar mudanças não essenciais no módulo fiscal
 - [x] Confirmar variáveis fiscais em produção (`SAFT_*`, `AWS_*`, `SUPABASE_*`)
 - [ ] Confirmar Inngest sincronizado com `https://app.klasse.ao/api/inngest`
+- [x] Integrar template PDF fiscal AGT no endpoint oficial (`/api/fiscal/documentos/[documentoId]/pdf`)
 
 ## B. Geração dos exemplos (D0-D4)
 
@@ -38,6 +39,7 @@ Janela alvo: 2026-03-29 a 2026-04-15
 - [ ] Matriz AGT 1..17 preenchida sem lacunas
 - [ ] Coerência temporal comprovada (evidências em pelo menos 2 meses distintos)
 - [ ] Consistência PDF = XML = DB comprovada para todos os pontos READY
+- [ ] Validar menção legal AGT e assinatura curta em todos os PDFs anexados
 - [ ] Encadeamento documental validado (Pró-forma -> FT, FT -> NC)
 - [ ] Isolamento multi-tenant validado (sem cross-tenant no SAF-T)
 - [ ] Reconciliação decimal (diferença acumulada = 0.0000)
