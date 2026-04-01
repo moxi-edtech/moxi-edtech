@@ -16,10 +16,6 @@ export function FiscalRowActions({ doc, onRefresh }: FiscalRowActionsProps) {
   const router = useRouter();
   const [openAnular, setOpenAnular] = useState(false);
 
-  if (doc.status === "ANULADO") {
-    return null;
-  }
-
   return (
     <>
       <div className="flex items-center justify-end gap-2">
