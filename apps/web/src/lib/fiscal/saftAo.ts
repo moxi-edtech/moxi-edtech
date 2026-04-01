@@ -103,6 +103,10 @@ function formatMoney(value: number): string {
   return value.toFixed(4);
 }
 
+function formatMoney2(value: number): string {
+  return value.toFixed(2);
+}
+
 function formatExchangeRate(value: number): string {
   return value.toFixed(8);
 }
@@ -367,9 +371,9 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
         `          <CustomerID>${escapeXml(customerId)}</CustomerID>`,
         linesXml,
         "          <DocumentTotals>",
-        `            <TaxPayable>${formatMoney(doc.total_impostos_aoa)}</TaxPayable>`,
-        `            <NetTotal>${formatMoney(doc.total_liquido_aoa)}</NetTotal>`,
-        `            <GrossTotal>${formatMoney(doc.total_bruto_aoa)}</GrossTotal>`,
+        `            <TaxPayable>${formatMoney2(doc.total_impostos_aoa)}</TaxPayable>`,
+        `            <NetTotal>${formatMoney2(doc.total_liquido_aoa)}</NetTotal>`,
+        `            <GrossTotal>${formatMoney2(doc.total_bruto_aoa)}</GrossTotal>`,
         currencyXml,
         paymentXml,
         "          </DocumentTotals>",
