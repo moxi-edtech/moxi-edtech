@@ -107,6 +107,25 @@ function formatExchangeRate(value: number): string {
   return value.toFixed(8);
 }
 
+function resolveSourceBillingFromStatus(status: string): "P" | "I" | "M" {
+  const normalized = status.trim().toLowerCase();
+  if (normalized === "manual_recuperado" || normalized === "contingencia") return "M";
+  if (normalized === "integrado") return "I";
+  return "P";
+}
+
+function resolveInvoiceStatus(docStatus: string): "N" | "A" | "R" | "S" {
+  const normalized = docStatus.trim().toLowerCase();
+  if (normalized === "anulado") return "A";
+  return "N";
+}
+
+function resolveTaxCode(taxaIva: number): string {
+  if (taxaIva <= 0) return "ISE";
+  if (taxaIva <= 5) return "RED";
+  return "NOR";
+}
+
 function resolveSaftInvoiceNo(doc: SaftDocumento): string {
   const raw = doc.numero_formatado.trim();
   const alreadyValidPattern = /^[^ ]+ [^/^ ]+\/[0-9]+$/.test(raw);
@@ -214,6 +233,11 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
 
   const invoicesXml = input.documentos
     .map((doc) => {
+      const invoiceNo = resolveSaftInvoiceNo(doc);
+      const sourceId = "KLASSE";
+      const sourceBilling = resolveSourceBillingFromStatus(doc.status);
+      const invoiceStatus = resolveInvoiceStatus(doc.status);
+
       const linesXml = doc.itens
         .map((item) => {
           const productCode = item.product_code.trim();
@@ -225,19 +249,64 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
             typeof item.settlement_amount === "number" && Number.isFinite(item.settlement_amount)
               ? `            <SettlementAmount>${formatMoney(Math.max(0, item.settlement_amount))}</SettlementAmount>`
               : "";
+          const orderReferencesXml =
+            Array.isArray(doc.order_references) && doc.order_references.length > 0
+              ? doc.order_references
+                  .map((ref) => {
+                    const reference = ref.reference?.trim();
+                    if (!reference) return "";
+                    const orderDate = ref.origin_invoice_date?.trim();
+                    return [
+                      "            <OrderReferences>",
+                      `              <OriginatingON>${escapeXml(reference)}</OriginatingON>`,
+                      orderDate ? `              <OrderDate>${escapeXml(orderDate)}</OrderDate>` : "",
+                      "            </OrderReferences>",
+                    ]
+                      .filter(Boolean)
+                      .join("\n");
+                  })
+                  .filter(Boolean)
+                  .join("\n")
+              : "";
+          const referencesXml =
+            doc.tipo_documento === "NC" &&
+            Array.isArray(doc.order_references) &&
+            doc.order_references.length > 0
+              ? doc.order_references
+                  .map((ref) => {
+                    const reference = ref.reference?.trim();
+                    if (!reference) return "";
+                    return [
+                      "            <References>",
+                      `              <Reference>${escapeXml(reference)}</Reference>`,
+                      ref.reason?.trim() ? `              <Reason>${escapeXml(ref.reason.trim())}</Reason>` : "",
+                      "            </References>",
+                    ]
+                      .filter(Boolean)
+                      .join("\n");
+                  })
+                  .filter(Boolean)
+                  .join("\n")
+              : "";
           return [
             "          <Line>",
             `            <LineNumber>${item.linha_no}</LineNumber>`,
+            orderReferencesXml,
             `            <ProductCode>${escapeXml(productCode)}</ProductCode>`,
-            `            <ProductNumberCode>${escapeXml(productNumberCode)}</ProductNumberCode>`,
             `            <ProductDescription>${escapeXml(item.descricao)}</ProductDescription>`,
             `            <Quantity>${item.quantidade}</Quantity>`,
+            "            <UnitOfMeasure>UN</UnitOfMeasure>",
             `            <UnitPrice>${formatMoney(item.preco_unit)}</UnitPrice>`,
-            "            <Tax>",
-            `              <TaxPercentage>${item.taxa_iva}</TaxPercentage>`,
-            `              <TaxAmount>${formatMoney(item.total_impostos_aoa)}</TaxAmount>`,
-            "            </Tax>",
+            `            <TaxPointDate>${doc.invoice_date}</TaxPointDate>`,
+            referencesXml,
+            `            <Description>${escapeXml(item.descricao)}</Description>`,
             `            <CreditAmount>${formatMoney(item.total_bruto_aoa)}</CreditAmount>`,
+            "            <Tax>",
+            "              <TaxType>IVA</TaxType>",
+            "              <TaxCountryRegion>AO</TaxCountryRegion>",
+            `              <TaxCode>${resolveTaxCode(item.taxa_iva)}</TaxCode>`,
+            `              <TaxPercentage>${item.taxa_iva.toFixed(2)}</TaxPercentage>`,
+            "            </Tax>",
             settlementAmountXml,
             "          </Line>",
           ].join("\n");
@@ -247,23 +316,15 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
       const customerId = doc.cliente_nif
         ? `NIF-${doc.cliente_nif}`
         : `NM-${doc.cliente_nome}`;
-      const billingAddress = resolveAddress({
-        nome: doc.cliente_nome,
-        nif: doc.cliente_nif,
-        address_detail: doc.address_detail,
-        city: doc.city,
-        postal_code: doc.postal_code,
-        country: doc.country,
-      });
-
       const currencyXml =
         doc.moeda.toUpperCase() === "AOA"
           ? ""
           : [
-              "          <Currency>",
-              `            <CurrencyCode>${escapeXml(doc.moeda.toUpperCase())}</CurrencyCode>`,
-              `            <ExchangeRate>${formatExchangeRate(Number(doc.taxa_cambio_aoa ?? 0))}</ExchangeRate>`,
-              "          </Currency>",
+              "            <Currency>",
+              `              <CurrencyCode>${escapeXml(doc.moeda.toUpperCase())}</CurrencyCode>`,
+              `              <CurrencyAmount>${formatMoney(Number(doc.total_bruto_aoa) / Number(doc.taxa_cambio_aoa ?? 1))}</CurrencyAmount>`,
+              `              <ExchangeRate>${formatExchangeRate(Number(doc.taxa_cambio_aoa ?? 0))}</ExchangeRate>`,
+              "            </Currency>",
             ].join("\n");
 
       if (doc.moeda.toUpperCase() !== "AOA" && (!doc.taxa_cambio_aoa || Number(doc.taxa_cambio_aoa) <= 0)) {
@@ -272,61 +333,45 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
         );
       }
 
-      const paymentMechanismXml =
-        doc.tipo_documento === "RC"
-          ? (() => {
-              if (!doc.payment_mechanism) {
-                throw new Error(
-                  `SAFT_BUILD_ERROR: PaymentMechanism obrigatório para recibo ${doc.numero_formatado}.`
-                );
-              }
-              return `          <PaymentMechanism>${escapeXml(doc.payment_mechanism)}</PaymentMechanism>`;
-            })()
-          : "";
-
-      const orderReferencesXml =
-        Array.isArray(doc.order_references) && doc.order_references.length > 0
-          ? doc.order_references
-              .map((ref) => {
-                const reference = ref.reference?.trim();
-                if (!reference) return "";
-                const orderDate = ref.origin_invoice_date?.trim();
-                return [
-                  "          <OrderReferences>",
-                  `            <OriginatingON>${escapeXml(reference)}</OriginatingON>`,
-                  orderDate ? `            <OrderDate>${escapeXml(orderDate)}</OrderDate>` : "",
-                  "          </OrderReferences>",
-                ]
-                  .filter(Boolean)
-                  .join("\n");
-              })
-              .filter(Boolean)
-              .join("\n")
+      const paymentXml =
+        doc.tipo_documento === "RC" && doc.payment_mechanism
+          ? [
+              "            <Payment>",
+              `              <PaymentMechanism>${escapeXml(doc.payment_mechanism)}</PaymentMechanism>`,
+              `              <PaymentAmount>${formatMoney(doc.total_bruto_aoa)}</PaymentAmount>`,
+              `              <PaymentDate>${doc.invoice_date}</PaymentDate>`,
+              "            </Payment>",
+            ].join("\n")
           : "";
 
       return [
         "        <Invoice>",
-        `          <InvoiceNo>${escapeXml(resolveSaftInvoiceNo(doc))}</InvoiceNo>`,
+        `          <InvoiceNo>${escapeXml(invoiceNo)}</InvoiceNo>`,
+        "          <DocumentStatus>",
+        `            <InvoiceStatus>${invoiceStatus}</InvoiceStatus>`,
+        `            <InvoiceStatusDate>${doc.system_entry}</InvoiceStatusDate>`,
+        `            <SourceID>${sourceId}</SourceID>`,
+        `            <SourceBilling>${sourceBilling}</SourceBilling>`,
+        "          </DocumentStatus>",
+        `          <Hash>${escapeXml(doc.hash_control)}</Hash>`,
+        `          <HashControl>${escapeXml(doc.hash_control)}</HashControl>`,
         `          <InvoiceDate>${doc.invoice_date}</InvoiceDate>`,
         `          <SystemEntryDate>${doc.system_entry}</SystemEntryDate>`,
         `          <InvoiceType>${escapeXml(doc.tipo_documento)}</InvoiceType>`,
+        "          <SpecialRegimes>",
+        "            <SelfBillingIndicator>0</SelfBillingIndicator>",
+        "            <CashVATSchemeIndicator>0</CashVATSchemeIndicator>",
+        "            <ThirdPartiesBillingIndicator>0</ThirdPartiesBillingIndicator>",
+        "          </SpecialRegimes>",
+        `          <SourceID>${sourceId}</SourceID>`,
         `          <CustomerID>${escapeXml(customerId)}</CustomerID>`,
-        "          <BillingAddress>",
-        `            <AddressDetail>${escapeXml(billingAddress.addressDetail)}</AddressDetail>`,
-        `            <City>${escapeXml(billingAddress.city)}</City>`,
-        `            <PostalCode>${escapeXml(billingAddress.postalCode)}</PostalCode>`,
-        `            <Country>${escapeXml(billingAddress.country)}</Country>`,
-        "          </BillingAddress>",
-        `          <DocumentStatus>${escapeXml(doc.status)}</DocumentStatus>`,
-        `          <Hash>${escapeXml(doc.hash_control)}</Hash>`,
-        paymentMechanismXml,
-        orderReferencesXml,
-        currencyXml,
         linesXml,
         "          <DocumentTotals>",
         `            <TaxPayable>${formatMoney(doc.total_impostos_aoa)}</TaxPayable>`,
         `            <NetTotal>${formatMoney(doc.total_liquido_aoa)}</NetTotal>`,
         `            <GrossTotal>${formatMoney(doc.total_bruto_aoa)}</GrossTotal>`,
+        currencyXml,
+        paymentXml,
         "          </DocumentTotals>",
         "        </Invoice>",
       ].join("\n");
