@@ -118,6 +118,38 @@ function resolveSourceBillingFromStatus(status: string): "P" | "I" | "M" {
   return "P";
 }
 
+const SALES_INVOICE_TYPES = new Set([
+  "FT",
+  "FR",
+  "GF",
+  "FG",
+  "AC",
+  "AR",
+  "ND",
+  "NC",
+  "AF",
+  "TV",
+  "RP",
+  "RE",
+  "CS",
+  "LD",
+  "RA",
+] as const);
+
+function resolveSalesInvoiceType(tipoDocumento: string): string {
+  const normalized = tipoDocumento.trim().toUpperCase();
+
+  if (normalized === "RC") return "AR";
+  if (normalized === "PP") return "AC";
+  if (SALES_INVOICE_TYPES.has(normalized as (typeof SALES_INVOICE_TYPES extends Set<infer T> ? T : never))) {
+    return normalized;
+  }
+
+  throw new Error(
+    `SAFT_BUILD_ERROR: tipo_documento '${normalized}' não suportado em SalesInvoices.`
+  );
+}
+
 function resolveInvoiceStatus(docStatus: string): "N" | "A" | "R" | "S" {
   const normalized = docStatus.trim().toLowerCase();
   if (normalized === "anulado") return "A";
@@ -130,12 +162,12 @@ function resolveTaxCode(taxaIva: number): string {
   return "NOR";
 }
 
-function resolveSaftInvoiceNo(doc: SaftDocumento): string {
+function resolveSaftInvoiceNo(doc: SaftDocumento, invoiceType: string): string {
   const raw = doc.numero_formatado.trim();
   const alreadyValidPattern = /^[^ ]+ [^/^ ]+\/[0-9]+$/.test(raw);
   if (alreadyValidPattern) return raw;
 
-  const tipo = doc.tipo_documento.trim().toUpperCase() || "FT";
+  const tipo = invoiceType.trim().toUpperCase() || "FT";
   const serieMatch = raw.match(/^([A-Za-z0-9._-]+)/);
   const rawSerie = serieMatch?.[1] ?? "SERIE";
   const serie = rawSerie.replace(/[^A-Za-z0-9._-]/g, "") || "SERIE";
@@ -237,7 +269,8 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
 
   const invoicesXml = input.documentos
     .map((doc) => {
-      const invoiceNo = resolveSaftInvoiceNo(doc);
+      const invoiceType = resolveSalesInvoiceType(doc.tipo_documento);
+      const invoiceNo = resolveSaftInvoiceNo(doc, invoiceType);
       const sourceId = "KLASSE";
       const sourceBilling = resolveSourceBillingFromStatus(doc.status);
       const invoiceStatus = resolveInvoiceStatus(doc.status);
@@ -360,7 +393,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
         `          <Hash>${escapeXml(doc.hash_control)}</Hash>`,
         `          <HashControl>${escapeXml(doc.hash_control)}</HashControl>`,
         `          <InvoiceDate>${doc.invoice_date}</InvoiceDate>`,
-        `          <InvoiceType>${escapeXml(doc.tipo_documento)}</InvoiceType>`,
+        `          <InvoiceType>${escapeXml(invoiceType)}</InvoiceType>`,
         "          <SpecialRegimes>",
         "            <SelfBillingIndicator>0</SelfBillingIndicator>",
         "            <CashVATSchemeIndicator>0</CashVATSchemeIndicator>",
