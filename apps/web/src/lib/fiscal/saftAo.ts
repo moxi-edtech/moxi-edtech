@@ -61,6 +61,12 @@ type SaftCustomer = {
   country: string | null;
 };
 
+type SaftProduct = {
+  code: string;
+  description: string;
+  numberCode: string;
+};
+
 const CONSUMIDOR_FINAL_NIF = "999999999";
 const DESCONHECIDO = "Desconhecido";
 
@@ -204,6 +210,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
   let totalBrutoAoa = 0;
 
   const customerRows = new Map<string, SaftCustomer>();
+  const productRows = new Map<string, SaftProduct>();
   const normalizeAddress = (value: string | null): string => {
     const trimmed = value?.trim();
     return trimmed && trimmed.length > 0 ? trimmed : DESCONHECIDO;
@@ -243,6 +250,15 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
     totalLiquidoAoa += doc.total_liquido_aoa;
     totalImpostosAoa += doc.total_impostos_aoa;
     totalBrutoAoa += doc.total_bruto_aoa;
+
+    for (const item of doc.itens) {
+      const code = item.product_code.trim();
+      if (!code) continue;
+      if (productRows.has(code)) continue;
+      const description = item.descricao.trim() || code;
+      const numberCode = item.product_number_code?.trim() || code;
+      productRows.set(code, { code, description, numberCode });
+    }
   }
 
   const customersXml = Array.from(customerRows.values())
@@ -265,6 +281,19 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
         "    </Customer>",
       ].join("\n");
     })
+    .join("\n");
+
+  const productsXml = Array.from(productRows.values())
+    .map((product) =>
+      [
+        "    <Product>",
+        "      <ProductType>S</ProductType>",
+        `      <ProductCode>${escapeXml(product.code)}</ProductCode>`,
+        `      <ProductDescription>${escapeXml(product.description)}</ProductDescription>`,
+        `      <ProductNumberCode>${escapeXml(product.numberCode)}</ProductNumberCode>`,
+        "    </Product>",
+      ].join("\n")
+    )
     .join("\n");
 
   const invoicesXml = input.documentos
@@ -443,6 +472,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
     "  </Header>",
     "  <MasterFiles>",
     customersXml,
+    productsXml,
     "  </MasterFiles>",
     "  <SourceDocuments>",
     "    <SalesInvoices>",
