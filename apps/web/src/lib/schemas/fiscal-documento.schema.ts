@@ -105,13 +105,40 @@ export const postFiscalDocumentoSchema = z
     });
   });
 
-export const postFiscalDocumentoUiSchema = z.object({
-  ano_fiscal: z.coerce.number().int().min(2024).max(2100),
-  tipo_documento: z.enum(["FT", "FR"]),
-  cliente_nome: z.string().trim().min(1).max(255),
-  itens: z.array(fiscalDocumentoUiItemSchema).min(1).max(500),
-  metadata: z.record(z.string(), z.unknown()).optional(),
-});
+export const postFiscalDocumentoUiSchema = z
+  .object({
+    ano_fiscal: z.coerce.number().int().min(2024).max(2100),
+    tipo_documento: z.enum(FISCAL_TIPOS_DOCUMENTO),
+    cliente_nome: z.string().trim().min(1).max(255),
+    payment_mechanism: z.enum(FISCAL_PAYMENT_MECHANISM_CODES).optional(),
+    documento_origem_id: z.string().uuid().optional(),
+    rectifica_documento_id: z.string().uuid().optional(),
+    itens: z.array(fiscalDocumentoUiItemSchema).min(1).max(500),
+    metadata: z.record(z.string(), z.unknown()).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.tipo_documento === "RC" && !data.payment_mechanism) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["payment_mechanism"],
+        message: "payment_mechanism é obrigatório para recibos (RC).",
+      });
+    }
+    if (data.tipo_documento === "NC" && !data.rectifica_documento_id) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["rectifica_documento_id"],
+        message: "rectifica_documento_id é obrigatório para nota de crédito (NC).",
+      });
+    }
+    if (data.tipo_documento === "ND" && !data.documento_origem_id) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["documento_origem_id"],
+        message: "documento_origem_id é obrigatório para nota de débito (ND).",
+      });
+    }
+  });
 
 export const postFiscalDocumentoRequestSchema = z.union([
   postFiscalDocumentoSchema,

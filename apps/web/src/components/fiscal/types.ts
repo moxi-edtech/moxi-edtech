@@ -1,5 +1,5 @@
 export type FiscalDocStatus = "EMITIDO" | "RETIFICADO" | "ANULADO";
-export type TipoDocumento = "FT" | "FR";
+export type TipoDocumento = "FR" | "FT" | "NC" | "ND" | "RC" | "PP" | "GR" | "GT" | "FG";
 
 export interface FiscalDoc {
   id: string;
@@ -23,5 +23,8 @@ export interface EmissaoPayload {
   ano_fiscal: number;
   tipo_documento: TipoDocumento;
   cliente_nome: string;
+  payment_mechanism?: "NU" | "TB" | "CC" | "MB";
+  documento_origem_id?: string;
+  rectifica_documento_id?: string;
   itens: { descricao: string; valor: number }[];
 }

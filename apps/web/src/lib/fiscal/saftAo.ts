@@ -142,11 +142,40 @@ const SALES_INVOICE_TYPES = new Set([
   "RA",
 ] as const);
 
-function resolveSalesInvoiceType(tipoDocumento: string): string {
-  const normalized = tipoDocumento.trim().toUpperCase();
+const WORK_DOCUMENT_TYPES = new Set(["PP"] as const);
+const MOVEMENT_TYPES = new Set(["GR", "GT"] as const);
+const PAYMENT_TYPES = new Set(["RC"] as const);
 
-  if (normalized === "RC") return "AR";
-  if (normalized === "PP") return "AC";
+function normalizeTipoDocumento(tipoDocumento: string): string {
+  return tipoDocumento.trim().toUpperCase();
+}
+
+function isSalesInvoiceTipo(tipoDocumento: string): boolean {
+  const normalized = normalizeTipoDocumento(tipoDocumento);
+  return SALES_INVOICE_TYPES.has(
+    normalized as (typeof SALES_INVOICE_TYPES extends Set<infer T> ? T : never)
+  );
+}
+
+function isWorkDocumentTipo(tipoDocumento: string): boolean {
+  const normalized = normalizeTipoDocumento(tipoDocumento);
+  return WORK_DOCUMENT_TYPES.has(
+    normalized as (typeof WORK_DOCUMENT_TYPES extends Set<infer T> ? T : never)
+  );
+}
+
+function isMovementTipo(tipoDocumento: string): boolean {
+  const normalized = normalizeTipoDocumento(tipoDocumento);
+  return MOVEMENT_TYPES.has(normalized as (typeof MOVEMENT_TYPES extends Set<infer T> ? T : never));
+}
+
+function isPaymentTipo(tipoDocumento: string): boolean {
+  const normalized = normalizeTipoDocumento(tipoDocumento);
+  return PAYMENT_TYPES.has(normalized as (typeof PAYMENT_TYPES extends Set<infer T> ? T : never));
+}
+
+function resolveSalesInvoiceType(tipoDocumento: string): string {
+  const normalized = normalizeTipoDocumento(tipoDocumento);
   if (SALES_INVOICE_TYPES.has(normalized as (typeof SALES_INVOICE_TYPES extends Set<infer T> ? T : never))) {
     return normalized;
   }
@@ -162,6 +191,42 @@ function resolveInvoiceStatus(docStatus: string): "N" | "A" | "R" | "S" {
   return "N";
 }
 
+function resolveWorkStatus(docStatus: string): "N" | "A" | "F" {
+  const normalized = docStatus.trim().toLowerCase();
+  if (normalized === "anulado") return "A";
+  return "N";
+}
+
+function resolveMovementStatus(docStatus: string): "N" | "T" | "A" | "F" | "R" {
+  const normalized = docStatus.trim().toLowerCase();
+  if (normalized === "anulado") return "A";
+  return "N";
+}
+
+function resolvePaymentStatus(docStatus: string): "N" | "A" {
+  const normalized = docStatus.trim().toLowerCase();
+  if (normalized === "anulado") return "A";
+  return "N";
+}
+
+function resolveWorkType(tipoDocumento: string): string {
+  const normalized = normalizeTipoDocumento(tipoDocumento);
+  if (normalized === "PP") return "PP";
+  throw new Error(`SAFT_BUILD_ERROR: tipo_documento '${normalized}' não suportado em WorkingDocuments.`);
+}
+
+function resolveMovementType(tipoDocumento: string): string {
+  const normalized = normalizeTipoDocumento(tipoDocumento);
+  if (normalized === "GR" || normalized === "GT") return normalized;
+  throw new Error(`SAFT_BUILD_ERROR: tipo_documento '${normalized}' não suportado em MovementOfGoods.`);
+}
+
+function resolvePaymentType(tipoDocumento: string): string {
+  const normalized = normalizeTipoDocumento(tipoDocumento);
+  if (normalized === "RC") return "RC";
+  throw new Error(`SAFT_BUILD_ERROR: tipo_documento '${normalized}' não suportado em Payments.`);
+}
+
 function resolveTaxCode(taxaIva: number): string {
   if (taxaIva <= 0) return "ISE";
   if (taxaIva <= 5) return "RED";
@@ -170,8 +235,8 @@ function resolveTaxCode(taxaIva: number): string {
 
 function resolveSaftInvoiceNo(doc: SaftDocumento, invoiceType: string): string {
   const raw = doc.numero_formatado.trim();
-  const alreadyValidPattern = /^[^ ]+ [^/^ ]+\/[0-9]+$/.test(raw);
-  if (alreadyValidPattern) return raw;
+  const alreadyValidPattern = /^([^ ]+) [^/^ ]+\/[0-9]+$/.exec(raw);
+  if (alreadyValidPattern && alreadyValidPattern[1] === invoiceType.trim().toUpperCase()) return raw;
 
   const tipo = invoiceType.trim().toUpperCase() || "FT";
   const serieMatch = raw.match(/^([A-Za-z0-9._-]+)/);
@@ -297,6 +362,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
     .join("\n");
 
   const invoicesXml = input.documentos
+    .filter((doc) => isSalesInvoiceTipo(doc.tipo_documento))
     .map((doc) => {
       const invoiceType = resolveSalesInvoiceType(doc.tipo_documento);
       const invoiceNo = resolveSaftInvoiceNo(doc, invoiceType);
@@ -400,7 +466,7 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
       }
 
       const paymentXml =
-        doc.tipo_documento === "RC" && doc.payment_mechanism
+        doc.payment_mechanism
           ? [
               "            <Payment>",
               `              <PaymentMechanism>${escapeXml(doc.payment_mechanism)}</PaymentMechanism>`,
@@ -444,6 +510,350 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
     })
     .join("\n");
 
+  const workDocumentsXml = input.documentos
+    .filter((doc) => isWorkDocumentTipo(doc.tipo_documento))
+    .map((doc) => {
+      const workType = resolveWorkType(doc.tipo_documento);
+      const documentNumber = resolveSaftInvoiceNo(doc, workType);
+      const sourceId = "KLASSE";
+      const sourceBilling = resolveSourceBillingFromStatus(doc.status);
+      const workStatus = resolveWorkStatus(doc.status);
+      const customerId = doc.cliente_nif ? `NIF-${doc.cliente_nif}` : `NM-${doc.cliente_nome}`;
+
+      const linesXml = doc.itens
+        .map((item) => {
+          const productCode = item.product_code.trim();
+          if (!productCode) {
+            throw new Error("SAFT_BUILD_ERROR: ProductCode obrigatório em todas as linhas.");
+          }
+          const orderReferencesXml =
+            Array.isArray(doc.order_references) && doc.order_references.length > 0
+              ? doc.order_references
+                  .map((ref) => {
+                    const reference = ref.reference?.trim();
+                    if (!reference) return "";
+                    const orderDate = ref.origin_invoice_date?.trim();
+                    return [
+                      "            <OrderReferences>",
+                      `              <OriginatingON>${escapeXml(reference)}</OriginatingON>`,
+                      orderDate ? `              <OrderDate>${escapeXml(orderDate)}</OrderDate>` : "",
+                      "            </OrderReferences>",
+                    ]
+                      .filter(Boolean)
+                      .join("\n");
+                  })
+                  .filter(Boolean)
+                  .join("\n")
+              : "";
+          return [
+            "          <Line>",
+            `            <LineNumber>${item.linha_no}</LineNumber>`,
+            orderReferencesXml,
+            `            <ProductCode>${escapeXml(productCode)}</ProductCode>`,
+            `            <ProductDescription>${escapeXml(item.descricao)}</ProductDescription>`,
+            `            <Quantity>${item.quantidade}</Quantity>`,
+            "            <UnitOfMeasure>UN</UnitOfMeasure>",
+            `            <UnitPrice>${formatMoney(item.preco_unit)}</UnitPrice>`,
+            `            <TaxPointDate>${doc.invoice_date}</TaxPointDate>`,
+            `            <Description>${escapeXml(item.descricao)}</Description>`,
+            `            <CreditAmount>${formatMoney(item.total_bruto_aoa)}</CreditAmount>`,
+            "            <Tax>",
+            "              <TaxType>IVA</TaxType>",
+            "              <TaxCountryRegion>AO</TaxCountryRegion>",
+            `              <TaxCode>${resolveTaxCode(item.taxa_iva)}</TaxCode>`,
+            `              <TaxPercentage>${item.taxa_iva.toFixed(2)}</TaxPercentage>`,
+            "            </Tax>",
+            "          </Line>",
+          ].join("\n");
+        })
+        .join("\n");
+
+      const currencyXml =
+        doc.moeda.toUpperCase() === "AOA"
+          ? ""
+          : [
+              "            <Currency>",
+              `              <CurrencyCode>${escapeXml(doc.moeda.toUpperCase())}</CurrencyCode>`,
+              `              <CurrencyAmount>${formatMoney(Number(doc.total_bruto_aoa) / Number(doc.taxa_cambio_aoa ?? 1))}</CurrencyAmount>`,
+              `              <ExchangeRate>${formatExchangeRate(Number(doc.taxa_cambio_aoa ?? 0))}</ExchangeRate>`,
+              "            </Currency>",
+            ].join("\n");
+
+      if (doc.moeda.toUpperCase() !== "AOA" && (!doc.taxa_cambio_aoa || Number(doc.taxa_cambio_aoa) <= 0)) {
+        throw new Error(
+          `SAFT_BUILD_ERROR: ExchangeRate obrigatório e positivo para documento ${doc.numero_formatado}.`
+        );
+      }
+
+      return [
+        "        <WorkDocument>",
+        `          <DocumentNumber>${escapeXml(documentNumber)}</DocumentNumber>`,
+        "          <DocumentStatus>",
+        `            <WorkStatus>${workStatus}</WorkStatus>`,
+        `            <WorkStatusDate>${doc.system_entry}</WorkStatusDate>`,
+        `            <SourceID>${sourceId}</SourceID>`,
+        `            <SourceBilling>${sourceBilling}</SourceBilling>`,
+        "          </DocumentStatus>",
+        `          <Hash>${escapeXml(doc.hash_control)}</Hash>`,
+        `          <HashControl>${escapeXml(doc.hash_control)}</HashControl>`,
+        `          <WorkDate>${doc.invoice_date}</WorkDate>`,
+        `          <WorkType>${escapeXml(workType)}</WorkType>`,
+        `          <SourceID>${sourceId}</SourceID>`,
+        `          <SystemEntryDate>${doc.system_entry}</SystemEntryDate>`,
+        `          <CustomerID>${escapeXml(customerId)}</CustomerID>`,
+        linesXml,
+        "          <DocumentTotals>",
+        `            <TaxPayable>${formatMoney2(doc.total_impostos_aoa)}</TaxPayable>`,
+        `            <NetTotal>${formatMoney2(doc.total_liquido_aoa)}</NetTotal>`,
+        `            <GrossTotal>${formatMoney2(doc.total_bruto_aoa)}</GrossTotal>`,
+        currencyXml,
+        "          </DocumentTotals>",
+        "        </WorkDocument>",
+      ].join("\n");
+    })
+    .join("\n");
+
+  const movementDocumentsXml = input.documentos
+    .filter((doc) => isMovementTipo(doc.tipo_documento))
+    .map((doc) => {
+      const movementType = resolveMovementType(doc.tipo_documento);
+      const documentNumber = resolveSaftInvoiceNo(doc, movementType);
+      const sourceId = "KLASSE";
+      const sourceBilling = resolveSourceBillingFromStatus(doc.status);
+      const movementStatus = resolveMovementStatus(doc.status);
+      const customerId = doc.cliente_nif ? `NIF-${doc.cliente_nif}` : `NM-${doc.cliente_nome}`;
+
+      const linesXml = doc.itens
+        .map((item) => {
+          const productCode = item.product_code.trim();
+          if (!productCode) {
+            throw new Error("SAFT_BUILD_ERROR: ProductCode obrigatório em todas as linhas.");
+          }
+          return [
+            "          <Line>",
+            `            <LineNumber>${item.linha_no}</LineNumber>`,
+            `            <ProductCode>${escapeXml(productCode)}</ProductCode>`,
+            `            <ProductDescription>${escapeXml(item.descricao)}</ProductDescription>`,
+            `            <Quantity>${item.quantidade}</Quantity>`,
+            "            <UnitOfMeasure>UN</UnitOfMeasure>",
+            `            <UnitPrice>${formatMoney(item.preco_unit)}</UnitPrice>`,
+            `            <Description>${escapeXml(item.descricao)}</Description>`,
+            `            <CreditAmount>${formatMoney(item.total_bruto_aoa)}</CreditAmount>`,
+            "            <Tax>",
+            "              <TaxType>IVA</TaxType>",
+            "              <TaxCountryRegion>AO</TaxCountryRegion>",
+            `              <TaxCode>${resolveTaxCode(item.taxa_iva)}</TaxCode>`,
+            `              <TaxPercentage>${item.taxa_iva.toFixed(2)}</TaxPercentage>`,
+            "            </Tax>",
+            "          </Line>",
+          ].join("\n");
+        })
+        .join("\n");
+
+      const movementStartTime = doc.system_entry;
+      const currencyXml =
+        doc.moeda.toUpperCase() === "AOA"
+          ? ""
+          : [
+              "            <Currency>",
+              `              <CurrencyCode>${escapeXml(doc.moeda.toUpperCase())}</CurrencyCode>`,
+              `              <CurrencyAmount>${formatMoney(Number(doc.total_bruto_aoa) / Number(doc.taxa_cambio_aoa ?? 1))}</CurrencyAmount>`,
+              `              <ExchangeRate>${formatExchangeRate(Number(doc.taxa_cambio_aoa ?? 0))}</ExchangeRate>`,
+              "            </Currency>",
+            ].join("\n");
+
+      if (doc.moeda.toUpperCase() !== "AOA" && (!doc.taxa_cambio_aoa || Number(doc.taxa_cambio_aoa) <= 0)) {
+        throw new Error(
+          `SAFT_BUILD_ERROR: ExchangeRate obrigatório e positivo para documento ${doc.numero_formatado}.`
+        );
+      }
+
+      return [
+        "        <StockMovement>",
+        `          <DocumentNumber>${escapeXml(documentNumber)}</DocumentNumber>`,
+        "          <DocumentStatus>",
+        `            <MovementStatus>${movementStatus}</MovementStatus>`,
+        `            <MovementStatusDate>${doc.system_entry}</MovementStatusDate>`,
+        `            <SourceID>${sourceId}</SourceID>`,
+        `            <SourceBilling>${sourceBilling}</SourceBilling>`,
+        "          </DocumentStatus>",
+        `          <Hash>${escapeXml(doc.hash_control)}</Hash>`,
+        `          <HashControl>${escapeXml(doc.hash_control)}</HashControl>`,
+        `          <MovementDate>${doc.invoice_date}</MovementDate>`,
+        `          <MovementType>${escapeXml(movementType)}</MovementType>`,
+        `          <SystemEntryDate>${doc.system_entry}</SystemEntryDate>`,
+        `          <CustomerID>${escapeXml(customerId)}</CustomerID>`,
+        `          <SourceID>${sourceId}</SourceID>`,
+        `          <MovementStartTime>${movementStartTime}</MovementStartTime>`,
+        linesXml,
+        "          <DocumentTotals>",
+        `            <TaxPayable>${formatMoney2(doc.total_impostos_aoa)}</TaxPayable>`,
+        `            <NetTotal>${formatMoney2(doc.total_liquido_aoa)}</NetTotal>`,
+        `            <GrossTotal>${formatMoney2(doc.total_bruto_aoa)}</GrossTotal>`,
+        currencyXml,
+        "          </DocumentTotals>",
+        "        </StockMovement>",
+      ].join("\n");
+    })
+    .join("\n");
+
+  const paymentsXml = input.documentos
+    .filter((doc) => isPaymentTipo(doc.tipo_documento))
+    .map((doc) => {
+      const paymentType = resolvePaymentType(doc.tipo_documento);
+      const paymentRefNo = resolveSaftInvoiceNo(doc, paymentType);
+      const sourceId = "KLASSE";
+      const sourcePayment = resolveSourceBillingFromStatus(doc.status);
+      const paymentStatus = resolvePaymentStatus(doc.status);
+      const customerId = doc.cliente_nif ? `NIF-${doc.cliente_nif}` : `NM-${doc.cliente_nome}`;
+
+      const paymentMethodXml = [
+        "          <PaymentMethod>",
+        doc.payment_mechanism
+          ? `            <PaymentMechanism>${escapeXml(doc.payment_mechanism)}</PaymentMechanism>`
+          : "",
+        `            <PaymentAmount>${formatMoney(doc.total_bruto_aoa)}</PaymentAmount>`,
+        `            <PaymentDate>${doc.invoice_date}</PaymentDate>`,
+        "          </PaymentMethod>",
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      const linesXml = doc.itens
+        .map((item) => {
+          const sourceDocumentIdXml =
+            Array.isArray(doc.order_references) && doc.order_references.length > 0
+              ? doc.order_references
+                  .map((ref) => {
+                    const reference = ref.reference?.trim();
+                    if (!reference) return "";
+                    const invoiceDate = ref.origin_invoice_date?.trim() || doc.invoice_date;
+                    return [
+                      "            <SourceDocumentID>",
+                      `              <OriginatingON>${escapeXml(reference)}</OriginatingON>`,
+                      `              <InvoiceDate>${escapeXml(invoiceDate)}</InvoiceDate>`,
+                      ref.reason?.trim() ? `              <Description>${escapeXml(ref.reason.trim())}</Description>` : "",
+                      "            </SourceDocumentID>",
+                    ]
+                      .filter(Boolean)
+                      .join("\n");
+                  })
+                  .filter(Boolean)
+                  .join("\n")
+              : [
+                  "            <SourceDocumentID>",
+                  `              <OriginatingON>${escapeXml(paymentRefNo)}</OriginatingON>`,
+                  `              <InvoiceDate>${escapeXml(doc.invoice_date)}</InvoiceDate>`,
+                  "            </SourceDocumentID>",
+                ].join("\n");
+
+          return [
+            "          <Line>",
+            `            <LineNumber>${item.linha_no}</LineNumber>`,
+            sourceDocumentIdXml,
+            `            <CreditAmount>${formatMoney(item.total_bruto_aoa)}</CreditAmount>`,
+            "            <Tax>",
+            "              <TaxType>IVA</TaxType>",
+            "              <TaxCountryRegion>AO</TaxCountryRegion>",
+            `              <TaxCode>${resolveTaxCode(item.taxa_iva)}</TaxCode>`,
+            `              <TaxPercentage>${item.taxa_iva.toFixed(2)}</TaxPercentage>`,
+            "            </Tax>",
+            "          </Line>",
+          ].join("\n");
+        })
+        .join("\n");
+
+      const currencyXml =
+        doc.moeda.toUpperCase() === "AOA"
+          ? ""
+          : [
+              "            <Currency>",
+              `              <CurrencyCode>${escapeXml(doc.moeda.toUpperCase())}</CurrencyCode>`,
+              `              <CurrencyAmount>${formatMoney(Number(doc.total_bruto_aoa) / Number(doc.taxa_cambio_aoa ?? 1))}</CurrencyAmount>`,
+              `              <ExchangeRate>${formatExchangeRate(Number(doc.taxa_cambio_aoa ?? 0))}</ExchangeRate>`,
+              "            </Currency>",
+            ].join("\n");
+
+      if (doc.moeda.toUpperCase() !== "AOA" && (!doc.taxa_cambio_aoa || Number(doc.taxa_cambio_aoa) <= 0)) {
+        throw new Error(
+          `SAFT_BUILD_ERROR: ExchangeRate obrigatório e positivo para documento ${doc.numero_formatado}.`
+        );
+      }
+
+      return [
+        "        <Payment>",
+        `          <PaymentRefNo>${escapeXml(paymentRefNo)}</PaymentRefNo>`,
+        `          <TransactionDate>${doc.invoice_date}</TransactionDate>`,
+        `          <PaymentType>${escapeXml(paymentType)}</PaymentType>`,
+        "          <DocumentStatus>",
+        `            <PaymentStatus>${paymentStatus}</PaymentStatus>`,
+        `            <PaymentStatusDate>${doc.system_entry}</PaymentStatusDate>`,
+        `            <SourceID>${sourceId}</SourceID>`,
+        `            <SourcePayment>${sourcePayment}</SourcePayment>`,
+        "          </DocumentStatus>",
+        paymentMethodXml,
+        `          <SourceID>${sourceId}</SourceID>`,
+        `          <SystemEntryDate>${doc.system_entry}</SystemEntryDate>`,
+        `          <CustomerID>${escapeXml(customerId)}</CustomerID>`,
+        linesXml,
+        "          <DocumentTotals>",
+        `            <TaxPayable>${formatMoney2(doc.total_impostos_aoa)}</TaxPayable>`,
+        `            <NetTotal>${formatMoney2(doc.total_liquido_aoa)}</NetTotal>`,
+        `            <GrossTotal>${formatMoney2(doc.total_bruto_aoa)}</GrossTotal>`,
+        currencyXml,
+        "          </DocumentTotals>",
+        "        </Payment>",
+      ].join("\n");
+    })
+    .join("\n");
+
+  const salesDocs = input.documentos.filter((doc) => isSalesInvoiceTipo(doc.tipo_documento));
+  const workDocs = input.documentos.filter((doc) => isWorkDocumentTipo(doc.tipo_documento));
+  const movementDocs = input.documentos.filter((doc) => isMovementTipo(doc.tipo_documento));
+  const paymentDocs = input.documentos.filter((doc) => isPaymentTipo(doc.tipo_documento));
+
+  const sumGross = (docs: SaftDocumento[]) => docs.reduce((acc, doc) => acc + doc.total_bruto_aoa, 0);
+  const movementLines = movementDocs.reduce((acc, doc) => acc + doc.itens.length, 0);
+  const movementQuantity = movementDocs.reduce(
+    (acc, doc) => acc + doc.itens.reduce((sub, item) => sub + item.quantidade, 0),
+    0
+  );
+
+  const salesBlock = [
+    "    <SalesInvoices>",
+    `      <NumberOfEntries>${salesDocs.length}</NumberOfEntries>`,
+    `      <TotalDebit>${formatMoney(sumGross(salesDocs))}</TotalDebit>`,
+    "      <TotalCredit>0.0000</TotalCredit>",
+    invoicesXml,
+    "    </SalesInvoices>",
+  ].join("\n");
+
+  const movementBlock = [
+    "    <MovementOfGoods>",
+    `      <NumberOfMovementLines>${movementLines}</NumberOfMovementLines>`,
+    `      <TotalQuantityIssued>${formatMoney(movementQuantity)}</TotalQuantityIssued>`,
+    movementDocumentsXml,
+    "    </MovementOfGoods>",
+  ].join("\n");
+
+  const workBlock = [
+    "    <WorkingDocuments>",
+    `      <NumberOfEntries>${workDocs.length}</NumberOfEntries>`,
+    `      <TotalDebit>${formatMoney(sumGross(workDocs))}</TotalDebit>`,
+    "      <TotalCredit>0.0000</TotalCredit>",
+    workDocumentsXml,
+    "    </WorkingDocuments>",
+  ].join("\n");
+
+  const paymentBlock = [
+    "    <Payments>",
+    `      <NumberOfEntries>${paymentDocs.length}</NumberOfEntries>`,
+    `      <TotalDebit>${formatMoney(sumGross(paymentDocs))}</TotalDebit>`,
+    "      <TotalCredit>0.0000</TotalCredit>",
+    paymentsXml,
+    "    </Payments>",
+  ].join("\n");
+
   const xml = [
     '<?xml version="1.0" encoding="UTF-8"?>',
     `<AuditFile xmlns="${SAFT_AO_NAMESPACE}">`,
@@ -475,12 +885,10 @@ export function buildSaftAoXml(input: BuildSaftAoXmlInput): BuildSaftAoXmlOutput
     productsXml,
     "  </MasterFiles>",
     "  <SourceDocuments>",
-    "    <SalesInvoices>",
-    `      <NumberOfEntries>${input.documentos.length}</NumberOfEntries>`,
-    `      <TotalDebit>${formatMoney(totalBrutoAoa)}</TotalDebit>`,
-    "      <TotalCredit>0.0000</TotalCredit>",
-    invoicesXml,
-    "    </SalesInvoices>",
+    salesBlock,
+    movementBlock,
+    workBlock,
+    paymentBlock,
     "  </SourceDocuments>",
     "</AuditFile>",
     "",

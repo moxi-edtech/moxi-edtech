@@ -271,6 +271,9 @@ function normalizePostInput({
       },
       invoice_date: today,
       moeda: "AOA",
+      payment_mechanism: input.payment_mechanism,
+      documento_origem_id: input.documento_origem_id,
+      rectifica_documento_id: input.rectifica_documento_id,
       itens: input.itens.map((item, index) => ({
         product_code: toProductCode(item.descricao, index),
         product_number_code: toProductCode(item.descricao, index),

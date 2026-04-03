@@ -20,12 +20,15 @@ Objetivo: centralizar os artefatos de resposta ao ofício AGT (Ref: 0000498/0118
   - PDFs finais por ponto AGT
 - `SAFT_AGT_UNICO_2026-03.xml`
   - XML SAF-T único com todos os exemplos aplicáveis
+  - evidência validada no fluxo assíncrono (export_id: `0998ad5b-1c05-4a0c-9348-e277080b783b`)
 - `FISCAL_HASH_VALIDATION_PROD_YYYYMMDD.md`
   - evidência de validação de hash_control
 - `FISCAL_SIGNATURE_VALIDATION_PROD_YYYYMMDD.md`
   - evidência de validação de assinatura
 - `FISCAL_REPLAY_AUDIT_PROD_YYYYMMDD.md`
   - evidência de replay audit da cadeia
+- `FR_IDEMPOTENCIA_POS_MIGRACAO_2026-04-02.md`
+  - evidência de correção de `numero_formatado` e idempotência para emissão `FR` integrada
 
 ## Convenção de nomes para PDFs
 

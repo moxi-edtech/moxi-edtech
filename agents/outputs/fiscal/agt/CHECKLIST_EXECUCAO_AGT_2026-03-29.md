@@ -31,7 +31,7 @@ Janela alvo: 2026-03-29 a 2026-04-15
 
 ## C. Fecho técnico (D3-D8)
 
-- [ ] XML único gerado com todos os exemplos aplicáveis
+- [x] XML único gerado para março/2026 e validado no XSD oficial (export_id: `0998ad5b-1c05-4a0c-9348-e277080b783b`)
 - [x] Validação XSD oficial sem erro
 - [x] Validação hash_control concluída
 - [x] Validação assinatura concluída
@@ -49,7 +49,7 @@ Janela alvo: 2026-03-29 a 2026-04-15
 - [ ] Revisão final técnica
 - [ ] Revisão final fiscal/compliance
 - [ ] Pacote PDF fechado
-- [ ] XML final anexado
+- [ ] XML final anexado em `agents/outputs/fiscal/agt/SAFT_AGT_UNICO_2026-03.xml`
 - [ ] E-mail enviado para `produtos.dfe.dcrr.agt@minfin.gov.ao`
 - [ ] Protocolo de envio guardado
 - [ ] Simulação de Auditor AGT executada e anexada
@@ -59,3 +59,23 @@ Janela alvo: 2026-03-29 a 2026-04-15
 - [ ] Todos os pontos obrigatórios em READY
 - [ ] Pontos NA com justificação aprovada
 - [ ] Status final: GO para submissão
+
+## F. Cobertura Mínima por Tipo (Execução Real)
+
+- [x] Execução autenticada em produção concluída (`compliance probe = 200`)
+- [x] Tipos com emissão OK: `FT`, `RC`, `ND`, `NC`, `PP`, `GR`, `GT`, `FG`
+- [x] `FR` com emissão estável e idempotência validada após migração (mesmo `origem_id` => mesmo `documento_id`)
+- [x] Exportação SAF-T para `2026-04-01..2026-04-30` localizada (`export_id: ed3f5fc6-4b5f-4e91-aef1-58cbdecd7717`, status `generated`)
+- Evidências:
+  - `agents/outputs/fiscal/agt/FISCAL_TIPOS_MINIMO_EXEC_20260402T225502Z.md`
+  - `agents/outputs/fiscal/agt/FISCAL_TIPOS_MINIMO_EXEC_20260402T225730Z.md`
+  - `agents/outputs/fiscal/agt/FR_IDEMPOTENCIA_POS_MIGRACAO_2026-04-02.md`
+
+### Correção aplicada (FR)
+
+- Migração aplicada: `20260402133000_fix_fr_numero_formatado_idempotencia.sql`
+- Resultado pós-fix (produção):
+  - chamada 1 (`origem_id` A): `201`, `documento_id=0fcc55b7-e0fe-4f25-8199-05c1774a31b5`, `numero_formatado=FR FR/1`
+  - chamada 2 (`origem_id` A): `201`, mesmo `documento_id` e mesmo `numero_formatado`
+  - chamada 3 (`origem_id` B): `201`, `documento_id=b35c8983-da83-4007-810c-e69c13bb2336`, `numero_formatado=FR FR/2`
+- Pré-condição operacional atendida: série `FR/FR/integrado` criada/ativada.
