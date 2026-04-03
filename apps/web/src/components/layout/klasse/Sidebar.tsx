@@ -2,6 +2,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -32,7 +33,6 @@ import {
   BadgeDollarSign
 } from "lucide-react";
 import type { NavItem } from "@/lib/sidebarNav";
-import { KlasseSidebarIcon } from "@/components/icons/KlasseSidebarIcon";
 
 // Mapa estático de ícones para performance máxima e estabilidade de build
 const ICON_MAP: Record<string, any> = {
@@ -88,6 +88,7 @@ export default function Sidebar({
       return { ...it, active, childActive, children };
     });
   }, [pathname, items]);
+  const homeHref = sidebarItems[0]?.href || "/app";
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
@@ -123,9 +124,15 @@ export default function Sidebar({
     >
       {/* Header / Brand */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-slate-800/80">
-        <Link href="/app" className="flex items-center gap-3 min-w-0">
+        <Link href={homeHref} className="flex items-center gap-3 min-w-0" aria-label="Ir para a home do portal">
           <div className="h-10 w-10 rounded-xl bg-klasse-gold/15 ring-1 ring-klasse-gold/30 flex items-center justify-center">
-            <KlasseSidebarIcon className="h-5 w-5 text-klasse-gold" />
+            <Image
+              src="/logo-klasse-ui.png"
+              alt="KLASSE"
+              width={22}
+              height={22}
+              className="h-5 w-5 object-contain"
+            />
           </div>
 
           {!collapsed && (

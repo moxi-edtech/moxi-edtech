@@ -24,7 +24,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="pt" className="h-full">
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <link rel="icon" href="/logo-klasse.png" type="image/png" />
+        <link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png" />
+        <link rel="icon" href="/favicon-16x16.png" sizes="16x16" type="image/png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
         <meta name="theme-color" content="#1F6B3B" />
         {shouldLoadGoogleFonts && (
           <link

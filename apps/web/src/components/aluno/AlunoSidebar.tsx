@@ -15,7 +15,7 @@ export default function AlunoSidebar() {
   return (
     <SidebarContainer storageKey="aluno:sidebar" cssVar="--sidebar-w">
       <div data-slot="header">
-        <SidebarHeader title="Portal do Aluno" subtitle="MoxiNexa" />
+        <SidebarHeader title="Portal do Aluno" subtitle="MoxiNexa" href="/aluno/dashboard" />
       </div>
       <div className="px-2">
         <SidebarNav items={items} />

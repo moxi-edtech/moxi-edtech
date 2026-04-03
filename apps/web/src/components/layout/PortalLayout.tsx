@@ -41,10 +41,18 @@ const UserAvatar = ({ initials, name }: { initials: string; name: string }) => (
 );
 
 // Componente de Logo
-const Logo = ({ collapsed = false }: { collapsed?: boolean }) => (
-  <div className="px-3 py-3 flex items-center gap-2 overflow-hidden">
-    <Image src="/Logo Klasse.png" alt="Klasse Logo" width={collapsed ? 40 : 120} height={40} />
-  </div>
+const Logo = ({ collapsed = false, href = "/app" }: { collapsed?: boolean; href?: string }) => (
+  <Link href={href} className="px-3 py-3 flex items-center gap-3 overflow-hidden" aria-label="Ir para a home do portal">
+    <div className="h-10 w-10 shrink-0 rounded-xl bg-klasse-gold-500/15 ring-1 ring-klasse-gold-500/30 flex items-center justify-center">
+      <Image src="/logo-klasse-ui.png" alt="KLASSE" width={22} height={22} className="h-5 w-5 object-contain" />
+    </div>
+    {!collapsed && (
+      <div className="min-w-0">
+        <div className="font-semibold tracking-tight leading-5 text-slate-900">KLASSE</div>
+        <div className="text-xs text-slate-500 font-medium">gestão escolar</div>
+      </div>
+    )}
+  </Link>
 );
 
 export default function PortalLayout({
@@ -86,6 +94,7 @@ export default function PortalLayout({
     });
     return replaced.filter((item) => !item.href.includes("["));
   }, [userRole, isLoadingRole, escolaIdState]);
+  const homeHref = navItems[0]?.href || "/app";
 
   useEffect(() => {
     try {
@@ -202,7 +211,7 @@ export default function PortalLayout({
           >
             {/* Topo com logo + botão de collapse */}
             <div className="flex items-center justify-between gap-2 px-3 py-3">
-              <Logo collapsed={collapsed} />
+              <Logo collapsed={collapsed} href={homeHref} />
     
               <button
                 type="button"
