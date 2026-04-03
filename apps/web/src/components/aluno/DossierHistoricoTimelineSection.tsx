@@ -75,6 +75,15 @@ function Pill({ label, risk = false }: { label: string; risk?: boolean }) {
   );
 }
 
+function formatPresencaFonteLabel(fonte: string | null | undefined) {
+  const key = (fonte ?? "").trim().toLowerCase();
+  if (!key) return "Dados de presença da escola";
+  if (key === "fallback_frequencias") {
+    return "Registros de frequência lançados pela secretaria/professor";
+  }
+  return fonte ?? "Dados de presença da escola";
+}
+
 export function DossierHistoricoTimelineSection({
   alunoId,
   role,
@@ -219,7 +228,7 @@ export function DossierHistoricoTimelineSection({
                       </span>
                       <span className="text-slate-500"> · mínimo {minimo}%</span>
                     </p>
-                    <p className="mt-1 text-xs text-slate-500 flex items-center gap-1"><CalendarCheck size={14} /> Fonte: {ano.presenca.fonte}</p>
+                    <p className="mt-1 text-xs text-slate-500 flex items-center gap-1"><CalendarCheck size={14} /> Fonte: {formatPresencaFonteLabel(ano.presenca.fonte)}</p>
                   </section>
 
                   <section className="rounded-xl border border-slate-200 bg-slate-50 p-3">

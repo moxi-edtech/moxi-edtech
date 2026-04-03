@@ -17,7 +17,7 @@
     "docker:compose:down": "docker-compose down",
     "docker:compose:logs": "docker-compose logs -f",
     "test": "echo 'No tests configured'",
-    "test:unit:fuzz": "node --test --import tsx tests/unit/fuzz-*.spec.ts",
+    "test:unit:fuzz": "node --test --import tsx tests/unit/fuzz-*.spec.ts tests/unit/curriculo-operacao.spec.ts",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build"
   },

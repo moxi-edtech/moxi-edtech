@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import type { Database, TablesInsert } from '~types/supabase'
+import type { Database } from '~types/supabase'
 import { createRouteClient } from '@/lib/supabase/route-client'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { hasPermission, mapPapelToGlobalRole, normalizePapel } from '@/lib/permissions'
 import { sanitizeEmail } from '@/lib/sanitize'
 import { callAuthAdminJob } from '@/lib/auth-admin-job'
+import { emitirEvento } from '@/lib/eventos/emitirEvento'
 
 const TurnosSchema = z.enum(['Manhã', 'Tarde', 'Noite'])
 
@@ -39,6 +40,11 @@ const generateStrongPassword = (len = 12) => {
 
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id: escolaId } = await context.params
+  const startedAt = Date.now()
+  let obsSupabase: any = null
+  let obsEscolaId: string | null = null
+  let obsActorId: string | null = null
+  let obsEmail: string | null = null
 
   try {
     const json = await req.json()
@@ -49,18 +55,39 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
     const body = parse.data
     const email = sanitizeEmail(body.email)
+    obsEmail = email
     const nome = body.nome_completo.trim()
     const roleEnum = mapPapelToGlobalRole('professor') as Database['public']['Enums']['user_role']
 
     const supabase = await createRouteClient()
+    obsSupabase = supabase
     const { data: userRes } = await supabase.auth.getUser()
     const requesterId = userRes?.user?.id
+    obsActorId = requesterId ?? null
     if (!requesterId) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
     const userEscolaId = await resolveEscolaIdForUser(supabase, requesterId, escolaId)
+    obsEscolaId = userEscolaId ?? null
     if (!userEscolaId || userEscolaId !== escolaId) {
       return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
     }
+
+    const emitObs = (status: 'success' | 'error', httpStatus: number, details: Record<string, unknown> = {}) =>
+      emitirEvento(supabase as any, {
+        escola_id: userEscolaId,
+        tipo: 'academico.professor_create',
+        payload: {
+          status,
+          http_status: httpStatus,
+          duration_ms: Date.now() - startedAt,
+          email: obsEmail,
+          ...details,
+        },
+        actor_id: requesterId,
+        actor_role: 'admin',
+        entidade_tipo: 'professores',
+        entidade_id: null,
+      }).catch(() => null)
 
     const { data: vinc } = await supabase
       .from('escola_users')
@@ -95,7 +122,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       allowed = Boolean(adminLink && adminLink.length > 0)
     }
 
-    if (!allowed) return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
+    if (!allowed) {
+      emitObs('error', 403, { error_code: 'FORBIDDEN' })
+      return NextResponse.json({ ok: false, error: 'Sem permissão' }, { status: 403 })
+    }
 
     let userId: string | undefined
     const { data: prof } = await supabase
@@ -135,114 +165,117 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     }
 
     if (!userId) {
+      emitObs('error', 400, { error_code: 'AUTH_USER_CREATE_FAILED' })
       return NextResponse.json({ ok: false, error: 'Falha ao criar usuário' }, { status: 400 })
     }
 
-    const profilePayload: TablesInsert<'profiles'> = {
-      user_id: userId,
-      email,
-      nome,
-      telefone: body.telefone_principal ?? null,
-      role: roleEnum,
-      escola_id: escolaId,
-      current_escola_id: escolaId,
-    }
-
-    try {
-      await callAuthAdminJob(req, 'upsertProfile', {
-        profile: profilePayload,
-        onConflict: 'user_id',
-      })
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Falha ao persistir perfil'
-      return NextResponse.json({ ok: false, error: message }, { status: 400 })
-    }
-
-    try {
-      await callAuthAdminJob(req, 'upsertEscolaUser', {
-        escolaUser: {
-          escola_id: escolaId,
-          user_id: userId,
-          papel: 'professor',
-        },
-      })
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Falha ao persistir vínculo escolar'
-      return NextResponse.json({ ok: false, error: `PROF_CREATE_ESCOLA_USER: ${message}` }, { status: 400 })
-    }
-
-    await callAuthAdminJob(req, 'updateUserById', {
-      userId,
-      attributes: { app_metadata: { role: roleEnum, escola_id: escolaId } },
-    })
-
-    const { data: professorRow } = await supabase
-      .from('professores')
-      .select('id')
-      .eq('escola_id', escolaId)
-      .eq('profile_id', userId)
-      .maybeSingle()
-
-    if (!professorRow?.id) {
-      const insertPayload: TablesInsert<"professores"> = { escola_id: escolaId, profile_id: userId }
-      await supabase
-        .from('professores')
-        .insert(insertPayload)
-    }
-
-    const { data: teacherRow, error: teacherErr } = await supabase
-      .from('teachers')
-      .upsert({
-        escola_id: escolaId,
-        profile_id: userId,
-        nome_completo: nome,
-        genero: body.genero,
-        data_nascimento: body.data_nascimento || null,
-        numero_bi: body.numero_bi || null,
-        telefone_principal: body.telefone_principal || null,
-        habilitacoes: body.habilitacoes,
-        area_formacao: body.area_formacao || null,
-        vinculo_contratual: body.vinculo_contratual,
-        carga_horaria_maxima: body.carga_horaria_maxima,
-        turnos_disponiveis: body.turnos_disponiveis,
-        is_diretor_turma: body.is_diretor_turma,
-      }, { onConflict: 'escola_id,profile_id' })
-      .select('id')
-      .maybeSingle()
-
-    if (teacherErr) {
-      return NextResponse.json({ ok: false, error: teacherErr.message }, { status: 400 })
-    }
-
-    const teacherId = teacherRow?.id
-    const disciplinaIds = Array.from(new Set(body.disciplinas_habilitadas || []))
-
-    if (teacherId) {
-      await supabase
-        .from('teacher_skills')
-        .delete()
-        .eq('teacher_id', teacherId)
-
-      if (disciplinaIds.length > 0) {
-        const { data: valid } = await supabase
-          .from('disciplinas_catalogo')
+    const rollbackAuthUserCreate = async () => {
+      if (!userCreated) return
+      let existingTeacherId: string | null = null
+      try {
+        const { data: existingTeacher } = await supabase
+          .from('teachers')
           .select('id')
           .eq('escola_id', escolaId)
-          .in('id', disciplinaIds)
-
-        const validIds = (valid || []).map((d: { id: string }) => d.id)
-        if (validIds.length > 0) {
-          const skills = validIds.map((id: string) => ({
-            escola_id: escolaId,
-            teacher_id: teacherId,
-            disciplina_id: id,
-          }))
+          .eq('profile_id', userId)
+          .maybeSingle()
+        existingTeacherId = (existingTeacher as { id?: string | null } | null)?.id ?? null
+      } catch {}
+      try {
+        if (existingTeacherId) {
           await supabase
             .from('teacher_skills')
-            .upsert(skills, { onConflict: 'teacher_id,disciplina_id' })
+            .delete()
+            .eq('teacher_id', existingTeacherId)
         }
-      }
+      } catch {}
+      try {
+        await supabase
+          .from('teachers')
+          .delete()
+          .eq('escola_id', escolaId)
+          .eq('profile_id', userId)
+      } catch {}
+      try {
+        await supabase
+          .from('professores')
+          .delete()
+          .eq('escola_id', escolaId)
+          .eq('profile_id', userId)
+      } catch {}
+      try {
+        await supabase
+          .from('escola_users')
+          .delete()
+          .eq('escola_id', escolaId)
+          .eq('user_id', userId)
+      } catch {}
+      try {
+        await supabase
+          .from('profiles')
+          .delete()
+          .eq('user_id', userId)
+      } catch {}
+      try {
+        await callAuthAdminJob(req, 'deleteUser', { userId })
+      } catch {}
     }
+
+    try {
+      await callAuthAdminJob(req, 'updateUserById', {
+        userId,
+        attributes: { app_metadata: { role: roleEnum, escola_id: escolaId } },
+      })
+    } catch (error) {
+      await rollbackAuthUserCreate()
+      const message = error instanceof Error ? error.message : 'Falha ao atualizar metadados do usuário'
+      emitObs('error', 400, { error_code: 'PROF_CREATE_AUTH_METADATA', stage: 'auth_metadata' })
+      return NextResponse.json(
+        { ok: false, stage: 'auth_metadata', error: `PROF_CREATE_AUTH_METADATA: ${message}` },
+        { status: 400 }
+      )
+    }
+
+    const disciplinaIds = Array.from(new Set(body.disciplinas_habilitadas || []))
+    const { data: rpcData, error: rpcError } = await (supabase as any).rpc(
+      'create_or_update_professor_academico',
+      {
+        p_escola_id: escolaId,
+        p_user_id: userId,
+        p_profile: {
+          email,
+          nome,
+          telefone: body.telefone_principal ?? null,
+          role: roleEnum,
+        },
+        p_teacher: {
+          nome_completo: nome,
+          genero: body.genero,
+          data_nascimento: body.data_nascimento || null,
+          numero_bi: body.numero_bi || null,
+          telefone_principal: body.telefone_principal || null,
+          habilitacoes: body.habilitacoes,
+          area_formacao: body.area_formacao || null,
+          vinculo_contratual: body.vinculo_contratual,
+          carga_horaria_maxima: body.carga_horaria_maxima,
+          turnos_disponiveis: body.turnos_disponiveis,
+          is_diretor_turma: body.is_diretor_turma,
+        },
+        p_disciplina_ids: disciplinaIds,
+      }
+    )
+
+    if (rpcError) {
+      await rollbackAuthUserCreate()
+      emitObs('error', 400, { error_code: 'PROF_CREATE_ACADEMICO_RPC', stage: 'academico' })
+      return NextResponse.json(
+        { ok: false, stage: 'academico', error: `PROF_CREATE_ACADEMICO_RPC: ${rpcError.message}` },
+        { status: 400 }
+      )
+    }
+
+    const teacherId = (rpcData as { teacher_id?: string | null } | null)?.teacher_id ?? null
+    emitObs('success', 200, { teacher_id: teacherId, user_created: userCreated })
 
     return NextResponse.json({
       ok: true,
@@ -251,6 +284,23 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       senha_temp: userCreated ? tempPassword : null,
     })
   } catch (err) {
+    if (obsSupabase && obsEscolaId) {
+      emitirEvento(obsSupabase as any, {
+        escola_id: obsEscolaId,
+        tipo: 'academico.professor_create',
+        payload: {
+          status: 'error',
+          http_status: 500,
+          duration_ms: Date.now() - startedAt,
+          email: obsEmail,
+          error_code: 'UNHANDLED_EXCEPTION',
+        },
+        actor_id: obsActorId,
+        actor_role: 'admin',
+        entidade_tipo: 'professores',
+        entidade_id: null,
+      }).catch(() => null)
+    }
     return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : String(err) }, { status: 500 })
   }
 }

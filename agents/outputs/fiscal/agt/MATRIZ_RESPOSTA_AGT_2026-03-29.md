@@ -36,6 +36,19 @@ Legenda de status: `PENDENTE | EM_EXECUCAO | READY | BLOQUEADO | NA`
 | BLK-004 | Ponto 7 ainda sem desconto global consolidado e evidência final AGT | risco de reprovação por inconsistência de cálculo | Engenharia Fiscal | 2026-04-03 | EM_TRATAMENTO |
 | BLK-005 | Evidências PDF ainda não anexadas apesar de engine documental integrada em 2026-04-01 | risco de atraso no dossiê AGT | Operações Fiscal | 2026-04-02 | ABERTO |
 
+## Atualização de execução (2026-04-03 — cobertura mínima tipológica)
+
+- Emissão mínima autenticada concluída com sucesso para: `FT`, `FR`, `RC`, `ND`, `NC`, `PP`, `GR`, `GT`, `FG`.
+- Evidências operacionais anexadas:
+  - `FISCAL_TIPOS_MINIMO_EXEC_20260402T225502Z.md`
+  - `FISCAL_TIPOS_MINIMO_EXEC_20260402T225730Z.md`
+- A frente de tipologia saiu de `BLOQUEADO` para `EM_EXECUCAO` nos pontos com emissão já demonstrada, permanecendo pendente o pacote documental AGT (PDFs por ponto + validações finais).
+
+## Observação de template PDF (2026-04-03)
+
+- O endpoint `/api/fiscal/documentos/[documentoId]/pdf` está operacional para as tipologias em cobertura mínima.
+- O template atual ainda é único (`FiscalDocumentV1`) e aplica variação de título/menções por tipo, sem layout dedicado por tipologia.
+
 ## Atualização de execução (2026-04-02)
 
 - Ponto 17 atualizado para `READY` com exportação mensal de março consolidada e validação XSD concluída.
@@ -67,4 +80,4 @@ Legenda de status: `PENDENTE | EM_EXECUCAO | READY | BLOQUEADO | NA`
 ## Veredito interno
 
 - Estado atual: `NO-GO controlado`
-- Condição para `GO`: fechar pontos 3/4/5/7/8/9/11/12/13/14/15 com evidência operacional + consolidar XML único final do pacote AGT.
+- Condição para `GO`: fechar pontos pendentes (2/6/7/8/9/10/11/12/13/14/15), anexar PDFs e validações finais de 3/4/5, e consolidar XML único final do pacote AGT.

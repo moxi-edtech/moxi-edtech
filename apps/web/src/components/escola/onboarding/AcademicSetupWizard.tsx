@@ -486,7 +486,19 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
           })
         });
         const j = await r.json();
-        if (!r.ok) throw new Error(`Erro em ${cursoNome}`);
+        if (!r.ok) {
+          throw new Error(
+            j?.message ||
+            j?.error ||
+            `Falha ao aplicar ${cursoNome}: já existe currículo publicado para este curso/ano letivo.`
+          );
+        }
+        if (j?.applied?.skipped) {
+          const skipMessage =
+            j?.applied?.message ||
+            "Preset não aplicado porque já existe currículo publicado para o curso/ano letivo.";
+          warning("Preset já publicado", skipMessage);
+        }
         
         const cid = j.applied?.curso_id || cursosList.find((c: any) => c.curriculum_key === k)?.id;
         if (cid) {
@@ -598,6 +610,7 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
             anoLetivoId: anoLetivoId,
             version: info.version ?? 1,
             rebuildTurmas: false,
+            confirmNoRebuildWithExistingTurmas: true,
             bulk: true,
           }),
         });

@@ -36,6 +36,7 @@ export default function QuadroHorariosPage() {
   const [clearingQuadro, setClearingQuadro] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [conflictSlots, setConflictSlots] = useState<Record<string, boolean>>({});
+  const [autoDraftDirty, setAutoDraftDirty] = useState(false);
   const [novaSala, setNovaSala] = useState("");
   const [refreshToken, setRefreshToken] = useState(0);
   const [baseRefreshToken, setBaseRefreshToken] = useState(0);
@@ -93,6 +94,18 @@ export default function QuadroHorariosPage() {
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!autoDraftDirty) return;
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
+  }, [autoDraftDirty]);
 
   useEffect(() => {
     if (!escolaId) return;
@@ -545,6 +558,7 @@ export default function QuadroHorariosPage() {
       }
       setGrid({});
       setAulas((prev) => prev.map((aula) => ({ ...aula, temposAlocados: 0 })));
+      setAutoDraftDirty(false);
       setRefreshToken((prev) => prev + 1);
       success("Quadro limpo com sucesso.");
     } catch (e: any) {
@@ -671,8 +685,12 @@ export default function QuadroHorariosPage() {
     printWindow.print();
   };
 
-  const submitQuadro = async (nextGrid: Record<string, string | null>, mode: "draft" | "publish") => {
-    if (!escolaId || !turmaId || !versaoId) return;
+  const submitQuadro = async (
+    nextGrid: Record<string, string | null>,
+    mode: "draft" | "publish",
+    options?: { successTitle?: string; successMessage?: string }
+  ): Promise<boolean> => {
+    if (!escolaId || !turmaId || !versaoId) return false;
 
     if (mode === "draft") {
       setSaving(true);
@@ -720,11 +738,11 @@ export default function QuadroHorariosPage() {
           title: "Quadro salvo no dispositivo.",
           message: "Sincronizaremos quando a conexão voltar.",
         });
-        return;
+        return true;
       }
       if (!online && mode === "publish") {
         error("Modo offline: conecte-se para publicar o quadro.");
-        return;
+        return false;
       }
 
       const res = await fetch(`/api/escolas/${escolaId}/horarios/quadro`, {
@@ -756,16 +774,24 @@ export default function QuadroHorariosPage() {
             .filter(Boolean);
           error("Distribuição incompleta", nomes.length ? nomes.join(", ") : json?.error);
         }
-        return;
+        return false;
       }
 
       setConflictSlots({});
+      setAutoDraftDirty(false);
       success(
-        mode === "publish" ? "Quadro publicado." : "Quadro salvo.",
-        mode === "publish"
-          ? "Publicação concluída sem pendências."
-          : "Você pode ajustar a distribuição a qualquer momento."
+        options?.successTitle ?? (mode === "publish" ? "Quadro publicado." : "Quadro salvo."),
+        options?.successMessage
+          ?? (mode === "publish"
+            ? "Publicação concluída sem pendências."
+            : "Você pode ajustar a distribuição a qualquer momento.")
       );
+      return true;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Falha ao salvar quadro";
+      setSaveError(message);
+      error(message);
+      return false;
     } finally {
       if (mode === "draft") {
         setSaving(false);
@@ -842,11 +868,16 @@ export default function QuadroHorariosPage() {
           temposAlocados: countByDisc[aula.id] ?? 0,
         }))
       );
+      setAutoDraftDirty(true);
       setConflictSlots({});
-      success(
-        "Quadro gerado",
-        `Preenchidos ${json?.stats?.filled ?? 0} de ${json?.stats?.total_slots ?? 0} slots.`
-      );
+      const saved = await submitQuadro(nextGrid, "draft", {
+        successTitle: "Quadro auto-completado e salvo.",
+        successMessage: `Preenchidos ${json?.stats?.filled ?? 0} de ${json?.stats?.total_slots ?? 0} slots.`,
+      });
+      if (!saved) {
+        setAutoDraftDirty(true);
+        warning("Auto-completar gerado mas não salvo", "Revise e clique em Salvar para persistir.");
+      }
       if (Array.isArray(json?.unmet) && json.unmet.length > 0) {
         const reasonLabel = (reason: string) => {
           switch (reason) {
@@ -887,6 +918,7 @@ export default function QuadroHorariosPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          curso_matriz_id: aula.cursoMatrizId,
           disciplina_id: aula.cursoMatrizId,
           professor_user_id: professorUserId,
         }),
@@ -1029,7 +1061,17 @@ export default function QuadroHorariosPage() {
             <Select
               value={turmaId ?? ""}
               options={turmaOptions}
-              onChange={(event) => setTurmaId(event.target.value || null)}
+              onChange={(event) => {
+                const nextTurmaId = event.target.value || null;
+                if (nextTurmaId === turmaId) return;
+                if (autoDraftDirty) {
+                  const confirmed = window.confirm(
+                    "Existe auto-completar não salvo. Deseja trocar de turma mesmo assim?"
+                  );
+                  if (!confirmed) return;
+                }
+                setTurmaId(nextTurmaId);
+              }}
               className="max-w-xs rounded-xl border-slate-200 focus:border-klasse-gold focus:ring-klasse-gold text-slate-900"
             />
             {selectedTurma?.sala ? (
@@ -1073,7 +1115,9 @@ export default function QuadroHorariosPage() {
             {saveError ? <span className="text-xs text-rose-600">{saveError}</span> : null}
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <Save className={`h-4 w-4 ${saving ? "text-klasse-gold" : "text-slate-300"}`} />
-              <span>{saving ? "Salvando..." : "Alterações prontas"}</span>
+              <span>
+                {saving ? "Salvando..." : autoDraftDirty ? "Auto-completar não salvo" : "Alterações prontas"}
+              </span>
             </div>
           </div>
         </div>
@@ -1207,6 +1251,22 @@ export default function QuadroHorariosPage() {
           <div className="mb-4 rounded-2xl border border-klasse-gold-200 bg-klasse-gold-50 p-4 text-sm text-klasse-gold-800">
             <div className="font-semibold">{missingLoadCount} disciplina(s) sem carga horária.</div>
             <div className="mt-1">Defina as cargas para publicar o quadro.</div>
+          </div>
+        )}
+        {autoDraftDirty && turmaId && (
+          <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+            <div className="font-semibold">Distribuição gerada e ainda não salva.</div>
+            <div className="mt-1">Salve agora para não perder o resultado do auto-completar.</div>
+            <div className="mt-3">
+              <button
+                type="button"
+                onClick={() => submitQuadro(grid, "draft")}
+                disabled={saving || publishing}
+                className="rounded-lg bg-amber-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+              >
+                {saving ? "Salvando..." : "Salvar agora"}
+              </button>
+            </div>
           </div>
         )}
         {!turmaId ? (

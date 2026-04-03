@@ -43,6 +43,7 @@ Janela alvo: 2026-03-29 a 2026-04-15
 - [ ] Encadeamento documental validado (Pró-forma -> FT, FT -> NC)
 - [ ] Isolamento multi-tenant validado (sem cross-tenant no SAF-T)
 - [ ] Reconciliação decimal (diferença acumulada = 0.0000)
+- [ ] Diferenciação visual por tipologia no PDF (hoje o template fiscal é único para todos os tipos)
 
 ## D. Submissão (D8-D15)
 
@@ -87,3 +88,9 @@ Janela alvo: 2026-03-29 a 2026-04-15
   - FT: `2230924c-37e0-41da-96df-68f9bbd75509` (`FT FR/6`)
   - NC: `e0b4637e-b705-44d2-8e97-6eea534d078c` (`NC NC/3`)
 - Pendente para fechar os pontos 3/4/5: anexar PDFs e validar referências no XML final do pacote AGT.
+
+### Estado do PDF fiscal (2026-04-03)
+
+- Endpoint oficial de PDF fiscal está operacional para todas as tipologias atualmente emitidas.
+- Cobertura de tipo no título/legenda está mapeada: `FT`, `FR`, `RC`, `NC`, `ND`, `PP`, `GR`, `GT`, `FG` (e `GF`).
+- Observação técnica: o render atual ainda utiliza template único (`FiscalDocumentV1`) e não layouts dedicados por tipologia.

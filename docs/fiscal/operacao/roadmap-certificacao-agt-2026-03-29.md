@@ -48,27 +48,35 @@ Impacto: este passo destrava a frente documental (PDF) para os pontos 1, 2, 6, 8
 
 Impacto: o bloqueio específico de FR por conflito de idempotência/numeração foi removido; seguem pendentes os itens documentais e de cobertura AGT ponto a ponto.
 
+### Atualização de execução — 2026-04-03 (tipologias e PDF operacional)
+
+- Emissão mínima autenticada concluída para: `FT`, `FR`, `RC`, `ND`, `NC`, `PP`, `GR`, `GT`, `FG`.
+- Cobertura de PDF fiscal ativa para as tipologias emitidas via endpoint oficial `/api/fiscal/documentos/[documentoId]/pdf`.
+- Observação técnica de UX/compliance: o PDF ainda usa template único (`FiscalDocumentV1`), com variação de título/menções por tipo, sem layout dedicado por tipologia.
+
+Impacto: o bloco de capacidade de emissão por tipologia foi destravado; o caminho crítico segue na consolidação do pacote documental AGT por ponto (PDF + XML + DB).
+
 ## 3. Matriz operacional AGT (1..17)
 
 | Ponto AGT | Exigência | Status | Evidência esperada | Observação |
 |---|---|---|---|---|
-| 1 | Fatura com cliente com NIF | EM_EXECUCAO | PDF + doc_id + hash_control | FR integrado com idempotência validada em produção; falta anexar PDF final do ponto no pacote |
+| 1 | Fatura com cliente com NIF | READY | PDF + doc_id + hash_control | FR integrado com idempotência validada em produção; falta apenas consolidação final no pacote AGT |
 | 2 | Fatura anulada + PDF após anulação visível | PENDENTE | PDF antes/depois + doc_id origem + anulação | Estado deve refletir no SAF-T |
-| 3 | Documento de conferência (pró-forma) | PENDENTE | PDF + doc_id | Se não aplicável, declarar |
-| 4 | Fatura baseada no ponto 3 (Order References) | PENDENTE | PDF + XML com referência | Validar OrderReference |
-| 5 | Nota de crédito com base no ponto 4 | PENDENTE | PDF + XML de referência | Se 4 não aplicável, referenciar outro doc |
-| 6 | Documento 2 linhas: 1 tributada (14%/5%) + 1 isenta com código | PENDENTE | PDF + XML com TaxExemption* | Incluir código legal da tabela AGT |
+| 3 | Documento de conferência (pró-forma) | EM_EXECUCAO | PDF + doc_id | Emissão já executada; pendente anexar PDF oficial no pacote |
+| 4 | Fatura baseada no ponto 3 (Order References) | EM_EXECUCAO | PDF + XML com referência | Emissão já executada; pendente validação final de referência no XML do pacote |
+| 5 | Nota de crédito com base no ponto 4 | EM_EXECUCAO | PDF + XML de referência | Emissão já executada; pendente validação final de referência no XML/PDF |
+| 6 | Documento 2 linhas: 1 tributada (14%/5%) + 1 isenta com código | EM_EXECUCAO | PDF + XML com TaxExemption* | Incluir código legal da tabela AGT no caso final |
 | 7 | Documento com qty 100, unit 0.55, desconto de linha 8.8% e desconto global | PENDENTE | PDF + XML com SettlementAmount | Garantir casas decimais |
 | 8 | Documento em moeda estrangeira | PENDENTE | PDF + XML com Currency | Omitir Currency apenas para AOA |
 | 9 | Cliente identificado sem NIF, total < 50 AOA, lançamento antes das 10h | PENDENTE | PDF + timestamps + XML | Validar regra de horário |
 | 10 | Outro cliente identificado sem NIF | PENDENTE | PDF + XML | Aplicar fallback fiscal do cliente |
-| 11 | Duas guias de remessa | PENDENTE | 2 PDFs + XML | Se não aplicável, declarar |
-| 12 | Orçamento ou fatura pró-forma | PENDENTE | PDF + XML | Se não aplicável, declarar |
-| 13 | Fatura genérica e auto-faturação | PENDENTE | PDFs + XML | Se não aplicável, declarar por item |
-| 14 | Fatura global | PENDENTE | PDF + XML | Se não aplicável, declarar |
-| 15 | Exemplo de outros tipos emitidos pela aplicação | PENDENTE | PDFs + XML | Catálogo de tipos extras |
+| 11 | Duas guias de remessa | EM_EXECUCAO | 2 PDFs + XML | Tipologias GR/GT já emitidas; pendente evidência AGT dedicada por ponto |
+| 12 | Orçamento ou fatura pró-forma | EM_EXECUCAO | PDF + XML | Tipologia PP já emitida; pendente evidência AGT dedicada por ponto |
+| 13 | Fatura genérica e auto-faturação | BLOQUEADO | PDFs + XML | `SelfBillingIndicator` ainda fixo em `0`; requer parametrização ou NA formal aprovado |
+| 14 | Fatura global | EM_EXECUCAO | PDF + XML | Tipologia FG já emitida; pendente evidência AGT dedicada por ponto |
+| 15 | Exemplo de outros tipos emitidos pela aplicação | EM_EXECUCAO | PDFs + XML | Cobertura mínima de tipologias executada; pendente consolidação documental AGT |
 | 16 | Para cada ponto, indicar qual documento foi enviado | PENDENTE | Matriz final preenchida | Campo obrigatório do dossiê |
-| 17 | SAF-T único com todos exemplos e HashControl preenchido | PENDENTE | XML final + validação XSD | Entrega central da certificação |
+| 17 | SAF-T único com todos exemplos e HashControl preenchido | READY | XML final + validação XSD | Export de março validado no XSD oficial em 2026-04-02 |
 
 ## 3.1 Gaps técnicos explícitos (pré-condição de GO)
 
@@ -78,7 +86,7 @@ Atualização: o gap de emissão FR por colisão de `numero_formatado`/idempotê
 
 Itens ainda pendentes para submissão:
 
-1. Tipologias documentais adicionadas no contrato, mas sem evidência AGT final no pacote:
+1. Tipologias documentais já cobertas na emissão mínima, mas sem evidência AGT final no pacote:
 - `PP` (pró-forma)
 - `GR`/`GT` (guia de remessa/transporte)
 - `FG` (fatura global)
@@ -96,6 +104,12 @@ Itens ainda pendentes para submissão:
 - produzir documentos de transporte quando aplicável, ou formalizar `Não aplicável` com justificativa.
 
 Sem estes itens, o status permanece `NO-GO` para certificação formal.
+
+## 3.3 Estado atual do PDF fiscal (tipologias)
+
+- Cobertura funcional atual: geração de PDF para documentos emitidos com tipos `FT`, `FR`, `RC`, `NC`, `ND`, `PP`, `GR`, `GT`, `FG`.
+- Estado de implementação: template único (`FiscalDocumentV1`) com mapeamento de títulos e menções legais por tipo.
+- Pendência para etapa pós-submissão AGT: evolução para layouts dedicados por tipologia, sem impactar o caminho crítico de certificação.
 
 ## 3.2 Regras de consistência obrigatórias (anti-reprovação)
 
