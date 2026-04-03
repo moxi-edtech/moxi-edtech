@@ -97,6 +97,20 @@ export async function GET(
       }
     }
 
+    const cursoIds = rows.map((r: any) => r.id).filter(Boolean) as string[];
+    const { data: professoresPorCursoRows } = cursoIds.length
+      ? await (supabase as any).rpc("get_curso_professor_responsavel_map", {
+          p_escola_id: escolaId,
+          p_curso_ids: cursoIds,
+        })
+      : { data: [] as Array<{ curso_id: string; professor_id: string | null }> };
+
+    const professorByCursoId = new Map<string, string | null>();
+    for (const row of professoresPorCursoRows || []) {
+      if (!row?.curso_id) continue;
+      professorByCursoId.set(row.curso_id, row.professor_id ?? null);
+    }
+
     // Mapear para o tipo Course esperado pelo front
     const payload = rows.map((r: any) => ({
       id: r.id,
@@ -104,7 +118,7 @@ export async function GET(
       tipo: r.tipo ?? "geral",
       periodo_id: undefined,
       semestre_id: undefined,
-      professor_id: undefined,
+      professor_id: professorByCursoId.get(r.id) ?? undefined,
       nivel: r.nivel ?? undefined,
       descricao: r.descricao ?? undefined,
       codigo: r.course_code || r.codigo || undefined,

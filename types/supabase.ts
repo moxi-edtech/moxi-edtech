@@ -3668,6 +3668,80 @@ export type Database = {
           },
         ]
       }
+      financeiro_fiscal_links: {
+        Row: {
+          created_at: string
+          empresa_id: string
+          escola_id: string
+          fiscal_documento_id: string | null
+          fiscal_error: string | null
+          id: string
+          idempotency_key: string
+          origem_id: string
+          origem_tipo: string
+          payload_snapshot: Json
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          empresa_id: string
+          escola_id: string
+          fiscal_documento_id?: string | null
+          fiscal_error?: string | null
+          id?: string
+          idempotency_key: string
+          origem_id: string
+          origem_tipo: string
+          payload_snapshot?: Json
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: string
+          escola_id?: string
+          fiscal_documento_id?: string | null
+          fiscal_error?: string | null
+          id?: string
+          idempotency_key?: string
+          origem_id?: string
+          origem_tipo?: string
+          payload_snapshot?: Json
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_fiscal_links_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_fiscal_links_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_fiscal_links_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_fiscal_links_fiscal_documento_id_fkey"
+            columns: ["fiscal_documento_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_documentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financeiro_itens: {
         Row: {
           ativo: boolean
@@ -4675,6 +4749,82 @@ export type Database = {
           },
         ]
       }
+      fiscal_reprocess_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          empresa_id: string
+          error_message: string | null
+          escola_id: string
+          failed_links: number
+          id: string
+          metadata: Json
+          processed_links: number
+          requested_by: string | null
+          started_at: string | null
+          status: string
+          success_links: number
+          total_links: number
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          empresa_id: string
+          error_message?: string | null
+          escola_id: string
+          failed_links?: number
+          id?: string
+          metadata?: Json
+          processed_links?: number
+          requested_by?: string | null
+          started_at?: string | null
+          status?: string
+          success_links?: number
+          total_links?: number
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          empresa_id?: string
+          error_message?: string | null
+          escola_id?: string
+          failed_links?: number
+          id?: string
+          metadata?: Json
+          processed_links?: number
+          requested_by?: string | null
+          started_at?: string | null
+          status?: string
+          success_links?: number
+          total_links?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_reprocess_jobs_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_reprocess_jobs_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_reprocess_jobs_escola_id_fkey"
+            columns: ["escola_id"]
+            isOneToOne: false
+            referencedRelation: "escolas_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fiscal_saft_exports: {
         Row: {
           arquivo_storage_path: string | null
@@ -4721,80 +4871,6 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "fiscal_empresas"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      financeiro_fiscal_links: {
-        Row: {
-          created_at: string
-          empresa_id: string
-          escola_id: string
-          fiscal_documento_id: string | null
-          fiscal_error: string | null
-          id: string
-          idempotency_key: string
-          origem_id: string
-          origem_tipo: string
-          payload_snapshot: Json
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          empresa_id: string
-          escola_id: string
-          fiscal_documento_id?: string | null
-          fiscal_error?: string | null
-          id?: string
-          idempotency_key: string
-          origem_id: string
-          origem_tipo: string
-          payload_snapshot?: Json
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          empresa_id?: string
-          escola_id?: string
-          fiscal_documento_id?: string | null
-          fiscal_error?: string | null
-          id?: string
-          idempotency_key?: string
-          origem_id?: string
-          origem_tipo?: string
-          payload_snapshot?: Json
-          status?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "financeiro_fiscal_links_empresa_id_fkey"
-            columns: ["empresa_id"]
-            isOneToOne: false
-            referencedRelation: "fiscal_empresas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "financeiro_fiscal_links_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "financeiro_fiscal_links_escola_id_fkey"
-            columns: ["escola_id"]
-            isOneToOne: false
-            referencedRelation: "escolas_view"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "financeiro_fiscal_links_fiscal_documento_id_fkey"
-            columns: ["fiscal_documento_id"]
-            isOneToOne: false
-            referencedRelation: "fiscal_documentos"
             referencedColumns: ["id"]
           },
         ]
@@ -5358,6 +5434,45 @@ export type Database = {
         Relationships: []
       }
       frequencias_2026_04: {
+        Row: {
+          aula_id: string | null
+          curso_oferta_id: string | null
+          data: string
+          escola_id: string
+          id: string
+          matricula_id: string
+          observacao: string | null
+          periodo_letivo_id: string | null
+          routine_id: string | null
+          status: string
+        }
+        Insert: {
+          aula_id?: string | null
+          curso_oferta_id?: string | null
+          data: string
+          escola_id: string
+          id: string
+          matricula_id: string
+          observacao?: string | null
+          periodo_letivo_id?: string | null
+          routine_id?: string | null
+          status: string
+        }
+        Update: {
+          aula_id?: string | null
+          curso_oferta_id?: string | null
+          data?: string
+          escola_id?: string
+          id?: string
+          matricula_id?: string
+          observacao?: string | null
+          periodo_letivo_id?: string | null
+          routine_id?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+      frequencias_2026_05: {
         Row: {
           aula_id: string | null
           curso_oferta_id: string | null
@@ -6454,6 +6569,39 @@ export type Database = {
         }
         Relationships: []
       }
+      lancamentos_2026_05: {
+        Row: {
+          avaliacao_id: string
+          criado_em: string
+          escola_id: string
+          final: boolean
+          id: string
+          matricula_id: string
+          tenant_id: string | null
+          valor: number
+        }
+        Insert: {
+          avaliacao_id: string
+          criado_em: string
+          escola_id: string
+          final: boolean
+          id: string
+          matricula_id: string
+          tenant_id?: string | null
+          valor: number
+        }
+        Update: {
+          avaliacao_id?: string
+          criado_em?: string
+          escola_id?: string
+          final?: boolean
+          id?: string
+          matricula_id?: string
+          tenant_id?: string | null
+          valor?: number
+        }
+        Relationships: []
+      }
       lancamentos_default: {
         Row: {
           avaliacao_id: string
@@ -7006,13 +7154,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "mensalidades_fiscal_documento_id_fkey"
-            columns: ["fiscal_documento_id"]
-            isOneToOne: false
-            referencedRelation: "fiscal_documentos"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "mensalidades_aluno_id_fkey"
             columns: ["aluno_id"]
             isOneToOne: false
@@ -7045,6 +7186,13 @@ export type Database = {
             columns: ["aluno_id"]
             isOneToOne: false
             referencedRelation: "vw_search_alunos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mensalidades_fiscal_documento_id_fkey"
+            columns: ["fiscal_documento_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_documentos"
             referencedColumns: ["id"]
           },
           {
@@ -13181,6 +13329,8 @@ export type Database = {
           day_key: string
           escola_id: string
           evidence_url: string | null
+          fiscal_documento_id: string | null
+          fiscal_error: string | null
           gateway_ref: string | null
           id: string
           mensalidade_id: string | null
@@ -13192,6 +13342,7 @@ export type Database = {
           settled_at: string | null
           settled_by: string | null
           status: string
+          status_fiscal: string | null
           telemovel_origem: string | null
           transacao_id_externo: string | null
           updated_at: string | null
@@ -13219,6 +13370,8 @@ export type Database = {
           day_key: string
           escola_id: string
           evidence_url: string | null
+          fiscal_documento_id: string | null
+          fiscal_error: string | null
           gateway_ref: string | null
           id: string
           mensalidade_id: string | null
@@ -13230,6 +13383,7 @@ export type Database = {
           settled_at: string | null
           settled_by: string | null
           status: string
+          status_fiscal: string | null
           telemovel_origem: string | null
           transacao_id_externo: string | null
           updated_at: string | null

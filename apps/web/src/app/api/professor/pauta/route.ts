@@ -13,7 +13,7 @@ import type { Database } from '~types/supabase'
 
 type ProfessorRow = { id: string }
 type TurmaRow = { id: string; curso_id: string | null; classe_id: string | null }
-type TurmaDisciplinaRow = { id: string; curso_matriz_id: string | null }
+type TurmaDisciplinaRow = { id: string; curso_matriz_id: string | null; professor_id: string | null }
 type CursoMatrizRow = {
   id: string
   disciplina_id: string | null
@@ -101,12 +101,12 @@ export async function GET(req: Request) {
       | { id: string; disciplina_id: string | null; avaliacao_mode: string | null; avaliacao_modelo_id: string | null; avaliacao_disciplina_id: string | null }
       | null = null
 
-    let turmaDisciplina: { id: string; curso_matriz_id: string | null } | null = null
+    let turmaDisciplina: { id: string; curso_matriz_id: string | null; professor_id: string | null } | null = null
 
     if (turmaDisciplinaIdValue) {
       const { data } = await admin
         .from('turma_disciplinas')
-        .select('id, curso_matriz_id')
+        .select('id, curso_matriz_id, professor_id')
         .eq('escola_id', escolaId)
         .eq('turma_id', turmaIdValue)
         .eq('id', turmaDisciplinaIdValue)
@@ -127,7 +127,7 @@ export async function GET(req: Request) {
       if (matrizFallback?.id) {
         const { data } = await admin
           .from('turma_disciplinas')
-          .select('id, curso_matriz_id')
+          .select('id, curso_matriz_id, professor_id')
           .eq('escola_id', escolaId)
           .eq('turma_id', turmaIdValue)
           .eq('curso_matriz_id', matrizFallback.id)
@@ -149,7 +149,9 @@ export async function GET(req: Request) {
       .eq('professor_id', professorId)
       .maybeSingle()
 
-    if (!assignment) {
+    const hasLegacyAssignment = turmaDisciplina.professor_id === professorId
+
+    if (!assignment && !hasLegacyAssignment) {
       return NextResponse.json({ error: 'Professor não atribuído à disciplina' }, { status: 403 })
     }
 

@@ -110,7 +110,7 @@ export default function AcademicSection({
       title:       "Configurações Acadêmicas",
       description: "Disciplinas, calendário e regras",
       icon:        Settings,
-      href:        `/escola/${escolaParam}/admin/configuracoes-academicas`,
+      href:        `/escola/${escolaParam}/admin/configuracoes`,
     },
     {
       title:       "Funcionários",
@@ -131,7 +131,7 @@ export default function AcademicSection({
       title:       "Promoção",
       description: "Progressão de alunos",
       icon:        TrendingUp,
-      href:        `/escola/${escolaParam}/admin/promocao`,
+      href:        `/escola/${escolaParam}/admin/alunos`,
       locked:      !canPromocao,
       reason:      !avaliacaoFrequenciaOk
         ? "Configure avaliação e frequência primeiro."
@@ -141,7 +141,9 @@ export default function AcademicSection({
       title:       "Biblioteca",
       description: "Acervo e empréstimos",
       icon:        BookOpen,
-      href:        `/escola/${escolaParam}/admin/biblioteca`,
+      href:        `/escola/${escolaParam}/admin`,
+      locked:      true,
+      reason:      "Módulo de biblioteca ainda não disponível neste portal.",
     },
   ];
 

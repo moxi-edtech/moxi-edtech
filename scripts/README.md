@@ -7,6 +7,19 @@ Principais utilitários neste diretório:
 - `db-restore-local.sh` — restaura um dump SQL no Postgres local do Supabase (porta 54322).
 - `db-select-remote.sh` — executa SELECT no remoto (carrega `DB_URL` de `.env.db` se existir).
 - `db-select-local.sh` — executa SELECT no Postgres local (porta 54322, pode sobrescrever `LOCAL_URL`).
+- `smoke-cleanup-users.sh` — rotina oficial de cleanup de utilizadores de smoke. Faz `dry-run` por padrão e, com `--apply`, remove vínculos operacionais (`teacher_skills`, `professores`, `teachers`, `escola_users`, `escola_administradores`), apaga utilizadores sem referência em `audit_logs` e anonimiza/bloqueia utilizadores com referência em `audit_logs`.
+
+Exemplo de uso (seguro):
+
+```bash
+scripts/smoke-cleanup-users.sh --email-like 'smoke.%@example.com' --escola-id '<uuid-escola>'
+```
+
+Aplicar mudanças:
+
+```bash
+scripts/smoke-cleanup-users.sh --email-like 'smoke.%@example.com' --escola-id '<uuid-escola>' --apply
+```
 
 Fluxo rápido para desalinhamento de histórico de migrations (caso o pull/push acuse versões faltantes):
 

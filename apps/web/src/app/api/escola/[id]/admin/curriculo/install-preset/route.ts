@@ -6,6 +6,7 @@ import { emitirEvento } from '@/lib/eventos/emitirEvento';
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser';
 import { applyCurriculumPreset, type CurriculumKey } from '@/lib/academico/curriculum-apply';
 import { CURRICULUM_PRESETS_META } from '@/lib/academico/curriculum-presets';
+import { buildInstallPresetSkippedAppliedPayload } from '@/lib/academico/curriculo-operacao';
 import type { Database } from '~types/supabase';
 
 export const dynamic = 'force-dynamic';
@@ -99,6 +100,72 @@ const buildDefaultConfig = async (supabase: any, escolaId: string, presetKey: st
   return { classes, subjects, turnos, matrix, cargaByClass };
 };
 
+type InstallStage = 'apply' | 'publish' | 'backfill_matriz' | 'generate_turmas';
+type StageStatus = 'pending' | 'success' | 'failed' | 'skipped';
+
+type InstallOperationState = {
+  stage: InstallStage;
+  status: StageStatus;
+  error?: string | null;
+};
+
+const buildOperationStatus = (steps: Record<InstallStage, InstallOperationState>) => ({
+  apply: steps.apply,
+  publish: steps.publish,
+  backfill_matriz: steps.backfill_matriz,
+  generate_turmas: steps.generate_turmas,
+});
+
+function isMissingOrchestratorFunction(err: { message?: string | null; code?: string | null } | null): boolean {
+  if (!err) return false;
+  const code = String(err.code ?? '');
+  const message = String(err.message ?? '').toLowerCase();
+  return code === '42883' || message.includes('curriculo_install_orchestrated');
+}
+
+async function compensateInstallPartialFailure(args: {
+  supabase: any;
+  escolaId: string;
+  cursoId: string | null;
+  anoLetivoId: string;
+  appliedVersion: number | null;
+  failedStage: InstallStage;
+  applyCreatedCurriculo: boolean;
+}) {
+  const {
+    supabase,
+    escolaId,
+    cursoId,
+    anoLetivoId,
+    appliedVersion,
+    failedStage,
+    applyCreatedCurriculo,
+  } = args;
+
+  if (!cursoId || !applyCreatedCurriculo || appliedVersion == null) {
+    return { executed: false, action: null as string | null };
+  }
+
+  // Compensação segura: arquiva drafts da versão criada no apply
+  // quando a falha ocorre em etapas posteriores.
+  if (failedStage === 'publish' || failedStage === 'backfill_matriz') {
+    const { error } = await supabase
+      .from('curso_curriculos')
+      .update({ status: 'archived' })
+      .eq('escola_id', escolaId)
+      .eq('curso_id', cursoId)
+      .eq('ano_letivo_id', anoLetivoId)
+      .eq('version', appliedVersion)
+      .eq('status', 'draft');
+
+    if (!error) {
+      return { executed: true, action: 'archive_created_draft_curriculo' as const };
+    }
+  }
+
+  return { executed: false, action: null as string | null };
+}
+
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id: requestedEscolaId } = await params;
@@ -136,6 +203,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     const { presetKey, ano_letivo_id, customData, advancedConfig, options } = parsed.data;
     const effectiveAnoLetivoId = ano_letivo_id ?? null;
+    const steps: Record<InstallStage, InstallOperationState> = {
+      apply: { stage: 'apply', status: 'pending' },
+      publish: { stage: 'publish', status: options.autoPublish ? 'pending' : 'skipped' },
+      backfill_matriz: { stage: 'backfill_matriz', status: 'pending' },
+      generate_turmas: { stage: 'generate_turmas', status: options.generateTurmas ? 'pending' : 'skipped' },
+    };
 
     const { data: anoLetivo, error: anoError } = await (effectiveAnoLetivoId
       ? supabase
@@ -180,6 +253,62 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ ok: false, error: 'Falha ao iniciar instalação.', message: 'Falha ao iniciar instalação.' }, { status: 500 });
     }
 
+    const orchestratorIdempotencyKey = randomUUID();
+    const { data: orchestratedDataRaw, error: orchestratedError } = await (supabase as any).rpc(
+      'curriculo_install_orchestrated',
+      {
+        p_escola_id: userEscolaId,
+        p_preset_key: presetKey,
+        p_ano_letivo_id: anoLetivo.id,
+        p_auto_publish: options.autoPublish,
+        p_generate_turmas: options.generateTurmas,
+        p_custom_data: customData ?? null,
+        p_advanced_config: advancedConfig ?? null,
+        p_idempotency_key: orchestratorIdempotencyKey,
+      },
+    );
+
+    if (orchestratedError && !isMissingOrchestratorFunction(orchestratedError)) {
+      const message = orchestratedError.message || 'Falha na operação transacional.';
+      return NextResponse.json({
+        ok: false,
+        error: message,
+        message,
+        step: 'orchestrator',
+      }, { status: 409 });
+    }
+
+    if (!orchestratedError) {
+      const orchestrated = Array.isArray(orchestratedDataRaw) ? orchestratedDataRaw[0] : orchestratedDataRaw;
+      if (orchestrated?.ok === false && orchestrated?.step === 'already_published') {
+        const appliedPayload = buildInstallPresetSkippedAppliedPayload(userEscolaId);
+        emitirEvento(supabase, {
+          escola_id: userEscolaId,
+          tipo: 'curriculo.install_preset_skipped',
+          payload: {
+            preset_key: presetKey,
+            curso_id: orchestrated?.applied?.curso_id ?? null,
+            ano_letivo_id: anoLetivo.id,
+            reason: (appliedPayload as any).reason,
+            reason_code: (appliedPayload as any).reason_code,
+          },
+          actor_id: user.id,
+          actor_role: 'admin',
+          entidade_tipo: 'curriculo',
+          entidade_id: null,
+        }).catch(() => null);
+
+        return NextResponse.json({
+          ...orchestrated,
+          applied: appliedPayload,
+        }, { status: 409 });
+      }
+
+      return NextResponse.json(orchestrated);
+    }
+
+    console.warn('[curriculo.install-preset] RPC curriculo_install_orchestrated indisponível, usando fallback legado.');
+
     const normalizedCourseCode = courseCode.trim().toUpperCase();
     const { data: cursoExistente } = await supabase
       .from('cursos')
@@ -215,20 +344,70 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           anoLetivoId: anoLetivo.id,
           anoLetivo: anoLetivo.ano,
         });
+        steps.apply = { stage: 'apply', status: 'success' };
       } catch (applyError) {
         const message = applyError instanceof Error ? applyError.message : String(applyError);
+        steps.apply = { stage: 'apply', status: 'failed', error: message };
+        steps.backfill_matriz = { stage: 'backfill_matriz', status: 'skipped' };
+        steps.generate_turmas = { stage: 'generate_turmas', status: 'skipped' };
         return NextResponse.json({
           ok: false,
           step: 'apply',
           error: message,
           message,
+          partial_failed: false,
+          operation_status: buildOperationStatus(steps),
         }, { status: 400 });
       }
+    } else {
+      steps.apply = { stage: 'apply', status: 'skipped' };
     }
 
     const cursoId = applyResult?.curso.id ?? cursoExistente?.id ?? null;
     if (!cursoId) {
-      return NextResponse.json({ ok: false, error: 'Curso não resolvido.', message: 'Curso não resolvido.' }, { status: 500 });
+      steps.publish = { stage: 'publish', status: 'skipped' };
+      steps.backfill_matriz = { stage: 'backfill_matriz', status: 'skipped' };
+      steps.generate_turmas = { stage: 'generate_turmas', status: 'skipped' };
+      return NextResponse.json({
+        ok: false,
+        error: 'Curso não resolvido.',
+        message: 'Curso não resolvido.',
+        partial_failed: false,
+        operation_status: buildOperationStatus(steps),
+      }, { status: 500 });
+    }
+
+    if (publishedExists && !applyResult) {
+      steps.publish = { stage: 'publish', status: 'skipped' };
+      steps.backfill_matriz = { stage: 'backfill_matriz', status: 'skipped' };
+      steps.generate_turmas = { stage: 'generate_turmas', status: 'skipped' };
+      const appliedPayload = buildInstallPresetSkippedAppliedPayload(userEscolaId);
+      emitirEvento(supabase, {
+        escola_id: userEscolaId,
+        tipo: 'curriculo.install_preset_skipped',
+        payload: {
+          preset_key: presetKey,
+          curso_id: cursoId,
+          ano_letivo_id: anoLetivo.id,
+          reason: (appliedPayload as any).reason,
+          reason_code: (appliedPayload as any).reason_code,
+        },
+        actor_id: user.id,
+        actor_role: 'admin',
+        entidade_tipo: 'curriculo',
+        entidade_id: null,
+      }).catch(() => null);
+
+      return NextResponse.json({
+        ok: false,
+        step: 'already_published',
+        code: (appliedPayload as any).reason_code,
+        error: (appliedPayload as any).message,
+        message: (appliedPayload as any).message,
+        applied: appliedPayload,
+        partial_failed: false,
+        operation_status: buildOperationStatus(steps),
+      }, { status: 409 });
     }
 
     try {
@@ -249,23 +428,57 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         });
 
       if (publishError) {
+        steps.publish = { stage: 'publish', status: 'failed', error: publishError.message };
+        steps.backfill_matriz = { stage: 'backfill_matriz', status: 'skipped' };
+        steps.generate_turmas = { stage: 'generate_turmas', status: 'skipped' };
+        const compensation = await compensateInstallPartialFailure({
+          supabase: supabase as any,
+          escolaId: userEscolaId,
+          cursoId,
+          anoLetivoId: anoLetivo.id,
+          appliedVersion: applyResult?.curriculo?.version ?? null,
+          failedStage: 'publish',
+          applyCreatedCurriculo: Boolean(applyResult?.curriculo),
+        });
         return NextResponse.json({
           ok: false,
           step: 'publish',
           error: publishError.message,
           message: 'Falha ao publicar currículo.',
+          partial_failed: true,
+          status: 'partial_failed',
+          compensation,
+          operation_status: buildOperationStatus(steps),
         }, { status: 409 });
       }
 
       publishResult = Array.isArray(publishData) ? publishData[0] : publishData;
       if (!publishResult?.ok) {
+        const msg = publishResult?.message || 'Falha ao publicar currículo.';
+        steps.publish = { stage: 'publish', status: 'failed', error: msg };
+        steps.backfill_matriz = { stage: 'backfill_matriz', status: 'skipped' };
+        steps.generate_turmas = { stage: 'generate_turmas', status: 'skipped' };
+        const compensation = await compensateInstallPartialFailure({
+          supabase: supabase as any,
+          escolaId: userEscolaId,
+          cursoId,
+          anoLetivoId: anoLetivo.id,
+          appliedVersion: applyResult?.curriculo?.version ?? null,
+          failedStage: 'publish',
+          applyCreatedCurriculo: Boolean(applyResult?.curriculo),
+        });
         return NextResponse.json({
           ok: false,
           step: 'publish',
-          error: publishResult?.message || 'Falha ao publicar currículo.',
+          error: msg,
           message: 'Falha ao publicar currículo.',
+          partial_failed: true,
+          status: 'partial_failed',
+          compensation,
+          operation_status: buildOperationStatus(steps),
         }, { status: 409 });
       }
+      steps.publish = { stage: 'publish', status: 'success' };
 
       try {
         const { data: profileRow } = await supabase
@@ -292,6 +505,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       } catch (eventError) {
         console.warn('[curriculo.install-preset] falha ao emitir evento:', eventError);
       }
+    } else {
+      steps.publish = { stage: 'publish', status: 'skipped' };
     }
 
     const { count: matrizCount } = await supabase
@@ -309,23 +524,56 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         });
 
       if (backfillError) {
+        steps.backfill_matriz = { stage: 'backfill_matriz', status: 'failed', error: backfillError.message };
+        steps.generate_turmas = { stage: 'generate_turmas', status: 'skipped' };
+        const compensation = await compensateInstallPartialFailure({
+          supabase: supabase as any,
+          escolaId: userEscolaId,
+          cursoId,
+          anoLetivoId: anoLetivo.id,
+          appliedVersion: applyResult?.curriculo?.version ?? null,
+          failedStage: 'backfill_matriz',
+          applyCreatedCurriculo: Boolean(applyResult?.curriculo),
+        });
         return NextResponse.json({
           ok: false,
           step: 'backfill_matriz',
           error: backfillError.message,
           message: 'Falha ao gerar disciplinas do currículo.',
+          partial_failed: true,
+          status: 'partial_failed',
+          compensation,
+          operation_status: buildOperationStatus(steps),
         }, { status: 409 });
       }
 
       matrizBackfill = { ok: true, inserted: Number(backfillCount ?? 0) };
       if (!matrizBackfill.inserted) {
+        steps.backfill_matriz = { stage: 'backfill_matriz', status: 'failed', error: 'Nenhuma disciplina gerada para o currículo.' };
+        steps.generate_turmas = { stage: 'generate_turmas', status: 'skipped' };
+        const compensation = await compensateInstallPartialFailure({
+          supabase: supabase as any,
+          escolaId: userEscolaId,
+          cursoId,
+          anoLetivoId: anoLetivo.id,
+          appliedVersion: applyResult?.curriculo?.version ?? null,
+          failedStage: 'backfill_matriz',
+          applyCreatedCurriculo: Boolean(applyResult?.curriculo),
+        });
         return NextResponse.json({
           ok: false,
           step: 'backfill_matriz',
           error: 'Nenhuma disciplina gerada para o currículo.',
           message: 'Nenhuma disciplina gerada para o currículo.',
+          partial_failed: true,
+          status: 'partial_failed',
+          compensation,
+          operation_status: buildOperationStatus(steps),
         }, { status: 409 });
       }
+      steps.backfill_matriz = { stage: 'backfill_matriz', status: 'success' };
+    } else {
+      steps.backfill_matriz = { stage: 'backfill_matriz', status: 'skipped' };
     }
 
     let turmasResult: any = null;
@@ -374,32 +622,56 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
         const json = await res.json().catch(() => null);
         if (!res.ok || !json?.ok) {
+          const errorMessage = json?.error || 'Falha ao gerar turmas.';
+          steps.generate_turmas = { stage: 'generate_turmas', status: 'failed', error: errorMessage };
+          const compensation = await compensateInstallPartialFailure({
+            supabase: supabase as any,
+            escolaId: userEscolaId,
+            cursoId,
+            anoLetivoId: anoLetivo.id,
+            appliedVersion: applyResult?.curriculo?.version ?? null,
+            failedStage: 'generate_turmas',
+            applyCreatedCurriculo: Boolean(applyResult?.curriculo),
+          });
           return NextResponse.json({
             ok: false,
             step: 'generate_turmas',
-            error: json?.error || 'Falha ao gerar turmas.',
+            error: errorMessage,
             message: 'Falha ao gerar turmas.',
+            partial_failed: true,
+            status: 'partial_failed',
+            compensation,
+            operation_status: buildOperationStatus(steps),
           }, { status: 409 });
         }
         turmasResult = json;
+        steps.generate_turmas = { stage: 'generate_turmas', status: 'success' };
       } else {
         turmasResult = { ok: true, skipped: true, message: 'Turmas já existentes.' };
+        steps.generate_turmas = { stage: 'generate_turmas', status: 'skipped' };
       }
+    } else {
+      steps.generate_turmas = { stage: 'generate_turmas', status: 'skipped' };
     }
+
+    const appliedPayload = {
+      curso_id: applyResult!.curso.id,
+      curso_curriculo_id: applyResult!.curriculo?.id ?? null,
+      version: applyResult!.curriculo?.version ?? null,
+      status: applyResult!.curriculo?.status ?? null,
+    };
 
     return NextResponse.json({
       ok: true,
+      status: 'success',
+      partial_failed: false,
       presetKey,
       ano_letivo_id: anoLetivo.id,
-      applied: applyResult ? {
-        curso_id: applyResult.curso.id,
-        curso_curriculo_id: applyResult.curriculo?.id ?? null,
-        version: applyResult.curriculo?.version ?? null,
-        status: applyResult.curriculo?.status ?? null,
-      } : { skipped: true, reason: 'already_published' },
+      applied: appliedPayload,
       publish: publishResult,
       turmas: turmasResult,
       matriz: matrizBackfill,
+      operation_status: buildOperationStatus(steps),
       message: 'Instalação concluída com sucesso.',
     });
   } catch (e) {

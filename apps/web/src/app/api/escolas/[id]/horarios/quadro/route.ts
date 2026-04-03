@@ -4,11 +4,10 @@ import { supabaseServerTyped } from '@/lib/supabaseServer'
 import { resolveEscolaIdForUser } from '@/lib/tenant/resolveEscolaIdForUser'
 import { applyKf2ListInvariants } from '@/lib/kf2'
 import { authorizeTurmasManage } from '@/lib/escola/disciplinas'
+import { emitirEvento } from '@/lib/eventos/emitirEvento'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
-
-type HorarioVersaoRow = { id: string; status: 'draft' | 'publicada' | 'arquivada'; publicado_em: string | null }
 
 const BodySchema = z.object({
   versao_id: z.string().uuid().optional(),
@@ -118,6 +117,24 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     }
 
     const mode = parsed.data.mode ?? 'draft'
+    const emitObs = (status: 'success' | 'error', httpStatus: number, details: Record<string, unknown> = {}) =>
+      emitirEvento(supabase as any, {
+        escola_id: escolaIdResolved,
+        tipo: 'academico.horario_quadro_post',
+        payload: {
+          status,
+          http_status: httpStatus,
+          duration_ms: Date.now() - start,
+          mode,
+          turma_id: parsed.data.turma_id,
+          items_count: parsed.data.items.length,
+          ...details,
+        },
+        actor_id: user.id,
+        actor_role: 'admin',
+        entidade_tipo: 'quadro_horario',
+        entidade_id: parsed.data.turma_id,
+      }).catch(() => null)
 
     const { data: versionIdFromDb, error: ensureVersionError } = await supabase.rpc('ensure_horario_versao', {
       p_escola_id: escolaIdResolved,
@@ -127,6 +144,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     })
 
     if (ensureVersionError || !versionIdFromDb) {
+      emitObs('error', 400, { error_code: 'ENSURE_VERSION_FAILED' })
       return NextResponse.json({ ok: false, error: ensureVersionError?.message || 'Falha ao garantir versão' }, { status: 400 })
     }
 
@@ -149,17 +167,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const conflicts: Array<{ slot_id: string; professor_id?: string | null; sala_id?: string | null }>
       = []
 
-    const { data: versaoAtual } = await supabase
-      .from('horario_versoes')
-      .select('id, status, publicado_em')
-      .eq('id', versaoId)
-      .eq('escola_id', escolaIdResolved)
-      .eq('turma_id', parsed.data.turma_id)
-      .maybeSingle()
-
-    const versaoAtualRow = versaoAtual as HorarioVersaoRow | null
-
-    if (versaoAtualRow?.status === 'publicada') {
+    if (mode === 'publish') {
       const { data: publishedVersions } = await supabase
         .from('horario_versoes')
         .select('id')
@@ -200,6 +208,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     }
 
     if (conflicts.length > 0) {
+      emitObs('error', 409, { error_code: 'HORARIO_CONFLICT', conflicts_count: conflicts.length })
       return NextResponse.json(
         { ok: false, error: 'Conflito de horário detectado', conflicts },
         { status: 409 }
@@ -216,6 +225,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         .eq('turma_id', parsed.data.turma_id)
 
       if (cargasError) {
+        emitObs('error', 400, { error_code: 'LOAD_TURMA_DISCIPLINAS_FAILED' })
         return NextResponse.json({ ok: false, error: cargasError.message }, { status: 400 })
       }
 
@@ -250,6 +260,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       }
 
       if (missing.length > 0 || mismatch.length > 0) {
+        emitObs('error', 400, {
+          error_code: 'CARGA_HORARIA_INCOMPLETA',
+          missing_count: missing.length,
+          mismatch_count: mismatch.length,
+        })
         return NextResponse.json(
           { ok: false, error: 'CARGA_HORARIA_INCOMPLETA', details: { missing, mismatch } },
           { status: 400 }
@@ -265,7 +280,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       p_publish: mode === 'publish',
     })
 
-    if (upsertError) return NextResponse.json({ ok: false, error: upsertError.message }, { status: 400 })
+    if (upsertError) {
+      emitObs('error', 400, { error_code: 'UPSERT_QUADRO_FAILED' })
+      return NextResponse.json({ ok: false, error: upsertError.message }, { status: 400 })
+    }
 
     const { data, error: selectError } = await supabase
       .from('quadro_horarios')
@@ -274,15 +292,20 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       .eq('turma_id', parsed.data.turma_id)
       .eq('versao_id', versaoId)
 
-    if (selectError) return NextResponse.json({ ok: false, error: selectError.message }, { status: 400 })
+    if (selectError) {
+      emitObs('error', 400, { error_code: 'SELECT_QUADRO_FAILED' })
+      return NextResponse.json({ ok: false, error: selectError.message }, { status: 400 })
+    }
 
     if (mode === 'publish') {
       const publishedVersionId = (upsertResult as { published_id?: string | null } | null)?.published_id ?? null
+      emitObs('success', 200, { published: true, versao_id: String(publishedVersionId || versaoId) })
       const response = NextResponse.json({ ok: true, versao_id: String(publishedVersionId || versaoId), status: 'publicada', items: data || [] })
       response.headers.set('Server-Timing', `app;dur=${Date.now() - start}`)
       return response
     }
 
+    emitObs('success', 200, { published: false, versao_id: versaoId })
     const response = NextResponse.json({ ok: true, versao_id: versaoId, status: 'draft', items: data || [] })
     response.headers.set('Server-Timing', `app;dur=${Date.now() - start}`)
     return response

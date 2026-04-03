@@ -34,21 +34,7 @@ const emptyResolved: ResolvedModelo = {
   formula: {},
 }
 
-const resolveDefaultModelo = async (
-  supabase: SupabaseClient<Database>,
-  escolaId: string
-): Promise<ResolvedModelo | null> => {
-  const { data } = await supabase
-    .from('modelos_avaliacao')
-    .select('componentes, tipo, regras, formula')
-    .eq('escola_id', escolaId)
-    .eq('is_default', true)
-    .order('updated_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (!data) return null
-
+const normalizeResolvedModelo = (data: any): ResolvedModelo => {
   const formula = (data as any).formula ?? {}
   const formulaComponentes = normalizeFormulaComponentes(formula)
 
@@ -60,6 +46,51 @@ const resolveDefaultModelo = async (
     regras: (data as any).regras ?? {},
     formula,
   }
+}
+
+const resolveDefaultModelo = async (
+  supabase: SupabaseClient<Database>,
+  escolaId: string,
+  cursoId?: string | null,
+  configuredModeloAvaliacao?: string | null
+): Promise<ResolvedModelo | null> => {
+  if (cursoId) {
+    const { data: courseDefault } = await supabase
+      .from('modelos_avaliacao')
+      .select('componentes, tipo, regras, formula')
+      .eq('escola_id', escolaId)
+      .eq('curso_id', cursoId)
+      .eq('is_default', true)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (courseDefault) return normalizeResolvedModelo(courseDefault)
+  }
+
+  if (configuredModeloAvaliacao) {
+    const { data: configuredDefault } = await supabase
+      .from('modelos_avaliacao')
+      .select('componentes, tipo, regras, formula')
+      .eq('escola_id', escolaId)
+      .or(`id.eq.${configuredModeloAvaliacao},nome.eq.${configuredModeloAvaliacao}`)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (configuredDefault) return normalizeResolvedModelo(configuredDefault)
+  }
+
+  const { data: globalDefault } = await supabase
+    .from('modelos_avaliacao')
+    .select('componentes, tipo, regras, formula')
+    .eq('escola_id', escolaId)
+    .is('curso_id', null)
+    .eq('is_default', true)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (globalDefault) return normalizeResolvedModelo(globalDefault)
+
+  return null
 }
 
 const resolveModeloById = async (
@@ -104,7 +135,7 @@ export const resolveModeloAvaliacao = async (args: {
 
   const { data: configuracoes } = await supabase
     .from('configuracoes_escola')
-    .select('avaliacao_config')
+    .select('avaliacao_config, modelo_avaliacao')
     .eq('escola_id', escolaId)
     .maybeSingle()
 
@@ -114,7 +145,12 @@ export const resolveModeloAvaliacao = async (args: {
   }
 
   if (!resolved.componentes.length) {
-    const fallback = await resolveDefaultModelo(supabase, escolaId)
+    const fallback = await resolveDefaultModelo(
+      supabase,
+      escolaId,
+      cursoId,
+      (configuracoes as any)?.modelo_avaliacao ?? null
+    )
     if (fallback) resolved = fallback
   }
 

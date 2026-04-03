@@ -34,8 +34,8 @@ export default function ProfessoresStep({ escolaId, cursos, professores, onCurso
       if (!res.ok) throw new Error(result.error || "Falha ao atribuir.");
       onCursosAtualizados(cursos.map(c => c.id === cursoId ? result.data : c));
       success("Professor atribuído.");
-    } catch (error: any) {
-      error(error.message);
+    } catch (err: any) {
+      error(err?.message || "Falha ao atribuir.");
       setAtribuicoes(prev => ({ ...prev, [cursoId]: originalProfessorId })); // Reverte
     }
   };

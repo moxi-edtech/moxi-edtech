@@ -38,7 +38,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     // Load assignments
     let query = supabase
       .from('turma_disciplinas')
-      .select('id, turma_id, curso_matriz_id, carga_horaria_semanal, classificacao, periodos_ativos, entra_no_horario, avaliacao_mode, avaliacao_disciplina_id, modelo_avaliacao_id')
+      .select('id, turma_id, curso_matriz_id, professor_id, carga_horaria_semanal, classificacao, periodos_ativos, entra_no_horario, avaliacao_mode, avaliacao_disciplina_id, modelo_avaliacao_id')
       .eq('escola_id', escolaId)
       .eq('turma_id', turmaId)
 
@@ -112,14 +112,25 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const { data: tdpRows } = disciplinaCatalogIds.length
       ? await supabase
           .from('turma_disciplinas_professores')
-          .select('turma_id, disciplina_id, professor_id')
+          .select('turma_id, disciplina_id, professor_id, horarios, planejamento')
           .eq('escola_id', escolaId)
           .eq('turma_id', turmaId)
           .in('disciplina_id', disciplinaCatalogIds)
-      : { data: [] as Array<{ turma_id: string | null; disciplina_id: string | null; professor_id: string | null }> }
+      : {
+          data: [] as Array<{
+            turma_id: string | null
+            disciplina_id: string | null
+            professor_id: string | null
+            horarios: any
+            planejamento: any
+          }>,
+        }
 
     const professorIds = Array.from(
-      new Set((tdpRows || []).map((row) => row.professor_id).filter(Boolean))
+      new Set([
+        ...(tdpRows || []).map((row) => row.professor_id).filter(Boolean),
+        ...(rows || []).map((row: any) => row.professor_id).filter(Boolean),
+      ])
     ) as string[]
     const { data: profRes } = professorIds.length
       ? await supabase
@@ -132,10 +143,17 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     const profRowById = new Map<string, any>()
     for (const r of ((profRes as any).data || [])) profRowById.set(r.id, r)
 
-    const professorByDisciplina = new Map<string, string | null>()
+    const assignmentByDisciplina = new Map<
+      string,
+      { professor_id: string | null; horarios: any; planejamento: any }
+    >()
     for (const row of (tdpRows || [])) {
       if (!row.turma_id || !row.disciplina_id) continue
-      professorByDisciplina.set(`${row.turma_id}:${row.disciplina_id}`, row.professor_id ?? null)
+      assignmentByDisciplina.set(`${row.turma_id}:${row.disciplina_id}`, {
+        professor_id: row.professor_id ?? null,
+        horarios: (row as any).horarios ?? null,
+        planejamento: (row as any).planejamento ?? null,
+      })
     }
 
     // Simple linkage checks per assignment (prefer FK columns when available)
@@ -154,64 +172,97 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       }))
     }
 
+    const cursoMatrizIds = Array.from(
+      new Set((rows || []).map((row: any) => row.curso_matriz_id).filter(Boolean))
+    ) as string[]
+
+    const [notasBatch, presencasBatch, presencasTurmaBatch] = await Promise.all([
+      cursoMatrizIds.length
+        ? supabase
+            .from('notas')
+            .select('curso_matriz_id')
+            .eq('escola_id', escolaId)
+            .eq('turma_id', turmaId)
+            .in('curso_matriz_id', cursoMatrizIds)
+        : Promise.resolve({ data: [] as Array<{ curso_matriz_id: string | null }> }),
+      cursoMatrizIds.length
+        ? supabase
+            .from('presencas')
+            .select('curso_matriz_id')
+            .eq('escola_id', escolaId)
+            .eq('turma_id', turmaId)
+            .in('curso_matriz_id', cursoMatrizIds)
+        : Promise.resolve({ data: [] as Array<{ curso_matriz_id: string | null }> }),
+      supabase
+        .from('presencas')
+        .select('id')
+        .eq('escola_id', escolaId)
+        .eq('turma_id', turmaId)
+        .limit(1),
+    ])
+
+    const notasByCursoMatriz = new Set<string>()
+    for (const item of notasBatch.data || []) {
+      if (item?.curso_matriz_id) notasByCursoMatriz.add(item.curso_matriz_id)
+    }
+
+    const presencasByCursoMatriz = new Set<string>()
+    for (const item of presencasBatch.data || []) {
+      if (item?.curso_matriz_id) presencasByCursoMatriz.add(item.curso_matriz_id)
+    }
+
+    const hasPresencasTurma = Boolean((presencasTurmaBatch.data || []).length > 0)
+
+    const horarioTargets = (rows || [])
+      .map((row: any) => {
+        const discInfo = discMap.get(row.curso_matriz_id)
+        const assignment = discInfo?.id ? assignmentByDisciplina.get(`${turmaId}:${discInfo.id}`) : null
+        const professorId = assignment?.professor_id ?? row.professor_id ?? null
+        const disciplinaId = discInfo?.id ?? row.curso_matriz_id ?? null
+        if (!professorId || !disciplinaId) return null
+        return { professorId, disciplinaId }
+      })
+      .filter(Boolean) as Array<{ professorId: string; disciplinaId: string }>
+
+    const horarioProfessorIds = Array.from(new Set(horarioTargets.map((target) => target.professorId)))
+    const horarioDisciplinaIds = Array.from(new Set(horarioTargets.map((target) => target.disciplinaId)))
+
+    const { data: quadroBatch } =
+      horarioProfessorIds.length > 0 && horarioDisciplinaIds.length > 0
+        ? await supabase
+            .from('quadro_horarios')
+            .select('professor_id, disciplina_id')
+            .eq('escola_id', escolaId)
+            .eq('turma_id', turmaId)
+            .in('professor_id', horarioProfessorIds)
+            .in('disciplina_id', horarioDisciplinaIds)
+        : { data: [] as Array<{ professor_id: string | null; disciplina_id: string | null }> }
+
+    const horarioPairs = new Set<string>()
+    for (const row of quadroBatch || []) {
+      if (!row.professor_id || !row.disciplina_id) continue
+      horarioPairs.add(`${row.professor_id}:${row.disciplina_id}`)
+    }
+
     const items = [] as any[]
     for (const row of rows || []) {
       const discInfo = discMap.get(row.curso_matriz_id)
       const disciplinaNome = discInfo?.nome ?? null
-      const professorId = discInfo?.id ? professorByDisciplina.get(`${turmaId}:${discInfo.id}`) ?? null : null
+      const assignment = discInfo?.id ? assignmentByDisciplina.get(`${turmaId}:${discInfo.id}`) : null
+      const professorId = assignment?.professor_id ?? row.professor_id ?? null
       const profRow = professorId ? profRowById.get(professorId) : null
       const profile = Array.isArray(profRow?.profiles) ? profRow?.profiles?.[0] : profRow?.profiles
+      const disciplinaIdForHorario = discInfo?.id ?? row.curso_matriz_id ?? null
+      const notasCount = row.curso_matriz_id && notasByCursoMatriz.has(row.curso_matriz_id) ? 1 : 0
+      const horarioOficialCount =
+        professorId && disciplinaIdForHorario && horarioPairs.has(`${professorId}:${disciplinaIdForHorario}`) ? 1 : 0
+      const presencasCount = row.curso_matriz_id
+        ? presencasByCursoMatriz.has(row.curso_matriz_id) ? 1 : 0
+        : hasPresencasTurma ? 1 : 0
 
-      // Check notas: try disciplina_id FK first; fallback to disciplina (texto)
-      let notasCount = 0
-      if (row.curso_matriz_id) {
-        const { data: notasRows } = await supabase
-          .from('notas')
-          .select('id')
-          .eq('escola_id', escolaId)
-          .eq('turma_id', turmaId)
-          .eq('curso_matriz_id', row.curso_matriz_id)
-          .limit(1)
-        notasCount = (notasRows ?? []).length
-      }
-
-      // Check horário oficial SSOT (quadro_horarios + horario_slots) by turma/professor/disciplina
-      let horarioOficialCount = 0
-      if (professorId) {
-        const { data: quadroRows } = await supabase
-          .from('quadro_horarios')
-          .select('id')
-          .eq('escola_id', escolaId)
-          .eq('turma_id', turmaId)
-          .eq('professor_id', professorId)
-          .eq('disciplina_id', discInfo?.id ?? row.curso_matriz_id)
-          .limit(1)
-        horarioOficialCount = (quadroRows ?? []).length
-      }
-
-      // Check presenças: tenta filtrar por disciplina_id quando houver; senão, nível de turma
-      let presencasCount = 0
-      if (row.curso_matriz_id) {
-        const { data: presencasRows } = await supabase
-          .from('presencas')
-          .select('id')
-          .eq('escola_id', escolaId)
-          .eq('turma_id', turmaId)
-          .eq('curso_matriz_id', row.curso_matriz_id)
-          .limit(1)
-        presencasCount = (presencasRows ?? []).length
-      } else {
-        const { data: presencasRows } = await supabase
-          .from('presencas')
-          .select('id')
-          .eq('escola_id', escolaId)
-          .eq('turma_id', turmaId)
-          .limit(1)
-        presencasCount = (presencasRows ?? []).length
-      }
-
-      // Planejamento: placeholder (não há tabela unificada) – considerar future link com syllabi/planos
-      const hasPlanejamento = false
+      const hasPlanejamento =
+        assignment?.planejamento != null &&
+        (!(typeof assignment.planejamento === 'object') || Object.keys(assignment.planejamento).length > 0)
 
       items.push({
         id: row.id,
@@ -233,8 +284,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
           ano_letivo_id: turmaRes.data?.ano_letivo_id ?? null,
         },
         professor: { id: professorId, nome: profile?.nome ?? null, email: profile?.email ?? null },
-        horarios: null,
-        planejamento: null,
+        horarios: assignment?.horarios ?? null,
+        planejamento: assignment?.planejamento ?? null,
         vinculos: {
           horarios: horarioOficialCount > 0,
           notas: notasCount > 0,

@@ -710,7 +710,14 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         if (!res.ok || json?.ok === false) {
           throw new Error(json?.error || "Falha ao instalar preset.");
         }
-        success("Instalação concluída.");
+        if (json?.applied?.skipped) {
+          warning(
+            "Preset não aplicado",
+            json?.applied?.message || "Já existe currículo publicado para este curso/ano letivo."
+          );
+        } else {
+          success("Instalação concluída.");
+        }
         fetchCourses();
       } catch (e: any) {
         error(e?.message || "Falha ao instalar preset.");
@@ -739,6 +746,7 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
 
     setInstalling(true);
     try {
+      let presetSkipped = false;
       if (!draft.isCustom && draft.baseKey in CURRICULUM_PRESETS_META) {
         const subjects = draft.subjects.map((s) => s.nome);
         const turnos = { manha: true, tarde: false, noite: false };
@@ -772,6 +780,13 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         const json = await res.json().catch(() => null);
         if (!res.ok || json?.ok === false) {
           throw new Error(json?.error || "Falha ao aplicar preset.");
+        }
+        if (json?.applied?.skipped) {
+          presetSkipped = true;
+          warning(
+            "Preset não aplicado",
+            json?.applied?.message || "Já existe currículo publicado para este curso/ano letivo."
+          );
         }
       } else {
         const createRes = await fetch(`/api/escolas/${escolaId}/cursos`, {
@@ -836,7 +851,9 @@ export default function StructureMarketplace({ escolaId }: { escolaId: string })
         }
       }
 
-      success("Curso criado com sucesso.");
+      if (!presetSkipped) {
+        success("Curso criado com sucesso.");
+      }
       setShowModal(false);
       setDraft(null);
       fetchCourses();

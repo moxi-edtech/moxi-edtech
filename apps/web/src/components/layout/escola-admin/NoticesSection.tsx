@@ -25,7 +25,7 @@ function formatDateShort(iso: string) {
 export default function NoticesSection({ escolaId, notices = [] }: Props) {
   const { escolaSlug } = useEscolaId();
   const escolaParam = escolaSlug || escolaId;
-  const hrefAll = escolaParam ? `/escola/${escolaParam}/admin/avisos` : "#";
+  const hrefAll = escolaParam ? `/escola/${escolaParam}/admin/avisos/novo` : "#";
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -66,30 +66,22 @@ export default function NoticesSection({ escolaId, notices = [] }: Props) {
         <ul className="divide-y divide-slate-100">
           {notices.slice(0, 5).map((n) => {
             const date = formatDateShort(n.dataISO);
-            const href = escolaParam
-              ? `/escola/${escolaParam}/admin/avisos/${n.id}`
-              : "#";
 
             return (
-              <li key={n.id}>
-                <Link
-                  href={href}
-                  className="group flex items-center gap-3 rounded-xl px-1 py-3 transition hover:bg-slate-50"
-                >
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
-                    <Megaphone className="h-4.5 w-4.5" />
-                  </div>
+              <li
+                key={n.id}
+                className="group flex items-center gap-3 rounded-xl px-1 py-3"
+              >
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700">
+                  <Megaphone className="h-4.5 w-4.5" />
+                </div>
 
-                  <div className="min-w-0 flex-1">
-                    {/* 1 linha só */}
-                    <p className="truncate text-sm font-semibold text-slate-900">
-                      {n.titulo}
-                    </p>
-                    <p className="text-xs text-slate-500">{date}</p>
-                  </div>
-
-                  <ArrowRight className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:text-slate-500 group-hover:translate-x-0.5" />
-                </Link>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-slate-900">
+                    {n.titulo}
+                  </p>
+                  <p className="text-xs text-slate-500">{date}</p>
+                </div>
               </li>
             );
           })}
