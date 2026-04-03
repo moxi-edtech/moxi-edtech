@@ -88,6 +88,20 @@ export function OnboardingLeadSection({ scheduleUrl }: OnboardingLeadSectionProp
   return (
     <section className="onboarding-lead z reveal section-accent" id="onboarding">
       <div className="container">
+        <div className="onboarding-lead__compact">
+          <div className="sec-eyebrow">Onboarding público</div>
+          <h2 className="sec-title">Ativamos a sua escola em poucos passos</h2>
+          <p className="sec-sub">Fale com a equipa KLASSE e começe com apoio guiado.</p>
+          <div className="onboarding-lead__actions">
+            <a className="btn-p" href={whatsappLink} target="_blank" rel="noopener noreferrer">
+              Pedir demo
+            </a>
+            <a className="btn-s" href="https://app.klasse.ao/login" rel="noopener noreferrer">
+              Aceder ao sistema
+            </a>
+          </div>
+        </div>
+
         <div className="onboarding-lead__header">
           <div className="sec-eyebrow">Onboarding público</div>
           <h2 className="sec-title">Comece o onboarding da sua escola</h2>
