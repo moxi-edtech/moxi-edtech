@@ -11,6 +11,8 @@ type AdminAction =
   | "createUser"
   | "inviteUserByEmail"
   | "updateUserById"
+  | "upsertProfile"
+  | "upsertEscolaUser"
   | "deleteUser"
   | "getUserById"
   | "listUsers"
@@ -130,6 +132,52 @@ export async function POST(req: Request) {
         const { userId, attributes } = payload as any;
         const { data, error } = await admin.auth.admin.updateUserById(userId, attributes);
         if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+        return NextResponse.json({ ok: true, data });
+      }
+      case "upsertProfile": {
+        const { profile, onConflict } = payload as {
+          profile?: TablesInsert<"profiles">;
+          onConflict?: string;
+        };
+        if (!profile || !profile.user_id || !profile.email) {
+          return NextResponse.json(
+            { ok: false, error: "Missing required profile fields" },
+            { status: 400 }
+          );
+        }
+
+        const { data, error } = await admin
+          .from("profiles")
+          .upsert(profile, { onConflict: onConflict || "user_id" })
+          .select("user_id,email,escola_id,role")
+          .maybeSingle();
+
+        if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
+        return NextResponse.json({ ok: true, data });
+      }
+      case "upsertEscolaUser": {
+        const { escolaUser } = payload as {
+          escolaUser?: TablesInsert<"escola_users">;
+        };
+        if (!escolaUser || !escolaUser.escola_id || !escolaUser.user_id || !escolaUser.papel) {
+          return NextResponse.json(
+            { ok: false, error: "Missing required escola_users fields" },
+            { status: 400 }
+          );
+        }
+
+        const { data, error } = await admin
+          .from("escola_users")
+          .upsert(escolaUser, { onConflict: "escola_id,user_id" })
+          .select("escola_id,user_id,papel")
+          .maybeSingle();
+
+        if (error) {
+          return NextResponse.json(
+            { ok: false, error: `AUTH_ADMIN_UPSERT_ESCOLA_USER: ${error.message}` },
+            { status: 400 }
+          );
+        }
         return NextResponse.json({ ok: true, data });
       }
       case "deleteUser": {

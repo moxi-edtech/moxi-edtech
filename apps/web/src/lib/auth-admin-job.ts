@@ -4,6 +4,8 @@ type AdminAction =
   | "createUser"
   | "inviteUserByEmail"
   | "updateUserById"
+  | "upsertProfile"
+  | "upsertEscolaUser"
   | "deleteUser"
   | "getUserById"
   | "listUsers"
