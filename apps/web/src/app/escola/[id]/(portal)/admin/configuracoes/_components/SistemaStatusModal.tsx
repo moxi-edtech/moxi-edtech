@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { ModalShell } from "@/components/ui/ModalShell";
 import { useEscolaId } from "@/hooks/useEscolaId";
+import AuthRequiredNotice from "@/components/escola/settings/AuthRequiredNotice";
 
 // Copied from sistema/page.tsx
 // --- TYPES ---
@@ -105,6 +106,7 @@ export function SistemaStatusModal({ open, onClose }: SistemaStatusModalProps) {
   const [setupState, setSetupState] = useState<SetupState | null>(null);
   const [impact, setImpact] = useState<ImpactData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authRequired, setAuthRequired] = useState(false);
 
   // --- FETCH ---
   useEffect(() => {
@@ -115,8 +117,15 @@ export function SistemaStatusModal({ open, onClose }: SistemaStatusModalProps) {
         // Fetch Setup State
         const stateRes = await fetch(`/api/escola/${escolaParam}/admin/setup/state`, { cache: "no-store" });
         const stateJson = await stateRes.json().catch(() => null);
+        if (stateRes.status === 401) {
+          setAuthRequired(true);
+          setSetupState(null);
+          setImpact(null);
+          return;
+        }
         
         if (stateRes.ok && stateJson?.data) {
+          setAuthRequired(false);
           const badges = stateJson.data.badges || {};
           const total = modules.length;
           const done = Object.values(badges).filter(Boolean).length;
@@ -131,6 +140,11 @@ export function SistemaStatusModal({ open, onClose }: SistemaStatusModalProps) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({}),
         });
+        if (impactRes.status === 401) {
+          setAuthRequired(true);
+          setImpact(null);
+          return;
+        }
         const impactJson = await impactRes.json().catch(() => null);
         if (impactRes.ok && impactJson?.ok) setImpact(impactJson.data);
 
@@ -148,6 +162,13 @@ export function SistemaStatusModal({ open, onClose }: SistemaStatusModalProps) {
       title="Status do Sistema"
       description="Visão geral do progresso de configuração do ano letivo."
     >
+      {authRequired ? (
+        <AuthRequiredNotice
+          nextPath={`/escola/${escolaParam}/admin/configuracoes/sistema`}
+          compact
+          description="Faça login novamente para visualizar o status do sistema."
+        />
+      ) : (
         <div className="space-y-8">
             {/* HERO CARD: STATUS GERAL */}
             <div className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -283,6 +304,7 @@ export function SistemaStatusModal({ open, onClose }: SistemaStatusModalProps) {
             })}
             </div>
         </div>
+      )}
     </ModalShell>
   );
 }

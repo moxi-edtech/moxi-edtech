@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
-import { Loader2 } from "lucide-react";
 
 // Importa os componentes (ajusta os caminhos se necessário)
 import AcademicSetupWizard from "@/components/escola/onboarding/AcademicSetupWizard";
+import AuthRequiredNotice from "@/components/escola/settings/AuthRequiredNotice";
 import SettingsHub from "@/components/escola/settings/SettingsHub";
 import SettingsHubSkeleton from "@/components/escola/settings/SettingsHubSkeleton";
 import { useEscolaId } from "@/hooks/useEscolaId";
@@ -24,6 +24,7 @@ export default function ConfiguracoesPage({ params }: Props) {
   const [loading, setLoading] = useState(true);
   const [forceWizard, setForceWizard] = useState(false);
   const [showChecklist, setShowChecklist] = useState(false);
+  const [authRequired, setAuthRequired] = useState(false);
   const [pageSetupStatus, setPageSetupStatus] = useState<{ // Renamed to avoid conflict
     has_ano_letivo_ativo: boolean;
     has_3_trimestres: boolean;
@@ -47,8 +48,15 @@ export default function ConfiguracoesPage({ params }: Props) {
         });
         const pageJson = await pageRes.json().catch(() => null);
         if (cancelled) return;
+
+        if (pageRes.status === 401) {
+          setAuthRequired(true);
+          setPageSetupStatus(null);
+          return;
+        }
         
         if (pageRes.ok && pageJson?.data) {
+          setAuthRequired(false);
           setPageSetupStatus(pageJson.data);
         } else {
           setPageSetupStatus(null);
@@ -75,6 +83,18 @@ export default function ConfiguracoesPage({ params }: Props) {
   // 3. Estado de Carregamento
   if (loading) {
     return <SettingsHubSkeleton />;
+  }
+
+  if (authRequired) {
+    const nextPath = `/escola/${escolaParam}/admin/configuracoes`;
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-6">
+        <AuthRequiredNotice
+          nextPath={nextPath}
+          description="Não foi possível carregar as configurações porque você não está autenticado."
+        />
+      </div>
+    );
   }
 
   const setupComplete = Boolean(pageSetupStatus && pageSetupStatus.percentage === 100);
