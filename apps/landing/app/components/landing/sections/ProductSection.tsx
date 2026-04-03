@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+
 import {
   Users,
   Wallet,
@@ -10,6 +12,17 @@ import {
 } from 'lucide-react'
 
 export function ProductSection() {
+  const [isMobile, setIsMobile] = useState(false)
+  const [mobilePage, setMobilePage] = useState(0)
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 900px)')
+    const sync = () => setIsMobile(media.matches)
+    sync()
+    media.addEventListener('change', sync)
+    return () => media.removeEventListener('change', sync)
+  }, [])
+
   const features = [
     {
       title: 'Fecho de caixa cego',
@@ -49,6 +62,8 @@ export function ProductSection() {
     },
   ]
 
+  const visibleFeatures = isMobile ? features.slice(mobilePage * 3, mobilePage * 3 + 3) : features
+
   return (
     <section className="features z reveal section-bg section-bg-product section-accent" id="produto">
       <div className="container">
@@ -59,7 +74,7 @@ export function ProductSection() {
         </div>
 
         <div className="product-showcase-grid">
-          {features.map((feature, index) => {
+          {visibleFeatures.map((feature, index) => {
             const Icon = feature.icon
             const iconVariant = index % 2 === 0 ? 'product-showcase-icon--green' : 'product-showcase-icon--gold'
 
@@ -77,6 +92,20 @@ export function ProductSection() {
               </article>
             )
           })}
+        </div>
+        <div className="product-mobile-pager" role="tablist" aria-label="Páginas de funcionalidades">
+          <button
+            type="button"
+            className={`product-mobile-page${mobilePage === 0 ? ' is-active' : ''}`}
+            onClick={() => setMobilePage(0)}
+            aria-label="Ver funcionalidades 1 a 3"
+          />
+          <button
+            type="button"
+            className={`product-mobile-page${mobilePage === 1 ? ' is-active' : ''}`}
+            onClick={() => setMobilePage(1)}
+            aria-label="Ver funcionalidades 4 a 6"
+          />
         </div>
 
         <div className="product-highlight-row">
