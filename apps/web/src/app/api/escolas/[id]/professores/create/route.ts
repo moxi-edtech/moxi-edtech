@@ -148,22 +148,27 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
       current_escola_id: escolaId,
     }
 
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .upsert(profilePayload, { onConflict: 'user_id' })
-    if (profileError) {
-      return NextResponse.json({ ok: false, error: profileError.message }, { status: 400 })
+    try {
+      await callAuthAdminJob(req, 'upsertProfile', {
+        profile: profilePayload,
+        onConflict: 'user_id',
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Falha ao persistir perfil'
+      return NextResponse.json({ ok: false, error: message }, { status: 400 })
     }
 
-    const { error: escolaUsersError } = await supabase
-      .from('escola_users')
-      .upsert({
-        escola_id: escolaId,
-        user_id: userId,
-        papel: 'professor',
-      }, { onConflict: 'escola_id,user_id' })
-    if (escolaUsersError) {
-      return NextResponse.json({ ok: false, error: escolaUsersError.message }, { status: 400 })
+    try {
+      await callAuthAdminJob(req, 'upsertEscolaUser', {
+        escolaUser: {
+          escola_id: escolaId,
+          user_id: userId,
+          papel: 'professor',
+        },
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Falha ao persistir vínculo escolar'
+      return NextResponse.json({ ok: false, error: `PROF_CREATE_ESCOLA_USER: ${message}` }, { status: 400 })
     }
 
     await callAuthAdminJob(req, 'updateUserById', {
