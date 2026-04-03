@@ -30,7 +30,7 @@ export default function BrandPanel() {
           {/* Bloco de marca: LOGO + TEXTO */}
           <div className="flex items-center gap-4">
             <Image
-              src="/logo-klasse.png"
+              src="/logo-klasse-ui.png"
               alt="Klasse"
               width={72}
               height={72}

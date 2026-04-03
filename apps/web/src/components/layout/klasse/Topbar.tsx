@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import SignOutButton from "@/components/auth/SignOutButton";
 import { CommandPalette } from "@/components/CommandPalette";
@@ -34,10 +36,29 @@ export default function Topbar({
 }: TopbarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const infoText = portalSubtitle;
+  const homeHref =
+    portal === "admin" && escolaId ? `/escola/${escolaId}/admin/dashboard`
+    : portal === "secretaria" && escolaId ? `/escola/${escolaId}/secretaria/dashboard`
+    : portal === "financeiro" && escolaId ? `/escola/${escolaId}/financeiro/dashboards`
+    : portal === "professor" ? "/professor"
+    : portal === "aluno" ? "/aluno/dashboard"
+    : portal === "superadmin" ? "/super-admin"
+    : portal === "gestor" ? "/app"
+    : "/app";
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/80 backdrop-blur">
       <div className="h-16 flex items-center gap-4 px-4">
+        <Link href={homeHref} className="flex items-center gap-2 min-w-0" aria-label="Ir para a home do portal">
+          <div className="h-9 w-9 rounded-xl bg-klasse-gold/15 ring-1 ring-klasse-gold/30 flex items-center justify-center">
+            <Image src="/logo-klasse-ui.png" alt="KLASSE" width={20} height={20} className="h-5 w-5 object-contain" />
+          </div>
+          <div className="hidden sm:block min-w-0 leading-4">
+            <div className="text-sm font-semibold text-slate-900">KLASSE</div>
+            <div className="text-[11px] text-slate-500">gestão escolar</div>
+          </div>
+        </Link>
+
         <div className="hidden lg:flex flex-col min-w-0">
           <span className="text-sm font-semibold text-slate-900">{contextLabel}</span>
           <span className="text-xs text-slate-500 truncate">{infoText}</span>
@@ -62,7 +83,7 @@ export default function Topbar({
               aria-label={`Menu do usuário - ${portalTitle}`}
             >
               <div className="h-7 w-7 rounded-full bg-klasse-green/15 ring-1 ring-klasse-green/25 flex items-center justify-center">
-                <span className="text-xs font-semibold text-klasse-green">K</span>
+                <Image src="/logo-klasse-ui.png" alt="KLASSE" width={14} height={14} className="h-[14px] w-[14px] object-contain" />
               </div>
               <div className="hidden sm:block text-left leading-4">
                 <div className="text-sm font-medium text-slate-900">{portalTitle}</div>

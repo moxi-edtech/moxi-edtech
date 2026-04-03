@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useState } from 'react'
+import Image from "next/image";
+import Link from "next/link";
 import { createClient } from '@/lib/supabaseClient'
 import SidebarContainer from "@/components/layout/shared/SidebarContainer";
 import {
@@ -68,13 +70,15 @@ export default function StudentPortalLayout({ children }: { children: React.Reac
         className={`bg-white md:rounded-r-2xl transition-transform ${open ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
       >
         <div className="px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-r from-teal-500 to-sky-600 text-white rounded-xl w-10 h-10 flex items-center justify-center shadow-lg">🎓</div>
+          <Link href="/aluno/dashboard" className="flex items-center gap-3" aria-label="Ir para a home do aluno">
+            <div className="h-10 w-10 rounded-xl bg-klasse-gold-500/15 ring-1 ring-klasse-gold-500/30 flex items-center justify-center shadow-lg">
+              <Image src="/logo-klasse-ui.png" alt="KLASSE" width={20} height={20} className="h-5 w-5 object-contain" />
+            </div>
             <div>
-              <h1 className="text-lg font-bold bg-gradient-to-r from-teal-500 to-sky-600 bg-clip-text text-transparent">MoxiNexa</h1>
+              <h1 className="text-lg font-bold text-slate-900">KLASSE</h1>
               <p className="text-xs text-moxinexa-light opacity-70">Portal do Aluno</p>
             </div>
-          </div>
+          </Link>
           <button onClick={() => setOpen(false)} className="md:hidden p-2 rounded-lg bg-moxinexa-light/30">✕</button>
         </div>
         <nav className="px-3 py-3 space-y-1">

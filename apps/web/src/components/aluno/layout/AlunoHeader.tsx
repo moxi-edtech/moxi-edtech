@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import SignOutButton from "@/components/auth/SignOutButton";
-import { UserCircle2, ChevronDown, GraduationCap } from "lucide-react";
+import { UserCircle2, ChevronDown } from "lucide-react";
 
 type Educando = { id: string; nome: string };
 
@@ -39,9 +41,9 @@ export function AlunoHeader({
         <div className="flex items-center justify-between">
           
           {/* Identidade da Escola */}
-          <div className="flex items-center gap-3">
+          <Link href="/aluno/dashboard" className="flex items-center gap-3" aria-label="Ir para a home do aluno">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1F6B3B] text-white shadow-sm ring-4 ring-[#1F6B3B]/10">
-              <GraduationCap className="h-5 w-5" />
+              <Image src="/logo-klasse-ui.png" alt="KLASSE" width={20} height={20} className="h-5 w-5 object-contain" />
             </div>
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 font-geist">
@@ -51,7 +53,7 @@ export function AlunoHeader({
                 {shortSchoolName(escolaNome)}
               </h1>
             </div>
-          </div>
+          </Link>
 
           {/* Ações (Notificações, etc.) e SignOut */}
           <div className="flex items-center gap-3">

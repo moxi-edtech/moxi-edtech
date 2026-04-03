@@ -1,6 +1,8 @@
 "use client"
 
 import { useRouter } from "next/navigation"
+import Link from "next/link"
+import Image from "next/image"
 import { createClient } from "@/lib/supabaseClient"
 import { useEffect, useState } from "react"
 import ConfigHealthBanner from "@/components/system/ConfigHealthBanner"
@@ -90,6 +92,11 @@ export default function Header() {
     <>
       <header className="h-14 bg-white shadow flex items-center justify-between px-6 sticky top-0 z-40">
         <div className="flex items-center space-x-4">
+          <Link href="/super-admin" className="flex items-center gap-2" aria-label="Ir para a home do Super Admin">
+            <div className="h-8 w-8 rounded-lg bg-klasse-gold-500/15 ring-1 ring-klasse-gold-500/30 flex items-center justify-center">
+              <Image src="/logo-klasse-ui.png" alt="KLASSE" width={16} height={16} className="h-4 w-4 object-contain" />
+            </div>
+          </Link>
           <div className="hidden sm:block">
             <BackButton />
           </div>
