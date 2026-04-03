@@ -8,24 +8,18 @@ import './globals.css'
 
 const manrope = Manrope({
   subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
   display: 'swap',
   variable: '--font-manrope',
 })
 
 const sora = Sora({
   subsets: ['latin'],
-  weight: ['700', '800'],
   display: 'swap',
   variable: '--font-sora',
 })
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://klasse.ao'),
-  title: {
-    default: 'KLASSE — Gestão Escolar do Futuro',
-    template: '%s | KLASSE',
-  },
+  title: 'KLASSE — Gestão Escolar do Futuro',
   description: 'Propinas controladas. Documentos prontos. Director com visibilidade real.',
   keywords: [
     'gestão escolar angola',
@@ -61,11 +55,6 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
-  verification: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
-    ? {
-        google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
-      }
-    : undefined,
   alternates: {
     canonical: 'https://klasse.ao',
   },
@@ -73,13 +62,15 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="pt-AO" className={`${manrope.variable} ${sora.variable}`}>
+    <html lang="pt-AO">
       <head>
-        <link rel="icon" href="/logo-klasse.png?v=20260326" type="image/png" sizes="32x32" />
-        <link rel="apple-touch-icon" href="/logo-klasse.png?v=20260326" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link rel="icon" href="/logo-klasse.png" type="image/png" />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
         <SchemaMarkup />
       </head>
-      <body>{children}</body>
+      <body className={`${manrope.variable} ${sora.variable}`}>{children}</body>
     </html>
   )
 }

@@ -83,7 +83,7 @@ export const productSteps = [
 ]
 
 export const pricingIntro =
-  'Nenhuma funcionalidade principal é bloqueada por plano. Os limites são de capacidade (alunos, armazenamento e utilizadores), não de acesso.'
+  'Todos os planos incluem as funcionalidades principais. O que muda é capacidade, suporte e escala da operação.'
 
 export const pricingNote =
   'Uma escola Essencial tem o Balcão Inteligente, o portal da direção e os documentos MED — só não consegue registar mais de 600 alunos.'
@@ -172,9 +172,9 @@ export const portalHighlights = {
 
 export const pilot = {
   badge: 'Lançamento em Angola',
-  title: 'As primeiras escolas têm acompanhamento directo',
+  title: 'As primeiras escolas têm acompanhamento direto',
   description:
-    'Não é um software que compras e configuras sozinho. Trabalhamos directamente contigo — configuração, formação e suporte nos primeiros meses.',
+    'Não é só software. A equipa KLASSE configura consigo, forma a equipa e acompanha a operação nos primeiros meses.',
 }
 
 export interface PricingPlan {

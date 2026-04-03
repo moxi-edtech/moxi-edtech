@@ -129,9 +129,7 @@ function PricingIntro({ intro }: { intro: string }) {
         Planos transparentes
       </div>
       <h2 className="sec-title" style={{ textAlign: 'center' }}>
-        Preços feitos para a nossa
-        <br />
-        <em>realidade</em>
+        Preços para a nossa realidade.
       </h2>
       <p className="precos-intro">{intro}</p>
     </div>

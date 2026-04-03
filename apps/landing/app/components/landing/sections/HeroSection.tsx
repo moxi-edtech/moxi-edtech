@@ -11,6 +11,9 @@ interface HeroSectionProps {
 export function HeroSection({ titleLines, eyebrow, subtitle, primaryCta, note }: HeroSectionProps) {
   return (
     <section className="hero z section-accent">
+      <div className="hero-gradient-bg" aria-hidden="true" />
+      <div className="hero-noise-bg" aria-hidden="true" />
+      <div className="hero-contrast-overlay" aria-hidden="true" />
       <div className="container">
         <div className="hero-content">
           <div className="hero-copy">

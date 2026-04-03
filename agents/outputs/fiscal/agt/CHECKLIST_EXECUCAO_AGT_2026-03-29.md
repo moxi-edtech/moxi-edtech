@@ -15,9 +15,9 @@ Janela alvo: 2026-03-29 a 2026-04-15
 
 - [x] Ponto 1 gerado e PDF salvo
 - [ ] Ponto 2 gerado (anulação) e PDF pós-anulação salvo
-- [ ] Ponto 3 gerado (pró-forma) ou marcado NA com justificativa
-- [ ] Ponto 4 gerado com referência ao ponto 3
-- [ ] Ponto 5 gerado com referência ao ponto 4
+- [x] Ponto 3 gerado (pró-forma) ou marcado NA com justificativa
+- [x] Ponto 4 gerado com referência ao ponto 3
+- [x] Ponto 5 gerado com referência ao ponto 4
 - [x] Ponto 6 gerado com linha isenta e códigos válidos
 - [ ] Ponto 7 gerado com desconto de linha e global
 - [ ] Ponto 8 gerado em moeda estrangeira
@@ -79,3 +79,11 @@ Janela alvo: 2026-03-29 a 2026-04-15
   - chamada 2 (`origem_id` A): `201`, mesmo `documento_id` e mesmo `numero_formatado`
   - chamada 3 (`origem_id` B): `201`, `documento_id=b35c8983-da83-4007-810c-e69c13bb2336`, `numero_formatado=FR FR/2`
 - Pré-condição operacional atendida: série `FR/FR/integrado` criada/ativada.
+
+### Execução adicional (2026-04-03)
+
+- Fluxo `PP -> FT(ref PP) -> NC(ref FT)` executado em produção:
+  - PP: `5831e698-c72c-4db8-9980-2e2cbb9731bb` (`PP PP/3`)
+  - FT: `2230924c-37e0-41da-96df-68f9bbd75509` (`FT FR/6`)
+  - NC: `e0b4637e-b705-44d2-8e97-6eea534d078c` (`NC NC/3`)
+- Pendente para fechar os pontos 3/4/5: anexar PDFs e validar referências no XML final do pacote AGT.
