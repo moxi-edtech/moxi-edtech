@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { 
-  RefreshCw,
+  Loader2, 
   Printer, 
   Banknote, 
   CreditCard, 
@@ -14,15 +14,14 @@ import {
   Building2,
   Search
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
-import { useToast } from "@/components/feedback/FeedbackSystem";
 
 // --- TYPES ---
 type FechoItem = {
   id: string;
   hora: string;
   aluno: string;
-  operador: string;
   valor: number;
   metodo: string;
   descricao: string;
@@ -67,7 +66,6 @@ const formatKz = (value: number) =>
 export const dynamic = "force-dynamic";
 
 export default function FechoCaixaPage() {
-  const { success, error: toastError } = useToast();
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [data, setData] = useState<FechoResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -129,9 +127,9 @@ export default function FechoCaixaPage() {
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao declarar fecho");
       setFechoResult(json.data as FechoDeclaracao);
-      success("Fecho declarado com sucesso.");
+      toast.success("Fecho declarado com sucesso.");
     } catch (err) {
-      toastError(err instanceof Error ? err.message : "Erro ao declarar fecho.");
+      toast.error(err instanceof Error ? err.message : "Erro ao declarar fecho.");
     } finally {
       setDeclaring(false);
     }
@@ -154,9 +152,9 @@ export default function FechoCaixaPage() {
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao aprovar fecho");
       setFechoResult(json.data as FechoDeclaracao);
-      success("Fecho atualizado.");
+      toast.success("Fecho atualizado.");
     } catch (err) {
-      toastError(err instanceof Error ? err.message : "Erro ao aprovar fecho.");
+      toast.error(err instanceof Error ? err.message : "Erro ao aprovar fecho.");
     } finally {
       setApproving(false);
     }
@@ -233,7 +231,7 @@ export default function FechoCaixaPage() {
         {/* Loading State */}
         {loading && (
           <div className="flex items-center gap-2 text-xs font-medium text-slate-400 px-3">
-            <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Atualizando dados...
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Atualizando dados...
           </div>
         )}
       </div>
@@ -397,7 +395,6 @@ export default function FechoCaixaPage() {
               <tr>
                 <th className="px-6 py-3">Hora</th>
                 <th className="px-6 py-3">Aluno / Responsável</th>
-                <th className="px-6 py-3">Operador</th>
                 <th className="px-6 py-3">Descrição</th>
                 <th className="px-6 py-3">Método</th>
                 <th className="px-6 py-3 text-right">Valor</th>
@@ -406,7 +403,7 @@ export default function FechoCaixaPage() {
             <tbody className="divide-y divide-slate-50">
               {!loading && rows.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center flex flex-col items-center justify-center gap-2">
+                  <td colSpan={5} className="px-6 py-12 text-center flex flex-col items-center justify-center gap-2">
                     <Search className="w-8 h-8 text-slate-200" />
                     <span className="text-slate-500 font-medium">Nenhum lançamento encontrado.</span>
                     <span className="text-xs text-slate-400">Verifique a data ou o filtro de operador.</span>
@@ -417,13 +414,12 @@ export default function FechoCaixaPage() {
                 <tr key={row.id} className="hover:bg-slate-50 transition-colors group">
                   <td className="px-6 py-4 text-slate-500 font-mono text-xs">{row.hora}</td>
                   <td className="px-6 py-4 font-bold text-slate-700">{row.aluno}</td>
-                  <td className="px-6 py-4 text-slate-600">{row.operador}</td>
                   <td className="px-6 py-4 text-slate-600">{row.descricao}</td>
                   <td className="px-6 py-4">
                     <span className={`
                       inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide border
                       ${row.metodo === 'CASH' || row.metodo === 'Numerário' 
-                        ? 'bg-klasse-green-50 text-klasse-green-700 border-klasse-green-100' 
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
                         : 'bg-slate-50 text-slate-600 border-slate-200'}
                     `}>
                       {row.metodo}
@@ -452,7 +448,7 @@ export default function FechoCaixaPage() {
           rows={3}
         />
         <div className="mt-2 flex justify-end">
-          <button className="text-xs font-bold text-[#E3B23C] hover:text-klasse-gold-600 transition-colors">
+          <button className="text-xs font-bold text-[#E3B23C] hover:text-amber-600 transition-colors">
             Salvar Nota
           </button>
         </div>

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 
 type PortalSlide = {
-  id: 'aluno' | 'encarregado' | 'academico'
+  id: 'aluno' | 'professor' | 'diretor'
   tab: string
   badge: string
   title: string
@@ -11,6 +11,14 @@ type PortalSlide = {
 
 const slides: PortalSlide[] = [
   {
+    id: 'diretor',
+    tab: 'Diretor',
+    badge: 'Portal do Diretor',
+    title: 'Caixa, risco e operacao em segundos.',
+    description: 'O diretor acompanha receitas, atrasos e movimento diario sem depender de relatorios manuais.',
+    points: ['Receita prevista vs realizada em tempo real', 'Radar de inadimplencia com prioridades', 'Entradas recentes para decisao rapida'],
+  },
+  {
     id: 'aluno',
     tab: 'Aluno',
     badge: 'Portal do Aluno',
@@ -19,20 +27,12 @@ const slides: PortalSlide[] = [
     points: ['Notas por disciplina em segundos', 'Presencas com historico claro', 'Propinas visiveis sem ir a secretaria'],
   },
   {
-    id: 'encarregado',
-    tab: 'Encarregado',
-    badge: 'Portal do Encarregado',
-    title: 'Propinas e notas, sem filas.',
-    description: 'Tudo visivel para o encarregado no mesmo painel.',
-    points: ['Estado financeiro do aluno', 'Proximos pagamentos e pendencias', 'Acompanhamento academico continuo'],
-  },
-  {
-    id: 'academico',
-    tab: 'Academico',
-    badge: 'Portal Academico',
-    title: 'Notas em tempo real.',
-    description: 'O aluno acompanha o proprio percurso sem friccao.',
-    points: ['Disciplinas e desempenho por trimestre', 'Resumo rapido de progresso', 'Proxima aula e rotina organizada'],
+    id: 'professor',
+    tab: 'Professor',
+    badge: 'Portal do Professor',
+    title: 'Portal do Professor, igual ao ambiente real.',
+    description: 'Resumo do dia, minhas turmas e agenda semanal com os mesmos blocos da tela real.',
+    points: ['Aulas hoje, turmas ativas, avaliacoes pendentes e faltas a lancar', 'Acoes diretas: Registrar Presencas e Lancar Notas', 'Turmas por disciplina e agenda organizada por dia'],
   },
 ]
 
@@ -50,7 +50,9 @@ function DeviceMock({ activeId }: { activeId: PortalSlide['id'] }) {
             <div className="phone-screen">
               <div className="ph-status"><span>07:00</span><span>5G 87%</span></div>
               <div className="ph-header">
-                <div className="ph-logo">KL</div>
+                <div className="ph-logo" aria-hidden="true">
+                  <img src="/logo-klasse.png" alt="" />
+                </div>
                 <div className="ph-header-text">
                   <div className="ph-portal-lbl">Portal do Aluno</div>
                   <div className="ph-escola">Colegio Nova Geracao</div>
@@ -82,43 +84,61 @@ function DeviceMock({ activeId }: { activeId: PortalSlide['id'] }) {
     )
   }
 
-  if (activeId === 'encarregado') {
+  if (activeId === 'professor') {
     return (
-      <div className="device-stage device-stage--encarregado">
-        <div className="portais-device-head light">
+      <div className="device-stage device-stage--professor">
+        <div className="portais-device-head">
           <span className="post-brand">KLASSE</span>
-          <span className="post-headline">Portal do Encarregado</span>
+          <span className="post-headline">Portal do Professor</span>
         </div>
-        <div className="tablet-shell">
-          <div className="tablet-frame">
-            <div className="tablet-screen">
-              <div className="tab-status"><span>07:00</span><span>WiFi - Colegio Nova Geracao</span></div>
-              <div className="tab-header">
-                <div className="ph-logo">KL</div>
+        <div className="android-shell">
+          <div className="android-frame">
+            <div className="android-screen">
+              <div className="and-status"><span>07:00</span><span>4G - 87%</span></div>
+              <div className="and-header">
+                <div className="ph-logo" aria-hidden="true">
+                  <img src="/logo-klasse.png" alt="" />
+                </div>
                 <div className="ph-header-text">
-                  <div className="ph-portal-lbl">Portal do Aluno - Colegio Nova Geracao</div>
-                  <div className="ph-escola">Mbemba Neto - 5.a Classe - Turma 5B</div>
-                </div>
-                <span className="alvid-pill">Mbemba Neto</span>
-              </div>
-              <div className="tab-layout">
-                <div className="tab-col">
-                  <div className="tab-col-title">Financeiro</div>
-                  <div className="fin-card paid"><small>Pago em 2026</small><strong>Kz 230.000</strong></div>
-                  <div className="fin-card pend"><small>Pendente</small><strong>Kz 46.000</strong></div>
-                  <div className="mens-title">Mensalidades</div>
-                  <div className="mens-row"><span>Marco 2026</span><b>Pagar</b></div>
-                  <div className="mens-row"><span>Abril 2026</span><b>Pagar</b></div>
-                </div>
-                <div className="tab-col">
-                  <div className="tab-col-title">Notas - 1.o Trimestre</div>
-                  <div className="tab-note-card"><div className="ph-note-row"><span>Matematica</span><strong>16</strong></div><div className="ph-bar"><i style={{ width: '80%' }} /></div></div>
-                  <div className="tab-note-card"><div className="ph-note-row"><span>Portugues</span><strong>18</strong></div><div className="ph-bar"><i style={{ width: '90%' }} /></div></div>
-                  <div className="tab-note-card"><div className="ph-note-row"><span>Ciencias</span><strong className="warn">13</strong></div><div className="ph-bar"><i className="warn" style={{ width: '65%' }} /></div></div>
-                  <div className="tab-note-card"><div className="ph-note-row"><span>Historia</span><strong>15</strong></div><div className="ph-bar"><i style={{ width: '75%' }} /></div></div>
+                  <div className="ph-portal-lbl">Portal do Professor</div>
+                  <div className="ph-escola">Colegio Nova Geracao</div>
                 </div>
               </div>
-              <div className="tab-nav"><span>Inicio</span><span>Academico</span><span className="active">Financeiro</span><span>Docs</span><span>Avisos</span></div>
+              <div className="and-student-bar"><span className="alvid-pill">Prof. Mateus Neto</span></div>
+              <div className="and-content">
+                <div className="and-professor-resumo">
+                  <div className="and-section-lbl">Resumo do dia</div>
+                  <div className="and-meta-grid and-meta-grid--professor">
+                    <div className="and-meta-card and-meta-card--professor"><small>Aulas hoje</small><strong>6</strong></div>
+                    <div className="and-meta-card and-meta-card--professor"><small>Turmas ativas</small><strong>4</strong></div>
+                    <div className="and-meta-card and-meta-card--professor"><small>Avaliacoes pendentes</small><strong>3</strong></div>
+                    <div className="and-meta-card and-meta-card--professor"><small>Faltas a lancar</small><strong>2</strong></div>
+                  </div>
+                  <div className="and-quick-actions">
+                    <button type="button" className="and-action-chip and-action-chip--active">Registrar Presencas</button>
+                    <button type="button" className="and-action-chip">Lancar Notas</button>
+                  </div>
+                </div>
+                <div className="and-section-lbl and-section-lbl-tight">Minhas turmas</div>
+                <div className="disc-item disc-item--professor">
+                  <span>Turma 9B</span>
+                  <strong>Matematica</strong>
+                </div>
+                <div className="disc-item disc-item--professor">
+                  <span>Turma 8A</span>
+                  <strong>Fisica</strong>
+                </div>
+                <div className="disc-item disc-item--professor">
+                  <span>Turma 7C</span>
+                  <strong className="warn">Quimica</strong>
+                </div>
+                <div className="and-section-lbl and-section-lbl-tight">Agenda semanal</div>
+                <div className="disc-item disc-item--professor">
+                  <span>Segunda</span>
+                  <strong>08:00-09:40</strong>
+                </div>
+              </div>
+              <div className="and-nav"><span>Inicio</span><span className="active">Turmas</span><span>Frequencias</span><span>Notas</span><span>Perfil</span></div>
             </div>
           </div>
         </div>
@@ -127,39 +147,77 @@ function DeviceMock({ activeId }: { activeId: PortalSlide['id'] }) {
   }
 
   return (
-    <div className="device-stage device-stage--academico">
+    <div className="device-stage device-stage--diretor">
       <div className="portais-device-head">
         <span className="post-brand">KLASSE</span>
-        <span className="post-headline">Portal Academico</span>
+        <span className="post-headline">Portal do Diretor</span>
       </div>
-      <div className="float-stat top"><strong>14.8</strong><small>Media geral</small></div>
-      <div className="float-stat bottom"><strong>7</strong><small>Disciplinas</small></div>
-      <div className="android-shell">
-        <div className="android-frame">
-          <div className="android-screen">
-            <div className="and-status"><span>07:00</span><span>4G - 87%</span></div>
-            <div className="and-header">
-              <div className="ph-logo">KL</div>
-              <div className="ph-header-text">
-                <div className="ph-portal-lbl">Portal do Aluno</div>
-                <div className="ph-escola">Colegio Nova Geracao</div>
+      <div className="director-shell">
+        <div className="director-frame">
+          <div className="director-bar">
+            <span />
+            <span />
+            <span />
+          </div>
+          <div className="director-screen">
+            <div className="director-kpis">
+              <article>
+                <small>Alunos ativos</small>
+                <strong>583</strong>
+              </article>
+              <article>
+                <small>Turmas</small>
+                <strong>24</strong>
+              </article>
+              <article>
+                <small>Professores</small>
+                <strong>47</strong>
+              </article>
+              <article>
+                <small>Financeiro</small>
+                <strong className="ok">78%</strong>
+              </article>
+            </div>
+
+            <div className="director-revenue">
+              <div className="director-revenue-row">
+                <span>Previsao de receita</span>
+                <strong>Kz 4.2M / Kz 5.4M</strong>
+              </div>
+              <div className="director-revenue-bar">
+                <i style={{ width: '78%' }} />
+              </div>
+              <p className="director-revenue-note">78% realizado no periodo actual</p>
+            </div>
+
+            <div className="director-grid">
+              <div className="director-panel">
+                <p className="director-panel-title">Entradas de hoje</p>
+                <div className="director-item">
+                  <span>Transferencia</span>
+                  <strong>Kz 84.000</strong>
+                </div>
+                <div className="director-item">
+                  <span>TPA</span>
+                  <strong>Kz 46.000</strong>
+                </div>
+                <div className="director-item">
+                  <span>Referencia</span>
+                  <strong>Kz 23.000</strong>
+                </div>
+              </div>
+              <div className="director-panel">
+                <p className="director-panel-title">Atencao prioritaria</p>
+                <div className="director-item">
+                  <span>Turma 9B</span>
+                  <strong className="late">35 dias</strong>
+                </div>
+                <div className="director-item">
+                  <span>Turma 11A</span>
+                  <strong className="warn">18 dias</strong>
+                </div>
               </div>
             </div>
-            <div className="and-student-bar"><span className="alvid-pill">Mbemba Neto</span></div>
-            <div className="and-content">
-              <div className="and-section-lbl">Desempenho por disciplina</div>
-              <div className="disc-item"><span>Biologia</span><strong className="warn">12</strong></div>
-              <div className="disc-item"><span>Ed. Moral e Civica</span><strong>16</strong></div>
-              <div className="disc-item"><span>Educacao Fisica</span><strong>18</strong></div>
-              <div className="disc-item"><span>Fisica</span><strong className="warn">11</strong></div>
-              <div className="and-section-lbl and-section-lbl-tight">Resumo do trimestre</div>
-              <div className="and-meta-grid">
-                <div className="and-meta-card"><small>Media</small><strong>14.8</strong></div>
-                <div className="and-meta-card"><small>Presenca</small><strong>96%</strong></div>
-              </div>
-              <div className="and-next-class"><span>Proxima aula</span><strong>Matematica - 08:00</strong></div>
-            </div>
-            <div className="and-nav"><span>Inicio</span><span className="active">Academico</span><span>Financeiro</span><span>Docs</span><span>Avisos</span></div>
           </div>
         </div>
       </div>
@@ -168,8 +226,8 @@ function DeviceMock({ activeId }: { activeId: PortalSlide['id'] }) {
 }
 
 export function PortalsSection() {
-  const [activeId, setActiveId] = useState<PortalSlide['id']>('aluno')
-  const [visibleId, setVisibleId] = useState<PortalSlide['id']>('aluno')
+  const [activeId, setActiveId] = useState<PortalSlide['id']>('diretor')
+  const [visibleId, setVisibleId] = useState<PortalSlide['id']>('diretor')
   const [isFading, setIsFading] = useState(false)
 
   const activeSlide = useMemo(() => slides.find((slide) => slide.id === visibleId) ?? slides[0], [visibleId])
@@ -188,9 +246,9 @@ export function PortalsSection() {
     <section className="portais reveal section-accent" id="portais">
       <div className="container">
         <div className="portais-device-intro">
-          <div className="sec-label">O sistema</div>
-          <h2 className="sec-h">Cada pessoa ve o que precisa.</h2>
-          <p className="sec-p">Uma experiencia unica por dispositivo, com conteudo que muda por perfil.</p>
+          <div className="sec-eyebrow">O sistema</div>
+          <h2 className="sec-h">Cada pessoa vê o que precisa.</h2>
+          <p className="sec-p">Cada perfil trabalha no seu próprio fluxo, com menos ruído e mais velocidade de execução.</p>
         </div>
 
         <div className="portais-swap" aria-label="Portais KLASSE com troca de perfil">

@@ -6,6 +6,7 @@ import { footerLinks, hero, navLinks, pricingNote, pricingIntro, pricingPlans } 
 import { useRevealOnScroll } from '../../hooks/useRevealOnScroll'
 
 import { AudienceSection } from './sections/AudienceSection'
+import { DashboardSection } from './sections/DashboardSection'
 import { FooterSection } from './sections/FooterSection'
 import { HeroSection } from './sections/HeroSection'
 import { MobileMenu } from './sections/MobileMenu'
@@ -62,6 +63,9 @@ export function LandingPage() {
         <div className="panel panel--audience">
           <AudienceSection />
         </div>
+        <div className="panel panel--dashboard">
+          <DashboardSection />
+        </div>
         <div className="panel panel--portals">
           <PortalsSection />
         </div>
@@ -80,7 +84,7 @@ export function LandingPage() {
             />
           </div>
         ))}
-        <div className="panel">
+        <div className="panel panel--pilot">
           <PilotSection />
         </div>
         <div className="panel panel--onboarding">

@@ -9,6 +9,8 @@ Data: 2026-03-06
   - Exemplo (legado): `https://klasse.ao/escola/<uuid>/admin/dashboard`
 
 ## Riscos / impactos
+
+
 - UX fraca (URL longa e pouco memorizável).
 - Exposição de identificadores internos (UUIDs).
 - Facilita tentativa de enumeração/força bruta em rotas públicas.

@@ -19,7 +19,9 @@ export function Navbar({ appUrl, links, primaryCta, onMenuToggle }: NavbarProps)
     if (!navbar) return
 
     const handleScroll = () => {
-      const scrollTop = panelStack ? panelStack.scrollTop : window.scrollY
+      const panelScrollTop = panelStack?.scrollTop ?? 0
+      const windowScrollTop = window.scrollY ?? 0
+      const scrollTop = Math.max(panelScrollTop, windowScrollTop)
       navbar.classList.toggle('scrolled', scrollTop > 50)
     }
 
@@ -47,7 +49,10 @@ export function Navbar({ appUrl, links, primaryCta, onMenuToggle }: NavbarProps)
       <div className="container">
         <div className="nav-inner">
           <a href="#" className="nav-logo z">
-            KLASSE
+            <span className="nav-logo-lockup">
+              <img src="/logo-klasse.png" alt="KLASSE" className="nav-logo-mark" />
+              <span className="nav-logo-word">KLASSE</span>
+            </span>
             <span className="nav-logo-sub">Gestão Escolar</span>
           </a>
           <div className="nav-links z">
