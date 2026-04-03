@@ -16,6 +16,7 @@ import {
   LayoutDashboard
 } from "lucide-react";
 import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
+import AuthRequiredNotice from "@/components/escola/settings/AuthRequiredNotice";
 import { buildConfigMenuItems } from "../_shared/menuItems";
 import { useEscolaId } from "@/hooks/useEscolaId";
 
@@ -100,6 +101,7 @@ export default function SistemaConfiguracoesPage() {
   const [setupState, setSetupState] = useState<SetupState | null>(null);
   const [impact, setImpact] = useState<ImpactData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authRequired, setAuthRequired] = useState(false);
 
   // --- FETCH ---
   useEffect(() => {
@@ -109,8 +111,15 @@ export default function SistemaConfiguracoesPage() {
         // Fetch Setup State
         const stateRes = await fetch(`/api/escola/${escolaParam}/admin/setup/state`, { cache: "no-store" });
         const stateJson = await stateRes.json().catch(() => null);
+        if (stateRes.status === 401) {
+          setAuthRequired(true);
+          setSetupState(null);
+          setImpact(null);
+          return;
+        }
         
         if (stateRes.ok && stateJson?.data) {
+          setAuthRequired(false);
           const badges = stateJson.data.badges || {};
           const total = modules.length;
           const done = Object.values(badges).filter(Boolean).length;
@@ -125,6 +134,11 @@ export default function SistemaConfiguracoesPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({}),
         });
+        if (impactRes.status === 401) {
+          setAuthRequired(true);
+          setImpact(null);
+          return;
+        }
         const impactJson = await impactRes.json().catch(() => null);
         if (impactRes.ok && impactJson?.ok) setImpact(impactJson.data);
 
@@ -134,6 +148,28 @@ export default function SistemaConfiguracoesPage() {
     };
     load();
   }, [escolaParam, modules.length]);
+
+  if (authRequired) {
+    const nextPath = `/escola/${escolaParam}/admin/configuracoes/sistema`;
+    return (
+      <ConfigSystemShell
+        escolaId={escolaParam ?? ""}
+        title="Configurações do Sistema"
+        subtitle="Painel de Controle do Ano Letivo."
+        menuItems={buildConfigMenuItems(base)}
+        nextHref={`${base}/calendario`}
+        testHref={`${base}/sandbox`}
+        statusItems={["Sessão expirada"]}
+        saveDisabled={true}
+      >
+        <AuthRequiredNotice
+          nextPath={nextPath}
+          compact
+          description="Faça login novamente para continuar a configuração do sistema."
+        />
+      </ConfigSystemShell>
+    );
+  }
 
   const blockersList = setupState?.blockers?.map((b) => `${b.severity === 'critical' ? '🔴' : '⚠️'} ${b.title}`) ?? [];
 

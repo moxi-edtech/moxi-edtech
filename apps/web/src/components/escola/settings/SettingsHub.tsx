@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
+import AuthRequiredNotice from "@/components/escola/settings/AuthRequiredNotice";
 import {
   Building2,
   BookOpen,
@@ -145,6 +146,7 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
   const [estruturaCounts, setEstruturaCounts] = useState<EstruturaCounts | null>(null);
   const [loading, setLoading] = useState(true);
   const [dangerOpen, setDangerOpen] = useState(false);
+  const [authRequired, setAuthRequired] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -154,8 +156,13 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
       try {
         const res = await fetch(`/api/escola/${escolaParam}/admin/setup/state`, { cache: "no-store" });
         const json = await res.json().catch(() => null);
+        if (res.status === 401) {
+          if (!cancelled) setAuthRequired(true);
+          return;
+        }
         if (!res.ok) throw new Error(json?.error);
         if (cancelled) return;
+        setAuthRequired(false);
 
         const data = json?.data ?? {};
         setSetupStatus({
@@ -224,6 +231,17 @@ export default function SettingsHub({ escolaId, onOpenWizard }: SettingsHubProps
   const activeTabId = searchParams?.get("tab") ?? tabs[0].id;
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? tabs[0];
   const ActivePanel = activeTab.Component;
+
+  if (authRequired) {
+    const nextPath = `/escola/${escolaParam}/admin/configuracoes`;
+    return (
+      <AuthRequiredNotice
+        nextPath={nextPath}
+        compact
+        description="Faça login novamente para continuar a configuração da escola."
+      />
+    );
+  }
 
   const buildTabHref = (tabId: string) => {
     const params = new URLSearchParams(searchParams?.toString() ?? "");

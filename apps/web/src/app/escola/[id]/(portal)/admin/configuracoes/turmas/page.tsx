@@ -15,6 +15,7 @@ import {
   Wand2,
 } from "lucide-react";
 import ConfigSystemShell from "@/components/escola/settings/ConfigSystemShell";
+import AuthRequiredNotice from "@/components/escola/settings/AuthRequiredNotice";
 import { buildConfigMenuItems } from "../_shared/menuItems";
 import { DisciplinaModal, type DisciplinaForm } from "@/components/escola/settings/_components/DisciplinaModal";
 import { Skeleton, useToast } from "@/components/feedback/FeedbackSystem";
@@ -133,6 +134,7 @@ export default function TurmasConfiguracoesPage() {
   const menuItems = buildConfigMenuItems(base);
 
   const [loading, setLoading] = useState(true);
+  const [authRequired, setAuthRequired] = useState(false);
   const [impact, setImpact] = useState<ImpactData>({});
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [classes, setClasses] = useState<Classe[]>([]);
@@ -147,6 +149,8 @@ export default function TurmasConfiguracoesPage() {
 
   const [publishRebuild, setPublishRebuild] = useState(false);
   const [publishConfirm, setPublishConfirm] = useState(false);
+  const [publishNoRebuildAcknowledge, setPublishNoRebuildAcknowledge] = useState(false);
+  const [publishExistingTurmasCount, setPublishExistingTurmasCount] = useState(0);
 
   const [classesDrafts, setClassesDrafts] = useState<ClassDraft[]>([]);
   const [generateRows, setGenerateRows] = useState<GenerateRow[]>([]);
@@ -180,6 +184,11 @@ export default function TurmasConfiguracoesPage() {
           body: JSON.stringify({}),
         }),
       ]);
+      if ([cursosRes, classesRes, curriculoRes, impactRes].some((res) => res.status === 401)) {
+        setAuthRequired(true);
+        return;
+      }
+      setAuthRequired(false);
 
       const cursosJson = await cursosRes.json().catch(() => null);
       if (cursosRes.ok) setCursos(cursosJson?.data ?? []);
@@ -305,6 +314,8 @@ export default function TurmasConfiguracoesPage() {
     setCtx(null);
     setPublishConfirm(false);
     setPublishRebuild(false);
+    setPublishNoRebuildAcknowledge(false);
+    setPublishExistingTurmasCount(0);
     setClassesDrafts([]);
     setGenerateRows([]);
     setDisciplinaModalOpen(false);
@@ -317,6 +328,8 @@ export default function TurmasConfiguracoesPage() {
     setModalLoading(true);
     setPublishConfirm(false);
     setPublishRebuild(false);
+    setPublishNoRebuildAcknowledge(false);
+    setPublishExistingTurmasCount(0);
 
     try {
       let classesBase: Classe[] | undefined;
@@ -384,6 +397,20 @@ export default function TurmasConfiguracoesPage() {
     return courseClasses.filter((cls) => !publishedSet.has(cls.id));
   }, [classes, curriculos, selectedCursoId]);
 
+  const buildPublishSyncMessage = (json: any) => {
+    const syncInfo = json?.sync_turmas;
+    const turmasAfetadas = Number(syncInfo?.turmas_afetadas ?? 0);
+    const existingSync = json?.sync_existing_turmas;
+    const existingSyncExecuted = Boolean(existingSync?.executed);
+    const existingSyncInserted = Number(existingSync?.inserted ?? 0);
+
+    const base = syncInfo
+      ? `Sincronização: ${syncInfo?.rebuild_executado ? "rebuild executado" : "sem rebuild"} · turmas afetadas: ${turmasAfetadas}.`
+      : "";
+    if (!existingSyncExecuted) return base || undefined;
+    return `${base}${base ? " " : ""}Turmas existentes sincronizadas: ${existingSyncInserted} vínculo(s) atualizado(s).`;
+  };
+
   const handlePublish = async () => {
     if (!escolaId || !selectedCurriculo || !selectedCursoId) return;
     if (!publishConfirm) {
@@ -401,15 +428,30 @@ export default function TurmasConfiguracoesPage() {
           anoLetivoId: selectedCurriculo.ano_letivo_id,
           version: selectedCurriculo.version,
           rebuildTurmas: publishRebuild,
+          confirmNoRebuildWithExistingTurmas: publishNoRebuildAcknowledge,
           bulk: true,
         }),
       });
       const json = await res.json().catch(() => null);
       if (!res.ok || json?.ok === false) {
+        if (json?.code === "CURRICULO_REBUILD_CONFIRM_REQUIRED") {
+          const existing = Number(json?.details?.existing_turmas ?? 0);
+          setPublishExistingTurmasCount(existing);
+          warning(
+            "Confirmação adicional necessária",
+            existing > 0
+              ? `Existem ${existing} turma(s) já criada(s). Confirme publicação sem reconstrução para continuar.`
+              : "Existem turmas já criadas. Confirme publicação sem reconstrução para continuar."
+          );
+          return;
+        }
         throw new Error(json?.error || "Falha ao publicar currículo.");
       }
       await fetchCurriculoStatus();
-      success("Currículo publicado.");
+      success(
+        "Currículo publicado.",
+        buildPublishSyncMessage(json)
+      );
       closeModal();
     } catch (e: any) {
       error(e?.message || "Erro ao publicar currículo.");
@@ -728,6 +770,30 @@ export default function TurmasConfiguracoesPage() {
     .filter((row) => row.enabled)
     .reduce((acc, row) => acc + row.quantidade, 0);
 
+  if (authRequired) {
+    return (
+      <ConfigSystemShell
+        escolaId={escolaId ?? ""}
+        title="Gestão de Turmas & Currículo"
+        subtitle="Controle central: publique currículos, ajuste classes e gere turmas com segurança."
+        menuItems={menuItems}
+        embedded
+        backHref={`${base}?tab=turmas`}
+        prevHref={`${base}/avaliacao`}
+        nextHref={`${base}/financeiro`}
+        testHref={`${base}/sandbox`}
+        onSave={handleConfirmSetup}
+        saveDisabled={modalActionLoading}
+      >
+        <AuthRequiredNotice
+          nextPath={`/escola/${escolaParam}/admin/configuracoes/turmas`}
+          compact
+          description="Faça login novamente para continuar a gestão de turmas e currículo."
+        />
+      </ConfigSystemShell>
+    );
+  }
+
   return (
     <ConfigSystemShell
       escolaId={escolaId ?? ""}
@@ -778,23 +844,45 @@ export default function TurmasConfiguracoesPage() {
                 if (!selectedCursoId || !selectedCurriculo) return;
                 setModalActionLoading(true);
                 try {
-                  const res = await fetch(`/api/escola/${escolaParam}/admin/curriculo/publish`, {
+                  const buildPublishBody = (confirmNoRebuildWithExistingTurmas: boolean) => ({
+                    cursoId: selectedCursoId,
+                    anoLetivoId: selectedCurriculo.ano_letivo_id,
+                    version: selectedCurriculo.version,
+                    rebuildTurmas: false,
+                    confirmNoRebuildWithExistingTurmas,
+                    bulk: true,
+                  });
+
+                  let res = await fetch(`/api/escola/${escolaParam}/admin/curriculo/publish`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      cursoId: selectedCursoId,
-                      anoLetivoId: selectedCurriculo.ano_letivo_id,
-                      version: selectedCurriculo.version,
-                      rebuildTurmas: false,
-                      bulk: true,
-                    }),
+                    body: JSON.stringify(buildPublishBody(false)),
                   });
-                  const json = await res.json().catch(() => null);
+                  let json = await res.json().catch(() => null);
+                  if (json?.code === "CURRICULO_REBUILD_CONFIRM_REQUIRED") {
+                    const existing = Number(json?.details?.existing_turmas ?? 0);
+                    const confirmed = window.confirm(
+                      existing > 0
+                        ? `Existem ${existing} turma(s) já criada(s). Publicar sem rebuild irá sincronizar disciplinas novas sem reconstruir turmas. Deseja continuar?`
+                        : "Existem turmas já criadas. Publicar sem rebuild irá sincronizar disciplinas novas sem reconstruir turmas. Deseja continuar?"
+                    );
+                    if (!confirmed) return;
+
+                    res = await fetch(`/api/escola/${escolaParam}/admin/curriculo/publish`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(buildPublishBody(true)),
+                    });
+                    json = await res.json().catch(() => null);
+                  }
                   if (!res.ok || json?.ok === false) {
                     throw new Error(json?.error || "Falha ao publicar currículo.");
                   }
                   await fetchCurriculoStatus();
-                  success("Currículo publicado para todas as classes.");
+                  success(
+                    "Currículo publicado para todas as classes.",
+                    buildPublishSyncMessage(json)
+                  );
                 } catch (e: any) {
                   error(e?.message || "Erro ao publicar currículo.");
                 } finally {
@@ -947,7 +1035,11 @@ export default function TurmasConfiguracoesPage() {
               <button
                 type="button"
                 onClick={handlePublish}
-                disabled={!publishConfirm || modalActionLoading}
+                disabled={
+                  !publishConfirm ||
+                  modalActionLoading ||
+                  (!publishRebuild && publishExistingTurmasCount > 0 && !publishNoRebuildAcknowledge)
+                }
                 className="inline-flex items-center gap-2 rounded-xl bg-klasse-gold px-4 py-2 text-xs font-semibold text-white disabled:opacity-60"
               >
                 {modalActionLoading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <BookOpenCheck className="h-4 w-4" />}
@@ -984,10 +1076,34 @@ export default function TurmasConfiguracoesPage() {
               <input
                 type="checkbox"
                 checked={publishRebuild}
-                onChange={(e) => setPublishRebuild(e.target.checked)}
+                onChange={(e) => {
+                  setPublishRebuild(e.target.checked);
+                  if (e.target.checked) {
+                    setPublishNoRebuildAcknowledge(false);
+                    setPublishExistingTurmasCount(0);
+                  }
+                }}
               />
               Reconstruir turmas (opcional, destrutivo)
             </label>
+            {!publishRebuild && publishExistingTurmasCount > 0 && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 space-y-2">
+                <p className="font-semibold">
+                  Existem {publishExistingTurmasCount} turma(s) já criada(s) neste curso/ano letivo.
+                </p>
+                <p>
+                  Publicar sem rebuild sincroniza disciplinas novas nas turmas existentes, sem reconstruir turmas.
+                </p>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={publishNoRebuildAcknowledge}
+                    onChange={(e) => setPublishNoRebuildAcknowledge(e.target.checked)}
+                  />
+                  Confirmo publicar sem reconstruir turmas existentes.
+                </label>
+              </div>
+            )}
           </div>
         </ModalShell>
       )}
