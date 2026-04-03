@@ -33,6 +33,18 @@ type ItemState = {
   valor: string;
 };
 
+const DOCUMENT_TYPE_OPTIONS: Array<{ value: TipoDocumento; label: string }> = [
+  { value: "FT", label: "FT (Factura)" },
+  { value: "FR", label: "FR (Factura-Recibo)" },
+  { value: "RC", label: "RC (Recibo)" },
+  { value: "NC", label: "NC (Nota de Crédito)" },
+  { value: "ND", label: "ND (Nota de Débito)" },
+  { value: "PP", label: "PP (Pró-forma)" },
+  { value: "GR", label: "GR (Guia de Remessa)" },
+  { value: "GT", label: "GT (Guia de Transporte)" },
+  { value: "FG", label: "FG (Factura Global)" },
+];
+
 function defaultItem(): ItemState {
   return { descricao: "", valor: "" };
 }
@@ -42,17 +54,34 @@ export function FiscalEmissaoModal({ onClose, onCreated }: FiscalEmissaoModalPro
   const [tipoDocumento, setTipoDocumento] = useState<TipoDocumento>("FT");
   const [anoFiscal, setAnoFiscal] = useState<number>(currentYear);
   const [clienteNome, setClienteNome] = useState("");
+  const [paymentMechanism, setPaymentMechanism] = useState<"NU" | "TB" | "CC" | "MB">("TB");
+  const [documentoOrigemId, setDocumentoOrigemId] = useState("");
+  const [rectificaDocumentoId, setRectificaDocumentoId] = useState("");
   const [itens, setItens] = useState<ItemState[]>([defaultItem()]);
   const [loading, setLoading] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const { success, warning, error } = useToast();
 
+  const requiresPaymentMechanism = tipoDocumento === "RC";
+  const requiresDocumentoOrigem = tipoDocumento === "ND";
+  const requiresRectificaDocumento = tipoDocumento === "NC";
+
   const formInvalid = useMemo(() => {
     if (clienteNome.trim().length < 2) return true;
     if (anoFiscal < 2024) return true;
     if (itens.length === 0) return true;
+    if (requiresDocumentoOrigem && documentoOrigemId.trim().length === 0) return true;
+    if (requiresRectificaDocumento && rectificaDocumentoId.trim().length === 0) return true;
     return itens.some((item) => item.descricao.trim().length < 2 || Number(item.valor) <= 0);
-  }, [anoFiscal, clienteNome, itens]);
+  }, [
+    anoFiscal,
+    clienteNome,
+    itens,
+    requiresDocumentoOrigem,
+    requiresRectificaDocumento,
+    documentoOrigemId,
+    rectificaDocumentoId,
+  ]);
 
   const updateItem = (index: number, patch: Partial<ItemState>) => {
     setItens((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
@@ -70,6 +99,9 @@ export function FiscalEmissaoModal({ onClose, onCreated }: FiscalEmissaoModalPro
       ano_fiscal: anoFiscal,
       tipo_documento: tipoDocumento,
       cliente_nome: clienteNome.trim(),
+      payment_mechanism: requiresPaymentMechanism ? paymentMechanism : undefined,
+      documento_origem_id: requiresDocumentoOrigem ? documentoOrigemId.trim() : undefined,
+      rectifica_documento_id: requiresRectificaDocumento ? rectificaDocumentoId.trim() : undefined,
       itens: itens.map((item) => ({
         descricao: item.descricao.trim(),
         valor: Number(item.valor),
@@ -159,8 +191,11 @@ export function FiscalEmissaoModal({ onClose, onCreated }: FiscalEmissaoModalPro
                   onChange={(event) => setTipoDocumento(event.target.value as TipoDocumento)}
                   className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 outline-none focus:border-[#1F6B3B] focus:ring-2 focus:ring-[#1F6B3B]/20"
                 >
-                  <option value="FT">FT (Factura)</option>
-                  <option value="FR">FR (Factura-Recibo)</option>
+                  {DOCUMENT_TYPE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </label>
 
@@ -175,6 +210,48 @@ export function FiscalEmissaoModal({ onClose, onCreated }: FiscalEmissaoModalPro
                 />
               </label>
             </div>
+
+            {requiresPaymentMechanism ? (
+              <label className="block space-y-1 text-sm text-slate-700">
+                <span className="font-medium">Meio de Pagamento (RC)</span>
+                <select
+                  value={paymentMechanism}
+                  onChange={(event) => setPaymentMechanism(event.target.value as "NU" | "TB" | "CC" | "MB")}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 outline-none focus:border-[#1F6B3B] focus:ring-2 focus:ring-[#1F6B3B]/20"
+                >
+                  <option value="TB">TB (Transferência Bancária)</option>
+                  <option value="NU">NU (Numerário)</option>
+                  <option value="CC">CC (Cartão Crédito)</option>
+                  <option value="MB">MB (Multicaixa)</option>
+                </select>
+              </label>
+            ) : null}
+
+            {requiresDocumentoOrigem ? (
+              <label className="block space-y-1 text-sm text-slate-700">
+                <span className="font-medium">Documento de Origem (UUID)</span>
+                <input
+                  type="text"
+                  value={documentoOrigemId}
+                  onChange={(event) => setDocumentoOrigemId(event.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 outline-none focus:border-[#1F6B3B] focus:ring-2 focus:ring-[#1F6B3B]/20"
+                  placeholder="UUID do documento de origem"
+                />
+              </label>
+            ) : null}
+
+            {requiresRectificaDocumento ? (
+              <label className="block space-y-1 text-sm text-slate-700">
+                <span className="font-medium">Documento a Rectificar (UUID)</span>
+                <input
+                  type="text"
+                  value={rectificaDocumentoId}
+                  onChange={(event) => setRectificaDocumentoId(event.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 outline-none focus:border-[#1F6B3B] focus:ring-2 focus:ring-[#1F6B3B]/20"
+                  placeholder="UUID do documento a rectificar"
+                />
+              </label>
+            ) : null}
 
             <label className="block space-y-1 text-sm text-slate-700">
               <span className="font-medium">Cliente</span>

@@ -34,11 +34,25 @@ Entregar um pacote de evidências auditável com:
 
 Impacto: este passo destrava a frente documental (PDF) para os pontos 1, 2, 6, 8, 9, 10, 11, 12 e 14, pendendo apenas geração de evidência operacional e validação final ponto a ponto.
 
+### Atualização de execução — 2026-04-02 (FR idempotência/numeração)
+
+- Migração aplicada em produção: `20260402133000_fix_fr_numero_formatado_idempotencia.sql`.
+- Ajustes efetivos na emissão integrada FR:
+  - `numero_formatado` padronizado para `TIPO PREFIXO/NUMERO`;
+  - dedupe idempotente por `metadata.origem_operacao` + `metadata.origem_id`.
+- Evidência operacional (produção) concluída:
+  - chamada 1 (`origem_id` A): `201`, `documento_id=0fcc55b7-e0fe-4f25-8199-05c1774a31b5`, `numero_formatado=FR FR/1`;
+  - chamada 2 (mesmo `origem_id` A): `201`, mesmo `documento_id`, mesmo `numero_formatado`;
+  - chamada 3 (`origem_id` B): `201`, `documento_id=b35c8983-da83-4007-810c-e69c13bb2336`, `numero_formatado=FR FR/2`.
+- Pré-condição operacional atendida: série fiscal `FR + prefixo FR + origem integrado` criada/ativada.
+
+Impacto: o bloqueio específico de FR por conflito de idempotência/numeração foi removido; seguem pendentes os itens documentais e de cobertura AGT ponto a ponto.
+
 ## 3. Matriz operacional AGT (1..17)
 
 | Ponto AGT | Exigência | Status | Evidência esperada | Observação |
 |---|---|---|---|---|
-| 1 | Fatura com cliente com NIF | PENDENTE | PDF + doc_id + hash_control | Tipo FT/FR |
+| 1 | Fatura com cliente com NIF | EM_EXECUCAO | PDF + doc_id + hash_control | FR integrado com idempotência validada em produção; falta anexar PDF final do ponto no pacote |
 | 2 | Fatura anulada + PDF após anulação visível | PENDENTE | PDF antes/depois + doc_id origem + anulação | Estado deve refletir no SAF-T |
 | 3 | Documento de conferência (pró-forma) | PENDENTE | PDF + doc_id | Se não aplicável, declarar |
 | 4 | Fatura baseada no ponto 3 (Order References) | PENDENTE | PDF + XML com referência | Validar OrderReference |
@@ -59,6 +73,8 @@ Impacto: este passo destrava a frente documental (PDF) para os pontos 1, 2, 6, 8
 ## 3.1 Gaps técnicos explícitos (pré-condição de GO)
 
 Estado atual do motor fiscal: cobertura parcial para os cenários do ofício AGT.
+
+Atualização: o gap de emissão FR por colisão de `numero_formatado`/idempotência foi corrigido em produção em 2026-04-02, com evidência operacional.
 
 Itens ainda pendentes para submissão:
 

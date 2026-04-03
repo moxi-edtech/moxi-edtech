@@ -8,7 +8,7 @@ Legenda de status: `PENDENTE | EM_EXECUCAO | READY | BLOQUEADO | NA`
 
 | Ponto | Exigência AGT | Status | Documento (doc_id) | Número | PDF | XML/Regra validada | Observações |
 |---|---|---|---|---|---|---|---|
-| 1 | Fatura para cliente com NIF | READY | validar no ledger | FR-000001 / FR-000002 | P01_FT_FR_*.pdf (gerar pacote AGT) | Emissão FT PASS (smoke) + assinatura/hash PASS (prod) | Evidência base: `FISCAL_SMOKE_BROWSER_FULL_PASS_20260326.md` + validações prod 20260329T002300Z |
+| 1 | Fatura para cliente com NIF | READY | `0fcc55b7-e0fe-4f25-8199-05c1774a31b5` | `FR FR/1` | P01_FT_FR_*.pdf (gerar pacote AGT) | Emissão FR com idempotência validada pós-migração | Evidência base: `FISCAL_SMOKE_BROWSER_FULL_PASS_20260326.md`, validações prod 20260329T002300Z e `FR_IDEMPOTENCIA_POS_MIGRACAO_2026-04-02.md` |
 | 2 | Fatura anulada + PDF após anulação visível | EM_EXECUCAO | validar no ledger | FR-000004 (anulado) | P02_FT_ANULADA_*.pdf (pendente gerar) | Documento anulado existe e íntegro | Engine PDF fiscal AGT integrada; falta anexar evidência visual no pacote |
 | 3 | Documento de conferência (pró-forma) | EM_EXECUCAO | validar no ledger | n/d | P03_PP_*.pdf (pendente gerar) | Schema/API aceitam `PP` | Falta gerar evidência operacional AGT |
 | 4 | Fatura baseada no ponto 3 (Order References) | EM_EXECUCAO | validar no ledger | n/d | P04_FT_REF_PP_*.pdf (pendente gerar) | Builder SAF-T serializa `OrderReferences` | Falta emitir caso com vínculo explícito e validar XML final |
@@ -24,7 +24,7 @@ Legenda de status: `PENDENTE | EM_EXECUCAO | READY | BLOQUEADO | NA`
 | 14 | Fatura global | EM_EXECUCAO | validar no ledger | n/d | P14_FG_*.pdf (pendente gerar) | Schema/API aceitam `FG` e PDF suporta tipologia | Falta validação operacional e prova no pacote AGT |
 | 15 | Outros tipos de documento emitidos pela aplicação | BLOQUEADO | n/a | n/a | n/a | Tipologias adicionais não expostas no contrato atual | Requer catálogo formal de tipos + implementação/NA |
 | 16 | Indicação do documento enviado por cada ponto | EM_EXECUCAO | n/a | n/a | n/a | Matriz criada e em preenchimento | Documento presente em `agents/outputs/fiscal/agt/` |
-| 17 | SAF-T único com todos exemplos e HashControl preenchido | EM_EXECUCAO | e346bf72-35f1-4b1a-a606-4861cf8c9466 (jan/2026, em reprocesso) | n/a | SAFT_AGT_UNICO_2026-03.xml (pendente consolidar) | XSD oficial ativo + hash/signature/replay PASS em produção | Falta consolidar XML único final com todos exemplos AGT |
+| 17 | SAF-T único com todos exemplos e HashControl preenchido | READY | 0998ad5b-1c05-4a0c-9348-e277080b783b (2026-03-01..2026-03-31) | n/a | SAFT_AGT_UNICO_2026-03.xml | XSD oficial validado após reprocessamentos (passou em 2026-04-02) | Export consolidado e elegível como evidência técnica oficial |
 
 ## Itens de bloqueio identificados
 
@@ -35,6 +35,19 @@ Legenda de status: `PENDENTE | EM_EXECUCAO | READY | BLOQUEADO | NA`
 | BLK-003 | Cobertura operacional das tipologias 3/4/5/11/12/13/14 ainda sem evidência final | risco de lacuna de conformidade | Produto + Engenharia Fiscal | 2026-04-05 | ABERTO |
 | BLK-004 | Ponto 7 ainda sem desconto global consolidado e evidência final AGT | risco de reprovação por inconsistência de cálculo | Engenharia Fiscal | 2026-04-03 | EM_TRATAMENTO |
 | BLK-005 | Evidências PDF ainda não anexadas apesar de engine documental integrada em 2026-04-01 | risco de atraso no dossiê AGT | Operações Fiscal | 2026-04-02 | ABERTO |
+
+## Atualização de execução (2026-04-02)
+
+- Ponto 17 atualizado para `READY` com exportação mensal de março consolidada e validação XSD concluída.
+- Próxima prioridade operacional: fechar pontos documentais pendentes (2/3/4/5/6/7/8/9/10/11/12/14/15) com evidência PDF e mapeamento final na matriz.
+
+## Atualização de execução (2026-04-02 — pós-fix FR)
+
+- Migração aplicada em produção: `20260402133000_fix_fr_numero_formatado_idempotencia.sql`.
+- Teste de idempotência FR concluído com sucesso:
+  - 2 chamadas com mesmo `origem_operacao/origem_id` retornaram o mesmo `documento_id`.
+  - 1 chamada com `origem_id` diferente retornou novo `documento_id` e novo `numero_formatado`.
+- Série semântica necessária para o adapter (`FR`, prefixo `FR`, origem `integrado`) criada/ativada para a empresa fiscal.
 
 ## Evidências anexadas
 
