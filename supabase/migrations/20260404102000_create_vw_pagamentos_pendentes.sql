@@ -18,7 +18,8 @@ SELECT
 FROM public.pagamentos p
 JOIN public.mensalidades m ON m.id = p.mensalidade_id
 JOIN public.alunos a ON a.id = m.aluno_id
-LEFT JOIN public.turmas t ON t.id = m.turma_id
+LEFT JOIN public.matriculas mat ON mat.id = m.matricula_id
+LEFT JOIN public.turmas t ON t.id = COALESCE(m.turma_id, mat.turma_id)
 WHERE p.status = 'pending';
 
 GRANT SELECT ON public.vw_pagamentos_pendentes TO authenticated;
