@@ -416,6 +416,26 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
     return blueprint;
   };
 
+  const resolvePublishNetworkIssue = (err: unknown) => {
+    const message = String((err as any)?.message ?? "").toLowerCase();
+    const isNavigatorOffline = typeof navigator !== "undefined" && navigator.onLine === false;
+    const isTransientNetwork =
+      isNavigatorOffline ||
+      message.includes("err_network_changed") ||
+      message.includes("network changed") ||
+      message.includes("failed to fetch") ||
+      message.includes("load failed") ||
+      message.includes("networkerror");
+
+    if (!isTransientNetwork) return null;
+
+    return {
+      title: "Falha de conexão ao publicar currículo.",
+      detail:
+        "A conexão de rede mudou durante o setup. Verifique internet/VPN e execute novamente.",
+    };
+  };
+
   const handleApplyCurriculumPreset = async () => {
     if (!matrix.length) return error("Matriz vazia.");
     if (!anoLetivoId) return error("Sessão não definida.");
@@ -659,6 +679,11 @@ export default function AcademicSetupWizard({ escolaId, onComplete, initialSchoo
 
     } catch (e: any) {
       dismiss(tid);
+      const networkIssue = resolvePublishNetworkIssue(e);
+      if (networkIssue) {
+        error(networkIssue.title, networkIssue.detail);
+        return;
+      }
       error(e.message);
     }
   };
