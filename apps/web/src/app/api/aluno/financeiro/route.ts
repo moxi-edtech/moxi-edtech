@@ -73,18 +73,53 @@ export async function GET(request: Request) {
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
 
     const hoje = new Date().toISOString().slice(0, 10);
+    const mensalidadeIds = (data || []).map((item) => item.id);
+
+    let pendenciasMap = new Map<string, boolean>();
+    let ultimoComprovativoEnviadoEm: string | null = null;
+    let totalComprovativosPendentes = 0;
+    if (mensalidadeIds.length > 0) {
+      const { data: pendencias } = await supabase
+        .from("pagamentos")
+        .select("mensalidade_id, created_at")
+        .eq("escola_id", ctx.escolaId)
+        .eq("aluno_id", alunoId)
+        .eq("status", "pending")
+        .in("mensalidade_id", mensalidadeIds);
+
+      totalComprovativosPendentes = (pendencias || []).length;
+      ultimoComprovativoEnviadoEm = (pendencias || [])
+        .map((item) => item.created_at)
+        .filter((value): value is string => Boolean(value))
+        .sort((left, right) => right.localeCompare(left))[0] ?? null;
+
+      pendenciasMap = new Map(
+        (pendencias || [])
+          .filter((item) => item.mensalidade_id)
+          .map((item) => [String(item.mensalidade_id), true]),
+      );
+    }
+
     const rows = (data || []).map((m: MensalidadeRow) => {
       const competencia = `${m.ano_referencia}-${String(m.mes_referencia).padStart(2, "0")}`;
       const vencimento = m.data_vencimento ?? "";
       const pago_em = m.data_pagamento_efetiva ?? null;
       let status: "pago" | "pendente" | "atrasado" | "em_verificacao" = "pendente";
       if ((m.status as string) === "pago") status = "pago";
-      else if ((m.status as string) === "em_verificacao") status = "em_verificacao";
+      else if (pendenciasMap.has(m.id)) status = "em_verificacao";
       else if (vencimento && vencimento < hoje) status = "atrasado";
       return { id: m.id, competencia, valor: Number(m.valor_previsto ?? 0), vencimento, status, pago_em };
     });
 
-    return NextResponse.json({ ok: true, mensalidades: rows, filters: { fromAno, toAno } });
+    return NextResponse.json({
+      ok: true,
+      mensalidades: rows,
+      filters: { fromAno, toAno },
+      comprovativo_status: {
+        pendentes: totalComprovativosPendentes,
+        ultimo_envio_em: ultimoComprovativoEnviadoEm,
+      },
+    });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

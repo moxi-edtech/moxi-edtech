@@ -92,6 +92,7 @@ export const sidebarConfig: SidebarConfig = {
       ],
     },
     { href: "/escola/[escolaId]/secretaria/fecho", label: "Fecho de Caixa", icon: "Lock" },
+    { href: "/escola/[escolaId]/secretaria/recebimentos", label: "Recebimentos", icon: "Wallet" },
     { href: "/escola/[escolaId]/secretaria/acesso", label: "Acesso ao Portal", icon: "KeyRound" },
     {
       href: "/escola/[escolaId]/secretaria/turmas",

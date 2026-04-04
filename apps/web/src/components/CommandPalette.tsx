@@ -65,6 +65,14 @@ export function CommandPalette({ escolaId, portal }: Props) {
           hint: "Financeiro",
         });
       }
+      items.push({
+        id: "recebimentos",
+        label: "Abrir janela de recebimentos",
+        href: escolaParam
+          ? `/escola/${escolaParam}/secretaria/recebimentos`
+          : "/secretaria/recebimentos",
+        hint: "Secretaria",
+      });
         items.push({
           id: "pagamento",
           label: "Abrir pagamentos",

@@ -8,7 +8,19 @@ import { PaymentDrawer } from "@/components/aluno/financeiro-portal/PaymentDrawe
 import { usePortalSWR } from "@/components/aluno/usePortalSWR";
 
 type Item = { id: string; competencia: string; valor: number; status: "pago" | "pendente" | "atrasado" | "em_verificacao" };
-type ApiResponse = { ok: boolean; mensalidades: Array<Omit<Item, "status"> & { status: string }> };
+type ComprovativoStatus = {
+  pendentes: number;
+  ultimo_envio_em: string | null;
+};
+type ApiResponse = {
+  ok: boolean;
+  mensalidades: Array<Omit<Item, "status"> & { status: string }>;
+  comprovativo_status?: ComprovativoStatus;
+};
+type ParsedFinanceiroPayload = {
+  rows: Item[];
+  comprovativoStatus: ComprovativoStatus | null;
+};
 
 const money = new Intl.NumberFormat("pt-AO", { style: "currency", currency: "AOA", maximumFractionDigits: 0 });
 
@@ -26,6 +38,7 @@ export function TabFinanceiro() {
 
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Item[]>([]);
+  const [comprovativoStatus, setComprovativoStatus] = useState<ComprovativoStatus | null>(null);
   const [selected, setSelected] = useState<Item | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [fromAno, setFromAno] = useState(currentYear - 4);
@@ -49,9 +62,17 @@ export function TabFinanceiro() {
     key: `financeiro-${studentId ?? "default"}-${fromAno}-${toAno}`,
     url: `/api/aluno/financeiro${query}`,
     intervalMs: 30000,
-    parse: (payload) => (((payload as ApiResponse).mensalidades ?? []).map((m) => ({ ...m, status: normalizeStatus(m.status) }))),
+    parse: (payload) => {
+      const json = payload as ApiResponse;
+      const mapped = (json.mensalidades ?? []).map((m) => ({ ...m, status: normalizeStatus(m.status) }));
+      return {
+        rows: mapped,
+        comprovativoStatus: json.comprovativo_status ?? null,
+      } satisfies ParsedFinanceiroPayload;
+    },
     onData: (data) => {
-      setRows(data);
+      setRows(data.rows);
+      setComprovativoStatus(data.comprovativoStatus);
       setLoading(false);
     },
   });
@@ -125,6 +146,26 @@ export function TabFinanceiro() {
           <p className="mt-2 text-lg font-semibold text-klasse-gold-800">{money.format(totalPendente)}</p>
         </div>
       </div>
+
+      {comprovativoStatus && comprovativoStatus.pendentes > 0 ? (
+        <section className="rounded-2xl border border-klasse-gold-200 bg-klasse-gold-50 p-4 shadow-sm">
+          <p className="text-xs uppercase tracking-[0.2em] text-klasse-gold-700">Comprovativo</p>
+          <p className="mt-1 text-sm font-semibold text-klasse-gold-900">
+            Comprovativo enviado, aguardando validação da secretaria.
+          </p>
+          <p className="mt-1 text-xs text-klasse-gold-800">
+            Último envio: {comprovativoStatus.ultimo_envio_em
+              ? new Date(comprovativoStatus.ultimo_envio_em).toLocaleString("pt-PT", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "—"}
+          </p>
+        </section>
+      ) : null}
 
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="text-sm font-semibold text-slate-900">Mensalidades</h2>
