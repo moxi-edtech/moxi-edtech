@@ -38,7 +38,7 @@ BEGIN
 
   IF NOT public.user_has_role_in_school(
     v_escola_id,
-    ARRAY['financeiro', 'secretaria_financeiro', 'admin_financeiro', 'admin', 'staff_admin']
+    ARRAY['secretaria', 'financeiro', 'secretaria_financeiro', 'admin_financeiro', 'admin_escola', 'admin', 'staff_admin']
   ) THEN
     RAISE EXCEPTION 'AUTH: forbidden';
   END IF;
