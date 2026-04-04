@@ -52,15 +52,49 @@ export async function POST(request: Request) {
     const { error: uploadError } = await routeClient.storage.from("aluno-comprovativos").upload(objectPath, bytes, { contentType: file.type || "application/octet-stream", upsert: false });
     if (uploadError) return NextResponse.json({ ok: false, error: uploadError.message }, { status: 500 });
 
-    const { error: updateError } = await routeClient
-      .from("mensalidades")
-      .update({ status: "em_verificacao", observacao: `Comprovativo anexado: ${objectPath}`, updated_by: ctx.userId })
-      .eq("id", mensalidadeId)
-      .eq("escola_id", ctx.escolaId)
-      .eq("aluno_id", alunoId);
-    if (updateError) return NextResponse.json({ ok: false, error: updateError.message }, { status: 500 });
+    const { data: signedData } = await routeClient.storage
+      .from("aluno-comprovativos")
+      .createSignedUrl(objectPath, 60 * 60 * 24 * 30);
 
-    return NextResponse.json({ ok: true, status: "em_verificacao" });
+    const evidenceUrl = signedData?.signedUrl;
+    if (!evidenceUrl) {
+      return NextResponse.json({ ok: false, error: "Falha ao gerar URL do comprovativo" }, { status: 500 });
+    }
+
+    type RpcResponse = { ok?: boolean; error?: string; pagamento_id?: string; idempotent?: boolean; status?: string };
+    type SubmitComprovativoRpc = (
+      fn: "aluno_submeter_comprovativo_pagamento",
+      args: { p_mensalidade_id: string; p_evidence_url: string; p_meta: Record<string, unknown> },
+    ) => Promise<{ data: RpcResponse | null; error: { message: string } | null }>;
+
+    const callSubmitComprovativo = routeClient.rpc as unknown as SubmitComprovativoRpc;
+    const { data: rpcData, error: rpcError } = await callSubmitComprovativo(
+      "aluno_submeter_comprovativo_pagamento",
+      {
+        p_mensalidade_id: mensalidadeId,
+        p_evidence_url: evidenceUrl,
+        p_meta: {
+          storage_bucket: "aluno-comprovativos",
+          storage_path: objectPath,
+          uploaded_via: "api/aluno/financeiro/comprovativo",
+          aluno_id: alunoId,
+        },
+      },
+    );
+
+    if (rpcError || rpcData?.ok !== true) {
+      return NextResponse.json(
+        { ok: false, error: rpcError?.message || rpcData?.error || "Falha ao registrar pagamento pendente" },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({
+      ok: true,
+      status: "pending",
+      pagamento_id: rpcData.pagamento_id ?? null,
+      idempotent: rpcData.idempotent ?? false,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro inesperado";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
