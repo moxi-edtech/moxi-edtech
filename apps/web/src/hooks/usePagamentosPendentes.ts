@@ -108,7 +108,7 @@ export function usePagamentosPendentes(pageSize = 20) {
       setActioningById((prev) => ({ ...prev, [pagamentoId]: true }));
       setRows((prev) => prev.filter((row) => row.pagamento_id !== pagamentoId));
 
-      const callValidarPagamento = supabase.rpc as unknown as ValidarPagamentoRpc;
+      const callValidarPagamento = supabase.rpc.bind(supabase) as unknown as ValidarPagamentoRpc;
       const { data, error: rpcError } = await callValidarPagamento("validar_pagamento", {
         p_pagamento_id: pagamentoId,
         p_aprovado: aprovado,
