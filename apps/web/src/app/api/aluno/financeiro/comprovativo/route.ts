@@ -66,7 +66,7 @@ export async function POST(request: Request) {
       args: { p_mensalidade_id: string; p_evidence_url: string; p_meta: Record<string, unknown> },
     ) => Promise<{ data: RpcResponse | null; error: { message: string } | null }>;
 
-    const callSubmitComprovativo = routeClient.rpc as unknown as SubmitComprovativoRpc;
+    const callSubmitComprovativo = routeClient.rpc.bind(routeClient) as unknown as SubmitComprovativoRpc;
     const { data: rpcData, error: rpcError } = await callSubmitComprovativo(
       "aluno_submeter_comprovativo_pagamento",
       {
