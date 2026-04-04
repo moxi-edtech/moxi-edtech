@@ -411,6 +411,26 @@ export default function TurmasConfiguracoesPage() {
     return `${base}${base ? " " : ""}Turmas existentes sincronizadas: ${existingSyncInserted} vínculo(s) atualizado(s).`;
   };
 
+  const resolvePublishNetworkIssue = (err: unknown) => {
+    const message = String((err as any)?.message ?? "").toLowerCase();
+    const isNavigatorOffline = typeof navigator !== "undefined" && navigator.onLine === false;
+    const isTransientNetwork =
+      isNavigatorOffline ||
+      message.includes("err_network_changed") ||
+      message.includes("network changed") ||
+      message.includes("failed to fetch") ||
+      message.includes("load failed") ||
+      message.includes("networkerror");
+
+    if (!isTransientNetwork) return null;
+
+    return {
+      title: "Falha de conexão ao publicar currículo.",
+      detail:
+        "A conexão de rede mudou durante a operação. Verifique internet/VPN e tente publicar novamente.",
+    };
+  };
+
   const handlePublish = async () => {
     if (!escolaId || !selectedCurriculo || !selectedCursoId) return;
     if (!publishConfirm) {
@@ -454,6 +474,11 @@ export default function TurmasConfiguracoesPage() {
       );
       closeModal();
     } catch (e: any) {
+      const networkIssue = resolvePublishNetworkIssue(e);
+      if (networkIssue) {
+        error(networkIssue.title, networkIssue.detail);
+        return;
+      }
       error(e?.message || "Erro ao publicar currículo.");
     } finally {
       setModalActionLoading(false);
@@ -884,6 +909,11 @@ export default function TurmasConfiguracoesPage() {
                     buildPublishSyncMessage(json)
                   );
                 } catch (e: any) {
+                  const networkIssue = resolvePublishNetworkIssue(e);
+                  if (networkIssue) {
+                    error(networkIssue.title, networkIssue.detail);
+                    return;
+                  }
                   error(e?.message || "Erro ao publicar currículo.");
                 } finally {
                   setModalActionLoading(false);
