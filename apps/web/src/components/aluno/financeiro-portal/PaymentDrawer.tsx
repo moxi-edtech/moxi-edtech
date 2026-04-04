@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 
 type Mensalidade = { id: string; competencia: string; valor: number };
@@ -52,6 +52,15 @@ export function PaymentDrawer({ open, mensalidade, onClose, onUploaded, studentI
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState(0);
   const [friendlyError, setFriendlyError] = useState<string | null>(null);
+  const [valorInformado, setValorInformado] = useState("");
+  const [mensagem, setMensagem] = useState("");
+
+  useEffect(() => {
+    if (!open || !mensalidade) return;
+    setValorInformado("");
+    setMensagem("");
+  }, [open, mensalidade]);
+
   if (!open || !mensalidade) return null;
 
   const submitFile = async (original: File) => {
@@ -70,6 +79,18 @@ export function PaymentDrawer({ open, mensalidade, onClose, onUploaded, studentI
     const fd = new FormData();
     fd.append("mensalidadeId", mensalidade.id);
     fd.append("file", file);
+    const valorAtual = valorInformado.trim();
+    if (valorAtual) {
+      const parsed = Number(valorAtual.replace(",", "."));
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        setFriendlyError("Valor informado inválido.");
+        return;
+      }
+      fd.append("valorInformado", String(parsed));
+    }
+    if (mensagem.trim()) {
+      fd.append("mensagem", mensagem.trim());
+    }
     if (studentId) fd.append("studentId", studentId);
 
     setSending(true);
@@ -77,6 +98,7 @@ export function PaymentDrawer({ open, mensalidade, onClose, onUploaded, studentI
     try {
       const json = await uploadWithProgress("/api/aluno/financeiro/comprovativo", fd, setProgress);
       if (!json?.ok) throw new Error(json?.error ?? "Falha ao anexar comprovativo");
+      setValorInformado("");
       onUploaded(mensalidade.id);
       onClose();
     } catch (e) {
@@ -98,6 +120,31 @@ export function PaymentDrawer({ open, mensalidade, onClose, onUploaded, studentI
           <p>IBAN: AO06 0000 0000 0000 0000 0000 0</p>
           <p>Referência: MENS-{mensalidade.id.slice(0, 8).toUpperCase()}</p>
         </div>
+        <label className="mt-4 block">
+          <span className="mb-2 block text-xs text-slate-500">Valor enviado (opcional para parcial)</span>
+          <input
+            type="number"
+            min={1}
+            step="0.01"
+            className="block w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            placeholder={String(mensalidade.valor)}
+            value={valorInformado}
+            onChange={(event) => setValorInformado(event.target.value)}
+            disabled={sending}
+          />
+        </label>
+        <label className="mt-4 block">
+          <span className="mb-2 block text-xs text-slate-500">Mensagem para a secretaria (opcional)</span>
+          <textarea
+            className="block w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+            rows={3}
+            maxLength={500}
+            placeholder="Ex.: Pagamento parcial enviado da conta do encarregado."
+            value={mensagem}
+            onChange={(event) => setMensagem(event.target.value)}
+            disabled={sending}
+          />
+        </label>
         <label className="mt-4 block">
           <span className="mb-2 block text-xs text-slate-500">Comprovativo (PDF/Imagem)</span>
           <input type="file" className="block w-full text-sm" accept=".pdf,image/jpeg,image/png,image/webp" onChange={(e) => { const f = e.target.files?.[0]; if (f) void submitFile(f); }} disabled={sending} />

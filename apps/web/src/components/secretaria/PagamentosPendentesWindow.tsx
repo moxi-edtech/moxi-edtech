@@ -31,7 +31,17 @@ export default function PagamentosPendentesWindow() {
   } = usePagamentosPendentes(15);
 
   async function handleAction(pagamentoId: string, aprovado: boolean) {
-    const result = await validar(pagamentoId, aprovado);
+    let mensagemSecretaria: string | null = null;
+    if (!aprovado) {
+      const motivo = window.prompt("Informe o motivo da rejeição:", "");
+      if (!motivo || !motivo.trim()) {
+        toastError("Motivo da rejeição é obrigatório.");
+        return;
+      }
+      mensagemSecretaria = motivo.trim();
+    }
+
+    const result = await validar(pagamentoId, aprovado, mensagemSecretaria);
     if (!result.ok) {
       toastError(result.error || "Falha ao validar pagamento.");
       return;
@@ -95,15 +105,20 @@ export default function PagamentosPendentesWindow() {
                     <td className="px-4 py-3 text-slate-800">{kwanza.format(Number(row.valor_enviado || 0))}</td>
                     <td className="px-4 py-3">
                       {row.comprovante_url ? (
-                        <a
-                          href={row.comprovante_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-2 py-1 font-medium text-slate-700 hover:bg-slate-50"
-                        >
-                          {isPdf(row.comprovante_url) ? <FileText className="h-4 w-4" /> : <ImageIcon className="h-4 w-4" />}
-                          Visualizar
-                        </a>
+                        <div className="space-y-1">
+                          <a
+                            href={row.comprovante_url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-2 py-1 font-medium text-slate-700 hover:bg-slate-50"
+                          >
+                            {isPdf(row.comprovante_url) ? <FileText className="h-4 w-4" /> : <ImageIcon className="h-4 w-4" />}
+                            Visualizar
+                          </a>
+                          {row.mensagem_aluno ? (
+                            <p className="max-w-xs text-xs text-slate-500">{row.mensagem_aluno}</p>
+                          ) : null}
+                        </div>
                       ) : (
                         <span className="text-slate-400">Sem comprovante</span>
                       )}
