@@ -6,6 +6,8 @@ import { resolveAuthorizedStudentIds, resolveSelectedStudentId } from "@/lib/por
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+const COMPROVATIVOS_BUCKET = "billing-proofs";
+
 export async function POST(request: Request) {
   try {
     const { supabase, ctx } = await getAlunoContext();
@@ -44,16 +46,13 @@ export async function POST(request: Request) {
     const objectPath = `${ctx.escolaId}/${alunoId}/${mensalidadeId}/${Date.now()}-${file.name.replace(/\s+/g, "_")}`;
     const bytes = Buffer.from(await file.arrayBuffer());
 
-    try {
-      const { data: bucket } = await routeClient.storage.getBucket("aluno-comprovativos");
-      if (!bucket) await routeClient.storage.createBucket("aluno-comprovativos", { public: false });
-    } catch {}
-
-    const { error: uploadError } = await routeClient.storage.from("aluno-comprovativos").upload(objectPath, bytes, { contentType: file.type || "application/octet-stream", upsert: false });
+    const { error: uploadError } = await routeClient.storage
+      .from(COMPROVATIVOS_BUCKET)
+      .upload(objectPath, bytes, { contentType: file.type || "application/octet-stream", upsert: false });
     if (uploadError) return NextResponse.json({ ok: false, error: uploadError.message }, { status: 500 });
 
     const { data: signedData } = await routeClient.storage
-      .from("aluno-comprovativos")
+      .from(COMPROVATIVOS_BUCKET)
       .createSignedUrl(objectPath, 60 * 60 * 24 * 30);
 
     const evidenceUrl = signedData?.signedUrl;
@@ -74,7 +73,7 @@ export async function POST(request: Request) {
         p_mensalidade_id: mensalidadeId,
         p_evidence_url: evidenceUrl,
         p_meta: {
-          storage_bucket: "aluno-comprovativos",
+          storage_bucket: COMPROVATIVOS_BUCKET,
           storage_path: objectPath,
           uploaded_via: "api/aluno/financeiro/comprovativo",
           aluno_id: alunoId,
