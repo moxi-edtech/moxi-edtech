@@ -15,6 +15,7 @@ export type PagamentoPendenteRow = {
   valor_esperado: number;
   valor_enviado: number;
   comprovante_url: string | null;
+  mensagem_aluno: string | null;
   reference: string | null;
   metodo: string | null;
   created_at: string;
@@ -27,7 +28,7 @@ type ValidarPagamentoReturn = {
 
 type ValidarPagamentoRpc = (
   fn: "validar_pagamento",
-  args: { p_pagamento_id: string; p_aprovado: boolean },
+  args: { p_pagamento_id: string; p_aprovado: boolean; p_mensagem_secretaria?: string | null },
 ) => Promise<{ data: ValidarPagamentoReturn | null; error: { message: string } | null }>;
 
 type ExtendedDatabase = Omit<Database, "public"> & {
@@ -94,7 +95,7 @@ export function usePagamentosPendentes(pageSize = 20) {
   }, [load, page]);
 
   const validar = useCallback(
-    async (pagamentoId: string, aprovado: boolean) => {
+    async (pagamentoId: string, aprovado: boolean, mensagemSecretaria?: string | null) => {
       if (actioningById[pagamentoId]) {
         return { ok: false, error: "Ação já em andamento." };
       }
@@ -112,6 +113,7 @@ export function usePagamentosPendentes(pageSize = 20) {
       const { data, error: rpcError } = await callValidarPagamento("validar_pagamento", {
         p_pagamento_id: pagamentoId,
         p_aprovado: aprovado,
+        p_mensagem_secretaria: mensagemSecretaria ?? null,
       });
 
       const rpcData: ValidarPagamentoReturn = data ?? {};

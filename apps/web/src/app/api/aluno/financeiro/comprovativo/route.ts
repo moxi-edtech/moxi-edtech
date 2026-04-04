@@ -19,8 +19,21 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const mensalidadeId = formData.get("mensalidadeId")?.toString();
     const studentIdParam = formData.get("studentId")?.toString() ?? null;
+    const valorInformadoRaw = formData.get("valorInformado")?.toString() ?? null;
+    const mensagemRaw = formData.get("mensagem")?.toString() ?? null;
     const file = formData.get("file");
     if (!mensalidadeId || !(file instanceof File)) return NextResponse.json({ ok: false, error: "Dados inválidos" }, { status: 400 });
+
+    let valorInformado: number | null = null;
+    if (valorInformadoRaw && valorInformadoRaw.trim() !== "") {
+      const parsed = Number(valorInformadoRaw);
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        return NextResponse.json({ ok: false, error: "Valor informado inválido" }, { status: 400 });
+      }
+      valorInformado = parsed;
+    }
+
+    const mensagem = mensagemRaw ? mensagemRaw.trim().slice(0, 500) : null;
 
     if (file.size > 5 * 1024 * 1024) {
       return NextResponse.json({ ok: false, error: "O arquivo excede o limite de 5MB" }, { status: 413 });
@@ -63,7 +76,13 @@ export async function POST(request: Request) {
     type RpcResponse = { ok?: boolean; error?: string; pagamento_id?: string; idempotent?: boolean; status?: string };
     type SubmitComprovativoRpc = (
       fn: "aluno_submeter_comprovativo_pagamento",
-      args: { p_mensalidade_id: string; p_evidence_url: string; p_meta: Record<string, unknown> },
+      args: {
+        p_mensalidade_id: string;
+        p_evidence_url: string;
+        p_valor_informado: number | null;
+        p_meta: Record<string, unknown>;
+        p_mensagem: string | null;
+      },
     ) => Promise<{ data: RpcResponse | null; error: { message: string } | null }>;
 
     const callSubmitComprovativo = routeClient.rpc.bind(routeClient) as unknown as SubmitComprovativoRpc;
@@ -72,6 +91,8 @@ export async function POST(request: Request) {
       {
         p_mensalidade_id: mensalidadeId,
         p_evidence_url: evidenceUrl,
+        p_valor_informado: valorInformado,
+        p_mensagem: mensagem,
         p_meta: {
           storage_bucket: COMPROVATIVOS_BUCKET,
           storage_path: objectPath,

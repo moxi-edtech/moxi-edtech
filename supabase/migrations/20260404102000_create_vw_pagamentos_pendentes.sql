@@ -9,12 +9,13 @@ SELECT
   m.aluno_id,
   COALESCE(a.nome_completo, a.nome) AS aluno_nome,
   COALESCE(t.turma_codigo, t.turma_code, t.nome) AS turma_codigo,
-  COALESCE(m.valor_previsto, m.valor) AS valor_esperado,
+  GREATEST(COALESCE(m.valor_previsto, m.valor, 0) - COALESCE(m.valor_pago_total, 0), 0) AS valor_esperado,
   p.valor_pago AS valor_enviado,
   p.evidence_url AS comprovante_url,
   p.reference,
   p.metodo,
-  p.created_at
+  p.created_at,
+  p.meta -> 'comprovativo' ->> 'mensagem_aluno' AS mensagem_aluno
 FROM public.pagamentos p
 JOIN public.mensalidades m ON m.id = p.mensalidade_id
 JOIN public.alunos a ON a.id = m.aluno_id
