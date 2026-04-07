@@ -10,6 +10,11 @@ export const PAPEIS_ESCOLA_VALIDOS = [
   'admin_financeiro',
   'professor',
   'aluno',
+  'formacao_admin',
+  'formacao_secretaria',
+  'formacao_financeiro',
+  'formador',
+  'formando',
 ] as const
 
 export type PapelEscola = (typeof PAPEIS_ESCOLA_VALIDOS)[number]

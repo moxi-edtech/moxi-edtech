@@ -3,6 +3,7 @@ import type { FeatureKey } from "@/config/plans";
 import { HttpError } from "@/lib/errors";
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser";
 import type { Database } from "~types/supabase";
+import { getFeatureDeniedMessage, isFeatureAllowed } from "@/lib/plan/featureMatrix";
 
 type DBWithFeature = Database & {
   public: Omit<Database["public"], "Tables" | "Functions"> & {
@@ -11,18 +12,13 @@ type DBWithFeature = Database & {
         Row: Database["public"]["Tables"]["escolas"]["Row"] & { plano_atual?: string | null };
       };
     };
-    Functions: Database["public"]["Functions"] & {
-      escola_has_feature: {
-        Args: { p_escola_id: string; p_feature: FeatureKey };
-        Returns: boolean;
-      };
-    };
+    Functions: Database["public"]["Functions"];
   };
 };
 
 type RequireFeatureResult = {
   escolaId: string;
-  plano: string | null;
+  plano: string;
   userId: string;
 };
 
@@ -46,24 +42,25 @@ export async function requireFeature(feature: FeatureKey): Promise<RequireFeatur
     throw new HttpError(403, "NO_SCHOOL", "Usuário sem escola associada.");
   }
 
-  if (feature !== "fin_recibo_pdf") {
-    const { data: allowed, error: rpcError } = await supabase.rpc("escola_has_feature", {
-      p_escola_id: escolaId,
-      p_feature: feature,
-    });
+  const { data: escola, error: schoolError } = await supabase
+    .from("escolas")
+    .select("plano_atual")
+    .eq("id", escolaId)
+    .maybeSingle();
 
-    if (rpcError) {
-      throw new HttpError(500, "FEATURE_CHECK_FAILED", "Falha ao validar plano.");
-    }
+  if (schoolError) {
+    throw new HttpError(500, "FEATURE_CHECK_FAILED", "Falha ao validar plano.");
+  }
 
-    if (!allowed) {
-      throw new HttpError(403, "FORBIDDEN", "Seu plano não inclui esta funcionalidade.");
-    }
+  const plano = String(escola?.plano_atual ?? "essencial").toLowerCase();
+
+  if (!isFeatureAllowed(plano, feature)) {
+    throw new HttpError(403, "PLAN_FEATURE_REQUIRED", getFeatureDeniedMessage(plano, feature));
   }
 
   return {
     escolaId,
-    plano: null,
+    plano,
     userId: user.id,
   };
 }

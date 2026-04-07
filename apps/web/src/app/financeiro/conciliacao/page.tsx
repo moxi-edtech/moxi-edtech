@@ -272,7 +272,7 @@ const ConciliacaoBancaria: React.FC = () => {
       // mantém compat com teu endpoint atual
       qs.set("status", filtroStatus);
 
-      const response = await fetch(`/api/financeiro/conciliacao/transacoes?${qs.toString()}`);
+      const response = await fetch(`/api/financeiro/conciliacao/transacoes?${qs.toString()}`, { cache: "no-store" });
       const result = await response.json();
 
       if (response.ok && result.ok && Array.isArray(result.transactions)) {
@@ -323,6 +323,7 @@ const ConciliacaoBancaria: React.FC = () => {
         const response = await fetch("/api/financeiro/conciliacao/upload", {
           method: "POST",
           body: formData,
+          cache: "no-store",
         });
         const result = await response.json();
 
@@ -387,6 +388,7 @@ const ConciliacaoBancaria: React.FC = () => {
       const response = await fetch("/api/financeiro/conciliacao/settle", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        cache: "no-store",
         body: JSON.stringify({
           transacao_id: transacaoId,
           aluno_id: alunoId,
