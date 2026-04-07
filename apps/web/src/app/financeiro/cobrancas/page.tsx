@@ -61,7 +61,7 @@ export default function SistemaCobrancas() {
   const fetchCampanhas = useCallback(async () => {
     setLoadingCampanhas(true);
     try {
-      const res = await fetch("/api/financeiro/cobrancas/campanhas");
+      const res = await fetch("/api/financeiro/cobrancas/campanhas", { cache: "no-store" });
       if (!res.ok) throw new Error("Falha ao buscar campanhas.");
       const json = await res.json();
       setCampanhas(Array.isArray(json) ? json : json.data ?? []);
@@ -76,7 +76,7 @@ export default function SistemaCobrancas() {
   const fetchTemplates = useCallback(async () => {
     setLoadingTemplates(true);
     try {
-      const res = await fetch("/api/financeiro/cobrancas/templates");
+      const res = await fetch("/api/financeiro/cobrancas/templates", { cache: "no-store" });
       if (!res.ok) throw new Error("Falha ao buscar templates.");
       const json = await res.json();
       setTemplates(Array.isArray(json) ? json : json.data ?? []);
@@ -127,6 +127,7 @@ export default function SistemaCobrancas() {
       const res = await fetch("/api/financeiro/cobrancas/campanhas/nova", {
         method: "POST",
         headers: { "content-type": "application/json" },
+        cache: "no-store",
         body: JSON.stringify(payload),
       });
       

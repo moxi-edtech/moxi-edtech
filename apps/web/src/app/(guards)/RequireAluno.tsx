@@ -30,7 +30,7 @@ export default function RequireAluno({ children }: { children: React.ReactNode }
 
       const hasAluno = (vinculos || []).some((v: Tables<'escola_users'>) => {
         const papel = v.papel ?? v.role ?? null;
-        return papel === "aluno";
+        return papel === "aluno" || papel === "formando";
       });
 
       if (error || !hasAluno) {

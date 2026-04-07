@@ -652,3 +652,36 @@ ENGINEERING_AGENTS_CONTRACT.md
 Se violar qualquer regra CRITICAL → FAIL imediato.
 Se violar qualquer regra sem excepção documentada → FAIL.
 Se REGRESSION detectada → FAIL imediato, independente de severidade.
+
+---
+
+## Aditamento Operacional — Formação (Ticket 5)
+
+### Taxonomia de rotas críticas (Formação)
+
+As seguintes rotas devem ser tratadas como **operacionais/financeiras sensíveis**:
+
+- `/api/formacao/financeiro/**`
+- `/api/formacao/cobrancas/**`
+- `/api/formacao/faturas/**`
+- `/api/formacao/honorarios/**`
+- `/api/secretaria/documentos/**` quando envolver emissão oficial com valor legal
+
+### Política de cache mandatória
+
+Para qualquer rota acima (ou equivalente em `/financeiro/**`):
+
+- Em API Route: `export const dynamic = 'force-dynamic'`
+- Em fetch de UI cliente/servidor: `cache: 'no-store'`
+- `revalidate > 0` é proibido para payload financeiro transacional
+
+### MVs obrigatórias para dashboards Formação
+
+- `internal.mv_formacao_cohorts_lotacao` → wrapper `public.vw_formacao_cohorts_lotacao`
+- `internal.mv_formacao_inadimplencia_resumo` → wrapper `public.vw_formacao_inadimplencia_resumo`
+- `internal.mv_formacao_margem_por_edicao` → wrapper `public.vw_formacao_margem_por_edicao`
+
+Cada MV deve ter:
+- `CREATE UNIQUE INDEX`
+- função `refresh_mv_*` com `REFRESH MATERIALIZED VIEW CONCURRENTLY`
+- agendamento `cron.schedule(...)`

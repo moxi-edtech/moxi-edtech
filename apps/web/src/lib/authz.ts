@@ -10,7 +10,12 @@ export type Role =
   | "admin_financeiro"
   | "secretaria_financeiro"
   | "admin_escola"
-  | "staff_admin";
+  | "staff_admin"
+  | "formacao_admin"
+  | "formacao_secretaria"
+  | "formacao_financeiro"
+  | "formador"
+  | "formando";
 
 interface RequireRoleInSchoolParams {
   supabase: SupabaseClient;

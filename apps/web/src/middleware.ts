@@ -5,6 +5,13 @@ import { createServerClient } from '@supabase/ssr';
 import { isEscolaUuid } from '@/lib/tenant/escolaSlug';
 import { resolveEscolaParam } from '@/lib/tenant/resolveEscolaParam';
 
+type ModeloEnsino = 'k12' | 'formacao';
+type AuthContext = {
+  role: string | null;
+  escolaId: string | null;
+  modeloEnsino: ModeloEnsino | null;
+};
+
 // Simulação de Rate Limiting simples em memória (Edge Runtime)
 // Nota: Em produção real, o Edge Runtime pode resetar a memória entre instâncias.
 // Para 100 escolas, o ideal é usar Upstash Redis ou similar.
@@ -124,58 +131,165 @@ function finalizeResponse(request: NextRequest, response: NextResponse, allowedO
 const PORTAL_RULES: Array<{ prefix: string; roles: string[] }> = [
   {
     prefix: '/admin',
-    roles: ['admin', 'admin_escola', 'staff_admin', 'super_admin', 'global_admin'],
+    roles: ['admin', 'admin_escola', 'staff_admin', 'super_admin', 'global_admin', 'formacao_admin'],
   },
   {
     prefix: '/secretaria',
-    roles: ['secretaria', 'secretaria_financeiro', 'admin_financeiro', 'admin', 'admin_escola', 'staff_admin', 'super_admin', 'global_admin'],
+    roles: ['secretaria', 'secretaria_financeiro', 'admin_financeiro', 'admin', 'admin_escola', 'staff_admin', 'super_admin', 'global_admin', 'formacao_secretaria', 'formacao_admin'],
   },
   {
     prefix: '/financeiro',
-    roles: ['financeiro', 'secretaria_financeiro', 'admin_financeiro', 'admin', 'admin_escola', 'staff_admin', 'super_admin', 'global_admin'],
+    roles: ['financeiro', 'secretaria_financeiro', 'admin_financeiro', 'admin', 'admin_escola', 'staff_admin', 'super_admin', 'global_admin', 'formacao_financeiro', 'formacao_admin'],
   },
   {
     prefix: '/professor',
-    roles: ['professor', 'admin', 'admin_escola', 'staff_admin', 'super_admin', 'global_admin'],
+    roles: ['professor', 'admin', 'admin_escola', 'staff_admin', 'super_admin', 'global_admin', 'formador'],
   },
   {
     prefix: '/aluno',
-    roles: ['aluno', 'encarregado'],
+    roles: ['aluno', 'encarregado', 'formando'],
+  },
+  {
+    prefix: '/agenda',
+    roles: ['formador'],
+  },
+  {
+    prefix: '/minhas-turmas',
+    roles: ['formador'],
+  },
+  {
+    prefix: '/honorarios',
+    roles: ['formador'],
+  },
+  {
+    prefix: '/dashboard',
+    roles: ['formando'],
+  },
+  {
+    prefix: '/meus-cursos',
+    roles: ['formando'],
+  },
+  {
+    prefix: '/pagamentos',
+    roles: ['formando'],
+  },
+  {
+    prefix: '/loja-cursos',
+    roles: ['formando'],
+  },
+  {
+    prefix: '/conquistas',
+    roles: ['formando'],
+  },
+  {
+    prefix: '/formacao',
+    roles: ['formacao_admin', 'formacao_secretaria', 'formacao_financeiro', 'formador', 'formando'],
   },
 ];
 
-async function resolveUserRole(request: NextRequest, response: NextResponse) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return null;
-
-  const supabase = createServerClient(url, key, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
-      },
-    },
-  });
-
-  const { data: userRes } = await supabase.auth.getUser();
-  const user = userRes?.user;
-  if (!user) return null;
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  return profile?.role ?? null;
+function normalizeModeloEnsino(value: unknown): ModeloEnsino | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'k12') return 'k12';
+  if (normalized === 'formacao') return 'formacao';
+  return null;
 }
 
-async function resolveUserTenant(request: NextRequest, response: NextResponse) {
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  const segments = token.split('.');
+  if (segments.length < 2) return null;
+  try {
+    const base64 = segments[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+    const json = atob(padded);
+    const parsed = JSON.parse(json) as Record<string, unknown>;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function extractAccessTokenFromCookies(request: NextRequest): string | null {
+  const authCookie = request.cookies
+    .getAll()
+    .find((cookie) => cookie.name.includes('auth-token') && cookie.name.startsWith('sb-'));
+  if (!authCookie?.value) return null;
+
+  try {
+    const decoded = decodeURIComponent(authCookie.value);
+    const parsed = JSON.parse(decoded) as unknown;
+    if (Array.isArray(parsed) && typeof parsed[0] === 'string') return parsed[0];
+  } catch {
+    // ignore cookie parse issues and fallback below
+  }
+
+  return authCookie.value;
+}
+
+function extractJwtAuthContext(request: NextRequest): AuthContext | null {
+  const bearer = request.headers.get('authorization');
+  const accessToken = bearer?.startsWith('Bearer ')
+    ? bearer.slice('Bearer '.length).trim()
+    : extractAccessTokenFromCookies(request);
+
+  if (!accessToken) return null;
+  const payload = decodeJwtPayload(accessToken);
+  if (!payload) return null;
+
+  const appMetadata = (payload.app_metadata ?? {}) as Record<string, unknown>;
+  const userMetadata = (payload.user_metadata ?? {}) as Record<string, unknown>;
+
+  const role = (appMetadata.role ?? userMetadata.role ?? null) as string | null;
+  const escolaId = (appMetadata.escola_id ?? userMetadata.escola_id ?? null) as string | null;
+  const modeloEnsino = normalizeModeloEnsino(appMetadata.modelo_ensino ?? userMetadata.modelo_ensino);
+
+  return { role, escolaId, modeloEnsino };
+}
+
+function getLandingPathByContext(ctx: AuthContext): string {
+  if (ctx.modeloEnsino === 'formacao') {
+    if (ctx.role === 'formador') return '/agenda';
+    if (ctx.role === 'formando') return '/dashboard';
+    if (ctx.role === 'formacao_financeiro') return '/financeiro/dashboard';
+    if (ctx.role === 'formacao_secretaria') return '/secretaria/catalogo-cursos';
+    return '/admin/dashboard';
+  }
+
+  if (ctx.role === 'professor') return '/professor';
+  if (ctx.role === 'aluno' || ctx.role === 'encarregado') return '/aluno';
+  if (ctx.role === 'financeiro') return '/financeiro';
+  if (ctx.role === 'secretaria') return '/secretaria';
+  return '/admin';
+}
+
+function pathRequiresK12Model(pathname: string): boolean {
+  return (
+    pathname.startsWith('/professor') ||
+    pathname.startsWith('/aluno') ||
+    pathname.startsWith('/secretaria') ||
+    pathname.startsWith('/financeiro')
+  );
+}
+
+function pathRequiresFormacaoModel(pathname: string): boolean {
+  return (
+    pathname.startsWith('/formacao') ||
+    pathname.startsWith('/agenda') ||
+    pathname.startsWith('/minhas-turmas') ||
+    pathname.startsWith('/honorarios') ||
+    pathname.startsWith('/meus-cursos') ||
+    pathname.startsWith('/pagamentos') ||
+    pathname.startsWith('/loja-cursos') ||
+    pathname.startsWith('/conquistas')
+  );
+}
+
+async function resolveAuthContext(request: NextRequest, response: NextResponse): Promise<AuthContext | null> {
+  const jwtContext = extractJwtAuthContext(request);
+  if (jwtContext?.role) {
+    return jwtContext;
+  }
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !key) return null;
@@ -195,17 +309,16 @@ async function resolveUserTenant(request: NextRequest, response: NextResponse) {
   const user = userRes?.user;
   if (!user) return null;
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role, escola_id, current_escola_id')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const appMetadata = (user.app_metadata ?? {}) as Record<string, unknown>;
+  const userMetadata = (user.user_metadata ?? {}) as Record<string, unknown>;
+  const role = (appMetadata.role ?? userMetadata.role ?? null) as string | null;
+  const escolaId = (appMetadata.escola_id ?? userMetadata.escola_id ?? null) as string | null;
+  const modeloEnsino = normalizeModeloEnsino(appMetadata.modelo_ensino ?? userMetadata.modelo_ensino);
 
   return {
-    role: profile?.role ?? null,
-    escolaId: profile?.current_escola_id ?? profile?.escola_id ?? null,
+    role,
+    escolaId,
+    modeloEnsino,
   };
 }
 
@@ -351,7 +464,7 @@ export async function middleware(request: NextRequest) {
     if (escolaParam !== 'suspensa') {
       const resolved = await resolveEscolaSlugMapping(request, response, escolaParam);
       if (resolved) {
-        const tenant = await resolveUserTenant(request, response);
+        const tenant = await resolveAuthContext(request, response);
         if (!tenant) {
           return finalizeResponse(request, createForbiddenResponse(response, isApi), allowedOrigin);
         }
@@ -385,16 +498,29 @@ export async function middleware(request: NextRequest) {
   const portalRule = PORTAL_RULES.find((rule) => pathname.startsWith(rule.prefix));
   if (!portalRule) return finalizeResponse(request, response, allowedOrigin);
 
-  const role = await resolveUserRole(request, response);
-  if (!role) {
+  const authContext = await resolveAuthContext(request, response);
+  if (!authContext?.role) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = '/login';
     return finalizeResponse(request, NextResponse.redirect(loginUrl), allowedOrigin);
   }
 
-  if (!portalRule.roles.includes(String(role))) {
+  const modeloEnsino = authContext.modeloEnsino ?? 'k12';
+  if (modeloEnsino === 'formacao' && pathRequiresK12Model(pathname)) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = getLandingPathByContext(authContext);
+    return finalizeResponse(request, NextResponse.redirect(redirectUrl), allowedOrigin);
+  }
+
+  if (modeloEnsino === 'k12' && pathRequiresFormacaoModel(pathname)) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = getLandingPathByContext(authContext);
+    return finalizeResponse(request, NextResponse.redirect(redirectUrl), allowedOrigin);
+  }
+
+  if (!portalRule.roles.includes(String(authContext.role))) {
     const deniedUrl = request.nextUrl.clone();
-    deniedUrl.pathname = '/login';
+    deniedUrl.pathname = getLandingPathByContext(authContext);
     return finalizeResponse(request, NextResponse.redirect(deniedUrl), allowedOrigin);
   }
 
@@ -411,6 +537,15 @@ export const config = {
     '/financeiro/:path*',
     '/professor/:path*',
     '/aluno/:path*',
+    '/agenda/:path*',
+    '/minhas-turmas/:path*',
+    '/honorarios/:path*',
+    '/dashboard/:path*',
+    '/meus-cursos/:path*',
+    '/pagamentos/:path*',
+    '/loja-cursos/:path*',
+    '/conquistas/:path*',
+    '/formacao/:path*',
     '/api/escolas/create/:path*',
     '/api/auth/login/:path*',
     '/api/alunos/ativar-acesso/:path*',

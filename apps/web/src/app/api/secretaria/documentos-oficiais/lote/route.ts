@@ -5,6 +5,8 @@ import { supabaseServerTyped } from "@/lib/supabaseServer"
 import { resolveEscolaIdForUser } from "@/lib/tenant/resolveEscolaIdForUser"
 import { authorizeTurmasManage } from "@/lib/escola/disciplinas"
 import { inngest } from "@/inngest/client"
+import { requireFeature } from "@/lib/plan/requireFeature"
+import { HttpError } from "@/lib/errors"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -67,6 +69,10 @@ export async function POST(req: Request) {
     const parsed = Body.safeParse(await req.json().catch(() => ({})))
     if (!parsed.success) {
       return NextResponse.json({ ok: false, error: "Dados inválidos" }, { status: 400 })
+    }
+
+    if (parsed.data.tipo === "certificado") {
+      await requireFeature("doc_qr_code")
     }
 
     const escolaId = await resolveEscolaIdForUser(supabase as any, user.id)
@@ -164,6 +170,17 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, job_id: job.id }, { status: 202 })
   } catch (e) {
+    if (e instanceof HttpError) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: e.message,
+          error_code: e.code,
+          upgrade_required: e.status === 403 && e.code === "PLAN_FEATURE_REQUIRED",
+        },
+        { status: e.status }
+      )
+    }
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
   }
