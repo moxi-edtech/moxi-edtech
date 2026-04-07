@@ -7,6 +7,8 @@ import { requireRoleInSchool } from "@/lib/authz";
 import type { Database } from "~types/supabase";
 import { recordAuditServer } from "@/lib/audit";
 import { dispatchAlunoNotificacao } from "@/lib/notificacoes/dispatchAlunoNotificacao";
+import { requireFeature } from "@/lib/plan/requireFeature";
+import { HttpError } from "@/lib/errors";
 
 const payloadSchema = z.object({
   alunoId: z.string().uuid(),
@@ -55,6 +57,11 @@ export async function POST(request: Request) {
     }
 
     const { alunoId, escolaId, tipoDocumento, ano_letivo } = parsed.data;
+
+    if (tipoDocumento === "certificado") {
+      await requireFeature("doc_qr_code");
+    }
+
     const resolvedEscolaId = await resolveEscolaIdForUser(supabase as any, user.id, escolaId);
 
     if (!resolvedEscolaId || resolvedEscolaId !== escolaId) {
@@ -210,6 +217,17 @@ export async function POST(request: Request) {
       tipo: tipoDocumento,
     });
   } catch (err) {
+    if (err instanceof HttpError) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: err.message,
+          error_code: err.code,
+          upgrade_required: err.status === 403 && err.code === "PLAN_FEATURE_REQUIRED",
+        },
+        { status: err.status }
+      );
+    }
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }

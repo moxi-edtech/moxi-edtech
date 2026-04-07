@@ -12,6 +12,11 @@ export type Papel =
   | 'professor'
   | 'admin_escola'
   | 'encarregado'
+  | 'formacao_admin'
+  | 'formacao_secretaria'
+  | 'formacao_financeiro'
+  | 'formador'
+  | 'formando'
 
 // Enumerate known permissions to get type-safety across the app
 export type Permission =
@@ -47,6 +52,17 @@ export type Permission =
   | 'visualizar_situacao_financeira'
   | 'baixar_documentos'
   | 'enviar_mensagem'
+  | 'gerir_cohorts'
+  | 'emitir_certificados'
+  | 'gerir_faturas_b2b'
+  | 'gerir_honorarios'
+  | 'lancar_avaliacoes_formacao'
+  | 'registar_presencas_formacao'
+  | 'consultar_turmas_formador'
+  | 'consultar_honorarios'
+  | 'consultar_progresso_formando'
+  | 'consultar_pagamentos_formando'
+  | 'comprar_cursos'
 
 // Global role enum as used in profiles/app_metadata
 export type GlobalRole =
@@ -61,6 +77,11 @@ export type GlobalRole =
   | 'admin_escola'
   | 'staff_admin'
   | 'encarregado'
+  | 'formacao_admin'
+  | 'formacao_secretaria'
+  | 'formacao_financeiro'
+  | 'formador'
+  | 'formando'
   | 'global_admin'
   | 'guest'
 
@@ -82,6 +103,11 @@ export function normalizePapel(papel: Papel | string | null | undefined): Papel 
     professor: 'professor',
     aluno: 'aluno',
     encarregado: 'encarregado',
+    formacao_admin: 'formacao_admin',
+    formacao_secretaria: 'formacao_secretaria',
+    formacao_financeiro: 'formacao_financeiro',
+    formador: 'formador',
+    formando: 'formando',
   }
 
   const key = papel.trim().toLowerCase()
@@ -109,6 +135,15 @@ const ALUNO_PERMISSIONS = new Set<Permission>([
   'visualizar_situacao_financeira',
   'baixar_documentos',
   'enviar_mensagem',
+])
+
+const FORMANDO_PERMISSIONS = new Set<Permission>([
+  'consultar_calendario',
+  'consultar_horarios',
+  'consultar_progresso_formando',
+  'consultar_pagamentos_formando',
+  'baixar_documentos',
+  'comprar_cursos',
 ])
 
 // Mapping derived directly from the provided matrix.
@@ -188,6 +223,52 @@ const ROLE_PERMISSIONS: Record<Papel, ReadonlySet<Permission>> = {
 
   aluno: ALUNO_PERMISSIONS,
   encarregado: ALUNO_PERMISSIONS,
+  formando: FORMANDO_PERMISSIONS,
+
+  formacao_admin: new Set<Permission>([
+    'criar_usuario',
+    'editar_usuario',
+    'remover_usuario',
+    'configurar_escola',
+    'visualizar_relatorios_globais',
+    'visualizar_financeiro',
+    'visualizar_academico',
+    'gerir_cohorts',
+    'emitir_certificados',
+    'gerir_faturas_b2b',
+    'gerir_honorarios',
+  ]),
+
+  formacao_secretaria: new Set<Permission>([
+    'criar_matricula',
+    'editar_matricula',
+    'gerenciar_turmas',
+    'emitir_documentos',
+    'emitir_certificados',
+    'gerir_cohorts',
+    'enviar_comunicado',
+  ]),
+
+  formacao_financeiro: new Set<Permission>([
+    'criar_cobranca',
+    'editar_cobranca',
+    'registrar_pagamento',
+    'emitir_recibo',
+    'emitir_nota_fiscal',
+    'visualizar_fluxo_caixa',
+    'exportar_relatorios_contabeis',
+    'gerir_faturas_b2b',
+    'gerir_honorarios',
+  ]),
+
+  formador: new Set<Permission>([
+    'lançar_notas',
+    'registrar_frequencia',
+    'lancar_avaliacoes_formacao',
+    'registar_presencas_formacao',
+    'consultar_turmas_formador',
+    'consultar_honorarios',
+  ]),
 }
 
 export function getPermissionsForRole(papel: Papel | string | null | undefined): ReadonlySet<Permission> {
@@ -214,6 +295,8 @@ export function temAcessoFinanceiro(role: GlobalRole | string | null | undefined
     'financeiro',
     'secretaria_financeiro',
     'admin_financeiro',
+    'formacao_financeiro',
+    'formacao_admin',
     'admin',
     'super_admin',
     'global_admin',
@@ -225,6 +308,8 @@ export function temAcessoSecretaria(role: GlobalRole | string | null | undefined
     'secretaria',
     'secretaria_financeiro',
     'admin_financeiro',
+    'formacao_secretaria',
+    'formacao_admin',
     'admin',
     'super_admin',
     'global_admin',
@@ -253,6 +338,16 @@ export function mapPapelToGlobalRole(papel: Papel | string | null | undefined): 
       return 'aluno'
     case 'encarregado':
       return 'encarregado'
+    case 'formacao_admin':
+      return 'formacao_admin'
+    case 'formacao_secretaria':
+      return 'formacao_secretaria'
+    case 'formacao_financeiro':
+      return 'formacao_financeiro'
+    case 'formador':
+      return 'formador'
+    case 'formando':
+      return 'formando'
     default:
       return 'guest'
   }

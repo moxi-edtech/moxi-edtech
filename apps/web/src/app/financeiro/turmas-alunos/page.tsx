@@ -98,9 +98,9 @@ const TurmasAlunosFinanceiro: React.FC = () => {
       try {
         // Mock fetch calls - substituir por chamadas reais
         const [turmasRes, alunosRes, mensalidadesRes] = await Promise.all([
-          fetch('/api/financeiro/turmas'),
-          fetch('/api/financeiro/alunos'),
-          fetch('/api/financeiro/mensalidades')
+          fetch('/api/financeiro/turmas', { cache: 'no-store' }),
+          fetch('/api/financeiro/alunos', { cache: 'no-store' }),
+          fetch('/api/financeiro/mensalidades', { cache: 'no-store' })
         ]);
         
         const [turmas, alunos, mensalidades] = await Promise.all([

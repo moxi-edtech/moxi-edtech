@@ -14,6 +14,7 @@ export type FeatureKey =
   | "sec_upload_docs"
   | "sec_matricula_online"
   | "doc_qr_code"
+  | "relatorio_avancado"
   | "app_whatsapp_auto"
   | "suporte_prioritario";
 
@@ -29,6 +30,7 @@ export const PLAN_FEATURES: Record<PlanTier, Record<FeatureKey, boolean>> = {
     sec_upload_docs: false,
     sec_matricula_online: false,
     doc_qr_code: false,
+    relatorio_avancado: false,
     app_whatsapp_auto: false,
     suporte_prioritario: false,
   },
@@ -37,6 +39,7 @@ export const PLAN_FEATURES: Record<PlanTier, Record<FeatureKey, boolean>> = {
     sec_upload_docs: true,
     sec_matricula_online: false,
     doc_qr_code: false,
+    relatorio_avancado: false,
     app_whatsapp_auto: false,
     suporte_prioritario: false,
   },
@@ -45,8 +48,8 @@ export const PLAN_FEATURES: Record<PlanTier, Record<FeatureKey, boolean>> = {
     sec_upload_docs: true,
     sec_matricula_online: true,
     doc_qr_code: true,
+    relatorio_avancado: true,
     app_whatsapp_auto: true,
     suporte_prioritario: true,
   },
 };
-
