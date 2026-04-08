@@ -7,28 +7,43 @@ import { isSuperAdminRole } from "@/lib/auth/requireSuperAdminAccess";
 import { callAuthAdminJob } from "@/lib/auth-admin-job";
 import { mapPapelToGlobalRole } from "@/lib/permissions";
 
+const emptyToNull = (value: unknown) => {
+  if (typeof value === "string" && value.trim() === "") return null;
+  return value;
+};
+
+const OptionalNullableString = z.preprocess(emptyToNull, z.string().trim().optional().nullable());
+const OptionalNullableEmail = z.preprocess(
+  emptyToNull,
+  z.string().trim().email("Email inválido").optional().nullable()
+);
+const OptionalNullableUrl = z.preprocess(
+  emptyToNull,
+  z.string().trim().url("URL inválida").optional().nullable()
+);
+
 const TeamMemberSchema = z.object({
   nome: z.string().trim().min(2, "Nome inválido"),
   email: z.string().trim().email("Email inválido").transform((value) => value.toLowerCase()),
-  telefone: z.string().trim().optional().nullable(),
+  telefone: OptionalNullableString,
   papel: z.enum(["formacao_admin", "formacao_secretaria", "formacao_financeiro", "formador"]),
 });
 
 const ProvisionCentroSchema = z.object({
   centro: z.object({
     nome: z.string().trim().min(2),
-    abrev: z.string().trim().max(20).optional().nullable(),
-    morada: z.string().trim().optional().nullable(),
-    municipio: z.string().trim().optional().nullable(),
-    provincia: z.string().trim().optional().nullable(),
-    telefone: z.string().trim().optional().nullable(),
-    email: z.string().trim().email().optional().nullable(),
-    website: z.string().trim().url().optional().nullable(),
+    abrev: z.preprocess(emptyToNull, z.string().trim().max(20).optional().nullable()),
+    morada: OptionalNullableString,
+    municipio: OptionalNullableString,
+    provincia: OptionalNullableString,
+    telefone: OptionalNullableString,
+    email: OptionalNullableEmail,
+    website: OptionalNullableUrl,
   }),
   fiscal: z.object({
-    nipc: z.string().trim().optional().nullable(),
-    nif: z.string().trim().optional().nullable(),
-    registo_maptess: z.string().trim().optional().nullable(),
+    nipc: OptionalNullableString,
+    nif: OptionalNullableString,
+    registo_maptess: OptionalNullableString,
     regime_iva: z.enum(["normal", "simplificado", "isento"]),
     moeda: z.string().trim().default("AOA"),
   }),
@@ -39,7 +54,7 @@ const ProvisionCentroSchema = z.object({
     plano: z.enum(["basic", "pro", "enterprise"]),
   }),
   equipe_inicial: z.array(TeamMemberSchema).min(2),
-  notas_admin: z.string().trim().optional().nullable(),
+  notas_admin: OptionalNullableString,
 });
 
 type CreateEscolaPayload = {
