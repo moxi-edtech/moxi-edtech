@@ -71,6 +71,10 @@ export function usePrecosLogic(escolaId: string) {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [resolving, setResolving] = useState(false)
+  const [applying, setApplying] = useState(false)
+  const [previewingApply, setPreviewingApply] = useState(false)
+  const [applyPreviewCount, setApplyPreviewCount] = useState<number | null>(null)
+  const [applyScope, setApplyScope] = useState<"future" | "all">("future")
   const tabelasRequestRef = useRef(0)
   const simulacaoRequestRef = useRef(0)
   const [classesFiltradasForm, setClassesFiltradasForm] = useState<Catalogo[]>([])
@@ -371,6 +375,72 @@ export function usePrecosLogic(escolaId: string) {
     })
   }
 
+  async function previewAplicacaoPendentes() {
+    const valorMensalidadeNum = formatCurrencyInput(form.valor_mensalidade)
+    if (valorMensalidadeNum === null || valorMensalidadeNum <= 0) {
+      error("Informe a mensalidade para pré-visualizar o impacto.")
+      return
+    }
+
+    setPreviewingApply(true)
+    try {
+      const payload = {
+        curso_id: form.curso_id && cursoIds.has(form.curso_id) ? form.curso_id : null,
+        classe_id: form.classe_id && classeIds.has(form.classe_id) ? form.classe_id : null,
+        valor: valorMensalidadeNum,
+        dia_vencimento: form.dia_vencimento === "" ? null : Number(form.dia_vencimento),
+        scope: applyScope,
+        dry_run: true,
+      }
+      const res = await fetch("/api/financeiro/tabelas-mensalidade/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      const json = await res.json().catch(() => null)
+      if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao simular aplicação")
+      setApplyPreviewCount(Number(json?.matched ?? 0))
+      success("Pré-visualização concluída.")
+    } catch (e: unknown) {
+      setApplyPreviewCount(null)
+      error(formatError(e, "Falha ao simular aplicação"))
+    } finally {
+      setPreviewingApply(false)
+    }
+  }
+
+  async function aplicarAosPendentes() {
+    const valorMensalidadeNum = formatCurrencyInput(form.valor_mensalidade)
+    if (valorMensalidadeNum === null || valorMensalidadeNum <= 0) {
+      error("Informe a mensalidade para aplicar aos pendentes.")
+      return
+    }
+
+    setApplying(true)
+    try {
+      const payload = {
+        curso_id: form.curso_id && cursoIds.has(form.curso_id) ? form.curso_id : null,
+        classe_id: form.classe_id && classeIds.has(form.classe_id) ? form.classe_id : null,
+        valor: valorMensalidadeNum,
+        dia_vencimento: form.dia_vencimento === "" ? null : Number(form.dia_vencimento),
+        scope: applyScope,
+        dry_run: false,
+      }
+      const res = await fetch("/api/financeiro/tabelas-mensalidade/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      const json = await res.json().catch(() => null)
+      if (!res.ok || !json?.ok) throw new Error(json?.error || "Falha ao aplicar aos pendentes")
+      success(`Preços aplicados em ${Number(json?.updated ?? 0)} mensalidade(s) pendente(s).`)
+    } catch (e: unknown) {
+      error(formatError(e, "Falha ao aplicar aos pendentes"))
+    } finally {
+      setApplying(false)
+    }
+  }
+
   return {
     state: {
       sessions,
@@ -386,6 +456,10 @@ export function usePrecosLogic(escolaId: string) {
       loading,
       saving,
       resolving,
+      applying,
+      previewingApply,
+      applyPreviewCount,
+      applyScope,
       classesFiltradasForm,
       classesFiltradasSimulacao,
       destinosOrdenados,
@@ -396,10 +470,13 @@ export function usePrecosLogic(escolaId: string) {
       setAnoLetivoFallback,
       setForm,
       setSimulacao,
+      setApplyScope,
       carregarTabelas,
       simular,
       salvar,
       editar,
+      previewAplicacaoPendentes,
+      aplicarAosPendentes,
     },
   }
 }

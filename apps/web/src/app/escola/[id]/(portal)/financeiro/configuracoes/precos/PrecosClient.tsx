@@ -44,12 +44,27 @@ export default function PrecosClient({
       loading,
       saving,
       resolving,
+      applying,
+      previewingApply,
+      applyPreviewCount,
+      applyScope,
       classesFiltradasForm,
       classesFiltradasSimulacao,
       destinosOrdenados,
       destinoAtualLabel,
     },
-    actions: { setSelectedSession, setAnoLetivoFallback, setForm, setSimulacao, carregarTabelas, salvar, editar },
+    actions: {
+      setSelectedSession,
+      setAnoLetivoFallback,
+      setForm,
+      setSimulacao,
+      setApplyScope,
+      carregarTabelas,
+      salvar,
+      editar,
+      previewAplicacaoPendentes,
+      aplicarAosPendentes,
+    },
   } = usePrecosLogic(escolaId)
 
   const destinoAtualLabelSafe = React.useMemo(() => destinoAtualLabel || "—", [destinoAtualLabel])
@@ -281,6 +296,56 @@ export default function PrecosClient({
                 </button>
               </div>
             </form>
+          </Card>
+
+          <Card className="p-5 border-slate-200 bg-white">
+            <div className="flex flex-col gap-4">
+              <div>
+                <h4 className="text-sm font-semibold text-slate-900">Aplicar aos Pendentes</h4>
+                <p className="text-xs text-slate-500 mt-1">
+                  Atualiza mensalidades pendentes com base nos valores da regra em edição.
+                </p>
+              </div>
+
+              <div className="flex flex-col md:flex-row md:items-center gap-3">
+                <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">Escopo</label>
+                <select
+                  value={applyScope}
+                  onChange={(event) => setApplyScope(event.target.value === "all" ? "all" : "future")}
+                  className="w-full md:w-auto px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-klasse-green-500/20 focus:border-klasse-green-500"
+                >
+                  <option value="future">Pendentes futuros (recomendado)</option>
+                  <option value="all">Todos os pendentes</option>
+                </select>
+              </div>
+
+              <div className="flex flex-col md:flex-row gap-2">
+                <button
+                  type="button"
+                  onClick={previewAplicacaoPendentes}
+                  disabled={previewingApply}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-slate-300 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {previewingApply ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                  Pré-visualizar impacto
+                </button>
+                <button
+                  type="button"
+                  onClick={aplicarAosPendentes}
+                  disabled={applying}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-klasse-green-600 hover:bg-klasse-green-700 text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {applying ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  Aplicar aos pendentes
+                </button>
+              </div>
+
+              {applyPreviewCount !== null && (
+                <div className="rounded-lg border border-klasse-gold-200 bg-klasse-gold-50 px-3 py-2 text-sm text-klasse-gold-900">
+                  Impacto estimado: <span className="font-semibold">{applyPreviewCount}</span> mensalidade(s) pendente(s).
+                </div>
+              )}
+            </div>
           </Card>
 
           <Card className="bg-slate-50 border-slate-200">

@@ -1,0 +1,26 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "preserve",
+    "moduleResolution": "Bundler",
+    "allowJs": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"],
+      "~types/*": ["../../types/*"],
+      "@moxi/tenant-sdk": ["../../packages/tenant-sdk/src/index.ts"],
+      "@moxi/tenant-sdk/*": ["../../packages/tenant-sdk/src/*"]
+    },
+    "plugins": [{ "name": "next" }]
+  },
+  "include": [
+    "app/**/*",
+    "lib/**/*",
+    "middleware.ts",
+    "next-env.d.ts",
+    "next.config.ts",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": ["node_modules"]
+}

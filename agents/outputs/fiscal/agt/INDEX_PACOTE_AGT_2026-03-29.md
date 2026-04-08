@@ -39,6 +39,25 @@ Exemplos:
 - `P02_FT_ANULADA_2026_0002_20260401.pdf`
 - `P10_GR_2026_0005_20260402.pdf`
 
+### Lista operacional (fecho AGT)
+
+- `P01_FT_FR_<NUMERO>_<YYYYMMDD>.pdf`
+- `P02_FT_ANULADA_<NUMERO>_<YYYYMMDD>.pdf`
+- `P03_PP_<NUMERO>_<YYYYMMDD>.pdf`
+- `P04_FT_REF_PP_<NUMERO>_<YYYYMMDD>.pdf`
+- `P05_NC_REF_FT_<NUMERO>_<YYYYMMDD>.pdf`
+- `P06_FT_DUAS_LINHAS_<NUMERO>_<YYYYMMDD>.pdf`
+- `P07_SETTLEMENT_<NUMERO>_<YYYYMMDD>.pdf`
+- `P08_FX_<NUMERO>_<YYYYMMDD>.pdf`
+- `P09_FT_SMALL_BEFORE10_<NUMERO>_<YYYYMMDD>.pdf`
+- `P10_CLIENTE_SEM_NIF_<NUMERO>_<YYYYMMDD>.pdf`
+- `P11_GR_01_<NUMERO>_<YYYYMMDD>.pdf`
+- `P11_GT_02_<NUMERO>_<YYYYMMDD>.pdf`
+- `P12_PP_<NUMERO>_<YYYYMMDD>.pdf`
+- `P13_GF_SELF_BILLING_<NUMERO>_<YYYYMMDD>.pdf` (se aplicável)
+- `P14_FG_<NUMERO>_<YYYYMMDD>.pdf`
+- `P15_OUTROS_<TIPO>_<NUMERO>_<YYYYMMDD>.pdf` (se aplicável)
+
 ## Regras de preenchimento
 
 1. Cada ponto AGT deve ter: `status`, `doc_id`, `numero_formatado`, `pdf`, `xml_check`, `obs`.

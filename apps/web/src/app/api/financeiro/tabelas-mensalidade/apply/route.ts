@@ -14,9 +14,10 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ ok: false, error: 'Não autenticado' }, { status: 401 })
 
     const body = await req.json().catch(() => ({}))
-    const { curso_id, classe_id, valor, dia_vencimento, scope = 'future' } = body || {}
+    const { curso_id, classe_id, valor, dia_vencimento, scope = 'future', dry_run = false } = body || {}
     const newValor: number = Number(valor)
     const newDia: number | undefined = dia_vencimento != null ? Number(dia_vencimento) : undefined
+    const dryRun = Boolean(dry_run)
     if (!Number.isFinite(newValor) || newValor <= 0) return NextResponse.json({ ok: false, error: 'Valor inválido' }, { status: 400 })
 
     // Resolve escola
@@ -80,7 +81,23 @@ export async function POST(req: Request) {
       mensalidades = data || []
     }
 
-    if (mensalidades.length === 0) return NextResponse.json({ ok: true, updated: 0 })
+    if (mensalidades.length === 0) {
+      return NextResponse.json({
+        ok: true,
+        updated: 0,
+        matched: 0,
+        dry_run: dryRun,
+      })
+    }
+
+    if (dryRun) {
+      return NextResponse.json({
+        ok: true,
+        updated: 0,
+        matched: mensalidades.length,
+        dry_run: true,
+      })
+    }
 
     // Atualiza em batches (ajustando dia para último dia do mês quando necessário)
     let updated = 0
@@ -101,7 +118,7 @@ export async function POST(req: Request) {
       if (!error) updated++
     }
 
-    return NextResponse.json({ ok: true, updated })
+    return NextResponse.json({ ok: true, updated, matched: mensalidades.length, dry_run: false })
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ ok: false, error: message }, { status: 500 })
