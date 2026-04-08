@@ -7,6 +7,7 @@ type AdminAction =
   | "updateUserById"
   | "upsertProfile"
   | "upsertEscolaUser"
+  | "upsertEscolaAdministrador"
   | "deleteUser"
   | "getUserById"
   | "listUsers"

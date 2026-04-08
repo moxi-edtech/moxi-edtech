@@ -381,17 +381,17 @@ async function ensureTeamMember(params: {
   }
 
   if (params.papel === "formacao_admin") {
-    const escolaAdminUpsert = await params.supabaseUntyped.from("escola_administradores").upsert(
-      {
-        escola_id: params.escolaId,
-        user_id: userId,
-        cargo: "diretor_centro",
-      },
-      { onConflict: "escola_id,user_id" }
-    );
-
-    if (escolaAdminUpsert.error) {
-      throw new Error(`Falha ao registrar admin do centro (${email}): ${escolaAdminUpsert.error.message}`);
+    try {
+      await callAuthAdminJob(params.req, "upsertEscolaAdministrador", {
+        escolaAdministrador: {
+          escola_id: params.escolaId,
+          user_id: userId,
+          cargo: "diretor_centro",
+        },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Erro desconhecido";
+      throw new Error(`Falha ao registrar admin do centro (${email}): ${message}`);
     }
   }
 
