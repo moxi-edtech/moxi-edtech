@@ -12,13 +12,21 @@ const emptyToNull = (value: unknown) => {
   return value;
 };
 
+const normalizeWebsiteInput = (value: unknown) => {
+  if (typeof value !== "string") return emptyToNull(value);
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+};
+
 const OptionalNullableString = z.preprocess(emptyToNull, z.string().trim().optional().nullable());
 const OptionalNullableEmail = z.preprocess(
   emptyToNull,
   z.string().trim().email("Email inválido").optional().nullable()
 );
 const OptionalNullableUrl = z.preprocess(
-  emptyToNull,
+  normalizeWebsiteInput,
   z.string().trim().url("URL inválida").optional().nullable()
 );
 
@@ -104,8 +112,13 @@ export async function POST(request: Request) {
     const body = await request.json();
     const parsed = ProvisionCentroSchema.safeParse(body);
     if (!parsed.success) {
+      const issue = parsed.error.issues[0];
       return NextResponse.json(
-        { ok: false, error: parsed.error.issues[0]?.message ?? "Payload inválido" },
+        {
+          ok: false,
+          error: issue?.message ?? "Payload inválido",
+          field: issue?.path?.join(".") ?? null,
+        },
         { status: 400 }
       );
     }
