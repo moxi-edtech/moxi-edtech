@@ -13,6 +13,7 @@ type AdminAction =
   | "updateUserById"
   | "upsertProfile"
   | "upsertEscolaUser"
+  | "upsertEscolaAdministrador"
   | "deleteUser"
   | "getUserById"
   | "listUsers"
@@ -175,6 +176,36 @@ export async function POST(req: Request) {
         if (error) {
           return NextResponse.json(
             { ok: false, error: `AUTH_ADMIN_UPSERT_ESCOLA_USER: ${error.message}` },
+            { status: 400 }
+          );
+        }
+        return NextResponse.json({ ok: true, data });
+      }
+      case "upsertEscolaAdministrador": {
+        const { escolaAdministrador } = payload as {
+          escolaAdministrador?: TablesInsert<"escola_administradores">;
+        };
+        if (
+          !escolaAdministrador ||
+          !escolaAdministrador.escola_id ||
+          !escolaAdministrador.user_id ||
+          !escolaAdministrador.cargo
+        ) {
+          return NextResponse.json(
+            { ok: false, error: "Missing required escola_administradores fields" },
+            { status: 400 }
+          );
+        }
+
+        const { data, error } = await admin
+          .from("escola_administradores")
+          .upsert(escolaAdministrador, { onConflict: "escola_id,user_id" })
+          .select("escola_id,user_id,cargo")
+          .maybeSingle();
+
+        if (error) {
+          return NextResponse.json(
+            { ok: false, error: `AUTH_ADMIN_UPSERT_ESCOLA_ADMIN: ${error.message}` },
             { status: 400 }
           );
         }
