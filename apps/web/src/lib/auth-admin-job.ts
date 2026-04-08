@@ -1,4 +1,5 @@
 import "server-only";
+import { getRequestOrigin } from "@/lib/serverUrl";
 
 type AdminAction =
   | "createUser"
@@ -31,8 +32,18 @@ export async function callAuthAdminJob(req: Request, action: AdminAction, payloa
     throw new Error("Missing AUTH_ADMIN_JOB_TOKEN or CRON_SECRET");
   }
 
-  const origin = new URL(req.url).origin;
-  const response = await fetch(`${origin}/api/jobs/auth-admin`, {
+  let origin: string | null = null;
+  try {
+    origin = new URL(req.url).origin;
+  } catch {
+    origin = null;
+  }
+  if (!origin) {
+    origin = await getRequestOrigin();
+  }
+  const base = origin.replace(/\/$/, "");
+
+  const response = await fetch(`${base}/api/jobs/auth-admin`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
